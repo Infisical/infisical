@@ -7,6 +7,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedProjectSchema } from "../sanitizedSchemas";
@@ -118,6 +119,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         id: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth),
         ...req.body
       });
 
@@ -166,7 +168,8 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        id: req.params.identityId
+        id: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
@@ -328,7 +331,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
               identity: IdentitiesSchema.pick({ name: true, id: true }).extend({
                 authMethods: z.array(z.string())
               }),
-              project: SanitizedProjectSchema.pick({ name: true, id: true })
+              project: SanitizedProjectSchema.pick({ name: true, id: true, type: true })
             })
           )
         })

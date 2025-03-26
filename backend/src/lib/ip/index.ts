@@ -103,6 +103,16 @@ export const isValidIpOrCidr = (ip: string): boolean => {
   return false;
 };
 
+export const isValidIp = (ip: string) => {
+  return net.isIPv4(ip) || net.isIPv6(ip);
+};
+
+export const isValidHostname = (name: string) => {
+  const hostnameRegex = /^(?!:\/\/)(\*\.)?([a-zA-Z0-9-_]{1,63}\.?)+(?!:\/\/)([a-zA-Z]{2,63})$/;
+
+  return hostnameRegex.test(name);
+};
+
 export type TIp = {
   ipAddress: string;
   type: IPType;

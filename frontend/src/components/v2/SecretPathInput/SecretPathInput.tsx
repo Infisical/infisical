@@ -39,7 +39,7 @@ export const SecretPathInput = ({
   const workspaceId = currentWorkspace?.id || "";
   const { folderNames: folders } = useGetFoldersByEnv({
     path: secretPath,
-    environments: [environment || currentWorkspace?.environments?.[0].slug!],
+    environments: [environment || currentWorkspace?.environments?.[0].slug || ""],
     projectId: workspaceId
   });
 
@@ -141,7 +141,7 @@ export const SecretPathInput = ({
           maxHeight: "var(--radix-select-content-available-height)"
         }}
       >
-        <div className="max-w-60 h-full w-full flex-col items-center justify-center rounded-md text-white">
+        <div className="h-full w-full flex-col items-center justify-center rounded-md text-white">
           {suggestions.map((suggestion, i) => (
             <div
               tabIndex={0}

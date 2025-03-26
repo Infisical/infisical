@@ -1,10 +1,11 @@
 import { z } from "zod";
 
-import { AuthTokenSessionsSchema, OrganizationsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
+import { AuthTokenSessionsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { ApiKeysSchema } from "@app/db/schemas/api-keys";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMethod, AuthMode } from "@app/services/auth/auth-type";
+import { AuthMethod, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
+import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -56,7 +57,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        isMfaEnabled: z.boolean()
+        isMfaEnabled: z.boolean().optional(),
+        selectedMfaMethod: z.nativeEnum(MfaMethod).optional()
       }),
       response: {
         200: z.object({
@@ -66,7 +68,12 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const user = await server.services.user.toggleUserMfa(req.permission.id, req.body.isMfaEnabled);
+      const user = await server.services.user.updateUserMfa({
+        userId: req.permission.id,
+        isMfaEnabled: req.body.isMfaEnabled,
+        selectedMfaMethod: req.body.selectedMfaMethod
+      });
+
       return { user };
     }
   });
@@ -128,7 +135,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       description: "Return organizations that current user is part of",
       response: {
         200: z.object({
-          organizations: OrganizationsSchema.array()
+          organizations: sanitizedOrganizationSchema.array()
         })
       }
     },

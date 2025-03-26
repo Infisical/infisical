@@ -26,7 +26,7 @@ jobs:
             CLI_TESTS_INFISICAL_VAULT_FILE_PASSPHRASE: ${{ secrets.CLI_TESTS_INFISICAL_VAULT_FILE_PASSPHRASE }}
 
     npm-release:
-        runs-on: ubuntu-20.04
+        runs-on: ubuntu-latest
         env:
             working-directory: ./npm
         needs:
@@ -83,7 +83,7 @@ jobs:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     goreleaser:
-        runs-on: ubuntu-20.04
+        runs-on: ubuntu-latest
         needs: [cli-integration-tests]
         steps:
             - uses: actions/checkout@v3
@@ -103,11 +103,12 @@ jobs:
                   go-version: ">=1.19.3"
                   cache: true
                   cache-dependency-path: cli/go.sum
-            - name: libssl1.1 => libssl1.0-dev for OSXCross
+            - name: Setup for libssl1.0-dev
               run: |
                   echo 'deb http://security.ubuntu.com/ubuntu bionic-security main' | sudo tee -a /etc/apt/sources.list
-                  sudo apt update && apt-cache policy libssl1.0-dev
-                  sudo apt-get install libssl1.0-dev
+                  sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 3B4FE6ACC0B21F32
+                  sudo apt update
+                  sudo apt-get install -y libssl1.0-dev
             - name: OSXCross for CGO Support
               run: |
                   mkdir ../../osxcross

@@ -7,4 +7,9 @@ export type TIdentityAccessTokenJwtPayload = {
   clientSecretId: string;
   identityAccessTokenId: string;
   authTokenType: string;
+  identityAuth: {
+    oidc?: {
+      claims: Record<string, string>;
+    };
+  };
 };

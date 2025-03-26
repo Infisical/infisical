@@ -1,44 +1,19 @@
-import { createContext, ReactNode, useContext, useMemo } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { useRouteContext } from "@tanstack/react-router";
 
-import { useGetOrganizations } from "@app/hooks/api";
-import { Organization } from "@app/hooks/api/types";
-
-type TOrgContext = {
-  orgs?: Organization[];
-  currentOrg?: Organization;
-  isLoading: boolean;
-};
-
-const OrgContext = createContext<TOrgContext | null>(null);
-
-type Props = {
-  children: ReactNode;
-};
-
-export const OrgProvider = ({ children }: Props): JSX.Element => {
-  const { data: userOrgs, isLoading } = useGetOrganizations();
-
-  // const currentWsOrgID = currentWorkspace?.organization;
-  const currentWsOrgID = localStorage.getItem("orgData.id");
-
-  // memorize the workspace details for the context
-  const value = useMemo<TOrgContext>(
-    () => ({
-      orgs: userOrgs,
-      currentOrg: (userOrgs || []).find(({ id }) => id === currentWsOrgID),
-      isLoading
-    }),
-    [currentWsOrgID, userOrgs, isLoading]
-  );
-
-  return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;
-};
+import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organization/queries";
 
 export const useOrganization = () => {
-  const ctx = useContext(OrgContext);
-  if (!ctx) {
-    throw new Error("useOrganization to be used within <OrgContext.Provider>");
-  }
+  const organizationId = useRouteContext({
+    from: "/_authenticate/_inject-org-details",
+    select: (el) => el.organizationId
+  });
 
-  return ctx;
+  const { data: currentOrg } = useSuspenseQuery({
+    queryKey: organizationKeys.getOrgById(organizationId),
+    queryFn: () => fetchOrganizationById(organizationId),
+    staleTime: Infinity
+  });
+
+  return { currentOrg };
 };

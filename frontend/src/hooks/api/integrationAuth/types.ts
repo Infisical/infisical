@@ -43,6 +43,11 @@ export type Environment = {
   environmentId: string;
 };
 
+export type VercelEnvironment = {
+  id: string;
+  slug: string;
+};
+
 export type ChecklyGroup = {
   name: string;
   groupId: number;
@@ -99,3 +104,47 @@ export type TDuplicateIntegrationAuthDTO = {
   integrationAuthId: string;
   projectId: string;
 };
+
+export enum OctopusDeployScope {
+  Project = "project"
+  // tenant, variable set
+}
+
+export type CircleCIOrganization = {
+  name: string;
+  slug: string;
+  projects: {
+    name: string;
+    id: string;
+  }[];
+  contexts: {
+    name: string;
+    id: string;
+  }[];
+};
+
+export type TGetIntegrationAuthOctopusDeployScopeValuesDTO = {
+  integrationAuthId: string;
+  spaceId: string;
+  resourceId: string;
+  scope: OctopusDeployScope;
+};
+
+export type TOctopusDeployVariableSetScopeValues = {
+  Environments: { Id: string; Name: string }[];
+  Machines: { Id: string; Name: string }[];
+  Actions: { Id: string; Name: string }[];
+  Roles: { Id: string; Name: string }[];
+  Channels: { Id: string; Name: string }[];
+  TenantTags: { Id: string; Name: string }[];
+  Processes: {
+    ProcessType: string;
+    Id: string;
+    Name: string;
+  }[];
+};
+
+export enum CircleCiScope {
+  Context = "context",
+  Project = "project"
+}

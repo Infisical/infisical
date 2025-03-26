@@ -1,20 +1,22 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { SecretKeyEncoding } from "@app/db/schemas";
+import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { TDynamicSecretLeaseDALFactory } from "../dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/dynamic-secret-lease-queue";
+import { TProjectGatewayDALFactory } from "../gateway/project-gateway-dal";
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
 import {
   DynamicSecretStatus,
@@ -42,6 +44,8 @@ type TDynamicSecretServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findBySecretPathMultiEnv">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  projectGatewayDAL: Pick<TProjectGatewayDALFactory, "findOne">;
 };
 
 export type TDynamicSecretServiceFactory = ReturnType<typeof dynamicSecretServiceFactory>;
@@ -54,7 +58,9 @@ export const dynamicSecretServiceFactory = ({
   dynamicSecretProviders,
   permissionService,
   dynamicSecretQueueService,
-  projectDAL
+  projectDAL,
+  kmsService,
+  projectGatewayDAL
 }: TDynamicSecretServiceFactoryDep) => {
   const create = async ({
     path,
@@ -73,13 +79,14 @@ export const dynamicSecretServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.CreateRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
@@ -104,23 +111,35 @@ export const dynamicSecretServiceFactory = ({
     const selectedProvider = dynamicSecretProviders[provider.type];
     const inputs = await selectedProvider.validateProviderInputs(provider.inputs);
 
+    let selectedGatewayId: string | null = null;
+    if (inputs && typeof inputs === "object" && "projectGatewayId" in inputs && inputs.projectGatewayId) {
+      const projectGatewayId = inputs.projectGatewayId as string;
+
+      const projectGateway = await projectGatewayDAL.findOne({ id: projectGatewayId, projectId });
+      if (!projectGateway)
+        throw new NotFoundError({
+          message: `Project gateway with ${projectGatewayId} not found`
+        });
+      selectedGatewayId = projectGateway.id;
+    }
+
     const isConnected = await selectedProvider.validateConnection(provider.inputs);
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
-    const encryptedInput = infisicalSymmetricEncypt(JSON.stringify(inputs));
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
 
     const dynamicSecretCfg = await dynamicSecretDAL.create({
       type: provider.type,
       version: 1,
-      inputIV: encryptedInput.iv,
-      inputTag: encryptedInput.tag,
-      inputCiphertext: encryptedInput.ciphertext,
-      algorithm: encryptedInput.algorithm,
-      keyEncoding: encryptedInput.encoding,
+      encryptedInput: secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(inputs)) }).cipherTextBlob,
       maxTTL,
       defaultTTL,
       folderId: folder.id,
-      name
+      name,
+      projectGatewayId: selectedGatewayId
     });
     return dynamicSecretCfg;
   };
@@ -144,13 +163,14 @@ export const dynamicSecretServiceFactory = ({
 
     const projectId = project.id;
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.EditRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
@@ -178,34 +198,47 @@ export const dynamicSecretServiceFactory = ({
       if (existingDynamicSecret)
         throw new BadRequestError({ message: "Provided dynamic secret already exist under the folder" });
     }
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
 
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
     const decryptedStoredInput = JSON.parse(
-      infisicalSymmetricDecrypt({
-        keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
-        ciphertext: dynamicSecretCfg.inputCiphertext,
-        tag: dynamicSecretCfg.inputTag,
-        iv: dynamicSecretCfg.inputIV
-      })
+      secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
     ) as object;
     const newInput = { ...decryptedStoredInput, ...(inputs || {}) };
     const updatedInput = await selectedProvider.validateProviderInputs(newInput);
 
+    let selectedGatewayId: string | null = null;
+    if (
+      updatedInput &&
+      typeof updatedInput === "object" &&
+      "projectGatewayId" in updatedInput &&
+      updatedInput?.projectGatewayId
+    ) {
+      const projectGatewayId = updatedInput.projectGatewayId as string;
+
+      const projectGateway = await projectGatewayDAL.findOne({ id: projectGatewayId, projectId });
+      if (!projectGateway)
+        throw new NotFoundError({
+          message: `Project gateway with ${projectGatewayId} not found`
+        });
+      selectedGatewayId = projectGateway.id;
+    }
+
     const isConnected = await selectedProvider.validateConnection(newInput);
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
-    const encryptedInput = infisicalSymmetricEncypt(JSON.stringify(updatedInput));
     const updatedDynamicCfg = await dynamicSecretDAL.updateById(dynamicSecretCfg.id, {
-      inputIV: encryptedInput.iv,
-      inputTag: encryptedInput.tag,
-      inputCiphertext: encryptedInput.ciphertext,
-      algorithm: encryptedInput.algorithm,
-      keyEncoding: encryptedInput.encoding,
+      encryptedInput: secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(updatedInput)) }).cipherTextBlob,
       maxTTL,
       defaultTTL,
       name: newName ?? name,
       status: null,
-      statusDetails: null
+      statusDetails: null,
+      projectGatewayId: selectedGatewayId
     });
 
     return updatedDynamicCfg;
@@ -227,13 +260,14 @@ export const dynamicSecretServiceFactory = ({
 
     const projectId = project.id;
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.DeleteRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
@@ -287,13 +321,14 @@ export const dynamicSecretServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.ReadRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
@@ -311,13 +346,13 @@ export const dynamicSecretServiceFactory = ({
     if (!dynamicSecretCfg) {
       throw new NotFoundError({ message: `Dynamic secret with name '${name} in folder '${path}' not found` });
     }
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
     const decryptedStoredInput = JSON.parse(
-      infisicalSymmetricDecrypt({
-        keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
-        ciphertext: dynamicSecretCfg.inputCiphertext,
-        tag: dynamicSecretCfg.inputTag,
-        iv: dynamicSecretCfg.inputIV
-      })
+      secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
     ) as object;
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
     const providerInputs = (await selectedProvider.validateProviderInputs(decryptedStoredInput)) as object;
@@ -337,13 +372,14 @@ export const dynamicSecretServiceFactory = ({
     isInternal
   }: TListDynamicSecretsMultiEnvDTO) => {
     if (!isInternal) {
-      const { permission } = await permissionService.getProjectPermission(
+      const { permission } = await permissionService.getProjectPermission({
         actor,
         actorId,
         projectId,
         actorAuthMethod,
-        actorOrgId
-      );
+        actorOrgId,
+        actionProjectType: ActionProjectType.SecretManager
+      });
 
       // verify user has access to each env in request
       environmentSlugs.forEach((environmentSlug) =>
@@ -380,13 +416,14 @@ export const dynamicSecretServiceFactory = ({
     search,
     projectId
   }: TGetDynamicSecretsCountDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.ReadRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
@@ -428,13 +465,14 @@ export const dynamicSecretServiceFactory = ({
       projectId = project.id;
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.ReadRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
@@ -459,13 +497,14 @@ export const dynamicSecretServiceFactory = ({
     { folderMappings, filters, projectId }: TListDynamicSecretsByFolderMappingsDTO,
     actor: OrgServiceActor
   ) => {
-    const { permission } = await permissionService.getProjectPermission(
-      actor.type,
-      actor.id,
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
       projectId,
-      actor.authMethod,
-      actor.orgId
-    );
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     const userAccessibleFolderMappings = folderMappings.filter(({ path, environment }) =>
       permission.can(
@@ -504,13 +543,14 @@ export const dynamicSecretServiceFactory = ({
     ...params
   }: TListDynamicSecretsMultiEnvDTO) => {
     if (!isInternal) {
-      const { permission } = await permissionService.getProjectPermission(
+      const { permission } = await permissionService.getProjectPermission({
         actor,
         actorId,
         projectId,
         actorAuthMethod,
-        actorOrgId
-      );
+        actorOrgId,
+        actionProjectType: ActionProjectType.SecretManager
+      });
 
       // verify user has access to each env in request
       environmentSlugs.forEach((environmentSlug) =>

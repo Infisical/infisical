@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { DynamicSecretSnowflakeSchema, TDynamicProviderFns } from "./models";
 
@@ -12,7 +13,7 @@ import { DynamicSecretSnowflakeSchema, TDynamicProviderFns } from "./models";
 const noop = () => {};
 
 const generatePassword = (size = 48) => {
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 48)(size);
 };
 
@@ -31,10 +32,22 @@ const getDaysToExpiry = (expiryDate: Date) => {
 export const SnowflakeProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSnowflakeSchema.parseAsync(inputs);
+    validateHandlebarTemplate("Snowflake creation", providerInputs.creationStatement, {
+      allowedExpressions: (val) => ["username", "password", "expiration"].includes(val)
+    });
+    if (providerInputs.renewStatement) {
+      validateHandlebarTemplate("Snowflake renew", providerInputs.renewStatement, {
+        allowedExpressions: (val) => ["username", "expiration"].includes(val)
+      });
+    }
+    validateHandlebarTemplate("Snowflake revoke", providerInputs.revocationStatement, {
+      allowedExpressions: (val) => ["username"].includes(val)
+    });
+
     return providerInputs;
   };
 
-  const getClient = async (providerInputs: z.infer<typeof DynamicSecretSnowflakeSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSnowflakeSchema>) => {
     const client = snowflake.createConnection({
       account: `${providerInputs.orgId}-${providerInputs.accountId}`,
       username: providerInputs.username,
@@ -49,7 +62,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     let isValidConnection: boolean;
 
@@ -72,7 +85,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
   const create = async (inputs: unknown, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const username = generateUsername();
     const password = generatePassword();
@@ -107,7 +120,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
   const revoke = async (inputs: unknown, username: string) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     try {
       const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username });
@@ -131,17 +144,16 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
     return { entityId: username };
   };
 
-  const renew = async (inputs: unknown, username: string, expireAt: number) => {
+  const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
+    if (!providerInputs.renewStatement) return { entityId };
 
-    if (!providerInputs.renewStatement) return { entityId: username };
-
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     try {
       const expiration = getDaysToExpiry(new Date(expireAt));
       const renewStatement = handlebars.compile(providerInputs.renewStatement)({
-        username,
+        username: entityId,
         expiration
       });
 
@@ -161,7 +173,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
       client.destroy(noop);
     }
 
-    return { entityId: username };
+    return { entityId };
   };
 
   return {

@@ -34,7 +34,10 @@ jobs:
         working-directory: backend
       - name: Start postgres and redis
         run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
-      - name: Start integration test
+      - name: Run unit test
+        run: npm run test:unit
+        working-directory: backend
+      - name: Run integration test
         run: npm run test:e2e
         working-directory: backend
         env:
@@ -45,3 +48,4 @@ jobs:
       - name: cleanup
         run: |
           docker compose -f "docker-compose.dev.yml" down
+

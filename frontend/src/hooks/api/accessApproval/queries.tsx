@@ -1,7 +1,8 @@
 import { PackRule, unpackRules } from "@casl/ability/extra";
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { TReactQueryOptions } from "@app/types/reactQuery";
 
 import { TProjectPermission } from "../roles/types";
 import {
@@ -41,15 +42,9 @@ export const useGetAccessPolicyApprovalCount = ({
   projectSlug,
   envSlug,
   options = {}
-}: TGetAccessPolicyApprovalCountDTO & {
-  options?: UseQueryOptions<
-    number,
-    unknown,
-    number,
-    ReturnType<typeof accessApprovalKeys.getAccessApprovalPolicies>
-  >;
-}) =>
+}: TGetAccessPolicyApprovalCountDTO & TReactQueryOptions) =>
   useQuery({
+    queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug),
     queryFn: () => fetchPolicyApprovalCount({ projectSlug, envSlug }),
     ...options,
     enabled: Boolean(projectSlug) && (options?.enabled ?? true)
@@ -99,14 +94,7 @@ const fetchAccessRequestsCount = async (projectSlug: string) => {
 export const useGetAccessRequestsCount = ({
   projectSlug,
   options = {}
-}: TGetAccessApprovalRequestsDTO & {
-  options?: UseQueryOptions<
-    TAccessRequestCount,
-    unknown,
-    { pendingCount: number; finalizedCount: number },
-    ReturnType<typeof accessApprovalKeys.getAccessApprovalRequestCount>
-  >;
-}) =>
+}: TGetAccessApprovalRequestsDTO & TReactQueryOptions) =>
   useQuery({
     queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug),
     queryFn: () => fetchAccessRequestsCount(projectSlug),
@@ -119,14 +107,7 @@ export const useGetAccessApprovalPolicies = ({
   envSlug,
   authorProjectMembershipId,
   options = {}
-}: TGetAccessApprovalRequestsDTO & {
-  options?: UseQueryOptions<
-    TAccessApprovalPolicy[],
-    unknown,
-    TAccessApprovalPolicy[],
-    ReturnType<typeof accessApprovalKeys.getAccessApprovalPolicies>
-  >;
-}) =>
+}: TGetAccessApprovalRequestsDTO & TReactQueryOptions) =>
   useQuery({
     queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug),
     queryFn: () => fetchApprovalPolicies({ projectSlug, envSlug, authorProjectMembershipId }),
@@ -139,14 +120,7 @@ export const useGetAccessApprovalRequests = ({
   envSlug,
   authorProjectMembershipId,
   options = {}
-}: TGetAccessApprovalRequestsDTO & {
-  options?: UseQueryOptions<
-    TAccessApprovalRequest[],
-    unknown,
-    TAccessApprovalRequest[],
-    ReturnType<typeof accessApprovalKeys.getAccessApprovalRequests>
-  >;
-}) =>
+}: TGetAccessApprovalRequestsDTO & TReactQueryOptions) =>
   useQuery({
     queryKey: accessApprovalKeys.getAccessApprovalRequests(
       projectSlug,

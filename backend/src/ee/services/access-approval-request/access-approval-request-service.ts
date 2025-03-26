@@ -1,9 +1,10 @@
 import slugify from "@sindresorhus/slugify";
-import ms from "ms";
+import msFn from "ms";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -100,13 +101,14 @@ export const accessApprovalRequestServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // Anyone can create an access approval request.
-    const { membership } = await permissionService.getProjectPermission(
+    const { membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
     }
@@ -129,6 +131,9 @@ export const accessApprovalRequestServiceFactory = ({
       throw new NotFoundError({
         message: `No policy in environment with slug '${environment.slug}' and with secret path '${secretPath}' was found.`
       });
+    }
+    if (policy.deletedAt) {
+      throw new BadRequestError({ message: "The policy linked to this request has been deleted" });
     }
 
     const approverIds: string[] = [];
@@ -210,7 +215,7 @@ export const accessApprovalRequestServiceFactory = ({
       );
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
-      const approvalUrl = `${cfg.SITE_URL}/project/${project.id}/approval`;
+      const approvalUrl = `${cfg.SITE_URL}/secret-manager/${project.id}/approval`;
 
       await triggerSlackNotification({
         projectId: project.id,
@@ -242,7 +247,7 @@ export const accessApprovalRequestServiceFactory = ({
           requesterEmail: requestedByUser.email,
           isTemporary,
           ...(isTemporary && {
-            expiresIn: ms(ms(temporaryRange || ""), { long: true })
+            expiresIn: msFn(ms(temporaryRange || ""), { long: true })
           }),
           secretPath,
           environment: envSlug,
@@ -270,13 +275,14 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    const { membership } = await permissionService.getProjectPermission(
+    const { membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
     }
@@ -309,13 +315,25 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     const { policy } = accessApprovalRequest;
-    const { membership, hasRole } = await permissionService.getProjectPermission(
+    if (policy.deletedAt) {
+      throw new BadRequestError({
+        message: "The policy associated with this access request has been deleted."
+      });
+    }
+    if (!policy.allowedSelfApprovals && actorId === accessApprovalRequest.requestedByUserId) {
+      throw new BadRequestError({
+        message: "Failed to review access approval request. Users are not authorized to review their own request."
+      });
+    }
+
+    const { membership, hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      accessApprovalRequest.projectId,
+      projectId: accessApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
@@ -413,13 +431,14 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    const { membership } = await permissionService.getProjectPermission(
+    const { membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
     }

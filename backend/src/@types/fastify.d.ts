@@ -1,5 +1,7 @@
 import "fastify";
 
+import { Redis } from "ioredis";
+
 import { TUsers } from "@app/db/schemas";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
@@ -11,9 +13,13 @@ import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
 import { TIdentityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { TIdentityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-service";
+import { TKmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
+import { TKmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operation-service";
+import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
@@ -29,9 +35,12 @@ import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-ap
 import { TSecretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
 import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
+import { TSshCertificateAuthorityServiceFactory } from "@app/ee/services/ssh/ssh-certificate-authority-service";
+import { TSshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
+import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
@@ -50,6 +59,7 @@ import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-acces
 import { TIdentityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
 import { TIdentityAzureAuthServiceFactory } from "@app/services/identity-azure-auth/identity-azure-auth-service";
 import { TIdentityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
+import { TIdentityJwtAuthServiceFactory } from "@app/services/identity-jwt-auth/identity-jwt-auth-service";
 import { TIdentityKubernetesAuthServiceFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-service";
 import { TIdentityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
@@ -74,18 +84,37 @@ import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-
 import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
 import { TSecretReplicationServiceFactory } from "@app/services/secret-replication/secret-replication-service";
 import { TSecretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
+import { TSecretSyncServiceFactory } from "@app/services/secret-sync/secret-sync-service";
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSlackServiceFactory } from "@app/services/slack/slack-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { TTotpServiceFactory } from "@app/services/totp/totp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
+declare module "@fastify/request-context" {
+  interface RequestContextData {
+    reqId: string;
+    identityAuthInfo?: {
+      identityId: string;
+      oidc?: {
+        claims: Record<string, string>;
+      };
+    };
+    identityPermissionMetadata?: Record<string, unknown>; // filled by permission service
+  }
+}
+
 declare module "fastify" {
+  interface Session {
+    callbackPort: string;
+  }
+
   interface FastifyRequest {
     realIp: string;
     // used for mfa session authentication
@@ -108,12 +137,18 @@ declare module "fastify" {
       isUserCompleted: string;
       providerAuthToken: string;
     };
+    kmipUser: {
+      projectId: string;
+      clientId: string;
+      name: string;
+    };
     auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
     ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>>;
   }
 
   interface FastifyInstance {
+    redis: Redis;
     services: {
       login: TAuthLoginFactory;
       password: TAuthPasswordFactory;
@@ -154,6 +189,7 @@ declare module "fastify" {
       identityAwsAuth: TIdentityAwsAuthServiceFactory;
       identityAzureAuth: TIdentityAzureAuthServiceFactory;
       identityOidcAuth: TIdentityOidcAuthServiceFactory;
+      identityJwtAuth: TIdentityJwtAuthServiceFactory;
       accessApprovalPolicy: TAccessApprovalPolicyServiceFactory;
       accessApprovalRequest: TAccessApprovalRequestServiceFactory;
       secretApprovalPolicy: TSecretApprovalPolicyServiceFactory;
@@ -167,6 +203,8 @@ declare module "fastify" {
       auditLogStream: TAuditLogStreamServiceFactory;
       certificate: TCertificateServiceFactory;
       certificateTemplate: TCertificateTemplateServiceFactory;
+      sshCertificateAuthority: TSshCertificateAuthorityServiceFactory;
+      sshCertificateTemplate: TSshCertificateTemplateServiceFactory;
       certificateAuthority: TCertificateAuthorityServiceFactory;
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
       certificateEst: TCertificateEstServiceFactory;
@@ -193,11 +231,18 @@ declare module "fastify" {
       migration: TExternalMigrationServiceFactory;
       externalGroupOrgRoleMapping: TExternalGroupOrgRoleMappingServiceFactory;
       projectTemplate: TProjectTemplateServiceFactory;
+      totp: TTotpServiceFactory;
+      appConnection: TAppConnectionServiceFactory;
+      secretSync: TSecretSyncServiceFactory;
+      kmip: TKmipServiceFactory;
+      kmipOperation: TKmipOperationServiceFactory;
+      gateway: TGatewayServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer
     store: {
       user: Pick<TUserDALFactory, "findById">;
+      kmipClient: Pick<TKmipClientDALFactory, "findByProjectAndClientId">;
     };
   }
 }

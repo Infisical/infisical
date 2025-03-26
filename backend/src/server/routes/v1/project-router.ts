@@ -2,9 +2,12 @@ import { z } from "zod";
 
 import {
   IntegrationsSchema,
+  ProjectEnvironmentsSchema,
   ProjectMembershipsSchema,
   ProjectRolesSchema,
   ProjectSlackConfigsSchema,
+  ProjectType,
+  SecretFoldersSchema,
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -135,7 +138,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         includeRoles: z
           .enum(["true", "false"])
           .default("false")
-          .transform((value) => value === "true")
+          .transform((value) => value === "true"),
+        type: z
+          .enum([ProjectType.SecretManager, ProjectType.KMS, ProjectType.CertificateManager, ProjectType.SSH, "all"])
+          .optional()
       }),
       response: {
         200: z.object({
@@ -154,7 +160,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        type: req.query.type
       });
       return { workspaces };
     }
@@ -296,7 +303,23 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .max(64, { message: "Name must be 64 or fewer characters" })
           .optional()
           .describe(PROJECTS.UPDATE.name),
-        autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization)
+        description: z
+          .string()
+          .trim()
+          .max(256, { message: "Description must be 256 or fewer characters" })
+          .optional()
+          .describe(PROJECTS.UPDATE.projectDescription),
+        autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization),
+        slug: z
+          .string()
+          .trim()
+          .regex(
+            /^[a-z0-9]+(?:[_-][a-z0-9]+)*$/,
+            "Project slug can only contain lowercase letters and numbers, with optional single hyphens (-) or underscores (_) between words. Cannot start or end with a hyphen or underscore."
+          )
+          .max(64, { message: "Slug must be 64 characters or fewer" })
+          .optional()
+          .describe(PROJECTS.UPDATE.slug)
       }),
       response: {
         200: z.object({
@@ -313,7 +336,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         },
         update: {
           name: req.body.name,
-          autoCapitalization: req.body.autoCapitalization
+          description: req.body.description,
+          autoCapitalization: req.body.autoCapitalization,
+          slug: req.body.slug
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
@@ -650,6 +675,33 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return slackConfig;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:workspaceId/environment-folder-tree",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: z.record(
+          ProjectEnvironmentsSchema.extend({ folders: SecretFoldersSchema.extend({ path: z.string() }).array() })
+        )
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const environmentsFolders = await server.services.folder.getProjectEnvironmentsFolders(
+        req.params.workspaceId,
+        req.permission
+      );
+
+      return environmentsFolders;
     }
   });
 };

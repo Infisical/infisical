@@ -1,10 +1,12 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import Ajv from "ajv";
 
-import { ProjectVersion, TableName } from "@app/db/schemas";
-import { decryptSymmetric128BitHexKeyUTF8, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { ActionProjectType, ProjectVersion, TableName } from "@app/db/schemas";
+import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto/encryption";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -13,7 +15,11 @@ import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "../permission/project-permission";
 import { TSecretRotationDALFactory } from "./secret-rotation-dal";
 import { TSecretRotationQueueFactory } from "./secret-rotation-queue";
 import { TSecretRotationEncData } from "./secret-rotation-queue/secret-rotation-queue-types";
@@ -30,6 +36,7 @@ type TSecretRotationServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretRotationQueue: TSecretRotationQueueFactory;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TSecretRotationServiceFactory = ReturnType<typeof secretRotationServiceFactory>;
@@ -44,7 +51,8 @@ export const secretRotationServiceFactory = ({
   folderDAL,
   secretDAL,
   projectBotService,
-  secretV2BridgeDAL
+  secretV2BridgeDAL,
+  kmsService
 }: TSecretRotationServiceFactoryDep) => {
   const getProviderTemplates = async ({
     actor,
@@ -53,13 +61,14 @@ export const secretRotationServiceFactory = ({
     actorAuthMethod,
     projectId
   }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
 
     return {
@@ -81,13 +90,14 @@ export const secretRotationServiceFactory = ({
     secretPath,
     environment
   }: TCreateSecretRotationDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretRotation
@@ -100,7 +110,7 @@ export const secretRotationServiceFactory = ({
       });
     }
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
+      ProjectPermissionSecretActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
 
@@ -154,7 +164,11 @@ export const secretRotationServiceFactory = ({
       inputs: formattedInputs,
       creds: []
     };
-    const encData = infisicalSymmetricEncypt(JSON.stringify(unencryptedData));
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
     const secretRotation = await secretRotationDAL.transaction(async (tx) => {
       const doc = await secretRotationDAL.create(
         {
@@ -162,11 +176,8 @@ export const secretRotationServiceFactory = ({
           secretPath,
           interval,
           envId: folder.envId,
-          encryptedDataTag: encData.tag,
-          encryptedDataIV: encData.iv,
-          encryptedData: encData.ciphertext,
-          algorithm: encData.algorithm,
-          keyEncoding: encData.encoding
+          encryptedRotationData: secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(unencryptedData)) })
+            .cipherTextBlob
         },
         tx
       );
@@ -189,13 +200,14 @@ export const secretRotationServiceFactory = ({
   };
 
   const getByProjectId = async ({ actorId, projectId, actor, actorOrgId, actorAuthMethod }: TListByProjectIdDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
@@ -234,13 +246,14 @@ export const secretRotationServiceFactory = ({
         message: "Failed to add secret rotation due to plan restriction. Upgrade plan to add secret rotation."
       });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      doc.projectId,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretRotation);
     await secretRotationQueue.removeFromQueue(doc.id, doc.interval);
     await secretRotationQueue.addToQueue(doc.id, doc.interval);
@@ -251,13 +264,14 @@ export const secretRotationServiceFactory = ({
     const doc = await secretRotationDAL.findById(rotationId);
     if (!doc) throw new NotFoundError({ message: `Rotation with ID '${rotationId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      doc.projectId,
+      projectId: doc.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SecretRotation

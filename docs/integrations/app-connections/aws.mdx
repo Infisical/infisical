@@ -1,0 +1,357 @@
+---
+title: "AWS Connection"
+description: "Learn how to configure an AWS Connection for Infisical."
+---
+
+Infisical supports two methods for connecting to AWS.
+
+<Tabs>
+    <Tab title="Assume Role (Recommended)">
+        Infisical will assume the provided role in your AWS account securely, without the need to share any credentials.
+
+        <Accordion title="Self-Hosted Instance">
+            To connect your self-hosted Infisical instance with AWS, you need to set up an AWS IAM User account that can assume the configured AWS IAM Role.
+
+            If your instance is deployed on AWS, the aws-sdk will automatically retrieve the credentials. Ensure that you assign the provided permission policy to your deployed instance, such as ECS or EC2.
+
+            The following steps are for instances not deployed on AWS:
+            <Steps>
+                <Step title="Create an IAM User">
+                    Navigate to [Create IAM User](https://console.aws.amazon.com/iamv2/home#/users/create) in your AWS Console.
+                </Step>
+                <Step title="Create an Inline Policy">
+                    Attach the following inline permission policy to the IAM User to allow it to assume any IAM Roles:
+                    ```json
+                    {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                    {
+                        "Sid": "AllowAssumeAnyRole",
+                        "Effect": "Allow",
+                        "Action": "sts:AssumeRole",
+                        "Resource": "arn:aws:iam::*:role/*"
+                    }
+                        ]
+                    }
+                    ```
+                </Step>
+                <Step title="Obtain the IAM User Credentials">
+                    Obtain the AWS access key ID and secret access key for your IAM User by navigating to **IAM > Users > [Your User] > Security credentials > Access keys**.
+
+                    ![Access Key Step 1](/images/integrations/aws/integrations-aws-access-key-1.png)
+                    ![Access Key Step 2](/images/integrations/aws/integrations-aws-access-key-2.png)
+                    ![Access Key Step 3](/images/integrations/aws/integrations-aws-access-key-3.png)
+                </Step>
+                <Step title="Set Up Connection Keys">
+                    1. Set the access key as **INF_APP_CONNECTION_AWS_ACCESS_KEY_ID**.
+                    2. Set the secret key as **INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY**.
+                </Step>
+            </Steps>
+        </Accordion>
+
+        <Steps>
+            <Step title="Create the Managing User IAM Role for Infisical">
+                1. Navigate to the [Create IAM Role](https://console.aws.amazon.com/iamv2/home#/roles/create?step=selectEntities) page in your AWS Console.
+                ![IAM Role Creation](/images/integrations/aws/integration-aws-iam-assume-role.png)
+
+                2. Select **AWS Account** as the **Trusted Entity Type**.
+                3. Choose **Another AWS Account** and enter **381492033652** (Infisical AWS Account ID). This restricts the role to be assumed only by Infisical. If self-hosting, provide your AWS account number instead.
+                4. Optionally, enable **Require external ID** and enter your **Organization ID** to further enhance security.
+            </Step>
+
+            <Step title="Add Required Permissions to the IAM Role">
+                Navigate to your IAM role permissions and click **Create Inline Policy**.
+
+                ![IAM Role Create Policy](/images/app-connections/aws/assume-role-create-policy.png)
+
+                Depending on your use case, add one or more of the following policies to your IAM Role:
+
+                <Tabs>
+                    <Tab title="Secret Sync">
+                        <AccordionGroup>
+                            <Accordion title="AWS Secrets Manager">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Secrets Manager:
+
+                                ![IAM Role Secrets Manager Permissions](/images/app-connections/aws/secrets-manager-permissions.png)
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowSecretsManagerAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "secretsmanager:ListSecrets",
+                                                "secretsmanager:GetSecretValue",
+                                                "secretsmanager:BatchGetSecretValue",
+                                                "secretsmanager:CreateSecret",
+                                                "secretsmanager:UpdateSecret",
+                                                "secretsmanager:DeleteSecret",
+                                                "secretsmanager:DescribeSecret",
+                                                "secretsmanager:TagResource",
+                                                "secretsmanager:UntagResource",
+                                                "kms:ListAliases", // if you need to specify the KMS key
+                                                "kms:Encrypt", // if you need to specify the KMS key
+                                                "kms:Decrypt", // if you need to specify the KMS key
+                                                "kms:DescribeKey" // if you need to specify the KMS key
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
+                                <Note>If using a custom KMS key, be sure to add the IAM user or role as a key user. ![KMS Key IAM Role User](/images/app-connections/aws/kms-key-user.png)</Note>
+                            </Accordion>
+                            <Accordion title="AWS Parameter Store">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Parameter Store:
+
+                                ![IAM Role Secrets Manager Permissions](/images/app-connections/aws/parameter-store-permissions.png)
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowSSMAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "ssm:PutParameter",
+                                                "ssm:GetParameters",
+                                                "ssm:GetParametersByPath",
+                                                "ssm:DescribeParameters",
+                                                "ssm:DeleteParameters",
+                                                "ssm:ListTagsForResource", // if you need to add tags to secrets
+                                                "ssm:AddTagsToResource", // if you need to add tags to secrets
+                                                "ssm:RemoveTagsFromResource", // if you need to add tags to secrets
+                                                "kms:ListAliases", // if you need to specify the KMS key
+                                                "kms:Encrypt", // if you need to specify the KMS key
+                                                "kms:Decrypt", // if you need to specify the KMS key
+                                                "kms:DescribeKey" // if you need to specify the KMS key
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
+                                <Note>If using a custom KMS key, be sure to add the IAM user or role as a key user. ![KMS Key IAM Role User](/images/app-connections/aws/kms-key-user.png)</Note>
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
+                </Tabs>
+            </Step>
+
+            <Step title="Copy the AWS IAM Role ARN">
+                ![Copy IAM Role ARN](/images/integrations/aws/integration-aws-iam-assume-arn.png)
+            </Step>
+
+            <Step title="Setup AWS Connection in Infisical">
+                <Tabs>
+                    <Tab title="Infisical UI">
+                        1. Navigate to the App Connections tab on the Organization Settings page.
+                        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+
+                        2. Select the **AWS Connection** option.
+                        ![Select AWS Connection](/images/app-connections/aws/select-aws-connection.png)
+
+                        3. Select the **Assume Role** method option and provide the **AWS IAM Role ARN** obtained from the previous step and press **Connect to AWS**.
+                        ![Create AWS Connection](/images/app-connections/aws/create-assume-role-method.png)
+
+                        4. Your **AWS Connection** is now available for use.
+                        ![Assume Role AWS Connection](/images/app-connections/aws/assume-role-connection.png)
+                    </Tab>
+                    <Tab title="API">
+                        To create an AWS Connection, make an API request to the [Create AWS
+                        Connection](/api-reference/endpoints/app-connections/aws/create) API endpoint.
+
+                        ### Sample request
+
+                        ```bash Request
+                        curl    --request POST \
+                                --url https://app.infisical.com/api/v1/app-connections/aws \
+                                --header 'Content-Type: application/json' \
+                                --data '{
+                                    "name": "my-aws-connection",
+                                    "method": "assume-role",
+                                    "credentials": {
+                                        "roleArn": "...",
+                                    }
+                                }'
+                        ```
+
+                        ### Sample response
+
+                        ```bash Response
+                        {
+                            "appConnection": {
+                                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                                "name": "my-aws-connection",
+                                "version": 123,
+                                "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                                "createdAt": "2023-11-07T05:31:56Z",
+                                "updatedAt": "2023-11-07T05:31:56Z",
+                                "app": "aws",
+                                "method": "assume-role",
+                                "credentials": {}
+                            }
+                        }
+                        ```
+                    </Tab>
+                </Tabs>
+            </Step>
+        </Steps>
+
+    </Tab>
+    <Tab title="Access Key">
+        Infisical will use the provided **Access Key ID** and **Secret Key** to connect to your AWS instance.
+
+        <Steps>
+            <Step title="Add Required Permissions to the IAM User">
+                Navigate to your IAM user permissions and click **Create Inline Policy**.
+
+                ![User IAM Create Policy](/images/app-connections/aws/access-key-create-policy.png)
+
+                Depending on your use case, add one or more of the following policies to your user:
+
+                <Tabs>
+                    <Tab title="Secret Sync">
+                        <AccordionGroup>
+                            <Accordion title="AWS Secrets Manager">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Secrets Manager:
+
+                                ![IAM Role Secrets Manager Permissions](/images/app-connections/aws/secrets-manager-permissions.png)
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                {
+                                    "Sid": "AllowSecretsManagerAccess",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "secretsmanager:ListSecrets",
+                                        "secretsmanager:GetSecretValue",
+                                        "secretsmanager:BatchGetSecretValue",
+                                        "secretsmanager:CreateSecret",
+                                        "secretsmanager:UpdateSecret",
+                                        "secretsmanager:DeleteSecret",
+                                        "secretsmanager:DescribeSecret",
+                                        "secretsmanager:TagResource",
+                                        "secretsmanager:UntagResource",
+                                        "kms:ListAliases", // if you need to specify the KMS key
+                                        "kms:Encrypt", // if you need to specify the KMS key
+                                        "kms:Decrypt", // if you need to specify the KMS key
+                                        "kms:DescribeKey" // if you need to specify the KMS key
+                                    ],
+                                    "Resource": "*"
+                                }
+                                    ]
+                                }
+                                ```
+                                <Note>If using a custom KMS key, be sure to add the IAM user or role as a key user. ![KMS Key IAM Role User](/images/app-connections/aws/kms-key-user.png)</Note>
+                            </Accordion>
+                            <Accordion title="AWS Parameter Store">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Parameter Store:
+
+                                ![IAM Role Secrets Manager Permissions](/images/app-connections/aws/parameter-store-permissions.png)
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                {
+                                    "Sid": "AllowSSMAccess",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ssm:PutParameter",
+                                        "ssm:GetParameters",
+                                        "ssm:GetParametersByPath",
+                                        "ssm:DescribeParameters",
+                                        "ssm:DeleteParameters",
+                                        "ssm:ListTagsForResource", // if you need to add tags to secrets
+                                        "ssm:AddTagsToResource", // if you need to add tags to secrets
+                                        "ssm:RemoveTagsFromResource", // if you need to add tags to secrets
+                                        "kms:ListAliases", // if you need to specify the KMS key
+                                        "kms:Encrypt", // if you need to specify the KMS key
+                                        "kms:Decrypt", // if you need to specify the KMS key
+                                        "kms:DescribeKey" // if you need to specify the KMS key
+                                    ],
+                                    "Resource": "*"
+                                }
+                                    ]
+                                }
+                                ```
+                                <Note>If using a custom KMS key, be sure to add the IAM user or role as a key user. ![KMS Key IAM Role User](/images/app-connections/aws/kms-key-user.png)</Note>
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
+                </Tabs>
+            </Step>
+            <Step title="Obtain Access Key ID and Secret Access Key">
+                Retrieve an AWS **Access Key ID** and a **Secret Key** for your IAM user in **IAM > Users > User > Security credentials > Access keys**.
+
+                ![access key 1](/images/integrations/aws/integrations-aws-access-key-1.png)
+                ![access key 2](/images/integrations/aws/integrations-aws-access-key-2.png)
+                ![access key 3](/images/integrations/aws/integrations-aws-access-key-3.png)
+            </Step>
+            <Step title="Setup AWS Connection in Infisical">
+                <Tabs>
+                    <Tab title="Infisical UI">
+                        1. Navigate to the App Connections tab on the Organization Settings page.
+                        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+
+                        2. Select the **AWS Connection** option.
+                        ![Select AWS Connection](/images/app-connections/aws/select-aws-connection.png)
+
+                        3. Select the **Access Key** method option and provide the **Access Key ID** and **Secret Key** obtained from the previous step and press **Connect to AWS**.
+                        ![Create AWS Connection](/images/app-connections/aws/create-access-key-method.png)
+
+                        4. Your **AWS Connection** is now available for use.
+                        ![Assume Role AWS Connection](/images/app-connections/aws/access-key-connection.png)
+                    </Tab>
+                    <Tab title="API">
+                        To create an AWS Connection, make an API request to the [Create AWS
+                        Connection](/api-reference/endpoints/app-connections/aws/create) API endpoint.
+
+                        ### Sample request
+
+                        ```bash Request
+                        curl    --request POST \
+                                --url https://app.infisical.com/api/v1/app-connections/aws \
+                                --header 'Content-Type: application/json' \
+                                --data '{
+                                    "name": "my-aws-connection",
+                                    "method": "access-key",
+                                    "credentials": {
+                                        "accessKeyId": "...",
+                                        "secretKey": "..."
+                                    }
+                                }'
+                        ```
+
+                        ### Sample response
+
+                        ```bash Response
+                        {
+                            "appConnection": {
+                                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                                "name": "my-aws-connection",
+                                "version": 123,
+                                "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                                "createdAt": "2023-11-07T05:31:56Z",
+                                "updatedAt": "2023-11-07T05:31:56Z",
+                                "app": "aws",
+                                "method": "access-key",
+                                "credentials": {
+                                    "accessKeyId": "..."
+                                }
+                            }
+                        }
+                        ```
+                    </Tab>
+                </Tabs>
+            </Step>
+        </Steps>
+
+    </Tab>
+</Tabs>

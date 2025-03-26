@@ -22,6 +22,11 @@ export type TSaveIntegrationAccessTokenDTO = {
   awsAssumeIamRoleArn?: string;
 } & TProjectPermission;
 
+export type TUpdateIntegrationAuthDTO = Omit<TSaveIntegrationAccessTokenDTO, "projectId" | "integration"> & {
+  integrationAuthId: string;
+  integration?: string;
+};
+
 export type TDeleteIntegrationAuthsDTO = TProjectPermission & {
   integration: string;
   projectId: string;
@@ -123,6 +128,10 @@ export type TGetIntegrationAuthTeamCityBuildConfigDTO = {
   appId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TIntegrationAuthCircleCIOrganizationDTO = {
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TVercelBranches = {
   ref: string;
   lastCommit: string;
@@ -184,6 +193,14 @@ export type TTeamCityBuildConfig = {
   webUrl: string;
 };
 
+export type TCircleCIOrganization = {
+  id: string;
+  vcsType: string;
+  name: string;
+  avatarUrl: string;
+  slug: string;
+};
+
 export type TIntegrationsWithEnvironment = TIntegrations & {
   environment?:
     | {
@@ -193,3 +210,82 @@ export type TIntegrationsWithEnvironment = TIntegrations & {
     | null
     | undefined;
 };
+
+export type TIntegrationAuthOctopusDeploySpacesDTO = {
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TIntegrationAuthOctopusDeployProjectScopeValuesDTO = {
+  id: string;
+  spaceId: string;
+  resourceId: string;
+  scope: OctopusDeployScope;
+} & Omit<TProjectPermission, "projectId">;
+
+export enum OctopusDeployScope {
+  Project = "project"
+  // add tenant, variable set, etc.
+}
+
+export enum CircleCiScope {
+  Project = "project",
+  Context = "context"
+}
+
+export type TOctopusDeployVariableSet = {
+  Id: string;
+  OwnerId: string;
+  Version: number;
+  Variables: {
+    Id: string;
+    Name: string;
+    Value: string;
+    Description: string;
+    Scope: {
+      Environment?: string[];
+      Machine?: string[];
+      Role?: string[];
+      TargetRole?: string[];
+      Action?: string[];
+      User?: string[];
+      Trigger?: string[];
+      ParentDeployment?: string[];
+      Private?: string[];
+      Channel?: string[];
+      TenantTag?: string[];
+      Tenant?: string[];
+      ProcessOwner?: string[];
+    };
+    IsEditable: boolean;
+    Prompt: {
+      Description: string;
+      DisplaySettings: Record<string, string>;
+      Label: string;
+      Required: boolean;
+    } | null;
+    Type: "String";
+    IsSensitive: boolean;
+  }[];
+  ScopeValues: {
+    Environments: { Id: string; Name: string }[];
+    Machines: { Id: string; Name: string }[];
+    Actions: { Id: string; Name: string }[];
+    Roles: { Id: string; Name: string }[];
+    Channels: { Id: string; Name: string }[];
+    TenantTags: { Id: string; Name: string }[];
+    Processes: {
+      ProcessType: string;
+      Id: string;
+      Name: string;
+    }[];
+  };
+  SpaceId: string;
+  Links: {
+    Self: string;
+  };
+};
+
+export type GetVercelCustomEnvironmentsDTO = {
+  teamId: string;
+  id: string;
+} & Omit<TProjectPermission, "projectId">;

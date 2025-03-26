@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop */
+import opentelemetry from "@opentelemetry/api";
 import { AxiosError } from "axios";
 
 import {
@@ -28,6 +29,7 @@ import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@a
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
+import { TSecretSyncQueueFactory } from "@app/services/secret-sync/secret-sync-queue";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { ActorType } from "../auth/auth-type";
@@ -46,6 +48,8 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
@@ -57,6 +61,7 @@ import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TWebhookDALFactory } from "../webhook/webhook-dal";
 import { fnTriggerWebhook } from "../webhook/webhook-fns";
+import { WebhookEvents } from "../webhook/webhook-types";
 import { TSecretDALFactory } from "./secret-dal";
 import { interpolateSecrets } from "./secret-fns";
 import {
@@ -103,6 +108,8 @@ type TSecretQueueFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
+  secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
 };
 
 export type TGetSecrets = {
@@ -119,7 +126,12 @@ export const uniqueSecretQueueKey = (environment: string, secretPath: string) =>
 
 type TIntegrationSecret = Record<
   string,
-  { value: string; comment?: string; skipMultilineEncoding?: boolean | null | undefined }
+  {
+    value: string;
+    comment?: string;
+    skipMultilineEncoding?: boolean | null | undefined;
+    secretMetadata?: ResourceMetadataDTO;
+  }
 >;
 
 // TODO(akhilmhdh): split this into multiple queue
@@ -156,8 +168,16 @@ export const secretQueueFactory = ({
   auditLogService,
   orgService,
   projectUserMembershipRoleDAL,
-  projectKeyDAL
+  projectKeyDAL,
+  resourceMetadataDAL,
+  secretSyncQueue
 }: TSecretQueueFactoryDep) => {
+  const integrationMeter = opentelemetry.metrics.getMeter("Integrations");
+  const errorHistogram = integrationMeter.createHistogram("integration_secret_sync_errors", {
+    description: "Integration secret sync errors",
+    unit: "1"
+  });
+
   const removeSecretReminder = async (dto: TRemoveSecretReminderDTO) => {
     const appCfg = getConfig();
     await queueService.stopRepeatableJob(
@@ -248,7 +268,9 @@ export const secretQueueFactory = ({
                 ? secondsToMillis(newSecret.secretReminderRepeatDays)
                 : daysToMillisecond(newSecret.secretReminderRepeatDays),
             immediately: true
-          }
+          },
+          removeOnComplete: true,
+          removeOnFail: true
         }
       );
     } catch (err) {
@@ -297,7 +319,8 @@ export const secretQueueFactory = ({
     kmsService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
-    secretVersionTagV2BridgeDAL
+    secretVersionTagV2BridgeDAL,
+    resourceMetadataDAL
   });
 
   const updateManySecretsRawFn = updateManySecretsRawFnFactory({
@@ -312,7 +335,8 @@ export const secretQueueFactory = ({
     kmsService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
-    secretVersionTagV2BridgeDAL
+    secretVersionTagV2BridgeDAL,
+    resourceMetadataDAL
   });
 
   /**
@@ -363,6 +387,7 @@ export const secretQueueFactory = ({
         }
 
         content[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
+        content[secretKey].secretMetadata = secret.secretMetadata;
       })
     );
 
@@ -378,7 +403,8 @@ export const secretQueueFactory = ({
       expandSecretReferences,
       secretImportDAL,
       secretImports,
-      hasSecretAccess: () => true
+      hasSecretAccess: () => true,
+      viewSecretValue: true
     });
 
     for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
@@ -388,7 +414,8 @@ export const secretQueueFactory = ({
           content[importedSecret.key] = {
             skipMultilineEncoding: importedSecret.skipMultilineEncoding,
             comment: importedSecret.secretComment,
-            value: importedSecret.secretValue || ""
+            value: importedSecret.secretValue || "",
+            secretMetadata: importedSecret.secretMetadata
           };
         }
       }
@@ -588,6 +615,7 @@ export const secretQueueFactory = ({
       _depth: depth,
       secretPath,
       projectId,
+      orgId,
       environmentSlug: environment,
       excludeReplication,
       actorId,
@@ -597,7 +625,14 @@ export const secretQueueFactory = ({
     await queueService.queue(
       QueueName.SecretWebhook,
       QueueJobs.SecWebhook,
-      { environment, projectId, secretPath },
+      {
+        type: WebhookEvents.SecretModified,
+        payload: {
+          environment,
+          projectId,
+          secretPath
+        }
+      },
       {
         jobId: `secret-webhook-${environment}-${projectId}-${secretPath}`,
         removeOnFail: { count: 5 },
@@ -610,12 +645,16 @@ export const secretQueueFactory = ({
         }
       }
     );
+
+    await secretSyncQueue.queueSecretSyncsSyncSecretsByPath({ projectId, environmentSlug: environment, secretPath });
+
     await syncIntegrations({ secretPath, projectId, environment, deDupeQueue, isManual: false });
     if (!excludeReplication) {
       await replicateSecrets({
         _deDupeReplicationQueue: deDupeReplicationQueue,
         _depth: depth,
         projectId,
+        orgId,
         secretPath,
         actorId,
         actor,
@@ -672,6 +711,7 @@ export const secretQueueFactory = ({
       if (!folder) {
         throw new Error("Secret path not found");
       }
+      const project = await projectDAL.findById(projectId);
 
       // find all imports made with the given environment and secret path
       const linkSourceDto = {
@@ -706,6 +746,7 @@ export const secretQueueFactory = ({
             .map(({ folderId }) =>
               syncSecrets({
                 projectId,
+                orgId: project.orgId,
                 secretPath: foldersGroupedById[folderId][0]?.path as string,
                 environmentSlug: foldersGroupedById[folderId][0]?.environmentSlug as string,
                 _deDupeQueue: deDupeQueue,
@@ -758,6 +799,7 @@ export const secretQueueFactory = ({
             .map((folderId) =>
               syncSecrets({
                 projectId,
+                orgId: project.orgId,
                 secretPath: referencedFoldersGroupedById[folderId][0]?.path as string,
                 environmentSlug: referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
                 _deDupeQueue: deDupeQueue,
@@ -931,9 +973,30 @@ export const secretQueueFactory = ({
               `Secret integration sync error [projectId=${job.data.projectId}] [environment=${environment}]  [secretPath=${job.data.secretPath}]`
             );
 
+            const appCfg = getConfig();
+            if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+              errorHistogram.record(1, {
+                version: 1,
+                integration: integration.integration,
+                integrationId: integration.id,
+                type: err instanceof AxiosError ? "AxiosError" : err?.constructor?.name || "UnknownError",
+                status: err instanceof AxiosError ? err.response?.status : undefined,
+                name: err instanceof Error ? err.name : undefined,
+                projectId: integration.projectId
+              });
+            }
+
+            const { secretKey } = (err as { secretKey: string }) || {};
+
             const message =
-              (err instanceof AxiosError ? JSON.stringify(err?.response?.data) : (err as Error)?.message) ||
-              "Unknown error occurred.";
+              // eslint-disable-next-line no-nested-ternary
+              (err instanceof AxiosError
+                ? err?.response?.data
+                  ? JSON.stringify(err?.response?.data)
+                  : err?.message
+                : (err as Error)?.message) || "Unknown error occurred.";
+
+            const errorLog = `${secretKey ? `[Secret Key: ${secretKey}] ` : ""}${message}`;
 
             await auditLogService.createAuditLog({
               projectId,
@@ -945,7 +1008,7 @@ export const secretQueueFactory = ({
                   isSynced: false,
                   lastSyncJobId: job?.id ?? "",
                   lastUsed: new Date(),
-                  syncMessage: message
+                  syncMessage: errorLog
                 }
               }
             });
@@ -957,13 +1020,13 @@ export const secretQueueFactory = ({
 
             await integrationDAL.updateById(integration.id, {
               lastSyncJobId: job.id,
-              syncMessage: message,
+              syncMessage: errorLog,
               isSynced: false
             });
 
             integrationsFailedToSync.push({
               integrationId: integration.id,
-              syncMessage: message
+              syncMessage: errorLog
             });
           }
         }
@@ -1001,6 +1064,8 @@ export const secretQueueFactory = ({
 
     const organization = await orgDAL.findOrgByProjectId(projectId);
     const project = await projectDAL.findById(projectId);
+    const secret = await secretV2BridgeDAL.findById(data.secretId);
+    const [folder] = await folderDAL.findSecretPathByFolderIds(project.id, [secret.folderId]);
 
     if (!organization) {
       logger.info(`secretReminderQueue.process: [secretDocument=${data.secretId}] no organization found`);
@@ -1027,6 +1092,19 @@ export const secretQueueFactory = ({
         reminderNote: data.note, // May not be present.
         projectName: project.name,
         organizationName: organization.name
+      }
+    });
+
+    await queueService.queue(QueueName.SecretWebhook, QueueJobs.SecWebhook, {
+      type: WebhookEvents.SecretReminderExpired,
+      payload: {
+        projectName: project.name,
+        projectId: project.id,
+        secretPath: folder?.path,
+        environment: folder?.environmentSlug || "",
+        reminderNote: data.note,
+        secretName: secret?.key,
+        secretId: data.secretId
       }
     });
   });
@@ -1434,7 +1512,21 @@ export const secretQueueFactory = ({
   });
 
   queueService.start(QueueName.SecretWebhook, async (job) => {
-    await fnTriggerWebhook({ ...job.data, projectEnvDAL, webhookDAL, projectDAL });
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: job.data.payload.projectId
+    });
+
+    await fnTriggerWebhook({
+      projectId: job.data.payload.projectId,
+      environment: job.data.payload.environment,
+      secretPath: job.data.payload.secretPath || "/",
+      projectEnvDAL,
+      projectDAL,
+      webhookDAL,
+      event: job.data,
+      secretManagerDecryptor: (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString()
+    });
   });
 
   return {

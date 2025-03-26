@@ -22,33 +22,34 @@ The actual resource requirements will vary in direct proportion to the operation
 Infisical doesn’t require file storage as all persisted data is saved in the database. 
 However, its logs and metrics are saved to disk for later viewing. As a result, we recommend provisioning 1-2 GB of storage.
 
-### CPU
+### CPU and Memory (Per Container/Instance)
 
-CPU requirements vary heavily on the volume of secret operations (reads and writes) you anticipate. 
-Processing large volumes of secrets frequently and consistently will require higher CPU.
+Infisical is stateless and scales horizontally by running across multiple containers/instances. Each instance typically does **not** need more than **2–4 CPU cores** and **4–8 GB** of memory. 
+If you need additional capacity, simply increase the **number** of containers/instances running in parallel.
 
-Recommended minimum CPU hardware for different sizes of deployments:
+| **Deployment Size** | **CPU (Cores, per container)** | **Memory (GB, per container)** | **Recommended Number of Containers** |
+|---------------------|--------------------------------|--------------------------------|--------------------------------------|
+| **Small**           | 2                              | 4                              | 2+                                   |
+| **Medium**          | 2–4                            | 4–8                            | 5+                                   |
+| **Large**           | 2–4                            | 4–8                            | 10+                                  |
 
-- **small:** 2-4 core is the **recommended** minimum
-- **large:** 4-8 cores are suitable for larger deployments
-
-### Memory Allocation
-
-Memory needs depend on expected workload, including factors like user activity, automation level, and the frequency of secret operations.
-
-Recommended minimum memory hardware for different sizes of deployments:
-- **small:** 4-8 GB is the **recommended** minimum
-- **large:** 16-32 GB are suitable for larger deployments
+> **Note:**  
+> - Adding more containers (horizontal scaling) is generally the best way to handle spikes in secret operations.  
+> - If you prefer, you can increase CPU/memory on a single container (vertical scaling), but horizontal scaling is more flexible and resilient.
 
 ## Database & caching layer
 
 ### Postgres
 
 PostgreSQL is the only database supported by Infisical. Infisical has been extensively tested with Postgres version 16. We recommend using versions 14 and up for optimal compatibility.
+The compute required for Postgres is largely dependent on the number of secret operations (reads and writes) you expect. The more frequently you read and write secrets, the more compute you will need.
+You'll notice that storage requirements are high and this is because audit logs are by default stored in the database.
 
-Recommended resource allocation based on deployment size:
-- **small:** 2 vCPU / 8 GB RAM / 20 GB Disk
-- **large:** 4vCPU / 16 GB RAM / 100 GB Disk
+
+Recommended resource allocation based on deployment size. You may require more resources if you have a large number of secrets or high transaction volume:
+- **small:** 2 vCPU / 8 GB RAM / 100 GB Disk
+- **medium:** 4vCPU / 16 GB RAM / 200 GB Disk
+- **large:** 8vCPU / 32 GB RAM / 500 GB Disk
 
 ### Redis
 

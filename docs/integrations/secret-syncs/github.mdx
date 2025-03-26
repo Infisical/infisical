@@ -1,0 +1,163 @@
+---
+title: "GitHub Sync"
+description: "Learn how to configure a GitHub Sync for Infisical."
+---
+
+**Prerequisites:**
+
+        - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
+        - Create a [GitHub Connection](/integrations/app-connections/github)
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+        ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+
+        2. Select the **GitHub** option.
+        ![Select GitHub](/images/secret-syncs/github/select-github-option.png)
+
+        3. Configure the **Source** from where secrets should be retrieved, then click **Next**.
+        ![Configure Source](/images/secret-syncs/github/github-source.png)
+
+            - **Environment**: The project environment to retrieve secrets from.
+            - **Secret Path**: The folder path to retrieve secrets from.
+
+        <Tip>
+            If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+        </Tip>
+
+        4. Configure the **Destination** to where secrets should be deployed, then click **Next**.
+        ![Configure Destination](/images/secret-syncs/github/github-destination.png)
+
+            - **GitHub Connection**: The GitHub Connection to authenticate with.
+            - **Scope**: The GitHub secret scope to sync secrets to.
+                - **Organization**: Sync secrets to a specific organization.
+                - **Repository**: Sync secrets to a specific repository.
+                - **Repository Environment**: Sync secrets to a specific repository's environment.
+            <p class="height:1px"  />
+            The remaining fields are determined by the selected **Scope**:
+            <AccordionGroup>
+                <Accordion title="Organization">
+                    - **Organization**: The organization to deploy secrets to.
+                    - **Visibility**: Determines which organization repositories can access deployed secrets.
+                        - **All Repositories**: All repositories of the organization. (Public repositories if not a Pro/Team account)
+                        - **Private Repositories**: All private repositories of the organization. (Requires Pro/Team account)
+                        - **Selected Repositories**: Only the selected Repositories.
+                    - **Selected Repositories**: The selected repositories if **Visibility** is set to **Selected Repositories**.
+                </Accordion>
+                <Accordion title="Repository">
+                    - **Repository**: The repository to deploy secrets to.
+                </Accordion>
+                <Accordion title="Repository Environment">
+                    - **Repository**: The repository to deploy secrets to.
+                    - **Environment**: The repository's environment to deploy secrets to.
+                </Accordion>
+            </AccordionGroup>
+
+        5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
+        ![Configure Options](/images/secret-syncs/github/github-options.png)
+
+            - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
+                - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
+                <Note>
+                    GitHub does not support importing secrets.
+                </Note>
+            - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+            - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
+
+        6. Configure the **Details** of your GitHub Sync, then click **Next**.
+        ![Configure Details](/images/secret-syncs/github/github-details.png)
+
+            - **Name**: The name of your sync. Must be slug-friendly.
+            - **Description**: An optional description for your sync.
+
+        7. Review your GitHub Sync configuration, then click **Create Sync**.
+        ![Confirm Configuration](/images/secret-syncs/github/github-review.png)
+
+        8. If enabled, your GitHub Sync will begin syncing your secrets to the destination endpoint.
+        ![Sync Secrets](/images/secret-syncs/github/github-created.png)
+
+    </Tab>
+    <Tab title="API">
+        To create an **GitHub Sync**, make an API request to the [Create GitHub Sync](/api-reference/endpoints/secret-syncs/github/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+        --url https://app.infisical.com/api/v1/secret-syncs/github \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-github-sync",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "an example sync",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "environment": "dev",
+            "secretPath": "/my-secrets",
+            "isEnabled": true,
+            "syncOptions": {
+                "initialSyncBehavior": "overwrite-destination"
+            },
+            "destinationConfig": {
+                "scope": "repository",
+                "owner": "my-github",
+                "repo": "my-repository"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-github-sync",
+                "description": "an example sync",
+                "isEnabled": true,
+                "version": 1,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "syncStatus": "succeeded",
+                "lastSyncJobId": "123",
+                "lastSyncMessage": null,
+                "lastSyncedAt": "2023-11-07T05:31:56Z",
+                "importStatus": null,
+                "lastImportJobId": null,
+                "lastImportMessage": null,
+                "lastImportedAt": null,
+                "removeStatus": null,
+                "lastRemoveJobId": null,
+                "lastRemoveMessage": null,
+                "lastRemovedAt": null,
+                "syncOptions": {
+                    "initialSyncBehavior": "overwrite-destination"
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connection": {
+                    "app": "github",
+                    "name": "my-github-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/my-secrets"
+                },
+                "destination": "github",
+                "destinationConfig": {
+                    "scope": "repository",
+                    "owner": "my-github",
+                    "repo": "my-repository"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

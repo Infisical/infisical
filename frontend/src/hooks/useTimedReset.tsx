@@ -1,6 +1,6 @@
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 
-type Props<T extends unknown> = {
+type Props<T> = {
   initialState: T;
   delay?: number;
 };

@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -23,13 +24,14 @@ export type TSecretTagServiceFactory = ReturnType<typeof secretTagServiceFactory
 
 export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSecretTagServiceFactoryDep) => {
   const createTag = async ({ slug, actor, color, actorId, actorOrgId, actorAuthMethod, projectId }: TCreateTagDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Tags);
 
     const existingTag = await secretTagDAL.findOne({ slug, projectId });
@@ -54,13 +56,14 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
       if (existingTag && existingTag.id !== tag.id) throw new BadRequestError({ message: "Tag already exist" });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      tag.projectId,
+      projectId: tag.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Tags);
 
     const updatedTag = await secretTagDAL.updateById(tag.id, { color, slug });
@@ -71,13 +74,14 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
     const tag = await secretTagDAL.findById(id);
     if (!tag) throw new NotFoundError({ message: `Tag with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      tag.projectId,
+      projectId: tag.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Tags);
 
     const deletedTag = await secretTagDAL.deleteById(tag.id);
@@ -88,13 +92,14 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
     const tag = await secretTagDAL.findById(id);
     if (!tag) throw new NotFoundError({ message: `Tag with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      tag.projectId,
+      projectId: tag.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
 
     return { ...tag, name: tag.slug };
@@ -104,26 +109,28 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
     const tag = await secretTagDAL.findOne({ projectId, slug });
     if (!tag) throw new NotFoundError({ message: `Tag with slug '${slug}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      tag.projectId,
+      projectId: tag.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
 
     return { ...tag, name: tag.slug };
   };
 
   const getProjectTags = async ({ actor, actorId, actorOrgId, actorAuthMethod, projectId }: TListProjectTagsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
 
     const tags = await secretTagDAL.find({ projectId }, { sort: [["createdAt", "asc"]] });

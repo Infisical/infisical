@@ -1,0 +1,36 @@
+---
+title: "Networking"
+sidebarTitle: "Networking"
+description: "Network configuration details for Infisical Cloud"
+---
+
+## Overview
+
+When integrating your infrastructure with Infisical Cloud, you may need to configure network access controls. This page provides the IP addresses that Infisical uses to communicate with your services.
+
+## Egress IP Addresses
+
+Infisical Cloud operates from two regions: US and EU. If your infrastructure has strict network policies, you may need to allow traffic from Infisical by adding the following IP addresses to your ingress rules. These are the egress IPs Infisical uses when making outbound requests to your services.
+
+### US Region
+
+To allow connections from Infisical US, add these IP addresses to your ingress rules:
+
+- `3.213.63.16`
+- `54.164.68.7`
+
+### EU Region
+
+To allow connections from Infisical EU, add these IP addresses to your ingress rules:
+
+- `3.77.89.19`
+- `3.125.209.189`
+
+## Common Use Cases
+
+You may need to allow Infisical’s egress IPs if your services require inbound connections for:
+
+- Secret rotation - When Infisical needs to send requests to your systems to automatically rotate credentials
+- Dynamic secrets - When Infisical generates and manages temporary credentials for your cloud services
+- Secret integrations - When syncing secrets with third-party services like Azure Key Vault
+- Native authentication with machine identities - When using methods like Kubernetes authentication

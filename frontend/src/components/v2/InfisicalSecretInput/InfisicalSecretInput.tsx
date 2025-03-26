@@ -120,6 +120,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const isPopupOpen = Boolean(suggestionSource.isOpen) && isFocused;
     const { data: secrets } = useGetProjectSecrets({
+      viewSecretValue: false,
       environment: suggestionSource.environment || "",
       secretPath: suggestionSource.secretPath || "",
       workspaceId,
@@ -294,7 +295,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
           }}
         >
           <div
-            className="max-w-60 h-full w-full flex-col items-center justify-center rounded-md text-white"
+            className="h-full w-full max-w-60 flex-col items-center justify-center rounded-md text-white"
             ref={popoverContentRef}
           >
             {suggestions.map((item, i) => {

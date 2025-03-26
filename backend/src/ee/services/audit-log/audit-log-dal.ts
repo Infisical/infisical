@@ -39,11 +39,13 @@ export const auditLogDALFactory = (db: TDbClient) => {
       offset = 0,
       actorId,
       actorType,
+      secretPath,
       eventType,
       eventMetadata
     }: Omit<TFindQuery, "actor" | "eventType"> & {
       actorId?: string;
       actorType?: ActorType;
+      secretPath?: string;
       eventType?: EventType[];
       eventMetadata?: Record<string, string>;
     },
@@ -88,6 +90,10 @@ export const auditLogDALFactory = (db: TDbClient) => {
         });
       }
 
+      if (projectId && secretPath) {
+        void sqlQuery.whereRaw(`"eventMetadata" @> jsonb_build_object('secretPath', ?::text)`, [secretPath]);
+      }
+
       // Filter by actor type
       if (actorType) {
         void sqlQuery.where("actor", actorType);
@@ -100,10 +106,10 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
       // Filter by date range
       if (startDate) {
-        void sqlQuery.where(`${TableName.AuditLog}.createdAt`, ">=", startDate);
+        void sqlQuery.whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [startDate]);
       }
       if (endDate) {
-        void sqlQuery.where(`${TableName.AuditLog}.createdAt`, "<=", endDate);
+        void sqlQuery.whereRaw(`"${TableName.AuditLog}"."createdAt" <= ?::timestamptz`, [endDate]);
       }
 
       // we timeout long running queries to prevent DB resource issues (2 minutes)

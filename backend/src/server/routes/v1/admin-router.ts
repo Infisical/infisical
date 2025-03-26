@@ -1,6 +1,7 @@
+import DOMPurify from "isomorphic-dompurify";
 import { z } from "zod";
 
-import { OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
+import { IdentitiesSchema, OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -72,7 +73,21 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             message: "At least one login method should be enabled."
           }),
         slackClientId: z.string().optional(),
-        slackClientSecret: z.string().optional()
+        slackClientSecret: z.string().optional(),
+        authConsentContent: z
+          .string()
+          .trim()
+          .refine((content) => DOMPurify.sanitize(content) === content, {
+            message: "Auth consent content contains unsafe HTML."
+          })
+          .optional(),
+        pageFrameContent: z
+          .string()
+          .trim()
+          .refine((content) => DOMPurify.sanitize(content) === content, {
+            message: "Page frame content contains unsafe HTML."
+          })
+          .optional()
       }),
       response: {
         200: z.object({
@@ -83,7 +98,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: (req, res, done) => {
-      verifyAuth([AuthMode.JWT, AuthMode.API_KEY])(req, res, () => {
+      verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
         verifySuperAdmin(req, res, done);
       });
     },
@@ -103,7 +118,12 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         searchTerm: z.string().default(""),
         offset: z.coerce.number().default(0),
-        limit: z.coerce.number().max(100).default(20)
+        limit: z.coerce.number().max(100).default(20),
+        // TODO: remove this once z.coerce.boolean() is supported
+        adminsOnly: z
+          .string()
+          .transform((val) => val === "true")
+          .default("false")
       }),
       response: {
         200: z.object({
@@ -119,7 +139,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: (req, res, done) => {
-      verifyAuth([AuthMode.JWT])(req, res, () => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
         verifySuperAdmin(req, res, done);
       });
     },
@@ -130,6 +150,47 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       return {
         users
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/identity-management/identities",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        searchTerm: z.string().default(""),
+        offset: z.coerce.number().default(0),
+        limit: z.coerce.number().max(100).default(20)
+      }),
+      response: {
+        200: z.object({
+          identities: IdentitiesSchema.pick({
+            name: true,
+            id: true
+          })
+            .extend({
+              isInstanceAdmin: z.boolean()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const identities = await server.services.superAdmin.getIdentities({
+        ...req.query
+      });
+
+      return {
+        identities
       };
     }
   });
@@ -149,7 +210,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: (req, res, done) => {
-      verifyAuth([AuthMode.JWT])(req, res, () => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
         verifySuperAdmin(req, res, done);
       });
     },
@@ -183,7 +244,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: (req, res, done) => {
-      verifyAuth([AuthMode.JWT])(req, res, () => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
         verifySuperAdmin(req, res, done);
       });
     },
@@ -193,6 +254,27 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       return {
         users
       };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/user-management/users/:userId/admin-access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        userId: z.string()
+      })
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      await server.services.superAdmin.grantServerAdminAccessToUser(req.params.userId);
     }
   });
 
@@ -215,7 +297,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: (req, res, done) => {
-      verifyAuth([AuthMode.JWT])(req, res, () => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
         verifySuperAdmin(req, res, done);
       });
     },
@@ -238,7 +320,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       })
     },
     onRequest: (req, res, done) => {
-      verifyAuth([AuthMode.JWT])(req, res, () => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
         verifySuperAdmin(req, res, done);
       });
     },
@@ -313,6 +395,143 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         token: token.access,
         organization,
         new: "123"
+      };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/identity-management/identities/:identityId/super-admin-access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        identityId: z.string()
+      }),
+      response: {
+        200: z.object({
+          identity: IdentitiesSchema.pick({
+            name: true,
+            id: true
+          })
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const identity = await server.services.superAdmin.deleteIdentitySuperAdminAccess(
+        req.params.identityId,
+        req.permission.id
+      );
+
+      return {
+        identity
+      };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/user-management/users/:userId/admin-access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        userId: z.string()
+      }),
+      response: {
+        200: z.object({
+          user: UsersSchema.pick({
+            username: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            id: true
+          })
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const user = await server.services.superAdmin.deleteUserSuperAdminAccess(req.params.userId);
+
+      return {
+        user
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/bootstrap",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        email: z.string().email().trim().min(1),
+        password: z.string().trim().min(1),
+        organization: z.string().trim().min(1)
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          user: UsersSchema.pick({
+            username: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            id: true,
+            superAdmin: true
+          }),
+          organization: OrganizationsSchema.pick({
+            id: true,
+            name: true,
+            slug: true
+          }),
+          identity: IdentitiesSchema.pick({
+            id: true,
+            name: true
+          }).extend({
+            credentials: z.object({
+              token: z.string()
+            }) // would just be Token AUTH for now
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const { user, organization, machineIdentity } = await server.services.superAdmin.bootstrapInstance({
+        ...req.body,
+        organizationName: req.body.organization
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.AdminInit,
+        distinctId: user.user.username ?? "",
+        properties: {
+          username: user.user.username,
+          email: user.user.email ?? "",
+          lastName: user.user.lastName || "",
+          firstName: user.user.firstName || ""
+        }
+      });
+
+      return {
+        message: "Successfully bootstrapped instance",
+        user: user.user,
+        organization,
+        identity: machineIdentity
       };
     }
   });

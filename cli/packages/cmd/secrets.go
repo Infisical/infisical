@@ -110,7 +110,7 @@ var secretsCmd = &cobra.Command{
 
 		if plainOutput {
 			for _, secret := range secrets {
-				fmt.Println(secret.Value)
+				fmt.Println(fmt.Sprintf("%s=%s", secret.Key, secret.Value))
 			}
 		} else {
 			visualize.PrintAllSecretDetails(secrets)
@@ -143,7 +143,15 @@ var secretsSetCmd = &cobra.Command{
 	Short:                 "Used set secrets",
 	Use:                   "set [secrets]",
 	DisableFlagsInUseLine: true,
-	Args:                  cobra.MinimumNArgs(1),
+	Args: func(cmd *cobra.Command, args []string) error {
+		if cmd.Flags().Changed("file") {
+			if len(args) > 0 {
+				return fmt.Errorf("secrets cannot be provided as command-line arguments when the --file option is used. Please choose either file-based or argument-based secret input")
+			}
+			return nil
+		}
+		return cobra.MinimumNArgs(1)(cmd, args)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		token, err := util.GetInfisicalToken(cmd)
 		if err != nil {
@@ -177,13 +185,18 @@ var secretsSetCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse secret type")
 		}
 
+		file, err := cmd.Flags().GetString("file")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		var secretOperations []models.SecretSetOperation
 		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
 			if projectId == "" {
 				util.PrintErrorMessageAndExit("When using service tokens or machine identities, you must set the --projectId flag")
 			}
 
-			secretOperations, err = util.SetRawSecrets(args, secretType, environmentName, secretsPath, projectId, token)
+			secretOperations, err = util.SetRawSecrets(args, secretType, environmentName, secretsPath, projectId, token, file)
 		} else {
 			if projectId == "" {
 				workspaceFile, err := util.GetWorkSpaceFromFile()
@@ -194,7 +207,7 @@ var secretsSetCmd = &cobra.Command{
 				projectId = workspaceFile.WorkspaceId
 			}
 
-			loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+			loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 			if err != nil {
 				util.HandleError(err, "unable to authenticate [err=%v]")
 			}
@@ -206,7 +219,7 @@ var secretsSetCmd = &cobra.Command{
 			secretOperations, err = util.SetRawSecrets(args, secretType, environmentName, secretsPath, projectId, &models.TokenDetails{
 				Type:  "",
 				Token: loggedInUserDetails.UserCredentials.JTWToken,
-			})
+			}, file)
 		}
 
 		if err != nil {
@@ -278,7 +291,7 @@ var secretsDeleteCmd = &cobra.Command{
 			util.RequireLogin()
 			util.RequireLocalWorkspaceFile()
 
-			loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+			loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 			if err != nil {
 				util.HandleError(err, "Unable to authenticate")
 			}
@@ -691,6 +704,7 @@ func init() {
 	secretsSetCmd.Flags().String("projectId", "", "manually set the project ID to for setting secrets when using machine identity based auth")
 	secretsSetCmd.Flags().String("path", "/", "set secrets within a folder path")
 	secretsSetCmd.Flags().String("type", util.SECRET_TYPE_SHARED, "the type of secret to create: personal or shared")
+	secretsSetCmd.Flags().String("file", "", "Load secrets from the specified file. File format: .env or YAML (comments: # or //). This option is mutually exclusive with command-line secrets arguments.")
 
 	secretsDeleteCmd.Flags().String("type", "personal", "the type of secret to delete: personal or shared  (default: personal)")
 	secretsDeleteCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")

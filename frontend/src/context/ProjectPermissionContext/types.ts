@@ -7,6 +7,15 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionSecretActions {
+  DescribeAndReadValue = "read",
+  DescribeSecret = "describeSecret",
+  ReadValue = "readValue",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum ProjectPermissionDynamicSecretActions {
   ReadRootCredential = "read-root-credential",
   CreateRootCredential = "create-root-credential",
@@ -24,6 +33,24 @@ export enum ProjectPermissionCmekActions {
   Decrypt = "decrypt"
 }
 
+export enum ProjectPermissionKmipActions {
+  CreateClients = "create-clients",
+  UpdateClients = "update-clients",
+  DeleteClients = "delete-clients",
+  ReadClients = "read-clients",
+  GenerateClientCertificates = "generate-client-certificates"
+}
+
+export enum ProjectPermissionSecretSyncActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  SyncSecrets = "sync-secrets",
+  ImportSecrets = "import-secrets",
+  RemoveSecrets = "remove-secrets"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -32,6 +59,19 @@ export enum PermissionConditionOperators {
   $NEQ = "$ne",
   $GLOB = "$glob"
 }
+
+export type IdentityManagementSubjectFields = {
+  identityId: string;
+};
+
+export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
+  [PermissionConditionOperators.$EQ]: "equal to",
+  [PermissionConditionOperators.$IN]: "contains",
+  [PermissionConditionOperators.$ALL]: "contains all",
+  [PermissionConditionOperators.$NEQ]: "not equal to",
+  [PermissionConditionOperators.$GLOB]: "matches glob pattern",
+  [PermissionConditionOperators.$REGEX]: "matches regex pattern"
+};
 
 export type TPermissionConditionOperators = {
   [PermissionConditionOperators.$IN]: string[];
@@ -72,10 +112,15 @@ export enum ProjectPermissionSub {
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
   CertificateTemplates = "certificate-templates",
+  SshCertificateAuthorities = "ssh-certificate-authorities",
+  SshCertificateTemplates = "ssh-certificate-templates",
+  SshCertificates = "ssh-certificates",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
   Kms = "kms",
-  Cmek = "cmek"
+  Cmek = "cmek",
+  SecretSyncs = "secret-syncs",
+  Kmip = "kmip"
 }
 
 export type SecretSubjectFields = {
@@ -102,7 +147,7 @@ export type SecretImportSubjectFields = {
 
 export type ProjectPermissionSet =
   | [
-      ProjectPermissionActions,
+      ProjectPermissionSecretActions,
       (
         | ProjectPermissionSub.Secrets
         | (ForcedSubject<ProjectPermissionSub.Secrets> & SecretSubjectFields)
@@ -142,16 +187,28 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
-  | [ProjectPermissionActions, ProjectPermissionSub.Identity]
+  | [
+      ProjectPermissionActions,
+      (
+        | ProjectPermissionSub.Identity
+        | (ForcedSubject<ProjectPermissionSub.Identity> & IdentityManagementSubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
+  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
+  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
+  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
+  | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
-  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms];
+  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
+  | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip];
+
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

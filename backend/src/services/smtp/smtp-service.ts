@@ -30,14 +30,17 @@ export enum SmtpTemplates {
   NewDeviceJoin = "newDevice.handlebars",
   OrgInvite = "organizationInvitation.handlebars",
   ResetPassword = "passwordReset.handlebars",
+  SetupPassword = "passwordSetup.handlebars",
   SecretLeakIncident = "secretLeakIncident.handlebars",
   WorkspaceInvite = "workspaceInvitation.handlebars",
   ScimUserProvisioned = "scimUserProvisioned.handlebars",
   PkiExpirationAlert = "pkiExpirationAlert.handlebars",
   IntegrationSyncFailed = "integrationSyncFailed.handlebars",
+  SecretSyncFailed = "secretSyncFailed.handlebars",
   ExternalImportSuccessful = "externalImportSuccessful.handlebars",
   ExternalImportFailed = "externalImportFailed.handlebars",
-  ExternalImportStarted = "externalImportStarted.handlebars"
+  ExternalImportStarted = "externalImportStarted.handlebars",
+  SecretRequestCompleted = "secretRequestCompleted.handlebars"
 }
 
 export enum SmtpHost {
@@ -52,6 +55,13 @@ export enum SmtpHost {
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {
   const smtp = createTransport(cfg);
   const isSmtpOn = Boolean(cfg.host);
+
+  handlebars.registerHelper("emailFooter", () => {
+    const { SITE_URL } = getConfig();
+    return new handlebars.SafeString(
+      `<p style="font-size: 12px;">Email sent via Infisical at <a href="${SITE_URL}">${SITE_URL}</a></p>`
+    );
+  });
 
   const sendMail = async ({ substitutions, recipients, template, subjectLine }: TSmtpSendMail) => {
     const appCfg = getConfig();
@@ -77,5 +87,21 @@ export const smtpServiceFactory = (cfg: TSmtpConfig) => {
     }
   };
 
-  return { sendMail };
+  const verify = async () => {
+    const isConnected = smtp
+      .verify()
+      .then(async () => {
+        logger.info("SMTP connected");
+        return true;
+      })
+      .catch((err: Error) => {
+        logger.error("SMTP error");
+        logger.error(err);
+        return false;
+      });
+
+    return isConnected;
+  };
+
+  return { sendMail, verify };
 };

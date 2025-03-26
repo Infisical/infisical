@@ -1,0 +1,93 @@
+---
+title: "Auth0 SAML"
+description: "Learn how to configure Auth0 SAML for Infisical SSO."
+---
+
+<Info>
+  Auth0 SAML SSO feature is a paid feature. If you're using Infisical Cloud,
+  then it is available under the **Pro Tier**. If you're self-hosting Infisical,
+  then you should contact sales@infisical.com to purchase an enterprise license
+  to use it.
+</Info>
+
+<Steps>
+   <Step title="Prepare the SAML SSO configuration in Infisical">
+        In Infisical, head to Organization Settings > Security and click **Connect** for SAML under the Connect to an Identity Provider section. Select Auth0, then click **Connect** again.
+
+        Next, note the **Application Callback URL** and **Audience** to use when configuring the Auth0 SAML application.
+
+        ![Auth0 SAML initial configuration](../../../images/sso/auth0-saml/init-config.png)
+
+   </Step>
+   <Step title="Create a SAML application in Auth0">
+        2.1. In your Auth0 account, head to Applications and create an application.
+        
+        ![Auth0 SAML app creation](../../../images/sso/auth0-saml/create-application.png)
+        
+        Select **Regular Web Application** and press **Create**.
+        
+        ![Auth0 SAML app creation](../../../images/sso/auth0-saml/create-application-2.png)
+        
+        2.2. In the Application head to Settings > Application URIs and add the **Application Callback URL** from step 1 into the **Allowed Callback URLs** field.
+        
+        ![Auth0 SAML allowed callback URLs](../../../images/sso/auth0-saml/auth0-config.png)
+        
+        2.3. In the Application head to Addons > SAML2 Web App and copy the **Issuer**, **Identity Provider Login URL**, and **Identity Provider Certificate** from the **Usage** tab.
+        
+        ![Auth0 SAML config](../../../images/sso/auth0-saml/auth0-config-2.png)
+        
+        2.4. Back in Infisical, set **Issuer**, **Identity Provider Login URL**, and **Certificate** to the corresponding items from step 2.3.
+        
+        ![Auth0 SAML Infisical config](../../../images/sso/auth0-saml/infisical-config.png)
+        
+        2.5. Back in Auth0, in the **Settings** tab, set the **Application Callback URL** to the **Application Callback URL** from step 1
+        and update the **Settings** field with the JSON under the picture below (replacing `<audience-from-infisical>` with the **Audience** from step 1).
+        
+        ![Auth0 SAML config](../../../images/sso/auth0-saml/auth0-config-3.png)
+        
+        ```json
+        {
+        "audience": "<audience-from-infisical>",
+        "mappings": {
+            "email": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/email",
+            "given_name": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstName",
+            "family_name": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastName"
+        },
+        "signatureAlgorithm": "rsa-sha256",
+        "digestAlgorithm": "sha256",
+        "signResponse": true
+        }
+        ```
+
+        Click **Save**.
+    </Step>
+    <Step title="Enable SAML SSO in Infisical">
+        Enabling SAML SSO allows members in your organization to log into Infisical via Auth0.
+
+        ![Auth0 SAML enable](../../../images/sso/auth0-saml/enable-saml.png)
+    </Step>
+    <Step title="Enforce SAML SSO in Infisical">
+        Enforcing SAML SSO ensures that members in your organization can only access Infisical
+        by logging into the organization via Auth0.
+
+        To enforce SAML SSO, you're required to test out the SAML connection by successfully authenticating at least one Auth0 user with Infisical;
+        Once you've completed this requirement, you can toggle the **Enforce SAML SSO** button to enforce SAML SSO.
+    </Step>
+
+</Steps>
+
+<Tip>
+    If you are only using one organization on your Infisical instance, you can configure a default organization in the [Server Admin Console](../admin-panel/server-admin#default-organization) to expedite SAML login.
+</Tip>
+
+<Note>
+    If you're configuring SAML SSO on a self-hosted instance of Infisical, make
+    sure to set the `AUTH_SECRET` and `SITE_URL` environment variable for it to
+    work:
+    <div class="height:1px;"/>
+    - `AUTH_SECRET`: A secret key used for signing and verifying JWT. This
+    can be a random 32-byte base64 string generated with `openssl rand -base64
+    32`.
+    <div class="height:1px;"/>
+    - `SITE_URL`: The absolute URL of your self-hosted instance of Infisical including the protocol (e.g. https://app.infisical.com)
+</Note>

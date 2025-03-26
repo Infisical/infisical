@@ -2,12 +2,13 @@ import { ForbiddenError, subject } from "@casl/ability";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
-import { TSecretFoldersInsert } from "@app/db/schemas";
+import { ActionProjectType, TSecretFoldersInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -27,7 +28,7 @@ type TSecretFolderServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   folderDAL: TSecretFolderDALFactory;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs" | "find">;
   folderVersionDAL: TSecretFolderVersionDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
 };
@@ -50,15 +51,17 @@ export const secretFolderServiceFactory = ({
     actorOrgId,
     name,
     environment,
-    path: secretPath
+    path: secretPath,
+    description
   }: TCreateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -120,7 +123,10 @@ export const secretFolderServiceFactory = ({
         }
       }
 
-      const doc = await folderDAL.create({ name, envId: env.id, version: 1, parentId: parentFolderId }, tx);
+      const doc = await folderDAL.create(
+        { name, envId: env.id, version: 1, parentId: parentFolderId, description },
+        tx
+      );
       await folderVersionDAL.create(
         {
           name: doc.name,
@@ -150,13 +156,14 @@ export const secretFolderServiceFactory = ({
       throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     folders.forEach(({ environment, path: secretPath }) => {
       ForbiddenError.from(permission).throwUnlessCan(
@@ -168,7 +175,7 @@ export const secretFolderServiceFactory = ({
     const result = await folderDAL.transaction(async (tx) =>
       Promise.all(
         folders.map(async (newFolder) => {
-          const { environment, path: secretPath, id, name } = newFolder;
+          const { environment, path: secretPath, id, name, description } = newFolder;
 
           const parentFolder = await folderDAL.findBySecretPath(project.id, environment, secretPath);
           if (!parentFolder) {
@@ -215,7 +222,7 @@ export const secretFolderServiceFactory = ({
 
           const [doc] = await folderDAL.update(
             { envId: env.id, id: folder.id, parentId: parentFolder.id },
-            { name },
+            { name, description },
             tx
           );
           await folderVersionDAL.create(
@@ -257,15 +264,17 @@ export const secretFolderServiceFactory = ({
     name,
     environment,
     path: secretPath,
-    id
+    id,
+    description
   }: TUpdateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -309,7 +318,7 @@ export const secretFolderServiceFactory = ({
     const newFolder = await folderDAL.transaction(async (tx) => {
       const [doc] = await folderDAL.update(
         { envId: env.id, id: folder.id, parentId: parentFolder.id, isReserved: false },
-        { name },
+        { name, description },
         tx
       );
       await folderVersionDAL.create(
@@ -339,13 +348,14 @@ export const secretFolderServiceFactory = ({
     path: secretPath,
     idOrName
   }: TDeleteFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
@@ -391,17 +401,36 @@ export const secretFolderServiceFactory = ({
     orderBy,
     orderDirection,
     limit,
-    offset
+    offset,
+    recursive
   }: TGetFolderDTO) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new NotFoundError({ message: `Environment with slug '${environment}' not found` });
 
     const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!parentFolder) return [];
+
+    if (recursive) {
+      const recursiveFolders = await folderDAL.findByEnvsDeep({ parentIds: [parentFolder.id] });
+      // remove the parent folder
+      return recursiveFolders
+        .filter((folder) => folder.id !== parentFolder.id)
+        .map((folder) => ({
+          ...folder,
+          relativePath: folder.path
+        }));
+    }
 
     const folders = await folderDAL.find(
       {
@@ -432,7 +461,14 @@ export const secretFolderServiceFactory = ({
   }: Omit<TGetFolderDTO, "environment"> & { environments: string[] }) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
 
@@ -467,7 +503,14 @@ export const secretFolderServiceFactory = ({
   }: Omit<TGetFolderDTO, "environment"> & { environments: string[] }) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
 
@@ -496,7 +539,14 @@ export const secretFolderServiceFactory = ({
     if (!folder) throw new NotFoundError({ message: `Folder with ID '${id}' not found` });
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission(actor, actorId, folder.projectId, actorAuthMethod, actorOrgId);
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: folder.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
 
@@ -518,7 +568,14 @@ export const secretFolderServiceFactory = ({
   ) => {
     // folder list is allowed to be read by anyone
     // permission to check does user have access
-    await permissionService.getProjectPermission(actor.type, actor.id, projectId, actor.authMethod, actor.orgId);
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
 
@@ -536,6 +593,44 @@ export const secretFolderServiceFactory = ({
     return folders;
   };
 
+  const getProjectEnvironmentsFolders = async (projectId: string, actor: OrgServiceActor) => {
+    // folder list is allowed to be read by anyone
+    // permission is to check if user has access
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const environments = await projectEnvDAL.find({ projectId });
+
+    const folders = await folderDAL.find({
+      $in: {
+        envId: environments.map((env) => env.id)
+      },
+      isReserved: false
+    });
+
+    const environmentFolders = Object.fromEntries(
+      environments.map((env) => {
+        const relevantFolders = folders.filter((folder) => folder.envId === env.id);
+        const foldersMap = Object.fromEntries(relevantFolders.map((folder) => [folder.id, folder]));
+
+        const foldersWithPath = relevantFolders.map((folder) => ({
+          ...folder,
+          path: buildFolderPath(folder, foldersMap)
+        }));
+
+        return [env.slug, { ...env, folders: foldersWithPath }];
+      })
+    );
+
+    return environmentFolders;
+  };
+
   return {
     createFolder,
     updateFolder,
@@ -545,6 +640,7 @@ export const secretFolderServiceFactory = ({
     getFolderById,
     getProjectFolderCount,
     getFoldersMultiEnv,
-    getFoldersDeepByEnvs
+    getFoldersDeepByEnvs,
+    getProjectEnvironmentsFolders
   };
 };

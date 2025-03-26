@@ -36,14 +36,16 @@ export const useCreateServiceToken = () => {
   // TODO: deprecate
   const queryClient = useQueryClient();
 
-  return useMutation<CreateServiceTokenRes, {}, CreateServiceTokenDTO>({
+  return useMutation<CreateServiceTokenRes, object, CreateServiceTokenDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post("/api/v2/service-token/", body);
       data.serviceToken += `.${body.randomBytes}`;
       return data;
     },
     onSuccess: ({ serviceTokenData: { projectId } }) => {
-      queryClient.invalidateQueries(serviceTokenKeys.getAllWorkspaceServiceToken(projectId));
+      queryClient.invalidateQueries({
+        queryKey: serviceTokenKeys.getAllWorkspaceServiceToken(projectId)
+      });
     }
   });
 };
@@ -51,13 +53,15 @@ export const useCreateServiceToken = () => {
 export const useDeleteServiceToken = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<DeleteServiceTokenRes, {}, string>({
+  return useMutation<DeleteServiceTokenRes, object, string>({
     mutationFn: async (serviceTokenId) => {
       const { data } = await apiRequest.delete(`/api/v2/service-token/${serviceTokenId}`);
       return data;
     },
     onSuccess: ({ serviceTokenData: { projectId } }) => {
-      queryClient.invalidateQueries(serviceTokenKeys.getAllWorkspaceServiceToken(projectId));
+      queryClient.invalidateQueries({
+        queryKey: serviceTokenKeys.getAllWorkspaceServiceToken(projectId)
+      });
     }
   });
 };

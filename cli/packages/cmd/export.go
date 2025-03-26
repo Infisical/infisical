@@ -111,7 +111,7 @@ var exportCmd = &cobra.Command{
 				accessToken = token.Token
 			} else {
 				log.Debug().Msg("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
-				loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+				loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 				if err != nil {
 					util.HandleError(err)
 				}

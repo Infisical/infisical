@@ -43,6 +43,8 @@ export type RequiredKeys<T> = {
 
 export type PickRequired<T> = Pick<T, RequiredKeys<T>>;
 
+export type DiscriminativePick<T, K extends keyof T> = T extends unknown ? Pick<T, K> : never;
+
 export enum EnforcementLevel {
   Hard = "hard",
   Soft = "soft"

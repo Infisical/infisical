@@ -1,0 +1,142 @@
+---
+title: "KMIP Integration"
+description: "Learn more about integrating with Infisical KMS using KMIP (Key Management Interoperability Protocol)."
+---
+
+<Note>
+  KMIP integration is an Enterprise-only feature. Please reach out to
+  sales@infisical.com if you have any questions.
+</Note>
+
+## Overview
+
+Infisical KMS provides **Key Management Interoperability Protocol (KMIP)** support, enabling seamless integration with KMIP-compatible clients. This allows for enhanced key management across various applications that support the **KMIP 1.4 protocol**.
+
+## Supported Operations
+
+The Infisical KMIP server supports the following operations for **symmetric keys**:
+
+- **Create** - Generate symmetric keys.
+- **Register** - Register externally created keys.
+- **Locate** - Find keys using attributes.
+- **Get** - Retrieve keys securely.
+- **Activate** - Enable keys for usage.
+- **Revoke** - Revoke existing keys.
+- **Destroy** - Permanently remove keys.
+- **Get Attributes** - Retrieve metadata associated with keys.
+- **Query** - Query server capabilities and supported operations.
+
+## Benefits of KMIP Integration
+
+Integrating Infisical KMS with KMIP-compatible clients provides the following benefits:
+
+- **Standardized Key Management**: Allows interoperability with security and cryptographic applications that support KMIP.
+- **Enterprise-Grade Security**: Utilizes Infisical’s encryption mechanisms to securely store and manage keys.
+- **Centralized Key Management**: Enables a unified approach for managing cryptographic keys across multiple environments.
+
+## Compatibility
+
+Infisical KMIP supports **KMIP versions 1.0 to 1.4**, ensuring compatibility with a wide range of clients and security tools.
+
+## Secure Communication & Authorization
+
+KMIP client-server communication is secured using **mutual TLS (mTLS)**, ensuring strong identity verification and encrypted data exchange via **PKI certificates**. Each KMIP entity must possess valid certificates signed by a trusted Root CA to establish trust.
+For strong isolation, each Infisical organization has its own KMIP PKI (Public Key Infrastructure), ensuring that cryptographic operations and certificate authorities remain separate across organizations.
+
+Infisical KMS enforces a **two-layer authorization model** for KMIP operations:
+
+1. **KMIP Server Authorization** – The KMIP server, acting as a proxy, must have the `proxy KMIP` permission to forward client requests to Infisical KMS. This is done using a **machine identity** attached to the KMIP server.
+2. **KMIP Client Authorization** – Clients must have the necessary KMIP-level permissions to perform specific key management operations.
+
+By combining **mTLS for secure communication** and **machine identity-based proxying**, Infisical KMS ensures **strong authentication, controlled access, and centralized key management** for KMIP operations.
+
+## Setup Instructions
+
+### Setup KMIP for your organization
+
+<Steps>
+  <Step title="Navigate to the organization settings > KMIP">
+    From there, press Setup KMIP.
+    ![KMIP org navigate](/images/platform/kms/kmip/kmip-org-setup-navigation.png)
+  </Step>
+  <Step title="Configure KMIP PKI for the organization">
+    In the modal, select the desired key algorithm to use for the KMIP PKI of your organization. Press continue.
+    ![KMIP org PKI setup](/images/platform/kms/kmip/kmip-org-setup-modal.png)
+
+    This generates the KMIP PKI for your organization. After this, you can proceed to setting up your KMIP server.
+
+  </Step>
+</Steps>
+
+### Deploying and Configuring the KMIP Server
+
+Follow these steps to configure and deploy a KMIP server.
+
+<Steps>
+  <Step title="Setup Machine Identity">
+    Configure a [machine identity](https://infisical.com/docs/documentation/platform/identities/machine-identities#machine-identities) for the KMIP server to use.
+    ![KMIP create machine identity](/images/platform/kms/kmip/kmip-create-mi.png)
+
+    Create a custom organization role and give it the **Proxy KMIP** permission.
+    ![KMIP create custom role](/images/platform/kms/kmip/kmip-create-custom-role.png)
+    ![KMIP assign proxy to role](/images/platform/kms/kmip/kmip-assign-custom-role-proxy.png)
+
+    Assign the machine identity to the custom organization role. This allows the machine identity to serve KMIP client requests and forward them from your KMIP server to Infisical.
+    ![KMIP assign role to machine identity](/images/platform/kms/kmip/kmip-assign-mi-to-role.png)
+
+  </Step>
+
+  <Step title="Start up the KMIP server">
+    To deploy the KMIP server, use the Infisical CLI’s `kmip start` command.  
+    Before proceeding, make sure you have the [Infisical CLI installed](https://infisical.com/docs/cli/overview).
+
+    Once installed, launch the KMIP server with the following command:
+
+    ```bash
+    infisical kmip start \
+      --identity-client-id=<machine-identity-client-id> \ # This can be set by defining the INFISICAL_UNIVERSAL_AUTH_CLIENT_ID ENV variable
+      --identity-client-secret=<machine-identity-client-secret> \ # This can be set by defining the INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET ENV variable
+      --domain=https://app.infisical.com \
+      --hostnames-or-ips="my-kmip-server.com"
+    ```
+
+    The following flags are available for the `infisical kmip start` command::
+    - **listen-address** (default: localhost:5696): The address the KMIP server listens on.
+    - **identity-auth-method** (default: universal-auth): The authentication method for the machine identity.
+    - **identity-client-id**:  The client ID of the machine identity. This can be set by defining the `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` ENV variable.
+    - **identity-client-secret**: The client secret of the machine identity. This can be set by defining the `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` ENV variable.
+    - **server-name** (default: "kmip-server"): The name of the KMIP server.
+    - **certificate-ttl** (default: "1y"): The duration for which the server certificate is valid.
+    - **hostnames-or-ips:** A comma-separated list of hostnames or IPs the KMIP server will use (required).
+
+  </Step>
+</Steps>
+
+### Add and Configure KMIP Clients
+
+<Steps>
+  <Step title="Navigate to the desired KMS project and select KMIP">
+    From there, press Add KMIP Client
+    ![KMIP client overview](/images/platform/kms/kmip/kmip-client-overview.png)
+  </Step>
+  <Step title="Configure KMIP client">
+    In the modal, provide the details of your client. The selected permissions determine what KMIP operations can be performed in your KMS project.
+    ![KMIP client modal](/images/platform/kms/kmip/kmip-client-modal.png)
+  </Step>
+    <Step title="Generate client certificate">
+    Once the KMIP client is created, you will have to generate a client certificate.
+    Press Generate Certificate.
+    ![KMIP generate client cert](/images/platform/kms/kmip/kmip-client-generate-cert.png)
+
+    Provide the desired TTL and key algorithm to use and press Generate Client Certificate.
+    ![KMIP client cert config](/images/platform/kms/kmip/kmip-client-cert-config-modal.png)
+
+    Configure your KMIP clients to use the generated client certificate, certificate chain and private key.
+    ![KMIP client cert modal](/images/platform/kms/kmip/kmip-client-certificate-modal.png)
+
+  </Step>
+</Steps>
+
+## Additional Resources
+
+- [KMIP 1.4 Specification](http://docs.oasis-open.org/kmip/spec/v1.4/os/kmip-spec-v1.4-os.html)

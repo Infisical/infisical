@@ -1,3 +1,8 @@
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
+import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+
 export const GROUPS = {
   CREATE: {
     name: "The name of the group to create.",
@@ -19,7 +24,9 @@ export const GROUPS = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th user.",
     limit: "The number of users to return.",
     username: "The username to search for.",
-    search: "The text string that user email or name will be filtered by."
+    search: "The text string that user email or name will be filtered by.",
+    filterUsers:
+      "Whether to filter the list of returned users. 'existingMembers' will only return existing users in the group, 'nonMembers' will only return users not in the group, undefined will return all users in the organization."
   },
   ADD_USER: {
     id: "The ID of the group to add the user to.",
@@ -237,7 +244,7 @@ export const KUBERNETES_AUTH = {
     kubernetesHost: "The host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert: "The PEM-encoded CA cert for the Kubernetes API server.",
     tokenReviewerJwt:
-      "The long-lived service account JWT token for Infisical to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods.",
+      "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
       "The comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
     allowedNames: "The comma-separated list of trusted service account names that can authenticate with Infisical.",
@@ -253,7 +260,7 @@ export const KUBERNETES_AUTH = {
     kubernetesHost: "The new host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert: "The new PEM-encoded CA cert for the Kubernetes API server.",
     tokenReviewerJwt:
-      "The new long-lived service account JWT token for Infisical to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods.",
+      "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
       "The new comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
     allowedNames: "The new comma-separated list of trusted service account names that can authenticate with Infisical.",
@@ -322,6 +329,7 @@ export const OIDC_AUTH = {
     boundIssuer: "The unique identifier of the identity provider issuing the JWT.",
     boundAudiences: "The list of intended recipients.",
     boundClaims: "The attributes that should be present in the JWT for it to be valid.",
+    claimMetadataMapping: "The attributes that should be present in the permission metadata from the JWT.",
     boundSubject: "The expected principal that is the subject of the JWT.",
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
@@ -333,6 +341,53 @@ export const OIDC_AUTH = {
     oidcDiscoveryUrl: "The new URL used to retrieve the OpenID Connect configuration from the identity provider.",
     caCert: "The new PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints.",
     boundIssuer: "The new unique identifier of the identity provider issuing the JWT.",
+    boundAudiences: "The new list of intended recipients.",
+    boundClaims: "The new attributes that should be present in the JWT for it to be valid.",
+    claimMetadataMapping: "The new attributes that should be present in the permission metadata from the JWT.",
+    boundSubject: "The new expected principal that is the subject of the JWT.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the auth method for."
+  }
+} as const;
+
+export const JWT_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    configurationType: "The configuration for validating JWTs. Must be one of: 'jwks', 'static'",
+    jwksUrl:
+      "The URL of the JWKS endpoint. Required if configurationType is 'jwks'. This endpoint must serve JSON Web Key Sets (JWKS) containing the public keys used to verify JWT signatures.",
+    jwksCaCert: "The PEM-encoded CA certificate for validating the TLS connection to the JWKS endpoint.",
+    publicKeys:
+      "A list of PEM-encoded public keys used to verify JWT signatures. Required if configurationType is 'static'. Each key must be in RSA or ECDSA format and properly PEM-encoded with BEGIN/END markers.",
+    boundIssuer: "The unique identifier of the JWT provider.",
+    boundAudiences: "The list of intended recipients.",
+    boundClaims: "The attributes that should be present in the JWT for it to be valid.",
+    boundSubject: "The expected principal that is the subject of the JWT.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the auth method for.",
+    configurationType: "The new configuration for validating JWTs. Must be one of: 'jwks', 'static'",
+    jwksUrl:
+      "The new URL of the JWKS endpoint. This endpoint must serve JSON Web Key Sets (JWKS) containing the public keys used to verify JWT signatures.",
+    jwksCaCert: "The new PEM-encoded CA certificate for validating the TLS connection to the JWKS endpoint.",
+    publicKeys:
+      "A new list of PEM-encoded public keys used to verify JWT signatures. Each key must be in RSA or ECDSA format and properly PEM-encoded with BEGIN/END markers.",
+    boundIssuer: "The new unique identifier of the JWT provider.",
     boundAudiences: "The new list of intended recipients.",
     boundClaims: "The new attributes that should be present in the JWT for it to be valid.",
     boundSubject: "The new expected principal that is the subject of the JWT.",
@@ -380,7 +435,8 @@ export const ORGANIZATIONS = {
     search: "The text string that identity membership names will be filtered by."
   },
   GET_PROJECTS: {
-    organizationId: "The ID of the organization to get projects from."
+    organizationId: "The ID of the organization to get projects from.",
+    type: "The type of project to filter by."
   },
   LIST_GROUPS: {
     organizationId: "The ID of the organization to list groups for."
@@ -391,6 +447,7 @@ export const PROJECTS = {
   CREATE: {
     organizationSlug: "The slug of the organization to create the project in.",
     projectName: "The name of the project to create.",
+    projectDescription: "An optional description label for the project.",
     slug: "An optional slug for the project.",
     template: "The name of the project template, if specified, to apply to this project."
   },
@@ -403,7 +460,9 @@ export const PROJECTS = {
   UPDATE: {
     workspaceId: "The ID of the project to update.",
     name: "The new name of the project.",
-    autoCapitalization: "Disable or enable auto-capitalization for the project."
+    projectDescription: "An optional description label for the project.",
+    autoCapitalization: "Disable or enable auto-capitalization for the project.",
+    slug: "An optional slug for the project. (must be unique within the organization)"
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
@@ -420,7 +479,7 @@ export const PROJECTS = {
   },
   ADD_GROUP_TO_PROJECT: {
     projectId: "The ID of the project to add the group to.",
-    groupId: "The ID of the group to add to the project.",
+    groupIdOrName: "The ID or name of the group to add to the project.",
     role: "The role for the group to assume in the project."
   },
   UPDATE_GROUP_IN_PROJECT: {
@@ -440,6 +499,17 @@ export const PROJECTS = {
   },
   LIST_INTEGRATION_AUTHORIZATION: {
     workspaceId: "The ID of the project to list integration auths for."
+  },
+  LIST_SSH_CAS: {
+    projectId: "The ID of the project to list SSH CAs for."
+  },
+  LIST_SSH_CERTIFICATES: {
+    projectId: "The ID of the project to list SSH certificates for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th SSH certificate.",
+    limit: "The number of SSH certificates to return."
+  },
+  LIST_SSH_CERTIFICATE_TEMPLATES: {
+    projectId: "The ID of the project to list SSH certificate templates for."
   },
   LIST_CAS: {
     slug: "The slug of the project to list CAs for.",
@@ -561,7 +631,8 @@ export const FOLDERS = {
     workspaceId: "The ID of the project to list folders from.",
     environment: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
-    directory: "The directory to list folders from. (Deprecated in favor of path)"
+    directory: "The directory to list folders from. (Deprecated in favor of path)",
+    recursive: "Whether or not to fetch all folders from the specified base path, and all of its subdirectories."
   },
   GET_BY_ID: {
     folderId: "The ID of the folder to get details."
@@ -571,7 +642,8 @@ export const FOLDERS = {
     environment: "The slug of the environment to create the folder in.",
     name: "The name of the folder to create.",
     path: "The path of the folder to create.",
-    directory: "The directory of the folder to create. (Deprecated in favor of path)"
+    directory: "The directory of the folder to create. (Deprecated in favor of path)",
+    description: "An optional description label for the folder."
   },
   UPDATE: {
     folderId: "The ID of the folder to update.",
@@ -580,7 +652,8 @@ export const FOLDERS = {
     path: "The path of the folder to update.",
     directory: "The new directory of the folder to update. (Deprecated in favor of path)",
     projectSlug: "The slug of the project where the folder is located.",
-    workspaceId: "The ID of the project where the folder is located."
+    workspaceId: "The ID of the project where the folder is located.",
+    description: "An optional description label for the folder."
   },
   DELETE: {
     folderIdOrName: "The ID or name of the folder to delete.",
@@ -597,6 +670,7 @@ export const SECRETS = {
     secretPath: "The path of the secret to attach tags to.",
     type: "The type of the secret to attach tags to. (shared/personal)",
     environment: "The slug of the environment where the secret is located",
+    viewSecretValue: "Whether or not to retrieve the secret value.",
     projectSlug: "The slug of the project where the secret is located.",
     tagSlugs: "An array of existing tag slugs to attach to the secret."
   },
@@ -620,8 +694,11 @@ export const RAW_SECRETS = {
       "The slug of the project to list secrets from. This parameter is only applicable by machine identities.",
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
+    viewSecretValue: "Whether or not to retrieve the secret value.",
     includeImports: "Weather to include imported secrets or not.",
-    tagSlugs: "The comma separated tag slugs to filter secrets."
+    tagSlugs: "The comma separated tag slugs to filter secrets.",
+    metadataFilter:
+      "The secret metadata key-value pairs to filter secrets by. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4."
   },
   CREATE: {
     secretName: "The name of the secret to create.",
@@ -646,13 +723,15 @@ export const RAW_SECRETS = {
     secretPath: "The path of the secret to get.",
     version: "The version of the secret to get.",
     type: "The type of the secret to get.",
+    viewSecretValue: "Whether or not to retrieve the secret value.",
     includeImports: "Weather to include imported secrets or not."
   },
   UPDATE: {
     secretName: "The name of the secret to update.",
     secretComment: "Update comment to the secret.",
     environment: "The slug of the environment where the secret is located.",
-    secretPath: "The path of the secret to update.",
+    mode: "Defines how the system should handle missing secrets during an update.",
+    secretPath: "The default path for secrets to update or upsert, if not provided in the secret details.",
     secretValue: "The new value of the secret.",
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to update.",
@@ -673,6 +752,12 @@ export const RAW_SECRETS = {
   },
   GET_REFERENCE_TREE: {
     secretName: "The name of the secret to get the reference tree for.",
+    workspaceId: "The ID of the project where the secret is located.",
+    environment: "The slug of the environment where the the secret is located.",
+    secretPath: "The folder path where the secret is located."
+  },
+  GET_ACCESS_LIST: {
+    secretName: "The name of the secret to get the access list for.",
     workspaceId: "The ID of the project where the secret is located.",
     environment: "The slug of the environment where the the secret is located.",
     secretPath: "The folder path where the secret is located."
@@ -731,7 +816,8 @@ export const DASHBOARD = {
     search: "The text string to filter secret keys and folder names by.",
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
-    includeDynamicSecrets: "Whether to include dynamic project secrets in the response."
+    includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
+    includeImports: "Whether to include project secret imports in the response."
   },
   SECRET_DETAILS_LIST: {
     projectId: "The ID of the project to list secrets/folders from.",
@@ -755,6 +841,8 @@ export const AUDIT_LOGS = {
     projectId:
       "Optionally filter logs by project ID. If not provided, logs from the entire organization will be returned.",
     eventType: "The type of the event to export.",
+    secretPath:
+      "The path of the secret to query audit logs for. Note that the projectId parameter must also be provided.",
     userAgentType: "Choose which consuming application to export audit logs for.",
     eventMetadata:
       "Filter by event metadata key-value pairs. Formatted as `key1=value1,key2=value2`, with comma-separation.",
@@ -1030,6 +1118,9 @@ export const INTEGRATION_AUTH = {
   DELETE_BY_ID: {
     integrationAuthId: "The ID of integration authentication object to delete."
   },
+  UPDATE_BY_ID: {
+    integrationAuthId: "The ID of integration authentication object to update."
+  },
   CREATE_ACCESS_TOKEN: {
     workspaceId: "The ID of the project to create the integration auth for.",
     integration: "The slug of integration for the auth object.",
@@ -1072,6 +1163,7 @@ export const INTEGRATION = {
       shouldAutoRedeploy: "Used by Render to trigger auto deploy.",
       secretGCPLabel: "The label for GCP secrets.",
       secretAWSTag: "The tags for AWS secrets.",
+      azureLabel: "Define which label to assign to secrets created in Azure App Configuration.",
       githubVisibility:
         "Define where the secrets from the Github Integration should be visible. Option 'selected' lets you directly define which repositories to sync secrets to.",
       githubVisibilityRepoIds:
@@ -1080,16 +1172,20 @@ export const INTEGRATION = {
       shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store.",
       shouldMaskSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Masked'.",
       shouldProtectSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Protected'.",
-      shouldEnableDelete: "The flag to enable deletion of secrets."
+      shouldEnableDelete: "The flag to enable deletion of secrets.",
+      octopusDeployScopeValues: "Specifies the scope values to set on synced secrets to Octopus Deploy.",
+      metadataSyncMode: "The mode for syncing metadata to external system"
     }
   },
   UPDATE: {
     integrationId: "The ID of the integration object.",
+    region: "AWS region to sync secrets to.",
     app: "The name of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
     appId:
       "The ID of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
     isActive: "Whether the integration should be active or disabled.",
     secretPath: "The path of the secrets to sync secrets from.",
+    path: "Path to save the synced secrets. Used by Gitlab, AWS Parameter Store, Vault.",
     owner: "External integration providers service entity owner. Used in Github.",
     targetEnvironment:
       "The target environment of the integration provider. Used in cloudflare pages, TeamCity, Gitlab integrations.",
@@ -1126,6 +1222,84 @@ export const AUDIT_LOG_STREAMS = {
   },
   GET_BY_ID: {
     id: "The ID of the audit log stream to get details."
+  }
+};
+
+export const SSH_CERTIFICATE_AUTHORITIES = {
+  CREATE: {
+    projectId: "The ID of the project to create the SSH CA in.",
+    friendlyName: "A friendly name for the SSH CA.",
+    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA."
+  },
+  GET: {
+    sshCaId: "The ID of the SSH CA to get."
+  },
+  GET_PUBLIC_KEY: {
+    sshCaId: "The ID of the SSH CA to get the public key for."
+  },
+  UPDATE: {
+    sshCaId: "The ID of the SSH CA to update.",
+    friendlyName: "A friendly name for the SSH CA to update to.",
+    status: "The status of the SSH CA to update to. This can be one of active or disabled."
+  },
+  DELETE: {
+    sshCaId: "The ID of the SSH CA to delete."
+  },
+  GET_CERTIFICATE_TEMPLATES: {
+    sshCaId: "The ID of the SSH CA to get the certificate templates for."
+  },
+  SIGN_SSH_KEY: {
+    certificateTemplateId: "The ID of the SSH certificate template to sign the SSH public key with.",
+    publicKey: "The SSH public key to sign.",
+    certType: "The type of certificate to issue. This can be one of user or host.",
+    principals: "The list of principals (usernames, hostnames) to include in the certificate.",
+    ttl: "The time to live for the certificate such as 1m, 1h, 1d, ... If not specified, the default TTL for the template will be used.",
+    keyId: "The key ID to include in the certificate. If not specified, a default key ID will be generated.",
+    serialNumber: "The serial number of the issued SSH certificate.",
+    signedKey: "The SSH certificate or signed SSH public key."
+  },
+  ISSUE_SSH_CREDENTIALS: {
+    certificateTemplateId: "The ID of the SSH certificate template to issue the SSH credentials with.",
+    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA.",
+    certType: "The type of certificate to issue. This can be one of user or host.",
+    principals: "The list of principals (usernames, hostnames) to include in the certificate.",
+    ttl: "The time to live for the certificate such as 1m, 1h, 1d, ... If not specified, the default TTL for the template will be used.",
+    keyId: "The key ID to include in the certificate. If not specified, a default key ID will be generated.",
+    serialNumber: "The serial number of the issued SSH certificate.",
+    signedKey: "The SSH certificate or signed SSH public key.",
+    privateKey: "The private key corresponding to the issued SSH certificate.",
+    publicKey: "The public key of the issued SSH certificate."
+  }
+};
+
+export const SSH_CERTIFICATE_TEMPLATES = {
+  GET: {
+    certificateTemplateId: "The ID of the SSH certificate template to get."
+  },
+  CREATE: {
+    sshCaId: "The ID of the SSH CA to associate the certificate template with.",
+    name: "The name of the certificate template.",
+    ttl: "The default time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
+    maxTTL: "The maximum time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
+    allowedUsers: "The list of allowed users for certificates issued under this template.",
+    allowedHosts: "The list of allowed hosts for certificates issued under this template.",
+    allowUserCertificates: "Whether or not to allow user certificates to be issued under this template.",
+    allowHostCertificates: "Whether or not to allow host certificates to be issued under this template.",
+    allowCustomKeyIds: "Whether or not to allow custom key IDs for certificates issued under this template."
+  },
+  UPDATE: {
+    certificateTemplateId: "The ID of the SSH certificate template to update.",
+    name: "The name of the certificate template.",
+    ttl: "The default time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
+    maxTTL: "The maximum time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
+    allowedUsers: "The list of allowed users for certificates issued under this template.",
+    allowedHosts: "The list of allowed hosts for certificates issued under this template.",
+    allowUserCertificates: "Whether or not to allow user certificates to be issued under this template.",
+    allowHostCertificates: "Whether or not to allow host certificates to be issued under this template.",
+    allowCustomKeyIds: "Whether or not to allow custom key IDs for certificates issued under this template."
+  },
+  DELETE: {
+    certificateTemplateId: "The ID of the SSH certificate template to delete."
   }
 };
 
@@ -1430,6 +1604,13 @@ export const KMS = {
     orderDirection: "The direction to order keys in.",
     search: "The text string to filter key names by."
   },
+  GET_KEY_BY_ID: {
+    keyId: "The ID of the KMS key to retrieve."
+  },
+  GET_KEY_BY_NAME: {
+    keyName: "The name of the KMS key to retrieve.",
+    projectId: "The ID of the project the key belongs to."
+  },
   ENCRYPT: {
     keyId: "The ID of the key to encrypt the data with.",
     plaintext: "The plaintext to be encrypted (base64 encoded)."
@@ -1456,5 +1637,151 @@ export const ProjectTemplates = {
   },
   DELETE: {
     templateId: "The ID of the project template to be deleted."
+  }
+};
+
+export const AppConnections = {
+  GET_BY_ID: (app: AppConnection) => ({
+    connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to retrieve.`
+  }),
+  GET_BY_NAME: (app: AppConnection) => ({
+    connectionName: `The name of the ${APP_CONNECTION_NAME_MAP[app]} Connection to retrieve.`
+  }),
+  CREATE: (app: AppConnection) => {
+    const appName = APP_CONNECTION_NAME_MAP[app];
+    return {
+      name: `The name of the ${appName} Connection to create. Must be slug-friendly.`,
+      description: `An optional description for the ${appName} Connection.`,
+      credentials: `The credentials used to connect with ${appName}.`,
+      method: `The method used to authenticate with ${appName}.`
+    };
+  },
+  UPDATE: (app: AppConnection) => {
+    const appName = APP_CONNECTION_NAME_MAP[app];
+    return {
+      connectionId: `The ID of the ${appName} Connection to be updated.`,
+      name: `The updated name of the ${appName} Connection. Must be slug-friendly.`,
+      description: `The updated description of the ${appName} Connection.`,
+      credentials: `The credentials used to connect with ${appName}.`,
+      method: `The method used to authenticate with ${appName}.`
+    };
+  },
+  DELETE: (app: AppConnection) => ({
+    connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to be deleted.`
+  })
+};
+
+export const SecretSyncs = {
+  LIST: (destination?: SecretSync) => ({
+    projectId: `The ID of the project to list ${destination ? SECRET_SYNC_NAME_MAP[destination] : "Secret"} Syncs from.`
+  }),
+  GET_BY_ID: (destination: SecretSync) => ({
+    syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to retrieve.`
+  }),
+  GET_BY_NAME: (destination: SecretSync) => ({
+    syncName: `The name of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to retrieve.`,
+    projectId: `The ID of the project the ${SECRET_SYNC_NAME_MAP[destination]} Sync is associated with.`
+  }),
+  CREATE: (destination: SecretSync) => {
+    const destinationName = SECRET_SYNC_NAME_MAP[destination];
+    return {
+      name: `The name of the ${destinationName} Sync to create. Must be slug-friendly.`,
+      description: `An optional description for the ${destinationName} Sync.`,
+      projectId: "The ID of the project to create the sync in.",
+      environment: `The slug of the project environment to sync secrets from.`,
+      secretPath: `The folder path to sync secrets from.`,
+      connectionId: `The ID of the ${
+        APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
+      } Connection to use for syncing.`,
+      isAutoSyncEnabled: `Whether secrets should be automatically synced when changes occur at the source location or not.`,
+      syncOptions: "Optional parameters to modify how secrets are synced."
+    };
+  },
+  UPDATE: (destination: SecretSync) => {
+    const destinationName = SECRET_SYNC_NAME_MAP[destination];
+    return {
+      syncId: `The ID of the ${destinationName} Sync to be updated.`,
+      connectionId: `The updated ID of the ${
+        APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
+      } Connection to use for syncing.`,
+      name: `The updated name of the ${destinationName} Sync. Must be slug-friendly.`,
+      environment: `The updated slug of the project environment to sync secrets from.`,
+      secretPath: `The updated folder path to sync secrets from.`,
+      description: `The updated description of the ${destinationName} Sync.`,
+      isAutoSyncEnabled: `Whether secrets should be automatically synced when changes occur at the source location or not.`,
+      syncOptions: "Optional parameters to modify how secrets are synced."
+    };
+  },
+  DELETE: (destination: SecretSync) => ({
+    syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to be deleted.`,
+    removeSecrets: `Whether previously synced secrets should be removed prior to deletion.`
+  }),
+  SYNC_SECRETS: (destination: SecretSync) => ({
+    syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to trigger a sync for.`
+  }),
+  IMPORT_SECRETS: (destination: SecretSync) => ({
+    syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to trigger importing secrets for.`,
+    importBehavior: `Specify whether Infisical should prioritize secret values from Infisical or ${SECRET_SYNC_NAME_MAP[destination]}.`
+  }),
+  REMOVE_SECRETS: (destination: SecretSync) => ({
+    syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to trigger removing secrets for.`
+  }),
+  SYNC_OPTIONS: (destination: SecretSync) => {
+    const destinationName = SECRET_SYNC_NAME_MAP[destination];
+    return {
+      initialSyncBehavior: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`,
+      disableSecretDeletion: `Enable this flag to prevent removal of secrets from the ${destinationName} destination when syncing.`
+    };
+  },
+  ADDITIONAL_SYNC_OPTIONS: {
+    AWS_PARAMETER_STORE: {
+      keyId: "The AWS KMS key ID or alias to use when encrypting parameters synced by Infisical.",
+      tags: "Optional resource tags to add to parameters synced by Infisical.",
+      syncSecretMetadataAsTags: `Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.`
+    },
+    AWS_SECRETS_MANAGER: {
+      keyId: "The AWS KMS key ID or alias to use when encrypting parameters synced by Infisical.",
+      tags: "Optional tags to add to secrets synced by Infisical.",
+      syncSecretMetadataAsTags: `Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.`
+    }
+  },
+  DESTINATION_CONFIG: {
+    AWS_PARAMETER_STORE: {
+      region: "The AWS region to sync secrets to.",
+      path: "The Parameter Store path to sync secrets to."
+    },
+    AWS_SECRETS_MANAGER: {
+      region: "The AWS region to sync secrets to.",
+      mappingBehavior: "How secrets from Infisical should be mapped to AWS Secrets Manager; one-to-one or many-to-one.",
+      secretName: "The secret name in AWS Secrets Manager to sync to when using mapping behavior many-to-one."
+    },
+    GITHUB: {
+      scope: "The GitHub scope that secrets should be synced to",
+      org: "The name of the GitHub organization.",
+      owner: "The name of the GitHub account owner of the repository.",
+      repo: "The name of the GitHub repository.",
+      env: "The name of the GitHub environment."
+    },
+    AZURE_KEY_VAULT: {
+      vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/"
+    },
+    AZURE_APP_CONFIGURATION: {
+      configurationUrl:
+        "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io/",
+      label: "An optional label to assign to secrets created in Azure App Configuration."
+    },
+    GCP: {
+      scope: "The Google project scope that secrets should be synced to.",
+      projectId: "The ID of the Google project secrets should be synced to."
+    },
+    DATABRICKS: {
+      scope: "The Databricks secret scope that secrets should be synced to."
+    },
+    HUMANITEC: {
+      app: "The ID of the Humanitec app to sync secrets to.",
+      org: "The ID of the Humanitec org to sync secrets to.",
+      env: "The ID of the Humanitec environment to sync secrets to.",
+      scope: "The Humanitec scope that secrets should be synced to."
+    }
   }
 };

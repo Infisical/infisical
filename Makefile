@@ -10,6 +10,9 @@ up-dev:
 up-dev-ldap:
 	docker compose -f docker-compose.dev.yml --profile ldap up --build
 
+up-dev-metrics:
+	docker compose -f docker-compose.dev.yml --profile metrics up --build
+
 up-prod:
 	docker-compose -f docker-compose.prod.yml up --build
 
@@ -28,3 +31,5 @@ reviewable-api:
 
 reviewable: reviewable-ui reviewable-api
 
+up-dev-sso:
+	docker compose -f docker-compose.dev.yml --profile sso up --build

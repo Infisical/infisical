@@ -1,7 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
+import { requestContext } from "@fastify/request-context";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
@@ -26,13 +29,14 @@ export const auditLogServiceFactory = ({
   const listAuditLogs = async ({ actorAuthMethod, actorId, actorOrgId, actor, filter }: TListProjectAuditLogDTO) => {
     // Filter logs for specific project
     if (filter.projectId) {
-      const { permission } = await permissionService.getProjectPermission(
+      const { permission } = await permissionService.getProjectPermission({
         actor,
         actorId,
-        filter.projectId,
+        projectId: filter.projectId,
         actorAuthMethod,
-        actorOrgId
-      );
+        actorOrgId,
+        actionProjectType: ActionProjectType.Any
+      });
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
     } else {
       // Organization-wide logs
@@ -44,10 +48,6 @@ export const auditLogServiceFactory = ({
         actorOrgId
       );
 
-      /**
-       * NOTE (dangtony98): Update this to organization-level audit log permission check once audit logs are moved
-       * to the organization level ✅
-       */
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
     }
 
@@ -62,6 +62,7 @@ export const auditLogServiceFactory = ({
       actorId: filter.auditLogActorId,
       actorType: filter.actorType,
       eventMetadata: filter.eventMetadata,
+      secretPath: filter.secretPath,
       ...(filter.projectId ? { projectId: filter.projectId } : { orgId: actorOrgId })
     });
 
@@ -79,10 +80,15 @@ export const auditLogServiceFactory = ({
     }
     // add all cases in which project id or org id cannot be added
     if (data.event.type !== EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH) {
-      if (!data.projectId && !data.orgId) throw new BadRequestError({ message: "Must either project id or org id" });
+      if (!data.projectId && !data.orgId)
+        throw new BadRequestError({ message: "Must specify either project id or org id" });
     }
-
-    return auditLogQueue.pushToLog(data);
+    const el = { ...data };
+    if (el.actor.type === ActorType.USER || el.actor.type === ActorType.IDENTITY) {
+      const permissionMetadata = requestContext.get("identityPermissionMetadata");
+      el.actor.metadata.permission = permissionMetadata;
+    }
+    return auditLogQueue.pushToLog(el);
   };
 
   return {

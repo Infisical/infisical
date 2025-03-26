@@ -1,9 +1,13 @@
 import { z } from "zod";
 
 import { GitAppOrgSchema, SecretScanningGitRisksSchema } from "@app/db/schemas";
-import { SecretScanningRiskStatus } from "@app/ee/services/secret-scanning/secret-scanning-types";
+import {
+  SecretScanningResolvedStatus,
+  SecretScanningRiskStatus
+} from "@app/ee/services/secret-scanning/secret-scanning-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -98,6 +102,45 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
   });
 
   server.route({
+    url: "/organization/:organizationId/risks/export",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({ organizationId: z.string().trim() }),
+      querystring: z.object({
+        repositoryNames: z
+          .string()
+          .optional()
+          .nullable()
+          .transform((val) => (val ? val.split(",") : undefined)),
+        resolvedStatus: z.nativeEnum(SecretScanningResolvedStatus).optional()
+      }),
+      response: {
+        200: z.object({
+          risks: SecretScanningGitRisksSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const risks = await server.services.secretScanning.getAllRisksByOrg({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.params.organizationId,
+        filter: {
+          repositoryNames: req.query.repositoryNames,
+          resolvedStatus: req.query.resolvedStatus
+        }
+      });
+      return { risks };
+    }
+  });
+
+  server.route({
     url: "/organization/:organizationId/risks",
     method: "GET",
     config: {
@@ -105,20 +148,46 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
     },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
+
+      querystring: z.object({
+        offset: z.coerce.number().min(0).default(0),
+        limit: z.coerce.number().min(1).max(20000).default(100),
+        orderBy: z.enum(["createdAt", "name"]).default("createdAt"),
+        orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.DESC),
+        repositoryNames: z
+          .string()
+          .optional()
+          .nullable()
+          .transform((val) => (val ? val.split(",") : undefined)),
+        resolvedStatus: z.nativeEnum(SecretScanningResolvedStatus).optional()
+      }),
+
       response: {
-        200: z.object({ risks: SecretScanningGitRisksSchema.array() })
+        200: z.object({
+          risks: SecretScanningGitRisksSchema.array(),
+          totalCount: z.number(),
+          repos: z.array(z.string())
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { risks } = await server.services.secretScanning.getRisksByOrg({
+      const { risks, totalCount, repos } = await server.services.secretScanning.getRisksByOrg({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        orgId: req.params.organizationId
+        orgId: req.params.organizationId,
+        filter: {
+          limit: req.query.limit,
+          offset: req.query.offset,
+          orderBy: req.query.orderBy,
+          orderDirection: req.query.orderDirection,
+          repositoryNames: req.query.repositoryNames,
+          resolvedStatus: req.query.resolvedStatus
+        }
       });
-      return { risks };
+      return { risks, totalCount, repos };
     }
   });
 

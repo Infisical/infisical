@@ -32,11 +32,15 @@ export {
   useListWorkspaceGroups,
   useListWorkspacePkiAlerts,
   useListWorkspacePkiCollections,
+  useListWorkspaceSshCas,
+  useListWorkspaceSshCertificates,
+  useListWorkspaceSshCertificateTemplates,
   useNameWorkspaceSecrets,
-  useRenameWorkspace,
   useToggleAutoCapitalization,
   useUpdateIdentityWorkspaceRole,
+  useUpdateProject,
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment,
-  useUpgradeProject} from "./queries";
+  useUpgradeProject
+} from "./queries";
 export { workspaceKeys } from "./query-keys";

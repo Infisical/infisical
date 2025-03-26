@@ -1,5 +1,6 @@
 export {
   useAddExternalKms,
+  useExternalKmsFetchGcpKeys,
   useLoadProjectKmsBackup,
   useRemoveExternalKms,
   useUpdateExternalKms,

@@ -154,6 +154,8 @@ var loginCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 
+		presetDomain := config.INFISICAL_URL
+
 		clearSelfHostedDomains, err := cmd.Flags().GetBool("clear-domains")
 		if err != nil {
 			util.HandleError(err)
@@ -198,7 +200,7 @@ var loginCmd = &cobra.Command{
 
 		// standalone user auth
 		if loginMethod == "user" {
-			currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+			currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 			// if the key can't be found or there is an error getting current credentials from key ring, allow them to override
 			if err != nil && (strings.Contains(err.Error(), "we couldn't find your logged in details")) {
 				log.Debug().Err(err)
@@ -216,11 +218,19 @@ var loginCmd = &cobra.Command{
 					return
 				}
 			}
+
+			usePresetDomain, err := usePresetDomain(presetDomain)
+
+			if err != nil {
+				util.HandleError(err)
+			}
+
 			//override domain
 			domainQuery := true
 			if config.INFISICAL_URL_MANUAL_OVERRIDE != "" &&
 				config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_EU_URL) &&
-				config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_US_URL) {
+				config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_US_URL) &&
+				!usePresetDomain {
 				overrideDomain, err := DomainOverridePrompt()
 				if err != nil {
 					util.HandleError(err)
@@ -228,7 +238,7 @@ var loginCmd = &cobra.Command{
 
 				//if not override set INFISICAL_URL to exported var
 				//set domainQuery to false
-				if !overrideDomain {
+				if !overrideDomain && !usePresetDomain {
 					domainQuery = false
 					config.INFISICAL_URL = util.AppendAPIEndpoint(config.INFISICAL_URL_MANUAL_OVERRIDE)
 					config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", strings.TrimSuffix(config.INFISICAL_URL, "/api"))
@@ -237,7 +247,7 @@ var loginCmd = &cobra.Command{
 			}
 
 			//prompt user to select domain between Infisical cloud and self-hosting
-			if domainQuery {
+			if domainQuery && !usePresetDomain {
 				err = askForDomain()
 				if err != nil {
 					util.HandleError(err, "Unable to parse domain url")
@@ -305,7 +315,11 @@ var loginCmd = &cobra.Command{
 			credential, err := authStrategies[strategy](cmd, infisicalClient)
 
 			if err != nil {
-				util.HandleError(fmt.Errorf("unable to authenticate with %s [err=%v]", formatAuthMethod(loginMethod), err))
+				euErrorMessage := ""
+				if strings.HasPrefix(config.INFISICAL_URL, util.INFISICAL_DEFAULT_US_URL) {
+					euErrorMessage = fmt.Sprintf("\nIf you are using the Infisical Cloud Europe Region, please switch to it by using the \"--domain %s\" flag.", util.INFISICAL_DEFAULT_EU_URL)
+				}
+				util.HandleError(fmt.Errorf("unable to authenticate with %s [err=%v].%s", formatAuthMethod(loginMethod), err, euErrorMessage))
 			}
 
 			if plainOutput {
@@ -343,7 +357,7 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 	if loginTwoResponse.MfaEnabled {
 		i := 1
 		for i < 6 {
-			mfaVerifyCode := askForMFACode()
+			mfaVerifyCode := askForMFACode("email")
 
 			httpClient := resty.New()
 			httpClient.SetAuthToken(loginTwoResponse.Token)
@@ -526,13 +540,52 @@ func DomainOverridePrompt() (bool, error) {
 	return selectedOption == OVERRIDE, err
 }
 
+func usePresetDomain(presetDomain string) (bool, error) {
+	infisicalConfig, err := util.GetConfigFile()
+	if err != nil {
+		return false, fmt.Errorf("askForDomain: unable to get config file because [err=%s]", err)
+	}
+
+	preconfiguredUrl := strings.TrimSuffix(presetDomain, "/api")
+
+	if preconfiguredUrl != "" && preconfiguredUrl != util.INFISICAL_DEFAULT_US_URL && preconfiguredUrl != util.INFISICAL_DEFAULT_EU_URL {
+		parsedDomain := strings.TrimSuffix(strings.Trim(preconfiguredUrl, "/"), "/api")
+
+		_, err := url.ParseRequestURI(parsedDomain)
+		if err != nil {
+			return false, errors.New(fmt.Sprintf("Invalid domain URL: '%s'", parsedDomain))
+		}
+
+		config.INFISICAL_URL = fmt.Sprintf("%s/api", parsedDomain)
+		config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", parsedDomain)
+
+		if !slices.Contains(infisicalConfig.Domains, parsedDomain) {
+			infisicalConfig.Domains = append(infisicalConfig.Domains, parsedDomain)
+			err = util.WriteConfigFile(&infisicalConfig)
+
+			if err != nil {
+				return false, fmt.Errorf("askForDomain: unable to write domains to config file because [err=%s]", err)
+			}
+		}
+
+		whilte := color.New(color.FgGreen)
+		boldWhite := whilte.Add(color.Bold)
+		time.Sleep(time.Second * 1)
+		boldWhite.Printf("[INFO] Using domain '%s' from domain flag or INFISICAL_API_URL environment variable\n", parsedDomain)
+
+		return true, nil
+	}
+
+	return false, nil
+}
+
 func askForDomain() error {
 
 	// query user to choose between Infisical cloud or self-hosting
 	const (
 		INFISICAL_CLOUD_US = "Infisical Cloud (US Region)"
 		INFISICAL_CLOUD_EU = "Infisical Cloud (EU Region)"
-		SELF_HOSTING       = "Self-Hosting"
+		SELF_HOSTING       = "Self-Hosting or Dedicated Instance"
 		ADD_NEW_DOMAIN     = "Add a new domain"
 	)
 
@@ -756,13 +809,14 @@ func GetJwtTokenWithOrganizationId(oldJwtToken string, email string) string {
 	if selectedOrgRes.MfaEnabled {
 		i := 1
 		for i < 6 {
-			mfaVerifyCode := askForMFACode()
+			mfaVerifyCode := askForMFACode(selectedOrgRes.MfaMethod)
 
 			httpClient := resty.New()
 			httpClient.SetAuthToken(selectedOrgRes.Token)
 			verifyMFAresponse, mfaErrorResponse, requestError := api.CallVerifyMfaToken(httpClient, api.VerifyMfaTokenRequest{
-				Email:    email,
-				MFAToken: mfaVerifyCode,
+				Email:     email,
+				MFAToken:  mfaVerifyCode,
+				MFAMethod: selectedOrgRes.MfaMethod,
 			})
 			if requestError != nil {
 				util.HandleError(err)
@@ -817,9 +871,15 @@ func generateFromPassword(password string, salt []byte, p *params) (hash []byte,
 	return hash, nil
 }
 
-func askForMFACode() string {
+func askForMFACode(mfaMethod string) string {
+	var label string
+	if mfaMethod == "totp" {
+		label = "Enter the verification code from your mobile authenticator app or use a recovery code"
+	} else {
+		label = "Enter the 2FA verification code sent to your email"
+	}
 	mfaCodePromptUI := promptui.Prompt{
-		Label: "Enter the 2FA verification code sent to your email",
+		Label: label,
 	}
 
 	mfaVerifyCode, err := mfaCodePromptUI.Run()

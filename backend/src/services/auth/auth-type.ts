@@ -35,11 +35,13 @@ export enum AuthMode {
 
 export enum ActorType { // would extend to AWS, Azure, ...
   PLATFORM = "platform", // Useful for when we want to perform logging on automated actions such as integration syncs.
+  KMIP_CLIENT = "kmipClient",
   USER = "user", // userIdentity
   SERVICE = "service",
   IDENTITY = "identity",
   Machine = "machine",
-  SCIM_CLIENT = "scimClient"
+  SCIM_CLIENT = "scimClient",
+  UNKNOWN_USER = "unknownUser"
 }
 
 // This will be null unless the token-type is JWT
@@ -53,6 +55,7 @@ export type AuthModeJwtTokenPayload = {
   accessVersion: number;
   organizationId?: string;
   isMfaVerified?: boolean;
+  mfaMethod?: MfaMethod;
 };
 
 export type AuthModeMfaJwtTokenPayload = {
@@ -71,6 +74,7 @@ export type AuthModeRefreshJwtTokenPayload = {
   refreshVersion: number;
   organizationId?: string;
   isMfaVerified?: boolean;
+  mfaMethod?: MfaMethod;
 };
 
 export type AuthModeProviderJwtTokenPayload = {
@@ -85,3 +89,8 @@ export type AuthModeProviderSignUpTokenPayload = {
   authTokenType: AuthTokenType.SIGNUP_TOKEN;
   userId: string;
 };
+
+export enum MfaMethod {
+  EMAIL = "email",
+  TOTP = "totp"
+}

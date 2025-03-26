@@ -44,13 +44,15 @@ export const PopoverContent = ({
           <IconButton
             variant="plain"
             ariaLabel="close"
-            className="absolute top-0 right-1 rounded text-bunker-400 hover:text-bunker-50"
+            className="absolute right-1 top-0 rounded text-bunker-400 hover:text-bunker-50"
           >
             <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
           </IconButton>
         </PopoverPrimitive.Close>
       )}
-      <PopoverPrimitive.Arrow className={twMerge("fill-inherit", arrowClassName)} />
+      <div className="pointer-events-none">
+        <PopoverPrimitive.Arrow className={twMerge("fill-inherit", arrowClassName)} />
+      </div>
     </PopoverPrimitive.Content>
   </PopoverPrimitive.Portal>
 );

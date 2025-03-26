@@ -1,16 +1,16 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
-import ms from "ms";
 
-import { ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { ms } from "@app/lib/ms";
 
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
 import { ActorType } from "../auth/auth-type";
@@ -78,13 +78,14 @@ export const projectMembershipServiceFactory = ({
     includeGroupMembers,
     projectId
   }: TGetProjectMembershipDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
@@ -121,13 +122,14 @@ export const projectMembershipServiceFactory = ({
     projectId,
     username
   }: TGetProjectMembershipByUsernameDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
     const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { username });
@@ -143,13 +145,14 @@ export const projectMembershipServiceFactory = ({
     projectId,
     id
   }: TGetProjectMembershipByIdDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
     const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { id });
@@ -169,13 +172,14 @@ export const projectMembershipServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
     const orgMembers = await orgDAL.findMembership({
       [`${TableName.OrgMembership}.orgId` as "orgId"]: project.orgId,
@@ -249,13 +253,14 @@ export const projectMembershipServiceFactory = ({
     membershipId,
     roles
   }: TUpdateProjectMembershipDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
 
     const membershipUser = await userDAL.findUserByProjectMembershipId(membershipId);
@@ -269,18 +274,23 @@ export const projectMembershipServiceFactory = ({
         projectId
       );
 
-      const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
-
-      if (!hasRequiredPriviledges) {
+      const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+      if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
-          message: `Failed to change to a more privileged role ${requestedRoleChange}`
+          name: "PermissionBoundaryError",
+          message: `Failed to change to a more privileged role ${requestedRoleChange}`,
+          details: { missingPermissions: permissionBoundary.missingPermissions }
         });
-      }
     }
 
     // validate custom roles input
     const customInputRoles = roles.filter(
-      ({ role }) => !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
+      ({ role }) =>
+        !Object.values(ProjectMembershipRole)
+          // we don't want to include custom in this check;
+          // this unintentionally enables setting slug to custom which is reserved
+          .filter((r) => r !== ProjectMembershipRole.Custom)
+          .includes(role as ProjectMembershipRole)
     );
     const hasCustomRole = Boolean(customInputRoles.length);
     if (hasCustomRole) {
@@ -343,13 +353,14 @@ export const projectMembershipServiceFactory = ({
     projectId,
     membershipId
   }: TDeleteProjectMembershipOldDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
 
     const member = await userDAL.findUserByProjectMembershipId(membershipId);
@@ -378,13 +389,14 @@ export const projectMembershipServiceFactory = ({
     emails,
     usernames
   }: TDeleteProjectMembershipsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
 
     const project = await projectDAL.findById(projectId);

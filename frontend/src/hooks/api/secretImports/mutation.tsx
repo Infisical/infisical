@@ -14,7 +14,7 @@ import {
 export const useCreateSecretImport = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TCreateSecretImportDTO>({
+  return useMutation<object, object, TCreateSecretImportDTO>({
     mutationFn: async ({ import: secretImport, environment, isReplication, projectId, path }) => {
       const { data } = await apiRequest.post("/api/v1/secret-imports", {
         import: secretImport,
@@ -26,15 +26,15 @@ export const useCreateSecretImport = () => {
       return data;
     },
     onSuccess: (_, { environment, projectId, path }) => {
-      queryClient.invalidateQueries(
-        secretImportKeys.getProjectSecretImports({ projectId, environment, path })
-      );
-      queryClient.invalidateQueries(
-        secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
-      );
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
-      );
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getProjectSecretImports({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
+      });
     }
   });
 };
@@ -42,7 +42,7 @@ export const useCreateSecretImport = () => {
 export const useUpdateSecretImport = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TUpdateSecretImportDTO>({
+  return useMutation<object, object, TUpdateSecretImportDTO>({
     mutationFn: async ({ environment, import: secretImports, projectId, path, id }) => {
       const { data } = await apiRequest.patch(`/api/v1/secret-imports/${id}`, {
         import: secretImports,
@@ -53,21 +53,21 @@ export const useUpdateSecretImport = () => {
       return data;
     },
     onSuccess: (_, { environment, projectId, path }) => {
-      queryClient.invalidateQueries(
-        secretImportKeys.getProjectSecretImports({ projectId, path, environment })
-      );
-      queryClient.invalidateQueries(
-        secretImportKeys.getSecretImportSecrets({ environment, path, projectId })
-      );
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
-      );
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getProjectSecretImports({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
+      });
     }
   });
 };
 
 export const useResyncSecretReplication = () => {
-  return useMutation<{}, {}, TResyncSecretReplicationDTO>({
+  return useMutation<object, object, TResyncSecretReplicationDTO>({
     mutationFn: async ({ environment, projectId, path, id }) => {
       const { data } = await apiRequest.post(`/api/v1/secret-imports/${id}/replication-resync`, {
         environment,
@@ -82,7 +82,7 @@ export const useResyncSecretReplication = () => {
 export const useDeleteSecretImport = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TDeleteSecretImportDTO>({
+  return useMutation<object, object, TDeleteSecretImportDTO>({
     mutationFn: async ({ id, projectId, path, environment }) => {
       const { data } = await apiRequest.delete(`/api/v1/secret-imports/${id}`, {
         data: {
@@ -94,15 +94,15 @@ export const useDeleteSecretImport = () => {
       return data;
     },
     onSuccess: (_, { projectId, environment, path }) => {
-      queryClient.invalidateQueries(
-        secretImportKeys.getProjectSecretImports({ projectId, environment, path })
-      );
-      queryClient.invalidateQueries(
-        secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
-      );
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
-      );
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getProjectSecretImports({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
+      });
     }
   });
 };

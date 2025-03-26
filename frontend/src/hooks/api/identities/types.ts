@@ -1,6 +1,6 @@
 import { TOrgRole } from "../roles/types";
 import { ProjectUserMembershipTemporaryMode, Workspace } from "../workspace/types";
-import { IdentityAuthMethod } from "./enums";
+import { IdentityAuthMethod, IdentityJwtConfigurationType } from "./enums";
 
 export type IdentityTrustedIp = {
   id: string;
@@ -15,6 +15,7 @@ export type Identity = {
   authMethods: IdentityAuthMethod[];
   createdAt: string;
   updatedAt: string;
+  isInstanceAdmin?: boolean;
 };
 
 export type IdentityAccessToken = {
@@ -47,7 +48,7 @@ export type IdentityMembershipOrg = {
 export type IdentityMembership = {
   id: string;
   identity: Identity;
-  project: Pick<Workspace, "id" | "name">;
+  project: Pick<Workspace, "id" | "name" | "type">;
   roles: Array<
     {
       id: string;
@@ -193,6 +194,7 @@ export type IdentityOidcAuth = {
   boundIssuer: string;
   boundAudiences: string;
   boundClaims: Record<string, string>;
+  claimMetadataMapping?: Record<string, string>;
   boundSubject: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
@@ -208,6 +210,7 @@ export type AddIdentityOidcAuthDTO = {
   boundIssuer: string;
   boundAudiences: string;
   boundClaims: Record<string, string>;
+  claimMetadataMapping?: Record<string, string>;
   boundSubject: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
@@ -225,6 +228,7 @@ export type UpdateIdentityOidcAuthDTO = {
   boundIssuer?: string;
   boundAudiences?: string;
   boundClaims?: Record<string, string>;
+  claimMetadataMapping?: Record<string, string>;
   boundSubject?: string;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
@@ -346,7 +350,7 @@ export type AddIdentityKubernetesAuthDTO = {
   organizationId: string;
   identityId: string;
   kubernetesHost: string;
-  tokenReviewerJwt: string;
+  tokenReviewerJwt?: string;
   allowedNamespaces: string;
   allowedNames: string;
   allowedAudience: string;
@@ -363,7 +367,7 @@ export type UpdateIdentityKubernetesAuthDTO = {
   organizationId: string;
   identityId: string;
   kubernetesHost?: string;
-  tokenReviewerJwt?: string;
+  tokenReviewerJwt?: string | null;
   allowedNamespaces?: string;
   allowedNames?: string;
   allowedAudience?: string;
@@ -442,6 +446,65 @@ export type UpdateIdentityTokenAuthDTO = {
 };
 
 export type DeleteIdentityTokenAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
+export type IdentityJwtAuth = {
+  identityId: string;
+  configurationType: IdentityJwtConfigurationType;
+  jwksUrl: string;
+  jwksCaCert: string;
+  publicKeys: string[];
+  boundIssuer: string;
+  boundAudiences: string;
+  boundClaims: Record<string, string>;
+  boundSubject: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityJwtAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  configurationType: string;
+  jwksUrl?: string;
+  jwksCaCert: string;
+  publicKeys?: string[];
+  boundIssuer: string;
+  boundAudiences: string;
+  boundClaims: Record<string, string>;
+  boundSubject: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityJwtAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  configurationType?: string;
+  jwksUrl?: string;
+  jwksCaCert?: string;
+  publicKeys?: string[];
+  boundIssuer?: string;
+  boundAudiences?: string;
+  boundClaims?: Record<string, string>;
+  boundSubject?: string;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type DeleteIdentityJwtAuthDTO = {
   organizationId: string;
   identityId: string;
 };

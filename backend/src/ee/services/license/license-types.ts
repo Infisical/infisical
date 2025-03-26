@@ -48,6 +48,7 @@ export type TFeatureSet = {
   samlSSO: false;
   hsm: false;
   oidcSSO: false;
+  secretAccessInsights: false;
   scim: false;
   ldap: false;
   groups: false;
@@ -67,6 +68,8 @@ export type TFeatureSet = {
   pkiEst: boolean;
   enforceMfa: boolean;
   projectTemplates: false;
+  kmip: false;
+  gateway: false;
 };
 
 export type TOrgPlansTableDTO = {

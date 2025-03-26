@@ -2,10 +2,18 @@ import path from "node:path";
 
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { TableName } from "@app/db/schemas";
+import { ActionProjectType, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  hasSecretReadValueOrDescribePermission,
+  throwIfMissingSecretReadValueOrDescribePermission
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -73,13 +81,14 @@ export const secretImportServiceFactory = ({
     isReplication,
     path: secretPath
   }: TCreateSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     // check if user has permission to import into destination  path
     ForbiddenError.from(permission).throwUnlessCan(
@@ -88,13 +97,11 @@ export const secretImportServiceFactory = ({
     );
 
     // check if user has permission to import from target path
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, {
-        environment: data.environment,
-        secretPath: data.path
-      })
-    );
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      environment: data.environment,
+      secretPath: data.path
+    });
+
     if (isReplication) {
       const plan = await licenseService.getPlan(actorOrgId);
       if (!plan.secretApproval) {
@@ -159,6 +166,7 @@ export const secretImportServiceFactory = ({
     if (secImport.isReplication && sourceFolder) {
       await secretQueueService.replicateSecrets({
         secretPath: secImport.importPath,
+        orgId: actorOrgId,
         projectId,
         environmentSlug: importEnv.slug,
         pickOnlyImportIds: [secImport.id],
@@ -168,6 +176,7 @@ export const secretImportServiceFactory = ({
     } else {
       await secretQueueService.syncSecrets({
         secretPath,
+        orgId: actorOrgId,
         projectId,
         environmentSlug: environment,
         actorId,
@@ -189,13 +198,15 @@ export const secretImportServiceFactory = ({
     data,
     id
   }: TUpdateSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
@@ -283,13 +294,15 @@ export const secretImportServiceFactory = ({
     actorAuthMethod,
     id
   }: TDeleteSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
@@ -335,6 +348,7 @@ export const secretImportServiceFactory = ({
 
     await secretQueueService.syncSecrets({
       secretPath,
+      orgId: actorOrgId,
       projectId,
       environmentSlug: environment,
       actor,
@@ -354,13 +368,14 @@ export const secretImportServiceFactory = ({
     path: secretPath,
     id: secretImportDocId
   }: TResyncSecretImportReplicationDTO) => {
-    const { permission, membership } = await permissionService.getProjectPermission(
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     // check if user has permission to import into destination  path
     ForbiddenError.from(permission).throwUnlessCan(
@@ -392,13 +407,10 @@ export const secretImportServiceFactory = ({
     if (!secretImportDoc.isReplication) throw new BadRequestError({ message: "Import is not in replication mode" });
 
     // check if user has permission to import from target path
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, {
-        environment: secretImportDoc.importEnv.slug,
-        secretPath: secretImportDoc.importPath
-      })
-    );
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      environment: secretImportDoc.importEnv.slug,
+      secretPath: secretImportDoc.importPath
+    });
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
@@ -410,6 +422,7 @@ export const secretImportServiceFactory = ({
 
     if (membership && sourceFolder) {
       await secretQueueService.replicateSecrets({
+        orgId: actorOrgId,
         secretPath: secretImportDoc.importPath,
         projectId,
         environmentSlug: secretImportDoc.importEnv.slug,
@@ -432,13 +445,14 @@ export const secretImportServiceFactory = ({
     actorOrgId,
     search
   }: TGetSecretImportsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
@@ -455,6 +469,58 @@ export const secretImportServiceFactory = ({
     return count;
   };
 
+  const getProjectImportMultiEnvCount = async ({
+    path: secretPath,
+    environments,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    search
+  }: Omit<TGetSecretImportsDTO, "environment"> & { environments: string[] }) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    const filteredEnvironments = [];
+    for (const environment of environments) {
+      if (
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+        )
+      ) {
+        filteredEnvironments.push(environment);
+      }
+    }
+    if (filteredEnvironments.length === 0) {
+      return 0;
+    }
+
+    for (const environment of filteredEnvironments) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+      );
+    }
+
+    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
+    if (!folders?.length)
+      throw new NotFoundError({
+        message: `Folder with path '${secretPath}' not found on environments with slugs '${environments.join(", ")}'`
+      });
+    const counts = await Promise.all(
+      folders.map((folder) => secretImportDAL.getProjectImportCount({ folderId: folder.id, search }))
+    );
+
+    return counts.reduce((sum, count) => sum + count, 0);
+  };
+
   const getImports = async ({
     path: secretPath,
     environment,
@@ -467,13 +533,14 @@ export const secretImportServiceFactory = ({
     limit,
     offset
   }: TGetSecretImportsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
@@ -516,13 +583,14 @@ export const secretImportServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      folder.projectId,
+      projectId: folder.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
@@ -564,13 +632,14 @@ export const secretImportServiceFactory = ({
     actorId,
     actorOrgId
   }: TGetSecretsFromImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
@@ -581,14 +650,12 @@ export const secretImportServiceFactory = ({
     // so anything based on this order will also be in right position
     const secretImports = await secretImportDAL.find({ folderId: folder.id, isReplication: false });
     const allowedImports = secretImports.filter((el) =>
-      permission.can(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, {
-          environment: el.importEnv.slug,
-          secretPath: el.importPath
-        })
-      )
+      hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment: el.importEnv.slug,
+        secretPath: el.importPath
+      })
     );
+
     return fnSecretsFromImports({ allowedImports, folderDAL, secretDAL, secretImportDAL });
   };
 
@@ -601,13 +668,14 @@ export const secretImportServiceFactory = ({
     actorId,
     actorOrgId
   }: TGetSecretsFromImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
@@ -627,20 +695,19 @@ export const secretImportServiceFactory = ({
       const importedSecrets = await fnSecretsV2FromImports({
         secretImports,
         folderDAL,
+        viewSecretValue: true,
         secretDAL: secretV2BridgeDAL,
         secretImportDAL,
         decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
         hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
-          permission.can(
-            ProjectPermissionActions.Read,
-            subject(ProjectPermissionSub.Secrets, {
-              environment: expandEnvironment,
-              secretPath: expandSecretPath,
-              secretName: expandSecretKey,
-              secretTags: expandSecretTags
-            })
-          )
+          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+            environment: expandEnvironment,
+            secretPath: expandSecretPath,
+            secretName: expandSecretKey,
+            secretTags: expandSecretTags
+          })
       });
+
       return importedSecrets;
     }
 
@@ -651,13 +718,10 @@ export const secretImportServiceFactory = ({
       });
 
     const allowedImports = secretImports.filter((el) =>
-      permission.can(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, {
-          environment: el.importEnv.slug,
-          secretPath: el.importPath
-        })
-      )
+      hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment: el.importEnv.slug,
+        secretPath: el.importPath
+      })
     );
     const importedSecrets = await fnSecretsFromImports({
       allowedImports,
@@ -668,9 +732,65 @@ export const secretImportServiceFactory = ({
     return importedSecrets.map((el) => ({
       ...el,
       secrets: el.secrets.map((encryptedSecret) =>
-        decryptSecretRaw({ ...encryptedSecret, workspace: projectId, environment, secretPath }, botKey)
+        decryptSecretRaw(
+          { ...encryptedSecret, workspace: projectId, environment, secretPath, secretValueHidden: false },
+          botKey
+        )
       )
     }));
+  };
+
+  const getImportsMultiEnv = async ({
+    path: secretPath,
+    environments,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    search,
+    limit,
+    offset
+  }: Omit<TGetSecretImportsDTO, "environment"> & { environments: string[] }) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    const filteredEnvironments = [];
+    for (const environment of environments) {
+      if (
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+        )
+      ) {
+        filteredEnvironments.push(environment);
+      }
+    }
+    if (filteredEnvironments.length === 0) {
+      return [];
+    }
+
+    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, filteredEnvironments, secretPath);
+    if (!folders?.length)
+      throw new NotFoundError({
+        message: `Folder with path '${secretPath}' not found on environments with slugs '${environments.join(", ")}'`
+      });
+
+    const secImportsArrays = await Promise.all(
+      folders.map(async (folder) => {
+        const imports = await secretImportDAL.find({ folderId: folder.id, search, limit, offset });
+        return imports.map((importItem) => ({
+          ...importItem,
+          environment: folder.environment.slug
+        }));
+      })
+    );
+    return secImportsArrays.flat();
   };
 
   return {
@@ -683,6 +803,8 @@ export const secretImportServiceFactory = ({
     getRawSecretsFromImports,
     resyncSecretImportReplication,
     getProjectImportCount,
-    fnSecretsFromImports
+    fnSecretsFromImports,
+    getProjectImportMultiEnvCount,
+    getImportsMultiEnv
   };
 };

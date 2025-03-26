@@ -13,7 +13,7 @@ export const useUpdateExternalGroupOrgRoleMappings = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(externalGroupOrgRoleMappingKeys.list());
+      queryClient.invalidateQueries({ queryKey: externalGroupOrgRoleMappingKeys.list() });
     }
   });
 };

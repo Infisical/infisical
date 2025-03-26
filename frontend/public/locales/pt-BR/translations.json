@@ -266,8 +266,8 @@
       "project-id-description2": "Para obter mais orientações, incluindo trechos de código para várias linguagens e frameworks, consulte ",
       "auto-generated": "Este é o identificador exclusivo - gerado automaticamente - do seu projeto. Não pode ser alterado.",
       "docs": "Documentação do Infisical",
-      "auto-capitalization": "Converter em caixa alta automaticamente",
-      "auto-capitalization-description": "Por padrão, Infisical converte automaticamente as chaves em caixa alta. Se você quiser desativar essa funcionalidade, pode fazê-lo aqui."
+      "enforce-capitalization": "Aplicar capitalização",
+      "enforce-capitalization-description": "De acordo com os padrões, o Infisical impõe chaves secretas em letras maiúsculas. Se quiser desabilitar esse recurso, você pode fazer isso aqui."
     }
   },
   "signup": {

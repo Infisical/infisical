@@ -12,15 +12,16 @@ import {
 export const useUpdateSecretApprovalReviewStatus = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TUpdateSecretApprovalReviewStatusDTO>({
-    mutationFn: async ({ id, status }) => {
+  return useMutation<object, object, TUpdateSecretApprovalReviewStatusDTO>({
+    mutationFn: async ({ id, status, comment }) => {
       const { data } = await apiRequest.post(`/api/v1/secret-approval-requests/${id}/review`, {
-        status
+        status,
+        comment
       });
       return data;
     },
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries(secretApprovalRequestKeys.detail({ id }));
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.detail({ id }) });
     }
   });
 };
@@ -28,7 +29,7 @@ export const useUpdateSecretApprovalReviewStatus = () => {
 export const useUpdateSecretApprovalRequestStatus = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TUpdateSecretApprovalRequestStatusDTO>({
+  return useMutation<object, object, TUpdateSecretApprovalRequestStatusDTO>({
     mutationFn: async ({ id, status }) => {
       const { data } = await apiRequest.post(`/api/v1/secret-approval-requests/${id}/status`, {
         status
@@ -36,8 +37,8 @@ export const useUpdateSecretApprovalRequestStatus = () => {
       return data;
     },
     onSuccess: (_, { id, workspaceId }) => {
-      queryClient.invalidateQueries(secretApprovalRequestKeys.detail({ id }));
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.detail({ id }) });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     }
   });
 };
@@ -45,7 +46,7 @@ export const useUpdateSecretApprovalRequestStatus = () => {
 export const usePerformSecretApprovalRequestMerge = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TPerformSecretApprovalRequestMerge>({
+  return useMutation<object, object, TPerformSecretApprovalRequestMerge>({
     mutationFn: async ({ id, bypassReason }) => {
       const { data } = await apiRequest.post(`/api/v1/secret-approval-requests/${id}/merge`, {
         bypassReason
@@ -53,9 +54,9 @@ export const usePerformSecretApprovalRequestMerge = () => {
       return data;
     },
     onSuccess: (_, { id, workspaceId }) => {
-      queryClient.invalidateQueries(secretApprovalRequestKeys.detail({ id }));
-      queryClient.invalidateQueries(secretApprovalRequestKeys.list({ workspaceId }));
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.detail({ id }) });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.list({ workspaceId }) });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     }
   });
 };

@@ -9,19 +9,32 @@
 import { Authenticator, Strategy } from "@fastify/passport";
 import fastifySession from "@fastify/session";
 import RedisStore from "connect-redis";
-import { Redis } from "ioredis";
 import { z } from "zod";
 
-import { OidcConfigsSchema } from "@app/db/schemas/oidc-configs";
+import { OidcConfigsSchema } from "@app/db/schemas";
 import { OIDCConfigurationType } from "@app/ee/services/oidc/oidc-config-types";
 import { getConfig } from "@app/lib/config/env";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+const SanitizedOidcConfigSchema = OidcConfigsSchema.pick({
+  id: true,
+  issuer: true,
+  authorizationEndpoint: true,
+  configurationType: true,
+  discoveryURL: true,
+  jwksUri: true,
+  tokenEndpoint: true,
+  userinfoEndpoint: true,
+  orgId: true,
+  isActive: true,
+  allowedEmailDomains: true,
+  manageGroupMemberships: true
+});
+
 export const registerOidcRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
-  const redis = new Redis(appCfg.REDIS_URL);
   const passport = new Authenticator({ key: "oidc", userProperty: "passportUser" });
 
   /*
@@ -30,7 +43,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
   - Fastify session <> Redis structure is based on the ff: https://github.com/fastify/session/blob/master/examples/redis.js
   */
   const redisStore = new RedisStore({
-    client: redis,
+    client: server.redis,
     prefix: "oidc-session:",
     ttl: 600 // 10 minutes
   });
@@ -144,7 +157,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         orgSlug: z.string().trim()
       }),
       response: {
-        200: OidcConfigsSchema.pick({
+        200: SanitizedOidcConfigSchema.pick({
           id: true,
           issuer: true,
           authorizationEndpoint: true,
@@ -155,7 +168,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           discoveryURL: true,
           isActive: true,
           orgId: true,
-          allowedEmailDomains: true
+          allowedEmailDomains: true,
+          manageGroupMemberships: true
         }).extend({
           clientId: z.string(),
           clientSecret: z.string()
@@ -209,12 +223,13 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           userinfoEndpoint: z.string().trim(),
           clientId: z.string().trim(),
           clientSecret: z.string().trim(),
-          isActive: z.boolean()
+          isActive: z.boolean(),
+          manageGroupMemberships: z.boolean().optional()
         })
         .partial()
         .merge(z.object({ orgSlug: z.string() })),
       response: {
-        200: OidcConfigsSchema.pick({
+        200: SanitizedOidcConfigSchema.pick({
           id: true,
           issuer: true,
           authorizationEndpoint: true,
@@ -225,7 +240,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           userinfoEndpoint: true,
           orgId: true,
           allowedEmailDomains: true,
-          isActive: true
+          isActive: true,
+          manageGroupMemberships: true
         })
       }
     },
@@ -274,7 +290,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           clientId: z.string().trim(),
           clientSecret: z.string().trim(),
           isActive: z.boolean(),
-          orgSlug: z.string().trim()
+          orgSlug: z.string().trim(),
+          manageGroupMemberships: z.boolean().optional().default(false)
         })
         .superRefine((data, ctx) => {
           if (data.configurationType === OIDCConfigurationType.CUSTOM) {
@@ -325,19 +342,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           }
         }),
       response: {
-        200: OidcConfigsSchema.pick({
-          id: true,
-          issuer: true,
-          authorizationEndpoint: true,
-          configurationType: true,
-          discoveryURL: true,
-          jwksUri: true,
-          tokenEndpoint: true,
-          userinfoEndpoint: true,
-          orgId: true,
-          isActive: true,
-          allowedEmailDomains: true
-        })
+        200: SanitizedOidcConfigSchema
       }
     },
 
@@ -350,6 +355,27 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         ...req.body
       });
       return oidc;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/manage-group-memberships",
+    schema: {
+      querystring: z.object({
+        orgId: z.string().trim().min(1, "Org ID is required")
+      }),
+      response: {
+        200: z.object({
+          isEnabled: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const isEnabled = await server.services.oidc.isOidcManageGroupMembershipsEnabled(req.query.orgId, req.permission);
+
+      return { isEnabled };
     }
   });
 };

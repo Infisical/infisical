@@ -7,6 +7,11 @@ Features:
 * `nodeSelector`: Configure pod placement on nodes with specific labels
 * `tolerations`: Enable pods to schedule on tainted nodes
 
+## 1.4.1 (March 19, 2025)
+
+Changes:
+* Added support for supplying extra volume mounts and volumes via `infisical.extraVolumeMounts` and `infisical.extraVolumes`
+
 ## 1.4.0 (November 06, 2024)
 
 Changes:

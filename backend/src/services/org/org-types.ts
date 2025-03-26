@@ -1,6 +1,7 @@
+import { ProjectType } from "@app/db/schemas";
 import { TOrgPermission } from "@app/lib/types";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType, MfaMethod } from "../auth/auth-type";
 
 export type TUpdateOrgMembershipDTO = {
   userId: string;
@@ -34,6 +35,10 @@ export type TInviteUserToOrgDTO = {
   }[];
 } & TOrgPermission;
 
+export type TResendOrgMemberInvitationDTO = {
+  membershipId: string;
+} & TOrgPermission;
+
 export type TVerifyUserToOrgDTO = {
   email: string;
   orgId: string;
@@ -55,6 +60,7 @@ export type TFindAllWorkspacesDTO = {
   actorOrgId: string | undefined;
   actorAuthMethod: ActorAuthMethod;
   orgId: string;
+  type?: ProjectType;
 };
 
 export type TUpdateOrgDTO = {
@@ -65,6 +71,8 @@ export type TUpdateOrgDTO = {
     scimEnabled: boolean;
     defaultMembershipRoleSlug: string;
     enforceMfa: boolean;
+    selectedMfaMethod: MfaMethod;
+    allowSecretSharingOutsideOrganization: boolean;
   }>;
 } & TOrgPermission;
 
@@ -73,3 +81,8 @@ export type TGetOrgGroupsDTO = TOrgPermission;
 export type TListProjectMembershipsByOrgMembershipIdDTO = {
   orgMembershipId: string;
 } & TOrgPermission;
+
+export enum OrgAuthMethod {
+  OIDC = "oidc",
+  SAML = "saml"
+}

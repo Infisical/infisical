@@ -20,7 +20,9 @@ export const useImportEnvKey = () => {
             "Content-Type": "multipart/form-data"
           },
           onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / (progressEvent?.total || 1)
+            );
             console.log(`Upload Progress: ${percentCompleted}%`);
           }
         });
@@ -31,7 +33,9 @@ export const useImportEnvKey = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getAllUserWorkspace()
+      });
     }
   });
 };

@@ -29,7 +29,7 @@ export const useCreateGroup = () => {
       return group;
     },
     onSuccess: (_, { organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgGroups(organizationId));
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getOrgGroups(organizationId) });
     }
   });
 };
@@ -56,8 +56,9 @@ export const useUpdateGroup = () => {
 
       return group;
     },
-    onSuccess: ({ orgId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgGroups(orgId));
+    onSuccess: ({ orgId, id: groupId }) => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getOrgGroups(orgId) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.getGroupById(groupId) });
     }
   });
 };
@@ -70,8 +71,9 @@ export const useDeleteGroup = () => {
 
       return group;
     },
-    onSuccess: ({ orgId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgGroups(orgId));
+    onSuccess: ({ orgId, id: groupId }) => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getOrgGroups(orgId) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.getGroupById(groupId) });
     }
   });
 };
@@ -92,7 +94,7 @@ export const useAddUserToGroup = () => {
       return data;
     },
     onSuccess: (_, { slug }) => {
-      queryClient.invalidateQueries(groupKeys.forGroupUserMemberships(slug));
+      queryClient.invalidateQueries({ queryKey: groupKeys.forGroupUserMemberships(slug) });
     }
   });
 };
@@ -115,8 +117,8 @@ export const useRemoveUserFromGroup = () => {
       return data;
     },
     onSuccess: (_, { slug, username }) => {
-      queryClient.invalidateQueries(groupKeys.forGroupUserMemberships(slug));
-      queryClient.invalidateQueries(userKeys.listUserGroupMemberships(username));
+      queryClient.invalidateQueries({ queryKey: groupKeys.forGroupUserMemberships(slug) });
+      queryClient.invalidateQueries({ queryKey: userKeys.listUserGroupMemberships(username) });
     }
   });
 };

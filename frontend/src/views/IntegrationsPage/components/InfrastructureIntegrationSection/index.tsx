@@ -1,1 +1,0 @@
-export { InfrastructureIntegrationSection } from "./InfrastructureIntegrationSection";

@@ -2,6 +2,9 @@ import { Knex } from "knex";
 
 import { TableName } from "./schemas";
 
+interface PgTriggerResult {
+  rows: Array<{ exists: boolean }>;
+}
 export const createJunctionTable = (knex: Knex, tableName: TableName, table1Name: TableName, table2Name: TableName) =>
   knex.schema.createTable(tableName, (table) => {
     table.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -28,13 +31,26 @@ DROP FUNCTION IF EXISTS on_update_timestamp() CASCADE;
 
 // we would be using this to apply updatedAt where ever we wanta
 // remember to set `timestamps(true,true,true)` before this on schema
-export const createOnUpdateTrigger = (knex: Knex, tableName: string) =>
-  knex.raw(`
-CREATE TRIGGER "${tableName}_updatedAt"
-BEFORE UPDATE ON ${tableName}
-FOR EACH ROW
-EXECUTE PROCEDURE on_update_timestamp();
-`);
+export const createOnUpdateTrigger = async (knex: Knex, tableName: string) => {
+  const triggerExists = await knex.raw<PgTriggerResult>(`
+    SELECT EXISTS (
+      SELECT 1 
+      FROM pg_trigger 
+      WHERE tgname = '${tableName}_updatedAt'
+    );
+  `);
+
+  if (!triggerExists?.rows?.[0]?.exists) {
+    return knex.raw(`
+      CREATE TRIGGER "${tableName}_updatedAt"
+      BEFORE UPDATE ON ${tableName}
+      FOR EACH ROW
+      EXECUTE PROCEDURE on_update_timestamp();
+    `);
+  }
+
+  return null;
+};
 
 export const dropOnUpdateTrigger = (knex: Knex, tableName: string) =>
   knex.raw(`DROP TRIGGER IF EXISTS "${tableName}_updatedAt" ON ${tableName}`);

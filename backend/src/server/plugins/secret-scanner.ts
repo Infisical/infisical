@@ -1,3 +1,4 @@
+import type { EmitterWebhookEventName } from "@octokit/webhooks/dist-types/types";
 import { PushEvent } from "@octokit/webhooks-types";
 import { Probot } from "probot";
 import SmeeClient from "smee-client";
@@ -19,7 +20,7 @@ export const registerSecretScannerGhApp = async (server: FastifyZodProvider) => 
 
     app.on("installation", async (context) => {
       const { payload } = context;
-      logger.info("Installed secret scanner to:", { repositories: payload.repositories });
+      logger.info({ repositories: payload.repositories }, "Installed secret scanner to");
     });
 
     app.on("push", async (context) => {
@@ -54,17 +55,17 @@ export const registerSecretScannerGhApp = async (server: FastifyZodProvider) => 
         rateLimit: writeLimit
       },
       handler: async (req, res) => {
-        const eventName = req.headers["x-github-event"];
+        const eventName = req.headers["x-github-event"] as EmitterWebhookEventName;
         const signatureSHA256 = req.headers["x-hub-signature-256"] as string;
         const id = req.headers["x-github-delivery"] as string;
+
         await probot.webhooks.verifyAndReceive({
           id,
-          // @ts-expect-error type
           name: eventName,
-          payload: req.body as string,
+          payload: JSON.stringify(req.body),
           signature: signatureSHA256
         });
-        void res.send("ok");
+        return res.send("ok");
       }
     });
   }

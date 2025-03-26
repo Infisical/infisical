@@ -4,14 +4,16 @@ import { z } from "zod";
 
 import { KmsKeysSchema, TKmsRootConfig } from "@app/db/schemas";
 import { AwsKmsProviderFactory } from "@app/ee/services/external-kms/providers/aws-kms";
+import { GcpKmsProviderFactory } from "@app/ee/services/external-kms/providers/gcp-kms";
 import {
   ExternalKmsAwsSchema,
+  ExternalKmsGcpSchema,
   KmsProviders,
   TExternalKmsProviderFns
 } from "@app/ee/services/external-kms/providers/model";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
+import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { TEnvConfig } from "@app/lib/config/env";
 import { randomSecureBytes } from "@app/lib/crypto";
 import { symmetricCipherService, SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { generateHash } from "@app/lib/crypto/encryption";
@@ -35,6 +37,8 @@ import {
   TEncryptWithKmsDataKeyDTO,
   TEncryptWithKmsDTO,
   TGenerateKMSDTO,
+  TGetKeyMaterialDTO,
+  TImportKeyMaterialDTO,
   TUpdateProjectSecretManagerKmsKeyDTO
 } from "./kms-types";
 
@@ -42,16 +46,14 @@ type TKmsServiceFactoryDep = {
   kmsDAL: TKmsKeyDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "updateById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "updateById" | "transaction">;
-  kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById" | "create" | "updateById">;
+  kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById" | "create" | "updateById" | "transaction">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "waitTillReady" | "setItemWithExpiry">;
   internalKmsDAL: Pick<TInternalKmsDALFactory, "create">;
   hsmService: THsmServiceFactory;
+  envConfig: Pick<TEnvConfig, "ENCRYPTION_KEY" | "ROOT_ENCRYPTION_KEY">;
 };
 
 export type TKmsServiceFactory = ReturnType<typeof kmsServiceFactory>;
-
-const KMS_ROOT_CREATION_WAIT_KEY = "wait_till_ready_kms_root_key";
-const KMS_ROOT_CREATION_WAIT_TIME = 10;
 
 // akhilmhdh: Don't edit this value. This is measured for blob concatination in kms
 const KMS_VERSION = "v01";
@@ -59,6 +61,7 @@ const KMS_VERSION_BLOB_LENGTH = 3;
 const KmsSanitizedSchema = KmsKeysSchema.extend({ isExternal: z.boolean() });
 
 export const kmsServiceFactory = ({
+  envConfig,
   kmsDAL,
   kmsRootConfigDAL,
   keyStore,
@@ -291,6 +294,16 @@ export const kmsServiceFactory = ({
           });
           break;
         }
+        case KmsProviders.Gcp: {
+          const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
+            JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+          );
+
+          externalKms = await GcpKmsProviderFactory({
+            inputs: decryptedProviderInput
+          });
+          break;
+        }
         default:
           throw new Error("Invalid KMS provider.");
       }
@@ -312,6 +325,72 @@ export const kmsServiceFactory = ({
       const decryptedBlob = dataCipher.decrypt(cipherTextBlob, kmsKey);
       return Promise.resolve(decryptedBlob);
     };
+  };
+
+  const getKeyMaterial = async ({ kmsId }: TGetKeyMaterialDTO) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    }
+
+    if (kmsDoc.isReserved) {
+      throw new BadRequestError({
+        message: "Cannot get key material for reserved key"
+      });
+    }
+
+    if (kmsDoc.externalKms) {
+      throw new BadRequestError({
+        message: "Cannot get key material for external key"
+      });
+    }
+
+    const keyCipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+
+    return kmsKey;
+  };
+
+  const importKeyMaterial = async (
+    { key, algorithm, name, isReserved, projectId, orgId }: TImportKeyMaterialDTO,
+    tx?: Knex
+  ) => {
+    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+
+    const expectedByteLength = getByteLengthForAlgorithm(algorithm);
+    if (key.byteLength !== expectedByteLength) {
+      throw new BadRequestError({
+        message: `Invalid key length for ${algorithm}. Expected ${expectedByteLength} bytes but got ${key.byteLength} bytes`
+      });
+    }
+
+    const encryptedKeyMaterial = cipher.encrypt(key, ROOT_ENCRYPTION_KEY);
+    const sanitizedName = name ? slugify(name) : slugify(alphaNumericNanoId(8).toLowerCase());
+    const dbQuery = async (db: Knex) => {
+      const kmsDoc = await kmsDAL.create(
+        {
+          name: sanitizedName,
+          orgId,
+          isReserved,
+          projectId
+        },
+        db
+      );
+
+      await internalKmsDAL.create(
+        {
+          version: 1,
+          encryptedKey: encryptedKeyMaterial,
+          encryptionAlgorithm: algorithm,
+          kmsKeyId: kmsDoc.id
+        },
+        db
+      );
+      return kmsDoc;
+    };
+    if (tx) return dbQuery(tx);
+    const doc = await kmsDAL.transaction(async (tx2) => dbQuery(tx2));
+    return doc;
   };
 
   const encryptWithKmsKey = async ({ kmsId }: Omit<TEncryptWithKmsDTO, "plainText">, tx?: Knex) => {
@@ -349,6 +428,16 @@ export const kmsServiceFactory = ({
           );
 
           externalKms = await AwsKmsProviderFactory({
+            inputs: decryptedProviderInput
+          });
+          break;
+        }
+        case KmsProviders.Gcp: {
+          const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
+            JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+          );
+
+          externalKms = await GcpKmsProviderFactory({
             inputs: decryptedProviderInput
           });
           break;
@@ -451,7 +540,8 @@ export const kmsServiceFactory = ({
     }
 
     const kmsDecryptor = await decryptWithKmsKey({
-      kmsId: kmsKeyId
+      kmsId: kmsKeyId,
+      tx: trx
     });
 
     return kmsDecryptor({
@@ -613,10 +703,8 @@ export const kmsServiceFactory = ({
   };
 
   const $getBasicEncryptionKey = () => {
-    const appCfg = getConfig();
-
-    const encryptionKey = appCfg.ENCRYPTION_KEY || appCfg.ROOT_ENCRYPTION_KEY;
-    const isBase64 = !appCfg.ENCRYPTION_KEY;
+    const encryptionKey = envConfig.ENCRYPTION_KEY || envConfig.ROOT_ENCRYPTION_KEY;
+    const isBase64 = !envConfig.ENCRYPTION_KEY;
     if (!encryptionKey)
       throw new Error(
         "Root encryption key not found for KMS service. Did you set the ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY environment variables?"
@@ -852,54 +940,33 @@ export const kmsServiceFactory = ({
     return { id, name, orgId, isExternal };
   };
 
-  // akhilmhdh: a copy of this is made in migrations/utils/kms
   const startService = async () => {
-    const lock = await keyStore.acquireLock([`KMS_ROOT_CFG_LOCK`], 3000, { retryCount: 3 }).catch(() => null);
-    if (!lock) {
-      await keyStore.waitTillReady({
-        key: KMS_ROOT_CREATION_WAIT_KEY,
-        keyCheckCb: (val) => val === "true",
-        waitingCb: () => logger.info("KMS. Waiting for leader to finish creation of KMS Root Key")
+    const kmsRootConfig = await kmsRootConfigDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+      // check if KMS root key was already generated and saved in DB
+      const existingRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
+      if (existingRootConfig) return existingRootConfig;
+
+      logger.info("KMS: Generating new ROOT Key");
+      const newRootKey = randomSecureBytes(32);
+      const encryptedRootKey = await $encryptRootKey(newRootKey, RootKeyEncryptionStrategy.Software).catch((err) => {
+        logger.error({ hsmEnabled: hsmService.isActive() }, "KMS: Failed to encrypt ROOT Key");
+        throw err;
       });
-    }
 
-    // check if KMS root key was already generated and saved in DB
-    const kmsRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
-
-    // case 1: a root key already exists in the DB
-    if (kmsRootConfig) {
-      if (lock) await lock.release();
-      logger.info(`KMS: Encrypted ROOT Key found from DB. Decrypting. [strategy=${kmsRootConfig.encryptionStrategy}]`);
-
-      const decryptedRootKey = await $decryptRootKey(kmsRootConfig);
-
-      // set the flag so that other instance nodes can start
-      await keyStore.setItemWithExpiry(KMS_ROOT_CREATION_WAIT_KEY, KMS_ROOT_CREATION_WAIT_TIME, "true");
-      logger.info("KMS: Loading ROOT Key into Memory.");
-      ROOT_ENCRYPTION_KEY = decryptedRootKey;
-      return;
-    }
-
-    // case 2: no config is found, so we create a new root key with basic encryption
-    logger.info("KMS: Generating new ROOT Key");
-    const newRootKey = randomSecureBytes(32);
-    const encryptedRootKey = await $encryptRootKey(newRootKey, RootKeyEncryptionStrategy.Software).catch((err) => {
-      logger.error({ hsmEnabled: hsmService.isActive() }, "KMS: Failed to encrypt ROOT Key");
-      throw err;
+      const newRootConfig = await kmsRootConfigDAL.create({
+        // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+        id: KMS_ROOT_CONFIG_UUID,
+        encryptedRootKey,
+        encryptionStrategy: RootKeyEncryptionStrategy.Software
+      });
+      return newRootConfig;
     });
 
-    await kmsRootConfigDAL.create({
-      // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-      id: KMS_ROOT_CONFIG_UUID,
-      encryptedRootKey,
-      encryptionStrategy: RootKeyEncryptionStrategy.Software
-    });
+    const decryptedRootKey = await $decryptRootKey(kmsRootConfig);
 
-    // set the flag so that other instance nodes can start
-    await keyStore.setItemWithExpiry(KMS_ROOT_CREATION_WAIT_KEY, KMS_ROOT_CREATION_WAIT_TIME, "true");
-    logger.info("KMS: Saved and loaded ROOT Key into memory");
-    if (lock) await lock.release();
-    ROOT_ENCRYPTION_KEY = newRootKey;
+    logger.info("KMS: Loading ROOT Key into Memory.");
+    ROOT_ENCRYPTION_KEY = decryptedRootKey;
   };
 
   const updateEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
@@ -945,6 +1012,8 @@ export const kmsServiceFactory = ({
     getProjectKeyBackup,
     loadProjectKeyBackup,
     getKmsById,
-    createCipherPairWithDataKey
+    createCipherPairWithDataKey,
+    getKeyMaterial,
+    importKeyMaterial
   };
 };

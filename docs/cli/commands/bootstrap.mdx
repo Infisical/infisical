@@ -1,0 +1,132 @@
+---
+title: "infisical bootstrap"
+description: "Automate the initial setup of a new Infisical instance for headless deployment and infrastructure-as-code workflows"
+---
+
+```bash
+infisical bootstrap --domain=<domain> --email=<email> --password=<password> --organization=<organization>
+```
+
+## Description
+
+The `infisical bootstrap` command is used when deploying Infisical in automated environments where manual UI setup is not feasible. It's ideal for:
+
+- Containerized deployments in Kubernetes or Docker environments
+- Infrastructure-as-code pipelines with Terraform or similar tools
+- Continuous deployment workflows
+- DevOps automation scenarios
+
+The command initializes a fresh Infisical instance by creating an admin user, organization, and instance admin machine identity, enabling subsequent programmatic configuration without human intervention.
+
+<Warning>
+  This command creates an instance admin machine identity with the highest level
+  of privileges. The returned token should be treated with the utmost security,
+  similar to a root credential. Unauthorized access to this token could
+  compromise your entire Infisical instance.
+</Warning>
+
+## Flags
+
+<Accordion title="--domain" defaultOpen="true">
+  The URL of your Infisical instance. This can be set using the `INFISICAL_API_URL` environment variable.
+
+```bash
+# Example
+infisical bootstrap --domain=https://your-infisical-instance.com
+```
+
+This flag is required.
+
+</Accordion>
+
+<Accordion title="--email">
+  Email address for the admin user account that will be created. This can be set using the `INFISICAL_ADMIN_EMAIL` environment variable.
+
+```bash
+# Example
+infisical bootstrap --email=admin@example.com
+```
+
+This flag is required.
+
+</Accordion>
+
+<Accordion title="--password">
+  Password for the admin user account. This can be set using the `INFISICAL_ADMIN_PASSWORD` environment variable.
+
+```bash
+# Example
+infisical bootstrap --password=your-secure-password
+```
+
+This flag is required.
+
+</Accordion>
+
+<Accordion title="--organization">
+  Name of the organization that will be created within the instance. This can be set using the `INFISICAL_ADMIN_ORGANIZATION` environment variable.
+
+```bash
+# Example
+infisical bootstrap --organization=your-org-name
+```
+
+This flag is required.
+
+</Accordion>
+
+## Response
+
+The command returns a JSON response with details about the created user, organization, and machine identity:
+
+```json
+{
+  "identity": {
+    "credentials": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZGVudGl0eUlkIjoiZGIyMjQ3OTItZWQxOC00Mjc3LTlkYWUtNTdlNzUyMzE1ODU0IiwiaWRlbnRpdHlBY2Nlc3NUb2tlbklkIjoiZmVkZmZmMGEtYmU3Yy00NjViLWEwZWEtZjM5OTNjMTg4OGRlIiwiYXV0aFRva2VuVHlwZSI6ImlkZW50aXR5QWNjZXNzVG9rZW4iLCJpYXQiOjE3NDIzMjI0ODl9.mqcZZqIFqER1e9ubrQXp8FbzGYi8nqqZwfMvz09g-8Y"
+    },
+    "id": "db224792-ed18-4277-9dae-57e752315854",
+    "name": "Instance Admin Identity"
+  },
+  "message": "Successfully bootstrapped instance",
+  "organization": {
+    "id": "b56bece0-42f5-4262-b25e-be7bf5f84957",
+    "name": "dog",
+    "slug": "dog-v-e5l"
+  },
+  "user": {
+    "email": "admin@example.com",
+    "firstName": "Admin",
+    "id": "a418f355-c8da-453c-bbc8-6c07208eeb3c",
+    "lastName": "User",
+    "superAdmin": true,
+    "username": "admin@example.com"
+  }
+}
+```
+
+## Usage with Automation
+
+For automation purposes, you can extract just the machine identity token from the response:
+
+```bash
+infisical bootstrap --domain=https://your-infisical-instance.com --email=admin@example.com --password=your-secure-password --organization=your-org-name | jq ".identity.credentials.token"
+```
+
+This extracts only the token, which can be captured in a variable or piped to other commands.
+
+## Example: Capture Token in a Variable
+
+```bash
+TOKEN=$(infisical bootstrap --domain=https://your-infisical-instance.com --email=admin@example.com --password=your-secure-password --organization=your-org-name | jq -r ".identity.credentials.token")
+
+# Now use the token for further automation
+echo "Token has been captured and can be used for authentication"
+```
+
+## Notes
+
+- The bootstrap process can only be performed once on a fresh Infisical instance
+- All flags are required for the bootstrap process to complete successfully
+- Security controls prevent privilege escalation: instance admin identities cannot be managed by non-instance admin users and identities
+- The generated admin user account can be used to log in via the UI if needed

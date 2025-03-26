@@ -9,7 +9,8 @@ export type TGetAuditLogsFilter = {
   eventMetadata?: Record<string, string>;
   actorType?: ActorType;
   projectId?: string;
-  actorId?: string; // user ID format
+  actor?: string; // user ID format
+  secretPath?: string;
   startDate?: Date;
   endDate?: Date;
   limit: number;
@@ -29,6 +30,10 @@ interface IdentityActorMetadata {
   identityId: string;
   name: string;
 }
+interface KmipClientActorMetadata {
+  clientId: string;
+  name: string;
+}
 
 interface UserActor {
   type: ActorType.USER;
@@ -45,13 +50,27 @@ export interface IdentityActor {
   metadata: IdentityActorMetadata;
 }
 
-export interface PlatformActorMetadata {}
 export interface PlatformActor {
   type: ActorType.PLATFORM;
-  metadata: PlatformActorMetadata;
+  metadata: object;
 }
 
-export type Actor = UserActor | ServiceActor | IdentityActor | PlatformActor;
+export interface KmipClientActor {
+  type: ActorType.KMIP_CLIENT;
+  metadata: KmipClientActorMetadata;
+}
+
+export interface UnknownUserActor {
+  type: ActorType.UNKNOWN_USER;
+}
+
+export type Actor =
+  | UserActor
+  | ServiceActor
+  | IdentityActor
+  | PlatformActor
+  | UnknownUserActor
+  | KmipClientActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;

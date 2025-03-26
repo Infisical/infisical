@@ -1,25 +1,40 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { OrgMembershipRole, ProjectMembershipRole, ProjectVersion, TProjectEnvironments } from "@app/db/schemas";
+import {
+  ActionProjectType,
+  ProjectMembershipRole,
+  ProjectType,
+  ProjectVersion,
+  TProjectEnvironments
+} from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
+import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
+import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
+import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
+import { TQueueServiceFactory } from "@app/queue";
 
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
+import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
@@ -29,13 +44,17 @@ import { TOrgServiceFactory } from "../org/org-service";
 import { TPkiAlertDALFactory } from "../pki-alert/pki-alert-dal";
 import { TPkiCollectionDALFactory } from "../pki-collection/pki-collection-dal";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
+import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { getPredefinedRoles } from "../project-role/project-role-fns";
+import { TSecretDALFactory } from "../secret/secret-dal";
+import { fnDeleteProjectSecretReminders } from "../secret/secret-fns";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
 import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -53,6 +72,9 @@ import {
   TListProjectCertificateTemplatesDTO,
   TListProjectCertsDTO,
   TListProjectsDTO,
+  TListProjectSshCasDTO,
+  TListProjectSshCertificatesDTO,
+  TListProjectSshCertificateTemplatesDTO,
   TLoadProjectKmsBackupDTO,
   TToggleProjectAutoCapitalizationDTO,
   TUpdateAuditLogsRetentionDTO,
@@ -75,13 +97,17 @@ type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   projectQueue: TProjectQueueFactory;
   userDAL: TUserDALFactory;
-  folderDAL: TSecretFolderDALFactory;
+  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
+  folderDAL: Pick<TSecretFolderDALFactory, "insertMany" | "findByProjectId">;
+  secretDAL: Pick<TSecretDALFactory, "find">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany" | "find">;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   identityProjectDAL: TIdentityProjectDALFactory;
   identityProjectMembershipRoleDAL: Pick<TIdentityProjectMembershipRoleDALFactory, "create">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "create" | "findLatestProjectKey" | "delete" | "find" | "insertMany">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser" | "findOne">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser" | "findOne" | "delete">;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "delete">;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "findOne" | "transaction" | "updateById" | "create">;
   slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findById" | "findByIdWithWorkflowIntegrationDetails">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
@@ -90,13 +116,18 @@ type TProjectServiceFactoryDep = {
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
+  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "find">;
+  sshCertificateDAL: Pick<TSshCertificateDALFactory, "find" | "countSshCertificatesInProject">;
+  sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  queueService: Pick<TQueueServiceFactory, "stopRepeatableJob">;
+
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
   projectBotDAL: Pick<TProjectBotDALFactory, "create">;
-  projectRoleDAL: Pick<TProjectRoleDALFactory, "find" | "insertMany">;
+  projectRoleDAL: Pick<TProjectRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsService: Pick<
     TKmsServiceFactory,
     | "updateProjectSecretManagerKmsKey"
@@ -113,9 +144,13 @@ export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 
 export const projectServiceFactory = ({
   projectDAL,
+  secretDAL,
+  secretV2BridgeDAL,
   projectQueue,
   projectKeyDAL,
   permissionService,
+  queueService,
+  projectBotService,
   orgDAL,
   userDAL,
   folderDAL,
@@ -133,12 +168,16 @@ export const projectServiceFactory = ({
   certificateTemplateDAL,
   pkiCollectionDAL,
   pkiAlertDAL,
+  sshCertificateAuthorityDAL,
+  sshCertificateDAL,
+  sshCertificateTemplateDAL,
   keyStore,
   kmsService,
   projectBotDAL,
   projectSlackConfigDAL,
   slackIntegrationDAL,
-  projectTemplateService
+  projectTemplateService,
+  groupProjectDAL
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -149,14 +188,15 @@ export const projectServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     workspaceName,
+    workspaceDescription,
     slug: projectSlug,
     kmsKeyId,
     tx: trx,
     createDefaultEnvs = true,
-    template = InfisicalProjectTemplate.Default
+    template = InfisicalProjectTemplate.Default,
+    type = ProjectType.SecretManager
   }: TCreateProjectDTO) => {
     const organization = await orgDAL.findOne({ id: actorOrgId });
-
     const { permission, membership: orgMembership } = await permissionService.getOrgPermission(
       actor,
       actorId,
@@ -206,6 +246,8 @@ export const projectServiceFactory = ({
       const project = await projectDAL.create(
         {
           name: workspaceName,
+          type,
+          description: workspaceDescription,
           orgId: organization.id,
           slug: projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
           kmsSecretManagerKeyId: kmsKeyId,
@@ -368,20 +410,6 @@ export const projectServiceFactory = ({
           });
         }
 
-        // Get the role permission for the identity
-        const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
-          OrgMembershipRole.Member,
-          organization.id
-        );
-
-        // Identity has to be at least a member in order to create projects
-        const hasPrivilege = isAtLeastAsPrivileged(permission, rolePermission);
-        if (!hasPrivilege)
-          throw new ForbiddenRequestError({
-            message: "Failed to add identity to project with more privileged role"
-          });
-        const isCustomRole = Boolean(customRole);
-
         const identityProjectMembership = await identityProjectDAL.create(
           {
             identityId: actorId,
@@ -393,8 +421,7 @@ export const projectServiceFactory = ({
         await identityProjectMembershipRoleDAL.create(
           {
             projectMembershipId: identityProjectMembership.id,
-            role: isCustomRole ? ProjectMembershipRole.Custom : ProjectMembershipRole.Admin,
-            customRoleId: customRole?.id
+            role: ProjectMembershipRole.Admin
           },
           tx
         );
@@ -414,28 +441,56 @@ export const projectServiceFactory = ({
   const deleteProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, filter }: TDeleteProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
 
     const deletedProject = await projectDAL.transaction(async (tx) => {
+      // delete these so that project custom roles can be deleted in cascade effect
+      // direct deletion of project without these will cause fk error
+      await projectMembershipDAL.delete({ projectId: project.id }, tx);
+      await groupProjectDAL.delete({ projectId: project.id }, tx);
       const delProject = await projectDAL.deleteById(project.id, tx);
       const projectGhostUser = await projectMembershipDAL.findProjectGhostUser(project.id, tx).catch(() => null);
+      // akhilmhdh: before removing those kms checking any other project uses it
+      // happened due to project split
       if (delProject.kmsCertificateKeyId) {
-        await kmsService.deleteInternalKms(delProject.kmsCertificateKeyId, delProject.orgId, tx);
+        const projectsLinkedToForiegnKey = await projectDAL.find(
+          { kmsCertificateKeyId: delProject.kmsCertificateKeyId },
+          { tx }
+        );
+        if (!projectsLinkedToForiegnKey.length) {
+          await kmsService.deleteInternalKms(delProject.kmsCertificateKeyId, delProject.orgId, tx);
+        }
       }
+
       if (delProject.kmsSecretManagerKeyId) {
-        await kmsService.deleteInternalKms(delProject.kmsSecretManagerKeyId, delProject.orgId, tx);
+        const projectsLinkedToForiegnKey = await projectDAL.find(
+          { kmsSecretManagerKeyId: delProject.kmsSecretManagerKeyId },
+          { tx }
+        );
+        if (!projectsLinkedToForiegnKey.length) {
+          await kmsService.deleteInternalKms(delProject.kmsSecretManagerKeyId, delProject.orgId, tx);
+        }
       }
       // Delete the org membership for the ghost user if it's found.
       if (projectGhostUser) {
         await userDAL.deleteById(projectGhostUser.id, tx);
       }
+
+      await fnDeleteProjectSecretReminders(project.id, {
+        secretDAL,
+        secretV2BridgeDAL,
+        queueService,
+        projectBotService,
+        folderDAL
+      });
 
       return delProject;
     });
@@ -444,11 +499,22 @@ export const projectServiceFactory = ({
     return deletedProject;
   };
 
-  const getProjects = async ({ actorId, includeRoles, actorAuthMethod, actorOrgId }: TListProjectsDTO) => {
-    const workspaces = await projectDAL.findAllProjects(actorId);
+  const getProjects = async ({
+    actorId,
+    includeRoles,
+    actorAuthMethod,
+    actorOrgId,
+    type = ProjectType.SecretManager
+  }: TListProjectsDTO) => {
+    const workspaces = await projectDAL.findAllProjects(actorId, actorOrgId, type);
 
     if (includeRoles) {
-      const { permission } = await permissionService.getUserOrgPermission(actorId, actorOrgId, actorAuthMethod);
+      const { permission } = await permissionService.getUserOrgPermission(
+        actorId,
+        actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
 
       // `includeRoles` is specifically used by organization admins when inviting new users to the organizations to avoid looping redundant api calls.
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
@@ -478,26 +544,50 @@ export const projectServiceFactory = ({
   const getAProject = async ({ actorId, actorOrgId, actorAuthMethod, filter, actor }: TGetProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
-    await permissionService.getProjectPermission(actor, actorId, project.id, actorAuthMethod, actorOrgId);
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     return project;
   };
 
   const updateProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, update, filter }: TUpdateProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    if (update.slug) {
+      const existingProject = await projectDAL.findOne({
+        slug: update.slug,
+        orgId: actorOrgId
+      });
+      if (existingProject && existingProject.id !== project.id) {
+        throw new BadRequestError({
+          message: `Failed to update project slug. The project "${existingProject.name}" with the slug "${existingProject.slug}" already exists in your organization. Please choose a unique slug for your project.`
+        });
+      }
+    }
 
     const updatedProject = await projectDAL.updateById(project.id, {
       name: update.name,
-      autoCapitalization: update.autoCapitalization
+      description: update.description,
+      autoCapitalization: update.autoCapitalization,
+      enforceCapitalization: update.autoCapitalization,
+      slug: update.slug
     });
+
     return updatedProject;
   };
 
@@ -509,16 +599,21 @@ export const projectServiceFactory = ({
     actorAuthMethod,
     autoCapitalization
   }: TToggleProjectAutoCapitalizationDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
-    const updatedProject = await projectDAL.updateById(projectId, { autoCapitalization });
+    const updatedProject = await projectDAL.updateById(projectId, {
+      autoCapitalization,
+      enforceCapitalization: autoCapitalization
+    });
+
     return updatedProject;
   };
 
@@ -537,13 +632,14 @@ export const projectServiceFactory = ({
       });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission(
+    const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
 
     if (!hasRole(ProjectMembershipRole.Admin))
       throw new ForbiddenRequestError({
@@ -568,13 +664,14 @@ export const projectServiceFactory = ({
       });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission(
+    const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
 
     if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({
@@ -600,13 +697,14 @@ export const projectServiceFactory = ({
     actorAuthMethod,
     name
   }: TUpdateProjectNameDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
     const updatedProject = await projectDAL.updateById(projectId, { name });
@@ -621,13 +719,14 @@ export const projectServiceFactory = ({
     actorOrgId,
     userPrivateKey
   }: TUpgradeProjectDTO) => {
-    const { permission, hasRole } = await permissionService.getProjectPermission(
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
 
@@ -658,14 +757,15 @@ export const projectServiceFactory = ({
     actorOrgId,
     actorId
   }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
 
     const project = await projectDAL.findProjectById(projectId);
 
@@ -694,14 +794,23 @@ export const projectServiceFactory = ({
     actor
   }: TListProjectCasDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
+    let projectId = project.id;
+    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
+      projectId,
+      ProjectType.CertificateManager
+    );
+    if (certManagerProjectFromSplit) {
+      projectId = certManagerProjectFromSplit.id;
+    }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
@@ -710,7 +819,7 @@ export const projectServiceFactory = ({
 
     const cas = await certificateAuthorityDAL.find(
       {
-        projectId: project.id,
+        projectId,
         ...(status && { status }),
         ...(friendlyName && { friendlyName }),
         ...(commonName && { commonName })
@@ -736,18 +845,27 @@ export const projectServiceFactory = ({
     actor
   }: TListProjectCertsDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
+    let projectId = project.id;
+    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
+      projectId,
+      ProjectType.CertificateManager
+    );
+    if (certManagerProjectFromSplit) {
+      projectId = certManagerProjectFromSplit.id;
+    }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
 
-    const cas = await certificateAuthorityDAL.find({ projectId: project.id });
+    const cas = await certificateAuthorityDAL.find({ projectId });
 
     const certificates = await certificateDAL.find(
       {
@@ -761,7 +879,7 @@ export const projectServiceFactory = ({
     );
 
     const count = await certificateDAL.countCertificatesInProject({
-      projectId: project.id,
+      projectId,
       friendlyName,
       commonName
     });
@@ -776,19 +894,29 @@ export const projectServiceFactory = ({
    * Return list of (PKI) alerts configured for project
    */
   const listProjectAlerts = async ({
-    projectId,
+    projectId: preSplitProjectId,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
   }: TListProjectAlertsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    let projectId = preSplitProjectId;
+    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
+      projectId,
+      ProjectType.CertificateManager
+    );
+    if (certManagerProjectFromSplit) {
+      projectId = certManagerProjectFromSplit.id;
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
 
@@ -803,19 +931,28 @@ export const projectServiceFactory = ({
    * Return list of PKI collections for project
    */
   const listProjectPkiCollections = async ({
-    projectId,
+    projectId: preSplitProjectId,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
   }: TListProjectAlertsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    let projectId = preSplitProjectId;
+    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
+      projectId,
+      ProjectType.CertificateManager
+    );
+    if (certManagerProjectFromSplit) {
+      projectId = certManagerProjectFromSplit.id;
+    }
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
 
@@ -830,19 +967,29 @@ export const projectServiceFactory = ({
    * Return list of certificate templates for project
    */
   const listProjectCertificateTemplates = async ({
-    projectId,
+    projectId: preSplitProjectId,
     actorId,
     actorOrgId,
     actorAuthMethod,
     actor
   }: TListProjectCertificateTemplatesDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    let projectId = preSplitProjectId;
+    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
+      projectId,
+      ProjectType.CertificateManager
+    );
+    if (certManagerProjectFromSplit) {
+      projectId = certManagerProjectFromSplit.id;
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
@@ -856,6 +1003,118 @@ export const projectServiceFactory = ({
     };
   };
 
+  /**
+   * Return list of SSH CAs for project
+   */
+  const listProjectSshCas = async ({
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    actor,
+    projectId
+  }: TListProjectSshCasDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.SshCertificateAuthorities
+    );
+
+    const cas = await sshCertificateAuthorityDAL.find(
+      {
+        projectId
+      },
+      { sort: [["updatedAt", "desc"]] }
+    );
+
+    return cas;
+  };
+
+  /**
+   * Return list of SSH certificates for project
+   */
+  const listProjectSshCertificates = async ({
+    limit = 25,
+    offset = 0,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    actor,
+    projectId
+  }: TListProjectSshCertificatesDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
+
+    const cas = await sshCertificateAuthorityDAL.find({
+      projectId
+    });
+
+    const certificates = await sshCertificateDAL.find(
+      {
+        $in: {
+          sshCaId: cas.map((ca) => ca.id)
+        }
+      },
+      { offset, limit, sort: [["updatedAt", "desc"]] }
+    );
+
+    const count = await sshCertificateDAL.countSshCertificatesInProject(projectId);
+
+    return { certificates, totalCount: count };
+  };
+
+  /**
+   * Return list of SSH certificate templates for project
+   */
+  const listProjectSshCertificateTemplates = async ({
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    actor,
+    projectId
+  }: TListProjectSshCertificateTemplatesDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.SshCertificateTemplates
+    );
+
+    const cas = await sshCertificateAuthorityDAL.find({
+      projectId
+    });
+
+    const certificateTemplates = await sshCertificateTemplateDAL.find({
+      $in: {
+        sshCaId: cas.map((ca) => ca.id)
+      }
+    });
+
+    return { certificateTemplates };
+  };
+
   const updateProjectKmsKey = async ({
     projectId,
     kms,
@@ -864,13 +1123,14 @@ export const projectServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TUpdateProjectKmsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
@@ -891,13 +1151,14 @@ export const projectServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
@@ -920,13 +1181,14 @@ export const projectServiceFactory = ({
     actorOrgId,
     backup
   }: TLoadProjectKmsBackupDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
@@ -942,13 +1204,14 @@ export const projectServiceFactory = ({
   };
 
   const getProjectKmsKeys = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId }: TGetProjectKmsKey) => {
-    const { membership } = await permissionService.getProjectPermission(
+    const { membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
 
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
@@ -974,13 +1237,14 @@ export const projectServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
 
@@ -1022,13 +1286,14 @@ export const projectServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
@@ -1089,6 +1354,9 @@ export const projectServiceFactory = ({
     listProjectAlerts,
     listProjectPkiCollections,
     listProjectCertificateTemplates,
+    listProjectSshCas,
+    listProjectSshCertificates,
+    listProjectSshCertificateTemplates,
     updateVersionLimit,
     updateAuditLogsRetention,
     updateProjectKmsKey,

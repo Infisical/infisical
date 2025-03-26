@@ -5,7 +5,10 @@ import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
+import { ActorType } from "../auth/auth-type";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
+import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from "./secret-v2-bridge-types";
@@ -54,11 +57,14 @@ export const getAllSecretReferences = (maybeSecretReference: string) => {
 export const fnSecretBulkInsert = async ({
   // TODO: Pick types here
   folderId,
+  orgId,
   inputSecrets,
   secretDAL,
   secretVersionDAL,
+  resourceMetadataDAL,
   secretTagDAL,
   secretVersionTagDAL,
+  actor,
   tx
 }: TFnSecretBulkInsert) => {
   const sanitizedInputSecrets = inputSecrets.map(
@@ -87,10 +93,15 @@ export const fnSecretBulkInsert = async ({
     })
   );
 
+  const userActorId = actor && actor.type === ActorType.USER ? actor.actorId : undefined;
+  const identityActorId = actor && actor.type === ActorType.IDENTITY ? actor.actorId : undefined;
+  const actorType = actor?.type || ActorType.PLATFORM;
+
   const newSecrets = await secretDAL.insertMany(
     sanitizedInputSecrets.map((el) => ({ ...el, folderId })),
     tx
   );
+
   const newSecretGroupedByKeyName = groupBy(newSecrets, (item) => item.key);
   const newSecretTags = inputSecrets.flatMap(({ tagIds: secretTags = [], key }) =>
     secretTags.map((tag) => ({
@@ -98,14 +109,19 @@ export const fnSecretBulkInsert = async ({
       [`${TableName.SecretV2}Id` as const]: newSecretGroupedByKeyName[key][0].id
     }))
   );
+
   const secretVersions = await secretVersionDAL.insertMany(
     sanitizedInputSecrets.map((el) => ({
       ...el,
       folderId,
+      userActorId,
+      identityActorId,
+      actorType,
       secretId: newSecretGroupedByKeyName[el.key][0].id
     })),
     tx
   );
+
   await secretDAL.upsertSecretReferences(
     inputSecrets.map(({ references = [], key }) => ({
       secretId: newSecretGroupedByKeyName[key][0].id,
@@ -113,28 +129,62 @@ export const fnSecretBulkInsert = async ({
     })),
     tx
   );
+
+  await resourceMetadataDAL.insertMany(
+    inputSecrets.flatMap(({ key: secretKey, secretMetadata }) => {
+      if (secretMetadata) {
+        return secretMetadata.map(({ key, value }) => ({
+          key,
+          value,
+          secretId: newSecretGroupedByKeyName[secretKey][0].id,
+          orgId
+        }));
+      }
+      return [];
+    }),
+    tx
+  );
+
   if (newSecretTags.length) {
     const secTags = await secretTagDAL.saveTagsToSecretV2(newSecretTags, tx);
     const secVersionsGroupBySecId = groupBy(secretVersions, (i) => i.secretId);
+
     const newSecretVersionTags = secTags.flatMap(({ secrets_v2Id, secret_tagsId }) => ({
       [`${TableName.SecretVersionV2}Id` as const]: secVersionsGroupBySecId[secrets_v2Id][0].id,
       [`${TableName.SecretTag}Id` as const]: secret_tagsId
     }));
+
     await secretVersionTagDAL.insertMany(newSecretVersionTags, tx);
   }
 
-  return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
+  const secretsWithTags = await secretDAL.find(
+    {
+      $in: {
+        [`${TableName.SecretV2}.id` as "id"]: newSecrets.map((s) => s.id)
+      }
+    },
+    { tx }
+  );
+
+  return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
 };
 
 export const fnSecretBulkUpdate = async ({
   tx,
   inputSecrets,
   folderId,
+  orgId,
   secretDAL,
   secretVersionDAL,
   secretTagDAL,
-  secretVersionTagDAL
+  secretVersionTagDAL,
+  resourceMetadataDAL,
+  actor
 }: TFnSecretBulkUpdate) => {
+  const userActorId = actor && actor?.type === ActorType.USER ? actor?.actorId : undefined;
+  const identityActorId = actor && actor?.type === ActorType.IDENTITY ? actor?.actorId : undefined;
+  const actorType = actor?.type || ActorType.PLATFORM;
+
   const sanitizedInputSecrets = inputSecrets.map(
     ({
       filter,
@@ -192,7 +242,10 @@ export const fnSecretBulkUpdate = async ({
         encryptedValue,
         reminderRepeatDays,
         folderId,
-        secretId
+        secretId,
+        userActorId,
+        identityActorId,
+        actorType
       })
     ),
     tx
@@ -231,7 +284,43 @@ export const fnSecretBulkUpdate = async ({
     }
   }
 
-  return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
+  const inputSecretIdsWithMetadata = inputSecrets
+    .filter((sec) => Boolean(sec.data.secretMetadata))
+    .map((sec) => sec.filter.id);
+
+  await resourceMetadataDAL.delete(
+    {
+      $in: {
+        secretId: inputSecretIdsWithMetadata
+      }
+    },
+    tx
+  );
+
+  await resourceMetadataDAL.insertMany(
+    inputSecrets.flatMap(({ filter: { id }, data: { secretMetadata } }) => {
+      if (secretMetadata) {
+        return secretMetadata.map(({ key, value }) => ({
+          key,
+          value,
+          secretId: id,
+          orgId
+        }));
+      }
+      return [];
+    }),
+    tx
+  );
+
+  const secretsWithTags = await secretDAL.find(
+    {
+      $in: {
+        [`${TableName.SecretV2}.id` as "id"]: newSecrets.map((s) => s.id)
+      }
+    },
+    { tx }
+  );
+  return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
 };
 
 export const fnSecretBulkDelete = async ({
@@ -365,9 +454,8 @@ export const recursivelyGetSecretPaths = async ({
     folderId: p.folderId
   }));
 
-  const pathsInCurrentDirectory = paths.filter((folder) =>
-    folder.path.startsWith(currentPath === "/" ? "" : currentPath)
-  );
+  // path relative will start with ../ if its outside directory
+  const pathsInCurrentDirectory = paths.filter((folder) => !path.relative(currentPath, folder.path).startsWith(".."));
 
   return pathsInCurrentDirectory;
 };
@@ -465,7 +553,7 @@ export const expandSecretReferencesFactory = ({
             const referredValue = await fetchSecret(environment, secretPath, secretKey);
             if (!canExpandValue(environment, secretPath, secretKey, referredValue.tags))
               throw new ForbiddenRequestError({
-                message: `You are attempting to reference secret named ${secretKey} from environment ${environment} in path ${secretPath} which you do not have access to.`
+                message: `You are attempting to reference secret named ${secretKey} from environment ${environment} in path ${secretPath} which you do not have access to read value on.`
               });
 
             const cacheKey = getCacheUniqueKey(environment, secretPath);
@@ -484,7 +572,7 @@ export const expandSecretReferencesFactory = ({
             const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
             if (!canExpandValue(secretReferenceEnvironment, secretReferencePath, secretReferenceKey, referedValue.tags))
               throw new ForbiddenRequestError({
-                message: `You are attempting to reference secret named ${secretReferenceKey} from environment ${secretReferenceEnvironment} in path ${secretReferencePath} which you do not have access to.`
+                message: `You are attempting to reference secret named ${secretReferenceKey} from environment ${secretReferenceEnvironment} in path ${secretReferencePath} which you do not have access to read value on.`
               });
 
             const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
@@ -565,30 +653,56 @@ export const reshapeBridgeSecret = (
   secret: Omit<TSecretsV2, "encryptedValue" | "encryptedComment"> & {
     value: string;
     comment: string;
+    userActorName?: string | null;
+    identityActorName?: string | null;
+    userActorId?: string | null;
+    identityActorId?: string | null;
+    membershipId?: string | null;
+    actorType?: string | null;
     tags?: {
       id: string;
       slug: string;
       color?: string | null;
       name: string;
     }[];
-  }
+    secretMetadata?: ResourceMetadataDTO;
+  },
+  secretValueHidden: boolean
 ) => ({
   secretKey: secret.key,
   secretPath,
   workspace: workspaceId,
   environment,
-  secretValue: secret.value || "",
   secretComment: secret.comment || "",
   version: secret.version,
   type: secret.type,
   _id: secret.id,
   id: secret.id,
   user: secret.userId,
+  actor: secret.actorType
+    ? {
+        actorType: secret.actorType,
+        actorId: secret.userActorId || secret.identityActorId,
+        name: secret.identityActorName || secret.userActorName,
+        membershipId: secret.membershipId
+      }
+    : undefined,
   tags: secret.tags,
   skipMultilineEncoding: secret.skipMultilineEncoding,
   secretReminderRepeatDays: secret.reminderRepeatDays,
   secretReminderNote: secret.reminderNote,
   metadata: secret.metadata,
+  secretMetadata: secret.secretMetadata,
   createdAt: secret.createdAt,
-  updatedAt: secret.updatedAt
+  updatedAt: secret.updatedAt,
+
+  ...(secretValueHidden
+    ? {
+        secretValue: INFISICAL_SECRET_VALUE_HIDDEN_MASK,
+        secretValueHidden: true
+      }
+    : {
+        secretValue: secret.value || "",
+        secretValueHidden: false
+      })
 });

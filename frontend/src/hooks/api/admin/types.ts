@@ -22,6 +22,8 @@ export type TServerConfig = {
   defaultAuthOrgAuthMethod?: string | null;
   defaultAuthOrgAuthEnforced?: boolean | null;
   enabledLoginMethods: LoginMethod[];
+  authConsentContent?: string;
+  pageFrameContent?: string;
 };
 
 export type TCreateAdminUserDTO = {
@@ -46,6 +48,12 @@ export type TUpdateAdminSlackConfigDTO = {
 };
 
 export type AdminGetUsersFilters = {
+  limit: number;
+  searchTerm: string;
+  adminsOnly: boolean;
+};
+
+export type AdminGetIdentitiesFilters = {
   limit: number;
   searchTerm: string;
 };

@@ -20,7 +20,7 @@ func GetAllFolders(params models.GetAllFoldersParameters) ([]models.SingleFolder
 
 		log.Debug().Msg("GetAllFolders: Trying to fetch folders using logged in details")
 
-		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := GetCurrentLoggedInUserDetails(true)
 		if err != nil {
 			return nil, err
 		}
@@ -177,7 +177,7 @@ func CreateFolder(params models.CreateFolderParameters) (models.SingleFolder, er
 	if params.InfisicalToken == "" {
 		RequireLogin()
 		RequireLocalWorkspaceFile()
-		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := GetCurrentLoggedInUserDetails(true)
 
 		if err != nil {
 			return models.SingleFolder{}, err
@@ -224,7 +224,7 @@ func DeleteFolder(params models.DeleteFolderParameters) ([]models.SingleFolder, 
 		RequireLogin()
 		RequireLocalWorkspaceFile()
 
-		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := GetCurrentLoggedInUserDetails(true)
 
 		if err != nil {
 			return nil, err

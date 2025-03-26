@@ -85,6 +85,10 @@
             "documentation/guides/microsoft-power-apps",
             "documentation/guides/organization-structure"
           ]
+        },
+        {
+          "group": "Setup",
+          "pages": ["documentation/setup/networking"]
         }
       ]
     },
@@ -114,12 +118,14 @@
             "documentation/platform/pki/alerting"
           ]
         },
+        "documentation/platform/ssh",
         {
           "group": "Key Management (KMS)",
           "pages": [
             "documentation/platform/kms/overview",
             "documentation/platform/kms/hsm-integration",
-            "documentation/platform/kms/kubernetes-encryption"
+            "documentation/platform/kms/kubernetes-encryption",
+            "documentation/platform/kms/kmip"
           ]
         },
         {
@@ -127,7 +133,8 @@
           "pages": [
             "documentation/platform/kms-configuration/overview",
             "documentation/platform/kms-configuration/aws-kms",
-            "documentation/platform/kms-configuration/aws-hsm"
+            "documentation/platform/kms-configuration/aws-hsm",
+            "documentation/platform/kms-configuration/gcp-kms"
           ]
         },
         {
@@ -143,7 +150,14 @@
           "pages": [
             "documentation/platform/access-controls/overview",
             "documentation/platform/access-controls/role-based-access-controls",
-            "documentation/platform/access-controls/attribute-based-access-controls",
+            {
+              "group": "Attribute based access controls",
+              "pages": [
+                "documentation/platform/access-controls/abac/overview",
+                "documentation/platform/access-controls/abac/managing-user-metadata",
+                "documentation/platform/access-controls/abac/managing-machine-identity-attributes"
+              ]
+            },
             "documentation/platform/access-controls/additional-privileges",
             "documentation/platform/access-controls/temporary-access",
             "documentation/platform/access-controls/access-requests",
@@ -188,9 +202,15 @@
             "documentation/platform/dynamic-secrets/mongo-db",
             "documentation/platform/dynamic-secrets/azure-entra-id",
             "documentation/platform/dynamic-secrets/ldap",
+            "documentation/platform/dynamic-secrets/sap-ase",
             "documentation/platform/dynamic-secrets/sap-hana",
-            "documentation/platform/dynamic-secrets/snowflake"
+            "documentation/platform/dynamic-secrets/snowflake",
+            "documentation/platform/dynamic-secrets/totp"
           ]
+        },
+        {
+          "group": "Gateway",
+          "pages": ["documentation/platform/gateways/overview", "documentation/platform/gateways/gateway-security"]
         },
         "documentation/platform/project-templates",
         {
@@ -207,7 +227,8 @@
             "documentation/platform/admin-panel/org-admin-console"
           ]
         },
-        "documentation/platform/secret-sharing"
+        "documentation/platform/secret-sharing",
+        "documentation/platform/secret-scanning"
       ]
     },
     {
@@ -221,12 +242,15 @@
         "documentation/platform/identities/gcp-auth",
         "documentation/platform/identities/azure-auth",
         "documentation/platform/identities/aws-auth",
+        "documentation/platform/identities/jwt-auth",
         {
           "group": "OIDC Auth",
           "pages": [
             "documentation/platform/identities/oidc-auth/general",
             "documentation/platform/identities/oidc-auth/github",
-            "documentation/platform/identities/oidc-auth/circleci"
+            "documentation/platform/identities/oidc-auth/circleci",
+            "documentation/platform/identities/oidc-auth/gitlab",
+            "documentation/platform/identities/oidc-auth/terraform-cloud"
           ]
         },
         "documentation/platform/mfa",
@@ -242,7 +266,14 @@
             "documentation/platform/sso/jumpcloud",
             "documentation/platform/sso/keycloak-saml",
             "documentation/platform/sso/google-saml",
-            "documentation/platform/sso/keycloak-oidc",
+            "documentation/platform/sso/auth0-saml",
+            {
+              "group": "Keycloak OIDC",
+              "pages": [
+                "documentation/platform/sso/keycloak-oidc/overview",
+                "documentation/platform/sso/keycloak-oidc/group-membership-mapping"
+              ]
+            },
             "documentation/platform/sso/auth0-oidc",
             "documentation/platform/sso/general-oidc"
           ]
@@ -272,7 +303,7 @@
       "pages": [
         "self-hosting/overview",
         {
-          "group": "Containerized installation methods",
+          "group": "Installation methods",
           "pages": [
             "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/docker-swarm",
@@ -280,19 +311,24 @@
             "self-hosting/deployment-options/kubernetes-helm"
           ]
         },
+        "self-hosting/guides/upgrading-infisical",
         "self-hosting/configuration/envars",
         "self-hosting/configuration/requirements",
         {
           "group": "Guides",
           "pages": [
-            "self-hosting/configuration/schema-migrations",
             "self-hosting/guides/mongo-to-postgres",
-            "self-hosting/guides/custom-certificates"
+            "self-hosting/guides/custom-certificates",
+            "self-hosting/guides/automated-bootstrapping"
           ]
         },
         {
           "group": "Reference architectures",
-          "pages": ["self-hosting/reference-architectures/aws-ecs"]
+          "pages": [
+            "self-hosting/reference-architectures/aws-ecs",
+            "self-hosting/reference-architectures/linux-deployment-ha",
+            "self-hosting/reference-architectures/on-prem-k8s-ha"
+          ]
         },
         "self-hosting/ee",
         "self-hosting/faq"
@@ -310,6 +346,10 @@
             "cli/commands/init",
             "cli/commands/run",
             "cli/commands/secrets",
+            "cli/commands/dynamic-secrets",
+            "cli/commands/ssh",
+            "cli/commands/gateway",
+            "cli/commands/bootstrap",
             "cli/commands/export",
             "cli/commands/token",
             "cli/commands/service-token",
@@ -337,7 +377,16 @@
         {
           "group": "Container orchestrators",
           "pages": [
-            "integrations/platforms/kubernetes",
+            {
+              "group": "Kubernetes",
+              "pages": [
+                "integrations/platforms/kubernetes/overview",
+                "integrations/platforms/kubernetes/infisical-secret-crd",
+                "integrations/platforms/kubernetes/infisical-push-secret-crd",
+                "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
+              ]
+            },
+            "integrations/platforms/kubernetes-csi",
             "integrations/platforms/docker-swarm-with-agent",
             "integrations/platforms/ecs-with-agent"
           ]
@@ -353,7 +402,45 @@
           ]
         },
         "integrations/frameworks/terraform",
-        "integrations/platforms/ansible"
+        "integrations/platforms/ansible",
+        "integrations/platforms/apache-airflow"
+      ]
+    },
+    {
+      "group": "App Connections",
+      "pages": [
+        "integrations/app-connections/overview",
+        {
+          "group": "Connections",
+          "pages": [
+            "integrations/app-connections/aws",
+            "integrations/app-connections/azure-app-configuration",
+            "integrations/app-connections/azure-key-vault",
+            "integrations/app-connections/databricks",
+            "integrations/app-connections/gcp",
+            "integrations/app-connections/github",
+            "integrations/app-connections/humanitec"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Secret Syncs",
+      "pages": [
+        "integrations/secret-syncs/overview",
+        {
+          "group": "Syncs",
+          "pages": [
+            "integrations/secret-syncs/aws-parameter-store",
+            "integrations/secret-syncs/aws-secrets-manager",
+            "integrations/secret-syncs/azure-app-configuration",
+            "integrations/secret-syncs/azure-key-vault",
+            "integrations/secret-syncs/databricks",
+            "integrations/secret-syncs/gcp-secret-manager",
+            "integrations/secret-syncs/github",
+            "integrations/secret-syncs/humanitec"
+          ]
+        }
       ]
     },
     {
@@ -417,7 +504,8 @@
             "integrations/cicd/travisci",
             "integrations/cicd/rundeck",
             "integrations/cicd/codefresh",
-            "integrations/cloud/checkly"
+            "integrations/cloud/checkly",
+            "integrations/cicd/octopus-deploy"
           ]
         }
       ]
@@ -445,7 +533,8 @@
             "integrations/frameworks/laravel",
             "integrations/frameworks/rails",
             "integrations/frameworks/dotnet",
-            "integrations/platforms/pm2"
+            "integrations/platforms/pm2",
+            "integrations/frameworks/ab-initio"
           ]
         }
       ]
@@ -463,9 +552,9 @@
       "pages": [
         "sdks/languages/node",
         "sdks/languages/python",
+        "sdks/languages/java",
         "sdks/languages/go",
         "sdks/languages/ruby",
-        "sdks/languages/java",
         "sdks/languages/csharp"
       ]
     },
@@ -570,6 +659,16 @@
             "api-reference/endpoints/oidc-auth/retrieve",
             "api-reference/endpoints/oidc-auth/update",
             "api-reference/endpoints/oidc-auth/revoke"
+          ]
+        },
+        {
+          "group": "JWT Auth",
+          "pages": [
+            "api-reference/endpoints/jwt-auth/login",
+            "api-reference/endpoints/jwt-auth/attach",
+            "api-reference/endpoints/jwt-auth/retrieve",
+            "api-reference/endpoints/jwt-auth/update",
+            "api-reference/endpoints/jwt-auth/revoke"
           ]
         },
         {
@@ -736,6 +835,213 @@
           ]
         },
         {
+          "group": "App Connections",
+          "pages": [
+            "api-reference/endpoints/app-connections/list",
+            "api-reference/endpoints/app-connections/options",
+            {
+              "group": "AWS",
+              "pages": [
+                "api-reference/endpoints/app-connections/aws/list",
+                "api-reference/endpoints/app-connections/aws/available",
+                "api-reference/endpoints/app-connections/aws/get-by-id",
+                "api-reference/endpoints/app-connections/aws/get-by-name",
+                "api-reference/endpoints/app-connections/aws/create",
+                "api-reference/endpoints/app-connections/aws/update",
+                "api-reference/endpoints/app-connections/aws/delete"
+              ]
+            },
+            {
+              "group": "Azure App Configuration",
+              "pages": [
+                "api-reference/endpoints/app-connections/azure-app-configuration/list",
+                "api-reference/endpoints/app-connections/azure-app-configuration/available",
+                "api-reference/endpoints/app-connections/azure-app-configuration/get-by-id",
+                "api-reference/endpoints/app-connections/azure-app-configuration/get-by-name",
+                "api-reference/endpoints/app-connections/azure-app-configuration/create",
+                "api-reference/endpoints/app-connections/azure-app-configuration/update",
+                "api-reference/endpoints/app-connections/azure-app-configuration/delete"
+              ]
+            },
+            {
+              "group": "Azure Key Vault",
+              "pages": [
+                "api-reference/endpoints/app-connections/azure-key-vault/list",
+                "api-reference/endpoints/app-connections/azure-key-vault/available",
+                "api-reference/endpoints/app-connections/azure-key-vault/get-by-id",
+                "api-reference/endpoints/app-connections/azure-key-vault/get-by-name",
+                "api-reference/endpoints/app-connections/azure-key-vault/create",
+                "api-reference/endpoints/app-connections/azure-key-vault/update",
+                "api-reference/endpoints/app-connections/azure-key-vault/delete"
+              ]
+            },
+            {
+              "group": "Databricks",
+              "pages": [
+                "api-reference/endpoints/app-connections/databricks/list",
+                "api-reference/endpoints/app-connections/databricks/available",
+                "api-reference/endpoints/app-connections/databricks/get-by-id",
+                "api-reference/endpoints/app-connections/databricks/get-by-name",
+                "api-reference/endpoints/app-connections/databricks/create",
+                "api-reference/endpoints/app-connections/databricks/update",
+                "api-reference/endpoints/app-connections/databricks/delete"
+              ]
+            },
+            {
+              "group": "GCP",
+              "pages": [
+                "api-reference/endpoints/app-connections/gcp/list",
+                "api-reference/endpoints/app-connections/gcp/available",
+                "api-reference/endpoints/app-connections/gcp/get-by-id",
+                "api-reference/endpoints/app-connections/gcp/get-by-name",
+                "api-reference/endpoints/app-connections/gcp/create",
+                "api-reference/endpoints/app-connections/gcp/update",
+                "api-reference/endpoints/app-connections/gcp/delete"
+              ]
+            },
+            {
+              "group": "GitHub",
+              "pages": [
+                "api-reference/endpoints/app-connections/github/list",
+                "api-reference/endpoints/app-connections/github/available",
+                "api-reference/endpoints/app-connections/github/get-by-id",
+                "api-reference/endpoints/app-connections/github/get-by-name",
+                "api-reference/endpoints/app-connections/github/create",
+                "api-reference/endpoints/app-connections/github/update",
+                "api-reference/endpoints/app-connections/github/delete"
+              ]
+            },
+            {
+              "group": "Humanitec",
+              "pages": [
+                "api-reference/endpoints/app-connections/humanitec/list",
+                "api-reference/endpoints/app-connections/humanitec/available",
+                "api-reference/endpoints/app-connections/humanitec/get-by-id",
+                "api-reference/endpoints/app-connections/humanitec/get-by-name",
+                "api-reference/endpoints/app-connections/humanitec/create",
+                "api-reference/endpoints/app-connections/humanitec/update",
+                "api-reference/endpoints/app-connections/humanitec/delete"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "Secret Syncs",
+          "pages": [
+            "api-reference/endpoints/secret-syncs/list",
+            "api-reference/endpoints/secret-syncs/options",
+            {
+              "group": "AWS Parameter Store",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/list",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/get-by-id",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/get-by-name",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/create",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/update",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/delete",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/sync-secrets",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/import-secrets",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/remove-secrets"
+              ]
+            },
+            {
+              "group": "AWS Secrets Manager",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/list",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/get-by-id",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/get-by-name",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/create",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/update",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/delete",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/sync-secrets",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/import-secrets",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/remove-secrets"
+              ]
+            },
+            {
+              "group": "Azure App Configuration",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/list",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/get-by-id",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/get-by-name",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/create",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/update",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/delete",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/sync-secrets",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/import-secrets",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/remove-secrets"
+              ]
+            },
+            {
+              "group": "Azure Key Vault",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/azure-key-vault/list",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/get-by-id",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/get-by-name",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/create",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/update",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/delete",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/sync-secrets",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/import-secrets",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/remove-secrets"
+              ]
+            },
+            {
+              "group": "Databricks",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/databricks/list",
+                "api-reference/endpoints/secret-syncs/databricks/get-by-id",
+                "api-reference/endpoints/secret-syncs/databricks/get-by-name",
+                "api-reference/endpoints/secret-syncs/databricks/create",
+                "api-reference/endpoints/secret-syncs/databricks/update",
+                "api-reference/endpoints/secret-syncs/databricks/delete",
+                "api-reference/endpoints/secret-syncs/databricks/sync-secrets",
+                "api-reference/endpoints/secret-syncs/databricks/remove-secrets"
+              ]
+            },
+            {
+              "group": "GCP Secret Manager",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/list",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/get-by-id",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/get-by-name",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/create",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/update",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/delete",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/sync-secrets",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/import-secrets",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/remove-secrets"
+              ]
+            },
+            {
+              "group": "GitHub",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/github/list",
+                "api-reference/endpoints/secret-syncs/github/get-by-id",
+                "api-reference/endpoints/secret-syncs/github/get-by-name",
+                "api-reference/endpoints/secret-syncs/github/create",
+                "api-reference/endpoints/secret-syncs/github/update",
+                "api-reference/endpoints/secret-syncs/github/delete",
+                "api-reference/endpoints/secret-syncs/github/sync-secrets",
+                "api-reference/endpoints/secret-syncs/github/remove-secrets"
+              ]
+            },
+            {
+              "group": "Humanitec",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/humanitec/list",
+                "api-reference/endpoints/secret-syncs/humanitec/get-by-id",
+                "api-reference/endpoints/secret-syncs/humanitec/get-by-name",
+                "api-reference/endpoints/secret-syncs/humanitec/create",
+                "api-reference/endpoints/secret-syncs/humanitec/update",
+                "api-reference/endpoints/secret-syncs/humanitec/delete",
+                "api-reference/endpoints/secret-syncs/humanitec/sync-secrets",
+                "api-reference/endpoints/secret-syncs/humanitec/remove-secrets"
+              ]
+            }
+          ]
+        },
+        {
           "group": "Integrations",
           "pages": [
             "api-reference/endpoints/integrations/create-auth",
@@ -826,12 +1132,48 @@
       ]
     },
     {
+      "group": "Infisical SSH",
+      "pages": [
+        {
+          "group": "Certificates",
+          "pages": [
+            "api-reference/endpoints/ssh/certificates/issue-credentials",
+            "api-reference/endpoints/ssh/certificates/sign-key"
+          ]
+        },
+        {
+          "group": "Certificate Authorities",
+          "pages": [
+            "api-reference/endpoints/ssh/ca/list",
+            "api-reference/endpoints/ssh/ca/create",
+            "api-reference/endpoints/ssh/ca/read",
+            "api-reference/endpoints/ssh/ca/update",
+            "api-reference/endpoints/ssh/ca/delete",
+            "api-reference/endpoints/ssh/ca/public-key",
+            "api-reference/endpoints/ssh/ca/list-certificate-templates"
+          ]
+        },
+        {
+          "group": "Certificate Templates",
+          "pages": [
+            "api-reference/endpoints/ssh/certificate-templates/list",
+            "api-reference/endpoints/ssh/certificate-templates/create",
+            "api-reference/endpoints/ssh/certificate-templates/read",
+            "api-reference/endpoints/ssh/certificate-templates/update",
+            "api-reference/endpoints/ssh/certificate-templates/delete"
+          ]
+        }
+      ]
+    },
+    {
       "group": "Infisical KMS",
       "pages": [
         {
           "group": "Keys",
           "pages": [
             "api-reference/endpoints/kms/keys/list",
+            "api-reference/endpoints/kms/keys/get-by-id",
+            "api-reference/endpoints/kms/keys/get-by-name",
             "api-reference/endpoints/kms/keys/create",
             "api-reference/endpoints/kms/keys/update",
             "api-reference/endpoints/kms/keys/delete",
@@ -847,7 +1189,6 @@
         "internals/overview",
         "internals/permissions",
         "internals/components",
-        "internals/flows",
         "internals/security",
         "internals/service-tokens"
       ]
@@ -883,9 +1224,6 @@
       ]
     }
   ],
-  "integrations": {
-    "intercom": "hsg644ru"
-  },
   "analytics": {
     "koala": {
       "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"
@@ -902,13 +1240,22 @@
       {
         "title": "PRODUCT",
         "links": [
-          { "label": "Secret Management", "url": "https://infisical.com/" },
-          { "label": "Secret Scanning", "url": "https://infisical.com/radar" },
+          {
+            "label": "Secret Management",
+            "url": "https://infisical.com/"
+          },
+          {
+            "label": "Secret Scanning",
+            "url": "https://infisical.com/radar"
+          },
           {
             "label": "Share Secrets",
             "url": "https://app.infisical.com/share-secret"
           },
-          { "label": "Pricing", "url": "https://infisical.com/pricing" },
+          {
+            "label": "Pricing",
+            "url": "https://infisical.com/pricing"
+          },
           {
             "label": "Security",
             "url": "https://infisical.com/docs/internals/security"

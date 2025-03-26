@@ -26,7 +26,8 @@ export const UsersSchema = z.object({
   consecutiveFailedMfaAttempts: z.number().default(0).nullable().optional(),
   isLocked: z.boolean().default(false).nullable().optional(),
   temporaryLockDateEnd: z.date().nullable().optional(),
-  consecutiveFailedPasswordAttempts: z.number().default(0).nullable().optional()
+  consecutiveFailedPasswordAttempts: z.number().default(0).nullable().optional(),
+  selectedMfaMethod: z.string().nullable().optional()
 });
 
 export type TUsers = z.infer<typeof UsersSchema>;

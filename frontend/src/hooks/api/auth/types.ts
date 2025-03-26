@@ -1,6 +1,12 @@
 export type GetAuthTokenAPI = {
   token: string;
+  organizationId?: string;
 };
+
+export enum UserEncryptionVersion {
+  V1 = 1,
+  V2 = 2
+}
 
 export type SendMfaTokenDTO = {
   email: string;
@@ -9,6 +15,7 @@ export type SendMfaTokenDTO = {
 export type VerifyMfaTokenDTO = {
   email: string;
   mfaCode: string;
+  mfaMethod: MfaMethod;
 };
 
 export type VerifyMfaTokenRes = {
@@ -131,6 +138,30 @@ export type ResetPasswordDTO = {
   salt: string;
   verifier: string;
   verificationToken: string;
+  password: string;
+};
+
+export type ResetPasswordV2DTO = {
+  newPassword: string;
+  verificationToken: string;
+};
+
+export type ResetUserPasswordV2DTO = {
+  oldPassword: string;
+  newPassword: string;
+};
+
+export type SetupPasswordDTO = {
+  protectedKey: string;
+  protectedKeyIV: string;
+  protectedKeyTag: string;
+  encryptedPrivateKey: string;
+  encryptedPrivateKeyIV: string;
+  encryptedPrivateKeyTag: string;
+  salt: string;
+  verifier: string;
+  token: string;
+  password: string;
 };
 
 export type IssueBackupPrivateKeyDTO = {
@@ -148,4 +179,9 @@ export type GetBackupEncryptedPrivateKeyDTO = {
 
 export enum UserAgentType {
   CLI = "cli"
+}
+
+export enum MfaMethod {
+  EMAIL = "email",
+  TOTP = "totp"
 }

@@ -1,4 +1,3 @@
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
@@ -6,12 +5,17 @@ import {
   CertificatesSchema,
   PkiAlertsSchema,
   PkiCollectionsSchema,
-  ProjectKeysSchema
+  ProjectKeysSchema,
+  ProjectType
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
+import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-schema";
+import { sanitizedSshCertificate } from "@app/ee/services/ssh-certificate/ssh-certificate-schema";
+import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-schema";
 import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -26,14 +30,6 @@ const projectWithEnv = SanitizedProjectSchema.extend({
   _id: z.string(),
   environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
 });
-
-const slugSchema = z
-  .string()
-  .min(5)
-  .max(36)
-  .refine((v) => slugify(v) === v, {
-    message: "Slug must be at least 5 character but no more than 36"
-  });
 
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
   /* Get project key */
@@ -161,24 +157,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       ],
       body: z.object({
         projectName: z.string().trim().describe(PROJECTS.CREATE.projectName),
-        slug: z
-          .string()
-          .min(5)
-          .max(36)
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid slug"
-          })
-          .optional()
-          .describe(PROJECTS.CREATE.slug),
+        projectDescription: z.string().trim().optional().describe(PROJECTS.CREATE.projectDescription),
+        slug: slugSchema({ min: 5, max: 36 }).optional().describe(PROJECTS.CREATE.slug),
         kmsKeyId: z.string().optional(),
-        template: z
-          .string()
-          .refine((v) => slugify(v) === v, {
-            message: "Template name must be in slug format"
-          })
+        template: slugSchema({ field: "Template Name", max: 64 })
           .optional()
           .default(InfisicalProjectTemplate.Default)
-          .describe(PROJECTS.CREATE.template)
+          .describe(PROJECTS.CREATE.template),
+        type: z.nativeEnum(ProjectType).default(ProjectType.SecretManager)
       }),
       response: {
         200: z.object({
@@ -194,9 +180,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         workspaceName: req.body.projectName,
+        workspaceDescription: req.body.projectDescription,
         slug: req.body.slug,
         kmsKeyId: req.body.kmsKeyId,
-        template: req.body.template
+        template: req.body.template,
+        type: req.body.type
       });
 
       await server.services.telemetry.sendPostHogEvents({
@@ -242,7 +230,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        slug: slugSchema.describe("The slug of the project to delete.")
+        slug: slugSchema({ min: 5, max: 36 }).describe("The slug of the project to delete.")
       }),
       response: {
         200: SanitizedProjectSchema
@@ -276,7 +264,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        slug: slugSchema.describe("The slug of the project to get.")
+        slug: slugSchema({ min: 5, max: 36 }).describe("The slug of the project to get.")
       }),
       response: {
         200: projectWithEnv
@@ -309,11 +297,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        slug: slugSchema.describe("The slug of the project to update.")
+        slug: slugSchema({ min: 5, max: 36 }).describe("The slug of the project to update.")
       }),
       body: z.object({
-        name: z.string().trim().optional().describe("The new name of the project."),
-        autoCapitalization: z.boolean().optional().describe("The new auto-capitalization setting.")
+        name: z.string().trim().optional().describe(PROJECTS.UPDATE.name),
+        description: z.string().trim().optional().describe(PROJECTS.UPDATE.projectDescription),
+        autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization)
       }),
       response: {
         200: SanitizedProjectSchema
@@ -330,6 +319,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         },
         update: {
           name: req.body.name,
+          description: req.body.description,
           autoCapitalization: req.body.autoCapitalization
         },
         actorId: req.permission.id,
@@ -350,7 +340,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        slug: slugSchema.describe(PROJECTS.LIST_CAS.slug)
+        slug: slugSchema({ min: 5, max: 36 }).describe(PROJECTS.LIST_CAS.slug)
       }),
       querystring: z.object({
         status: z.enum([CaStatus.ACTIVE, CaStatus.PENDING_CERTIFICATE]).optional().describe(PROJECTS.LIST_CAS.status),
@@ -391,7 +381,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        slug: slugSchema.describe(PROJECTS.LIST_CERTIFICATES.slug)
+        slug: slugSchema({ min: 5, max: 36 }).describe(PROJECTS.LIST_CERTIFICATES.slug)
       }),
       querystring: z.object({
         friendlyName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.friendlyName),
@@ -511,6 +501,103 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return { certificateTemplates };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/ssh-certificates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CAS.projectId)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().default(0).describe(PROJECTS.LIST_SSH_CERTIFICATES.offset),
+        limit: z.coerce.number().default(25).describe(PROJECTS.LIST_SSH_CERTIFICATES.limit)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(sanitizedSshCertificate),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificates, totalCount } = await server.services.project.listProjectSshCertificates({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId,
+        offset: req.query.offset,
+        limit: req.query.limit
+      });
+
+      return { certificates, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/ssh-certificate-templates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CERTIFICATE_TEMPLATES.projectId)
+      }),
+      response: {
+        200: z.object({
+          certificateTemplates: z.array(sanitizedSshCertificateTemplate)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificateTemplates } = await server.services.project.listProjectSshCertificateTemplates({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId
+      });
+
+      return { certificateTemplates };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/ssh-cas",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CAS.projectId)
+      }),
+      response: {
+        200: z.object({
+          cas: z.array(sanitizedSshCa)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const cas = await server.services.project.listProjectSshCas({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId
+      });
+
+      return { cas };
     }
   });
 };

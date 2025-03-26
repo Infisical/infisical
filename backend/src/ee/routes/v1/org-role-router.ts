@@ -1,8 +1,8 @@
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { OrgMembershipRole, OrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -18,19 +18,13 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         organizationId: z.string().trim()
       }),
       body: z.object({
-        slug: z
-          .string()
-          .min(1)
-          .trim()
-          .refine(
-            (val) => !Object.values(OrgMembershipRole).includes(val as OrgMembershipRole),
-            "Please choose a different slug, the slug you have entered is reserved"
-          )
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid"
-          }),
+        slug: slugSchema({ min: 1, max: 64 }).refine(
+          (val) => !Object.values(OrgMembershipRole).includes(val as OrgMembershipRole),
+          "Please choose a different slug, the slug you have entered is reserved"
+        ),
         name: z.string().trim(),
-        description: z.string().trim().optional(),
+        description: z.string().trim().nullish(),
+        // TODO(scott): once UI refactored permissions: OrgPermissionSchema.array()
         permissions: z.any().array()
       }),
       response: {
@@ -94,19 +88,16 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         roleId: z.string().trim()
       }),
       body: z.object({
-        slug: z
-          .string()
-          .trim()
-          .optional()
+        // TODO: Switch to slugSchema after verifying correct methods with Akhil - Omar 11/24
+        slug: slugSchema({ min: 1, max: 64 })
           .refine(
-            (val) => typeof val !== "undefined" && !Object.keys(OrgMembershipRole).includes(val),
+            (val) => !Object.keys(OrgMembershipRole).includes(val),
             "Please choose a different slug, the slug you have entered is reserved."
           )
-          .refine((val) => typeof val === "undefined" || slugify(val) === val, {
-            message: "Slug must be a valid"
-          }),
+          .optional(),
         name: z.string().trim().optional(),
-        description: z.string().trim().optional(),
+        description: z.string().trim().nullish(),
+        // TODO(scott): once UI refactored permissions: OrgPermissionSchema.array().optional()
         permissions: z.any().array().optional()
       }),
       response: {

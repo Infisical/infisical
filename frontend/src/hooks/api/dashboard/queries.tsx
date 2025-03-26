@@ -1,10 +1,9 @@
 import { useCallback } from "react";
 import { useQuery, UseQueryOptions } from "@tanstack/react-query";
-import axios from "axios";
 
-import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import {
+  DashboardProjectSecretsByKeys,
   DashboardProjectSecretsDetails,
   DashboardProjectSecretsDetailsResponse,
   DashboardProjectSecretsOverview,
@@ -12,6 +11,8 @@ import {
   DashboardSecretsOrderBy,
   TDashboardProjectSecretsQuickSearch,
   TDashboardProjectSecretsQuickSearchResponse,
+  TGetAccessibleSecretsDTO,
+  TGetDashboardProjectSecretsByKeys,
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
   TGetDashboardProjectSecretsQuickSearchDTO
@@ -19,6 +20,8 @@ import {
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import { groupBy, unique } from "@app/lib/fn/array";
+
+import { SecretV3Raw } from "../types";
 
 export const dashboardKeys = {
   all: () => ["dashboard"] as const,
@@ -58,6 +61,17 @@ export const dashboardKeys = {
       ...dashboardKeys.getDashboardSecrets({ projectId, secretPath }),
       "quick-search",
       params
+    ] as const,
+  getAccessibleSecrets: ({
+    projectId,
+    secretPath,
+    environment,
+    filterByAction
+  }: TGetAccessibleSecretsDTO) =>
+    [
+      ...dashboardKeys.all(),
+      "accessible-secrets",
+      { projectId, secretPath, environment, filterByAction }
     ] as const
 };
 
@@ -101,6 +115,23 @@ export const fetchProjectSecretsDetails = async ({
   return data;
 };
 
+export const fetchDashboardProjectSecretsByKeys = async ({
+  keys,
+  ...params
+}: TGetDashboardProjectSecretsByKeys) => {
+  const { data } = await apiRequest.get<DashboardProjectSecretsByKeys>(
+    "/api/v1/dashboard/secrets-by-keys",
+    {
+      params: {
+        ...params,
+        keys: encodeURIComponent(keys.join(","))
+      }
+    }
+  );
+
+  return data;
+};
+
 export const useGetProjectSecretsOverview = (
   {
     projectId,
@@ -112,6 +143,7 @@ export const useGetProjectSecretsOverview = (
     search = "",
     includeSecrets,
     includeFolders,
+    includeImports,
     includeDynamicSecrets,
     environments
   }: TGetDashboardProjectSecretsOverviewDTO,
@@ -139,6 +171,7 @@ export const useGetProjectSecretsOverview = (
       projectId,
       includeSecrets,
       includeFolders,
+      includeImports,
       includeDynamicSecrets,
       environments
     }),
@@ -153,19 +186,10 @@ export const useGetProjectSecretsOverview = (
         projectId,
         includeSecrets,
         includeFolders,
+        includeImports,
         includeDynamicSecrets,
         environments
       }),
-    onError: (error) => {
-      if (axios.isAxiosError(error)) {
-        const serverResponse = error.response?.data as { message: string };
-        createNotification({
-          title: "Error fetching secret details",
-          type: "error",
-          text: serverResponse.message
-        });
-      }
-    },
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsOverview>>) => {
       const { secrets, ...select } = data;
       const uniqueSecrets = secrets ? unique(secrets, (i) => i.secretKey) : [];
@@ -176,15 +200,18 @@ export const useGetProjectSecretsOverview = (
         ? unique(select.dynamicSecrets, (i) => i.name)
         : [];
 
+      const uniqueSecretImports = select.imports ? unique(select.imports, (i) => i.id) : [];
+
       return {
         ...select,
         secrets: secrets ? mergePersonalSecrets(secrets) : undefined,
         totalUniqueSecretsInPage: uniqueSecrets.length,
         totalUniqueDynamicSecretsInPage: uniqueDynamicSecrets.length,
-        totalUniqueFoldersInPage: uniqueFolders.length
+        totalUniqueFoldersInPage: uniqueFolders.length,
+        totalUniqueSecretImportsInPage: uniqueSecretImports.length
       };
     }, []),
-    keepPreviousData: true
+    placeholderData: (previousData) => previousData
   });
 };
 
@@ -200,6 +227,7 @@ export const useGetProjectSecretsDetails = (
     search = "",
     includeSecrets,
     includeFolders,
+    viewSecretValue,
     includeImports,
     includeDynamicSecrets,
     tags
@@ -224,6 +252,7 @@ export const useGetProjectSecretsDetails = (
       limit,
       orderBy,
       orderDirection,
+      viewSecretValue,
       offset,
       projectId,
       environment,
@@ -240,6 +269,7 @@ export const useGetProjectSecretsDetails = (
         limit,
         orderBy,
         orderDirection,
+        viewSecretValue,
         offset,
         projectId,
         environment,
@@ -249,16 +279,6 @@ export const useGetProjectSecretsDetails = (
         includeDynamicSecrets,
         tags
       }),
-    onError: (error) => {
-      if (axios.isAxiosError(error)) {
-        const serverResponse = error.response?.data as { message: string };
-        createNotification({
-          title: "Error fetching secret details",
-          type: "error",
-          text: serverResponse.message
-        });
-      }
-    },
     select: useCallback(
       (data: Awaited<ReturnType<typeof fetchProjectSecretsDetails>>) => ({
         ...data,
@@ -266,7 +286,7 @@ export const useGetProjectSecretsDetails = (
       }),
       []
     ),
-    keepPreviousData: true
+    placeholderData: (previousData) => previousData
   });
 };
 
@@ -293,6 +313,22 @@ export const fetchProjectSecretsQuickSearch = async ({
   );
 
   return data;
+};
+
+const fetchAccessibleSecrets = async ({
+  projectId,
+  secretPath,
+  environment,
+  filterByAction
+}: TGetAccessibleSecretsDTO) => {
+  const { data } = await apiRequest.get<{ secrets: SecretV3Raw[] }>(
+    "/api/v1/dashboard/accessible-secrets",
+    {
+      params: { projectId, secretPath, environment, filterByAction }
+    }
+  );
+
+  return data.secrets;
 };
 
 export const useGetProjectSecretsQuickSearch = (
@@ -334,16 +370,6 @@ export const useGetProjectSecretsQuickSearch = (
         environments,
         tags
       }),
-    onError: (error) => {
-      if (axios.isAxiosError(error)) {
-        const serverResponse = error.response?.data as { message: string };
-        createNotification({
-          title: "Error fetching secrets deep search",
-          type: "error",
-          text: serverResponse.message
-        });
-      }
-    },
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsQuickSearch>>) => {
       const { secrets, folders, dynamicSecrets } = data;
 
@@ -364,6 +390,35 @@ export const useGetProjectSecretsQuickSearch = (
         dynamicSecrets: groupedDynamicSecrets
       };
     }, []),
-    keepPreviousData: true
+    placeholderData: (previousData) => previousData
+  });
+};
+
+export const useGetAccessibleSecrets = ({
+  projectId,
+  secretPath,
+  environment,
+  filterByAction,
+  options
+}: TGetAccessibleSecretsDTO & {
+  options?: Omit<
+    UseQueryOptions<
+      SecretV3Raw[],
+      unknown,
+      SecretV3Raw[],
+      ReturnType<typeof dashboardKeys.getAccessibleSecrets>
+    >,
+    "queryKey" | "queryFn"
+  >;
+}) => {
+  return useQuery({
+    ...options,
+    queryKey: dashboardKeys.getAccessibleSecrets({
+      projectId,
+      secretPath,
+      environment,
+      filterByAction
+    }),
+    queryFn: () => fetchAccessibleSecrets({ projectId, secretPath, environment, filterByAction })
   });
 };

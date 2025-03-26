@@ -1,16 +1,12 @@
 /* eslint-disable no-param-reassign */
-import {
-  useInfiniteQuery,
-  UseInfiniteQueryOptions,
-  useQuery,
-  UseQueryOptions
-} from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import {
   decryptAssymmetric,
   decryptSymmetric
 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
+import { TReactQueryOptions } from "@app/types/reactQuery";
 
 import { UserWsKeyPair } from "../keys/types";
 import { EncryptedSecret, SecretType, SecretV3RawSanitized } from "../secrets/types";
@@ -83,6 +79,7 @@ export const decryptSecrets = (
       id: encSecret.id,
       env: encSecret.environment,
       key: secretKey,
+      secretValueHidden: encSecret.secretValueHidden,
       value: secretValue,
       tags: encSecret.tags,
       comment: secretComment,
@@ -147,18 +144,9 @@ export const useGetSecretApprovalRequests = ({
   status,
   limit = 20,
   committer
-}: TGetSecretApprovalRequestList & {
-  options?: Omit<
-    UseInfiniteQueryOptions<
-      TSecretApprovalRequest[],
-      unknown,
-      TSecretApprovalRequest[],
-      ReturnType<typeof secretApprovalRequestKeys.list>
-    >,
-    "queryKey" | "queryFn"
-  >;
-}) =>
+}: TGetSecretApprovalRequestList & TReactQueryOptions) =>
   useInfiniteQuery({
+    initialPageParam: 0,
     queryKey: secretApprovalRequestKeys.list({
       workspaceId,
       environment,

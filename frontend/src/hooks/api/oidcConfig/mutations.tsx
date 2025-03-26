@@ -20,7 +20,8 @@ export const useUpdateOIDCConfig = () => {
       clientId,
       clientSecret,
       isActive,
-      orgSlug
+      orgSlug,
+      manageGroupMemberships
     }: {
       allowedEmailDomains?: string;
       issuer?: string;
@@ -34,6 +35,7 @@ export const useUpdateOIDCConfig = () => {
       isActive?: boolean;
       configurationType?: string;
       orgSlug: string;
+      manageGroupMemberships?: boolean;
     }) => {
       const { data } = await apiRequest.patch("/api/v1/sso/oidc/config", {
         issuer,
@@ -47,14 +49,15 @@ export const useUpdateOIDCConfig = () => {
         clientId,
         orgSlug,
         clientSecret,
-        isActive
+        isActive,
+        manageGroupMemberships
       });
 
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(oidcConfigKeys.getOIDCConfig(dto.orgSlug));
-      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(dto.orgSlug) });
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
     }
   });
 };
@@ -74,7 +77,8 @@ export const useCreateOIDCConfig = () => {
       clientId,
       clientSecret,
       isActive,
-      orgSlug
+      orgSlug,
+      manageGroupMemberships
     }: {
       issuer?: string;
       configurationType: string;
@@ -88,6 +92,7 @@ export const useCreateOIDCConfig = () => {
       isActive: boolean;
       orgSlug: string;
       allowedEmailDomains?: string;
+      manageGroupMemberships?: boolean;
     }) => {
       const { data } = await apiRequest.post("/api/v1/sso/oidc/config", {
         issuer,
@@ -101,13 +106,14 @@ export const useCreateOIDCConfig = () => {
         clientId,
         clientSecret,
         isActive,
-        orgSlug
+        orgSlug,
+        manageGroupMemberships
       });
 
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(oidcConfigKeys.getOIDCConfig(dto.orgSlug));
+      queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(dto.orgSlug) });
     }
   });
 };

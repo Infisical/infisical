@@ -8,7 +8,7 @@ import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
@@ -17,6 +17,7 @@ import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityUaClientSecretDALFactory } from "./identity-ua-client-secret-dal";
 import { TIdentityUaDALFactory } from "./identity-ua-dal";
 import {
@@ -63,14 +64,22 @@ export const identityUaServiceFactory = ({
       ipAddress: ip,
       trustedIps: identityUa.clientSecretTrustedIps as TIp[]
     });
+    const clientSecretPrefix = clientSecret.slice(0, 4);
     const clientSecrtInfo = await identityUaClientSecretDAL.find({
       identityUAId: identityUa.id,
-      isClientSecretRevoked: false
+      isClientSecretRevoked: false,
+      clientSecretPrefix
     });
 
-    const validClientSecretInfo = clientSecrtInfo.find(({ clientSecretHash }) =>
-      bcrypt.compareSync(clientSecret, clientSecretHash)
-    );
+    let validClientSecretInfo: (typeof clientSecrtInfo)[0] | null = null;
+    for await (const info of clientSecrtInfo) {
+      const isMatch = await bcrypt.compare(clientSecret, info.clientSecretHash);
+      if (isMatch) {
+        validClientSecretInfo = info;
+        break;
+      }
+    }
+
     if (!validClientSecretInfo) throw new UnauthorizedError({ message: "Invalid credentials" });
 
     const { clientSecretTTL, clientSecretNumUses, clientSecretNumUsesLimit } = validClientSecretInfo;
@@ -103,7 +112,7 @@ export const identityUaServiceFactory = ({
     }
 
     const identityAccessToken = await identityUaDAL.transaction(async (tx) => {
-      const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo.id, tx);
+      const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityUa.identityId,
@@ -129,12 +138,12 @@ export const identityUaServiceFactory = ({
         authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
-      {
-        expiresIn:
-          Number(identityAccessToken.accessTokenMaxTTL) === 0
-            ? undefined
-            : Number(identityAccessToken.accessTokenMaxTTL)
-      }
+      // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
+      Number(identityAccessToken.accessTokenTTL) === 0
+        ? undefined
+        : {
+            expiresIn: Number(identityAccessToken.accessTokenTTL)
+          }
     );
 
     return { accessToken, identityUa, validClientSecretInfo, identityAccessToken, identityMembershipOrg };
@@ -150,8 +159,11 @@ export const identityUaServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TAttachUaDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
@@ -367,9 +379,12 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!isAtLeastAsPrivileged(permission, rolePermission))
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke universal auth of identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke universal auth of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const revokedIdentityUniversalAuth = await identityUaDAL.transaction(async (tx) => {
@@ -414,10 +429,12 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge)
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to add identity to project with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to create client secret for a more privileged identity.",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const appCfg = getConfig();
@@ -475,9 +492,12 @@ export const identityUaServiceFactory = ({
       actorOrgId
     );
 
-    if (!isAtLeastAsPrivileged(permission, rolePermission))
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to add identity to project with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to get identity client secret with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const identityUniversalAuth = await identityUaDAL.findOne({
@@ -524,9 +544,12 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!isAtLeastAsPrivileged(permission, rolePermission))
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to read identity client secret of project with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to read identity client secret of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const clientSecret = await identityUaClientSecretDAL.findById(clientSecretId);
@@ -566,10 +589,12 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-
-    if (!isAtLeastAsPrivileged(permission, rolePermission))
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke identity client secret with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke identity client secret with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const clientSecret = await identityUaClientSecretDAL.updateById(clientSecretId, {

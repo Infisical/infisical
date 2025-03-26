@@ -1,6 +1,6 @@
 import { FastifyInstance, RawReplyDefaultExpression, RawRequestDefaultExpression, RawServerDefault } from "fastify";
-import { Logger } from "pino";
 
+import { CustomLogger } from "@app/lib/logger/logger";
 import { ZodTypeProvider } from "@app/server/plugins/fastify-zod";
 
 declare global {
@@ -8,7 +8,7 @@ declare global {
     RawServerDefault,
     RawRequestDefaultExpression<RawServerDefault>,
     RawReplyDefaultExpression<RawServerDefault>,
-    Readonly<Logger>,
+    Readonly<CustomLogger>,
     ZodTypeProvider
   >;
 

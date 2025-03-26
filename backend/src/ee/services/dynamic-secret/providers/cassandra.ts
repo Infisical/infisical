@@ -3,13 +3,14 @@ import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
-import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
+import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretCassandraSchema, TDynamicProviderFns } from "./models";
 
 const generatePassword = (size = 48) => {
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 48)(size);
 };
 
@@ -20,14 +21,28 @@ const generateUsername = () => {
 export const CassandraProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretCassandraSchema.parseAsync(inputs);
-    if (providerInputs.host === "localhost" || providerInputs.host === "127.0.0.1") {
-      throw new BadRequestError({ message: "Invalid db host" });
+    const hostIps = await Promise.all(
+      providerInputs.host
+        .split(",")
+        .filter(Boolean)
+        .map((el) => verifyHostInputValidity(el).then((ip) => ip[0]))
+    );
+    validateHandlebarTemplate("Cassandra creation", providerInputs.creationStatement, {
+      allowedExpressions: (val) => ["username", "password", "expiration", "keyspace"].includes(val)
+    });
+    if (providerInputs.renewStatement) {
+      validateHandlebarTemplate("Cassandra renew", providerInputs.renewStatement, {
+        allowedExpressions: (val) => ["username", "expiration", "keyspace"].includes(val)
+      });
     }
+    validateHandlebarTemplate("Cassandra revoke", providerInputs.revocationStatement, {
+      allowedExpressions: (val) => ["username"].includes(val)
+    });
 
-    return providerInputs;
+    return { ...providerInputs, hostIps };
   };
 
-  const getClient = async (providerInputs: z.infer<typeof DynamicSecretCassandraSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretCassandraSchema> & { hostIps: string[] }) => {
     const sslOptions = providerInputs.ca ? { rejectUnauthorized: false, ca: providerInputs.ca } : undefined;
     const client = new cassandra.Client({
       sslOptions,
@@ -40,14 +55,14 @@ export const CassandraProvider = (): TDynamicProviderFns => {
       },
       keyspace: providerInputs.keyspace,
       localDataCenter: providerInputs?.localDataCenter,
-      contactPoints: providerInputs.host.split(",").filter(Boolean)
+      contactPoints: providerInputs.hostIps
     });
     return client;
   };
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const isConnected = await client.execute("SELECT * FROM system_schema.keyspaces").then(() => true);
     await client.shutdown();
@@ -56,7 +71,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
 
   const create = async (inputs: unknown, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const username = generateUsername();
     const password = generatePassword();
@@ -82,7 +97,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const username = entityId;
     const { keyspace } = providerInputs;
@@ -99,20 +114,24 @@ export const CassandraProvider = (): TDynamicProviderFns => {
 
   const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    if (!providerInputs.renewStatement) return { entityId };
 
-    const username = entityId;
+    const client = await $getClient(providerInputs);
+
     const expiration = new Date(expireAt).toISOString();
     const { keyspace } = providerInputs;
 
-    const renewStatement = handlebars.compile(providerInputs.revocationStatement)({ username, keyspace, expiration });
+    const renewStatement = handlebars.compile(providerInputs.renewStatement)({
+      username: entityId,
+      keyspace,
+      expiration
+    });
     const queries = renewStatement.toString().split(";").filter(Boolean);
-    for (const query of queries) {
-      // eslint-disable-next-line
+    for await (const query of queries) {
       await client.execute(query);
     }
     await client.shutdown();
-    return { entityId: username };
+    return { entityId };
   };
 
   return {

@@ -30,3 +30,36 @@ export enum WebhookType {
   GENERAL = "general",
   SLACK = "slack"
 }
+
+export enum WebhookEvents {
+  SecretModified = "secrets.modified",
+  SecretReminderExpired = "secrets.reminder-expired",
+  TestEvent = "test"
+}
+
+type TWebhookSecretModifiedEventPayload = {
+  type: WebhookEvents.SecretModified;
+  payload: {
+    projectName?: string;
+    projectId: string;
+    environment: string;
+    secretPath?: string;
+    type?: string | null;
+  };
+};
+
+type TWebhookSecretReminderEventPayload = {
+  type: WebhookEvents.SecretReminderExpired;
+  payload: {
+    projectName?: string;
+    projectId: string;
+    environment: string;
+    secretPath?: string;
+    type?: string | null;
+    secretName: string;
+    secretId: string;
+    reminderNote?: string | null;
+  };
+};
+
+export type TWebhookPayloads = TWebhookSecretModifiedEventPayload | TWebhookSecretReminderEventPayload;

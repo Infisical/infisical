@@ -1,7 +1,13 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 
+import { ActionProjectType } from "@app/db/schemas";
+import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 
@@ -9,6 +15,7 @@ import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
 import { deleteIntegrationSecrets } from "../integration-auth/integration-delete-secret";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
@@ -79,22 +86,20 @@ export const integrationServiceFactory = ({
     if (!integrationAuth)
       throw new NotFoundError({ message: `Integration auth with ID '${integrationAuthId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, {
-        environment: sourceEnvironment,
-        secretPath
-      })
-    );
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+      environment: sourceEnvironment,
+      secretPath
+    });
 
     const folder = await folderDAL.findBySecretPath(integrationAuth.projectId, sourceEnvironment, secretPath);
     if (!folder) {
@@ -150,31 +155,31 @@ export const integrationServiceFactory = ({
     isActive,
     environment,
     secretPath,
-    metadata
+    region,
+    metadata,
+    path
   }: TUpdateIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
     if (!integration) throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integration.projectId,
+      projectId: integration.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
 
     const newEnvironment = environment || integration.environment.slug;
     const newSecretPath = secretPath || integration.secretPath;
 
     if (environment || secretPath) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, {
-          environment: newEnvironment,
-          secretPath: newSecretPath
-        })
-      );
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment: newEnvironment,
+        secretPath: newSecretPath
+      });
     }
 
     const folder = await folderDAL.findBySecretPath(integration.projectId, newEnvironment, newSecretPath);
@@ -191,7 +196,9 @@ export const integrationServiceFactory = ({
       appId,
       targetEnvironment,
       owner,
+      region,
       secretPath,
+      path,
       metadata: {
         ...(integration.metadata as object),
         ...metadata
@@ -219,13 +226,14 @@ export const integrationServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integration?.projectId || "",
+      projectId: integration.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     if (!integration) {
@@ -235,6 +243,47 @@ export const integrationServiceFactory = ({
     }
 
     return { ...integration, envId: integration.environment.id };
+  };
+
+  const getIntegrationAWSIamRole = async ({ id, actor, actorAuthMethod, actorId, actorOrgId }: TGetIntegrationDTO) => {
+    const integration = await integrationDAL.findById(id);
+
+    if (!integration) {
+      throw new NotFoundError({
+        message: `Integration with ID '${id}' not found`
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: integration.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+
+    const integrationAuth = await integrationAuthDAL.findById(integration.integrationAuthId);
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: integration.projectId
+    });
+    let awsIamRole: string | null = null;
+    if (integrationAuth.encryptedAwsAssumeIamRoleArn) {
+      const awsAssumeRoleArn = secretManagerDecryptor({
+        cipherTextBlob: Buffer.from(integrationAuth.encryptedAwsAssumeIamRoleArn)
+      }).toString();
+      if (awsAssumeRoleArn) {
+        const [, role] = awsAssumeRoleArn.split(":role/");
+        awsIamRole = role;
+      }
+    }
+
+    return {
+      role: awsIamRole
+    };
   };
 
   const deleteIntegration = async ({
@@ -248,13 +297,14 @@ export const integrationServiceFactory = ({
     const integration = await integrationDAL.findById(id);
     if (!integration) throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integration.projectId,
+      projectId: integration.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
 
     const integrationAuth = await integrationAuthDAL.findById(integration.integrationAuthId);
@@ -284,13 +334,14 @@ export const integrationServiceFactory = ({
     actorAuthMethod,
     projectId
   }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     const integrations = await integrationDAL.findByProjectId(projectId);
@@ -303,13 +354,14 @@ export const integrationServiceFactory = ({
       throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integration.projectId,
+      projectId: integration.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     await secretQueueService.syncIntegrations({
@@ -329,6 +381,7 @@ export const integrationServiceFactory = ({
     deleteIntegration,
     listIntegrationByProject,
     getIntegration,
+    getIntegrationAWSIamRole,
     syncIntegration
   };
 };

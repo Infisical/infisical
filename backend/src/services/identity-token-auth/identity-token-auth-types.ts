@@ -6,6 +6,7 @@ export type TAttachTokenAuthDTO = {
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateTokenAuthDTO = {
@@ -14,6 +15,7 @@ export type TUpdateTokenAuthDTO = {
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetTokenAuthDTO = {
@@ -22,24 +24,29 @@ export type TGetTokenAuthDTO = {
 
 export type TRevokeTokenAuthDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateTokenAuthTokenDTO = {
   identityId: string;
   name?: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetTokenAuthTokensDTO = {
   identityId: string;
   offset: number;
   limit: number;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateTokenAuthTokenDTO = {
   tokenId: string;
   name?: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TRevokeTokenAuthTokenDTO = {
   tokenId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;

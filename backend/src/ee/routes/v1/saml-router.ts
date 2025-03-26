@@ -12,20 +12,20 @@ import { MultiSamlStrategy } from "@node-saml/passport-saml";
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { SamlConfigsSchema } from "@app/db/schemas";
 import { SamlProviders, TGetSamlCfgDTO } from "@app/ee/services/saml-config/saml-config-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { SanitizedSamlConfigSchema } from "@app/server/routes/sanitizedSchema/directory-config";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 type TSAMLConfig = {
   callbackUrl: string;
   entryPoint: string;
   issuer: string;
-  cert: string;
+  idpCert: string;
   audience: string;
   wantAuthnResponseSigned?: boolean;
   wantAssertionsSigned?: boolean;
@@ -72,7 +72,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               callbackUrl: `${appCfg.SITE_URL}/api/v1/sso/saml2/${ssoConfig.id}`,
               entryPoint: ssoConfig.entryPoint,
               issuer: ssoConfig.issuer,
-              cert: ssoConfig.cert,
+              idpCert: ssoConfig.cert,
               audience: appCfg.SITE_URL || ""
             };
             if (ssoConfig.authProvider === SamlProviders.JUMPCLOUD_SAML) {
@@ -84,7 +84,10 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
                 samlConfig.audience = `spn:${ssoConfig.issuer}`;
               }
             }
-            if (ssoConfig.authProvider === SamlProviders.GOOGLE_SAML) {
+            if (
+              ssoConfig.authProvider === SamlProviders.GOOGLE_SAML ||
+              ssoConfig.authProvider === SamlProviders.AUTH0_SAML
+            ) {
               samlConfig.wantAssertionsSigned = false;
             }
 
@@ -122,6 +125,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               },
               `email: ${email} firstName: ${profile.firstName as string}`
             );
+
+            throw new BadRequestError({
+              message:
+                "Missing email or first name. Please double check your SAML attribute mapping for the selected provider."
+            });
           }
 
           const userMetadata = Object.keys(profile.attributes || {})
@@ -290,19 +298,25 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         cert: z.string()
       }),
       response: {
-        200: SamlConfigsSchema
+        200: SanitizedSamlConfigSchema
       }
     },
     handler: async (req) => {
-      const saml = await server.services.saml.createSamlCfg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        orgId: req.body.organizationId,
-        ...req.body
+      const { isActive, authProvider, issuer, entryPoint, cert } = req.body;
+      const { permission } = req;
+
+      return server.services.saml.createSamlCfg({
+        isActive,
+        authProvider,
+        issuer,
+        entryPoint,
+        idpCert: cert,
+        actor: permission.type,
+        actorId: permission.id,
+        actorAuthMethod: permission.authMethod,
+        actorOrgId: permission.orgId,
+        orgId: req.body.organizationId
       });
-      return saml;
     }
   });
 
@@ -325,19 +339,25 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         .partial()
         .merge(z.object({ organizationId: z.string() })),
       response: {
-        200: SamlConfigsSchema
+        200: SanitizedSamlConfigSchema
       }
     },
     handler: async (req) => {
-      const saml = await server.services.saml.updateSamlCfg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        orgId: req.body.organizationId,
-        ...req.body
+      const { isActive, authProvider, issuer, entryPoint, cert } = req.body;
+      const { permission } = req;
+
+      return server.services.saml.updateSamlCfg({
+        isActive,
+        authProvider,
+        issuer,
+        entryPoint,
+        idpCert: cert,
+        actor: permission.type,
+        actorId: permission.id,
+        actorAuthMethod: permission.authMethod,
+        actorOrgId: permission.orgId,
+        orgId: req.body.organizationId
       });
-      return saml;
     }
   });
 };

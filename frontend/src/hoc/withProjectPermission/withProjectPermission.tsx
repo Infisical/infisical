@@ -14,7 +14,7 @@ type Props<T extends AbilityTuple> = {
   subject: T[1];
 };
 
-export const withProjectPermission = <T extends {}>(
+export const withProjectPermission = <T extends object>(
   Component: ComponentType<Omit<Props<ProjectPermissionSet>, "action" | "subject"> & T>,
   { action, subject, className, containerClassName }: Props<ProjectPermissionSet>
 ) => {

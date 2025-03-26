@@ -9,6 +9,8 @@ import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+import { booleanSchema } from "../sanitizedSchemas";
+
 export const registerSecretFolderRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
@@ -47,7 +49,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .default("/")
           .transform(prefixWithSlash)
           .transform(removeTrailingSlash)
-          .describe(FOLDERS.CREATE.directory)
+          .describe(FOLDERS.CREATE.directory),
+        description: z.string().optional().nullable().describe(FOLDERS.CREATE.description)
       }),
       response: {
         200: z.object({
@@ -65,7 +68,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId,
-        path
+        path,
+        description: req.body.description
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -76,7 +80,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
             environment: req.body.environment,
             folderId: folder.id,
             folderName: folder.name,
-            folderPath: path
+            folderPath: path,
+            ...(req.body.description ? { description: req.body.description } : {})
           }
         }
       });
@@ -125,7 +130,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .default("/")
           .transform(prefixWithSlash)
           .transform(removeTrailingSlash)
-          .describe(FOLDERS.UPDATE.directory)
+          .describe(FOLDERS.UPDATE.directory),
+        description: z.string().optional().nullable().describe(FOLDERS.UPDATE.description)
       }),
       response: {
         200: z.object({
@@ -196,7 +202,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
               .default("/")
               .transform(prefixWithSlash)
               .transform(removeTrailingSlash)
-              .describe(FOLDERS.UPDATE.path)
+              .describe(FOLDERS.UPDATE.path),
+            description: z.string().optional().nullable().describe(FOLDERS.UPDATE.description)
           })
           .array()
           .min(1)
@@ -342,11 +349,14 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .default("/")
           .transform(prefixWithSlash)
           .transform(removeTrailingSlash)
-          .describe(FOLDERS.LIST.directory)
+          .describe(FOLDERS.LIST.directory),
+        recursive: booleanSchema.default(false).describe(FOLDERS.LIST.recursive)
       }),
       response: {
         200: z.object({
-          folders: SecretFoldersSchema.array()
+          folders: SecretFoldersSchema.extend({
+            relativePath: z.string().optional()
+          }).array()
         })
       }
     },

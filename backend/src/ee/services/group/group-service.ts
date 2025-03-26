@@ -2,7 +2,8 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
@@ -32,7 +33,7 @@ type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction" | "findOne">;
   groupDAL: Pick<
     TGroupDALFactory,
-    "create" | "findOne" | "update" | "delete" | "findAllGroupPossibleMembers" | "findById"
+    "create" | "findOne" | "update" | "delete" | "findAllGroupPossibleMembers" | "findById" | "transaction"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers">;
@@ -45,6 +46,7 @@ type TGroupServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
 };
 
 export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
@@ -59,7 +61,8 @@ export const groupServiceFactory = ({
   projectBotDAL,
   projectKeyDAL,
   permissionService,
-  licenseService
+  licenseService,
+  oidcConfigDAL
 }: TGroupServiceFactoryDep) => {
   const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
@@ -84,16 +87,35 @@ export const groupServiceFactory = ({
       actorOrgId
     );
     const isCustomRole = Boolean(customRole);
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to create a more privileged group" });
 
-    const group = await groupDAL.create({
-      name,
-      slug: slug || slugify(`${name}-${alphaNumericNanoId(4)}`),
-      orgId: actorOrgId,
-      role: isCustomRole ? OrgMembershipRole.Custom : role,
-      roleId: customRole?.id
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to create a more privileged group",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
+
+    const group = await groupDAL.transaction(async (tx) => {
+      const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
+      if (existingGroup) {
+        throw new BadRequestError({
+          message: `Failed to create group with name '${name}'. Group with the same name already exists`
+        });
+      }
+
+      const newGroup = await groupDAL.create(
+        {
+          name,
+          slug: slug || slugify(`${name}-${alphaNumericNanoId(4)}`),
+          orgId: actorOrgId,
+          role: isCustomRole ? OrgMembershipRole.Custom : role,
+          roleId: customRole?.id
+        },
+        tx
+      );
+
+      return newGroup;
     });
 
     return group;
@@ -139,27 +161,46 @@ export const groupServiceFactory = ({
       );
 
       const isCustomRole = Boolean(customOrgRole);
-      const hasRequiredNewRolePermission = isAtLeastAsPrivileged(permission, rolePermission);
-      if (!hasRequiredNewRolePermission)
-        throw new ForbiddenRequestError({ message: "Failed to create a more privileged group" });
+      const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+      if (!permissionBoundary.isValid)
+        throw new ForbiddenRequestError({
+          name: "PermissionBoundaryError",
+          message: "Failed to update a more privileged group",
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
       if (isCustomRole) customRole = customOrgRole;
     }
 
-    const [updatedGroup] = await groupDAL.update(
-      {
-        id: group.id
-      },
-      {
-        name,
-        slug: slug ? slugify(slug) : undefined,
-        ...(role
-          ? {
-              role: customRole ? OrgMembershipRole.Custom : role,
-              roleId: customRole?.id ?? null
-            }
-          : {})
+    const updatedGroup = await groupDAL.transaction(async (tx) => {
+      if (name) {
+        const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
+
+        if (existingGroup && existingGroup.id !== id) {
+          throw new BadRequestError({
+            message: `Failed to update group with name '${name}'. Group with the same name already exists`
+          });
+        }
       }
-    );
+
+      const [updated] = await groupDAL.update(
+        {
+          id: group.id
+        },
+        {
+          name,
+          slug: slug ? slugify(slug) : undefined,
+          ...(role
+            ? {
+                role: customRole ? OrgMembershipRole.Custom : role,
+                roleId: customRole?.id ?? null
+              }
+            : {})
+        },
+        tx
+      );
+
+      return updated;
+    });
 
     return updatedGroup;
   };
@@ -222,7 +263,8 @@ export const groupServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    search
+    search,
+    filter
   }: TListGroupUsersDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
@@ -251,7 +293,8 @@ export const groupServiceFactory = ({
       offset,
       limit,
       username,
-      search
+      search,
+      filter
     });
 
     return { users: members, totalCount };
@@ -280,12 +323,28 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
+    const oidcConfig = await oidcConfigDAL.findOne({
+      orgId: group.orgId,
+      isActive: true
+    });
+
+    if (oidcConfig?.manageGroupMemberships) {
+      throw new BadRequestError({
+        message:
+          "Cannot add user to group: OIDC group membership mapping is enabled - user must be assigned to this group in your OIDC provider."
+      });
+    }
+
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, groupRolePermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to add user to more privileged group" });
+    const permissionBoundary = validatePermissionBoundary(permission, groupRolePermission);
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to add user to more privileged group",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const user = await userDAL.findOne({ username });
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
@@ -335,12 +394,28 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
+    const oidcConfig = await oidcConfigDAL.findOne({
+      orgId: group.orgId,
+      isActive: true
+    });
+
+    if (oidcConfig?.manageGroupMemberships) {
+      throw new BadRequestError({
+        message:
+          "Cannot remove user from group: OIDC group membership mapping is enabled - user must be removed from this group in your OIDC provider."
+      });
+    }
+
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, groupRolePermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to delete user from more privileged group" });
+    const permissionBoundary = validatePermissionBoundary(permission, groupRolePermission);
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to delete user from more privileged group",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const user = await userDAL.findOne({ username });
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });

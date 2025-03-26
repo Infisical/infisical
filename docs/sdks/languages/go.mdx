@@ -4,8 +4,6 @@ sidebarTitle: "Go"
 icon: "golang"
 ---
 
-
-
 If you're working with Go Lang, the official [Infisical Go SDK](https://github.com/infisical/go-sdk) package is the easiest way to fetch and work with secrets for your application.
 
 - [Package](https://pkg.go.dev/github.com/infisical/go-sdk)
@@ -57,7 +55,9 @@ func main() {
 This example demonstrates how to use the Infisical Go SDK in a simple Go application. The application retrieves a secret named `API_KEY` from the `dev` environment of the `YOUR_PROJECT_ID` project.
 
 <Warning>
-    We do not recommend hardcoding your [Machine Identity Tokens](/platform/identities/overview). Setting it as an environment variable would be best.
+  We do not recommend hardcoding your [Machine Identity
+  Tokens](/platform/identities/overview). Setting it as an environment variable
+  would be best.
 </Warning>
 
 # Installation
@@ -94,6 +94,10 @@ client := infisical.NewInfisicalClient(context.Background(), infisical.Config{
 
         <ParamField query="SilentMode" type="boolean" default={false} optional>
             Whether or not to suppress logs such as warnings from the token refreshing process. Defaults to false if not specified.
+        </ParamField>
+
+        <ParamField query="CacheExpiryInSeconds" type="number" default={0} optional>
+            Defines how long certain responses should be cached in memory, in seconds. When set to a positive value, responses from specific methods (like secret fetching) will be cached for this duration. Set to 0 to disable caching.
         </ParamField>
     </Expandable>
 
@@ -140,6 +144,7 @@ Call `.Auth().UniversalAuthLogin()` with empty arguments to use the following en
 - `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` - Your machine identity client secret.
 
 **Using the SDK directly**
+
 ```go
 _, err := client.Auth().UniversalAuthLogin("CLIENT_ID", "CLIENT_SECRET")
 
@@ -150,9 +155,12 @@ if err != nil {
 ```
 
 #### GCP ID Token Auth
+
 <Info>
-  Please note that this authentication method will only work if you're running your application on Google Cloud Platform.
-  Please [read more](/documentation/platform/identities/gcp-auth) about this authentication method.
+  Please note that this authentication method will only work if you're running
+  your application on Google Cloud Platform. Please [read
+  more](/documentation/platform/identities/gcp-auth) about this authentication
+  method.
 </Info>
 
 **Using environment variables**
@@ -162,6 +170,7 @@ Call `.Auth().GcpIdTokenAuthLogin()` with empty arguments to use the following e
 - `INFISICAL_GCP_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
 
 **Using the SDK directly**
+
 ```go
 _, err := client.Auth().GcpIdTokenAuthLogin("YOUR_MACHINE_IDENTITY_ID")
 
@@ -181,6 +190,7 @@ Call `.Auth().GcpIamAuthLogin()` with empty arguments to use the following envir
 - `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` - The path to your GCP service account key file.
 
 **Using the SDK directly**
+
 ```go
 _, err = client.Auth().GcpIamAuthLogin("MACHINE_IDENTITY_ID", "SERVICE_ACCOUNT_KEY_FILE_PATH")
 
@@ -191,9 +201,12 @@ if err != nil {
 ```
 
 #### AWS IAM Auth
+
 <Info>
-  Please note that this authentication method will only work if you're running your application on AWS.
-  Please [read more](/documentation/platform/identities/aws-auth) about this authentication method.
+  Please note that this authentication method will only work if you're running
+  your application on AWS. Please [read
+  more](/documentation/platform/identities/aws-auth) about this authentication
+  method.
 </Info>
 
 **Using environment variables**
@@ -203,6 +216,7 @@ Call `.Auth().AwsIamAuthLogin()` with empty arguments to use the following envir
 - `INFISICAL_AWS_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
 
 **Using the SDK directly**
+
 ```go
 _, err = client.Auth().AwsIamAuthLogin("MACHINE_IDENTITY_ID")
 
@@ -212,11 +226,13 @@ if err != nil {
 }
 ```
 
-
 #### Azure Auth
+
 <Info>
-  Please note that this authentication method will only work if you're running your application on Azure.
-  Please [read more](/documentation/platform/identities/azure-auth) about this authentication method.
+  Please note that this authentication method will only work if you're running
+  your application on Azure. Please [read
+  more](/documentation/platform/identities/azure-auth) about this authentication
+  method.
 </Info>
 
 **Using environment variables**
@@ -226,6 +242,7 @@ Call `.Auth().AzureAuthLogin()` with empty arguments to use the following enviro
 - `INFISICAL_AZURE_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
 
 **Using the SDK directly**
+
 ```go
 _, err = client.Auth().AzureAuthLogin("MACHINE_IDENTITY_ID")
 
@@ -236,9 +253,12 @@ if err != nil {
 ```
 
 #### Kubernetes Auth
+
 <Info>
-  Please note that this authentication method will only work if you're running your application on Kubernetes.
-  Please [read more](/documentation/platform/identities/kubernetes-auth) about this authentication method.
+  Please note that this authentication method will only work if you're running
+  your application on Kubernetes. Please [read
+  more](/documentation/platform/identities/kubernetes-auth) about this
+  authentication method.
 </Info>
 
 **Using environment variables**
@@ -249,6 +269,7 @@ Call `.Auth().KubernetesAuthLogin()` with empty arguments to use the following e
 - `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_ENV_NAME` - The environment variable name that contains the path to the service account token. This is optional and will default to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
 
 **Using the SDK directly**
+
 ```go
 // Service account token path will default to /var/run/secrets/kubernetes.io/serviceaccount/token if empty value is passed
 _, err = client.Auth().KubernetesAuthLogin("MACHINE_IDENTITY_ID", "SERVICE_ACCOUNT_TOKEN_PATH")
@@ -262,6 +283,7 @@ if err != nil {
 ## Working With Secrets
 
 ### List Secrets
+
 `client.Secrets().List(options)`
 
 Retrieve all secrets within the Infisical project and environment that client is connected to.
@@ -275,7 +297,7 @@ secrets, err := client.Secrets().List(infisical.ListSecretsOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object">
     <Expandable title="properties">
@@ -311,7 +333,9 @@ secrets, err := client.Secrets().List(infisical.ListSecretsOptions{
 </ParamField>
 
 ###
+
 ### Retrieve Secret
+
 `client.Secrets().Retrieve(options)`
 
 Retrieve a secret from Infisical. By default `Secrets().Retrieve()` fetches and returns a shared secret.
@@ -324,30 +348,34 @@ secret, err := client.Secrets().Retrieve(infisical.RetrieveSecretOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
-    <Expandable title="properties">
-        <ParamField query="SecretKey" type="string" required>
-            The key of the secret to retrieve.
-        </ParamField>
-        <ParamField query="ProjectID" type="string" required>
-            The project ID where the secret lives in.
-        </ParamField>
-        <ParamField query="Environment" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-        <ParamField query="SecretPath" type="string" optional>
-            The path from where secret should be fetched from.
-        </ParamField>
-        <ParamField query="Type" type="string" optional>
-            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-        </ParamField>
-    </Expandable>
+  <Expandable title="properties">
+    <ParamField query="SecretKey" type="string" required>
+      The key of the secret to retrieve.
+    </ParamField>
+    <ParamField query="ProjectID" type="string" required>
+      The project ID where the secret lives in.
+    </ParamField>
+    <ParamField query="Environment" type="string" required>
+      The slug name (dev, prod, etc) of the environment from where secrets
+      should be fetched from.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path from where secret should be fetched from.
+    </ParamField>
+    <ParamField query="Type" type="string" optional>
+      The type of the secret. Valid options are "shared" or "personal". If not
+      specified, the default value is "shared".
+    </ParamField>
+  </Expandable>
 </ParamField>
 
 ###
+
 ### Create Secret
+
 `client.Secrets().Create(options)`
 
 Create a new secret in Infisical.
@@ -363,36 +391,38 @@ secret, err := client.Secrets().Create(infisical.CreateSecretOptions{
 })
 ```
 
-
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
-    <Expandable title="properties">
-        <ParamField query="SecretKey" type="string" required>
-            The key of the secret to create.
-        </ParamField>
-        <ParamField query="SecretValue" type="string" required>
-            The value of the secret.
-        </ParamField>
-        <ParamField query="SecretComment" type="string" optional>
-            A comment for the secret.
-        </ParamField>
-        <ParamField query="ProjectID" type="string" required>
-            The project ID where the secret lives in.
-        </ParamField>
-        <ParamField query="Environment" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-        <ParamField query="SecretPath" type="string" optional>
-            The path from where secret should be created.
-        </ParamField>
-        <ParamField query="Type" type="string" optional>
-            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-        </ParamField>
-    </Expandable>
+  <Expandable title="properties">
+    <ParamField query="SecretKey" type="string" required>
+      The key of the secret to create.
+    </ParamField>
+    <ParamField query="SecretValue" type="string" required>
+      The value of the secret.
+    </ParamField>
+    <ParamField query="SecretComment" type="string" optional>
+      A comment for the secret.
+    </ParamField>
+    <ParamField query="ProjectID" type="string" required>
+      The project ID where the secret lives in.
+    </ParamField>
+    <ParamField query="Environment" type="string" required>
+      The slug name (dev, prod, etc) of the environment from where secrets
+      should be fetched from.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path from where secret should be created.
+    </ParamField>
+    <ParamField query="Type" type="string" optional>
+      The type of the secret. Valid options are "shared" or "personal". If not
+      specified, the default value is "shared".
+    </ParamField>
+  </Expandable>
 </ParamField>
 
 ###
+
 ### Update Secret
 
 `client.Secrets().Update(options)`
@@ -409,36 +439,45 @@ secret, err := client.Secrets().Update(infisical.UpdateSecretOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
-    <Expandable title="properties">
-        <ParamField query="SecretKey" type="string" required>
-            The key of the secret to update.
-        </ParamField>
-        <ParamField query="NewSecretValue" type="string" required>
-            The new value of the secret.
-        </ParamField>
-        <ParamField query="NewSkipMultilineEncoding" type="boolean" default="false" optional>
-            Whether or not to skip multiline encoding for the new secret value.
-        </ParamField>
-        <ParamField query="ProjectID" type="string" required>
-            The project ID where the secret lives in.
-        </ParamField>
-        <ParamField query="Environment" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-        <ParamField query="SecretPath" type="string" optional>
-            The path from where secret should be updated.
-        </ParamField>
-        <ParamField query="Type" type="string" optional>
-            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-        </ParamField>
-    </Expandable>
+  <Expandable title="properties">
+    <ParamField query="SecretKey" type="string" required>
+      The key of the secret to update.
+    </ParamField>
+    <ParamField query="NewSecretValue" type="string" required>
+      The new value of the secret.
+    </ParamField>
+    <ParamField
+      query="NewSkipMultilineEncoding"
+      type="boolean"
+      default="false"
+      optional
+    >
+      Whether or not to skip multiline encoding for the new secret value.
+    </ParamField>
+    <ParamField query="ProjectID" type="string" required>
+      The project ID where the secret lives in.
+    </ParamField>
+    <ParamField query="Environment" type="string" required>
+      The slug name (dev, prod, etc) of the environment from where secrets
+      should be fetched from.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path from where secret should be updated.
+    </ParamField>
+    <ParamField query="Type" type="string" optional>
+      The type of the secret. Valid options are "shared" or "personal". If not
+      specified, the default value is "shared".
+    </ParamField>
+  </Expandable>
 </ParamField>
 
 ###
+
 ### Delete Secret
+
 `client.Secrets().Delete(options)`
 
 Delete a secret in Infisical.
@@ -451,33 +490,106 @@ secret, err := client.Secrets().Delete(infisical.DeleteSecretOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
-    <Expandable title="properties">
-        <ParamField query="SecretKey" type="string">
-            The key of the secret to update.
-        </ParamField>
-        <ParamField query="ProjectID" type="string" required>
-            The project ID where the secret lives in.
-        </ParamField>
-        <ParamField query="Environment" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-        <ParamField query="SecretPath" type="string" optional>
-            The path from where secret should be deleted.
-        </ParamField>
-        <ParamField query="Type" type="string" optional>
-            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-        </ParamField>
-    </Expandable>
+  <Expandable title="properties">
+    <ParamField query="SecretKey" type="string">
+      The key of the secret to update.
+    </ParamField>
+    <ParamField query="ProjectID" type="string" required>
+      The project ID where the secret lives in.
+    </ParamField>
+    <ParamField query="Environment" type="string" required>
+      The slug name (dev, prod, etc) of the environment from where secrets
+      should be fetched from.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path from where secret should be deleted.
+    </ParamField>
+    <ParamField query="Type" type="string" optional>
+      The type of the secret. Valid options are "shared" or "personal". If not
+      specified, the default value is "shared".
+    </ParamField>
+  </Expandable>
 </ParamField>
 
-## Working With folders
 
+### Batch Create Secrets
+
+`client.Secrets().Batch().Create(options)`
+
+Create multiple secrets in Infisical.
+
+```go
+	createdSecrets, err := client.Secrets().Batch().Create(infisical.BatchCreateSecretsOptions{
+		Environment: "<environment-slug>",
+		SecretPath:  "<secret-path>",
+		ProjectID:   "<project-id>",
+		Secrets: []infisical.BatchCreateSecret{
+			{
+				SecretKey:   "SECRET-1",
+				SecretValue: "test-value-1",
+			},
+			{
+				SecretKey:   "SECRET-2",
+				SecretValue: "test-value-2",
+			},
+		},
+	})
+```
+
+#### Parameters
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="Environment" type="string" required>
+      The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+    </ParamField>
+    <ParamField query="ProjectID" type="string" required>
+      The project ID where the secret lives in.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path from where secret should be created.
+    </ParamField>
+    <ParamField query="Secrets" type="array" required>
+    <Expandable>
+      <ParamField query="SecretKey" type="string" required>
+        The key of the secret to create.
+      </ParamField>
+      <ParamField query="SecretValue" type="string" required>
+        The value of the secret.
+      </ParamField>
+      <ParamField query="SecretComment" type="string" optional>
+      The comment to add to the secret.
+      </ParamField>
+      <ParamField query="SkipMultiLineEncoding" type="boolean" optional>
+        Whether or not to skip multiline encoding for the secret value.
+      </ParamField>
+      <ParamField query="TagIDs" type="string[]" optional>
+        The tag IDs to associate with the secret.
+      </ParamField>
+
+      <ParamField query="SecretMetadata" type="object" optional>
+        <Expandable>
+          <ParamField query="Key" type="string" required>
+            The key of the metadata.
+          </ParamField>
+          <ParamField query="Value" type="string" required>
+            The value of the metadata.
+          </ParamField>
+        </Expandable>
+      </ParamField>
+    </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Working With Folders
 
 ###
+
 ### List Folders
+
 `client.Folders().List(options)`
 
 Retrieve all within the Infisical project and environment that client is connected to.
@@ -490,7 +602,7 @@ folders, err := client.Folders().List(infisical.ListFoldersOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object">
     <Expandable title="properties">
@@ -510,7 +622,9 @@ folders, err := client.Folders().List(infisical.ListFoldersOptions{
 </ParamField>
 
 ###
+
 ### Create Folder
+
 `client.Folders().Create(options)`
 
 Create a new folder in Infisical.
@@ -524,28 +638,30 @@ folder, err := client.Folders().Create(infisical.CreateFolderOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
-    <Expandable title="properties">
-        <ParamField query="ProjectID" type="string" required>
-            The ID of the project where the folder will be created.
-        </ParamField>
-        <ParamField query="Environment" type="string" required>
-            The slug name (dev, prod, etc) of the environment where the folder will be created.
-        </ParamField>
-        <ParamField query="Path" type="string" optional>
-            The path to create the folder in. The root path is `/`.
-        </ParamField>
-        <ParamField query="Name" type="string" optional>
-            The name of the folder to create.
-        </ParamField>
-    </Expandable>
+  <Expandable title="properties">
+    <ParamField query="ProjectID" type="string" required>
+      The ID of the project where the folder will be created.
+    </ParamField>
+    <ParamField query="Environment" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the folder will be
+      created.
+    </ParamField>
+    <ParamField query="Path" type="string" optional>
+      The path to create the folder in. The root path is `/`.
+    </ParamField>
+    <ParamField query="Name" type="string" optional>
+      The name of the folder to create.
+    </ParamField>
+  </Expandable>
 </ParamField>
 
-
 ###
+
 ### Update Folder
+
 `client.Folders().Update(options)`
 
 Update an existing folder in Infisical.
@@ -560,30 +676,33 @@ folder, err := client.Folders().Update(infisical.UpdateFolderOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
-    <Expandable title="properties">
-        <ParamField query="ProjectID" type="string" required>
-            The ID of the project where the folder will be updated.
-        </ParamField>
-        <ParamField query="Environment" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where the folder lives in.
-        </ParamField>
-        <ParamField query="Path" type="string" optional>
-            The path from where the folder should be updated.
-        </ParamField>
-        <ParamField query="FolderID" type="string" required>
-            The ID of the folder to update.
-        </ParamField>
-        <ParamField query="NewName" type="string" required>
-            The new name of the folder.
-        </ParamField>
-    </Expandable>
+  <Expandable title="properties">
+    <ParamField query="ProjectID" type="string" required>
+      The ID of the project where the folder will be updated.
+    </ParamField>
+    <ParamField query="Environment" type="string" required>
+      The slug name (dev, prod, etc) of the environment from where the folder
+      lives in.
+    </ParamField>
+    <ParamField query="Path" type="string" optional>
+      The path from where the folder should be updated.
+    </ParamField>
+    <ParamField query="FolderID" type="string" required>
+      The ID of the folder to update.
+    </ParamField>
+    <ParamField query="NewName" type="string" required>
+      The new name of the folder.
+    </ParamField>
+  </Expandable>
 </ParamField>
 
 ###
+
 ### Delete Folder
+
 `client.Folders().Delete(options)`
 
 Delete a folder in Infisical.
@@ -599,7 +718,7 @@ deletedFolder, err := client.Folders().Delete(infisical.DeleteFolderOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
     <Expandable title="properties">
@@ -620,6 +739,5 @@ deletedFolder, err := client.Folders().Delete(infisical.DeleteFolderOptions{
             The path from where the folder should be deleted.
         </ParamField>
     </Expandable>
+
 </ParamField>
-
-

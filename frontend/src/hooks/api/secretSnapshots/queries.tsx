@@ -47,6 +47,7 @@ const fetchWorkspaceSnaphots = async ({
 
 export const useGetWorkspaceSnapshotList = (dto: TGetSecretSnapshotsDTO & { isPaused?: boolean }) =>
   useInfiniteQuery({
+    initialPageParam: 0,
     enabled: Boolean(dto.workspaceId && dto.environment) && !dto.isPaused,
     queryKey: secretSnapshotKeys.list({ ...dto }),
     queryFn: ({ pageParam }) => fetchWorkspaceSnaphots({ ...dto, offset: pageParam }),
@@ -74,6 +75,7 @@ export const useGetSnapshotSecrets = ({ snapshotId }: TSnapshotDataProps) =>
           id: secretVersion.secretId,
           env: data.environment.slug,
           key: secretVersion.secretKey,
+          secretValueHidden: secretVersion.secretValueHidden,
           value: secretVersion.secretValue || "",
           tags: secretVersion.tags,
           comment: secretVersion.secretComment,
@@ -142,26 +144,24 @@ export const useGetWsSnapshotCount = ({
 export const usePerformSecretRollback = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TSecretRollbackDTO>({
+  return useMutation<object, object, TSecretRollbackDTO>({
     mutationFn: async ({ snapshotId }) => {
       const { data } = await apiRequest.post(`/api/v1/secret-snapshot/${snapshotId}/rollback`);
       return data;
     },
     onSuccess: (_, { workspaceId, environment, directory }) => {
-      queryClient.invalidateQueries([
-        { workspaceId, environment, secretPath: directory },
-        "secrets"
-      ]);
-      queryClient.invalidateQueries([
-        "secret-folders",
-        { projectId: workspaceId, environment, path: directory }
-      ]);
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ workspaceId, environment, directory })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ workspaceId, environment, directory })
-      );
+      queryClient.invalidateQueries({
+        queryKey: [{ workspaceId, environment, secretPath: directory }, "secrets"]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["secret-folders", { projectId: workspaceId, environment, path: directory }]
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ workspaceId, environment, directory })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ workspaceId, environment, directory })
+      });
     }
   });
 };

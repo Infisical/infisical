@@ -1,3 +1,4 @@
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
@@ -8,13 +9,16 @@ export type DashboardProjectSecretsOverviewResponse = {
   folders?: (TSecretFolder & { environment: string })[];
   dynamicSecrets?: (TDynamicSecret & { environment: string })[];
   secrets?: SecretV3Raw[];
+  imports?: TSecretImport[];
   totalSecretCount?: number;
   totalFolderCount?: number;
   totalDynamicSecretCount?: number;
+  totalImportCount?: number;
   totalCount: number;
   totalUniqueSecretsInPage: number;
   totalUniqueDynamicSecretsInPage: number;
   totalUniqueFoldersInPage: number;
+  totalUniqueSecretImportsInPage: number;
 };
 
 export type DashboardProjectSecretsDetailsResponse = {
@@ -27,6 +31,10 @@ export type DashboardProjectSecretsDetailsResponse = {
   totalDynamicSecretCount?: number;
   totalSecretCount?: number;
   totalCount: number;
+};
+
+export type DashboardProjectSecretsByKeys = {
+  secrets: SecretV3Raw[];
 };
 
 export type DashboardProjectSecretsOverview = Omit<
@@ -58,6 +66,7 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
   includeSecrets?: boolean;
   includeFolders?: boolean;
   includeDynamicSecrets?: boolean;
+  includeImports?: boolean;
   environments: string[];
 };
 
@@ -65,13 +74,14 @@ export type TGetDashboardProjectSecretsDetailsDTO = Omit<
   TGetDashboardProjectSecretsOverviewDTO,
   "environments"
 > & {
+  viewSecretValue: boolean;
   environment: string;
   includeImports?: boolean;
   tags: Record<string, boolean>;
 };
 
 export type TDashboardProjectSecretsQuickSearchResponse = {
-  folders: (TSecretFolder & { environment: string; path: string })[];
+  folders: (TSecretFolder & { envId: string; path: string })[];
   dynamicSecrets: (TDynamicSecret & { environment: string; path: string })[];
   secrets: SecretV3Raw[];
 };
@@ -79,7 +89,7 @@ export type TDashboardProjectSecretsQuickSearchResponse = {
 export type TDashboardProjectSecretsQuickSearch = {
   folders: Record<string, TDashboardProjectSecretsQuickSearchResponse["folders"]>;
   secrets: Record<string, SecretV3RawSanitized[]>;
-  dynamicSecrets: Record<string, TDashboardProjectSecretsQuickSearchResponse["folders"]>;
+  dynamicSecrets: Record<string, TDashboardProjectSecretsQuickSearchResponse["dynamicSecrets"]>;
 };
 
 export type TGetDashboardProjectSecretsQuickSearchDTO = {
@@ -88,4 +98,20 @@ export type TGetDashboardProjectSecretsQuickSearchDTO = {
   tags: Record<string, boolean>;
   search: string;
   environments: string[];
+};
+
+export type TGetDashboardProjectSecretsByKeys = {
+  projectId: string;
+  secretPath: string;
+  environment: string;
+  keys: string[];
+};
+
+export type TGetAccessibleSecretsDTO = {
+  projectId: string;
+  secretPath: string;
+  environment: string;
+  filterByAction:
+    | ProjectPermissionSecretActions.DescribeSecret
+    | ProjectPermissionSecretActions.ReadValue;
 };

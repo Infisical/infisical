@@ -1,3 +1,5 @@
+import { ProjectPermissionActions } from "@app/context";
+
 import type { WsTag } from "../tags/types";
 
 export enum SecretType {
@@ -17,6 +19,7 @@ export type EncryptedSecret = {
   secretValueCiphertext: string;
   secretValueIV: string;
   secretValueTag: string;
+  secretValueHidden: boolean;
   __v: number;
   createdAt: string;
   updatedAt: string;
@@ -35,6 +38,7 @@ export type SecretV3RawSanitized = {
   version: number;
   key: string;
   value?: string;
+  secretValueHidden: boolean;
   comment?: string;
   reminderRepeatDays?: number | null;
   reminderNote?: string | null;
@@ -48,6 +52,8 @@ export type SecretV3RawSanitized = {
   overrideAction?: string;
   folderId?: string;
   skipMultilineEncoding?: boolean;
+  secretMetadata?: { key: string; value: string }[];
+  isReminderEvent?: boolean;
 };
 
 export type SecretV3Raw = {
@@ -57,12 +63,14 @@ export type SecretV3Raw = {
   environment: string;
   version: number;
   type: string;
+  secretValueHidden: boolean;
   secretKey: string;
   secretPath: string;
   secretValue?: string;
   secretComment?: string;
   secretReminderNote?: string;
   secretReminderRepeatDays?: number;
+  secretMetadata?: { key: string; value: string }[];
   skipMultilineEncoding?: boolean;
   metadata?: Record<string, string>;
   tags?: WsTag[];
@@ -90,12 +98,19 @@ export type SecretVersions = {
   envId: string;
   secretKey: string;
   secretValue?: string;
+  secretValueHidden: boolean;
   secretComment?: string;
   tags: WsTag[];
   __v: number;
   skipMultilineEncoding?: boolean;
   createdAt: string;
   updatedAt: string;
+  actor?: {
+    actorId?: string | null;
+    actorType?: string | null;
+    name?: string | null;
+    membershipId?: string | null;
+  } | null;
 };
 
 // dto
@@ -104,6 +119,7 @@ export type TGetProjectSecretsKey = {
   environment: string;
   secretPath?: string;
   includeImports?: boolean;
+  viewSecretValue?: boolean;
   expandSecretReferences?: boolean;
 };
 
@@ -121,6 +137,13 @@ export type GetSecretVersionsDTO = {
   secretId: string;
   limit: number;
   offset: number;
+};
+
+export type TGetSecretAccessListDTO = {
+  workspaceId: string;
+  environment: string;
+  secretPath: string;
+  secretKey: string;
 };
 
 export type TCreateSecretsV3DTO = {
@@ -148,6 +171,7 @@ export type TUpdateSecretsV3DTO = {
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
   tagIds?: string[];
+  secretMetadata?: { key: string; value: string }[];
 };
 
 export type TDeleteSecretsV3DTO = {
@@ -227,4 +251,11 @@ export type TSecretReferenceTraceNode = {
   environment: string;
   secretPath: string;
   children: TSecretReferenceTraceNode[];
+};
+
+export type SecretAccessListEntry = {
+  allowedActions: ProjectPermissionActions[];
+  id: string;
+  membershipId: string;
+  name: string;
 };

@@ -7,6 +7,12 @@ Prerequisites:
 
 - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
 
+<Note>
+    When integrating with Databricks, Infisical is intended to be the source of truth for the secrets in the configured Databricks scope.
+
+    Any secrets not present in Infisical will be removed from the specified scope. To prevent removal of secrets not managed by Infisical, Infisical recommends creating a designated secret scope for your integration.
+</Note>
+
 <Steps>
   <Step title="Authorize Infisical for Databricks">
     Obtain a Personal Access Token in **User Settings** > **Developer** > **Access Tokens**.

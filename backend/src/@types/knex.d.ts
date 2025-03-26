@@ -68,6 +68,9 @@ import {
   TExternalKms,
   TExternalKmsInsert,
   TExternalKmsUpdate,
+  TGateways,
+  TGatewaysInsert,
+  TGatewaysUpdate,
   TGitAppInstallSessions,
   TGitAppInstallSessionsInsert,
   TGitAppInstallSessionsUpdate,
@@ -98,6 +101,9 @@ import {
   TIdentityGcpAuths,
   TIdentityGcpAuthsInsert,
   TIdentityGcpAuthsUpdate,
+  TIdentityJwtAuths,
+  TIdentityJwtAuthsInsert,
+  TIdentityJwtAuthsUpdate,
   TIdentityKubernetesAuths,
   TIdentityKubernetesAuthsInsert,
   TIdentityKubernetesAuthsUpdate,
@@ -140,6 +146,18 @@ import {
   TInternalKms,
   TInternalKmsInsert,
   TInternalKmsUpdate,
+  TKmipClientCertificates,
+  TKmipClientCertificatesInsert,
+  TKmipClientCertificatesUpdate,
+  TKmipClients,
+  TKmipClientsInsert,
+  TKmipClientsUpdate,
+  TKmipOrgConfigs,
+  TKmipOrgConfigsInsert,
+  TKmipOrgConfigsUpdate,
+  TKmipOrgServerCertificates,
+  TKmipOrgServerCertificatesInsert,
+  TKmipOrgServerCertificatesUpdate,
   TKmsKeys,
   TKmsKeysInsert,
   TKmsKeysUpdate,
@@ -164,6 +182,9 @@ import {
   TOrgBots,
   TOrgBotsInsert,
   TOrgBotsUpdate,
+  TOrgGatewayConfig,
+  TOrgGatewayConfigInsert,
+  TOrgGatewayConfigUpdate,
   TOrgMemberships,
   TOrgMembershipsInsert,
   TOrgMembershipsUpdate,
@@ -185,6 +206,9 @@ import {
   TProjectEnvironments,
   TProjectEnvironmentsInsert,
   TProjectEnvironmentsUpdate,
+  TProjectGateways,
+  TProjectGatewaysInsert,
+  TProjectGatewaysUpdate,
   TProjectKeys,
   TProjectKeysInsert,
   TProjectKeysUpdate,
@@ -199,6 +223,9 @@ import {
   TProjectSlackConfigs,
   TProjectSlackConfigsInsert,
   TProjectSlackConfigsUpdate,
+  TProjectSplitBackfillIds,
+  TProjectSplitBackfillIdsInsert,
+  TProjectSplitBackfillIdsUpdate,
   TProjectsUpdate,
   TProjectTemplates,
   TProjectTemplatesInsert,
@@ -212,6 +239,9 @@ import {
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
+  TResourceMetadata,
+  TResourceMetadataInsert,
+  TResourceMetadataUpdate,
   TSamlConfigs,
   TSamlConfigsInsert,
   TSamlConfigsUpdate,
@@ -311,9 +341,27 @@ import {
   TSlackIntegrations,
   TSlackIntegrationsInsert,
   TSlackIntegrationsUpdate,
+  TSshCertificateAuthorities,
+  TSshCertificateAuthoritiesInsert,
+  TSshCertificateAuthoritiesUpdate,
+  TSshCertificateAuthoritySecrets,
+  TSshCertificateAuthoritySecretsInsert,
+  TSshCertificateAuthoritySecretsUpdate,
+  TSshCertificateBodies,
+  TSshCertificateBodiesInsert,
+  TSshCertificateBodiesUpdate,
+  TSshCertificates,
+  TSshCertificatesInsert,
+  TSshCertificatesUpdate,
+  TSshCertificateTemplates,
+  TSshCertificateTemplatesInsert,
+  TSshCertificateTemplatesUpdate,
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
+  TTotpConfigs,
+  TTotpConfigsInsert,
+  TTotpConfigsUpdate,
   TTrustedIps,
   TTrustedIpsInsert,
   TTrustedIpsUpdate,
@@ -339,11 +387,13 @@ import {
   TWorkflowIntegrationsInsert,
   TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
+import { TAppConnections, TAppConnectionsInsert, TAppConnectionsUpdate } from "@app/db/schemas/app-connections";
 import {
   TExternalGroupOrgRoleMappings,
   TExternalGroupOrgRoleMappingsInsert,
   TExternalGroupOrgRoleMappingsUpdate
 } from "@app/db/schemas/external-group-org-role-mappings";
+import { TSecretSyncs, TSecretSyncsInsert, TSecretSyncsUpdate } from "@app/db/schemas/secret-syncs";
 import {
   TSecretV2TagJunction,
   TSecretV2TagJunctionInsert,
@@ -369,6 +419,31 @@ declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: KnexOriginal.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
     [TableName.Groups]: KnexOriginal.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
+    [TableName.SshCertificateAuthority]: KnexOriginal.CompositeTableType<
+      TSshCertificateAuthorities,
+      TSshCertificateAuthoritiesInsert,
+      TSshCertificateAuthoritiesUpdate
+    >;
+    [TableName.SshCertificateAuthoritySecret]: KnexOriginal.CompositeTableType<
+      TSshCertificateAuthoritySecrets,
+      TSshCertificateAuthoritySecretsInsert,
+      TSshCertificateAuthoritySecretsUpdate
+    >;
+    [TableName.SshCertificateTemplate]: KnexOriginal.CompositeTableType<
+      TSshCertificateTemplates,
+      TSshCertificateTemplatesInsert,
+      TSshCertificateTemplatesUpdate
+    >;
+    [TableName.SshCertificate]: KnexOriginal.CompositeTableType<
+      TSshCertificates,
+      TSshCertificatesInsert,
+      TSshCertificatesUpdate
+    >;
+    [TableName.SshCertificateBody]: KnexOriginal.CompositeTableType<
+      TSshCertificateBodies,
+      TSshCertificateBodiesInsert,
+      TSshCertificateBodiesUpdate
+    >;
     [TableName.CertificateAuthority]: KnexOriginal.CompositeTableType<
       TCertificateAuthorities,
       TCertificateAuthoritiesInsert,
@@ -586,6 +661,11 @@ declare module "knex/types/tables" {
       TIdentityOidcAuths,
       TIdentityOidcAuthsInsert,
       TIdentityOidcAuthsUpdate
+    >;
+    [TableName.IdentityJwtAuth]: KnexOriginal.CompositeTableType<
+      TIdentityJwtAuths,
+      TIdentityJwtAuthsInsert,
+      TIdentityJwtAuthsUpdate
     >;
     [TableName.IdentityUaClientSecret]: KnexOriginal.CompositeTableType<
       TIdentityUaClientSecrets,
@@ -825,6 +905,50 @@ declare module "knex/types/tables" {
       TProjectTemplates,
       TProjectTemplatesInsert,
       TProjectTemplatesUpdate
+    >;
+    [TableName.TotpConfig]: KnexOriginal.CompositeTableType<TTotpConfigs, TTotpConfigsInsert, TTotpConfigsUpdate>;
+    [TableName.ProjectSplitBackfillIds]: KnexOriginal.CompositeTableType<
+      TProjectSplitBackfillIds,
+      TProjectSplitBackfillIdsInsert,
+      TProjectSplitBackfillIdsUpdate
+    >;
+    [TableName.ResourceMetadata]: KnexOriginal.CompositeTableType<
+      TResourceMetadata,
+      TResourceMetadataInsert,
+      TResourceMetadataUpdate
+    >;
+    [TableName.AppConnection]: KnexOriginal.CompositeTableType<
+      TAppConnections,
+      TAppConnectionsInsert,
+      TAppConnectionsUpdate
+    >;
+    [TableName.SecretSync]: KnexOriginal.CompositeTableType<TSecretSyncs, TSecretSyncsInsert, TSecretSyncsUpdate>;
+    [TableName.KmipClient]: KnexOriginal.CompositeTableType<TKmipClients, TKmipClientsInsert, TKmipClientsUpdate>;
+    [TableName.KmipOrgConfig]: KnexOriginal.CompositeTableType<
+      TKmipOrgConfigs,
+      TKmipOrgConfigsInsert,
+      TKmipOrgConfigsUpdate
+    >;
+    [TableName.KmipOrgServerCertificates]: KnexOriginal.CompositeTableType<
+      TKmipOrgServerCertificates,
+      TKmipOrgServerCertificatesInsert,
+      TKmipOrgServerCertificatesUpdate
+    >;
+    [TableName.KmipClientCertificates]: KnexOriginal.CompositeTableType<
+      TKmipClientCertificates,
+      TKmipClientCertificatesInsert,
+      TKmipClientCertificatesUpdate
+    >;
+    [TableName.Gateway]: KnexOriginal.CompositeTableType<TGateways, TGatewaysInsert, TGatewaysUpdate>;
+    [TableName.ProjectGateway]: KnexOriginal.CompositeTableType<
+      TProjectGateways,
+      TProjectGatewaysInsert,
+      TProjectGatewaysUpdate
+    >;
+    [TableName.OrgGatewayConfig]: KnexOriginal.CompositeTableType<
+      TOrgGatewayConfig,
+      TOrgGatewayConfigInsert,
+      TOrgGatewayConfigUpdate
     >;
   }
 }

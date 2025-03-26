@@ -1,4 +1,4 @@
-import { AuthMethod } from "./auth-type";
+import { AuthMethod, MfaMethod } from "./auth-type";
 
 export type TLoginGenServerPublicKeyDTO = {
   email: string;
@@ -19,6 +19,7 @@ export type TLoginClientProofDTO = {
 export type TVerifyMfaTokenDTO = {
   userId: string;
   mfaToken: string;
+  mfaMethod: MfaMethod;
   mfaJwtToken: string;
   ip: string;
   userAgent: string;

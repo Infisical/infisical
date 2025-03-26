@@ -7,6 +7,7 @@ export {
   useGetIntegrationAuthBitBucketWorkspaces,
   useGetIntegrationAuthById,
   useGetIntegrationAuthChecklyGroups,
+  useGetIntegrationAuthCircleCIOrganizations,
   useGetIntegrationAuthGithubEnvs,
   useGetIntegrationAuthGithubOrgs,
   useGetIntegrationAuthNorthflankSecretGroups,
@@ -15,5 +16,6 @@ export {
   useGetIntegrationAuthTeamCityBuildConfigs,
   useGetIntegrationAuthTeams,
   useGetIntegrationAuthVercelBranches,
+  useGetIntegrationAuthVercelCustomEnvironments,
   useSaveIntegrationAccessToken
 } from "./queries";

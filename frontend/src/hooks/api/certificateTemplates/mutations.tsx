@@ -16,7 +16,7 @@ import {
 
 export const useCreateCertTemplate = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificateTemplate, {}, TCreateCertificateTemplateDTO>({
+  return useMutation<TCertificateTemplate, object, TCreateCertificateTemplateDTO>({
     mutationFn: async (data) => {
       const { data: certificateTemplate } = await apiRequest.post<TCertificateTemplate>(
         "/api/v1/pki/certificate-templates",
@@ -25,15 +25,17 @@ export const useCreateCertTemplate = () => {
       return certificateTemplate;
     },
     onSuccess: ({ caId }, { projectId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCertificateTemplates(projectId));
-      queryClient.invalidateQueries(caKeys.getCaCertTemplates(caId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceCertificateTemplates(projectId)
+      });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCertTemplates(caId) });
     }
   });
 };
 
 export const useUpdateCertTemplate = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificateTemplate, {}, TUpdateCertificateTemplateDTO>({
+  return useMutation<TCertificateTemplate, object, TUpdateCertificateTemplateDTO>({
     mutationFn: async (data) => {
       const { data: certificateTemplate } = await apiRequest.patch<TCertificateTemplate>(
         `/api/v1/pki/certificate-templates/${data.id}`,
@@ -43,16 +45,18 @@ export const useUpdateCertTemplate = () => {
       return certificateTemplate;
     },
     onSuccess: ({ caId }, { projectId, id }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCertificateTemplates(projectId));
-      queryClient.invalidateQueries(certTemplateKeys.getCertTemplateById(id));
-      queryClient.invalidateQueries(caKeys.getCaCertTemplates(caId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceCertificateTemplates(projectId)
+      });
+      queryClient.invalidateQueries({ queryKey: certTemplateKeys.getCertTemplateById(id) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCertTemplates(caId) });
     }
   });
 };
 
 export const useDeleteCertTemplate = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificateTemplate, {}, TDeleteCertificateTemplateDTO>({
+  return useMutation<TCertificateTemplate, object, TDeleteCertificateTemplateDTO>({
     mutationFn: async (data) => {
       const { data: certificateTemplate } = await apiRequest.delete<TCertificateTemplate>(
         `/api/v1/pki/certificate-templates/${data.id}`
@@ -60,16 +64,18 @@ export const useDeleteCertTemplate = () => {
       return certificateTemplate;
     },
     onSuccess: ({ caId }, { projectId, id }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCertificateTemplates(projectId));
-      queryClient.invalidateQueries(certTemplateKeys.getCertTemplateById(id));
-      queryClient.invalidateQueries(caKeys.getCaCertTemplates(caId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceCertificateTemplates(projectId)
+      });
+      queryClient.invalidateQueries({ queryKey: certTemplateKeys.getCertTemplateById(id) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCertTemplates(caId) });
     }
   });
 };
 
 export const useCreateEstConfig = () => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, TCreateEstConfigDTO>({
+  return useMutation<object, object, TCreateEstConfigDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post(
         `/api/v1/pki/certificate-templates/${body.certificateTemplateId}/est-config`,
@@ -78,14 +84,16 @@ export const useCreateEstConfig = () => {
       return data;
     },
     onSuccess: (_, { certificateTemplateId }) => {
-      queryClient.invalidateQueries(certTemplateKeys.getEstConfig(certificateTemplateId));
+      queryClient.invalidateQueries({
+        queryKey: certTemplateKeys.getEstConfig(certificateTemplateId)
+      });
     }
   });
 };
 
 export const useUpdateEstConfig = () => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, TUpdateEstConfigDTO>({
+  return useMutation<object, object, TUpdateEstConfigDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.patch(
         `/api/v1/pki/certificate-templates/${body.certificateTemplateId}/est-config`,
@@ -94,7 +102,9 @@ export const useUpdateEstConfig = () => {
       return data;
     },
     onSuccess: (_, { certificateTemplateId }) => {
-      queryClient.invalidateQueries(certTemplateKeys.getEstConfig(certificateTemplateId));
+      queryClient.invalidateQueries({
+        queryKey: certTemplateKeys.getEstConfig(certificateTemplateId)
+      });
     }
   });
 };

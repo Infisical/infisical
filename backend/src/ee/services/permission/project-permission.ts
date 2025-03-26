@@ -1,13 +1,26 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
 import { z } from "zod";
 
-import { conditionsMatcher } from "@app/lib/casl";
-import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
+import {
+  CASL_ACTION_SCHEMA_ENUM,
+  CASL_ACTION_SCHEMA_NATIVE_ENUM
+} from "@app/ee/services/permission/permission-schemas";
+import { conditionsMatcher, PermissionConditionOperators } from "@app/lib/casl";
+import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 
-import { PermissionConditionOperators, PermissionConditionSchema } from "./permission-types";
+import { PermissionConditionSchema } from "./permission-types";
 
 export enum ProjectPermissionActions {
   Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
+export enum ProjectPermissionSecretActions {
+  DescribeAndReadValue = "read",
+  DescribeSecret = "describeSecret",
+  ReadValue = "readValue",
   Create = "create",
   Edit = "edit",
   Delete = "delete"
@@ -28,6 +41,24 @@ export enum ProjectPermissionDynamicSecretActions {
   EditRootCredential = "edit-root-credential",
   DeleteRootCredential = "delete-root-credential",
   Lease = "lease"
+}
+
+export enum ProjectPermissionSecretSyncActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  SyncSecrets = "sync-secrets",
+  ImportSecrets = "import-secrets",
+  RemoveSecrets = "remove-secrets"
+}
+
+export enum ProjectPermissionKmipActions {
+  CreateClients = "create-clients",
+  UpdateClients = "update-clients",
+  DeleteClients = "delete-clients",
+  ReadClients = "read-clients",
+  GenerateClientCertificates = "generate-client-certificates"
 }
 
 export enum ProjectPermissionSub {
@@ -54,10 +85,15 @@ export enum ProjectPermissionSub {
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
   CertificateTemplates = "certificate-templates",
+  SshCertificateAuthorities = "ssh-certificate-authorities",
+  SshCertificates = "ssh-certificates",
+  SshCertificateTemplates = "ssh-certificate-templates",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
   Kms = "kms",
-  Cmek = "cmek"
+  Cmek = "cmek",
+  SecretSyncs = "secret-syncs",
+  Kmip = "kmip"
 }
 
 export type SecretSubjectFields = {
@@ -82,9 +118,13 @@ export type SecretImportSubjectFields = {
   secretPath: string;
 };
 
+export type IdentityManagementSubjectFields = {
+  identityId: string;
+};
+
 export type ProjectPermissionSet =
   | [
-      ProjectPermissionActions,
+      ProjectPermissionSecretActions,
       ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SecretSubjectFields)
     ]
   | [
@@ -121,12 +161,20 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
-  | [ProjectPermissionActions, ProjectPermissionSub.Identity]
+  | [
+      ProjectPermissionActions,
+      ProjectPermissionSub.Identity | (ForcedSubject<ProjectPermissionSub.Identity> & IdentityManagementSubjectFields)
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
+  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
+  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
+  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
+  | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
+  | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip]
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
@@ -134,14 +182,27 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms];
 
-const CASL_ACTION_SCHEMA_NATIVE_ENUM = <ACTION extends z.EnumLike>(actions: ACTION) =>
+const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
+const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
+  z.string().refine((val) => val.startsWith("/"), SECRET_PATH_MISSING_SLASH_ERR_MSG),
   z
-    .union([z.nativeEnum(actions), z.nativeEnum(actions).array().min(1)])
-    .transform((el) => (typeof el === "string" ? [el] : el));
-
-const CASL_ACTION_SCHEMA_ENUM = <ACTION extends z.EnumValues>(actions: ACTION) =>
-  z.union([z.enum(actions), z.enum(actions).array().min(1)]).transform((el) => (typeof el === "string" ? [el] : el));
-
+    .object({
+      [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ].refine(
+        (val) => val.startsWith("/"),
+        SECRET_PATH_MISSING_SLASH_ERR_MSG
+      ),
+      [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ].refine(
+        (val) => val.startsWith("/"),
+        SECRET_PATH_MISSING_SLASH_ERR_MSG
+      ),
+      [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN].refine(
+        (val) => val.every((el) => el.startsWith("/")),
+        SECRET_PATH_MISSING_SLASH_ERR_MSG
+      ),
+      [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+    })
+    .partial()
+]);
 // akhilmhdh: don't modify this for v2
 // if you want to update create a new schema
 const SecretConditionV1Schema = z
@@ -156,17 +217,7 @@ const SecretConditionV1Schema = z
         })
         .partial()
     ]),
-    secretPath: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ])
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
   })
   .partial();
 
@@ -183,17 +234,7 @@ const SecretConditionV2Schema = z
         })
         .partial()
     ]),
-    secretPath: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA,
     secretName: z.union([
       z.string(),
       z
@@ -210,6 +251,21 @@ const SecretConditionV2Schema = z
         [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
       })
       .partial()
+  })
+  .partial();
+
+const IdentityManagementConditionSchema = z
+  .object({
+    identityId: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
   })
   .partial();
 
@@ -258,12 +314,6 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Webhooks).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.Identity).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
@@ -323,6 +373,28 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
+    subject: z
+      .literal(ProjectPermissionSub.SshCertificateAuthorities)
+      .describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SshCertificates).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z
+      .literal(ProjectPermissionSub.SshCertificateTemplates)
+      .describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.PkiAlerts).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
@@ -348,13 +420,25 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Cmek).describe("The entity this permission pertains to."),
-    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCmekActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretSyncs).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretSyncActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Kmip).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionKmipActions).describe(
       "Describe what action an entity can take."
     )
   })
 ];
 
+// Do not update this schema anymore, as it's kept purely for backwards compatability. Update V2 schema only.
 export const ProjectPermissionV1Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
@@ -373,6 +457,12 @@ export const ProjectPermissionV1Schema = z.discriminatedUnion("subject", [
       "Describe what action an entity can take."
     )
   }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Identity).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
   ...GeneralPermissionSchema
 ]);
 
@@ -380,7 +470,7 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretActions).describe(
       "Describe what action an entity can take."
     ),
     conditions: SecretConditionV2Schema.describe(
@@ -417,6 +507,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Identity).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: IdentityManagementConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
   ...GeneralPermissionSchema
 ]);
 
@@ -427,7 +527,6 @@ const buildAdminPermissionRules = () => {
 
   // Admins get full access to everything
   [
-    ProjectPermissionSub.Secrets,
     ProjectPermissionSub.SecretFolders,
     ProjectPermissionSub.SecretImports,
     ProjectPermissionSub.SecretApproval,
@@ -448,7 +547,10 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.Certificates,
     ProjectPermissionSub.CertificateTemplates,
     ProjectPermissionSub.PkiAlerts,
-    ProjectPermissionSub.PkiCollections
+    ProjectPermissionSub.PkiCollections,
+    ProjectPermissionSub.SshCertificateAuthorities,
+    ProjectPermissionSub.SshCertificates,
+    ProjectPermissionSub.SshCertificateTemplates
   ].forEach((el) => {
     can(
       [
@@ -457,9 +559,21 @@ const buildAdminPermissionRules = () => {
         ProjectPermissionActions.Create,
         ProjectPermissionActions.Delete
       ],
-      el as ProjectPermissionSub
+      el
     );
   });
+
+  can(
+    [
+      ProjectPermissionSecretActions.DescribeAndReadValue,
+      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionSecretActions.Create,
+      ProjectPermissionSecretActions.Edit,
+      ProjectPermissionSecretActions.Delete
+    ],
+    ProjectPermissionSub.Secrets
+  );
 
   can(
     [
@@ -486,6 +600,30 @@ const buildAdminPermissionRules = () => {
     ],
     ProjectPermissionSub.Cmek
   );
+  can(
+    [
+      ProjectPermissionSecretSyncActions.Create,
+      ProjectPermissionSecretSyncActions.Edit,
+      ProjectPermissionSecretSyncActions.Delete,
+      ProjectPermissionSecretSyncActions.Read,
+      ProjectPermissionSecretSyncActions.SyncSecrets,
+      ProjectPermissionSecretSyncActions.ImportSecrets,
+      ProjectPermissionSecretSyncActions.RemoveSecrets
+    ],
+    ProjectPermissionSub.SecretSyncs
+  );
+
+  can(
+    [
+      ProjectPermissionKmipActions.CreateClients,
+      ProjectPermissionKmipActions.UpdateClients,
+      ProjectPermissionKmipActions.DeleteClients,
+      ProjectPermissionKmipActions.ReadClients,
+      ProjectPermissionKmipActions.GenerateClientCertificates
+    ],
+    ProjectPermissionSub.Kmip
+  );
+
   return rules;
 };
 
@@ -496,10 +634,12 @@ const buildMemberPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
+      ProjectPermissionSecretActions.DescribeAndReadValue,
+      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionSecretActions.Edit,
+      ProjectPermissionSecretActions.Create,
+      ProjectPermissionSecretActions.Delete
     ],
     ProjectPermissionSub.Secrets
   );
@@ -633,6 +773,11 @@ const buildMemberPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiAlerts);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiCollections);
 
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificateAuthorities);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificates);
+  can([ProjectPermissionActions.Create], ProjectPermissionSub.SshCertificates);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificateTemplates);
+
   can(
     [
       ProjectPermissionCmekActions.Create,
@@ -645,6 +790,19 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.Cmek
   );
 
+  can(
+    [
+      ProjectPermissionSecretSyncActions.Create,
+      ProjectPermissionSecretSyncActions.Edit,
+      ProjectPermissionSecretSyncActions.Delete,
+      ProjectPermissionSecretSyncActions.Read,
+      ProjectPermissionSecretSyncActions.SyncSecrets,
+      ProjectPermissionSecretSyncActions.ImportSecrets,
+      ProjectPermissionSecretSyncActions.RemoveSecrets
+    ],
+    ProjectPermissionSub.SecretSyncs
+  );
+
   return rules;
 };
 
@@ -653,7 +811,9 @@ export const projectMemberPermissions = buildMemberPermissionRules();
 const buildViewerPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionSecretActions.DescribeAndReadValue, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionSecretActions.ReadValue, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
   can(ProjectPermissionDynamicSecretActions.ReadRootCredential, ProjectPermissionSub.DynamicSecrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
@@ -675,6 +835,10 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
   can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateAuthorities);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
+  can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
 
   return rules;
 };
@@ -697,26 +861,25 @@ export const buildServiceTokenProjectPermission = (
     [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
       (subject) => {
         if (canWrite) {
-          // TODO: @Akhi
-          // @ts-expect-error type
           can(ProjectPermissionActions.Edit, subject, {
+            // @ts-expect-error type
             secretPath: { $glob: secretPath },
             environment
           });
-          // @ts-expect-error type
           can(ProjectPermissionActions.Create, subject, {
+            // @ts-expect-error type
             secretPath: { $glob: secretPath },
             environment
           });
-          // @ts-expect-error type
           can(ProjectPermissionActions.Delete, subject, {
+            // @ts-expect-error type
             secretPath: { $glob: secretPath },
             environment
           });
         }
         if (canRead) {
-          // @ts-expect-error type
           can(ProjectPermissionActions.Read, subject, {
+            // @ts-expect-error type
             secretPath: { $glob: secretPath },
             environment
           });
@@ -777,7 +940,17 @@ export const backfillPermissionV1SchemaToV2Schema = (
     subject: ProjectPermissionSub.SecretImports as const
   }));
 
+  const secretPolicies = secretSubjects.map(({ subject, ...el }) => ({
+    subject: ProjectPermissionSub.Secrets as const,
+    ...el,
+    action:
+      el.action.includes(ProjectPermissionActions.Read) && !el.action.includes(ProjectPermissionSecretActions.ReadValue)
+        ? el.action.concat(ProjectPermissionSecretActions.ReadValue)
+        : el.action
+  }));
+
   const secretFolderPolicies = secretSubjects
+
     .map(({ subject, ...el }) => ({
       ...el,
       // read permission is not needed anymore
@@ -819,6 +992,7 @@ export const backfillPermissionV1SchemaToV2Schema = (
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore-error this is valid ts
     secretImportPolicies,
+    secretPolicies,
     dynamicSecretPolicies,
     hasReadOnlyFolder.length ? [] : secretFolderPolicies
   );

@@ -46,10 +46,10 @@ export const bootstrapCheck = async ({ db }: BootstrapOpt) => {
   await createTransport(smtpCfg)
     .verify()
     .then(async () => {
-      console.info("SMTP successfully connected");
+      console.info(`SMTP - Verified connection to ${appCfg.SMTP_HOST}:${appCfg.SMTP_PORT}`);
     })
-    .catch((err) => {
-      console.error(`SMTP - Failed to connect to ${appCfg.SMTP_HOST}:${appCfg.SMTP_PORT}`);
+    .catch((err: Error) => {
+      console.error(`SMTP - Failed to connect to ${appCfg.SMTP_HOST}:${appCfg.SMTP_PORT} - ${err.message}`);
       logger.error(err);
     });
 

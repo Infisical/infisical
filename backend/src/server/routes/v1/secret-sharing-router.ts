@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SecretSharingSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SecretSharingAccessType } from "@app/lib/types";
 import {
   publicEndpointLimit,
@@ -10,6 +11,7 @@ import {
 } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { SecretSharingType } from "@app/services/secret-sharing/secret-sharing-types";
 
 export const registerSecretSharingRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -37,6 +39,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        type: SecretSharingType.Share,
         ...req.query
       });
 
@@ -87,6 +90,21 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         password: req.body.password,
         orgId: req.permission?.orgId
       });
+
+      if (sharedSecret.secret?.orgId) {
+        await server.services.auditLog.createAuditLog({
+          orgId: sharedSecret.secret.orgId,
+          ...req.auditLogInfo,
+          event: {
+            type: EventType.READ_SHARED_SECRET,
+            metadata: {
+              id: req.params.id,
+              name: sharedSecret.secret.name || undefined,
+              accessType: sharedSecret.secret.accessType
+            }
+          }
+        });
+      }
 
       return sharedSecret;
     }
@@ -151,6 +169,23 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        orgId: req.permission.orgId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.CREATE_SHARED_SECRET,
+          metadata: {
+            accessType: req.body.accessType,
+            expiresAt: req.body.expiresAt,
+            expiresAfterViews: req.body.expiresAfterViews,
+            name: req.body.name,
+            id: sharedSecret.id,
+            usingPassword: !!req.body.password
+          }
+        }
+      });
+
       return { id: sharedSecret.id };
     }
   });
@@ -178,7 +213,20 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        sharedSecretId
+        sharedSecretId,
+        type: SecretSharingType.Share
+      });
+
+      await server.services.auditLog.createAuditLog({
+        orgId: req.permission.orgId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.DELETE_SHARED_SECRET,
+          metadata: {
+            id: sharedSecretId,
+            name: deletedSharedSecret.name || undefined
+          }
+        }
       });
 
       return { ...deletedSharedSecret };

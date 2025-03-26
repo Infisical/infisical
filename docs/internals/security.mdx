@@ -3,25 +3,25 @@ title: "Security"
 description: "Infisical's security model includes many considerations and initiatives."
 ---
 
-Given that Infisical is a secret management platform that manages sensitive data, the Infisical security model is very important.
-The goal of Infisical's security model is to ensure the security and integrity of all of its managed data as well as all associated operations.
+As a security infrastructure platform dealing with highly-sensitive data, Infisical follows a robust security model with the goal of ensuring the security and integrity of all its managed data and associated components.
 
-This means that data at rest and in transit must be secure from eavesdropping or tampering. All clients must be authenticated and authorized to access data. Additionally, all interactions must be auditable and traced uniquely back to their source.
+As part of the security model, data at rest and in transit must be secure from eavesdropping or tampering, clients must be authenticated and authorized to access data, and all operations in the platform are audited and can be traced back to their source.
+
+This page documents security measures used by [Infisical](https://github.com/Infisical/infisical), the software, and [Infisical Cloud](https://infisical.com/), a separate managed service offering for the software.
 
 ## Threat model
 
-Infisical’s threat model spans communication, storage, response mechanisms, failover strategies, and more.
+Infisical’s (the software) threat model spans communication, storage, response mechanisms, and more.
 
-- Eavesdropping on communications: Infisical ensures end-to-end encryption for all client interactions with the Infisical API.
+- Eavesdropping on communications: Infisical secures client communication with the server and from the server to the storage backend.
 - Tampering with data (at rest or in transit): Infisical implements data integrity checks to detect tampering. If inconsistencies are found, Infisical aborts transactions and raises alerts.
-- Unauthorized access (lacking authentication/authorization): Infisical mandates rigorous authentication and authorization checks for all inbound requests; it also offers multi-factor authentication and role-based access controls.
-- Actions without accountability: Infisical logs all project-level events, including policy updates, queries/mutations applied to secrets, and more. Every event is timestamped and information about actor, source (i.e. IP address, user-agent, etc.), and relevant metadata is included.
-- Breach of data storage confidentiality: Infisical encrypts all stored secrets using proven cryptographic techniques such as AES-256-GCM for symmetric encryption.
-- Loss of service availability or secret data due to failures: Infisical leverages the robust container orchestration capabilities of Kubernetes and the inherent high availability features of Bitnami MongoDB to ensure resilience and fault tolerance. By deploying multiple replicas of Infisical application on Kubernetes, operations can continue even if a single instance fails.
+- Unauthorized access (lacking authentication/authorization): Infisical mandates rigorous authentication and authorization checks for all inbound requests; it also offers multi-factor authentication and role/attribute-based access controls.
+- Actions without accountability: Infisical logs events, including policy updates, queries/mutations applied to secrets, certificates, and more. Every event is timestamped and information about actor, source (i.e. IP address, user-agent, etc.), and relevant metadata is included.
+- Breach of data storage confidentiality: Infisical encrypts all stored secrets using proven cryptographic techniques for symmetric encryption.
 - Unrecognized suspicious activities: Infisical monitors for any anomalous activities such as authentication attempts from previously unseen sources.
-- Unidentified system vulnerabilities: Infisical undergoes penetration tests and vulnerability assessments twice a year; we act on findings to bolster the system's defense mechanisms.
+- Unidentified system vulnerabilities: Infisical undergoes penetration tests and vulnerability assessments twice a year; we act on findings to bolster the system’s defense mechanisms.
 
-That said, Infisical does not consider the following as part of its threat model:
+Infisical (the software) does not consider the following as part of its threat model:
 
 - Uncontrolled access to the storage mechanism: An attacker with unfettered access to the storage system can manipulate data in unpredictable ways, including erasing or tampering with stored secrets. Furthermore, the attacker could potentially implement state rollbacks to favor their objectives.
 - Disclosure of secret presence: If an adversary gains read access to the storage backend, they might discern the existence of certain secrets, even if the actual contents remain encrypted and concealed.
@@ -30,143 +30,80 @@ That said, Infisical does not consider the following as part of its threat model
 - Breaches via compromised clients: If a system or application accessing Infisical is compromised, and its credentials to the platform are exposed, an attacker might gain access at the privilege level of that compromised entity.
 - Configuration tampering by administrators: Any configuration data, whether supplied through admin interfaces or configuration files, needs scrutiny. If an attacker can manipulate these configurations, it poses risks to data confidentiality and integrity.
 - Physical access to deployment infrastructure: An attacker with physical access to the servers or infrastructure where Infisical is deployed can potentially compromise the system in ways that are challenging to guard against, such as direct hardware tampering or booting from malicious media.
-- Social engineering attacks on personnel: Attacks that target personnel, tricking them into divulging sensitive information or performing compromising actions, fall outside the platform's direct defensive purview.
+- Social engineering attacks on personnel: Attacks that target personnel, tricking them into divulging sensitive information or performing compromising actions, fall outside the platform’s direct defensive purview.
 
-It's essential to note that while these points fall outside the platform's direct threat model, they still form crucial considerations for an overarching security strategy.
+Note that while these points fall outside the Infisical’s threat model, they remain considerations in the broader platform architecture.
 
 ## External threat overview
 
-Infisical's architecture consists of various systems:
+Infisical’s architecture consists of various systems which together we refer to as the Infisical platform:
 
-- Infisical API
-- Storage backend
-- Redis
-- Infisical Web UI
-- Infisical clients
+- Server: The Infisical API that serves requests.
+- Clients: The Web UI and other applications that send requests to the server.
+- Storage backend: PostgreSQL used by the server to persist data.
+- Redis: Used by Infisical for caching, queueing and cron job scheduling.
 
-The Infisical API requires that the Infisical Web UI and all Infisical clients are authenticated and authorized for every inbound request. If using [Infisical Cloud](https://app.infisical.com), all traffic is routed through [Cloudflare](https://www.cloudflare.com) which enforces TLS and requires a minimum of TLS 1.2.
+The server requires clients to be authenticated and authorized for every inbound request. If using [Infisical Cloud](https://infisical.com/), all traffic is routed through [Cloudflare](https://www.cloudflare.com/) which enforces TLS and requires a minimum of TLS 1.2.
 
-The Infisical API is untrusted by design when dealing with secrets. All secrets are encrypted/decrypted on the client-side before reaching the Infisical API by default; granting Infisical access to secrets afterward is optional and up to your organization.
+The server mandates that each request includes a valid token (issued for a user or machine identity) used to identify the client before performing any actions on the platform. Clients without a valid token can only access login endpoints with the exception of a few intentionally unauthenticated endpoints. For tokens issued for machine identities, Infisical provides significant configuration, including support for native authentication methods (e.g. [AWS](https://infisical.com/docs/documentation/platform/identities/aws-auth), [Azure](https://infisical.com/docs/documentation/platform/identities/azure-auth), [Kubernetes](https://infisical.com/docs/documentation/platform/identities/kubernetes-auth), etc.); custom TTLs to restrict token lifespan; IP restrictions to enforce network-based access controls; and usage caps to limit the maximum number of times that a token can be used.
 
-The storage backend used by Infisical is also untrusted by design. All sensitive data is encrypted either symmetrically with AES-256-GCM or asymmetrically with x25519-xsalsa20-poly1305 prior to entering the storage backend, depending on the context either on the client-side or server-side. Moreover, Infisical communicates with the storage backend over TLS to provide an added layer of security.
+When accessing Infisical via web browser, JWT tokens are stored in browser memory and appended to outbound requests requiring authentication; refresh tokens are stored in HttpOnly cookies and included in requests as part of token renewal. Note also that Infisical utilizes the latest HTTP security headers and employs a strict Content-Security-Policy to mitigate XSS.
+
+To mitigate abuse and enhance system stability, the server enforces configurable rate limiting on read, write, and secrets operations. This prevents excessive API requests from impacting system performance while ensuring fair usage across clients.
+
+Once traffic enters the server, any sensitive data (e.g. secrets, certificates entering the server), where applicable, is encrypted using a 256-bit [Advanced Encryption Standard (AES)](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard) cipher in the [Galois Counter Mode (GCM)](https://en.wikipedia.org/wiki/Galois/Counter_Mode) with 96-bit nonces prior to being persisted in the storage backend. Encryption is an integral part of Infisical’s platform-wide cryptographic architecture, which also supports seal-wrapping with external KMS and HSMs. Before responding to a client request, the server securely retrieves and decrypts requested data from the storage backend. Each decryption operation includes integrity verification to ensure data has not been altered or tampered with.
 
 ## Internal threat overview
 
-Within Infisical, a critical security concern is an attacker gaining access to sensitive data that they are not permitted to, especially if they already has some degree of access to the system. There are currently two authentication methods categories used by clients for where we apply robust authentication and authorization logic.
+Within Infisical, an internal threat and critical security concern is an attacker gaining access to sensitive data that they are not permitted to, especially if they are able to authenticate with some degree of access to the system.
 
-### JWT / API Key
+Before a client can perform any actions on the platform, it must authenticate with the server using a supported authentication method such as username-password, SAML, SSO, LDAP, AWS/GCP/Azure, OIDC, or Kubernetes authentication. A successful authentication results in the issuance of a client (JWT) token containing a reference to the user or machine identity bound to it.
 
-This token category is used by users and included in requests made from the Infisical Web UI or elsewhere to the Infisical API.
+When a client uses the token to make authenticated requests against the server, Infisical validates the token and maps the bound-identity to access control policies that exist at the organization and project level, both types of namespaces within the platform. The access control policies are configured by operators of Infisical ahead of time and may involve role-based, attribute-based, and one-off “additional privilege” resource constraints. Given the robustness of the access control system, we recommend reading the full documentation for it.
 
-Each token is authenticated against the API and mapped to an existing user in Infisical. If no existing user is found for the token, the request is rejected by the API. Each token assumes the permission set of the user that it is mapped to. For example, if a user corresponding to a token is not allowed access to a certain organization or project, then the token is also not be valid for any requests concerning those specific resources.
+For example, an operator of Infisical may define the following constraints to restrict client access to particular resources:
 
-In the event of compromise, an attacker could use the token to impersonate the associated user and perform actions within the permission set of that user. While they could retrieve secrets for a project that the user is part of, they could not, however, decrypt secrets if the project follows Infisical's default zero-knowledge architecture. In any case, it would be critical for the user to invalidate this token and change their password immediately to prevent further unintended actions and consequences.
-
-### Service token
-
-This token category is provisioned by users for applications and infrastructure to perform secret operations against the Infisical API.
-
-Each token is scoped to a project in Infisical and configurable with an expiration date and permission set (also known as **scopes**) for specific environment(s) and path(s) within them. For example, you may provision an application a service token to authenticate against the Infisical API and retrieve secrets from some `/environment-variables` path in the production environment of a project. If the token is tried for another project, environment, or path outside of its permission set, then it is rejected by the API.
-
-It should also be noted that projects in Infisical can be configured to restrict service token access to specific IP addresses or CIDR ranges; this can be useful for limiting access to traffic coming from corporate networks.
-
-In the event of compromise, an attacker could use a service token to access the secrets that it is provisioned for. It would be critical here for project administrator(s) to revoke the token immediately to prevent further unintended access to resources; it would also be advisable currently to transfer secrets to a new project where a new project key is created on the client-side.
+- Read and write access to a secret resource via an additional privilege attached to the bound-identity.
+- Read-only access to a secret resource via one or multiple roles attached to the bound-identity.
+- Read-only access to a secret resource via a group membership for which the associated bound-identity is part of; the group itself is assigned one or multiple roles with access to the secret resource.
 
 ## Cryptography
 
-Infisical uses AES-256-GCM for symmetric encryption and x25519-xsalsa20-poly1305 for asymmetric encryption operations; asymmetric algorithms are implemented with the [TweetNaCl.js](https://tweetnacl.js.org/#/) library which has been well-audited and recommended for use by cybersecurity firm Cure53. Lastly, the secure remote password (SRP) implementation uses [jsrp](https://github.com/alax/jsrp) package for user authentication.
+All symmetric encryption operations, with the exception of those proxied through external KMS and HSM systems, in Infisical use a software-backed, 256-bit Advanced Encryption Standard (AES) cipher in the Galois Counter Mode (GCM) with 96-bit nonces — AES-256-GCM.
 
-By default, Infisical employs a zero-knowledge-first approach to securely storing and sharing secrets.
+Infisical employs a multilayer approach to its encryption architecture with components that can be optionally linked to external KMS or HSM systems. At a high-level, a master key, backed by an operator-provided key, is used to encrypt (internal) “KMS” keys that are used to then encrypt data keys; the data keys are used to protect sensitive data stored in Infisical. The keys in the architecture are stored encrypted in the storage backend, retrieved, decrypted, and only then used as part of server operations when needed. Since server configuration is needed to decrypt any keys as part of the encryption architecture, accessing any sensitive data in Infisical requires access to both server configuration and data in the storage backend. Note that the platform’s encryption architecture has components that can be linked to external KMS and HSM systems; opting for these make the use of the software more FIPS aligned.
 
-- Each secret belongs to a project and is symmetrically encrypted by that project's unique key. Each member of a project is shared a copy of the project key, encrypted under their public key, when they are first invited to join the project.
-  Since these encryption operations occur on the client-side, the Infisical API is not able to view the value of any secret and the default zero-knowledge property of Infisical is retained; as you'd expect, it follows that decryption operations also occur on the client-side.
-- An exception to the zero-knowledge property occurs when a member of a project explicitly shares that project's unique key with Infisical. It is often necessary to share the project key with Infisical in order to use features like native integrations and secret rotation that wouldn't be possible to offer otherwise.
+To be specific:
 
-## Infrastructure
+- The architecture starts with a 256-bit master key that can be secured by a root key which can either be a 128-bit key, passed into the server by an operator of Infisical as an environment variable, or an external key from an HSM module such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm) or [AWS Cloud HSM](https://aws.amazon.com/cloudhsm/) linked via specified configuration parameters.
+- The master key secures 256-bit keys in Infisical henceforth referred to as KMS keys.
+- Each organization in Infisical has its own KMS key and a separate data key; the KMS key is used to secure the data key which encrypts organization-level data.
+- Each project in Infisical has a designated KMS key and a separate data key; the KMS key is used to secure the data key which encrypts project-level data. Note that a project KMS key can be substituted for an external key from a KMS such as [AWS KMS](https://infisical.com/docs/documentation/platform/kms-configuration/aws-kms), [AWS Cloud HSM](https://infisical.com/docs/documentation/platform/kms-configuration/aws-hsm), and [GCP KMS](https://infisical.com/docs/documentation/platform/kms-configuration/gcp-kms). We recommend reading the fuller [documentation](https://infisical.com/docs/documentation/platform/kms-configuration/overview) or integrating with an external KMS
 
-### High availability
+## Infrastructure & High availability (Infisical Cloud)
+
+Infisical Cloud uses a number of strategies to keep services running smoothly and ensure data stays available, even during failures; we document these strategies below:
+
+- Multi-AZ AWS RDS: Infisical Cloud runs AWS Relational Database Service (RDS) with Multi-AZ deployments to improve availability and durability. This setup keeps a standby replica in a different Availability Zone (AZ) and automatically fails over if the primary instance goes down. Continuous backups and replication help protect data and minimize interruptions.
+- Multi-AZ ElastiCache (Redis): For caching, Infisical Cloud runs Amazon ElastiCache (Redis) in a Multi-AZ setup. This means data is replicated across different AZs, so if one goes down, the system can automatically fail over to a healthy node. This helps keep response times low and ensures caching stays reliable.
+- Multi-AZ ECS for Container Orchestration: Infisical Cloud runs on Amazon Elastic Container Service (ECS) across multiple availability zones, making sure containers stay available even if an AZ fails. If one zone has an issue, traffic automatically shifts to healthy instances in other zones, keeping downtime to a minimum.
 
 Infisical Cloud utilizes several strategies to ensure high availability, leveraging AWS services to maintain continuous operation and data integrity.
 
-#### Multi-AZ AWS RDS
+## Cross-Region Replication for Disaster Recovery (Infisical Cloud)
 
-Infisical Cloud uses AWS Relational Database Service (RDS) with Multi-AZ deployments.
-This configuration ensures that the database service is highly available and durable.
-AWS RDS automatically provisions and maintains a synchronous standby replica of the database in a different Availability Zone (AZ).
-This setup facilitates immediate failover to the standby in the event of an AZ failure, thereby ensuring that database operations can continue with minimal interruption.
-The continuous backup and replication to the standby instance safeguard data against loss and ensure its availability even during system failures.
+To handle regional failures, Infisical Cloud keeps standby regions updated and ready to take over when needed.
 
-#### Multi-AZ ECS for Container Orchestration
+- ElastiCache (Redis): Data is replicated across regions using AWS Global Datastore, keeping cached data consistent and available even if a primary region goes down.
+- RDS (PostgreSQL): Cross-region read replicas ensure database data is available in multiple locations, allowing for failover in case of a regional outage.
 
-Infisical Cloud leverages Amazon Elastic Container Service (ECS) in a Multi-AZ configuration for container orchestration.
-This arrangement enables the management and operation of containers across multiple availability zones, increasing the application's fault tolerance.
-Should there be an AZ failure, load is seamlessly sent to an operational AZ, thus minimizing downtime and preserving service availability.
-
-#### Standby Regions for Regional Failover
-
-To fight regional outages, secondary regions are always in standby mode and maintained with up-to-date configurations and data, ready to take over in case the primary region fails.
-The standby regions enable a rapid transition and service continuity with minimal disruption in the event of a complete regional failure, ensuring that Infisical Cloud services remain accessible.
-
-### Snapshots
-
-A snapshot is a complete copy of data in the storage backend at a point in time.
-
-If using [Infisical Cloud](https://app.infisical.com), snapshots of MongoDB databases are taken regularly; this can be enabled on your own storage backend as well.
-
-### Offline usage
-
-Many teams and organizations use the [Infisical CLI](https://infisical.com/docs/cli/overview) to fetch and inject secrets back from Infisical into their applications and infrastructure locally; the CLI has offline fallback capabilities.
-
-If you have previously retrieved secrets for a specific project and environment, the `run/secret` command will utilize the saved secrets, even when offline, on subsequent fetch attempts to ensure that you always have access to secrets.
-
-## Platform
-
-### Web application
-
-Infisical utilizes the latest HTTP security headers and employs a strict Content-Security-Policy to mitigate XSS.
-
-JWT tokens are stored in browser memory and appended to outbound requests requiring authentication; refresh tokens are stored in `HttpOnly` cookies and included in future requests to `/api/token` for JWT token renewal.
-
-### User authentication
-
-Infisical supports several authentication methods including email/password, Google SSO, GitHub SSO, SAML 2.0 (Okta, Azure, JumpCloud), and OpenID Connect; Infisical also currently offers email-based 2FA with authenticator app methods coming in Q1 2024.
-
-Infisical uses the [secure remote password protocol](https://en.wikipedia.org/wiki/Secure_Remote_Password_protocol#:~:text=The%20SRP%20protocol%20has%20a,the%20user%20to%20the%20server), commonly found in other zero-knowledge platform architectures, for authentication.
-Put simply, the protocol enables Infisical to validate a user's knowledge of their password without ever seeing it by constructing a mutual secret; we use this protocol because each user's password is used to seed the generation of a master encryption/decryption key via KDF for that user which the platform
-should not see.
-
-Lastly, Infisical enforces strong password requirements according to the guidance set forth in [NIST Special Publication 800–63B](https://pages.nist.gov/800-63-3/sp800-63b.html#appA). Since passwords in Infisical also has cryptographic implications, Infisical validates each password on client-side to meet minimum length and entropy requirements; Infisical also considers each password against the [Have I Been Pwned (HIBP) API](https://haveibeenpwned.com), which checks the password against around 700M breached passwords, in a privacy-preserving way.
-
-<Note>
-    Since Infisical's unique zero-knowledge architecture requires a master decryption key for every user account, users with Google SSO, GitHub SSO, or SAML 2.0 enabled must still enter a secret after the
-    authentication step to access their secrets in Infisical. In practice, this implies stronger security since users must successfully authenticate with a single sign-on provider and provide a master decryption key
-    to access the platform.
-
-    We strongly encourage users to generate and store their passwords / master decryption key in a password manager, such as 1Password, Bitwarden, or Dashlane.
-
-</Note>
-
-## Role-based access control (RBAC)
-
-[Infisical's RBAC](https://infisical.com/docs/documentation/platform/role-based-access-controls) feature enables organization owners and administrators to manage fine-grained access policies for members of their organization in Infisical; with RBAC, administrators can define custom roles with permission sets to be conveniently assigned to other members.
-
-For example, you can define a role provisioning access to secrets in a specific project and environment in it with read-only permissions; the role can be assigned to members of an organization in Infisical.
-
-### Audit logging
-
-Infisical's audit logging feature spans 25+ events, tracking everything from permission changes to queries and mutations applied to secrets, for security and compliance teams at enterprises to monitor information access in the event of any suspicious activity or incident review. Every event is timestamped and information about actor, source (i.e. IP address, user-agent, etc.), and relevant metadata is included.
-
-### IP allowlisting
-
-Infisical's IP allowlisting feature can be configured to restrict client access to specific IP addresses or CIDR ranges. This applies to any client using service tokens and can be useful, for example, for limiting access to traffic coming from corporate networks.
-
-By default, each project is initialized with the `0.0.0.0/0` entry, representing all possible IPv4 addresses. For enhanced security, we strongly recommend replacing the default entry with your client IPs to tighten access to your secrets.
+With standby regions and automated failovers in place, Infisical Cloud faces minimal service disruptions even during large-scale outages.
 
 ## Penetration testing
 
 Infisical hires external third parties to perform regular security assessment and penetration testing of the platform.
 
-Most recently, Infisical commissioned cybersecurity firm [Oneleet](https://www.oneleet.com) to perform a full-coverage, gray box penetration test against the platform's entire attack surface to identify vulnerabilities according to industry standards (OWASP, ASVS, WSTG, TOP-10, etc.).
+Most recently, Infisical commissioned cybersecurity firm [Cure53](https://cure53.de/) to perform a full-coverage, gray box penetration test against the platform's entire attack surface to identify vulnerabilities according to industry standards (OWASP, ASVS, WSTG, TOP-10, etc.).
 
 Please email security@infisical.com to request any reports including a letter of attestation for the conducted penetration test.
 
@@ -179,7 +116,7 @@ Whether or not Infisical or your employees can access data in the Infisical inst
 
 It should be noted that, even on Infisical Cloud, it is physically impossible for employees of Infisical to view the values of secrets if users have not explicitly granted Infisical access to their project (i.e. opted out of zero-knowledge).
 
-Please email security@infisical.com if you have any specific inquiries about employee data access policies.
+Please email security@infisical.com if you have any specific inquiries about employee data and security policies.
 
 ## Get in touch
 

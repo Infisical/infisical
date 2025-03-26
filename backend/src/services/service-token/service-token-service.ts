@@ -3,8 +3,13 @@ import crypto from "node:crypto";
 import { ForbiddenError, subject } from "@casl/ability";
 import bcrypt from "bcrypt";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 
@@ -54,18 +59,19 @@ export const serviceTokenServiceFactory = ({
     permissions,
     encryptedKey
   }: TCreateServiceTokenDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
 
     scopes.forEach(({ environment, secretPath }) => {
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Create,
+        ProjectPermissionSecretActions.Create,
         subject(ProjectPermissionSub.Secrets, { environment, secretPath })
       );
     });
@@ -109,13 +115,14 @@ export const serviceTokenServiceFactory = ({
     const serviceToken = await serviceTokenDAL.findById(id);
     if (!serviceToken) throw new NotFoundError({ message: `Service token with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      serviceToken.projectId,
+      projectId: serviceToken.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.ServiceTokens);
 
     const deletedServiceToken = await serviceTokenDAL.deleteById(id);
@@ -143,13 +150,14 @@ export const serviceTokenServiceFactory = ({
     actorAuthMethod,
     projectId
   }: TProjectServiceTokensDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
 
     const tokens = await serviceTokenDAL.find({ projectId }, { sort: [["createdAt", "desc"]] });
