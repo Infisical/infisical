@@ -64,7 +64,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="Privilege Management System Upgrade">
+      <ModalContent title="Privilege Management System Upgrade" className="max-w-2xl">
         <div className="mb-4">
           <h4 className="mb-2 text-lg font-semibold">
             Introducing Permission-Based Privilege Management
