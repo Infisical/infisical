@@ -9,6 +9,7 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   useCreateCustomerPortalSession,
   useGetOrgPlanBillingInfo,
@@ -47,12 +48,20 @@ export const PreviewSection = () => {
   };
 
   function formatPlanSlug(slug: string) {
+    if (!slug) {
+      return "-";
+    }
     return slug.replace(/(\b[a-z])/g, (match) => match.toUpperCase()).replace(/-/g, " ");
   }
 
   const handleUpgradeBtnClick = async () => {
     try {
       if (!subscription || !currentOrg) return;
+
+      if (!isInfisicalCloud()) {
+        window.open("https://infisical.com/pricing", "_blank");
+        return;
+      }
 
       if (!subscription.has_used_trial) {
         // direct user to start pro trial
@@ -69,6 +78,19 @@ export const PreviewSection = () => {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const getUpgradePlanLabel = () => {
+    if (!isInfisicalCloud()) {
+      return (
+        <div>
+          Go to Pricing
+          <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="mb-[0.06rem] ml-1 text-xs" />
+        </div>
+      );
+    }
+
+    return !subscription.has_used_trial ? "Start Pro Free Trial" : "Upgrade Plan";
   };
 
   return (
@@ -97,7 +119,7 @@ export const PreviewSection = () => {
                     color="mineshaft"
                     isDisabled={!isAllowed}
                   >
-                    {!subscription.has_used_trial ? "Start Pro Free Trial" : "Upgrade Plan"}
+                    {getUpgradePlanLabel()}
                   </Button>
                 )}
               </OrgPermissionCan>
@@ -133,22 +155,24 @@ export const PreviewSection = () => {
                 subscription.status === "trialing" ? "(Trial)" : ""
               }`}
             </p>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Billing}>
-              {(isAllowed) => (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!currentOrg?.id) return;
-                    const { url } = await createCustomerPortalSession.mutateAsync(currentOrg.id);
-                    window.location.href = url;
-                  }}
-                  disabled={!isAllowed}
-                  className="text-primary"
-                >
-                  Manage plan &rarr;
-                </button>
-              )}
-            </OrgPermissionCan>
+            {isInfisicalCloud() && (
+              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Billing}>
+                {(isAllowed) => (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!currentOrg?.id) return;
+                      const { url } = await createCustomerPortalSession.mutateAsync(currentOrg.id);
+                      window.location.href = url;
+                    }}
+                    disabled={!isAllowed}
+                    className="text-primary"
+                  >
+                    Manage plan &rarr;
+                  </button>
+                )}
+              </OrgPermissionCan>
+            )}
           </div>
           <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <p className="mb-2 text-gray-400">Price</p>
@@ -161,7 +185,7 @@ export const PreviewSection = () => {
           <div className="flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <p className="mb-2 text-gray-400">Subscription renews on</p>
             <p className="mb-8 text-2xl font-semibold text-mineshaft-50">
-              {formatDate(data.currentPeriodEnd)}
+              {data.currentPeriodEnd ? formatDate(data.currentPeriodEnd) : "-"}
             </p>
           </div>
         </div>

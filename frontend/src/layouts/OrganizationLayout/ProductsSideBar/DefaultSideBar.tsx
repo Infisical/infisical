@@ -12,17 +12,13 @@ export const DefaultSideBar = () => (
           </MenuItem>
         )}
       </Link>
-      {(window.location.origin.includes("https://app.infisical.com") ||
-        window.location.origin.includes("https://eu.infisical.com") ||
-        window.location.origin.includes("https://gamma.infisical.com")) && (
-        <Link to="/organization/billing">
-          {({ isActive }) => (
-            <MenuItem isSelected={isActive} icon="spinning-coin">
-              Usage & Billing
-            </MenuItem>
-          )}
-        </Link>
-      )}
+      <Link to="/organization/billing">
+        {({ isActive }) => (
+          <MenuItem isSelected={isActive} icon="spinning-coin">
+            Usage & Billing
+          </MenuItem>
+        )}
+      </Link>
     </MenuGroup>
     <MenuGroup title="Other">
       <Link to="/organization/access-management">
