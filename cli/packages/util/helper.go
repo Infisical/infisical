@@ -119,6 +119,51 @@ func GetInfisicalToken(cmd *cobra.Command) (token *models.TokenDetails, err erro
 
 }
 
+// GetProjectID retrieves the project ID with the following precedence:
+// 1. --projectId flag
+// 2. INFISICAL_PROJECT_ID environment variable
+// 3. Local workspace config file
+func GetProjectID(cmd *cobra.Command) (*models.ProjectDetails, error) {
+	
+	projectID, err := cmd.Flags().GetString("projectId")
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse projectId flag: %w", err)
+	}
+
+	if projectID != "" {
+		return &models.ProjectDetails{
+			ID:     projectID,
+			Source: "--projectId flag",
+		}, nil
+	}
+
+	// Check environment variable
+	projectID = os.Getenv(INFISICAL_PROJECT_ID)
+	if projectID != "" {
+		return &models.ProjectDetails{
+			ID:     projectID,
+			Source: fmt.Sprintf("%s environment variable", INFISICAL_PROJECT_ID),
+		}, nil
+	}
+
+	// Try workspace file
+	configFile, err := GetWorkSpaceFromFile()
+	if err == nil && configFile.WorkspaceId != "" {
+		return &models.ProjectDetails{
+			ID:     configFile.WorkspaceId,
+			Source: "workspace configuration file",
+		}, nil
+	}
+
+	// When using service tokens or machine identities, project ID is required
+	if cmd.Flags().Changed("token") {
+		return nil, fmt.Errorf("when using service tokens or machine identities, you must provide a project ID either via --projectId flag or %s environment variable", INFISICAL_PROJECT_ID)
+	}
+
+	return nil, nil // Return nil when no project ID is found and it's not required
+}
+
 func UniversalAuthLogin(clientId string, clientSecret string) (api.UniversalAuthLoginResponse, error) {
 	httpClient := resty.New()
 	httpClient.SetRetryCount(10000).

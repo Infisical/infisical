@@ -7,8 +7,15 @@ const (
 	INFISICAL_DEFAULT_EU_URL                   = "https://eu.infisical.com"
 	INFISICAL_WORKSPACE_CONFIG_FILE_NAME       = ".infisical.json"
 	INFISICAL_TOKEN_NAME                       = "INFISICAL_TOKEN"
+	INFISICAL_PROJECT_ID                       = "INFISICAL_PROJECT_ID"
 	INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN_NAME = "INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN"
 	INFISICAL_VAULT_FILE_PASSPHRASE_ENV_NAME   = "INFISICAL_VAULT_FILE_PASSPHRASE" // This works because we've forked the keyring package and added support for this env variable. This explains why you won't find any occurrences of it in the CLI codebase.
+
+	// JWT configuration
+	INFISICAL_JWT_EXPIRATION_NAME             = "INFISICAL_JWT_EXPIRATION"
+	DEFAULT_JWT_EXPIRATION                    = 86400    // 24 hours in seconds
+	MIN_JWT_EXPIRATION                        = 3600     // 1 hour in seconds
+	MAX_JWT_EXPIRATION                        = 2592000  // 30 days in seconds
 
 	VAULT_BACKEND_AUTO_MODE = "auto"
 	VAULT_BACKEND_FILE_MODE = "file"
