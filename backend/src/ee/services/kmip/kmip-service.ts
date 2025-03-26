@@ -4,8 +4,9 @@ import crypto, { KeyObject } from "crypto";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
-import { isValidHostname, isValidIp } from "@app/lib/ip";
+import { isValidIp } from "@app/lib/ip";
 import { ms } from "@app/lib/ms";
+import { isFQDN } from "@app/lib/validator/validate-url";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
@@ -665,7 +666,7 @@ export const kmipServiceFactory = ({
       .split(",")
       .map((name) => name.trim())
       .map((altName) => {
-        if (isValidHostname(altName)) {
+        if (isFQDN(altName, { allow_wildcard: true })) {
           return {
             type: "dns",
             value: altName

@@ -7,14 +7,16 @@ import { groupBy, removeTrailingSlash } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { isValidSecretPath } from "@app/lib/validator";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
 import { TFindFoldersDeepByParentIdsDTO } from "./secret-folder-types";
 
-export const validateFolderName = (folderName: string) => {
-  const validNameRegex = /^[a-zA-Z0-9-_]+$/;
-  return validNameRegex.test(folderName);
-};
+export const validateFolderName = characterValidator([
+  CharacterType.AlphaNumeric,
+  CharacterType.Hyphen,
+  CharacterType.Underscore
+]);
 
 const sqlFindMultipleFolderByEnvPathQuery = (db: Knex, query: Array<{ envId: string; secretPath: string }>) => {
   // this is removing an trailing slash like /folder1/folder2/ -> /folder1/folder2
@@ -188,9 +190,9 @@ const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: str
                 // the root folder check is used to avoid last / and also root name in folders
                 depth: db.raw("parent.depth + 1"),
                 path: db.raw(
-                  `CONCAT( CASE 
-                  WHEN  ${TableName.SecretFolder}."parentId" is NULL THEN '' 
-                  ELSE  CONCAT('/', secret_folders.name) 
+                  `CONCAT( CASE
+                  WHEN  ${TableName.SecretFolder}."parentId" is NULL THEN ''
+                  ELSE  CONCAT('/', secret_folders.name)
                 END, parent.path )`
                 ),
                 child: db.raw("COALESCE(parent.child, parent.id)"),
@@ -464,7 +466,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
                   db.raw("parents.depth + 1 as depth"),
                   db.raw(
                     `CONCAT(
-                        CASE WHEN parents.path = '/' THEN '' ELSE parents.path END, 
+                        CASE WHEN parents.path = '/' THEN '' ELSE parents.path END,
                         CASE WHEN  ${TableName.SecretFolder}."parentId" is NULL THEN '' ELSE CONCAT('/', secret_folders.name) END
                     )`
                   ),

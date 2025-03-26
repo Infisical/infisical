@@ -95,7 +95,7 @@ export const SapAseProvider = (): TDynamicProviderFns => {
       password
     });
 
-    const queries = creationStatement.trim().replace(/\n/g, "").split(";").filter(Boolean);
+    const queries = creationStatement.trim().replaceAll("\n", "").split(";").filter(Boolean);
 
     for await (const query of queries) {
       // If it's an adduser query, we need to first call sp_addlogin on the MASTER database.
@@ -116,7 +116,7 @@ export const SapAseProvider = (): TDynamicProviderFns => {
       username
     });
 
-    const queries = revokeStatement.trim().replace(/\n/g, "").split(";").filter(Boolean);
+    const queries = revokeStatement.trim().replaceAll("\n", "").split(";").filter(Boolean);
 
     const client = await $getClient(providerInputs);
     const masterClient = await $getClient(providerInputs, true);

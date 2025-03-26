@@ -40,15 +40,7 @@ import {
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const validateTemplateRegexField = z
-  .string()
-  .trim()
-  .min(1)
-  .max(100)
-  .regex(/^[a-zA-Z0-9 *@\-\\.\\]+$/, {
-    message:
-      "Invalid pattern: only alphanumeric characters, spaces, *, ., @, -, and \\ are allowed."
-  });
+const validateTemplateRegexField = z.string().trim().min(1).max(100);
 
 const schema = z.object({
   caId: z.string(),

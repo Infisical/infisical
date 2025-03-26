@@ -93,7 +93,8 @@ export const identityAwsAuthServiceFactory = ({
         .some((principalArn) => {
           // convert wildcard ARN to a regular expression: "arn:aws:iam::123456789012:*" -> "^arn:aws:iam::123456789012:.*$"
           // considers exact matches + wildcard matches
-          const regex = new RegExp(`^${principalArn.replace(/\*/g, ".*")}$`);
+          // heavily validated in router
+          const regex = new RegExp(`^${principalArn.replaceAll("*", ".*")}$`);
           return regex.test(extractPrincipalArn(Arn));
         });
 
