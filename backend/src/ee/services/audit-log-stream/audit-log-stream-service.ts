@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { RawAxiosRequestHeaders } from "axios";
 
 import { SecretKeyEncoding } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -60,7 +61,8 @@ export const auditLogStreamServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
-    await blockLocalAndPrivateIpAddresses(url);
+    const appCfg = getConfig();
+    if (appCfg.isCloud) await blockLocalAndPrivateIpAddresses(url);
 
     const totalStreams = await auditLogStreamDAL.find({ orgId: actorOrgId });
     if (totalStreams.length >= plan.auditLogStreamLimit) {
@@ -131,8 +133,8 @@ export const auditLogStreamServiceFactory = ({
     const { orgId } = logStream;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
-
-    if (url) await blockLocalAndPrivateIpAddresses(url);
+    const appCfg = getConfig();
+    if (url && appCfg.isCloud) await blockLocalAndPrivateIpAddresses(url);
 
     // testing connection first
     const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };

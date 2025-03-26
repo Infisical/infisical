@@ -3578,7 +3578,7 @@ const syncSecretsTeamCity = async ({
       .filter((parameter) => !parameter.inherited)
       .reduce(
         (obj, secret) => {
-          const secretName = secret.name.replace("env.", "");
+          const secretName = secret.name.startsWith(".env") ? secret.name.slice(4) : secret.name;
           return {
             ...obj,
             [secretName]: secret.value
@@ -3635,7 +3635,7 @@ const syncSecretsTeamCity = async ({
       )
     ).data.property.reduce(
       (obj, secret) => {
-        const secretName = secret.name.replace("env.", "");
+        const secretName = secret.name.startsWith("env.") ? secret.name.slice(4) : secret.name;
         return {
           ...obj,
           [secretName]: secret.value
