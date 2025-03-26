@@ -6,6 +6,14 @@ export const positionElements = (nodes: Node[], edges: Edge[]) => {
   const showMoreNodes = nodes.filter((node) => node.type === "showMoreButton");
 
   const nodeMap: Record<string, Node> = {};
+  const childrenMap: Record<string, string[]> = {};
+
+  edges.forEach((edge) => {
+    if (!childrenMap[edge.source]) {
+      childrenMap[edge.source] = [];
+    }
+    childrenMap[edge.source].push(edge.target);
+  });
 
   const dagre = new Dagre.graphlib.Graph({ directed: true })
     .setDefaultEdgeLabel(() => ({}))
@@ -33,27 +41,49 @@ export const positionElements = (nodes: Node[], edges: Edge[]) => {
     return positionedNode;
   });
 
+  const findLastChildNode = (parentId: string): Node | undefined => {
+    const childrenIds = childrenMap[parentId] || [];
+    if (childrenIds.length === 0) return undefined;
+
+    const childNodes = childrenIds.map((id) => nodeMap[id]).filter(Boolean);
+
+    if (childNodes.length === 0) return undefined;
+
+    childNodes.sort((a, b) => {
+      if (a.position.y === b.position.y) {
+        return b.position.x - a.position.x;
+      }
+      return b.position.y - a.position.y;
+    });
+
+    return childNodes[0];
+  };
+
   const positionedShowMoreNodes = showMoreNodes.map((node) => {
     const parentId = node.data.parentId as string;
-    const { isStart } = node.data;
 
     const parentNode = nodeMap[parentId] || positionedNodes[0];
-    const parentX = parentNode.position.x;
-    const parentY = parentNode.position.y;
+    const lastChildNode = findLastChildNode(parentId);
 
-    const parentWidth = parentNode.width || 150;
-    const buttonWidth = node.width || 100;
+    const referenceNode = lastChildNode || parentNode;
 
-    const buttonX = isStart ? parentX - buttonWidth - 20 : parentX + parentWidth + 20;
+    const referenceX = referenceNode.position.x;
+    const referenceY = referenceNode.position.y;
+
+    const referenceWidth = referenceNode.width || 150;
+
+    const buttonX = referenceX + referenceWidth - 85;
+    const buttonY = referenceY - 25;
 
     return {
       ...node,
       position: {
         x: buttonX,
-        y: parentY
+        y: buttonY
       }
     };
   });
+
   return {
     nodes: [...positionedNodes, ...positionedShowMoreNodes],
     edges

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { MongoAbility, MongoQuery } from "@casl/ability";
 import {
+  faArrowsToDot,
+  faArrowsUpDownLeftRight,
   faArrowUpRightFromSquare,
   faDownLeftAndUpRightToCenter,
-  faUpLong,
   faUpRightAndDownLeftFromCenter,
   faWindowRestore
 } from "@fortawesome/free-solid-svg-icons";
@@ -24,9 +25,9 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { Button, IconButton, Spinner, Tooltip } from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 
+import { AccessTreeSecretPathInput } from "./nodes/FolderNode/components/AccessTreeSecretPathInput";
 import { ShowMoreButtonNode } from "./nodes/ShowMoreButtonNode";
 import { AccessTreeErrorBoundary, AccessTreeProvider, PermissionSimulation } from "./components";
 import { BasePermissionEdge } from "./edges";
@@ -46,12 +47,13 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
   const [selectedPath, setSelectedPath] = useState<string>("/");
   const accessTreeData = useAccessTree(permissions, selectedPath);
   const { edges, nodes, isLoading, viewMode, setViewMode, environment } = accessTreeData;
+  const [initialRender, setInitialRender] = useState(true);
 
   useEffect(() => {
     setSelectedPath("/");
   }, [environment]);
 
-  const { getViewport, setCenter } = useReactFlow();
+  const { getViewport, setCenter, fitView } = useReactFlow();
 
   const goToRootNode = useCallback(() => {
     const roleNode = nodes.find((node) => node.type === "role");
@@ -76,10 +78,17 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
   );
 
   useEffect(() => {
-    setTimeout(() => {
-      goToRootNode();
-    }, 1);
-  }, [nodes, edges, getViewport()]);
+    setInitialRender(true);
+  }, [selectedPath, environment]);
+
+  useEffect(() => {
+    if (initialRender) {
+      setTimeout(() => {
+        goToRootNode();
+        setInitialRender(false);
+      }, 500);
+    }
+  }, [nodes, edges, getViewport(), initialRender]);
 
   const handleToggleModalView = () =>
     setViewMode((prev) => (prev === ViewMode.Modal ? ViewMode.Docked : ViewMode.Modal));
@@ -156,6 +165,7 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
               edgesReconnectable={false}
               nodesConnectable={false}
               connectionLineType={ConnectionLineType.SmoothStep}
+              minZoom={0.001}
               proOptions={{
                 hideAttribution: false // we need pro license if we want to hide
               }}
@@ -167,12 +177,14 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
               )}
               {viewMode !== ViewMode.Docked && (
                 <Panel position="top-right" className="flex gap-1.5">
-                  <SecretPathInput
-                    placeholder="Provide a path, default is /"
-                    environment={environment}
-                    value={selectedPath}
-                    onChange={setSelectedPath}
-                  />
+                  {viewMode !== ViewMode.Undocked && (
+                    <AccessTreeSecretPathInput
+                      placeholder="Provide a path, default is /"
+                      environment={environment}
+                      value={selectedPath}
+                      onChange={setSelectedPath}
+                    />
+                  )}
                   <Tooltip position="bottom" align="center" content={undockButtonLabel}>
                     <IconButton
                       className="mr-1 rounded"
@@ -211,7 +223,7 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
               )}
               {viewMode === ViewMode.Docked && (
                 <Panel position="top-right" className="flex gap-1.5">
-                  <SecretPathInput
+                  <AccessTreeSecretPathInput
                     placeholder="Provide a path, default is /"
                     environment={environment}
                     value={selectedPath}
@@ -221,10 +233,15 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
               )}
               <PermissionSimulation {...accessTreeData} />
               <Background color="#5d5f64" bgColor="#111419" variant={BackgroundVariant.Dots} />
-              <Controls position="bottom-left" showFitView={false} showInteractive={false}>
+              <Controls position="bottom-left" showInteractive={false} showFitView={false}>
+                <ControlButton onClick={() => fitView({ duration: 800 })}>
+                  <Tooltip position="right" content="Set view to fit all nodes">
+                    <FontAwesomeIcon icon={faArrowsUpDownLeftRight} />
+                  </Tooltip>
+                </ControlButton>
                 <ControlButton onClick={goToRootNode}>
-                  <Tooltip position="right" content="Go to Root Folder">
-                    <FontAwesomeIcon icon={faUpLong} />
+                  <Tooltip position="right" content="Go to root folder">
+                    <FontAwesomeIcon icon={faArrowsToDot} />
                   </Tooltip>
                 </ControlButton>
               </Controls>
