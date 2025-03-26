@@ -1,4 +1,3 @@
-/* eslint-disable no-nested-ternary */
 import { useState } from "react";
 import { Control, Controller, UseFormReset, UseFormSetValue, UseFormWatch } from "react-hook-form";
 import { faCaretDown, faCheckCircle, faFilterCircleXmark } from "@fortawesome/free-solid-svg-icons";
@@ -116,12 +115,7 @@ export const LogsFilter = ({
   const selectedProject = watch("project");
 
   return (
-    <div
-      className={twMerge(
-        "sticky top-20 z-10 flex flex-wrap items-center justify-between bg-bunker-800",
-        className
-      )}
-    >
+    <div className={twMerge("sticky top-20 z-10 flex flex-col bg-bunker-800", className)}>
       <div className="flex items-center gap-4">
         {isOrgAuditLogs && workspacesInOrg.length > 0 && (
           <Controller
@@ -157,7 +151,11 @@ export const LogsFilter = ({
             control={control}
             name="secretPath"
             render={({ field: { onChange, value, ...field } }) => (
-              <FormControl label="Secret Path" className="w-40">
+              <FormControl
+                tooltipText="Filter audit logs related to events that occurred on a specific secret path."
+                label="Secret Path"
+                className="w-40"
+              >
                 <Input
                   placeholder="/folder"
                   {...field}
@@ -174,193 +172,206 @@ export const LogsFilter = ({
             control={control}
             name="secretKey"
             render={({ field: { onChange, value, ...field } }) => (
-              <FormControl label="Secret Key" className="w-40">
-                <Input {...field} value={value} onChange={(e) => onChange(e.target.value)} />
+              <FormControl
+                tooltipText="Filter audit logs related to a specific secret."
+                label="Secret Name"
+                className="w-40"
+              >
+                <Input
+                  {...field}
+                  placeholder="API_KEY"
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
               </FormControl>
             )}
           />
         )}
       </div>
-      <div className="mt-1 flex items-center space-x-2">
-        <Controller
-          control={control}
-          name="eventType"
-          render={({ field }) => (
-            <FormControl label="Events">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <div className="inline-flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-md border border-mineshaft-500 bg-mineshaft-700 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
-                    {selectedEventTypes?.length === 1
-                      ? eventTypes.find((eventType) => eventType.value === selectedEventTypes[0])
-                          ?.label
-                      : selectedEventTypes?.length === 0
-                        ? "All events"
-                        : `${selectedEventTypes?.length} events selected`}
-                    <FontAwesomeIcon icon={faCaretDown} className="ml-2 text-xs" />
-                  </div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="z-[100] max-h-80 overflow-hidden">
-                  <div className="max-h-80 overflow-y-auto">
-                    {eventTypes && eventTypes.length > 0 ? (
-                      eventTypes.map((eventType) => {
-                        const isSelected = selectedEventTypes?.includes(
-                          eventType.value as EventType
-                        );
-
-                        return (
-                          <DropdownMenuItem
-                            onSelect={(event) => eventTypes.length > 1 && event.preventDefault()}
-                            onClick={() => {
-                              if (selectedEventTypes?.includes(eventType.value as EventType)) {
-                                field.onChange(
-                                  selectedEventTypes?.filter((e: string) => e !== eventType.value)
-                                );
-                              } else {
-                                field.onChange([...(selectedEventTypes || []), eventType.value]);
-                              }
-                            }}
-                            key={`event-type-${eventType.value}`}
-                            icon={
-                              isSelected ? (
-                                <FontAwesomeIcon
-                                  icon={faCheckCircle}
-                                  className="pr-0.5 text-primary"
-                                />
-                              ) : (
-                                <div className="pl-[1.01rem]" />
-                              )
-                            }
-                            iconPos="left"
-                            className="w-[28.4rem] text-sm"
-                          >
-                            {eventType.label}
-                          </DropdownMenuItem>
-                        );
-                      })
-                    ) : (
-                      <div />
-                    )}
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </FormControl>
-          )}
-        />
-
-        {!isPending && data && data.length > 0 && !presets?.actorId && (
+      <div className="mt-1 flex w-full justify-start">
+        <div className="flex items-center space-x-2">
           <Controller
             control={control}
-            name="actor"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            name="eventType"
+            render={({ field }) => (
+              <FormControl label="Events">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <div className="inline-flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-md border border-mineshaft-500 bg-mineshaft-700 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                      {selectedEventTypes?.length === 1
+                        ? eventTypes.find((eventType) => eventType.value === selectedEventTypes[0])
+                            ?.label
+                        : selectedEventTypes?.length === 0
+                          ? "All events"
+                          : `${selectedEventTypes?.length} events selected`}
+                      <FontAwesomeIcon icon={faCaretDown} className="ml-2 text-xs" />
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="z-[100] max-h-80 overflow-hidden">
+                    <div className="max-h-80 overflow-y-auto">
+                      {eventTypes && eventTypes.length > 0 ? (
+                        eventTypes.map((eventType) => {
+                          const isSelected = selectedEventTypes?.includes(
+                            eventType.value as EventType
+                          );
+
+                          return (
+                            <DropdownMenuItem
+                              onSelect={(event) => eventTypes.length > 1 && event.preventDefault()}
+                              onClick={() => {
+                                if (selectedEventTypes?.includes(eventType.value as EventType)) {
+                                  field.onChange(
+                                    selectedEventTypes?.filter((e: string) => e !== eventType.value)
+                                  );
+                                } else {
+                                  field.onChange([...(selectedEventTypes || []), eventType.value]);
+                                }
+                              }}
+                              key={`event-type-${eventType.value}`}
+                              icon={
+                                isSelected ? (
+                                  <FontAwesomeIcon
+                                    icon={faCheckCircle}
+                                    className="pr-0.5 text-primary"
+                                  />
+                                ) : (
+                                  <div className="pl-[1.01rem]" />
+                                )
+                              }
+                              iconPos="left"
+                              className="w-[28.4rem] text-sm"
+                            >
+                              {eventType.label}
+                            </DropdownMenuItem>
+                          );
+                        })
+                      ) : (
+                        <div />
+                      )}
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </FormControl>
+            )}
+          />
+
+          {!isPending && data && data.length > 0 && !presets?.actorId && (
+            <Controller
+              control={control}
+              name="actor"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Actor"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                  className="w-40"
+                >
+                  <Select
+                    {...(field.value ? { value: field.value } : { placeholder: "Select" })}
+                    {...field}
+                    onValueChange={(e) => onChange(e)}
+                    className="w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100"
+                  >
+                    {data.map((actor) => renderActorSelectItem(actor))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+          )}
+          <Controller
+            control={control}
+            name="userAgentType"
+            render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
               <FormControl
-                label="Actor"
+                label="Source"
                 errorText={error?.message}
                 isError={Boolean(error)}
                 className="w-40"
               >
                 <Select
-                  {...(field.value ? { value: field.value } : { placeholder: "Select" })}
+                  value={value === undefined ? "all" : value}
                   {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100"
+                  onValueChange={(e) => {
+                    if (e === "all") onChange(undefined);
+                    else onChange(e);
+                  }}
+                  className={twMerge("w-full border border-mineshaft-500 bg-mineshaft-700")}
                 >
-                  {data.map((actor) => renderActorSelectItem(actor))}
+                  <SelectItem value="all" key="all">
+                    All sources
+                  </SelectItem>
+                  {userAgentTypes.map(({ label, value: userAgent }) => (
+                    <SelectItem value={userAgent} key={label}>
+                      {label}
+                    </SelectItem>
+                  ))}
                 </Select>
               </FormControl>
             )}
           />
-        )}
-        <Controller
-          control={control}
-          name="userAgentType"
-          render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
-            <FormControl
-              label="Source"
-              errorText={error?.message}
-              isError={Boolean(error)}
-              className="w-40"
-            >
-              <Select
-                value={value === undefined ? "all" : value}
-                {...field}
-                onValueChange={(e) => {
-                  if (e === "all") onChange(undefined);
-                  else onChange(e);
-                }}
-                className={twMerge("w-full border border-mineshaft-500 bg-mineshaft-700")}
-              >
-                <SelectItem value="all" key="all">
-                  All sources
-                </SelectItem>
-                {userAgentTypes.map(({ label, value: userAgent }) => (
-                  <SelectItem value={userAgent} key={label}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
-        />
-        <Controller
-          name="startDate"
-          control={control}
-          render={({ field: { onChange, ...field }, fieldState: { error } }) => {
-            return (
-              <FormControl label="Start Date" errorText={error?.message} isError={Boolean(error)}>
-                <DatePicker
-                  value={field.value || undefined}
-                  onChange={onChange}
-                  dateFormat="P"
-                  popUpProps={{
-                    open: isStartDatePickerOpen,
-                    onOpenChange: setIsStartDatePickerOpen
-                  }}
-                  popUpContentProps={{}}
-                />
-              </FormControl>
-            );
-          }}
-        />
-        <Controller
-          name="endDate"
-          control={control}
-          render={({ field: { onChange, ...field }, fieldState: { error } }) => {
-            return (
-              <FormControl label="End Date" errorText={error?.message} isError={Boolean(error)}>
-                <DatePicker
-                  value={field.value || undefined}
-                  onChange={onChange}
-                  dateFormat="P"
-                  popUpProps={{
-                    open: isEndDatePickerOpen,
-                    onOpenChange: setIsEndDatePickerOpen
-                  }}
-                  popUpContentProps={{}}
-                />
-              </FormControl>
-            );
-          }}
-        />
-        <Button
-          isLoading={false}
-          colorSchema="primary"
-          variant="outline_bg"
-          className="mt-[0.45rem]"
-          type="submit"
-          leftIcon={<FontAwesomeIcon icon={faFilterCircleXmark} />}
-          onClick={() =>
-            reset({
-              eventType: presets?.eventType || [],
-              actor: presets?.actorId,
-              userAgentType: undefined,
-              startDate: undefined,
-              endDate: undefined,
-              project: null
-            })
-          }
-        >
-          Clear filters
-        </Button>
+          <Controller
+            name="startDate"
+            control={control}
+            render={({ field: { onChange, ...field }, fieldState: { error } }) => {
+              return (
+                <FormControl label="Start Date" errorText={error?.message} isError={Boolean(error)}>
+                  <DatePicker
+                    value={field.value || undefined}
+                    onChange={onChange}
+                    dateFormat="P"
+                    popUpProps={{
+                      open: isStartDatePickerOpen,
+                      onOpenChange: setIsStartDatePickerOpen
+                    }}
+                    popUpContentProps={{}}
+                  />
+                </FormControl>
+              );
+            }}
+          />
+          <Controller
+            name="endDate"
+            control={control}
+            render={({ field: { onChange, ...field }, fieldState: { error } }) => {
+              return (
+                <FormControl label="End Date" errorText={error?.message} isError={Boolean(error)}>
+                  <DatePicker
+                    value={field.value || undefined}
+                    onChange={onChange}
+                    dateFormat="P"
+                    popUpProps={{
+                      open: isEndDatePickerOpen,
+                      onOpenChange: setIsEndDatePickerOpen
+                    }}
+                    popUpContentProps={{}}
+                  />
+                </FormControl>
+              );
+            }}
+          />
+          <Button
+            isLoading={false}
+            colorSchema="primary"
+            variant="outline_bg"
+            className="mt-[0.45rem]"
+            type="submit"
+            leftIcon={<FontAwesomeIcon icon={faFilterCircleXmark} />}
+            onClick={() =>
+              reset({
+                eventType: presets?.eventType || [],
+                actor: presets?.actorId,
+                userAgentType: undefined,
+                startDate: undefined,
+                endDate: undefined,
+                project: null,
+                secretPath: undefined,
+                secretKey: undefined
+              })
+            }
+          >
+            Clear filters
+          </Button>
+        </div>
       </div>
     </div>
   );
