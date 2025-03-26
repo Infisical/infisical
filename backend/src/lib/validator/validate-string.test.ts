@@ -15,7 +15,7 @@ describe("validate-string", () => {
 
   test("Check special characters", () => {
     expect(characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])("Hello-World")).toBeTruthy();
-    expect(characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])("Hello-World")).toBeTruthy();
+    expect(characterValidator([CharacterType.AlphaNumeric, CharacterType.Plus])("Hello+World")).toBeTruthy();
     expect(characterValidator([CharacterType.AlphaNumeric, CharacterType.Underscore])("Hello_World")).toBeTruthy();
     expect(characterValidator([CharacterType.AlphaNumeric, CharacterType.Colon])("Hello:World")).toBeTruthy();
     expect(characterValidator([CharacterType.AlphaNumeric, CharacterType.Underscore])("Hello World")).toBeFalsy();

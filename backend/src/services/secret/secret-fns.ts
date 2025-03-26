@@ -207,7 +207,7 @@ export const recursivelyGetSecretPaths = ({
 const formatMultiValueEnv = (val?: string) => {
   if (!val) return "";
   if (!val.match("\n")) return val;
-  return `"${val.replaceAll("/n", "\\n")}"`;
+  return `"${val.replaceAll("\n", "\\n")}"`;
 };
 
 type TInterpolateSecretArg = {

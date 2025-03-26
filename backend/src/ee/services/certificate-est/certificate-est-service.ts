@@ -244,10 +244,6 @@ export const certificateEstServiceFactory = ({
 
     const certificates = extractX509CertFromChain(caCertChain).map((cert) => new x509.X509Certificate(cert));
 
-    if (!certificates) {
-      throw new BadRequestError({ message: "Failed to parse certificate chain" });
-    }
-
     const caCertificate = new x509.X509Certificate(caCert);
     return convertRawCertsToPkcs7([caCertificate.rawData, ...certificates.map((cert) => cert.rawData)]);
   };

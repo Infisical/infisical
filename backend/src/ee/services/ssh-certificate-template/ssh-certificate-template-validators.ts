@@ -10,7 +10,7 @@ export const isValidUserPattern = (value: string): boolean => {
   if (value === "*") return true; // Handle wildcard separately
 
   // Simpler, more specific pattern for usernames
-  const userRegex = /^[a-z_][a-z0-9_-]$/;
+  const userRegex = /^[a-z_][a-z0-9_-]*$/i;
   return userRegex.test(value);
 };
 

@@ -28,8 +28,8 @@ export const createDigestAuthRequestInterceptor = (
       nc += 1;
       const nonceCount = nc.toString(16).padStart(8, "0");
       const cnonce = crypto.randomBytes(24).toString("hex");
-      const realm = authDetails.find((el) => el[0].toLowerCase().indexOf("realm") > -1)?.[1].replaceAll('"', "");
-      const nonce = authDetails.find((el) => el[0].toLowerCase().indexOf("nonce") > -1)?.[1].replaceAll('"', "");
+      const realm = authDetails.find((el) => el[0].toLowerCase().indexOf("realm") > -1)?.[1]?.replaceAll('"', "") || "";
+      const nonce = authDetails.find((el) => el[0].toLowerCase().indexOf("nonce") > -1)?.[1]?.replaceAll('"', "") || "";
       const ha1 = crypto.createHash("md5").update(`${username}:${realm}:${password}`).digest("hex");
       const path = opts.url;
 
