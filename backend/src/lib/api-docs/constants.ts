@@ -632,7 +632,8 @@ export const FOLDERS = {
     environment: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
     directory: "The directory to list folders from. (Deprecated in favor of path)",
-    recursive: "Whether or not to fetch all folders from the specified base path, and all of its subdirectories."
+    recursive: "Whether or not to fetch all folders from the specified base path, and all of its subdirectories.",
+    lastSecretModified: "The timestamp filters folders with secrets modified after the specified date."
   },
   GET_BY_ID: {
     folderId: "The ID of the folder to get details."
