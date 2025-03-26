@@ -40,12 +40,14 @@ export const auditLogDALFactory = (db: TDbClient) => {
       actorId,
       actorType,
       secretPath,
+      secretKey,
       eventType,
       eventMetadata
     }: Omit<TFindQuery, "actor" | "eventType"> & {
       actorId?: string;
       actorType?: ActorType;
       secretPath?: string;
+      secretKey?: string;
       eventType?: EventType[];
       eventMetadata?: Record<string, string>;
     },
@@ -90,8 +92,24 @@ export const auditLogDALFactory = (db: TDbClient) => {
         });
       }
 
-      if (projectId && secretPath) {
-        void sqlQuery.whereRaw(`"eventMetadata" @> jsonb_build_object('secretPath', ?::text)`, [secretPath]);
+      if (projectId) {
+        if (secretPath) {
+          void sqlQuery.whereRaw(`"eventMetadata"->>'secretPath' = ?`, [secretPath]);
+        }
+        if (secretKey) {
+          void sqlQuery.whereRaw(
+            `(
+            "eventMetadata"->>'secretKey' = ?
+            OR
+            EXISTS (
+              SELECT 1 
+              FROM jsonb_array_elements("eventMetadata"->'secrets') AS element
+              WHERE element->>'secretKey' = ?
+            )
+          )`,
+            [secretKey, secretKey]
+          );
+        }
       }
 
       // Filter by actor type

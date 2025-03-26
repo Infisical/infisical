@@ -843,6 +843,8 @@ export const AUDIT_LOGS = {
     eventType: "The type of the event to export.",
     secretPath:
       "The path of the secret to query audit logs for. Note that the projectId parameter must also be provided.",
+    secretKey:
+      "The key of the secret to query audit logs for. Note that the projectId parameter must also be provided.",
     userAgentType: "Choose which consuming application to export audit logs for.",
     eventMetadata:
       "Filter by event metadata key-value pairs. Formatted as `key1=value1,key2=value2`, with comma-separation.",

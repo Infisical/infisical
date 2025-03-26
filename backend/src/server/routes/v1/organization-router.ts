@@ -118,6 +118,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           .optional()
           .transform((val) => (!val ? val : removeTrailingSlash(val)))
           .describe(AUDIT_LOGS.EXPORT.secretPath),
+        secretKey: z.string().optional().describe(AUDIT_LOGS.EXPORT.secretKey),
 
         // eventType is split with , for multiple values, we need to transform it to array
         eventType: z

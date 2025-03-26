@@ -58,11 +58,13 @@ export const LogsSection = withPermission(
     const actor = watch("actor");
     const projectId = watch("project")?.id;
     const secretPath = watch("secretPath");
+    const secretKey = watch("secretKey");
 
     const startDate = watch("startDate");
     const endDate = watch("endDate");
 
     const [debouncedSecretPath] = useDebounce<string>(secretPath!, 500);
+    const [debouncedSecretKey] = useDebounce<string>(secretKey!, 500);
 
     return (
       <div>
@@ -81,6 +83,7 @@ export const LogsSection = withPermission(
           refetchInterval={refetchInterval}
           filter={{
             secretPath: debouncedSecretPath || undefined,
+            secretKey: debouncedSecretKey || undefined,
             eventMetadata: presets?.eventMetadata,
             projectId,
             actorType: presets?.actorType,

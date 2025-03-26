@@ -157,7 +157,24 @@ export const LogsFilter = ({
             control={control}
             name="secretPath"
             render={({ field: { onChange, value, ...field } }) => (
-              <FormControl label="Secret path" className="w-40">
+              <FormControl label="Secret Path" className="w-40">
+                <Input
+                  placeholder="/folder"
+                  {...field}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+              </FormControl>
+            )}
+          />
+        )}
+
+        {selectedProject?.type === ProjectType.SecretManager && (
+          <Controller
+            control={control}
+            name="secretKey"
+            render={({ field: { onChange, value, ...field } }) => (
+              <FormControl label="Secret Key" className="w-40">
                 <Input {...field} value={value} onChange={(e) => onChange(e.target.value)} />
               </FormControl>
             )}
@@ -289,7 +306,7 @@ export const LogsFilter = ({
           control={control}
           render={({ field: { onChange, ...field }, fieldState: { error } }) => {
             return (
-              <FormControl label="Start date" errorText={error?.message} isError={Boolean(error)}>
+              <FormControl label="Start Date" errorText={error?.message} isError={Boolean(error)}>
                 <DatePicker
                   value={field.value || undefined}
                   onChange={onChange}
@@ -309,7 +326,7 @@ export const LogsFilter = ({
           control={control}
           render={({ field: { onChange, ...field }, fieldState: { error } }) => {
             return (
-              <FormControl label="End date" errorText={error?.message} isError={Boolean(error)}>
+              <FormControl label="End Date" errorText={error?.message} isError={Boolean(error)}>
                 <DatePicker
                   value={field.value || undefined}
                   onChange={onChange}
