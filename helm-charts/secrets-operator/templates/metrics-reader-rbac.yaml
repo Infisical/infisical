@@ -13,4 +13,5 @@ rules:
   - /metrics
   verbs:
   - get
+
 {{- end }}

@@ -370,17 +370,11 @@ export const MinimizedOrgSidebar = () => {
                       Gateways
                     </DropdownMenuItem>
                   </Link>
-                  {(window.location.origin.includes("https://app.infisical.com") ||
-                    window.location.origin.includes("https://eu.infisical.com") ||
-                    window.location.origin.includes("https://gamma.infisical.com")) && (
-                    <Link to="/organization/billing">
-                      <DropdownMenuItem
-                        icon={<FontAwesomeIcon className="w-3" icon={faMoneyBill} />}
-                      >
-                        Usage & Billing
-                      </DropdownMenuItem>
-                    </Link>
-                  )}
+                  <Link to="/organization/billing">
+                    <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faMoneyBill} />}>
+                      Usage & Billing
+                    </DropdownMenuItem>
+                  </Link>
                   <Link to="/organization/audit-logs">
                     <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faBook} />}>
                       Audit Logs
