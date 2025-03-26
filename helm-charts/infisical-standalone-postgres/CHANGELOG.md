@@ -1,3 +1,12 @@
+## 1.5.0 (March 26, 2025)
+
+Changes:
+* Added support for Kubernetes pod scheduling customization via `nodeSelector` and `tolerations`
+
+Features:
+* `nodeSelector`: Configure pod placement on nodes with specific labels
+* `tolerations`: Enable pods to schedule on tainted nodes
+
 ## 1.4.0 (November 06, 2024)
 
 Changes:
