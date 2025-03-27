@@ -177,11 +177,16 @@ var loginCmd = &cobra.Command{
 			return
 		}
 
+		customHeaders, err := util.GetInfisicalCustomHeadersMap()
+		if err != nil {
+			util.HandleError(err, "Unable to get custom headers")
+		}
+
 		infisicalClient := infisicalSdk.NewInfisicalClient(context.Background(), infisicalSdk.Config{
 			SiteUrl:          config.INFISICAL_URL,
 			UserAgent:        api.USER_AGENT,
 			AutoTokenRefresh: false,
-			CustomHeaders:    os.Getenv("INFISICAL_CUSTOM_HEADERS"),
+			CustomHeaders:    customHeaders,
 		})
 
 		loginMethod, err := cmd.Flags().GetString("method")

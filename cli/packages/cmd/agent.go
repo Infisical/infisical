@@ -513,7 +513,10 @@ type NewAgentMangerOptions struct {
 }
 
 func NewAgentManager(options NewAgentMangerOptions) *AgentManager {
-
+	customHeaders, err := util.GetInfisicalCustomHeadersMap()
+	if err != nil {
+		util.HandleError(err, "Unable to get custom headers")
+	}
 	return &AgentManager{
 		filePaths: options.FileDeposits,
 		templates: options.Templates,
@@ -528,7 +531,7 @@ func NewAgentManager(options NewAgentMangerOptions) *AgentManager {
 			SiteUrl:          config.INFISICAL_URL,
 			UserAgent:        api.USER_AGENT, // ? Should we perhaps use a different user agent for the Agent for better analytics?
 			AutoTokenRefresh: false,
-			CustomHeaders:    os.Getenv("INFISICAL_CUSTOM_HEADERS"),
+			CustomHeaders:    customHeaders,
 		}),
 	}
 
