@@ -5,7 +5,7 @@ export const buildFolderPath = (
   foldersMap: Record<string, TSecretFolders>,
   depth: number = 0
 ): string => {
-  if (depth > 20) return;
+  if (depth > 20) return "";
   if (!folder.parentId) {
     return depth === 0 ? "/" : "";
   }
