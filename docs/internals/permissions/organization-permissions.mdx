@@ -1,0 +1,220 @@
+---
+title: "Organization Permissions"
+description: "Comprehensive guide to Infisical's organization-level permissions"
+---
+
+## Overview
+
+Infisical's organization permissions system follows a role-based access control (RBAC) model built on a subject-action-object framework. At the organization level, these permissions determine what actions users/machines can perform on various resources across the entire organization.
+
+Each permission consists of:
+
+- **Subject**: The resource the permission applies to (e.g., workspaces, members, billing)
+- **Action**: The operation that can be performed (e.g., read, create, edit, delete)
+
+Some organization-level resources—specifically `app-connections`—support conditional permissions and permission inversion for more granular access control.
+
+## Available Organization Permissions
+
+Below is a comprehensive list of all available organization-level subjects and their supported actions, organized by functional area.
+
+### Workspace Management
+
+#### Subject: `workspace`
+
+| Action   | Description           |
+| -------- | --------------------- |
+| `create` | Create new workspaces |
+
+### Role Management
+
+#### Subject: `role`
+
+| Action   | Description                                            |
+| -------- | ------------------------------------------------------ |
+| `read`   | View organization roles and their assigned permissions |
+| `create` | Create new organization roles                          |
+| `edit`   | Modify existing organization roles                     |
+| `delete` | Remove organization roles                              |
+
+### User Management
+
+#### Subject: `member`
+
+| Action   | Description                          |
+| -------- | ------------------------------------ |
+| `read`   | View organization members            |
+| `create` | Add new members to the organization  |
+| `edit`   | Modify member details                |
+| `delete` | Remove members from the organization |
+
+#### Subject: `groups`
+
+| Action             | Description                                      |
+| ------------------ | ------------------------------------------------ |
+| `read`             | View organization groups                         |
+| `create`           | Create new groups in the organization            |
+| `edit`             | Modify existing groups                           |
+| `delete`           | Remove groups from the organization              |
+| `grant-privileges` | Change permission levels for organization groups |
+| `add-members`      | Add members to groups                            |
+| `remove-members`   | Remove members from groups                       |
+
+#### Subject: `identity`
+
+| Action             | Description                                         |
+| ------------------ | --------------------------------------------------- |
+| `read`             | View organization identities                        |
+| `create`           | Add new identities to organization                  |
+| `edit`             | Modify organization identities                      |
+| `delete`           | Remove identities from organization                 |
+| `grant-privileges` | Change permission levels of organization identities |
+| `revoke-auth`      | Revoke authentication for identities                |
+| `create-token`     | Create new authentication tokens                    |
+| `delete-token`     | Delete authentication tokens                        |
+| `get-token`        | Retrieve authentication tokens                      |
+
+### Security & Compliance
+
+#### Subject: `secret-scanning`
+
+| Action   | Description                               |
+| -------- | ----------------------------------------- |
+| `read`   | View secret scanning results and settings |
+| `create` | Configure secret scanning                 |
+| `edit`   | Modify secret scanning settings           |
+| `delete` | Remove secret scanning configuration      |
+
+#### Subject: `settings`
+
+| Action   | Description                               |
+| -------- | ----------------------------------------- |
+| `read`   | View organization settings                |
+| `create` | Setup and configure organization settings |
+| `edit`   | Modify organization settings              |
+| `delete` | Remove organization settings              |
+
+#### Subject: `incident-contact`
+
+| Action   | Description                      |
+| -------- | -------------------------------- |
+| `read`   | View incident contacts           |
+| `create` | Set up new incident contacts     |
+| `edit`   | Modify incident contact settings |
+| `delete` | Remove incident contacts         |
+
+#### Subject: `audit-logs`
+
+| Action | Description                  |
+| ------ | ---------------------------- |
+| `read` | View organization audit logs |
+
+### Identity Provider Integration
+
+#### Subject: `sso`
+
+| Action   | Description                        |
+| -------- | ---------------------------------- |
+| `read`   | View Single Sign-On configurations |
+| `create` | Set up new SSO integrations        |
+| `edit`   | Modify existing SSO settings       |
+| `delete` | Remove SSO configurations          |
+
+#### Subject: `scim`
+
+| Action   | Description                   |
+| -------- | ----------------------------- |
+| `read`   | View SCIM configurations      |
+| `create` | Set up new SCIM provisioning  |
+| `edit`   | Modify existing SCIM settings |
+| `delete` | Remove SCIM configurations    |
+
+#### Subject: `ldap`
+
+| Action   | Description                   |
+| -------- | ----------------------------- |
+| `read`   | View LDAP configurations      |
+| `create` | Set up new LDAP integrations  |
+| `edit`   | Modify existing LDAP settings |
+| `delete` | Remove LDAP configurations    |
+
+### Billing & Subscriptions
+
+#### Subject: `billing`
+
+| Action   | Description                                      |
+| -------- | ------------------------------------------------ |
+| `read`   | View billing information and subscription status |
+| `create` | Set up new payment methods or subscriptions      |
+| `edit`   | Modify billing details or subscription plans     |
+| `delete` | Remove payment methods or cancel subscriptions   |
+
+### Templates & Automation
+
+#### Subject: `project-templates`
+
+| Action   | Description                       |
+| -------- | --------------------------------- |
+| `read`   | View project templates            |
+| `create` | Create new project templates      |
+| `edit`   | Modify existing project templates |
+| `delete` | Remove project templates          |
+
+### Integrations
+
+#### Subject: `app-connections`
+
+Supports conditions and permission inversion
+
+| Action    | Description                        |
+| --------- | ---------------------------------- |
+| `read`    | View app connection configurations |
+| `create`  | Create new app connections         |
+| `edit`    | Modify existing app connections    |
+| `delete`  | Remove app connections             |
+| `connect` | Use app connections                |
+
+### Key Management
+
+#### Subject: `kms`
+
+| Action   | Description                          |
+| -------- | ------------------------------------ |
+| `read`   | View organization KMS configurations |
+| `create` | Set up new KMS configurations        |
+| `edit`   | Modify KMS settings                  |
+| `delete` | Remove KMS configurations            |
+
+#### Subject: `kmip`
+
+| Action  | Description                        |
+| ------- | ---------------------------------- |
+| `setup` | Configure KMIP server settings     |
+| `proxy` | Act as a proxy for KMIP operations |
+
+### Admin Tools
+
+#### Subject: `organization-admin-console`
+
+| Action                | Description                                 |
+| --------------------- | ------------------------------------------- |
+| `access-all-projects` | Access all projects within the organization |
+
+### Secure Share
+
+#### Subject: `secret-share`
+
+| Action            | Description                  |
+| ----------------- | ---------------------------- |
+| `manage-settings` | Manage secret share settings |
+
+### Gateway Management
+
+#### Subject: `gateway`
+
+| Action            | Description                       |
+| ----------------- | --------------------------------- |
+| `list-gateways`   | View all organization gateways    |
+| `create-gateways` | Add new gateways to organization  |
+| `edit-gateways`   | Modify existing gateway settings  |
+| `delete-gateways` | Remove gateways from organization |

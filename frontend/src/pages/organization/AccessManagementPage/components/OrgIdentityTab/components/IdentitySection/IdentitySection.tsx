@@ -6,7 +6,7 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import {
-  OrgPermissionActions,
+  OrgPermissionIdentityActions,
   OrgPermissionSubjects,
   useOrganization,
   useSubscription
@@ -87,7 +87,10 @@ export const IdentitySection = withPermission(
               />
             </a>
           </div>
-          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Identity}>
+          <OrgPermissionCan
+            I={OrgPermissionIdentityActions.Create}
+            a={OrgPermissionSubjects.Identity}
+          >
             {(isAllowed) => (
               <Button
                 colorSchema="primary"
@@ -143,5 +146,5 @@ export const IdentitySection = withPermission(
       </div>
     );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Identity }
+  { action: OrgPermissionIdentityActions.Read, subject: OrgPermissionSubjects.Identity }
 );

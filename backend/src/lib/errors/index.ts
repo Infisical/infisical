@@ -68,6 +68,23 @@ export class ForbiddenRequestError extends Error {
   }
 }
 
+export class PermissionBoundaryError extends ForbiddenRequestError {
+  constructor({
+    message,
+    name,
+    error,
+    details
+  }: {
+    message?: string;
+    name?: string;
+    error?: unknown;
+    details?: unknown;
+  }) {
+    super({ message, name, error, details });
+    this.name = "PermissionBoundaryError";
+  }
+}
+
 export class BadRequestError extends Error {
   name: string;
 

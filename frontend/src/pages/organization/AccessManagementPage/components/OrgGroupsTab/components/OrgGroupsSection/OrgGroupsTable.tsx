@@ -33,7 +33,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetOrganizationGroups, useGetOrgRoles, useUpdateGroup } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -241,7 +241,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                       <Td>{slug}</Td>
                       <Td>
                         <OrgPermissionCan
-                          I={OrgPermissionActions.Edit}
+                          I={OrgPermissionGroupActions.Edit}
                           a={OrgPermissionSubjects.Groups}
                         >
                           {(isAllowed) => {
@@ -289,7 +289,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                               Copy Group ID
                             </DropdownMenuItem>
                             <OrgPermissionCan
-                              I={OrgPermissionActions.Edit}
+                              I={OrgPermissionGroupActions.Edit}
                               a={OrgPermissionSubjects.Groups}
                             >
                               {(isAllowed) => (
@@ -315,7 +315,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                               )}
                             </OrgPermissionCan>
                             <OrgPermissionCan
-                              I={OrgPermissionActions.Edit}
+                              I={OrgPermissionGroupActions.Edit}
                               a={OrgPermissionSubjects.Groups}
                             >
                               {(isAllowed) => (
@@ -339,7 +339,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                               )}
                             </OrgPermissionCan>
                             <OrgPermissionCan
-                              I={OrgPermissionActions.Delete}
+                              I={OrgPermissionGroupActions.Delete}
                               a={OrgPermissionSubjects.Groups}
                             >
                               {(isAllowed) => (
