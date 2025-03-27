@@ -112,6 +112,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       description: "Get all audit logs for an organization",
       querystring: z.object({
         projectId: z.string().optional().describe(AUDIT_LOGS.EXPORT.projectId),
+        environment: z.string().optional().describe(AUDIT_LOGS.EXPORT.environment),
         actorType: z.nativeEnum(ActorType).optional(),
         secretPath: z
           .string()

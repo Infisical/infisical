@@ -840,6 +840,8 @@ export const AUDIT_LOGS = {
   EXPORT: {
     projectId:
       "Optionally filter logs by project ID. If not provided, logs from the entire organization will be returned.",
+    environment:
+      "The environment to filter logs by. If not provided, logs from all environments will be returned. Note that the projectId parameter must also be provided.",
     eventType: "The type of the event to export.",
     secretPath:
       "The path of the secret to query audit logs for. Note that the projectId parameter must also be provided.",

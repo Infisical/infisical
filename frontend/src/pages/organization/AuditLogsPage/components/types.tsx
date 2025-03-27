@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
+import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 export const auditLogFilterFormSchema = z
@@ -10,6 +10,7 @@ export const auditLogFilterFormSchema = z
       .object({ id: z.string(), name: z.string(), type: z.nativeEnum(ProjectType) })
       .optional()
       .nullable(),
+    environment: z.object({ name: z.string(), slug: z.string() }).optional().nullable(),
     eventType: z.nativeEnum(EventType).array(),
     actor: z.string().optional(),
     userAgentType: z.nativeEnum(UserAgentType),
@@ -40,3 +41,12 @@ export type SetValueType = (
     shouldDirty?: boolean;
   }
 ) => void;
+
+export type Presets = {
+  actorId?: string;
+  eventType?: EventType[];
+  actorType?: ActorType;
+  startDate?: Date;
+  endDate?: Date;
+  eventMetadata?: Record<string, string>;
+};

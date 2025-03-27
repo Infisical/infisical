@@ -6,46 +6,40 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { useDebounce } from "@app/hooks";
-import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
+import { EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { LogsFilter } from "./LogsFilter";
 import { LogsTable } from "./LogsTable";
-import { AuditLogFilterFormData, auditLogFilterFormSchema } from "./types";
+import { AuditLogFilterFormData, auditLogFilterFormSchema, Presets } from "./types";
 
 type Props = {
-  presets?: {
-    actorId?: string;
-    eventType?: EventType[];
-    actorType?: ActorType;
-    startDate?: Date;
-    endDate?: Date;
-    eventMetadata?: Record<string, string>;
-  };
-
-  showFilters?: boolean;
-  filterClassName?: string;
+  presets?: Presets;
   refetchInterval?: number;
+  showFilters?: boolean;
 };
 
 export const LogsSection = withPermission(
-  ({ presets, filterClassName, refetchInterval, showFilters }: Props) => {
+  ({ presets, refetchInterval, showFilters = true }: Props) => {
     const { subscription } = useSubscription();
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
-    const { control, reset, watch, setValue } = useForm<AuditLogFilterFormData>({
-      resolver: zodResolver(auditLogFilterFormSchema),
-      defaultValues: {
-        project: null,
-        actor: presets?.actorId,
-        eventType: presets?.eventType || [],
-        page: 1,
-        perPage: 10,
-        startDate: presets?.startDate ?? new Date(new Date().setDate(new Date().getDate() - 1)), // day before today
-        endDate: presets?.endDate ?? new Date(new Date(Date.now()).setHours(23, 59, 59, 999)) // end of today
-      }
-    });
+    const { control, reset, watch, getFieldState, resetField, setValue } =
+      useForm<AuditLogFilterFormData>({
+        resolver: zodResolver(auditLogFilterFormSchema),
+        defaultValues: {
+          project: null,
+          environment: undefined,
+          secretKey: "",
+          secretPath: "",
+          actor: presets?.actorId,
+          eventType: presets?.eventType || [],
+          userAgentType: undefined,
+          startDate: presets?.startDate ?? new Date(new Date().setDate(new Date().getDate() - 1)),
+          endDate: presets?.endDate ?? new Date(new Date(Date.now()).setHours(23, 59, 59, 999))
+        }
+      });
 
     useEffect(() => {
       if (subscription && !subscription.auditLogs) {
@@ -57,6 +51,7 @@ export const LogsSection = withPermission(
     const userAgentType = watch("userAgentType") as UserAgentType | undefined;
     const actor = watch("actor");
     const projectId = watch("project")?.id;
+    const environment = watch("environment")?.slug;
     const secretPath = watch("secretPath");
     const secretKey = watch("secretKey");
 
@@ -67,18 +62,21 @@ export const LogsSection = withPermission(
     const [debouncedSecretKey] = useDebounce<string>(secretKey!, 500);
 
     return (
-      <div>
-        {showFilters && (
-          <LogsFilter
-            isOrgAuditLogs
-            className={filterClassName}
-            presets={presets}
-            control={control}
-            setValue={setValue}
-            watch={watch}
-            reset={reset}
-          />
-        )}
+      <div className="space-y-2">
+        <div className="flex w-full justify-end">
+          {showFilters && (
+            <LogsFilter
+              presets={presets}
+              control={control}
+              watch={watch}
+              reset={reset}
+              resetField={resetField}
+              getFieldState={getFieldState}
+              setValue={setValue}
+            />
+          )}
+        </div>
+
         <LogsTable
           refetchInterval={refetchInterval}
           filter={{
@@ -92,6 +90,7 @@ export const LogsSection = withPermission(
             userAgentType,
             startDate,
             endDate,
+            environment,
             actor
           }}
         />

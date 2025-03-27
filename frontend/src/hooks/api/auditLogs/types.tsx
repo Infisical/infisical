@@ -9,6 +9,7 @@ export type TGetAuditLogsFilter = {
   eventMetadata?: Record<string, string>;
   actorType?: ActorType;
   projectId?: string;
+  environment?: string;
   actor?: string; // user ID format
   secretPath?: string;
   secretKey?: string;

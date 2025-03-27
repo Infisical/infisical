@@ -9,13 +9,14 @@ import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { EventType } from "./audit-log-types";
+import { EventType, filterableSecretEvents } from "./audit-log-types";
 
 export type TAuditLogDALFactory = ReturnType<typeof auditLogDALFactory>;
 
 type TFindQuery = {
   actor?: string;
   projectId?: string;
+  environment?: string;
   orgId?: string;
   eventType?: string;
   startDate?: string;
@@ -32,6 +33,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
     {
       orgId,
       projectId,
+      environment,
       userAgentType,
       startDate,
       endDate,
@@ -92,7 +94,13 @@ export const auditLogDALFactory = (db: TDbClient) => {
         });
       }
 
-      if (projectId) {
+      const eventIsSecretType = !eventType?.length || eventType.some((event) => filterableSecretEvents.includes(event));
+      // We only want to filter for environment/secretPath/secretKey if the user is either checking for all event types
+      if (projectId && eventIsSecretType) {
+        if (environment) {
+          void sqlQuery.whereRaw(`"eventMetadata"->>'environment' = ?`, [environment]);
+        }
+
         if (secretPath) {
           void sqlQuery.whereRaw(`"eventMetadata"->>'secretPath' = ?`, [secretPath]);
         }
