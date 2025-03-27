@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/config"
@@ -14,7 +15,6 @@ import (
 	// "github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
 	// "github.com/Infisical/infisical-merge/packages/visualize"
-	"github.com/go-resty/resty/v2"
 	"github.com/posthog/posthog-go"
 	"github.com/spf13/cobra"
 
@@ -56,7 +56,10 @@ func getDynamicSecretList(cmd *cobra.Command, args []string) {
 	}
 
 	var infisicalToken string
-	httpClient := resty.New()
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		util.HandleError(err, "Unable to get resty client with custom headers")
+	}
 
 	if projectId == "" {
 		workspaceFile, err := util.GetWorkSpaceFromFile()
@@ -89,6 +92,7 @@ func getDynamicSecretList(cmd *cobra.Command, args []string) {
 		SiteUrl:          config.INFISICAL_URL,
 		UserAgent:        api.USER_AGENT,
 		AutoTokenRefresh: false,
+		CustomHeaders:    os.Getenv("INFISICAL_CUSTOM_HEADERS"),
 	})
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 
@@ -164,7 +168,10 @@ func createDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 	}
 
 	var infisicalToken string
-	httpClient := resty.New()
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		util.HandleError(err, "Unable to get resty client with custom headers")
+	}
 
 	if projectId == "" {
 		workspaceFile, err := util.GetWorkSpaceFromFile()
@@ -197,6 +204,7 @@ func createDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		SiteUrl:          config.INFISICAL_URL,
 		UserAgent:        api.USER_AGENT,
 		AutoTokenRefresh: false,
+		CustomHeaders:    os.Getenv("INFISICAL_CUSTOM_HEADERS"),
 	})
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 
@@ -286,7 +294,10 @@ func renewDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 	}
 
 	var infisicalToken string
-	httpClient := resty.New()
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		util.HandleError(err, "Unable to get resty client with custom headers")
+	}
 
 	if projectId == "" {
 		workspaceFile, err := util.GetWorkSpaceFromFile()
@@ -319,6 +330,7 @@ func renewDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		SiteUrl:          config.INFISICAL_URL,
 		UserAgent:        api.USER_AGENT,
 		AutoTokenRefresh: false,
+		CustomHeaders:    os.Getenv("INFISICAL_CUSTOM_HEADERS"),
 	})
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 
@@ -384,7 +396,10 @@ func revokeDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 	}
 
 	var infisicalToken string
-	httpClient := resty.New()
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		util.HandleError(err, "Unable to get resty client with custom headers")
+	}
 
 	if projectId == "" {
 		workspaceFile, err := util.GetWorkSpaceFromFile()
@@ -417,6 +432,7 @@ func revokeDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		SiteUrl:          config.INFISICAL_URL,
 		UserAgent:        api.USER_AGENT,
 		AutoTokenRefresh: false,
+		CustomHeaders:    os.Getenv("INFISICAL_CUSTOM_HEADERS"),
 	})
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 
@@ -481,7 +497,10 @@ func listDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 	}
 
 	var infisicalToken string
-	httpClient := resty.New()
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		util.HandleError(err, "Unable to get resty client with custom headers")
+	}
 
 	if projectId == "" {
 		workspaceFile, err := util.GetWorkSpaceFromFile()
@@ -514,6 +533,7 @@ func listDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		SiteUrl:          config.INFISICAL_URL,
 		UserAgent:        api.USER_AGENT,
 		AutoTokenRefresh: false,
+		CustomHeaders:    os.Getenv("INFISICAL_CUSTOM_HEADERS"),
 	})
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 

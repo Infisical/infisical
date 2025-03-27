@@ -16,7 +16,6 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/models"
-	"github.com/go-resty/resty/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -120,7 +119,11 @@ func GetInfisicalToken(cmd *cobra.Command) (token *models.TokenDetails, err erro
 }
 
 func UniversalAuthLogin(clientId string, clientSecret string) (api.UniversalAuthLoginResponse, error) {
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return api.UniversalAuthLoginResponse{}, err
+	}
+
 	httpClient.SetRetryCount(10000).
 		SetRetryMaxWaitTime(20 * time.Second).
 		SetRetryWaitTime(5 * time.Second)
@@ -135,7 +138,11 @@ func UniversalAuthLogin(clientId string, clientSecret string) (api.UniversalAuth
 
 func RenewMachineIdentityAccessToken(accessToken string) (string, error) {
 
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return "", err
+	}
+
 	httpClient.SetRetryCount(10000).
 		SetRetryMaxWaitTime(20 * time.Second).
 		SetRetryWaitTime(5 * time.Second)

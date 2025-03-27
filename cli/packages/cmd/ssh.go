@@ -319,6 +319,7 @@ func issueCredentials(cmd *cobra.Command, args []string) {
 		SiteUrl:          config.INFISICAL_URL,
 		UserAgent:        api.USER_AGENT,
 		AutoTokenRefresh: false,
+		CustomHeaders:    os.Getenv("INFISICAL_CUSTOM_HEADERS"),
 	})
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 
@@ -559,6 +560,7 @@ func signKey(cmd *cobra.Command, args []string) {
 		SiteUrl:          config.INFISICAL_URL,
 		UserAgent:        api.USER_AGENT,
 		AutoTokenRefresh: false,
+		CustomHeaders:    os.Getenv("INFISICAL_CUSTOM_HEADERS"),
 	})
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 

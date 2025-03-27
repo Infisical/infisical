@@ -29,7 +29,6 @@ import (
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
-	"github.com/go-resty/resty/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -529,6 +528,7 @@ func NewAgentManager(options NewAgentMangerOptions) *AgentManager {
 			SiteUrl:          config.INFISICAL_URL,
 			UserAgent:        api.USER_AGENT, // ? Should we perhaps use a different user agent for the Agent for better analytics?
 			AutoTokenRefresh: false,
+			CustomHeaders:    os.Getenv("INFISICAL_CUSTOM_HEADERS"),
 		}),
 	}
 
@@ -716,7 +716,11 @@ func (tm *AgentManager) FetchNewAccessToken() error {
 
 // Refreshes the existing access token
 func (tm *AgentManager) RefreshAccessToken() error {
-	httpClient := resty.New()
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return err
+	}
+
 	httpClient.SetRetryCount(10000).
 		SetRetryMaxWaitTime(20 * time.Second).
 		SetRetryWaitTime(5 * time.Second)

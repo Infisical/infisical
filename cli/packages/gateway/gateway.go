@@ -13,6 +13,7 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/systemd"
+	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/go-resty/resty/v2"
 	"github.com/pion/dtls/v3"
 	"github.com/pion/logging"
@@ -40,7 +41,11 @@ type Gateway struct {
 }
 
 func NewGateway(identityToken string) (Gateway, error) {
-	httpClient := resty.New()
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return Gateway{}, fmt.Errorf("unable to get client with custom headers [err=%v]", err)
+	}
+
 	httpClient.SetAuthToken(identityToken)
 
 	return Gateway{
