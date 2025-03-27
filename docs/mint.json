@@ -1191,7 +1191,8 @@
           "pages": [
             "internals/permissions/overview",
             "internals/permissions/project-permissions",
-            "internals/permissions/organization-permissions"
+            "internals/permissions/organization-permissions",
+            "internals/permissions/migration"
           ]
         },
         "internals/components",
