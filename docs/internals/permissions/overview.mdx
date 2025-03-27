@@ -10,7 +10,9 @@ The Infisical permissions system is based on a role-based access control (RBAC) 
 Permissions are built on a subject-action-object model. The subject is the resource the permission is being applied to, the action is what the permission allows.
 An example of a subject/action combination would be `secrets/read`. This permission allows the subject to read secrets.
 
-## Subjects and Actions
+## Permission Scope Levels
+
+Infisical's permission system operates at two distinct levels, providing comprehensive and flexible access control across your entire security infrastructure:
 
 ### Project Permissions
 
@@ -50,6 +52,10 @@ When a permission is inverted, it changes from an "allow" rule to a "deny" rule.
 }
 ```
 
+**Important:** The order of permissions matters when using inversion. For inverted (deny) permissions to be effective, there
+typically needs to be a corresponding allow permission somewhere in the chain. Permissions are evaluated in sequence,
+so the relative positioning of allow and deny rules determines the final access outcome.
+
 ## Conditions
 
 Conditions allow you to create more granular permissions by specifying criteria that must be met for the permission to apply. This is supported for the following subjects:
@@ -81,72 +87,3 @@ The following operators are available for conditions:
 
 These details are especially useful if you're using the API to [create new project roles](../api-reference/endpoints/project-roles/create).
 The rules outlined on this page, also apply when using our Terraform Provider to manage your Infisical project roles, or any other of our clients that manage project roles.
-
-## Migrating from permission V1 to permission V2
-
-When upgrading to V2 permissions (i.e. when moving from using the `permissions` to `permissions_v2` field in your Terraform configurations, or upgrading to the V2 permission API), you'll need to update your permission structure as follows:
-
-Any permissions for `secrets` should be expanded to include equivalent permissions for:
-
-- `secret-imports`
-- `secret-folders` (except for read permissions)
-- `dynamic-secrets`
-
-For dynamic secrets, the actions need to be mapped differently:
-
-- `read` → `read-root-credential`
-- `create` → `create-root-credential`
-- `edit` → `edit-root-credential` (also adds `lease` permission)
-- `delete` → `delete-root-credential`
-
-Example:
-
-```hcl
-# Old V1 configuration
-resource "infisical_project_role" "example" {
-  name = "example"
-  permissions = [
-    {
-      subject = "secrets"
-      action = "read"
-    },
-    {
-      subject = "secrets"
-      action = "edit"
-    }
-  ]
-}
-
-# New V2 configuration
-resource "infisical_project_role" "example" {
-  name = "example"
-  permissions_v2 = [
-    # Original secrets permission
-    {
-      subject = "secrets"
-      action = ["read", "edit"]
-      inverted = false
-    },
-    # Add equivalent secret-imports permission
-    {
-      subject = "secret-imports"
-      action = ["read", "edit"]
-      inverted = false
-    },
-    # Add secret-folders permission (without read)
-    {
-      subject = "secret-folders"
-      action = ["edit"]
-      inverted = false
-    },
-    # Add dynamic-secrets permission with mapped actions
-    {
-      subject = "dynamic-secrets"
-      action = ["read-root-credential", "edit-root-credential", "lease"]
-      inverted = false
-    }
-  ]
-}
-```
-
-Note: When moving to V2 permissions, make sure to include all the necessary expanded permissions based on your original `secrets` permissions.
