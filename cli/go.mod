@@ -12,7 +12,7 @@ require (
 	github.com/fatih/semgroup v1.2.0
 	github.com/gitleaks/go-gitdiff v0.8.0
 	github.com/h2non/filetype v1.1.3
-	github.com/infisical/go-sdk v0.4.8
+	github.com/infisical/go-sdk v0.5.1
 	github.com/infisical/infisical-kmip v0.3.5
 	github.com/mattn/go-isatty v0.0.20
 	github.com/muesli/ansi v0.0.0-20221106050444-61f0cd9a192a
@@ -34,6 +34,7 @@ require (
 	golang.org/x/sys v0.31.0
 	golang.org/x/term v0.30.0
 	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -125,7 +126,6 @@ require (
 	google.golang.org/grpc v1.64.1 // indirect
 	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
