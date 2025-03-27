@@ -32,6 +32,8 @@ const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.pick({
   caCert: z.string()
 });
 
+const MAX_OIDC_CLAIM_SIZE = 32_768;
+
 export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -55,7 +57,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       }
     },
     handler: async (req) => {
-      const { identityOidcAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+      const { identityOidcAuth, accessToken, identityAccessToken, identityMembershipOrg, oidcTokenData } =
         await server.services.identityOidcAuth.login({
           identityId: req.body.identityId,
           jwt: req.body.jwt
@@ -69,7 +71,11 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           metadata: {
             identityId: identityOidcAuth.identityId,
             identityAccessTokenId: identityAccessToken.id,
-            identityOidcAuthId: identityOidcAuth.id
+            identityOidcAuthId: identityOidcAuth.id,
+            oidcClaimsReceived:
+              Buffer.from(JSON.stringify(oidcTokenData), "utf8").byteLength < MAX_OIDC_CLAIM_SIZE
+                ? oidcTokenData
+                : { payload: "Error: Payload exceeds 32KB, provided oidc claim not recorded in audit log." }
           }
         }
       });
