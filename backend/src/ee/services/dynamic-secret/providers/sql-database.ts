@@ -132,7 +132,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
       allowedExpressions: (val) => ["username", "database"].includes(val)
     });
 
-    return { ...providerInputs, host: hostIp };
+    return { ...providerInputs, hostIp };
   };
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>) => {
@@ -193,7 +193,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
     let isConnected = false;
-    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+    const gatewayCallback = async (host = providerInputs.hostIp, port = providerInputs.port) => {
       const db = await $getClient({ ...providerInputs, port, host });
       // oracle needs from keyword
       const testStatement = providerInputs.client === SqlProviders.Oracle ? "SELECT 1 FROM DUAL" : "SELECT 1";

@@ -65,7 +65,8 @@ export const accessApprovalPolicyServiceFactory = ({
     approvers,
     projectSlug,
     environment,
-    enforcementLevel
+    enforcementLevel,
+    allowedSelfApprovals
   }: TCreateAccessApprovalPolicy) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
@@ -153,7 +154,8 @@ export const accessApprovalPolicyServiceFactory = ({
           approvals,
           secretPath,
           name,
-          enforcementLevel
+          enforcementLevel,
+          allowedSelfApprovals
         },
         tx
       );
@@ -216,7 +218,8 @@ export const accessApprovalPolicyServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     approvals,
-    enforcementLevel
+    enforcementLevel,
+    allowedSelfApprovals
   }: TUpdateAccessApprovalPolicy) => {
     const groupApprovers = approvers
       .filter((approver) => approver.type === ApproverType.Group)
@@ -262,7 +265,8 @@ export const accessApprovalPolicyServiceFactory = ({
           approvals,
           secretPath,
           name,
-          enforcementLevel
+          enforcementLevel,
+          allowedSelfApprovals
         },
         tx
       );

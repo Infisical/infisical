@@ -100,7 +100,7 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
     const deleteSecrets: string[] = [];
 
     Object.keys(secretMap).forEach((infisicalKey) => {
-      const hyphenatedKey = infisicalKey.replace(/_/g, "-");
+      const hyphenatedKey = infisicalKey.replaceAll("_", "-");
       if (!(hyphenatedKey in vaultSecrets)) {
         // case: secret has been created
         setSecrets.push({
@@ -117,7 +117,7 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
     });
 
     Object.keys(vaultSecrets).forEach((key) => {
-      const underscoredKey = key.replace(/-/g, "_");
+      const underscoredKey = key.replaceAll("-", "_");
       if (!(underscoredKey in secretMap)) {
         deleteSecrets.push(key);
       }
@@ -211,7 +211,7 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
     );
 
     for await (const [key] of Object.entries(vaultSecrets)) {
-      const underscoredKey = key.replace(/-/g, "_");
+      const underscoredKey = key.replaceAll("-", "_");
 
       if (underscoredKey in secretMap) {
         if (!disabledAzureKeyVaultSecretKeys.includes(underscoredKey)) {
@@ -237,7 +237,7 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
 
     Object.keys(vaultSecrets).forEach((key) => {
       if (!disabledAzureKeyVaultSecretKeys.includes(key)) {
-        const underscoredKey = key.replace(/-/g, "_");
+        const underscoredKey = key.replaceAll("-", "_");
         secretMap[underscoredKey] = {
           value: vaultSecrets[key].value
         };

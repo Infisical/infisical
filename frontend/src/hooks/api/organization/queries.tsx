@@ -129,6 +129,18 @@ export const useUpdateOrg = () => {
   });
 };
 
+export const useUpgradePrivilegeSystem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => {
+      return apiRequest.post("/api/v2/organizations/privilege-system-upgrade");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
+    }
+  });
+};
+
 export const useGetOrgTrialUrl = () => {
   return useMutation({
     mutationFn: async ({ orgId, success_url }: { orgId: string; success_url: string }) => {

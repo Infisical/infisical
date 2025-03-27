@@ -1,6 +1,8 @@
+import safe from "safe-regex";
 import { z } from "zod";
 
 const twelveDigitRegex = /^\d{12}$/;
+// akhilmhdh: change this to a normal function later. Checked no redosable at the moment
 const arnRegex = /^arn:aws:iam::\d{12}:(user\/[a-zA-Z0-9_.@+*/-]+|role\/[a-zA-Z0-9_.@+*/-]+|\*)$/;
 
 export const validateAccountIds = z
@@ -42,7 +44,8 @@ export const validatePrincipalArns = z
       // Split the string by commas to check each supposed ARN
       const arns = data.split(",");
       // Return true only if every item matches one of the allowed ARN formats
-      return arns.every((arn) => arnRegex.test(arn.trim()));
+      // and checks whether the provided regex is safe
+      return arns.map((el) => el.trim()).every((arn) => safe(`^${arn.replaceAll("*", ".*")}$`) && arnRegex.test(arn));
     },
     {
       message:

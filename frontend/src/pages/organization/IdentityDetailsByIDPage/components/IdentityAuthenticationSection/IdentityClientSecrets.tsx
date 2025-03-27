@@ -4,7 +4,7 @@ import { format } from "date-fns";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, IconButton, Tooltip } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import {
   useGetIdentityById,
@@ -118,7 +118,7 @@ export const IdentityClientSecrets = ({ identityId, handlePopUpOpen }: Props) =>
             </div>
           );
         })}
-      <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
+      <OrgPermissionCan I={OrgPermissionIdentityActions.Edit} a={OrgPermissionSubjects.Identity}>
         {(isAllowed) => {
           return (
             <Button

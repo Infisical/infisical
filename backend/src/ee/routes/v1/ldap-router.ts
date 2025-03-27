@@ -61,8 +61,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           if (ldapConfig.groupSearchBase) {
             const groupFilter = "(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))";
             const groupSearchFilter = (ldapConfig.groupSearchFilter || groupFilter)
-              .replace(/{{\.Username}}/g, user.uid)
-              .replace(/{{\.UserDN}}/g, user.dn);
+              .replaceAll("{{.Username}}", user.uid)
+              .replaceAll("{{.UserDN}}", user.dn);
 
             if (!isValidLdapFilter(groupSearchFilter)) {
               throw new Error("Generated LDAP search filter is invalid.");

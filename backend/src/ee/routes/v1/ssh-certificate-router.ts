@@ -5,9 +5,11 @@ import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-type
 import { SSH_CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSshCertRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -70,6 +72,16 @@ export const registerSshCertRouter = async (server: FastifyZodProvider) => {
             ttl: String(ttl),
             keyId
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignSshKey,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          certificateTemplateId: req.body.certificateTemplateId,
+          principals: req.body.principals,
+          ...req.auditLogInfo
         }
       });
 
@@ -149,6 +161,16 @@ export const registerSshCertRouter = async (server: FastifyZodProvider) => {
             ttl: String(ttl),
             keyId
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.IssueSshCreds,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          certificateTemplateId: req.body.certificateTemplateId,
+          principals: req.body.principals,
+          ...req.auditLogInfo
         }
       });
 

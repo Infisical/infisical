@@ -16,7 +16,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       // for CSRs sent in PEM, we leave them as is
       // for CSRs sent in base64, we preprocess them to remove new lines and spaces
       if (!csrBody.includes("BEGIN CERTIFICATE REQUEST")) {
-        csrBody = csrBody.replace(/\n/g, "").replace(/ /g, "");
+        csrBody = csrBody.replaceAll("\n", "").replaceAll(" ", "");
       }
 
       done(null, csrBody);

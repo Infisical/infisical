@@ -20,5 +20,6 @@ export {
   useGetOrgTaxIds,
   useGetOrgTrialUrl,
   useUpdateOrg,
-  useUpdateOrgBillingDetails
+  useUpdateOrgBillingDetails,
+  useUpgradePrivilegeSystem
 } from "./queries";

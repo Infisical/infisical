@@ -26,21 +26,6 @@ import {
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-// Validates usernames or wildcard (*)
-export const isValidUserPattern = (value: string): boolean => {
-  // Matches valid Linux usernames or a wildcard (*)
-  const userRegex = /^(?:\*|[a-z_][a-z0-9_-]{0,31})$/;
-  return userRegex.test(value);
-};
-
-// Validates hostnames, wildcard domains, or IP addresses
-export const isValidHostPattern = (value: string): boolean => {
-  // Matches FQDNs, wildcard domains (*.example.com), IPv4, and IPv6 addresses
-  const hostRegex =
-    /^(?:\*|\*\.[a-z0-9-]+(?:\.[a-z0-9-]+)*|[a-z0-9-]+(?:\.[a-z0-9-]+)*|\d{1,3}(\.\d{1,3}){3}|([a-fA-F0-9:]+:+)+[a-fA-F0-9]+(?:%[a-zA-Z0-9]+)?)$/;
-  return hostRegex.test(value);
-};
-
 const schema = z
   .object({
     sshCaId: z.string(),
@@ -69,28 +54,8 @@ const schema = z
         "Max TTL must be a valid time string such as 2 days, 1d, 2h 1y, ..."
       )
       .default("30d"),
-    allowedUsers: z.string().refine(
-      (val) => {
-        const trimmed = val.trim();
-        if (trimmed === "") return true;
-        const users = trimmed.split(",").map((u) => u.trim());
-        return users.every(isValidUserPattern);
-      },
-      {
-        message: "Invalid user pattern in allowedUsers"
-      }
-    ),
-    allowedHosts: z.string().refine(
-      (val) => {
-        const trimmed = val.trim();
-        if (trimmed === "") return true;
-        const users = trimmed.split(",").map((u) => u.trim());
-        return users.every(isValidHostPattern);
-      },
-      {
-        message: "Invalid host pattern in allowedHosts"
-      }
-    ),
+    allowedUsers: z.string(),
+    allowedHosts: z.string(),
     allowUserCertificates: z.boolean().optional().default(false),
     allowHostCertificates: z.boolean().optional().default(false),
     allowCustomKeyIds: z.boolean().optional().default(false)

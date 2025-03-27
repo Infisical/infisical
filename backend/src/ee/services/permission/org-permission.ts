@@ -44,6 +44,28 @@ export enum OrgPermissionGatewayActions {
   DeleteGateways = "delete-gateways"
 }
 
+export enum OrgPermissionIdentityActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges",
+  RevokeAuth = "revoke-auth",
+  CreateToken = "create-token",
+  GetToken = "get-token",
+  DeleteToken = "delete-token"
+}
+
+export enum OrgPermissionGroupActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges",
+  AddMembers = "add-members",
+  RemoveMembers = "remove-members"
+}
+
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Role = "role",
@@ -80,10 +102,10 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Sso]
   | [OrgPermissionActions, OrgPermissionSubjects.Scim]
   | [OrgPermissionActions, OrgPermissionSubjects.Ldap]
-  | [OrgPermissionActions, OrgPermissionSubjects.Groups]
+  | [OrgPermissionGroupActions, OrgPermissionSubjects.Groups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]
-  | [OrgPermissionActions, OrgPermissionSubjects.Identity]
+  | [OrgPermissionIdentityActions, OrgPermissionSubjects.Identity]
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
   | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
@@ -256,20 +278,28 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Ldap);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Ldap);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Groups);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Groups);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Groups);
+  can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+  can(OrgPermissionGroupActions.Create, OrgPermissionSubjects.Groups);
+  can(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+  can(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups);
+  can(OrgPermissionGroupActions.GrantPrivileges, OrgPermissionSubjects.Groups);
+  can(OrgPermissionGroupActions.AddMembers, OrgPermissionSubjects.Groups);
+  can(OrgPermissionGroupActions.RemoveMembers, OrgPermissionSubjects.Groups);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Billing);
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Billing);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Billing);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.GrantPrivileges, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.RevokeAuth, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.CreateToken, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.GetToken, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.DeleteToken, OrgPermissionSubjects.Identity);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Kms);
@@ -316,7 +346,7 @@ const buildMemberPermission = () => {
 
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
+  can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
@@ -327,10 +357,10 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.SecretScanning);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.SecretScanning);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
 

@@ -1,0 +1,89 @@
+---
+title: "Overview"
+description: "Infisical's permissions system provides granular access control."
+---
+
+## Overview
+
+The Infisical permissions system is based on a role-based access control (RBAC) model. The system allows you to define roles and assign them to users and machines. Each role has a set of permissions that define what actions a user can perform.
+
+Permissions are built on a subject-action-object model. The subject is the resource the permission is being applied to, the action is what the permission allows.
+An example of a subject/action combination would be `secrets/read`. This permission allows the subject to read secrets.
+
+## Permission Scope Levels
+
+Infisical's permission system operates at two distinct levels, providing comprehensive and flexible access control across your entire security infrastructure:
+
+### Project Permissions
+
+Project permissions control access to resources within a specific project, including secrets management, PKI, KMS, and SSH certificate functionality.
+
+For a comprehensive list of all project-level subjects, actions, and detailed descriptions, please refer to the [Project Permissions](/internals/permissions/project-permissions) documentation.
+
+### Organization Permissions
+
+Organization permissions control access to organization-wide resources and settings such as workspaces, billing, identity providers, and more.
+
+For a comprehensive list of all organization-level subjects, actions, and detailed descriptions, please refer to the [Organization Permissions](/internals/permissions/organization-permissions) documentation.
+
+## Inversion
+
+Permission inversion allows you to explicitly deny actions instead of allowing them. This is supported for the following subjects:
+
+- secrets
+- secret-folders
+- secret-imports
+- dynamic-secrets
+
+When a permission is inverted, it changes from an "allow" rule to a "deny" rule. For example:
+
+```typescript
+// Regular permission - allows reading secrets
+{
+  subject: "secrets",
+  action: ["read"]
+}
+
+// Inverted permission - denies reading secrets
+{
+  subject: "secrets",
+  action: ["read"],
+  inverted: true
+}
+```
+
+**Important:** The order of permissions matters when using inversion. For inverted (deny) permissions to be effective, there
+typically needs to be a corresponding allow permission somewhere in the chain. Permissions are evaluated in sequence,
+so the relative positioning of allow and deny rules determines the final access outcome.
+
+## Conditions
+
+Conditions allow you to create more granular permissions by specifying criteria that must be met for the permission to apply. This is supported for the following subjects:
+
+- secrets
+- secret-folders
+- secret-imports
+- dynamic-secrets
+
+### Properties
+
+Conditions can be applied to the following properties:
+
+- `environment`: Control access based on environment slugs
+- `secretPath`: Control access based on secret paths
+- `secretName`: Control access based on secret names
+- `secretTags`: Control access based on tags (only supports $in operator)
+
+### Operators
+
+The following operators are available for conditions:
+
+| Operator | Description                        | Example                                               |
+| -------- | ---------------------------------- | ----------------------------------------------------- |
+| `$eq`    | Equal                              | `{ environment: { $eq: "production" } }`              |
+| `$ne`    | Not equal                          | `{ environment: { $ne: "development" } }`             |
+| `$in`    | Matches any value in array         | `{ environment: { $in: ["staging", "production"] } }` |
+| `$glob`  | Pattern matching using glob syntax | `{ secretPath: { $glob: "/app/\*" } }`                |
+
+These details are especially useful if you're using the API to [create new project roles](../api-reference/endpoints/project-roles/create).
+The rules outlined on this page, also apply when using our Terraform Provider to manage your Infisical project roles, or any other of our clients that manage project roles.

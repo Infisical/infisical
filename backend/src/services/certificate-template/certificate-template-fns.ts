@@ -11,6 +11,7 @@ export const validateCertificateDetailsAgainstTemplate = (
   },
   template: TCertificateTemplates
 ) => {
+  // these are validated in router using validateTemplateRegexField
   const commonNameRegex = new RegExp(template.commonName);
   if (!commonNameRegex.test(cert.commonName)) {
     throw new BadRequestError({

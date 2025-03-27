@@ -1,26 +1,35 @@
-// Credit: https://github.com/miguelmota/is-base64
-export const isBase64 = (
-  v: string,
-  opts = { allowEmpty: false, mimeRequired: false, allowMime: true, paddingRequired: false }
-) => {
-  if (opts.allowEmpty === false && v === "") {
-    return false;
+type Base64Options = {
+  urlSafe?: boolean;
+  padding?: boolean;
+};
+
+const base64WithPadding = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$/;
+const base64WithoutPadding = /^[A-Za-z0-9+/]+$/;
+const base64UrlWithPadding = /^(?:[A-Za-z0-9_-]{4})*(?:[A-Za-z0-9_-]{2}==|[A-Za-z0-9_-]{3}=|[A-Za-z0-9_-]{4})$/;
+const base64UrlWithoutPadding = /^[A-Za-z0-9_-]+$/;
+
+export const isBase64 = (str: string, options: Base64Options = {}): boolean => {
+  if (typeof str !== "string") {
+    throw new TypeError("Expected a string");
   }
 
-  let regex = "(?:[A-Za-z0-9+\\/]{4})*(?:[A-Za-z0-9+\\/]{2}==|[A-Za-z0-9+/]{3}=)?";
-  const mimeRegex = "(data:\\w+\\/[a-zA-Z\\+\\-\\.]+;base64,)";
+  // Default padding to true unless urlSafe is true
+  const opts: Base64Options = {
+    urlSafe: false,
+    padding: options.urlSafe === undefined ? true : !options.urlSafe,
+    ...options
+  };
 
-  if (opts.mimeRequired === true) {
-    regex = mimeRegex + regex;
-  } else if (opts.allowMime === true) {
-    regex = `${mimeRegex}?${regex}`;
+  if (str === "") return true;
+
+  let regex;
+  if (opts.urlSafe) {
+    regex = opts.padding ? base64UrlWithPadding : base64UrlWithoutPadding;
+  } else {
+    regex = opts.padding ? base64WithPadding : base64WithoutPadding;
   }
 
-  if (opts.paddingRequired === false) {
-    regex = "(?:[A-Za-z0-9+\\/]{4})*(?:[A-Za-z0-9+\\/]{2}(==)?|[A-Za-z0-9+\\/]{3}=?)?";
-  }
-
-  return new RegExp(`^${regex}$`, "gi").test(v);
+  return (!opts.padding || str.length % 4 === 0) && regex.test(str);
 };
 
 export const getBase64SizeInBytes = (base64String: string) => {

@@ -43,7 +43,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.Organization))
         .select(
           db.raw(`
-            CASE 
+            CASE
               WHEN ${TableName.SamlConfig}."orgId" IS NOT NULL THEN '${OrgAuthMethod.SAML}'
               WHEN ${TableName.OidcConfig}."orgId" IS NOT NULL THEN '${OrgAuthMethod.OIDC}'
               ELSE ''
@@ -80,7 +80,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.Organization))
         .select(
           db.raw(`
-            CASE 
+            CASE
               WHEN ${TableName.SamlConfig}."orgId" IS NOT NULL THEN '${OrgAuthMethod.SAML}'
               WHEN ${TableName.OidcConfig}."orgId" IS NOT NULL THEN '${OrgAuthMethod.OIDC}'
               ELSE ''
@@ -119,7 +119,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.Organization))
         .select(
           db.raw(`
-            CASE 
+            CASE
               WHEN ${TableName.SamlConfig}."orgId" IS NOT NULL THEN 'saml'
               WHEN ${TableName.OidcConfig}."orgId" IS NOT NULL THEN 'oidc'
               ELSE ''

@@ -16,7 +16,7 @@ const createAuditLogPartition = async (knex: Knex, startDate: Date, endDate: Dat
   const startDateStr = formatPartitionDate(startDate);
   const endDateStr = formatPartitionDate(endDate);
 
-  const partitionName = `${TableName.AuditLog}_${startDateStr.replace(/-/g, "")}_${endDateStr.replace(/-/g, "")}`;
+  const partitionName = `${TableName.AuditLog}_${startDateStr.replaceAll("-", "")}_${endDateStr.replaceAll("-", "")}`;
 
   await knex.schema.raw(
     `CREATE TABLE ${partitionName} PARTITION OF ${TableName.AuditLog} FOR VALUES FROM ('${startDateStr}') TO ('${endDateStr}')`

@@ -1,6 +1,8 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
+
 interface SlugSchemaInputs {
   min?: number;
   max?: number;
@@ -27,4 +29,13 @@ export const GenericResourceNameSchema = z
   .trim()
   .min(1, { message: "Name must be at least 1 character" })
   .max(64, { message: "Name must be 64 or fewer characters" })
-  .regex(/^[a-zA-Z0-9\-_\s]+$/, "Name can only contain alphanumeric characters, dashes, underscores, and spaces");
+  .refine(
+    (val) =>
+      characterValidator([
+        CharacterType.AlphaNumeric,
+        CharacterType.Hyphen,
+        CharacterType.Underscore,
+        CharacterType.Spaces
+      ])(val),
+    "Name can only contain alphanumeric characters, dashes, underscores, and spaces"
+  );

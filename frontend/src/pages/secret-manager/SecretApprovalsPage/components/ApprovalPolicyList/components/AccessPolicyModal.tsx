@@ -12,7 +12,8 @@ import {
   Modal,
   ModalContent,
   Select,
-  SelectItem
+  SelectItem,
+  Switch
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
@@ -54,7 +55,8 @@ const formSchema = z
       .array()
       .default([]),
     policyType: z.nativeEnum(PolicyType),
-    enforcementLevel: z.nativeEnum(EnforcementLevel)
+    enforcementLevel: z.nativeEnum(EnforcementLevel),
+    allowedSelfApprovals: z.boolean().default(true)
   })
   .superRefine((data, ctx) => {
     if (!(data.groupApprovers.length || data.userApprovers.length)) {
@@ -101,7 +103,8 @@ export const AccessPolicyForm = ({
             editValues?.approvers
               ?.filter((approver) => approver.type === ApproverType.Group)
               .map(({ id, type }) => ({ id, type: type as ApproverType.Group })) || [],
-          approvals: editValues?.approvals
+          approvals: editValues?.approvals,
+          allowedSelfApprovals: editValues?.allowedSelfApprovals
         }
       : undefined
   });
@@ -438,6 +441,27 @@ export const AccessPolicyForm = ({
                     value={value}
                     onChange={onChange}
                   />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="allowedSelfApprovals"
+              defaultValue
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  label="Self Approvals"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Switch
+                    id="self-approvals"
+                    thumbClassName="bg-mineshaft-800"
+                    isChecked={value}
+                    onCheckedChange={onChange}
+                  >
+                    Allow approvers to review their own requests
+                  </Switch>
                 </FormControl>
               )}
             />

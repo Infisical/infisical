@@ -6,6 +6,7 @@ import { ActionProjectType, TCertificateTemplateEstConfigsUpdate } from "@app/db
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -281,9 +282,7 @@ export const certificateTemplateServiceFactory = ({
       });
 
       // validate CA chain
-      const certificates = caChain
-        .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
-        ?.map((cert) => new x509.X509Certificate(cert));
+      const certificates = extractX509CertFromChain(caChain)?.map((cert) => new x509.X509Certificate(cert));
 
       if (!certificates) {
         throw new BadRequestError({ message: "Failed to parse certificate chain" });
@@ -379,9 +378,7 @@ export const certificateTemplateServiceFactory = ({
     };
 
     if (caChain) {
-      const certificates = caChain
-        .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
-        ?.map((cert) => new x509.X509Certificate(cert));
+      const certificates = extractX509CertFromChain(caChain)?.map((cert) => new x509.X509Certificate(cert));
 
       if (!certificates) {
         throw new BadRequestError({ message: "Failed to parse certificate chain" });

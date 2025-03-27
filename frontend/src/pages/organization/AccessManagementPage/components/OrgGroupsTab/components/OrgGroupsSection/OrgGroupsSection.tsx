@@ -5,7 +5,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
+import { OrgPermissionGroupActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { useDeleteGroup } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -58,7 +58,7 @@ export const OrgGroupsSection = () => {
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Groups</p>
-        <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Groups}>
+        <OrgPermissionCan I={OrgPermissionGroupActions.Create} a={OrgPermissionSubjects.Groups}>
           {(isAllowed) => (
             <Button
               colorSchema="primary"

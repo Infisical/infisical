@@ -20,13 +20,13 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretElasticSearchSchema.parseAsync(inputs);
     const [hostIp] = await verifyHostInputValidity(providerInputs.host);
-    return { ...providerInputs, host: hostIp };
+    return { ...providerInputs, hostIp };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretElasticSearchSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretElasticSearchSchema> & { hostIp: string }) => {
     const connection = new ElasticSearchClient({
       node: {
-        url: new URL(`${providerInputs.host}:${providerInputs.port}`),
+        url: new URL(`${providerInputs.hostIp}:${providerInputs.port}`),
         ...(providerInputs.ca && {
           ssl: {
             rejectUnauthorized: false,

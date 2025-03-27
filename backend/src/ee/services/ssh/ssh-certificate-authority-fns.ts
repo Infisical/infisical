@@ -8,6 +8,7 @@ import { promisify } from "util";
 import { TSshCertificateTemplates } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 import {
@@ -18,6 +19,7 @@ import { SshCertType, TCreateSshCertDTO } from "./ssh-certificate-authority-type
 
 const execFileAsync = promisify(execFile);
 
+const EXEC_TIMEOUT_MS = 10000; // 10 seconds
 /* eslint-disable no-bitwise */
 export const createSshCertSerialNumber = () => {
   const randomBytes = crypto.randomBytes(8); // 8 bytes = 64 bits
@@ -64,7 +66,9 @@ export const createSshKeyPair = async (keyAlgorithm: CertKeyAlgorithm) => {
     // Generate the SSH key pair
     // The "-N ''" sets an empty passphrase
     // The keys are created in the temporary directory
-    await execFileAsync("ssh-keygen", ["-t", keyType, "-b", keyBits, "-f", privateKeyFile, "-N", ""]);
+    await execFileAsync("ssh-keygen", ["-t", keyType, "-b", keyBits, "-f", privateKeyFile, "-N", ""], {
+      timeout: EXEC_TIMEOUT_MS
+    });
 
     // Read the generated keys
     const publicKey = await fs.readFile(publicKeyFile, "utf8");
@@ -87,7 +91,10 @@ export const getSshPublicKey = async (privateKey: string) => {
     await fs.writeFile(privateKeyFile, privateKey, { mode: 0o600 });
 
     // Run ssh-keygen to extract the public key
-    const { stdout } = await execFileAsync("ssh-keygen", ["-y", "-f", privateKeyFile], { encoding: "utf8" });
+    const { stdout } = await execFileAsync("ssh-keygen", ["-y", "-f", privateKeyFile], {
+      encoding: "utf8",
+      timeout: EXEC_TIMEOUT_MS
+    });
     return stdout.trim();
   } finally {
     // Ensure that files and the temporary directory are cleaned up
@@ -143,7 +150,14 @@ export const validateSshCertificatePrincipals = (
     }
 
     // restrict allowed characters to letters, digits, dot, underscore, and hyphen
-    if (!/^[A-Za-z0-9._-]+$/.test(sanitized)) {
+    if (
+      !characterValidator([
+        CharacterType.AlphaNumeric,
+        CharacterType.Period,
+        CharacterType.Underscore,
+        CharacterType.Hyphen
+      ])(sanitized)
+    ) {
       throw new BadRequestError({
         message: `Principal '${sanitized}' contains invalid characters. Allowed: alphanumeric, '.', '_', '-'.`
       });
@@ -266,8 +280,8 @@ export const validateSshCertificateTtl = (template: TSshCertificateTemplates, tt
  * that it only contains alphanumeric characters with no spaces.
  */
 export const validateSshCertificateKeyId = (keyId: string) => {
-  const regex = /^[A-Za-z0-9-]+$/;
-  if (!regex.test(keyId)) {
+  const regex = characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen]);
+  if (!regex(keyId)) {
     throw new BadRequestError({
       message:
         "Failed to validate Key ID because it can only contain alphanumeric characters and hyphens, with no spaces."
@@ -298,7 +312,7 @@ const validateSshPublicKey = async (publicKey: string) => {
 
   try {
     await fs.writeFile(pubKeyFile, publicKey, { mode: 0o600 });
-    await execFileAsync("ssh-keygen", ["-l", "-f", pubKeyFile]);
+    await execFileAsync("ssh-keygen", ["-l", "-f", pubKeyFile], { timeout: EXEC_TIMEOUT_MS });
   } catch (error) {
     throw new BadRequestError({
       message: "Failed to validate SSH public key format: could not be parsed."
@@ -363,7 +377,7 @@ export const createSshCert = async ({
     await fs.writeFile(privateKeyFile, caPrivateKey, { mode: 0o600 });
 
     // Execute the signing process
-    await execFileAsync("ssh-keygen", sshKeygenArgs, { encoding: "utf8" });
+    await execFileAsync("ssh-keygen", sshKeygenArgs, { encoding: "utf8", timeout: EXEC_TIMEOUT_MS });
 
     // Read the signed public key from the generated cert file
     const signedPublicKey = await fs.readFile(signedPublicKeyFile, "utf8");

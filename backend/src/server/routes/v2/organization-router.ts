@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import {
-  OrganizationsSchema,
   OrgMembershipsSchema,
   ProjectMembershipsSchema,
   ProjectsSchema,
@@ -15,6 +14,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 
 export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -335,7 +335,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organization: OrganizationsSchema
+          organization: sanitizedOrganizationSchema
         })
       }
     },
@@ -365,7 +365,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organization: OrganizationsSchema,
+          organization: sanitizedOrganizationSchema,
           accessToken: z.string()
         })
       }
@@ -394,6 +394,32 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       });
 
       return { organization, accessToken: tokens.accessToken };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/privilege-system-upgrade",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          organization: sanitizedOrganizationSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const organization = await server.services.org.upgradePrivilegeSystem({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        orgId: req.permission.orgId
+      });
+
+      return { organization };
     }
   });
 };

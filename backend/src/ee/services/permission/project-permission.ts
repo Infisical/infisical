@@ -43,6 +43,30 @@ export enum ProjectPermissionDynamicSecretActions {
   Lease = "lease"
 }
 
+export enum ProjectPermissionIdentityActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges"
+}
+
+export enum ProjectPermissionMemberActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges"
+}
+
+export enum ProjectPermissionGroupActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges"
+}
+
 export enum ProjectPermissionSecretSyncActions {
   Read = "read",
   Create = "create",
@@ -150,8 +174,8 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
-  | [ProjectPermissionActions, ProjectPermissionSub.Member]
-  | [ProjectPermissionActions, ProjectPermissionSub.Groups]
+  | [ProjectPermissionMemberActions, ProjectPermissionSub.Member]
+  | [ProjectPermissionGroupActions, ProjectPermissionSub.Groups]
   | [ProjectPermissionActions, ProjectPermissionSub.Integrations]
   | [ProjectPermissionActions, ProjectPermissionSub.Webhooks]
   | [ProjectPermissionActions, ProjectPermissionSub.AuditLogs]
@@ -162,7 +186,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
   | [
-      ProjectPermissionActions,
+      ProjectPermissionIdentityActions,
       ProjectPermissionSub.Identity | (ForcedSubject<ProjectPermissionSub.Identity> & IdentityManagementSubjectFields)
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
@@ -290,13 +314,13 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Member).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionMemberActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Groups).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionGroupActions).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -510,7 +534,7 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.Identity).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionIdentityActions).describe(
       "Describe what action an entity can take."
     ),
     conditions: IdentityManagementConditionSchema.describe(
@@ -531,12 +555,9 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SecretImports,
     ProjectPermissionSub.SecretApproval,
     ProjectPermissionSub.SecretRotation,
-    ProjectPermissionSub.Member,
-    ProjectPermissionSub.Groups,
     ProjectPermissionSub.Role,
     ProjectPermissionSub.Integrations,
     ProjectPermissionSub.Webhooks,
-    ProjectPermissionSub.Identity,
     ProjectPermissionSub.ServiceTokens,
     ProjectPermissionSub.Settings,
     ProjectPermissionSub.Environments,
@@ -562,6 +583,39 @@ const buildAdminPermissionRules = () => {
       el
     );
   });
+
+  can(
+    [
+      ProjectPermissionMemberActions.Create,
+      ProjectPermissionMemberActions.Edit,
+      ProjectPermissionMemberActions.Delete,
+      ProjectPermissionMemberActions.Read,
+      ProjectPermissionMemberActions.GrantPrivileges
+    ],
+    ProjectPermissionSub.Member
+  );
+
+  can(
+    [
+      ProjectPermissionGroupActions.Create,
+      ProjectPermissionGroupActions.Edit,
+      ProjectPermissionGroupActions.Delete,
+      ProjectPermissionGroupActions.Read,
+      ProjectPermissionGroupActions.GrantPrivileges
+    ],
+    ProjectPermissionSub.Groups
+  );
+
+  can(
+    [
+      ProjectPermissionIdentityActions.Create,
+      ProjectPermissionIdentityActions.Edit,
+      ProjectPermissionIdentityActions.Delete,
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionIdentityActions.GrantPrivileges
+    ],
+    ProjectPermissionSub.Identity
+  );
 
   can(
     [
@@ -677,9 +731,9 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionActions.Read, ProjectPermissionActions.Create], ProjectPermissionSub.SecretRollback);
 
-  can([ProjectPermissionActions.Read, ProjectPermissionActions.Create], ProjectPermissionSub.Member);
+  can([ProjectPermissionMemberActions.Read, ProjectPermissionMemberActions.Create], ProjectPermissionSub.Member);
 
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.Groups);
+  can([ProjectPermissionGroupActions.Read], ProjectPermissionSub.Groups);
 
   can(
     [
@@ -703,10 +757,10 @@ const buildMemberPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionIdentityActions.Edit,
+      ProjectPermissionIdentityActions.Create,
+      ProjectPermissionIdentityActions.Delete
     ],
     ProjectPermissionSub.Identity
   );
@@ -820,12 +874,12 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
+  can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
+  can(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
+  can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);

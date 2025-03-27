@@ -8,7 +8,18 @@ type GetFullFolderPath = {
 
 export const getFullFolderPath = async ({ folderDAL, folderId, envId }: GetFullFolderPath): Promise<string> => {
   // Helper function to remove duplicate slashes
-  const removeDuplicateSlashes = (path: string) => path.replace(/\/{2,}/g, "/");
+  const removeDuplicateSlashes = (path: string) => {
+    const chars = [];
+    let lastWasSlash = false;
+
+    for (let i = 0; i < path.length; i += 1) {
+      const char = path[i];
+      if (char !== "/" || !lastWasSlash) chars.push(char);
+      lastWasSlash = char === "/";
+    }
+
+    return chars.join("");
+  };
 
   // Fetch all folders at once based on environment ID to avoid multiple queries
   const folders = await folderDAL.find({ envId });

@@ -48,8 +48,11 @@ helmify: $(HELMIFY) ## Download helmify locally if necessary.
 $(HELMIFY): $(LOCALBIN)
 	test -s $(LOCALBIN)/helmify || GOBIN=$(LOCALBIN) go install github.com/arttor/helmify/cmd/helmify@latest
     
-helm: manifests kustomize helmify
+legacy-helm: manifests kustomize helmify
 	$(KUSTOMIZE) build config/default | $(HELMIFY) ../helm-charts/secrets-operator
+
+helm: manifests kustomize helmify
+	./scripts/generate-helm.sh
 
 ## Yaml for Kubectl 
 kubectl-install: manifests kustomize

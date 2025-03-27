@@ -82,7 +82,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">User Details</h3>
         {userId !== membership.user.id && (
-          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
+          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Member}>
             {(isAllowed) => {
               return (
                 <Tooltip content="Edit Membership">
@@ -196,7 +196,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
           (membership.status === "invited" || membership.status === "verified") &&
           membership.user.email &&
           serverDetails?.emailConfigured && (
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
+            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Member}>
               {(isAllowed) => {
                 return (
                   <Button

@@ -463,7 +463,7 @@ export const recursivelyGetSecretPaths = async ({
 const formatMultiValueEnv = (val?: string) => {
   if (!val) return "";
   if (!val.match("\n")) return val;
-  return `"${val.replace(/\n/g, "\\n")}"`;
+  return `"${val.replaceAll("\n", "\\n")}"`;
 };
 
 type TSecretReferenceTraceNode = {

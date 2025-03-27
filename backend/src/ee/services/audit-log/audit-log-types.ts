@@ -968,6 +968,7 @@ interface LoginIdentityOidcAuthEvent {
     identityId: string;
     identityOidcAuthId: string;
     identityAccessTokenId: string;
+    oidcClaimsReceived: Record<string, unknown>;
   };
 }
 
