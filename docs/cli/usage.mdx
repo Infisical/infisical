@@ -120,6 +120,22 @@ The CLI is designed for a variety of secret management applications ranging from
   </Tab>
 </Tabs>
 
+<Tip>
+  ## Custom Request Headers
+
+  The Infisical CLI supports custom HTTP headers for requests to servers protected by authentication services such as Cloudflare Access. Configure these headers using the `INFISICAL_CUSTOM_HEADERS` environment variable:
+
+  ```bash
+  # Syntax: headername1=headervalue1 headername2=headervalue2
+  export INFISICAL_CUSTOM_HEADERS="Access-Client-Id=your-client-id Access-Client-Secret=your-client-secret"
+
+  # Execute Infisical commands after setting the environment variable
+  infisical secrets ls
+  ```
+
+  This functionality enables secure interaction with Infisical instances that require specific authentication headers.
+</Tip>
+
 ## History
 
 Your terminal keeps a history with the commands you run. When you create Infisical secrets directly from your terminal, they'll stay there for a while.

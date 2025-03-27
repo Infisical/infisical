@@ -99,6 +99,10 @@ client := infisical.NewInfisicalClient(context.Background(), infisical.Config{
         <ParamField query="CacheExpiryInSeconds" type="number" default={0} optional>
             Defines how long certain responses should be cached in memory, in seconds. When set to a positive value, responses from specific methods (like secret fetching) will be cached for this duration. Set to 0 to disable caching.
         </ParamField>
+
+        <ParamField query="CustomHeaders" type="string" default="" optional>
+            Allows you to pass custom headers to the HTTP requests made by the SDK. Expected format is `Header1=Value1 Header2="Value 2"`.
+        </ParamField>
     </Expandable>
 
 </ParamField>
