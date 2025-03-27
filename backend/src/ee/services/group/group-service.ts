@@ -87,25 +87,26 @@ export const groupServiceFactory = ({
       actorOrgId
     );
     const isCustomRole = Boolean(customRole);
+    if (role !== OrgMembershipRole.NoAccess) {
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
+        OrgPermissionGroupActions.GrantPrivileges,
+        OrgPermissionSubjects.Groups,
+        permission,
+        rolePermission
+      );
 
-    const permissionBoundary = validatePrivilegeChangeOperation(
-      membership.shouldUseNewPrivilegeSystem,
-      OrgPermissionGroupActions.GrantPrivileges,
-      OrgPermissionSubjects.Groups,
-      permission,
-      rolePermission
-    );
-
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to create group",
-          membership.shouldUseNewPrivilegeSystem,
-          OrgPermissionGroupActions.GrantPrivileges,
-          OrgPermissionSubjects.Groups
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
-      });
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to create group",
+            membership.shouldUseNewPrivilegeSystem,
+            OrgPermissionGroupActions.GrantPrivileges,
+            OrgPermissionSubjects.Groups
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    }
 
     const group = await groupDAL.transaction(async (tx) => {
       const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);

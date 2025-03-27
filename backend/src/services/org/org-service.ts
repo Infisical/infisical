@@ -945,24 +945,26 @@ export const orgServiceFactory = ({
             projectId
           );
 
-          const permissionBoundary = validatePrivilegeChangeOperation(
-            membership.shouldUseNewPrivilegeSystem,
-            ProjectPermissionMemberActions.GrantPrivileges,
-            ProjectPermissionSub.Member,
-            projectPermission,
-            rolePermission
-          );
+          if (invitedRole !== ProjectMembershipRole.NoAccess) {
+            const permissionBoundary = validatePrivilegeChangeOperation(
+              membership.shouldUseNewPrivilegeSystem,
+              ProjectPermissionMemberActions.GrantPrivileges,
+              ProjectPermissionSub.Member,
+              projectPermission,
+              rolePermission
+            );
 
-          if (!permissionBoundary.isValid)
-            throw new PermissionBoundaryError({
-              message: constructPermissionErrorMessage(
-                "Failed to invite user to the project",
-                membership.shouldUseNewPrivilegeSystem,
-                ProjectPermissionMemberActions.GrantPrivileges,
-                ProjectPermissionSub.Member
-              ),
-              details: { missingPermissions: permissionBoundary.missingPermissions }
-            });
+            if (!permissionBoundary.isValid)
+              throw new PermissionBoundaryError({
+                message: constructPermissionErrorMessage(
+                  "Failed to invite user to the project",
+                  membership.shouldUseNewPrivilegeSystem,
+                  ProjectPermissionMemberActions.GrantPrivileges,
+                  ProjectPermissionSub.Member
+                ),
+                details: { missingPermissions: permissionBoundary.missingPermissions }
+              });
+          }
         }
 
         const customProjectRoles = invitedProjectRoles.filter(
