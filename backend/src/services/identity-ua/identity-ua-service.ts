@@ -13,7 +13,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -382,8 +382,7 @@ export const identityUaServiceFactory = ({
       rolePermission
     );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
+      throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to revoke universal auth of identity with more privileged role",
           membership.shouldUseNewPrivilegeSystem,
@@ -443,8 +442,7 @@ export const identityUaServiceFactory = ({
       rolePermission
     );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
+      throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to create client secret for identity.",
           membership.shouldUseNewPrivilegeSystem,
@@ -517,8 +515,7 @@ export const identityUaServiceFactory = ({
       rolePermission
     );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
+      throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to get identity client secret with more privileged role",
           membership.shouldUseNewPrivilegeSystem,
@@ -580,8 +577,7 @@ export const identityUaServiceFactory = ({
       rolePermission
     );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
+      throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to read identity client secret of identity with more privileged role",
           membership.shouldUseNewPrivilegeSystem,
@@ -637,8 +633,7 @@ export const identityUaServiceFactory = ({
       rolePermission
     );
     if (!permissionBoundary.isValid) {
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
+      throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to revoke identity client secret with more privileged role",
           membership.shouldUseNewPrivilegeSystem,

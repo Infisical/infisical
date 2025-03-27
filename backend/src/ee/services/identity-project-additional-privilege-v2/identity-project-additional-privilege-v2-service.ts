@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -81,18 +81,17 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
     targetIdentityPermission.update(targetIdentityPermission.rules.concat(customPermission));
     const permissionBoundary = validatePrivilegeChangeOperation(
       membership.shouldUseNewPrivilegeSystem,
-      ProjectPermissionIdentityActions.ManagePrivileges,
+      ProjectPermissionIdentityActions.GrantPrivileges,
       ProjectPermissionSub.Identity,
       permission,
       targetIdentityPermission
     );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
+      throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to update more privileged identity",
           membership.shouldUseNewPrivilegeSystem,
-          ProjectPermissionIdentityActions.ManagePrivileges,
+          ProjectPermissionIdentityActions.GrantPrivileges,
           ProjectPermissionSub.Identity
         ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
@@ -178,18 +177,17 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
     targetIdentityPermission.update(targetIdentityPermission.rules.concat(data.permissions || []));
     const permissionBoundary = validatePrivilegeChangeOperation(
       membership.shouldUseNewPrivilegeSystem,
-      ProjectPermissionIdentityActions.ManagePrivileges,
+      ProjectPermissionIdentityActions.GrantPrivileges,
       ProjectPermissionSub.Identity,
       permission,
       targetIdentityPermission
     );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
+      throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to update more privileged identity",
           membership.shouldUseNewPrivilegeSystem,
-          ProjectPermissionIdentityActions.ManagePrivileges,
+          ProjectPermissionIdentityActions.GrantPrivileges,
           ProjectPermissionSub.Identity
         ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
@@ -271,18 +269,17 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
     });
     const permissionBoundary = validatePrivilegeChangeOperation(
       membership.shouldUseNewPrivilegeSystem,
-      ProjectPermissionIdentityActions.ManagePrivileges,
+      ProjectPermissionIdentityActions.GrantPrivileges,
       ProjectPermissionSub.Identity,
       permission,
       identityRolePermission
     );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
+      throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to update more privileged identity",
           membership.shouldUseNewPrivilegeSystem,
-          ProjectPermissionIdentityActions.ManagePrivileges,
+          ProjectPermissionIdentityActions.GrantPrivileges,
           ProjectPermissionSub.Identity
         ),
         details: { missingPermissions: permissionBoundary.missingPermissions }

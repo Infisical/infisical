@@ -49,7 +49,7 @@ export enum OrgPermissionIdentityActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  ManagePrivileges = "manage-privileges",
+  GrantPrivileges = "grant-privileges",
   RevokeAuth = "revoke-auth",
   CreateToken = "create-token",
   GetToken = "get-token",
@@ -61,7 +61,7 @@ export enum OrgPermissionGroupActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  ManagePrivileges = "manage-privileges",
+  GrantPrivileges = "grant-privileges",
   AddMembers = "add-members",
   RemoveMembers = "remove-members"
 }
@@ -282,7 +282,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionGroupActions.Create, OrgPermissionSubjects.Groups);
   can(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
   can(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups);
-  can(OrgPermissionGroupActions.ManagePrivileges, OrgPermissionSubjects.Groups);
+  can(OrgPermissionGroupActions.GrantPrivileges, OrgPermissionSubjects.Groups);
   can(OrgPermissionGroupActions.AddMembers, OrgPermissionSubjects.Groups);
   can(OrgPermissionGroupActions.RemoveMembers, OrgPermissionSubjects.Groups);
 
@@ -295,7 +295,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
-  can(OrgPermissionIdentityActions.ManagePrivileges, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.GrantPrivileges, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.RevokeAuth, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.CreateToken, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.GetToken, OrgPermissionSubjects.Identity);

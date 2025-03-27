@@ -8,7 +8,7 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -69,18 +69,17 @@ export const identityServiceFactory = ({
     const isCustomRole = Boolean(customRole);
     const permissionBoundary = validatePrivilegeChangeOperation(
       membership.shouldUseNewPrivilegeSystem,
-      OrgPermissionIdentityActions.ManagePrivileges,
+      OrgPermissionIdentityActions.GrantPrivileges,
       OrgPermissionSubjects.Identity,
       permission,
       rolePermission
     );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
+      throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to create identity",
           membership.shouldUseNewPrivilegeSystem,
-          OrgPermissionIdentityActions.ManagePrivileges,
+          OrgPermissionIdentityActions.GrantPrivileges,
           OrgPermissionSubjects.Identity
         ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
@@ -159,18 +158,17 @@ export const identityServiceFactory = ({
       const isCustomRole = Boolean(customOrgRole);
       const appliedRolePermissionBoundary = validatePrivilegeChangeOperation(
         membership.shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.ManagePrivileges,
+        OrgPermissionIdentityActions.GrantPrivileges,
         OrgPermissionSubjects.Identity,
         permission,
         rolePermission
       );
       if (!appliedRolePermissionBoundary.isValid)
-        throw new ForbiddenRequestError({
-          name: "PermissionBoundaryError",
+        throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
             "Failed to update identity",
             membership.shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.ManagePrivileges,
+            OrgPermissionIdentityActions.GrantPrivileges,
             OrgPermissionSubjects.Identity
           ),
           details: { missingPermissions: appliedRolePermissionBoundary.missingPermissions }

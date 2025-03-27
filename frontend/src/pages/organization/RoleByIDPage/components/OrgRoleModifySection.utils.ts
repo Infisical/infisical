@@ -44,7 +44,7 @@ const identityPermissionSchema = z
     [OrgPermissionIdentityActions.Edit]: z.boolean().optional(),
     [OrgPermissionIdentityActions.Delete]: z.boolean().optional(),
     [OrgPermissionIdentityActions.Create]: z.boolean().optional(),
-    [OrgPermissionIdentityActions.ManagePrivileges]: z.boolean().optional(),
+    [OrgPermissionIdentityActions.GrantPrivileges]: z.boolean().optional(),
     [OrgPermissionIdentityActions.RevokeAuth]: z.boolean().optional(),
     [OrgPermissionIdentityActions.CreateToken]: z.boolean().optional(),
     [OrgPermissionIdentityActions.GetToken]: z.boolean().optional(),
@@ -58,7 +58,7 @@ const groupPermissionSchema = z
     [OrgPermissionGroupActions.Create]: z.boolean().optional(),
     [OrgPermissionGroupActions.Edit]: z.boolean().optional(),
     [OrgPermissionGroupActions.Delete]: z.boolean().optional(),
-    [OrgPermissionGroupActions.ManagePrivileges]: z.boolean().optional(),
+    [OrgPermissionGroupActions.GrantPrivileges]: z.boolean().optional(),
     [OrgPermissionGroupActions.AddMembers]: z.boolean().optional(),
     [OrgPermissionGroupActions.RemoveMembers]: z.boolean().optional()
   })

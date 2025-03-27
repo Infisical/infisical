@@ -48,7 +48,7 @@ export enum ProjectPermissionIdentityActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  ManagePrivileges = "manage-privileges"
+  GrantPrivileges = "grant-privileges"
 }
 
 export enum ProjectPermissionMemberActions {
@@ -56,7 +56,7 @@ export enum ProjectPermissionMemberActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  ManagePrivileges = "manage-privileges"
+  GrantPrivileges = "grant-privileges"
 }
 
 export enum ProjectPermissionGroupActions {
@@ -64,7 +64,7 @@ export enum ProjectPermissionGroupActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  ManagePrivileges = "manage-privileges"
+  GrantPrivileges = "grant-privileges"
 }
 
 export enum ProjectPermissionSecretSyncActions {
@@ -590,7 +590,7 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionMemberActions.Edit,
       ProjectPermissionMemberActions.Delete,
       ProjectPermissionMemberActions.Read,
-      ProjectPermissionMemberActions.ManagePrivileges
+      ProjectPermissionMemberActions.GrantPrivileges
     ],
     ProjectPermissionSub.Member
   );
@@ -601,7 +601,7 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionGroupActions.Edit,
       ProjectPermissionGroupActions.Delete,
       ProjectPermissionGroupActions.Read,
-      ProjectPermissionGroupActions.ManagePrivileges
+      ProjectPermissionGroupActions.GrantPrivileges
     ],
     ProjectPermissionSub.Groups
   );
@@ -612,7 +612,7 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionIdentityActions.Edit,
       ProjectPermissionIdentityActions.Delete,
       ProjectPermissionIdentityActions.Read,
-      ProjectPermissionIdentityActions.ManagePrivileges
+      ProjectPermissionIdentityActions.GrantPrivileges
     ],
     ProjectPermissionSub.Identity
   );

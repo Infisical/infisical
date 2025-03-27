@@ -7,7 +7,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 
@@ -95,18 +95,17 @@ export const identityProjectServiceFactory = ({
 
       const permissionBoundary = validatePrivilegeChangeOperation(
         membership.shouldUseNewPrivilegeSystem,
-        ProjectPermissionIdentityActions.ManagePrivileges,
+        ProjectPermissionIdentityActions.GrantPrivileges,
         ProjectPermissionSub.Identity,
         permission,
         rolePermission
       );
       if (!permissionBoundary.isValid)
-        throw new ForbiddenRequestError({
-          name: "PermissionBoundaryError",
+        throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
             "Failed to assign to role",
             membership.shouldUseNewPrivilegeSystem,
-            ProjectPermissionIdentityActions.ManagePrivileges,
+            ProjectPermissionIdentityActions.GrantPrivileges,
             ProjectPermissionSub.Identity
           ),
           details: { missingPermissions: permissionBoundary.missingPermissions }
@@ -202,19 +201,18 @@ export const identityProjectServiceFactory = ({
 
       const permissionBoundary = validatePrivilegeChangeOperation(
         membership.shouldUseNewPrivilegeSystem,
-        ProjectPermissionIdentityActions.ManagePrivileges,
+        ProjectPermissionIdentityActions.GrantPrivileges,
         ProjectPermissionSub.Identity,
         permission,
         rolePermission
       );
 
       if (!permissionBoundary.isValid)
-        throw new ForbiddenRequestError({
-          name: "PermissionBoundaryError",
+        throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
             "Failed to change role",
             membership.shouldUseNewPrivilegeSystem,
-            ProjectPermissionIdentityActions.ManagePrivileges,
+            ProjectPermissionIdentityActions.GrantPrivileges,
             ProjectPermissionSub.Identity
           ),
           details: { missingPermissions: permissionBoundary.missingPermissions }

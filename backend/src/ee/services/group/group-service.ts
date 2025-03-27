@@ -3,7 +3,7 @@ import slugify from "@sindresorhus/slugify";
 
 import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -90,19 +90,18 @@ export const groupServiceFactory = ({
 
     const permissionBoundary = validatePrivilegeChangeOperation(
       membership.shouldUseNewPrivilegeSystem,
-      OrgPermissionGroupActions.ManagePrivileges,
+      OrgPermissionGroupActions.GrantPrivileges,
       OrgPermissionSubjects.Groups,
       permission,
       rolePermission
     );
 
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
+      throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to create group",
           membership.shouldUseNewPrivilegeSystem,
-          OrgPermissionGroupActions.ManagePrivileges,
+          OrgPermissionGroupActions.GrantPrivileges,
           OrgPermissionSubjects.Groups
         ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
@@ -176,18 +175,17 @@ export const groupServiceFactory = ({
       const isCustomRole = Boolean(customOrgRole);
       const permissionBoundary = validatePrivilegeChangeOperation(
         membership.shouldUseNewPrivilegeSystem,
-        OrgPermissionGroupActions.ManagePrivileges,
+        OrgPermissionGroupActions.GrantPrivileges,
         OrgPermissionSubjects.Groups,
         permission,
         rolePermission
       );
       if (!permissionBoundary.isValid)
-        throw new ForbiddenRequestError({
-          name: "PermissionBoundaryError",
+        throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
             "Failed to update group",
             membership.shouldUseNewPrivilegeSystem,
-            OrgPermissionGroupActions.ManagePrivileges,
+            OrgPermissionGroupActions.GrantPrivileges,
             OrgPermissionSubjects.Groups
           ),
           details: { missingPermissions: permissionBoundary.missingPermissions }
@@ -371,8 +369,7 @@ export const groupServiceFactory = ({
     );
 
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
+      throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to add user to more privileged group",
           membership.shouldUseNewPrivilegeSystem,
@@ -453,8 +450,7 @@ export const groupServiceFactory = ({
       groupRolePermission
     );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
+      throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to delete user from more privileged group",
           membership.shouldUseNewPrivilegeSystem,

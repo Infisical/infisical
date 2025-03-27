@@ -2,7 +2,7 @@ import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -82,18 +82,17 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     targetUserPermission.update(targetUserPermission.rules.concat(customPermission));
     const permissionBoundary = validatePrivilegeChangeOperation(
       membership.shouldUseNewPrivilegeSystem,
-      ProjectPermissionMemberActions.ManagePrivileges,
+      ProjectPermissionMemberActions.GrantPrivileges,
       ProjectPermissionSub.Member,
       permission,
       targetUserPermission
     );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
+      throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to update more privileged user",
           membership.shouldUseNewPrivilegeSystem,
-          ProjectPermissionMemberActions.ManagePrivileges,
+          ProjectPermissionMemberActions.GrantPrivileges,
           ProjectPermissionSub.Member
         ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
@@ -184,18 +183,17 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     targetUserPermission.update(targetUserPermission.rules.concat(dto.permissions || []));
     const permissionBoundary = validatePrivilegeChangeOperation(
       membership.shouldUseNewPrivilegeSystem,
-      ProjectPermissionMemberActions.ManagePrivileges,
+      ProjectPermissionMemberActions.GrantPrivileges,
       ProjectPermissionSub.Member,
       permission,
       targetUserPermission
     );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
+      throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to update more privileged user",
           membership.shouldUseNewPrivilegeSystem,
-          ProjectPermissionMemberActions.ManagePrivileges,
+          ProjectPermissionMemberActions.GrantPrivileges,
           ProjectPermissionSub.Member
         ),
         details: { missingPermissions: permissionBoundary.missingPermissions }

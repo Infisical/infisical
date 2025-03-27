@@ -11,7 +11,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 
@@ -279,18 +279,17 @@ export const projectMembershipServiceFactory = ({
 
       const permissionBoundary = validatePrivilegeChangeOperation(
         membership.shouldUseNewPrivilegeSystem,
-        ProjectPermissionMemberActions.ManagePrivileges,
+        ProjectPermissionMemberActions.GrantPrivileges,
         ProjectPermissionSub.Member,
         permission,
         rolePermission
       );
       if (!permissionBoundary.isValid)
-        throw new ForbiddenRequestError({
-          name: "PermissionBoundaryError",
+        throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
             `Failed to change role ${requestedRoleChange}`,
             membership.shouldUseNewPrivilegeSystem,
-            ProjectPermissionMemberActions.ManagePrivileges,
+            ProjectPermissionMemberActions.GrantPrivileges,
             ProjectPermissionSub.Member
           ),
           details: { missingPermissions: permissionBoundary.missingPermissions }

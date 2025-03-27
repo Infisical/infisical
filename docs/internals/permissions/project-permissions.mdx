@@ -21,6 +21,7 @@ Below is a comprehensive list of all available project-level subjects and their 
 ### Core Platform & Access Control
 
 #### Subject: `role`
+
 | Action   | Description                                       |
 | -------- | ------------------------------------------------- |
 | `read`   | View project roles and their assigned permissions |
@@ -29,33 +30,37 @@ Below is a comprehensive list of all available project-level subjects and their 
 | `delete` | Remove project roles                              |
 
 #### Subject: `member`
-| Action              | Description                                 |
-| ------------------- | ------------------------------------------- |
-| `read`              | View project members                        |
-| `create`            | Add new members to the project              |
-| `edit`              | Modify member details                       |
-| `delete`            | Remove members from the project             |
-| `manage-privileges` | Change permission levels of project members |
+
+| Action             | Description                                 |
+| ------------------ | ------------------------------------------- |
+| `read`             | View project members                        |
+| `create`           | Add new members to the project              |
+| `edit`             | Modify member details                       |
+| `delete`           | Remove members from the project             |
+| `grant-privileges` | Change permission levels of project members |
 
 #### Subject: `groups`
-| Action              | Description                                |
-| ------------------- | ------------------------------------------ |
-| `read`              | View project groups                        |
-| `create`            | Create new groups within the project       |
-| `edit`              | Modify existing groups                     |
-| `delete`            | Remove groups from the project             |
-| `manage-privileges` | Change permission levels of project groups |
+
+| Action             | Description                                |
+| ------------------ | ------------------------------------------ |
+| `read`             | View project groups                        |
+| `create`           | Create new groups within the project       |
+| `edit`             | Modify existing groups                     |
+| `delete`           | Remove groups from the project             |
+| `grant-privileges` | Change permission levels of project groups |
 
 #### Subject: `identity`
-| Action              | Description                                    |
-| ------------------- | ---------------------------------------------- |
-| `read`              | View project identities                        |
-| `create`            | Add new identities to project                  |
-| `edit`              | Modify project identities                      |
-| `delete`            | Remove identities from project                 |
-| `manage-privileges` | Change permission levels of project identities |
+
+| Action             | Description                                    |
+| ------------------ | ---------------------------------------------- |
+| `read`             | View project identities                        |
+| `create`           | Add new identities to project                  |
+| `edit`             | Modify project identities                      |
+| `delete`           | Remove identities from project                 |
+| `grant-privileges` | Change permission levels of project identities |
 
 #### Subject: `settings`
+
 | Action   | Description                            |
 | -------- | -------------------------------------- |
 | `read`   | View project settings                  |
@@ -64,6 +69,7 @@ Below is a comprehensive list of all available project-level subjects and their 
 | `delete` | Remove project settings                |
 
 #### Subject: `environments`
+
 | Action   | Description                          |
 | -------- | ------------------------------------ |
 | `read`   | View project environments            |
@@ -72,6 +78,7 @@ Below is a comprehensive list of all available project-level subjects and their 
 | `delete` | Remove environments from the project |
 
 #### Subject: `tags`
+
 | Action   | Description                              |
 | -------- | ---------------------------------------- |
 | `read`   | View project tags                        |
@@ -80,12 +87,14 @@ Below is a comprehensive list of all available project-level subjects and their 
 | `delete` | Remove tags from the project             |
 
 #### Subject: `workspace`
+
 | Action   | Description               |
 | -------- | ------------------------- |
 | `edit`   | Modify workspace settings |
 | `delete` | Delete the workspace      |
 
 #### Subject: `ip-allowlist`
+
 | Action   | Description                                  |
 | -------- | -------------------------------------------- |
 | `read`   | View IP allowlists                           |
@@ -94,11 +103,13 @@ Below is a comprehensive list of all available project-level subjects and their 
 | `delete` | Remove IP addresses from allowlists          |
 
 #### Subject: `audit-logs`
+
 | Action | Description                                             |
 | ------ | ------------------------------------------------------- |
 | `read` | View audit logs of actions performed within the project |
 
 #### Subject: `integrations`
+
 | Action   | Description                      |
 | -------- | -------------------------------- |
 | `read`   | View configured integrations     |
@@ -107,6 +118,7 @@ Below is a comprehensive list of all available project-level subjects and their 
 | `delete` | Remove integrations              |
 
 #### Subject: `webhooks`
+
 | Action   | Description                          |
 | -------- | ------------------------------------ |
 | `read`   | View webhook configurations          |
@@ -115,6 +127,7 @@ Below is a comprehensive list of all available project-level subjects and their 
 | `delete` | Remove webhooks                      |
 
 #### Subject: `service-tokens`
+
 | Action   | Description                              |
 | -------- | ---------------------------------------- |
 | `read`   | View service tokens                      |
@@ -125,39 +138,44 @@ Below is a comprehensive list of all available project-level subjects and their 
 ### Secrets Management
 
 #### Subject: `secrets`
+
 Supports conditions and permission inversion
-| Action   | Description                     |
+| Action | Description |
 | -------- | ------------------------------- |
-| `read`   | View secrets and their values   |
-| `create` | Add new secrets to the project  |
-| `edit`   | Modify existing secret values   |
+| `read` | View secrets and their values |
+| `create` | Add new secrets to the project |
+| `edit` | Modify existing secret values |
 | `delete` | Remove secrets from the project |
 
 #### Subject: `secret-folders`
+
 Supports conditions and permission inversion
-| Action   | Description              |
+| Action | Description |
 | -------- | ------------------------ |
-| `read`   | View secret folders      |
-| `create` | Create new folders       |
-| `edit`   | Modify folder properties |
-| `delete` | Remove secret folders    |
+| `read` | View secret folders |
+| `create` | Create new folders |
+| `edit` | Modify folder properties |
+| `delete` | Remove secret folders |
 
 #### Subject: `secret-imports`
+
 Supports conditions and permission inversion
-| Action   | Description           |
+| Action | Description |
 | -------- | --------------------- |
-| `read`   | View secret imports   |
+| `read` | View secret imports |
 | `create` | Create secret imports |
-| `edit`   | Modify secret imports |
+| `edit` | Modify secret imports |
 | `delete` | Remove secret imports |
 
 #### Subject: `secret-rollback`
+
 | Action   | Description                        |
 | -------- | ---------------------------------- |
 | `read`   | View secret versions and snapshots |
 | `create` | Roll back secrets to snapshots     |
 
 #### Subject: `secret-approval`
+
 | Action   | Description                         |
 | -------- | ----------------------------------- |
 | `read`   | View approval policies and requests |
@@ -166,6 +184,7 @@ Supports conditions and permission inversion
 | `delete` | Remove approval policies            |
 
 #### Subject: `secret-rotation`
+
 | Action   | Description                           |
 | -------- | ------------------------------------- |
 | `read`   | View secret rotation policies         |
@@ -174,6 +193,7 @@ Supports conditions and permission inversion
 | `delete` | Remove rotation policies              |
 
 #### Subject: `secret-syncs`
+
 | Action           | Description                                        |
 | ---------------- | -------------------------------------------------- |
 | `read`           | View secret synchronization configurations         |
@@ -185,23 +205,26 @@ Supports conditions and permission inversion
 | `remove-secrets` | Remove secrets from sync destinations              |
 
 #### Subject: `dynamic-secrets`
+
 Supports conditions and permission inversion
-| Action                   | Description                        |
+| Action | Description |
 | ------------------------ | ---------------------------------- |
-| `read-root-credential`   | View dynamic secret configurations |
-| `create-root-credential` | Create dynamic secrets             |
-| `edit-root-credential`   | Edit dynamic secrets               |
-| `delete-root-credential` | Remove dynamic secrets             |
-| `lease`                  | Create dynamic secret leases       |
+| `read-root-credential` | View dynamic secret configurations |
+| `create-root-credential` | Create dynamic secrets |
+| `edit-root-credential` | Edit dynamic secrets |
+| `delete-root-credential` | Remove dynamic secrets |
+| `lease` | Create dynamic secret leases |
 
 ### Key Management Service (KMS)
 
 #### Subject: `kms`
+
 | Action | Description                 |
 | ------ | --------------------------- |
 | `edit` | Modify project KMS settings |
 
 #### Subject: `cmek`
+
 | Action    | Description                           |
 | --------- | ------------------------------------- |
 | `read`    | View Customer-Managed Encryption Keys |
@@ -214,6 +237,7 @@ Supports conditions and permission inversion
 ### Public Key Infrastructure (PKI)
 
 #### Subject: `certificate-authorities`
+
 | Action   | Description                        |
 | -------- | ---------------------------------- |
 | `read`   | View certificate authorities       |
@@ -222,6 +246,7 @@ Supports conditions and permission inversion
 | `delete` | Remove certificate authorities     |
 
 #### Subject: `certificates`
+
 | Action   | Description                   |
 | -------- | ----------------------------- |
 | `read`   | View certificates             |
@@ -229,6 +254,7 @@ Supports conditions and permission inversion
 | `delete` | Revoke or remove certificates |
 
 #### Subject: `certificate-templates`
+
 | Action   | Description                      |
 | -------- | -------------------------------- |
 | `read`   | View certificate templates       |
@@ -237,6 +263,7 @@ Supports conditions and permission inversion
 | `delete` | Remove certificate templates     |
 
 #### Subject: `pki-alerts`
+
 | Action   | Description                                                  |
 | -------- | ------------------------------------------------------------ |
 | `read`   | View PKI alert configurations                                |
@@ -245,6 +272,7 @@ Supports conditions and permission inversion
 | `delete` | Remove PKI alerts                                            |
 
 #### Subject: `pki-collections`
+
 | Action   | Description                                         |
 | -------- | --------------------------------------------------- |
 | `read`   | View PKI resource collections                       |
@@ -255,6 +283,7 @@ Supports conditions and permission inversion
 ### SSH Certificate Management
 
 #### Subject: `ssh-certificate-authorities`
+
 | Action   | Description                            |
 | -------- | -------------------------------------- |
 | `read`   | View SSH certificate authorities       |
@@ -263,6 +292,7 @@ Supports conditions and permission inversion
 | `delete` | Remove SSH certificate authorities     |
 
 #### Subject: `ssh-certificates`
+
 | Action   | Description                       |
 | -------- | --------------------------------- |
 | `read`   | View SSH certificates             |
@@ -271,6 +301,7 @@ Supports conditions and permission inversion
 | `delete` | Revoke or remove SSH certificates |
 
 #### Subject: `ssh-certificate-templates`
+
 | Action   | Description                          |
 | -------- | ------------------------------------ |
 | `read`   | View SSH certificate templates       |

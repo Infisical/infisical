@@ -9,7 +9,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionGroupActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
@@ -107,18 +107,17 @@ export const groupProjectServiceFactory = ({
 
       const permissionBoundary = validatePrivilegeChangeOperation(
         membership.shouldUseNewPrivilegeSystem,
-        ProjectPermissionGroupActions.ManagePrivileges,
+        ProjectPermissionGroupActions.GrantPrivileges,
         ProjectPermissionSub.Groups,
         permission,
         rolePermission
       );
       if (!permissionBoundary.isValid)
-        throw new ForbiddenRequestError({
-          name: "PermissionBoundaryError",
+        throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
             "Failed to assign group to role",
             membership.shouldUseNewPrivilegeSystem,
-            ProjectPermissionGroupActions.ManagePrivileges,
+            ProjectPermissionGroupActions.GrantPrivileges,
             ProjectPermissionSub.Groups
           ),
           details: { missingPermissions: permissionBoundary.missingPermissions }
@@ -285,18 +284,17 @@ export const groupProjectServiceFactory = ({
       );
       const permissionBoundary = validatePrivilegeChangeOperation(
         membership.shouldUseNewPrivilegeSystem,
-        ProjectPermissionGroupActions.ManagePrivileges,
+        ProjectPermissionGroupActions.GrantPrivileges,
         ProjectPermissionSub.Groups,
         permission,
         rolePermission
       );
       if (!permissionBoundary.isValid)
-        throw new ForbiddenRequestError({
-          name: "PermissionBoundaryError",
+        throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
             "Failed to assign group to role",
             membership.shouldUseNewPrivilegeSystem,
-            ProjectPermissionGroupActions.ManagePrivileges,
+            ProjectPermissionGroupActions.GrantPrivileges,
             ProjectPermissionSub.Groups
           ),
           details: { missingPermissions: permissionBoundary.missingPermissions }

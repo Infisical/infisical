@@ -56,7 +56,7 @@ export enum ProjectPermissionIdentityActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  ManagePrivileges = "manage-privileges"
+  GrantPrivileges = "grant-privileges"
 }
 
 export enum ProjectPermissionMemberActions {
@@ -64,7 +64,7 @@ export enum ProjectPermissionMemberActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  ManagePrivileges = "manage-privileges"
+  GrantPrivileges = "grant-privileges"
 }
 
 export enum ProjectPermissionGroupActions {
@@ -72,7 +72,7 @@ export enum ProjectPermissionGroupActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  ManagePrivileges = "manage-privileges"
+  GrantPrivileges = "grant-privileges"
 }
 
 export enum PermissionConditionOperators {

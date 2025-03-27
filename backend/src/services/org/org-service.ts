@@ -37,7 +37,13 @@ import { getConfig } from "@app/lib/config/env";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
 import { generateSymmetricKey, infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  NotFoundError,
+  PermissionBoundaryError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isDisposableEmail } from "@app/lib/validator";
@@ -941,19 +947,18 @@ export const orgServiceFactory = ({
 
           const permissionBoundary = validatePrivilegeChangeOperation(
             membership.shouldUseNewPrivilegeSystem,
-            ProjectPermissionMemberActions.ManagePrivileges,
+            ProjectPermissionMemberActions.GrantPrivileges,
             ProjectPermissionSub.Member,
             projectPermission,
             rolePermission
           );
 
           if (!permissionBoundary.isValid)
-            throw new ForbiddenRequestError({
-              name: "PermissionBoundaryError",
+            throw new PermissionBoundaryError({
               message: constructPermissionErrorMessage(
                 "Failed to invite user to the project",
                 membership.shouldUseNewPrivilegeSystem,
-                ProjectPermissionMemberActions.ManagePrivileges,
+                ProjectPermissionMemberActions.GrantPrivileges,
                 ProjectPermissionSub.Member
               ),
               details: { missingPermissions: permissionBoundary.missingPermissions }

@@ -13,6 +13,7 @@ import {
   InternalServerError,
   NotFoundError,
   OidcAuthError,
+  PermissionBoundaryError,
   RateLimitError,
   ScimRequestError,
   UnauthorizedError
@@ -117,7 +118,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           conditions: el.conditions
         }))
       });
-    } else if (error instanceof ForbiddenRequestError) {
+    } else if (error instanceof ForbiddenRequestError || error instanceof PermissionBoundaryError) {
       void res.status(HttpStatusCodes.Forbidden).send({
         reqId: req.id,
         statusCode: HttpStatusCodes.Forbidden,

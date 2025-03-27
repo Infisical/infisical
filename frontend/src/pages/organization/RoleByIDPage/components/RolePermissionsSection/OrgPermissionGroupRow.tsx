@@ -15,7 +15,7 @@ const PERMISSION_ACTIONS = [
   { action: OrgPermissionGroupActions.Create, label: "Create Groups" },
   { action: OrgPermissionGroupActions.Edit, label: "Edit Groups" },
   { action: OrgPermissionGroupActions.Delete, label: "Delete Groups" },
-  { action: OrgPermissionGroupActions.ManagePrivileges, label: "Manage Privileges" },
+  { action: OrgPermissionGroupActions.GrantPrivileges, label: "Grant Privileges" },
   { action: OrgPermissionGroupActions.AddMembers, label: "Add Members" },
   { action: OrgPermissionGroupActions.RemoveMembers, label: "Remove Members" }
 ] as const;
@@ -84,7 +84,7 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
             [OrgPermissionGroupActions.Create]: false,
             [OrgPermissionGroupActions.Edit]: false,
             [OrgPermissionGroupActions.Delete]: false,
-            [OrgPermissionGroupActions.ManagePrivileges]: false,
+            [OrgPermissionGroupActions.GrantPrivileges]: false,
             [OrgPermissionGroupActions.AddMembers]: false,
             [OrgPermissionGroupActions.RemoveMembers]: false
           },
@@ -99,7 +99,7 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
             [OrgPermissionGroupActions.Create]: true,
             [OrgPermissionGroupActions.Edit]: true,
             [OrgPermissionGroupActions.Delete]: true,
-            [OrgPermissionGroupActions.ManagePrivileges]: true,
+            [OrgPermissionGroupActions.GrantPrivileges]: true,
             [OrgPermissionGroupActions.AddMembers]: true,
             [OrgPermissionGroupActions.RemoveMembers]: true
           },
@@ -114,7 +114,7 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
             [OrgPermissionGroupActions.Edit]: false,
             [OrgPermissionGroupActions.Create]: false,
             [OrgPermissionGroupActions.Delete]: false,
-            [OrgPermissionGroupActions.ManagePrivileges]: false,
+            [OrgPermissionGroupActions.GrantPrivileges]: false,
             [OrgPermissionGroupActions.AddMembers]: false,
             [OrgPermissionGroupActions.RemoveMembers]: false
           },
@@ -129,7 +129,7 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
             [OrgPermissionGroupActions.Edit]: false,
             [OrgPermissionGroupActions.Create]: false,
             [OrgPermissionGroupActions.Delete]: false,
-            [OrgPermissionGroupActions.ManagePrivileges]: false,
+            [OrgPermissionGroupActions.GrantPrivileges]: false,
             [OrgPermissionGroupActions.AddMembers]: false,
             [OrgPermissionGroupActions.RemoveMembers]: false
           },
