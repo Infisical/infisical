@@ -33,6 +33,7 @@ export type TListProjectAuditLogDTO = {
     endDate?: string;
     startDate?: string;
     projectId?: string;
+    environment?: string;
     auditLogActorId?: string;
     actorType?: ActorType;
     secretPath?: string;
