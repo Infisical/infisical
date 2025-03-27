@@ -140,12 +140,14 @@ Below is a comprehensive list of all available project-level subjects and their 
 #### Subject: `secrets`
 
 Supports conditions and permission inversion
-| Action | Description |
-| -------- | ------------------------------- |
-| `read` | View secrets and their values |
-| `create` | Add new secrets to the project |
-| `edit` | Modify existing secret values |
-| `delete` | Remove secrets from the project |
+| Action | Description | Notes |
+| -------- | ------------------------------- | ----- |
+| `read` | View secrets and their values     | This action is the equivalent of granting both `describeSecret` and `readValue`. The `read` action is considered **legacy**. You should use the `describeSecret` and/or `readValue` actions instead.       |
+| `describeSecret` | View secret details such as key, path, metadata, tags, and more | If you are using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. |
+| `readValue` | View the value of a secret.| In order to read secret values, the `describeSecret` action must also be granted. |
+| `create` | Add new secrets to the project  |       |
+| `edit` | Modify existing secret values     |       |
+| `delete` | Remove secrets from the project |       |
 
 #### Subject: `secret-folders`
 
