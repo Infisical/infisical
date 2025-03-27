@@ -213,7 +213,7 @@ export const identityOidcAuthServiceFactory = ({
           }
     );
 
-    return { accessToken, identityOidcAuth, identityAccessToken, identityMembershipOrg };
+    return { accessToken, identityOidcAuth, identityAccessToken, identityMembershipOrg, oidcTokenData: tokenData };
   };
 
   const attachOidcAuth = async ({
