@@ -255,6 +255,12 @@ export const ShareSecretForm = ({
               spellCheck="false"
               aria-autocomplete="none"
               data-form-type="other"
+              onChange={(e) => {
+                field.onChange(e);
+                if (e.target.value === "") {
+                  setPasswordConfirmation("");
+                }
+              }}
             />
           </FormControl>
         )}
