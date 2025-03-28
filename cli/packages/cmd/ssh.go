@@ -315,10 +315,16 @@ func issueCredentials(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	customHeaders, err := util.GetInfisicalCustomHeadersMap()
+	if err != nil {
+		util.HandleError(err, "Unable to get custom headers")
+	}
+
 	infisicalClient := infisicalSdk.NewInfisicalClient(context.Background(), infisicalSdk.Config{
 		SiteUrl:          config.INFISICAL_URL,
 		UserAgent:        api.USER_AGENT,
 		AutoTokenRefresh: false,
+		CustomHeaders:    customHeaders,
 	})
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 
@@ -555,10 +561,16 @@ func signKey(cmd *cobra.Command, args []string) {
 		signedKeyPath = outFilePath
 	}
 
+	customHeaders, err := util.GetInfisicalCustomHeadersMap()
+	if err != nil {
+		util.HandleError(err, "Unable to get custom headers")
+	}
+
 	infisicalClient := infisicalSdk.NewInfisicalClient(context.Background(), infisicalSdk.Config{
 		SiteUrl:          config.INFISICAL_URL,
 		UserAgent:        api.USER_AGENT,
 		AutoTokenRefresh: false,
+		CustomHeaders:    customHeaders,
 	})
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 

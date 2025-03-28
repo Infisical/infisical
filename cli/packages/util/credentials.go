@@ -9,7 +9,6 @@ import (
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
-	"github.com/go-resty/resty/v2"
 	"github.com/zalando/go-keyring"
 )
 
@@ -85,7 +84,12 @@ func GetCurrentLoggedInUserDetails(setConfigVariables bool) (LoggedInUserDetails
 		}
 
 		// check to to see if the JWT is still valid
-		httpClient := resty.New().
+		httpClient, err := GetRestyClientWithCustomHeaders()
+		if err != nil {
+			return LoggedInUserDetails{}, fmt.Errorf("getCurrentLoggedInUserDetails: unable to get client with custom headers [err=%s]", err)
+		}
+
+		httpClient.
 			SetAuthToken(userCreds.JTWToken).
 			SetHeader("Accept", "application/json")
 

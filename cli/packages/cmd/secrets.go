@@ -14,7 +14,6 @@ import (
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/Infisical/infisical-merge/packages/visualize"
-	"github.com/go-resty/resty/v2"
 	"github.com/posthog/posthog-go"
 	"github.com/spf13/cobra"
 )
@@ -299,8 +298,12 @@ var secretsDeleteCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		httpClient := resty.New().
-			SetHeader("Accept", "application/json")
+		httpClient, err := util.GetRestyClientWithCustomHeaders()
+		if err != nil {
+			util.HandleError(err, "Unable to get resty client with custom headers")
+		}
+
+		httpClient.SetHeader("Accept", "application/json")
 
 		if projectId == "" {
 			workspaceFile, err := util.GetWorkSpaceFromFile()
