@@ -67,7 +67,7 @@ export const SecretContainer = ({ secret, secretKey: key }: Props) => {
             className="group relative ml-2"
             onClick={() => setIsVisible.toggle()}
           >
-            <FontAwesomeIcon icon={isVisible ? faEyeSlash : faEye} />
+            <FontAwesomeIcon icon={isVisible ? faEye : faEyeSlash} />
           </IconButton>
         </div>
       </div>
