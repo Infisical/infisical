@@ -82,8 +82,7 @@ export const ShareSecretForm = ({
     mode: "onChange"
   });
 
-  const password = watch("password");
-  const secret = watch("secret");
+  const [secret, password] = watch(["secret", "password"]);
 
   const handleSecretBlur = () => {
     setSecretModified(true);
