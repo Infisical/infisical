@@ -89,17 +89,18 @@ export const useAccessTree = (
 
     const { folders } = environmentsFolders[environment];
     setTotalFolderCount(folders.length);
-
-    const searchPathFolder = folders.find((folder) => folder.path === searchPath);
+    const groupedFolders: Record<string, TSecretFolderWithPath[]> = {};
 
     const filteredFolders = folders.filter((folder) => {
-      if (folder.path === searchPath) {
+      if (folder.path.startsWith(searchPath)) {
         return true;
       }
 
       if (
-        folder.path.startsWith(searchPath) &&
-        (searchPath === "/" || folder.path.charAt(searchPath.length) === "/")
+        searchPath.startsWith(folder.path) &&
+        (folder.path === "/" ||
+          searchPath === folder.path ||
+          searchPath.indexOf("/", folder.path.length) === folder.path.length)
       ) {
         return true;
       }
@@ -107,17 +108,11 @@ export const useAccessTree = (
       return false;
     });
 
-    const rootFolder = searchPathFolder || filteredFolders.find((f) => f.path === "/");
-
-    const groupedFolders: Record<string, TSecretFolderWithPath[]> = {};
-
     filteredFolders.forEach((folder) => {
       const parentId = folder.parentId || "";
-
       if (!groupedFolders[parentId]) {
         groupedFolders[parentId] = [];
       }
-
       groupedFolders[parentId].push(folder);
     });
 
@@ -132,18 +127,7 @@ export const useAccessTree = (
       };
     });
 
-    if (rootFolder) {
-      setLevelFolderMap({
-        ...newLevelFolderMap,
-        __rootFolderId: {
-          folders: [rootFolder],
-          visibleCount: 1,
-          hasMore: false
-        }
-      });
-    } else {
-      setLevelFolderMap(newLevelFolderMap);
-    }
+    setLevelFolderMap(newLevelFolderMap);
   }, [permissions, environmentsFolders, environment, subject, secretName, searchPath]);
 
   useEffect(() => {
@@ -155,11 +139,14 @@ export const useAccessTree = (
     )
       return;
 
-    const { name } = environmentsFolders[environment];
+    const { slug } = environmentsFolders[environment];
 
     const roleNode = createRoleNode({
       subject,
-      environment: name
+      environment: slug,
+      environments: environmentsFolders,
+      onSubjectChange: setSubject,
+      onEnvironmentChange: setEnvironment
     });
 
     const actionRuleMap = getSubjectActionRuleMap(subject, permissions);
@@ -252,7 +239,8 @@ export const useAccessTree = (
         const showMoreButtonNode = createShowMoreNode({
           parentId: key,
           onClick: () => showMoreFolders(key),
-          remaining: levelData.folders.length - levelData.visibleCount
+          remaining: levelData.folders.length - levelData.visibleCount,
+          subject
         });
 
         addMoreButtons.push(showMoreButtonNode);
@@ -261,8 +249,7 @@ export const useAccessTree = (
           createBaseEdge({
             source: key,
             target: showMoreButtonNode.id,
-            access: PermissionAccess.Full,
-            hideEdge: true
+            access: PermissionAccess.Partial
           })
         );
       }

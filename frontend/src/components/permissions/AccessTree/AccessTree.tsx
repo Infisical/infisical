@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { MongoAbility, MongoQuery } from "@casl/ability";
 import {
   faAnglesUp,
-  faArrowsUpDownLeftRight,
   faArrowUpRightFromSquare,
   faDownLeftAndUpRightToCenter,
   faUpRightAndDownLeftFromCenter,
@@ -29,7 +28,7 @@ import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 
 import { AccessTreeSecretPathInput } from "./nodes/FolderNode/components/AccessTreeSecretPathInput";
 import { ShowMoreButtonNode } from "./nodes/ShowMoreButtonNode";
-import { AccessTreeErrorBoundary, AccessTreeProvider, PermissionSimulation } from "./components";
+import { AccessTreeErrorBoundary, AccessTreeProvider } from "./components";
 import { BasePermissionEdge } from "./edges";
 import { useAccessTree } from "./hooks";
 import { FolderNode, RoleNode } from "./nodes";
@@ -231,14 +230,12 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
                   />
                 </Panel>
               )}
-              <PermissionSimulation {...accessTreeData} />
               <Background color="#5d5f64" bgColor="#111419" variant={BackgroundVariant.Dots} />
-              <Controls position="bottom-left" showInteractive={false} showFitView={false}>
-                <ControlButton onClick={() => fitView({ duration: 800 })}>
-                  <Tooltip position="right" content="Set view to fit all nodes">
-                    <FontAwesomeIcon icon={faArrowsUpDownLeftRight} />
-                  </Tooltip>
-                </ControlButton>
+              <Controls
+                position="bottom-left"
+                showInteractive={false}
+                onFitView={() => fitView({ duration: 800 })}
+              >
                 <ControlButton onClick={goToRootNode}>
                   <Tooltip position="right" content="Go to root folder">
                     <FontAwesomeIcon icon={faAnglesUp} />
