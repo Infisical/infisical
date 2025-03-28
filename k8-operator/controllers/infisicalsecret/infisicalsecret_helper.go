@@ -3,7 +3,6 @@ package controllers
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
@@ -156,16 +155,6 @@ func (r *InfisicalSecretReconciler) getInfisicalServiceAccountCredentialsFromKub
 	return model.ServiceAccountDetails{AccessKey: string(accessKeyFromSecret), PrivateKey: string(privateKeyFromSecret), PublicKey: string(publicKeyFromSecret)}, nil
 }
 
-var infisicalSecretTemplateFunctions = template.FuncMap{
-	"decodeBase64ToBytes": func(encodedString string) string {
-		decoded, err := base64.StdEncoding.DecodeString(encodedString)
-		if err != nil {
-			panic(fmt.Sprintf("Error: %v", err))
-		}
-		return string(decoded)
-	},
-}
-
 func convertBinaryToStringMap(binaryMap map[string][]byte) map[string]string {
 	stringMap := make(map[string]string)
 	for k, v := range binaryMap {
@@ -177,7 +166,7 @@ func convertBinaryToStringMap(binaryMap map[string][]byte) map[string]string {
 func (r *InfisicalSecretReconciler) createInfisicalManagedKubeResource(ctx context.Context, logger logr.Logger, infisicalSecret v1alpha1.InfisicalSecret, managedSecretReferenceInterface interface{}, secretsFromAPI []model.SingleEnvironmentVariable, ETag string, resourceType constants.ManagedKubeResourceType) error {
 	plainProcessedSecrets := make(map[string][]byte)
 
-	var managedTemplateData *v1alpha1.InfisicalSecretTemplate
+	var managedTemplateData *v1alpha1.SecretTemplate
 
 	if resourceType == constants.MANAGED_KUBE_RESOURCE_TYPE_SECRET {
 		managedTemplateData = managedSecretReferenceInterface.(v1alpha1.ManagedKubeSecretConfig).Template
@@ -201,7 +190,7 @@ func (r *InfisicalSecretReconciler) createInfisicalManagedKubeResource(ctx conte
 		}
 
 		for templateKey, userTemplate := range managedTemplateData.Data {
-			tmpl, err := template.New("secret-templates").Funcs(infisicalSecretTemplateFunctions).Parse(userTemplate)
+			tmpl, err := template.New("secret-templates").Funcs(util.InfisicalSecretTemplateFunctions).Parse(userTemplate)
 			if err != nil {
 				return fmt.Errorf("unable to compile template: %s [err=%v]", templateKey, err)
 			}
@@ -322,7 +311,7 @@ func (r *InfisicalSecretReconciler) updateInfisicalManagedKubeSecret(ctx context
 		}
 
 		for templateKey, userTemplate := range managedTemplateData.Data {
-			tmpl, err := template.New("secret-templates").Funcs(infisicalSecretTemplateFunctions).Parse(userTemplate)
+			tmpl, err := template.New("secret-templates").Funcs(util.InfisicalSecretTemplateFunctions).Parse(userTemplate)
 			if err != nil {
 				return fmt.Errorf("unable to compile template: %s [err=%v]", templateKey, err)
 			}
@@ -373,7 +362,7 @@ func (r *InfisicalSecretReconciler) updateInfisicalManagedConfigMap(ctx context.
 		}
 
 		for templateKey, userTemplate := range managedTemplateData.Data {
-			tmpl, err := template.New("secret-templates").Funcs(infisicalSecretTemplateFunctions).Parse(userTemplate)
+			tmpl, err := template.New("secret-templates").Funcs(util.InfisicalSecretTemplateFunctions).Parse(userTemplate)
 			if err != nil {
 				return fmt.Errorf("unable to compile template: %s [err=%v]", templateKey, err)
 			}

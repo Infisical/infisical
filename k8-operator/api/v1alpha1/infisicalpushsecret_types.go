@@ -16,9 +16,22 @@ type InfisicalPushSecretDestination struct {
 	ProjectID string `json:"projectId"`
 }
 
+type InfisicalPushSecretSecretSource struct {
+	// The name of the Kubernetes Secret
+	// +kubebuilder:validation:Required
+	SecretName string `json:"secretName"`
+
+	// The name space where the Kubernetes Secret is located
+	// +kubebuilder:validation:Required
+	SecretNamespace string `json:"secretNamespace"`
+
+	// +kubebuilder:validation:Optional
+	Template *SecretTemplate `json:"template,omitempty"`
+}
+
 type SecretPush struct {
 	// +kubebuilder:validation:Required
-	Secret KubeSecretReference `json:"secret"`
+	Secret InfisicalPushSecretSecretSource `json:"secret"`
 }
 
 // InfisicalPushSecretSpec defines the desired state of InfisicalPushSecret
