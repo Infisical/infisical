@@ -6,12 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"text/template"
+	tpl "text/template"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
 	"github.com/Infisical/infisical/k8-operator/packages/constants"
 	"github.com/Infisical/infisical/k8-operator/packages/model"
+	"github.com/Infisical/infisical/k8-operator/packages/template"
 	"github.com/Infisical/infisical/k8-operator/packages/util"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -129,7 +130,7 @@ func (r *InfisicalPushSecretReconciler) processTemplatedSecrets(infisicalPushSec
 
 		for templateKey, userTemplate := range infisicalPushSecret.Spec.Push.Secret.Template.Data {
 
-			tmpl, err := template.New("push-secret-templates").Funcs(util.InfisicalSecretTemplateFunctions).Parse(userTemplate)
+			tmpl, err := tpl.New("push-secret-templates").Funcs(template.GetTemplateFunctions()).Parse(userTemplate)
 			if err != nil {
 				return nil, fmt.Errorf("unable to compile template: %s [err=%v]", templateKey, err)
 			}

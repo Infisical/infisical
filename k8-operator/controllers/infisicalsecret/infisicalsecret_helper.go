@@ -6,13 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"text/template"
+	tpl "text/template"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
 	"github.com/Infisical/infisical/k8-operator/packages/constants"
 	"github.com/Infisical/infisical/k8-operator/packages/crypto"
 	"github.com/Infisical/infisical/k8-operator/packages/model"
+	"github.com/Infisical/infisical/k8-operator/packages/template"
 	"github.com/Infisical/infisical/k8-operator/packages/util"
 	"github.com/go-logr/logr"
 
@@ -190,7 +191,7 @@ func (r *InfisicalSecretReconciler) createInfisicalManagedKubeResource(ctx conte
 		}
 
 		for templateKey, userTemplate := range managedTemplateData.Data {
-			tmpl, err := template.New("secret-templates").Funcs(util.InfisicalSecretTemplateFunctions).Parse(userTemplate)
+			tmpl, err := tpl.New("secret-templates").Funcs(template.GetTemplateFunctions()).Parse(userTemplate)
 			if err != nil {
 				return fmt.Errorf("unable to compile template: %s [err=%v]", templateKey, err)
 			}
@@ -311,7 +312,7 @@ func (r *InfisicalSecretReconciler) updateInfisicalManagedKubeSecret(ctx context
 		}
 
 		for templateKey, userTemplate := range managedTemplateData.Data {
-			tmpl, err := template.New("secret-templates").Funcs(util.InfisicalSecretTemplateFunctions).Parse(userTemplate)
+			tmpl, err := tpl.New("secret-templates").Funcs(template.GetTemplateFunctions()).Parse(userTemplate)
 			if err != nil {
 				return fmt.Errorf("unable to compile template: %s [err=%v]", templateKey, err)
 			}
@@ -362,7 +363,7 @@ func (r *InfisicalSecretReconciler) updateInfisicalManagedConfigMap(ctx context.
 		}
 
 		for templateKey, userTemplate := range managedTemplateData.Data {
-			tmpl, err := template.New("secret-templates").Funcs(util.InfisicalSecretTemplateFunctions).Parse(userTemplate)
+			tmpl, err := tpl.New("secret-templates").Funcs(template.GetTemplateFunctions()).Parse(userTemplate)
 			if err != nil {
 				return fmt.Errorf("unable to compile template: %s [err=%v]", templateKey, err)
 			}
