@@ -100,8 +100,7 @@ export const ShareSecretForm = ({
   const passwordsMatch = password && passwordConfirmation && password === passwordConfirmation;
   const onePasswordFieldEmpty = Boolean(password) !== Boolean(passwordConfirmation);
   const hasPasswordMismatch = password && passwordConfirmation && !passwordsMatch;
-  const isSecretMissing = !secret;
-  const isSubmitDisabled = isSubmitting || onePasswordFieldEmpty || hasPasswordMismatch || isSecretMissing;
+  const isSubmitDisabled = isSubmitting || onePasswordFieldEmpty || hasPasswordMismatch || !secret;
 
   const onFormSubmit = async ({
     name,
@@ -112,7 +111,8 @@ export const ShareSecretForm = ({
     accessType
   }: FormData) => {
     try {
-      const expiresAt = new Date(Date.now() + Number(expiresIn));
+      const numericExpiresIn = Number(expiresIn);
+      const expiresAt = new Date(new Date().getTime() + numericExpiresIn);
 
       const { id } = await createSharedSecret.mutateAsync({
         name,
