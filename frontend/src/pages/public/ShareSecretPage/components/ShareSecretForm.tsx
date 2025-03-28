@@ -74,7 +74,10 @@ export const ShareSecretForm = ({
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      secret: value || ""
+      secret: value || "",
+      expiresIn: DEFAULT_EXPIRES_IN,
+      viewLimit: DEFAULT_VIEW_LIMIT,
+      ...(isPublic ? {} : { accessType: SecretSharingAccessType.Organization })
     },
     mode: "onChange"
   });
@@ -86,10 +89,8 @@ export const ShareSecretForm = ({
     setSecretModified(true);
   };
 
-  const handleSecretChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    if (e.target.value) {
-      setSecretModified(true);
-    }
+  const handleSecretChange = (_: ChangeEvent<HTMLTextAreaElement>) => {
+    setSecretModified(true);
   };
 
   const computedDisplayedSecret = isSecretVisible
@@ -97,7 +98,6 @@ export const ShareSecretForm = ({
     : (secret ? "*".repeat(secret.length) : "");
 
   const passwordsMatch = password && passwordConfirmation && password === passwordConfirmation;
-  const passwordMismatch = password && passwordConfirmation && password !== passwordConfirmation;
   const onePasswordFieldEmpty = Boolean(password) !== Boolean(passwordConfirmation);
   const hasPasswordMismatch = password && passwordConfirmation && !passwordsMatch;
   const isSecretMissing = !secret;
@@ -112,7 +112,7 @@ export const ShareSecretForm = ({
     accessType
   }: FormData) => {
     try {
-      const expiresAt = new Date(new Date().getTime() + Number(expiresIn));
+      const expiresAt = new Date(Date.now() + Number(expiresIn));
 
       const { id } = await createSharedSecret.mutateAsync({
         name,
@@ -177,6 +177,7 @@ export const ShareSecretForm = ({
           )}
         />
       )}
+
       <Controller
         control={control}
         name="secret"
@@ -191,7 +192,10 @@ export const ShareSecretForm = ({
             <div className="relative">
               <textarea
                 placeholder="Enter sensitive data to share via an encrypted link..."
-                className="h-40 min-h-[70px] w-full rounded-md border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5 text-bunker-300 outline-none transition-all placeholder:text-mineshaft-400 hover:border-primary-400/30 focus:border-primary-400/50"
+                className="h-40 min-h-[70px] w-full rounded-md border border-mineshaft-600
+                           bg-mineshaft-900 px-2 py-1.5 text-bunker-300 outline-none
+                           transition-all placeholder:text-mineshaft-400 hover:border-primary-400/30
+                           focus:border-primary-400/50"
                 disabled={value !== undefined}
                 ref={field.ref}
                 name={field.name}
@@ -235,6 +239,7 @@ export const ShareSecretForm = ({
           </FormControl>
         )}
       />
+
       <Controller
         control={control}
         name="password"
@@ -290,28 +295,27 @@ export const ShareSecretForm = ({
               isError={false}
               style={{ outline: "none", boxShadow: "none", border: "none" }}
               containerClassName={
-                passwordsMatch
-                  ? "border-green-500"
-                  : passwordMismatch
-                  ? "border-red-500"
-                  : password && !passwordConfirmation
-                  ? "border-amber-500 animate-pulse"
-                  : "border-mineshaft-600"
+                password && passwordConfirmation
+                  ? (password === passwordConfirmation ? "border-green-500" : "border-red-500")
+                  : (password && !passwordConfirmation)
+                    ? "border-amber-500 animate-pulse"
+                    : "border-mineshaft-600"
               }
             />
 
-            {passwordMismatch && (
+            {(password && passwordConfirmation && password !== passwordConfirmation) && (
               <div className="text-xs text-red-500 mt-1 flex items-center">
                 <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />
                 Passwords must match
               </div>
             )}
 
-            {passwordsMatch && (
+            {(password && passwordConfirmation && password === passwordConfirmation) && (
               <div className="absolute right-2 top-[50%] -translate-y-1/2">
                 <FontAwesomeIcon icon={faCheck} className="text-green-500" />
               </div>
             )}
+
             {password && !passwordConfirmation && (
               <div className="absolute right-2 top-[50%] -translate-y-1/2">
                 <FontAwesomeIcon icon={faExclamationTriangle} className="text-amber-500" />
@@ -320,14 +324,20 @@ export const ShareSecretForm = ({
           </div>
         </FormControl>
       </div>
-
       <Controller
         control={control}
         name="expiresIn"
-        defaultValue={DEFAULT_EXPIRES_IN}
-        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-          <FormControl label="Expires In" errorText={error?.message} isError={Boolean(error)}>
-            <Select defaultValue={field.value} {...field} onValueChange={(e) => onChange(e)} className="w-full">
+        render={({ field, fieldState: { error } }) => (
+          <FormControl
+            label="Expires In"
+            errorText={error?.message}
+            isError={Boolean(error)}
+          >
+            <Select
+              {...field}
+              onValueChange={(val) => field.onChange(val)}
+              className="w-full"
+            >
               {expiresInOptions.map(({ label, value: expiresInValue }) => (
                 <SelectItem value={String(expiresInValue || "")} key={label}>
                   {label}
@@ -340,10 +350,17 @@ export const ShareSecretForm = ({
       <Controller
         control={control}
         name="viewLimit"
-        defaultValue={DEFAULT_VIEW_LIMIT}
-        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-          <FormControl label="Max Views" errorText={error?.message} isError={Boolean(error)}>
-            <Select defaultValue={field.value} {...field} onValueChange={(e) => onChange(e)} className="w-full">
+        render={({ field, fieldState: { error } }) => (
+          <FormControl
+            label="Max Views"
+            errorText={error?.message}
+            isError={Boolean(error)}
+          >
+            <Select
+              {...field}
+              onValueChange={(val) => field.onChange(val)}
+              className="w-full"
+            >
               {viewLimitOptions.map(({ label, value: viewLimitValue }) => (
                 <SelectItem value={String(viewLimitValue || "")} key={label}>
                   {label}
@@ -357,10 +374,17 @@ export const ShareSecretForm = ({
         <Controller
           control={control}
           name="accessType"
-          defaultValue={SecretSharingAccessType.Organization}
-          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-            <FormControl label="General Access" errorText={error?.message} isError={Boolean(error)}>
-              <Select defaultValue={field.value} {...field} onValueChange={(e) => onChange(e)} className="w-full">
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="General Access"
+              errorText={error?.message}
+              isError={Boolean(error)}
+            >
+              <Select
+                {...field}
+                onValueChange={(val) => field.onChange(val)}
+                className="w-full"
+              >
                 {allowSecretSharingOutsideOrganization && (
                   <SelectItem value={SecretSharingAccessType.Anyone}>Anyone</SelectItem>
                 )}
