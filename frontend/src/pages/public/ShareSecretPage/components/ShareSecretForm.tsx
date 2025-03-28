@@ -27,8 +27,8 @@ const viewLimitOptions = [
   { label: "Unlimited", value: -1 }
 ];
 
-const DEFAULT_EXPIRES_IN = expiresInOptions[2].value.toString(); // 1 hour (3600000)
-const DEFAULT_VIEW_LIMIT = viewLimitOptions[1].value.toString(); // unlimited (-1)
+const DEFAULT_EXPIRES_IN = expiresInOptions[2].value.toString();
+const DEFAULT_VIEW_LIMIT = viewLimitOptions[1].value.toString();
 
 const schema = z.object({
   name: z.string().optional(),
