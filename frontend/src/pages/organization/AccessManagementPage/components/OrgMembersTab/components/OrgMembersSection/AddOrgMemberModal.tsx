@@ -179,7 +179,7 @@ export const AddOrgMemberModal = ({
       case ProjectType.SSH:
         return "SSH";
       default:
-        return "All";
+        return "Other";
     }
   };
 
