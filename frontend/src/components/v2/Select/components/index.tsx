@@ -2,6 +2,7 @@ import {
   ClearIndicatorProps,
   components,
   DropdownIndicatorProps,
+  GroupProps,
   MultiValueRemoveProps,
   OptionProps
 } from "react-select";
@@ -44,4 +45,8 @@ export const Option = <T,>({ isSelected, children, ...props }: OptionProps<T>) =
       </div>
     </components.Option>
   );
+};
+
+export const Group = <T,>(props: GroupProps<T>) => {
+  return <components.Group {...props} />;
 };
