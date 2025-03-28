@@ -486,9 +486,28 @@ func (r *InfisicalPushSecretReconciler) DeleteManagedSecrets(ctx context.Context
 
 	resourceVariables := r.getResourceVariables(infisicalPushSecret)
 	infisicalClient := resourceVariables.InfisicalClient
+	cancelCtx := resourceVariables.CancelCtx
+	authDetails := resourceVariables.AuthDetails
+	var err error
+
+	if authDetails.AuthStrategy == "" {
+		logger.Info("No authentication strategy found. Attempting to authenticate")
+		authDetails, err = r.handleAuthentication(ctx, infisicalPushSecret, infisicalClient)
+		r.SetAuthenticatedStatusCondition(ctx, &infisicalPushSecret, err)
+
+		if err != nil {
+			return fmt.Errorf("unable to authenticate [err=%s]", err)
+		}
+
+		r.updateResourceVariables(infisicalPushSecret, util.ResourceVariables{
+			InfisicalClient: infisicalClient,
+			CancelCtx:       cancelCtx,
+			AuthDetails:     authDetails,
+		})
+	}
 
 	destination := infisicalPushSecret.Spec.Destination
-	existingSecrets, err := infisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
+	existingSecrets, err := resourceVariables.InfisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
 		ProjectID:      destination.ProjectID,
 		Environment:    destination.EnvironmentSlug,
 		SecretPath:     destination.SecretsPath,
