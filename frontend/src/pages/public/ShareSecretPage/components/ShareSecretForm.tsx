@@ -55,7 +55,6 @@ export const ShareSecretForm = ({
   const [secretLink, setSecretLink] = useState("");
   const [isSecretVisible, setIsSecretVisible] = useState(true);
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
-  const [formTouched, setFormTouched] = useState(false);
   const [secretModified, setSecretModified] = useState(false);
 
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
@@ -380,17 +379,9 @@ export const ShareSecretForm = ({
         isLoading={isSubmitting}
         isDisabled={isSubmitDisabled}
         variant={isSubmitDisabled ? "outline" : "primary"}
-        onClick={() => setFormTouched(true)}
       >
         Create Secret Link
       </Button>
-
-      {onePasswordFieldEmpty && formTouched && (
-        <div className="text-xs text-amber-500 mt-1 flex items-center">
-          <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />
-          {password ? "Please confirm your password" : "Please enter your password"}
-        </div>
-      )}
     </form>
   ) : (
     <>
@@ -416,7 +407,6 @@ export const ShareSecretForm = ({
         onClick={() => {
           setSecretLink("");
           setPasswordConfirmation("");
-          setFormTouched(false);
           setSecretModified(false);
           setIsSecretVisible(true);
           reset({
