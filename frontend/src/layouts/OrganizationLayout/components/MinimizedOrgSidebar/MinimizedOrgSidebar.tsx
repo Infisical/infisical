@@ -176,7 +176,7 @@ export const MinimizedOrgSidebar = () => {
         <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
           <div>
             <div className="flex items-center hover:bg-mineshaft-700">
-              <DropdownMenu open={openOrg} onOpenChange={setOpenOrg} modal>
+              <DropdownMenu open={openOrg} onOpenChange={setOpenOrg} modal={false}>
                 <DropdownMenuTrigger
                   onMouseEnter={() => setOpenOrg(true)}
                   onMouseLeave={() => setOpenOrg(false)}
