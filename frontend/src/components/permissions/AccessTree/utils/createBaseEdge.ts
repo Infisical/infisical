@@ -5,11 +5,13 @@ import { PermissionAccess, PermissionEdge } from "../types";
 export const createBaseEdge = ({
   source,
   target,
-  access
+  access,
+  hideEdge = false
 }: {
   source: string;
   target: string;
   access: PermissionAccess;
+  hideEdge?: boolean;
 }) => {
   const color = access === PermissionAccess.None ? "#707174" : "#ccccce";
   return {
@@ -17,10 +19,12 @@ export const createBaseEdge = ({
     source,
     target,
     type: PermissionEdge.Base,
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color
-    },
-    style: { stroke: color }
+    markerEnd: hideEdge
+      ? undefined
+      : {
+          type: MarkerType.ArrowClosed,
+          color
+        },
+    style: { stroke: hideEdge ? "transparent" : color }
   };
 };

@@ -619,10 +619,29 @@ export const secretFolderServiceFactory = ({
         const relevantFolders = folders.filter((folder) => folder.envId === env.id);
         const foldersMap = Object.fromEntries(relevantFolders.map((folder) => [folder.id, folder]));
 
-        const foldersWithPath = relevantFolders.map((folder) => ({
-          ...folder,
-          path: buildFolderPath(folder, foldersMap)
-        }));
+        const foldersWithPath = relevantFolders
+          .map((folder) => {
+            try {
+              return {
+                ...folder,
+                path: buildFolderPath(folder, foldersMap)
+              };
+            } catch (error) {
+              return null;
+            }
+          })
+          .filter(Boolean) as {
+          path: string;
+          id: string;
+          createdAt: Date;
+          updatedAt: Date;
+          name: string;
+          envId: string;
+          version?: number | null | undefined;
+          parentId?: string | null | undefined;
+          isReserved?: boolean | undefined;
+          description?: string | undefined;
+        }[];
 
         return [env.slug, { ...env, folders: foldersWithPath }];
       })
