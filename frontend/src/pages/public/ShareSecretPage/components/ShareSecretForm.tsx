@@ -96,10 +96,15 @@ export const ShareSecretForm = ({
     ? (secret || "")
     : (secret ? "*".repeat(secret.length) : "");
 
-  const passwordsMatch = password && passwordConfirmation && password === passwordConfirmation;
-  const onePasswordFieldEmpty = Boolean(password) !== Boolean(passwordConfirmation);
-  const hasPasswordMismatch = password && passwordConfirmation && !passwordsMatch;
-  const isSubmitDisabled = isSubmitting || onePasswordFieldEmpty || hasPasswordMismatch || !secret;
+  const areBothPasswordsFilled = Boolean(password) && Boolean(passwordConfirmation);
+  const passwordsMatch = password === passwordConfirmation;
+  const bothPasswordsFilledAndMatch = areBothPasswordsFilled && passwordsMatch;
+  const bothPasswordsFilledAndMismatch = areBothPasswordsFilled && !passwordsMatch;
+  const isPasswordConfirmationMissing = Boolean(password) && !Boolean(passwordConfirmation);
+  const isSubmitDisabled =
+    isSubmitting ||
+    !secret ||
+    (password && (!passwordConfirmation || !passwordsMatch));
 
   const onFormSubmit = async ({
     name,
@@ -294,32 +299,33 @@ export const ShareSecretForm = ({
               isError={false}
               style={{ outline: "none", boxShadow: "none", border: "none" }}
               containerClassName={
-                password && passwordConfirmation
-                  ? (password === passwordConfirmation ? "border-green-500" : "border-red-500")
-                  : (password && !passwordConfirmation)
+                areBothPasswordsFilled 
+                  ? (passwordsMatch ? "border-green-500" : "border-red-500")
+                  : isPasswordConfirmationMissing 
                     ? "border-amber-500 animate-pulse"
                     : "border-mineshaft-600"
               }
             />
 
-            {(password && passwordConfirmation && password !== passwordConfirmation) && (
+            {bothPasswordsFilledAndMismatch && (
               <div className="text-xs text-red-500 mt-1 flex items-center">
                 <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />
                 Passwords must match
               </div>
             )}
 
-            {(password && passwordConfirmation && password === passwordConfirmation) && (
+            {bothPasswordsFilledAndMatch && (
               <div className="absolute right-2 top-[50%] -translate-y-1/2">
                 <FontAwesomeIcon icon={faCheck} className="text-green-500" />
               </div>
             )}
 
-            {password && !passwordConfirmation && (
+            {isPasswordConfirmationMissing && (
               <div className="absolute right-2 top-[50%] -translate-y-1/2">
                 <FontAwesomeIcon icon={faExclamationTriangle} className="text-amber-500" />
               </div>
             )}
+
           </div>
         </FormControl>
       </div>
