@@ -1,4 +1,4 @@
-import { useState, ChangeEvent, useEffect } from "react";
+import { useState, ChangeEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy, faRedo, faEye, faEyeSlash, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -57,7 +57,7 @@ export const ShareSecretForm = ({
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [formTouched, setFormTouched] = useState(false);
   const [secretModified, setSecretModified] = useState(false);
-  
+
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
@@ -79,10 +79,10 @@ export const ShareSecretForm = ({
     },
     mode: "onChange"
   });
-  
+
   const password = watch("password");
   const secret = watch("secret");
-  
+
   const handleSecretBlur = () => {
     setSecretModified(true);
   };
@@ -93,21 +93,13 @@ export const ShareSecretForm = ({
     }
   };
 
-  const [displayedSecret, setDisplayedSecret] = useState("");
-  
-  useEffect(() => {
-    if (isSecretVisible) {
-      setDisplayedSecret(secret || "");
-    } else {
-      setDisplayedSecret(secret ? "*".repeat(secret.length) : "");
-    }
-  }, [secret, isSecretVisible]);
+  const computedDisplayedSecret = isSecretVisible
+    ? (secret || "")
+    : (secret ? "*".repeat(secret.length) : "");
 
   const passwordsMatch = password && passwordConfirmation && password === passwordConfirmation;
   const passwordMismatch = password && passwordConfirmation && password !== passwordConfirmation;
-  
   const onePasswordFieldEmpty = Boolean(password) !== Boolean(passwordConfirmation);
-  
   const hasPasswordMismatch = password && passwordConfirmation && !passwordsMatch;
   const isSecretMissing = !secret;
   const isSubmitDisabled = isSubmitting || onePasswordFieldEmpty || hasPasswordMismatch || isSecretMissing;
@@ -204,7 +196,7 @@ export const ShareSecretForm = ({
                 disabled={value !== undefined}
                 ref={field.ref}
                 name={field.name}
-                value={displayedSecret}
+                value={computedDisplayedSecret}
                 onChange={(e) => {
                   if (isSecretVisible) {
                     field.onChange(e);
@@ -216,10 +208,10 @@ export const ShareSecretForm = ({
                   handleSecretBlur();
                 }}
                 onKeyDown={(e) => {
-                  const isCopyOrPasteShortcut = 
-                    (e.ctrlKey && (e.key === 'v' || e.key === 'c')) || 
-                    (e.metaKey && (e.key === 'v' || e.key === 'c'));
-                    
+                  const isCopyOrPasteShortcut =
+                    (e.ctrlKey && (e.key === "v" || e.key === "c")) ||
+                    (e.metaKey && (e.key === "v" || e.key === "c"));
+
                   if (!isSecretVisible && isCopyOrPasteShortcut) {
                     e.preventDefault();
                   }
@@ -267,23 +259,18 @@ export const ShareSecretForm = ({
           </FormControl>
         )}
       />
-      
-      <div 
+
+      <div
         className="overflow-hidden transition-all duration-300 ease-in-out"
-        style={{ 
-          maxHeight: password ? '150px' : '0',
+        style={{
+          maxHeight: password ? "150px" : "0",
           opacity: password ? 1 : 0,
-          visibility: password ? 'visible' : 'hidden',
-          marginTop: password ? '1rem' : '0',
-          marginBottom: password ? '1rem' : '0'
+          visibility: password ? "visible" : "hidden",
+          marginTop: password ? "1rem" : "0",
+          marginBottom: password ? "1rem" : "0"
         }}
       >
-        <FormControl
-          label="Confirm Password"
-          isError={false}
-          errorText=""
-          isOptional
-        >
+        <FormControl label="Confirm Password" isError={false} errorText="">
           <div className="relative">
             <Input
               value={passwordConfirmation}
@@ -296,25 +283,25 @@ export const ShareSecretForm = ({
               aria-autocomplete="none"
               data-form-type="other"
               isError={false}
-              style={{ outline: 'none', boxShadow: 'none', border: 'none' }}
+              style={{ outline: "none", boxShadow: "none", border: "none" }}
               containerClassName={
-                passwordsMatch 
-                  ? "border-green-500" 
+                passwordsMatch
+                  ? "border-green-500"
                   : passwordMismatch
-                    ? "border-red-500"
-                    : (password && !passwordConfirmation) 
-                      ? "border-amber-500 animate-pulse" 
-                      : "border-mineshaft-600"
+                  ? "border-red-500"
+                  : password && !passwordConfirmation
+                  ? "border-amber-500 animate-pulse"
+                  : "border-mineshaft-600"
               }
             />
-            
+
             {passwordMismatch && (
               <div className="text-xs text-red-500 mt-1 flex items-center">
                 <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />
                 Passwords must match
               </div>
             )}
-            
+
             {passwordsMatch && (
               <div className="absolute right-2 top-[50%] -translate-y-1/2">
                 <FontAwesomeIcon icon={faCheck} className="text-green-500" />
@@ -335,12 +322,7 @@ export const ShareSecretForm = ({
         defaultValue={DEFAULT_EXPIRES_IN}
         render={({ field: { onChange, ...field }, fieldState: { error } }) => (
           <FormControl label="Expires In" errorText={error?.message} isError={Boolean(error)}>
-            <Select
-              defaultValue={field.value}
-              {...field}
-              onValueChange={(e) => onChange(e)}
-              className="w-full"
-            >
+            <Select defaultValue={field.value} {...field} onValueChange={(e) => onChange(e)} className="w-full">
               {expiresInOptions.map(({ label, value: expiresInValue }) => (
                 <SelectItem value={String(expiresInValue || "")} key={label}>
                   {label}
@@ -356,12 +338,7 @@ export const ShareSecretForm = ({
         defaultValue={DEFAULT_VIEW_LIMIT}
         render={({ field: { onChange, ...field }, fieldState: { error } }) => (
           <FormControl label="Max Views" errorText={error?.message} isError={Boolean(error)}>
-            <Select
-              defaultValue={field.value}
-              {...field}
-              onValueChange={(e) => onChange(e)}
-              className="w-full"
-            >
+            <Select defaultValue={field.value} {...field} onValueChange={(e) => onChange(e)} className="w-full">
               {viewLimitOptions.map(({ label, value: viewLimitValue }) => (
                 <SelectItem value={String(viewLimitValue || "")} key={label}>
                   {label}
@@ -378,12 +355,7 @@ export const ShareSecretForm = ({
           defaultValue={SecretSharingAccessType.Organization}
           render={({ field: { onChange, ...field }, fieldState: { error } }) => (
             <FormControl label="General Access" errorText={error?.message} isError={Boolean(error)}>
-              <Select
-                defaultValue={field.value}
-                {...field}
-                onValueChange={(e) => onChange(e)}
-                className="w-full"
-              >
+              <Select defaultValue={field.value} {...field} onValueChange={(e) => onChange(e)} className="w-full">
                 {allowSecretSharingOutsideOrganization && (
                   <SelectItem value={SecretSharingAccessType.Anyone}>Anyone</SelectItem>
                 )}
@@ -406,7 +378,7 @@ export const ShareSecretForm = ({
       >
         Create Secret Link
       </Button>
-      
+
       {onePasswordFieldEmpty && formTouched && (
         <div className="text-xs text-amber-500 mt-1 flex items-center">
           <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />
