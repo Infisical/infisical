@@ -206,7 +206,6 @@ export const ShareSecretForm = ({
                 name={field.name}
                 value={displayedSecret}
                 onChange={(e) => {
-                  // Only update the form value when input changes and it's visible
                   if (isSecretVisible) {
                     field.onChange(e);
                     handleSecretChange(e);
@@ -216,7 +215,6 @@ export const ShareSecretForm = ({
                   field.onBlur();
                   handleSecretBlur();
                 }}
-                // Prevent people from using keyboard shortcuts to paste
                 onKeyDown={(e) => {
                   const isCopyOrPasteShortcut = 
                     (e.ctrlKey && (e.key === 'v' || e.key === 'c')) || 
@@ -270,55 +268,66 @@ export const ShareSecretForm = ({
         )}
       />
       
-      <FormControl
-        label="Confirm Password"
-        isError={false}
-        errorText=""
-        isOptional
+      <div 
+        className="overflow-hidden transition-all duration-300 ease-in-out"
+        style={{ 
+          maxHeight: password ? '150px' : '0',
+          opacity: password ? 1 : 0,
+          visibility: password ? 'visible' : 'hidden',
+          marginTop: password ? '1rem' : '0',
+          marginBottom: password ? '1rem' : '0'
+        }}
       >
-        <div className="relative">
-          <Input
-            value={passwordConfirmation}
-            onChange={(e) => setPasswordConfirmation(e.target.value)}
-            placeholder="Confirm password"
-            type="password"
-            autoComplete="new-password"
-            autoCorrect="off"
-            spellCheck="false"
-            aria-autocomplete="none"
-            data-form-type="other"
-            isError={false}
-            style={{ outline: 'none', boxShadow: 'none', border: 'none' }}
-            containerClassName={
-              passwordsMatch 
-                ? "border-green-500" 
-                : passwordMismatch
-                  ? "border-red-500"
-                  : (password && !passwordConfirmation) 
-                    ? "border-amber-500 animate-pulse" 
-                    : "border-mineshaft-600"
-            }
-          />
-          
-          {passwordMismatch && (
-            <div className="text-xs text-red-500 mt-1 flex items-center">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />
-              Passwords must match
-            </div>
-          )}
-          
-          {passwordsMatch && (
-            <div className="absolute right-2 top-[50%] -translate-y-1/2">
-              <FontAwesomeIcon icon={faCheck} className="text-green-500" />
-            </div>
-          )}
-          {password && !passwordConfirmation && (
-            <div className="absolute right-2 top-[50%] -translate-y-1/2">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="text-amber-500" />
-            </div>
-          )}
-        </div>
-      </FormControl>
+        <FormControl
+          label="Confirm Password"
+          isError={false}
+          errorText=""
+          isOptional
+        >
+          <div className="relative">
+            <Input
+              value={passwordConfirmation}
+              onChange={(e) => setPasswordConfirmation(e.target.value)}
+              placeholder="Confirm password"
+              type="password"
+              autoComplete="new-password"
+              autoCorrect="off"
+              spellCheck="false"
+              aria-autocomplete="none"
+              data-form-type="other"
+              isError={false}
+              style={{ outline: 'none', boxShadow: 'none', border: 'none' }}
+              containerClassName={
+                passwordsMatch 
+                  ? "border-green-500" 
+                  : passwordMismatch
+                    ? "border-red-500"
+                    : (password && !passwordConfirmation) 
+                      ? "border-amber-500 animate-pulse" 
+                      : "border-mineshaft-600"
+              }
+            />
+            
+            {passwordMismatch && (
+              <div className="text-xs text-red-500 mt-1 flex items-center">
+                <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />
+                Passwords must match
+              </div>
+            )}
+            
+            {passwordsMatch && (
+              <div className="absolute right-2 top-[50%] -translate-y-1/2">
+                <FontAwesomeIcon icon={faCheck} className="text-green-500" />
+              </div>
+            )}
+            {password && !passwordConfirmation && (
+              <div className="absolute right-2 top-[50%] -translate-y-1/2">
+                <FontAwesomeIcon icon={faExclamationTriangle} className="text-amber-500" />
+              </div>
+            )}
+          </div>
+        </FormControl>
+      </div>
 
       <Controller
         control={control}
