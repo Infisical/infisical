@@ -1,5 +1,16 @@
 import { EventType, UserAgentType } from "./enums";
 
+export const secretEvents: EventType[] = [
+  EventType.GET_SECRETS,
+  EventType.GET_SECRET,
+  EventType.DELETE_SECRETS,
+  EventType.CREATE_SECRETS,
+  EventType.UPDATE_SECRETS,
+  EventType.CREATE_SECRET,
+  EventType.UPDATE_SECRET,
+  EventType.DELETE_SECRET
+];
+
 export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_SECRETS]: "List secrets",
   [EventType.GET_SECRET]: "Read secret",

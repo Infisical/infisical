@@ -33,9 +33,11 @@ export type TListProjectAuditLogDTO = {
     endDate?: string;
     startDate?: string;
     projectId?: string;
+    environment?: string;
     auditLogActorId?: string;
     actorType?: ActorType;
     secretPath?: string;
+    secretKey?: string;
     eventMetadata?: Record<string, string>;
   };
 } & Omit<TProjectPermission, "projectId">;
@@ -285,6 +287,16 @@ export enum EventType {
   KMIP_OPERATION_LOCATE = "kmip-operation-locate",
   KMIP_OPERATION_REGISTER = "kmip-operation-register"
 }
+
+export const filterableSecretEvents: EventType[] = [
+  EventType.GET_SECRET,
+  EventType.DELETE_SECRETS,
+  EventType.CREATE_SECRETS,
+  EventType.UPDATE_SECRETS,
+  EventType.CREATE_SECRET,
+  EventType.UPDATE_SECRET,
+  EventType.DELETE_SECRET
+];
 
 interface UserActorMetadata {
   userId: string;

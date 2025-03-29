@@ -18,7 +18,7 @@ export const AuditLogsPage = () => {
             title="Audit logs"
             description="Audit logs for security and compliance teams to monitor information access."
           />
-          <LogsSection filterClassName="static py-2" showFilters />
+          <LogsSection />
         </div>
       </div>
     </div>
