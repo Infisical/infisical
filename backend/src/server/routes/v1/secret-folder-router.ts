@@ -335,6 +335,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       querystring: z.object({
         workspaceId: z.string().trim().describe(FOLDERS.LIST.workspaceId),
         environment: z.string().trim().describe(FOLDERS.LIST.environment),
+        lastSecretModified: z.string().datetime().trim().optional().describe(FOLDERS.LIST.lastSecretModified),
         path: z
           .string()
           .trim()

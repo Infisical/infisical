@@ -46,6 +46,7 @@ export type TGetFolderDTO = {
   limit?: number;
   offset?: number;
   recursive?: boolean;
+  lastSecretModified?: string;
 } & TProjectPermission;
 
 export type TGetFolderByIdDTO = {
