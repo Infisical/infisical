@@ -6,8 +6,6 @@ import (
 	"github.com/Masterminds/sprig/v3"
 )
 
-var initialized = false
-
 var customInfisicalSecretTemplateFunctions = tpl.FuncMap{
 	"pkcs12key":      pkcs12key,
 	"pkcs12keyPass":  pkcs12keyPass,
@@ -45,12 +43,7 @@ const (
 	pemTypeKey         = "PRIVATE KEY"
 )
 
-func GetTemplateFunctions() tpl.FuncMap {
-	// we don't want to run this whole function every time because it's expensive, so we cache the result after the first run
-	if initialized {
-		return customInfisicalSecretTemplateFunctions
-	}
-
+func InitializeTemplateFunctions() {
 	templates := customInfisicalSecretTemplateFunctions
 
 	sprigFuncs := sprig.TxtFuncMap()
@@ -67,7 +60,8 @@ func GetTemplateFunctions() tpl.FuncMap {
 	}
 
 	customInfisicalSecretTemplateFunctions = templates
-	initialized = true
+}
 
-	return templates
+func GetTemplateFunctions() tpl.FuncMap {
+	return customInfisicalSecretTemplateFunctions
 }
