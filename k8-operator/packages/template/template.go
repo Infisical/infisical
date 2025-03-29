@@ -30,10 +30,6 @@ var customInfisicalSecretTemplateFunctions = tpl.FuncMap{
 
 	"decodeBase64ToBytes": decodeBase64ToBytes,
 	"encodeBase64":        encodeBase64,
-
-	"fromJson":             fromJSON,
-	"fromJsonStringToJson": jsonStringToJSON,
-	"toJson":               toJSON,
 }
 
 const (
