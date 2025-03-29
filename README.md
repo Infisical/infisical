@@ -157,3 +157,4 @@ Not sure where to get started? You can:
 - [Twitter](https://twitter.com/infisical) for fast news
 - [YouTube](https://www.youtube.com/@infisical_os) for videos on secret management
 - [Blog](https://infisical.com/blog) for secret management insights, articles, tutorials, and updates
+## > ✅ Updated docs with improved formatting or extra info.
