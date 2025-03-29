@@ -114,6 +114,48 @@ spec:
 ```
 
 
+## Advanced Templating
+
+With the Infisical Secrets Operator, you can use templating to dynamically generate secrets in Kubernetes. The templating is built on top of [Go templates](https://pkg.go.dev/text/template), which is a powerful and flexible template engine built into Go.
+
+Please be aware that trying to reference non-existing keys will result in an error. Additionally, each template field is processed individually, which means one template field cannot reference another template field.
+
+<Note>
+  Please note that templating is currently only supported for the `InfisicalPushSecret` and `InfisicalSecret` CRDs.
+</Note>
+
+### Available helper functions
+
+The Infisical Secrets Operator exposes a wide range of helper functions to make it easier to work with secrets in Kubernetes.
+
+| Function | Description | Signature |
+| -------- | ----------- | --------- |
+| `decodeBase64ToBytes` | Given a base64 encoded string, this function will decode the base64-encoded string. | `decodeBase64ToBytes(encodedString string) string` |
+| `encodeBase64` | Given a string, this function will encode the string to a base64 encoded string. | `encodeBase64(plainString string) string` |
+| `pkcs12key`| Extracts all private keys from a PKCS#12 archive and encodes them in PKCS#8 PEM format. | `pkcs12key(input string) string` |
+| `pkcs12keyPass`|Same as pkcs12key. Uses the provided password to decrypt the PKCS#12 archive. | `pkcs12keyPass(pass string, input string) string` |
+| `pkcs12cert`      | Extracts all certificates from a PKCS#12 archive and orders them if possible. If disjunct or multiple leaf certs are provided they are returned as-is. Sort order: `leaf / intermediate(s) / root`. | `pkcs12cert(input string) string` |
+| `pkcs12certPass`  | Same as `pkcs12cert`. Uses the provided password to decrypt the PKCS#12 archive. | `pkcs12certPass(pass string, input string) string` |
+| `pemToPkcs12`     | Takes a PEM encoded certificate and key and creates a base64 encoded PKCS#12 archive. | `pemToPkcs12(cert string, key string) string` |
+| `pemToPkcs12Pass` | Same as `pemToPkcs12`. Uses the provided password to encrypt the PKCS#12 archive. | `pemToPkcs12Pass(cert string, key string, pass string) string` |
+| `fullPemToPkcs12` | Takes a PEM encoded certificates chain and key and creates a base64 encoded PKCS#12 archive. | `fullPemToPkcs12(cert string, key string) string` |
+| `fullPemToPkcs12Pass`   | Same as `fullPemToPkcs12`. Uses the provided password to encrypt the PKCS#12 archive. | `fullPemToPkcs12Pass(cert string, key string, pass string) string` |
+| `filterPEM`       | Filters PEM blocks with a specific type from a list of PEM blocks.. | `filterPEM(pemType string, input string) string` |
+| `filterCertChain`   | Filters PEM block(s) with a specific certificate type (`leaf`, `intermediate` or `root`) from a certificate chain of PEM blocks (PEM blocks with type `CERTIFICATE`). | `filterCertChain(certType string, input string) string` |
+| `jwkPublicKeyPem`   | Takes an json-serialized JWK and returns an PEM block of type `PUBLIC KEY` that contains the public key. [See here](https://golang.org/pkg/crypto/x509/#MarshalPKIXPublicKey) for details. | `jwkPublicKeyPem(jwkjson string) string` |
+| `jwkPrivateKeyPem`   | Takes an json-serialized JWK and returns an PEM block of type `PRIVATE KEY` that contains the private key. [See here](https://pkg.go.dev/crypto/x509#MarshalPKCS8PrivateKey) for details. | `jwkPrivateKeyPem(jwkjson string) string` |
+| `toYaml`   | Takes an interface, marshals it to yaml. It returns a string, even on marshal error (empty string). | `toYaml(v any) string` |
+| `fromYaml`   | Function converts a YAML document into a `map[string]any`. | `fromYaml(str string) map[string]any` |
+
+### Sprig functions
+
+The Infisical Secrets Operator integrates with the [Sprig library](https://github.com/Masterminds/sprig) to provide additional helper functions.
+
+<Note>
+  We've removed `expandEnv` and `env` from the supported functions for security reasons.
+</Note>
+
+
 ## Global configuration
 
 To configure global settings that will apply to all instances of `InfisicalSecret`, you can define these configurations in a Kubernetes ConfigMap.

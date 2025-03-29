@@ -65,6 +65,8 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Info("Infisical Push Secret CRD not found")
+			r.DeleteManagedSecrets(ctx, logger, infisicalPushSecretCRD)
+
 			return ctrl.Result{
 				Requeue: false,
 			}, nil

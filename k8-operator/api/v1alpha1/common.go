@@ -105,7 +105,7 @@ type ManagedKubeSecretConfig struct {
 
 	// The template to transform the secret data
 	// +kubebuilder:validation:Optional
-	Template *InfisicalSecretTemplate `json:"template,omitempty"`
+	Template *SecretTemplate `json:"template,omitempty"`
 }
 
 type ManagedKubeConfigMapConfig struct {
@@ -127,5 +127,15 @@ type ManagedKubeConfigMapConfig struct {
 
 	// The template to transform the secret data
 	// +kubebuilder:validation:Optional
-	Template *InfisicalSecretTemplate `json:"template,omitempty"`
+	Template *SecretTemplate `json:"template,omitempty"`
+}
+
+type SecretTemplate struct {
+	// This injects all retrieved secrets into the top level of your template.
+	// Secrets defined in the template will take precedence over the injected ones.
+	// +kubebuilder:validation:Optional
+	IncludeAllSecrets bool `json:"includeAllSecrets"`
+	// The template key values
+	// +kubebuilder:validation:Optional
+	Data map[string]string `json:"data,omitempty"`
 }

@@ -1,16 +1,21 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"strings"
+	tpl "text/template"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
 	"github.com/Infisical/infisical/k8-operator/packages/constants"
+	"github.com/Infisical/infisical/k8-operator/packages/model"
+	"github.com/Infisical/infisical/k8-operator/packages/template"
 	"github.com/Infisical/infisical/k8-operator/packages/util"
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -101,6 +106,48 @@ func (r *InfisicalPushSecretReconciler) updateResourceVariables(infisicalPushSec
 	infisicalPushSecretResourceVariablesMap[string(infisicalPushSecret.UID)] = resourceVariables
 }
 
+func (r *InfisicalPushSecretReconciler) processTemplatedSecrets(infisicalPushSecret v1alpha1.InfisicalPushSecret, kubePushSecret *corev1.Secret, destination v1alpha1.InfisicalPushSecretDestination) (map[string]string, error) {
+
+	processedSecrets := make(map[string]string)
+
+	sourceSecrets := make(map[string]model.SecretTemplateOptions)
+	for key, value := range kubePushSecret.Data {
+
+		sourceSecrets[key] = model.SecretTemplateOptions{
+			Value:      string(value),
+			SecretPath: destination.SecretsPath,
+		}
+	}
+
+	if infisicalPushSecret.Spec.Push.Secret.Template == nil || (infisicalPushSecret.Spec.Push.Secret.Template != nil && infisicalPushSecret.Spec.Push.Secret.Template.IncludeAllSecrets) {
+		for key, value := range kubePushSecret.Data {
+			processedSecrets[key] = string(value)
+		}
+	}
+
+	if infisicalPushSecret.Spec.Push.Secret.Template != nil &&
+		len(infisicalPushSecret.Spec.Push.Secret.Template.Data) > 0 {
+
+		for templateKey, userTemplate := range infisicalPushSecret.Spec.Push.Secret.Template.Data {
+
+			tmpl, err := tpl.New("push-secret-templates").Funcs(template.GetTemplateFunctions()).Parse(userTemplate)
+			if err != nil {
+				return nil, fmt.Errorf("unable to compile template: %s [err=%v]", templateKey, err)
+			}
+
+			buf := bytes.NewBuffer(nil)
+			err = tmpl.Execute(buf, sourceSecrets)
+			if err != nil {
+				return nil, fmt.Errorf("unable to execute template: %s [err=%v]", templateKey, err)
+			}
+
+			processedSecrets[templateKey] = buf.String()
+		}
+	}
+
+	return processedSecrets, nil
+}
+
 func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context.Context, logger logr.Logger, infisicalPushSecret v1alpha1.InfisicalPushSecret) error {
 
 	resourceVariables := r.getResourceVariables(infisicalPushSecret)
@@ -134,10 +181,9 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 		return fmt.Errorf("unable to fetch kube secret [err=%s]", err)
 	}
 
-	var kubeSecrets = make(map[string]string)
-
-	for key, value := range kubePushSecret.Data {
-		kubeSecrets[key] = string(value)
+	processedSecrets, err := r.processTemplatedSecrets(infisicalPushSecret, kubePushSecret, infisicalPushSecret.Spec.Destination)
+	if err != nil {
+		return fmt.Errorf("unable to process templated secrets [err=%s]", err)
 	}
 
 	destination := infisicalPushSecret.Spec.Destination
@@ -191,7 +237,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 
 		infisicalPushSecret.Status.ManagedSecrets = make(map[string]string) // (string[id], string[key] )
 
-		for secretKey, secretValue := range kubeSecrets {
+		for secretKey, secretValue := range processedSecrets {
 			if exists := getExistingSecretByKey(secretKey); exists != nil {
 
 				if updatePolicy == string(constants.PUSH_SECRET_REPLACE_POLICY_ENABLED) {
@@ -280,7 +326,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 		// We need to check if any of the secrets have been removed in the new kube secret
 		for _, managedSecretKey := range infisicalPushSecret.Status.ManagedSecrets {
 
-			if _, ok := kubeSecrets[managedSecretKey]; !ok {
+			if _, ok := processedSecrets[managedSecretKey]; !ok {
 
 				// Secret has been removed, verify that the secret is managed by the operator
 				if getExistingSecretByKey(managedSecretKey) != nil {
@@ -305,7 +351,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 		}
 
 		// We need to check if any new secrets have been added in the kube secret
-		for currentSecretKey := range kubeSecrets {
+		for currentSecretKey := range processedSecrets {
 
 			if exists := getExistingSecretByKey(currentSecretKey); exists == nil {
 
@@ -317,7 +363,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 
 					createdSecret, err := infisicalClient.Secrets().Create(infisicalSdk.CreateSecretOptions{
 						SecretKey:   currentSecretKey,
-						SecretValue: kubeSecrets[currentSecretKey],
+						SecretValue: processedSecrets[currentSecretKey],
 						ProjectID:   destination.ProjectID,
 						Environment: destination.EnvironmentSlug,
 						SecretPath:  destination.SecretsPath,
@@ -336,12 +382,12 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 
 					existingSecret := getExistingSecretByKey(currentSecretKey)
 
-					if existingSecret != nil && existingSecret.SecretValue != kubeSecrets[currentSecretKey] {
+					if existingSecret != nil && existingSecret.SecretValue != processedSecrets[currentSecretKey] {
 						logger.Info(fmt.Sprintf("Secret with key [key=%s] has changed value. Updating secret in Infisical", currentSecretKey))
 
 						updatedSecret, err := infisicalClient.Secrets().Update(infisicalSdk.UpdateSecretOptions{
 							SecretKey:      currentSecretKey,
-							NewSecretValue: kubeSecrets[currentSecretKey],
+							NewSecretValue: processedSecrets[currentSecretKey],
 							ProjectID:      destination.ProjectID,
 							Environment:    destination.EnvironmentSlug,
 							SecretPath:     destination.SecretsPath,
@@ -353,7 +399,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 							continue
 						}
 
-						updateExistingSecretByKey(currentSecretKey, kubeSecrets[currentSecretKey])
+						updateExistingSecretByKey(currentSecretKey, processedSecrets[currentSecretKey])
 						infisicalPushSecret.Status.ManagedSecrets[updatedSecret.ID] = currentSecretKey
 					}
 				}
@@ -361,7 +407,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 		}
 
 		// Check if any of the existing secrets values have changed
-		for secretKey, secretValue := range kubeSecrets {
+		for secretKey, secretValue := range processedSecrets {
 
 			existingSecret := getExistingSecretByKey(secretKey)
 
@@ -440,9 +486,28 @@ func (r *InfisicalPushSecretReconciler) DeleteManagedSecrets(ctx context.Context
 
 	resourceVariables := r.getResourceVariables(infisicalPushSecret)
 	infisicalClient := resourceVariables.InfisicalClient
+	cancelCtx := resourceVariables.CancelCtx
+	authDetails := resourceVariables.AuthDetails
+	var err error
+
+	if authDetails.AuthStrategy == "" {
+		logger.Info("No authentication strategy found. Attempting to authenticate")
+		authDetails, err = r.handleAuthentication(ctx, infisicalPushSecret, infisicalClient)
+		r.SetAuthenticatedStatusCondition(ctx, &infisicalPushSecret, err)
+
+		if err != nil {
+			return fmt.Errorf("unable to authenticate [err=%s]", err)
+		}
+
+		r.updateResourceVariables(infisicalPushSecret, util.ResourceVariables{
+			InfisicalClient: infisicalClient,
+			CancelCtx:       cancelCtx,
+			AuthDetails:     authDetails,
+		})
+	}
 
 	destination := infisicalPushSecret.Spec.Destination
-	existingSecrets, err := infisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
+	existingSecrets, err := resourceVariables.InfisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
 		ProjectID:      destination.ProjectID,
 		Environment:    destination.EnvironmentSlug,
 		SecretPath:     destination.SecretsPath,

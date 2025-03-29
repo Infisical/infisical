@@ -116,16 +116,6 @@ type MachineIdentityScopeInWorkspace struct {
 	Recursive bool `json:"recursive"`
 }
 
-type InfisicalSecretTemplate struct {
-	// This injects all retrieved secrets into the top level of your template.
-	// Secrets defined in the template will take precedence over the injected ones.
-	// +kubebuilder:validation:Optional
-	IncludeAllSecrets bool `json:"includeAllSecrets"`
-	// The template key values
-	// +kubebuilder:validation:Optional
-	Data map[string]string `json:"data,omitempty"`
-}
-
 // InfisicalSecretSpec defines the desired state of InfisicalSecret
 type InfisicalSecretSpec struct {
 	// +kubebuilder:validation:Optional
