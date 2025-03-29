@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_authenticate/_inject-org-details")({
     });
 
     await context.queryClient.ensureQueryData({
-      queryKey: subscriptionQueryKeys.getOrgSubsription(organizationId),
+      queryKey: subscriptionQueryKeys.getOrgSubscription(organizationId),
       queryFn: () => fetchOrgSubscription(organizationId)
     });
 
