@@ -111,7 +111,14 @@ func GetPlainTextSecretsV3(accessToken string, workspaceId string, environmentNa
 	plainTextSecrets := []models.SingleEnvironmentVariable{}
 
 	for _, secret := range rawSecrets.Secrets {
-		plainTextSecrets = append(plainTextSecrets, models.SingleEnvironmentVariable{Key: secret.SecretKey, Value: secret.SecretValue, Type: secret.Type, WorkspaceId: secret.Workspace, SecretPath: secret.SecretPath})
+		plainTextSecrets = append(plainTextSecrets, models.SingleEnvironmentVariable{
+			Key:         secret.SecretKey,
+			Value:       secret.SecretValue,
+			Type:        secret.Type,
+			Tags:        secret.Tags,
+			WorkspaceId: secret.Workspace,
+			SecretPath:  secret.SecretPath,
+		})
 	}
 
 	if includeImports {
