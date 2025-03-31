@@ -44,13 +44,13 @@ export type TIdentityAwsAuthServiceFactory = ReturnType<typeof identityAwsAuthSe
 
 const awsRegionFromHeader = (authorizationHeader: string): string | null => {
   // https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-auth-using-authorization-header.html
-	// The Authorization header takes the following form.
-	//  Authorization: AWS4-HMAC-SHA256
-	//	Credential=AKIAIOSFODNN7EXAMPLE/20230719/us-east-1/sts/aws4_request,
-	// 	SignedHeaders=content-length;content-type;host;x-amz-date,
-	//	Signature=fe5f80f77d5fa3beca038a248ff027d0445342fe2855ddc963176630326f1024
-	//
-	// The credential is in the form of "<your-access-key-id>/<date>/<aws-region>/<aws-service>/aws4_request"
+  // The Authorization header takes the following form.
+  //  Authorization: AWS4-HMAC-SHA256
+  //	Credential=AKIAIOSFODNN7EXAMPLE/20230719/us-east-1/sts/aws4_request,
+  // 	SignedHeaders=content-length;content-type;host;x-amz-date,
+  //	Signature=fe5f80f77d5fa3beca038a248ff027d0445342fe2855ddc963176630326f1024
+  //
+  // The credential is in the form of "<your-access-key-id>/<date>/<aws-region>/<aws-service>/aws4_request"
   try {
     const fields = authorizationHeader.split(" ");
     for (const field of fields) {
@@ -83,7 +83,7 @@ export const identityAwsAuthServiceFactory = ({
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityAwsAuth.identityId });
 
     const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
-    const body: string = Buffer.from(iamRequestBody, "base64").toString();    
+    const body: string = Buffer.from(iamRequestBody, "base64").toString();
 
     const region = headers.Authorization ? awsRegionFromHeader(headers.Authorization) : null;
     const url = region ? `https://sts.${region}.amazonaws.com` : identityAwsAuth.stsEndpoint;

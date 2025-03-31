@@ -471,6 +471,7 @@ export const identityUaServiceFactory = ({
     const clientSecretHash = await bcrypt.hash(clientSecret, appCfg.SALT_ROUNDS);
 
     const identityUaAuth = await identityUaDAL.findOne({ identityId: identityMembershipOrg.identityId });
+    if (!identityUaAuth) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     const identityUaClientSecret = await identityUaClientSecretDAL.create({
       identityUAId: identityUaAuth.id,
@@ -567,6 +568,12 @@ export const identityUaServiceFactory = ({
       });
     }
 
+    const identityUa = await identityUaDAL.findOne({ identityId });
+    if (!identityUa) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+
+    const clientSecret = await identityUaClientSecretDAL.findOne({ id: clientSecretId, identityUAId: identityUa.id });
+    if (!clientSecret) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+
     const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
@@ -601,7 +608,6 @@ export const identityUaServiceFactory = ({
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
-    const clientSecret = await identityUaClientSecretDAL.findById(clientSecretId);
     return { ...clientSecret, identityId, orgId: identityMembershipOrg.orgId };
   };
 
@@ -621,6 +627,12 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
+
+    const identityUa = await identityUaDAL.findOne({ identityId });
+    if (!identityUa) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+
+    const clientSecret = await identityUaClientSecretDAL.findOne({ id: clientSecretId, identityUAId: identityUa.id });
+    if (!clientSecret) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     const { permission, membership } = await permissionService.getOrgPermission(
       actor,
@@ -658,11 +670,11 @@ export const identityUaServiceFactory = ({
       });
     }
 
-    const clientSecret = await identityUaClientSecretDAL.updateById(clientSecretId, {
+    const updatedClientSecret = await identityUaClientSecretDAL.updateById(clientSecretId, {
       isClientSecretRevoked: true
     });
 
-    return { ...clientSecret, identityId, orgId: identityMembershipOrg.orgId };
+    return { ...updatedClientSecret, identityId, orgId: identityMembershipOrg.orgId };
   };
 
   return {

@@ -183,7 +183,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       });
 
     const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);
-    if (!dynamicSecretLease) {
+    if (!dynamicSecretLease || dynamicSecretLease.dynamicSecret.folderId !== folder.id) {
       throw new NotFoundError({ message: `Dynamic secret lease with ID '${leaseId}' not found` });
     }
 
@@ -256,7 +256,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       });
 
     const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);
-    if (!dynamicSecretLease)
+    if (!dynamicSecretLease || dynamicSecretLease.dynamicSecret.folderId !== folder.id)
       throw new NotFoundError({ message: `Dynamic secret lease with ID '${leaseId}' not found` });
 
     const dynamicSecretCfg = dynamicSecretLease.dynamicSecret;
