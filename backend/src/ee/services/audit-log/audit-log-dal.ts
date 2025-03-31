@@ -106,16 +106,9 @@ export const auditLogDALFactory = (db: TDbClient) => {
         }
         if (secretKey) {
           void sqlQuery.whereRaw(
-            `(
-            "eventMetadata"->>'secretKey' = ?
-            OR
-            EXISTS (
-              SELECT 1 
-              FROM jsonb_array_elements("eventMetadata"->'secrets') AS element
-              WHERE element->>'secretKey' = ?
-            )
-          )`,
-            [secretKey, secretKey]
+            `("eventMetadata"->>'secretKey' = ? 
+             OR "eventMetadata"->'secrets' @> ?::jsonb)`,
+            [secretKey, JSON.stringify([{ secretKey }])]
           );
         }
       }
