@@ -3595,7 +3595,10 @@ const syncSecretsTeamCity = async ({
           `${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters`,
           {
             name: `env.${key}`,
-            value: secrets[key].value
+            value: secrets[key].value,
+            type: {
+              rawValue: "password display='hidden'"
+            }
           },
           {
             headers: {
@@ -3652,7 +3655,10 @@ const syncSecretsTeamCity = async ({
           `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`,
           {
             name: `env.${key}`,
-            value: secrets[key].value
+            value: secrets[key].value,
+            type: {
+              rawValue: "password display='hidden'"
+            }
           },
           {
             headers: {
