@@ -12,3 +12,5 @@ docs/cli/commands/bootstrap.mdx:jwt:86
 docs/documentation/platform/audit-log-streams/audit-log-streams.mdx:generic-api-key:102
 docs/self-hosting/guides/automated-bootstrapping.mdx:jwt:74
 frontend/src/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretDetailSidebar.tsx:generic-api-key:72
+k8-operator/config/samples/crd/pushsecret/source-secret-with-templating.yaml:private-key:11
+k8-operator/config/samples/crd/pushsecret/push-secret-with-template.yaml:private-key:52

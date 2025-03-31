@@ -22,6 +22,7 @@ import (
 	infisicalDynamicSecretController "github.com/Infisical/infisical/k8-operator/controllers/infisicaldynamicsecret"
 	infisicalPushSecretController "github.com/Infisical/infisical/k8-operator/controllers/infisicalpushsecret"
 	infisicalSecretController "github.com/Infisical/infisical/k8-operator/controllers/infisicalsecret"
+	"github.com/Infisical/infisical/k8-operator/packages/template"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -85,6 +86,8 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
+
+	template.InitializeTemplateFunctions()
 
 	if err = (&infisicalSecretController.InfisicalSecretReconciler{
 		Client:     mgr.GetClient(),
