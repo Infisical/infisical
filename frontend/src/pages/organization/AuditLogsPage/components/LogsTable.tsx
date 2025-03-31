@@ -98,7 +98,7 @@ export const LogsTable = ({ filter, refetchInterval }: Props) => {
         <Button
           className="mb-20 mt-4 px-4 py-3 text-sm"
           isFullWidth
-          variant="star"
+          variant="outline_bg"
           isLoading={isFetchingNextPage}
           isDisabled={isFetchingNextPage || !hasNextPage}
           onClick={() => fetchNextPage()}
