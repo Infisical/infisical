@@ -11,6 +11,7 @@ import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
+import { VercelSyncFields } from "./VercelSyncFields";
 
 export const SecretSyncDestinationFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -34,6 +35,8 @@ export const SecretSyncDestinationFields = () => {
       return <DatabricksSyncFields />;
     case SecretSync.Humanitec:
       return <HumanitecSyncFields />;
+    case SecretSync.Vercel:
+      return <VercelSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

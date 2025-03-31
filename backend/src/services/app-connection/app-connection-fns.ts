@@ -40,6 +40,8 @@ import {
   HumanitecConnectionMethod,
   validateHumanitecConnectionCredentials
 } from "./humanitec";
+import { VercelConnectionMethod } from "./vercel";
+import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
 
 export const listAppConnectionOptions = () => {
   return [
@@ -49,7 +51,8 @@ export const listAppConnectionOptions = () => {
     getAzureKeyVaultConnectionListItem(),
     getAzureAppConfigurationConnectionListItem(),
     getDatabricksConnectionListItem(),
-    getHumanitecConnectionListItem()
+    getHumanitecConnectionListItem(),
+    getVercelConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -114,6 +117,8 @@ export const validateAppConnectionCredentials = async (
       return validateAzureAppConfigurationConnectionCredentials(appConnection);
     case AppConnection.Humanitec:
       return validateHumanitecConnectionCredentials(appConnection);
+    case AppConnection.Vercel:
+      return validateVercelConnectionCredentials(appConnection);
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection ${app}`);
@@ -137,6 +142,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DatabricksConnectionMethod.ServicePrincipal:
       return "Service Principal";
     case HumanitecConnectionMethod.API_TOKEN:
+      return "API Token";
+    case VercelConnectionMethod.API_TOKEN:
       return "API Token";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions

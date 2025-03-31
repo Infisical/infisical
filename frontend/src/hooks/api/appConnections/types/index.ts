@@ -8,6 +8,7 @@ import { THumanitecConnection } from "@app/hooks/api/appConnections/types/humani
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TGcpConnection } from "./gcp-connection";
+import { TVercelConnection } from "./vercel-connection";
 
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
@@ -23,7 +24,8 @@ export type TAppConnection =
   | TAzureKeyVaultConnection
   | TAzureAppConfigurationConnection
   | TDatabricksConnection
-  | THumanitecConnection;
+  | THumanitecConnection
+  | TVercelConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -58,4 +60,5 @@ export type TAppConnectionMap = {
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
   [AppConnection.Databricks]: TDatabricksConnection;
   [AppConnection.Humanitec]: THumanitecConnection;
+  [AppConnection.Vercel]: TVercelConnection;
 };

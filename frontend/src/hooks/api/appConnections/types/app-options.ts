@@ -38,6 +38,10 @@ export type THumanitecConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Humanitec;
 };
 
+export type TVercelConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Vercel;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -45,7 +49,8 @@ export type TAppConnectionOption =
   | TAzureAppConfigurationConnectionOption
   | TAzureKeyVaultConnectionOption
   | TDatabricksConnectionOption
-  | THumanitecConnectionOption;
+  | THumanitecConnectionOption
+  | TVercelConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -55,4 +60,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnectionOption;
   [AppConnection.Databricks]: TDatabricksConnectionOption;
   [AppConnection.Humanitec]: THumanitecConnectionOption;
+  [AppConnection.Vercel]: TVercelConnectionOption;
 };

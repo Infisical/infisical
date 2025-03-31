@@ -12,6 +12,7 @@ import {
 } from "@app/hooks/api/appConnections/types";
 import { DatabricksConnectionMethod } from "@app/hooks/api/appConnections/types/databricks-connection";
 import { HumanitecConnectionMethod } from "@app/hooks/api/appConnections/types/humanitec-connection";
+import { VercelConnectionMethod } from "@app/hooks/api/appConnections/types/vercel-connection";
 
 export const APP_CONNECTION_MAP: Record<AppConnection, { name: string; image: string }> = {
   [AppConnection.AWS]: { name: "AWS", image: "Amazon Web Services.png" },
@@ -26,7 +27,8 @@ export const APP_CONNECTION_MAP: Record<AppConnection, { name: string; image: st
     image: "Microsoft Azure.png"
   },
   [AppConnection.Databricks]: { name: "Databricks", image: "Databricks.png" },
-  [AppConnection.Humanitec]: { name: "Humanitec", image: "Humanitec.png" }
+  [AppConnection.Humanitec]: { name: "Humanitec", image: "Humanitec.png" },
+  [AppConnection.Vercel]: { name: "Vercel", image: "Vercel.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -47,6 +49,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Service Principal", icon: faUser };
     case HumanitecConnectionMethod.API_TOKEN:
       return { name: "API Token", icon: faKey };
+    case VercelConnectionMethod.API_TOKEN:
+      return { name: "Service API Token", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
