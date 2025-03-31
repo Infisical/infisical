@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { IconButton, Spinner, Tooltip } from "@app/components/v2";
 import { CopyButton } from "@app/components/v2/CopyButton";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
 import { useGetGroupById } from "@app/hooks/api/";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -22,7 +22,7 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">Group Details</h3>
-        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Groups}>
+        <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
           {(isAllowed) => {
             return (
               <Tooltip content="Edit Group">

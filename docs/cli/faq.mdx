@@ -33,3 +33,28 @@ Yes. This is simply a configuration file and contains no sensitive data.
     https://app.infisical.com/project/<your_project_id>/settings
   ```
 </Accordion>
+
+<Accordion title="How do I use custom headers with the Infisical CLI?">
+  
+  The Infisical CLI supports custom HTTP headers for requests to servers that require additional authentication. Set these headers using the `INFISICAL_CUSTOM_HEADERS` environment variable:
+  
+  ```bash
+  export INFISICAL_CUSTOM_HEADERS="Access-Client-Id=your-client-id Access-Client-Secret=your-client-secret"
+  ```
+  
+  After setting this environment variable, run your Infisical commands as usual.
+</Accordion>
+
+<Accordion title="Why would I need to use custom headers?">
+  
+  Custom headers are necessary when your Infisical server is protected by services like Cloudflare Access or other reverse proxies that require specific authentication headers. Without this feature, you would need to implement security workarounds that might compromise your security posture.
+</Accordion>
+
+<Accordion title="What format should I use for the custom headers?">
+  
+  Custom headers should be specified in the format `headername1=headervalue1 headername2=headervalue2`, with spaces separating each header-value pair. For example:
+  
+  ```bash
+  export INFISICAL_CUSTOM_HEADERS="Header1=value1 Header2=value2 Header3=value3"
+  ```
+</Accordion>

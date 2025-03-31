@@ -1,5 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
+import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { isCertChainValid } from "@app/services/certificate/certificate-fns";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -67,9 +68,7 @@ export const certificateEstServiceFactory = ({
 
     const certTemplate = await certificateTemplateDAL.findById(certificateTemplateId);
 
-    const leafCertificate = decodeURIComponent(sslClientCert).match(
-      /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g
-    )?.[0];
+    const leafCertificate = extractX509CertFromChain(decodeURIComponent(sslClientCert))?.[0];
 
     if (!leafCertificate) {
       throw new UnauthorizedError({ message: "Missing client certificate" });
@@ -88,10 +87,7 @@ export const certificateEstServiceFactory = ({
     const verifiedChains = await Promise.all(
       caCertChains.map((chain) => {
         const caCert = new x509.X509Certificate(chain.certificate);
-        const caChain =
-          chain.certificateChain
-            .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
-            ?.map((c) => new x509.X509Certificate(c)) || [];
+        const caChain = extractX509CertFromChain(chain.certificateChain)?.map((c) => new x509.X509Certificate(c)) || [];
 
         return isCertChainValid([cert, caCert, ...caChain]);
       })
@@ -172,19 +168,15 @@ export const certificateEstServiceFactory = ({
     }
 
     if (!estConfig.disableBootstrapCertValidation) {
-      const caCerts = estConfig.caChain
-        .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
-        ?.map((cert) => {
-          return new x509.X509Certificate(cert);
-        });
+      const caCerts = extractX509CertFromChain(estConfig.caChain)?.map((cert) => {
+        return new x509.X509Certificate(cert);
+      });
 
       if (!caCerts) {
         throw new BadRequestError({ message: "Failed to parse certificate chain" });
       }
 
-      const leafCertificate = decodeURIComponent(sslClientCert).match(
-        /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g
-      )?.[0];
+      const leafCertificate = extractX509CertFromChain(decodeURIComponent(sslClientCert))?.[0];
 
       if (!leafCertificate) {
         throw new BadRequestError({ message: "Missing client certificate" });
@@ -250,13 +242,7 @@ export const certificateEstServiceFactory = ({
       kmsService
     });
 
-    const certificates = caCertChain
-      .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
-      ?.map((cert) => new x509.X509Certificate(cert));
-
-    if (!certificates) {
-      throw new BadRequestError({ message: "Failed to parse certificate chain" });
-    }
+    const certificates = extractX509CertFromChain(caCertChain).map((cert) => new x509.X509Certificate(cert));
 
     const caCertificate = new x509.X509Certificate(caCert);
     return convertRawCertsToPkcs7([caCertificate.rawData, ...certificates.map((cert) => cert.rawData)]);

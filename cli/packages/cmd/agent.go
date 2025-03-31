@@ -29,7 +29,6 @@ import (
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
-	"github.com/go-resty/resty/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -514,7 +513,10 @@ type NewAgentMangerOptions struct {
 }
 
 func NewAgentManager(options NewAgentMangerOptions) *AgentManager {
-
+	customHeaders, err := util.GetInfisicalCustomHeadersMap()
+	if err != nil {
+		util.HandleError(err, "Unable to get custom headers")
+	}
 	return &AgentManager{
 		filePaths: options.FileDeposits,
 		templates: options.Templates,
@@ -529,6 +531,7 @@ func NewAgentManager(options NewAgentMangerOptions) *AgentManager {
 			SiteUrl:          config.INFISICAL_URL,
 			UserAgent:        api.USER_AGENT, // ? Should we perhaps use a different user agent for the Agent for better analytics?
 			AutoTokenRefresh: false,
+			CustomHeaders:    customHeaders,
 		}),
 	}
 
@@ -716,7 +719,11 @@ func (tm *AgentManager) FetchNewAccessToken() error {
 
 // Refreshes the existing access token
 func (tm *AgentManager) RefreshAccessToken() error {
-	httpClient := resty.New()
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return err
+	}
+
 	httpClient.SetRetryCount(10000).
 		SetRetryMaxWaitTime(20 * time.Second).
 		SetRetryWaitTime(5 * time.Second)

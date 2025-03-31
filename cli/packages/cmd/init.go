@@ -10,7 +10,6 @@ import (
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
-	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
 	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
@@ -50,7 +49,10 @@ var initCmd = &cobra.Command{
 			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
 		}
 
-		httpClient := resty.New()
+		httpClient, err := util.GetRestyClientWithCustomHeaders()
+		if err != nil {
+			util.HandleError(err, "Unable to get resty client with custom headers")
+		}
 		httpClient.SetAuthToken(userCreds.UserCredentials.JTWToken)
 
 		organizationResponse, err := api.CallGetAllOrganizations(httpClient)
@@ -81,7 +83,10 @@ var initCmd = &cobra.Command{
 			for i < 6 {
 				mfaVerifyCode := askForMFACode(tokenResponse.MfaMethod)
 
-				httpClient := resty.New()
+				httpClient, err := util.GetRestyClientWithCustomHeaders()
+				if err != nil {
+					util.HandleError(err, "Unable to get resty client with custom headers")
+				}
 				httpClient.SetAuthToken(tokenResponse.Token)
 				verifyMFAresponse, mfaErrorResponse, requestError := api.CallVerifyMfaToken(httpClient, api.VerifyMfaTokenRequest{
 					Email:     userCreds.UserCredentials.Email,

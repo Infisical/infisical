@@ -14,7 +14,6 @@ import (
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
-	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/zalando/go-keyring"
 	"gopkg.in/yaml.v3"
@@ -28,7 +27,10 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 
 	serviceToken := fmt.Sprintf("%v.%v.%v", serviceTokenParts[0], serviceTokenParts[1], serviceTokenParts[2])
 
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get client with custom headers [err=%v]", err)
+	}
 
 	httpClient.SetAuthToken(serviceToken).
 		SetHeader("Accept", "application/json")
@@ -79,7 +81,11 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 }
 
 func GetPlainTextSecretsV3(accessToken string, workspaceId string, environmentName string, secretsPath string, includeImports bool, recursive bool, tagSlugs string, expandSecretReferences bool) (models.PlaintextSecretResult, error) {
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return models.PlaintextSecretResult{}, err
+	}
+
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
 
@@ -122,7 +128,11 @@ func GetPlainTextSecretsV3(accessToken string, workspaceId string, environmentNa
 }
 
 func GetSinglePlainTextSecretByNameV3(accessToken string, workspaceId string, environmentName string, secretsPath string, secretName string) (models.SingleEnvironmentVariable, string, error) {
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return models.SingleEnvironmentVariable{}, "", err
+	}
+
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
 
@@ -153,7 +163,11 @@ func GetSinglePlainTextSecretByNameV3(accessToken string, workspaceId string, en
 }
 
 func CreateDynamicSecretLease(accessToken string, projectSlug string, environmentName string, secretsPath string, slug string, ttl string) (models.DynamicSecretLease, error) {
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return models.DynamicSecretLease{}, err
+	}
+
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
 
@@ -525,7 +539,11 @@ func GetEnvelopmentBasedOnGitBranch(workspaceFile models.WorkspaceConfigFile) st
 }
 
 func GetPlainTextWorkspaceKey(authenticationToken string, receiverPrivateKey string, workspaceId string) ([]byte, error) {
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return nil, fmt.Errorf("GetPlainTextWorkspaceKey: unable to get client with custom headers [err=%v]", err)
+	}
+
 	httpClient.SetAuthToken(authenticationToken).
 		SetHeader("Accept", "application/json")
 
@@ -672,9 +690,12 @@ func SetRawSecrets(secretArgs []string, secretType string, environmentName strin
 		getAllEnvironmentVariablesRequest.InfisicalToken = tokenDetails.Token
 	}
 
-	httpClient := resty.New().
-		SetAuthToken(tokenDetails.Token).
-		SetHeader("Accept", "application/json")
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get client with custom headers [err=%v]", err)
+	}
+
+	httpClient.SetHeader("Accept", "application/json")
 
 	// pull current secrets
 	secrets, err := GetAllEnvironmentVariables(getAllEnvironmentVariablesRequest, "")

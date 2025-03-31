@@ -1,0 +1,312 @@
+---
+title: "Project Permissions"
+description: "Comprehensive guide to Infisical's project-level permissions"
+---
+
+## Overview
+
+Infisical's project permissions system follows a role-based access control (RBAC) model built on a subject-action-object framework. At the project level, these permissions determine what actions users/machines can perform on various resources within a specific project.
+
+Each permission consists of:
+
+- **Subject**: The resource the permission applies to (e.g., secrets, members, settings)
+- **Action**: The operation that can be performed (e.g., read, create, edit, delete)
+
+Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, and `dynamic-secrets`—support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, or tags) that must be met for the permission to apply.
+
+## Available Project Permissions
+
+Below is a comprehensive list of all available project-level subjects and their supported actions.
+
+### Core Platform & Access Control
+
+#### Subject: `role`
+
+| Action   | Description                                       |
+| -------- | ------------------------------------------------- |
+| `read`   | View project roles and their assigned permissions |
+| `create` | Create new project roles                          |
+| `edit`   | Modify existing project roles                     |
+| `delete` | Remove project roles                              |
+
+#### Subject: `member`
+
+| Action             | Description                                 |
+| ------------------ | ------------------------------------------- |
+| `read`             | View project members                        |
+| `create`           | Add new members to the project              |
+| `edit`             | Modify member details                       |
+| `delete`           | Remove members from the project             |
+| `grant-privileges` | Change permission levels of project members |
+
+#### Subject: `groups`
+
+| Action             | Description                                |
+| ------------------ | ------------------------------------------ |
+| `read`             | View project groups                        |
+| `create`           | Create new groups within the project       |
+| `edit`             | Modify existing groups                     |
+| `delete`           | Remove groups from the project             |
+| `grant-privileges` | Change permission levels of project groups |
+
+#### Subject: `identity`
+
+| Action             | Description                                    |
+| ------------------ | ---------------------------------------------- |
+| `read`             | View project identities                        |
+| `create`           | Add new identities to project                  |
+| `edit`             | Modify project identities                      |
+| `delete`           | Remove identities from project                 |
+| `grant-privileges` | Change permission levels of project identities |
+
+#### Subject: `settings`
+
+| Action   | Description                            |
+| -------- | -------------------------------------- |
+| `read`   | View project settings                  |
+| `create` | Add new project configuration settings |
+| `edit`   | Modify project settings                |
+| `delete` | Remove project settings                |
+
+#### Subject: `environments`
+
+| Action   | Description                          |
+| -------- | ------------------------------------ |
+| `read`   | View project environments            |
+| `create` | Add new environments to the project  |
+| `edit`   | Modify existing environments         |
+| `delete` | Remove environments from the project |
+
+#### Subject: `tags`
+
+| Action   | Description                              |
+| -------- | ---------------------------------------- |
+| `read`   | View project tags                        |
+| `create` | Create new tags for organizing resources |
+| `edit`   | Modify existing tags                     |
+| `delete` | Remove tags from the project             |
+
+#### Subject: `workspace`
+
+| Action   | Description               |
+| -------- | ------------------------- |
+| `edit`   | Modify workspace settings |
+| `delete` | Delete the workspace      |
+
+#### Subject: `ip-allowlist`
+
+| Action   | Description                                  |
+| -------- | -------------------------------------------- |
+| `read`   | View IP allowlists                           |
+| `create` | Add new IP addresses or ranges to allowlists |
+| `edit`   | Modify existing IP allowlist entries         |
+| `delete` | Remove IP addresses from allowlists          |
+
+#### Subject: `audit-logs`
+
+| Action | Description                                             |
+| ------ | ------------------------------------------------------- |
+| `read` | View audit logs of actions performed within the project |
+
+#### Subject: `integrations`
+
+| Action   | Description                      |
+| -------- | -------------------------------- |
+| `read`   | View configured integrations     |
+| `create` | Add new third-party integrations |
+| `edit`   | Modify integration settings      |
+| `delete` | Remove integrations              |
+
+#### Subject: `webhooks`
+
+| Action   | Description                          |
+| -------- | ------------------------------------ |
+| `read`   | View webhook configurations          |
+| `create` | Add new webhooks                     |
+| `edit`   | Modify webhook endpoints or triggers |
+| `delete` | Remove webhooks                      |
+
+#### Subject: `service-tokens`
+
+| Action   | Description                              |
+| -------- | ---------------------------------------- |
+| `read`   | View service tokens                      |
+| `create` | Create new service tokens for API access |
+| `edit`   | Modify token properties                  |
+| `delete` | Revoke or remove service tokens          |
+
+### Secrets Management
+
+#### Subject: `secrets`
+
+Supports conditions and permission inversion
+| Action | Description | Notes |
+| -------- | ------------------------------- | ----- |
+| `read` | View secrets and their values     | This action is the equivalent of granting both `describeSecret` and `readValue`. The `read` action is considered **legacy**. You should use the `describeSecret` and/or `readValue` actions instead.       |
+| `describeSecret` | View secret details such as key, path, metadata, tags, and more | If you are using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. |
+| `readValue` | View the value of a secret.| In order to read secret values, the `describeSecret` action must also be granted. |
+| `create` | Add new secrets to the project  |       |
+| `edit` | Modify existing secret values     |       |
+| `delete` | Remove secrets from the project |       |
+
+#### Subject: `secret-folders`
+
+Supports conditions and permission inversion
+| Action | Description |
+| -------- | ------------------------ |
+| `read` | View secret folders |
+| `create` | Create new folders |
+| `edit` | Modify folder properties |
+| `delete` | Remove secret folders |
+
+#### Subject: `secret-imports`
+
+Supports conditions and permission inversion
+| Action | Description |
+| -------- | --------------------- |
+| `read` | View secret imports |
+| `create` | Create secret imports |
+| `edit` | Modify secret imports |
+| `delete` | Remove secret imports |
+
+#### Subject: `secret-rollback`
+
+| Action   | Description                        |
+| -------- | ---------------------------------- |
+| `read`   | View secret versions and snapshots |
+| `create` | Roll back secrets to snapshots     |
+
+#### Subject: `secret-approval`
+
+| Action   | Description                         |
+| -------- | ----------------------------------- |
+| `read`   | View approval policies and requests |
+| `create` | Create new approval policies        |
+| `edit`   | Modify approval policies            |
+| `delete` | Remove approval policies            |
+
+#### Subject: `secret-rotation`
+
+| Action   | Description                           |
+| -------- | ------------------------------------- |
+| `read`   | View secret rotation policies         |
+| `create` | Set up automatic secret rotation      |
+| `edit`   | Modify rotation schedules or policies |
+| `delete` | Remove rotation policies              |
+
+#### Subject: `secret-syncs`
+
+| Action           | Description                                        |
+| ---------------- | -------------------------------------------------- |
+| `read`           | View secret synchronization configurations         |
+| `create`         | Create new sync configurations                     |
+| `edit`           | Modify existing sync settings                      |
+| `delete`         | Remove sync configurations                         |
+| `sync-secrets`   | Execute synchronization of secrets between systems |
+| `import-secrets` | Import secrets from sync sources                   |
+| `remove-secrets` | Remove secrets from sync destinations              |
+
+#### Subject: `dynamic-secrets`
+
+Supports conditions and permission inversion
+| Action | Description |
+| ------------------------ | ---------------------------------- |
+| `read-root-credential` | View dynamic secret configurations |
+| `create-root-credential` | Create dynamic secrets |
+| `edit-root-credential` | Edit dynamic secrets |
+| `delete-root-credential` | Remove dynamic secrets |
+| `lease` | Create dynamic secret leases |
+
+### Key Management Service (KMS)
+
+#### Subject: `kms`
+
+| Action | Description                 |
+| ------ | --------------------------- |
+| `edit` | Modify project KMS settings |
+
+#### Subject: `cmek`
+
+| Action    | Description                           |
+| --------- | ------------------------------------- |
+| `read`    | View Customer-Managed Encryption Keys |
+| `create`  | Add new encryption keys               |
+| `edit`    | Modify key properties                 |
+| `delete`  | Remove encryption keys                |
+| `encrypt` | Use keys for encryption operations    |
+| `decrypt` | Use keys for decryption operations    |
+
+### Public Key Infrastructure (PKI)
+
+#### Subject: `certificate-authorities`
+
+| Action   | Description                        |
+| -------- | ---------------------------------- |
+| `read`   | View certificate authorities       |
+| `create` | Create new certificate authorities |
+| `edit`   | Modify CA configurations           |
+| `delete` | Remove certificate authorities     |
+
+#### Subject: `certificates`
+
+| Action   | Description                   |
+| -------- | ----------------------------- |
+| `read`   | View certificates             |
+| `create` | Issue new certificates        |
+| `delete` | Revoke or remove certificates |
+
+#### Subject: `certificate-templates`
+
+| Action   | Description                      |
+| -------- | -------------------------------- |
+| `read`   | View certificate templates       |
+| `create` | Create new certificate templates |
+| `edit`   | Modify template configurations   |
+| `delete` | Remove certificate templates     |
+
+#### Subject: `pki-alerts`
+
+| Action   | Description                                                  |
+| -------- | ------------------------------------------------------------ |
+| `read`   | View PKI alert configurations                                |
+| `create` | Create new alerts for certificate expiry or other PKI events |
+| `edit`   | Modify alert settings                                        |
+| `delete` | Remove PKI alerts                                            |
+
+#### Subject: `pki-collections`
+
+| Action   | Description                                         |
+| -------- | --------------------------------------------------- |
+| `read`   | View PKI resource collections                       |
+| `create` | Create new collections for organizing PKI resources |
+| `edit`   | Modify collection properties                        |
+| `delete` | Remove PKI collections                              |
+
+### SSH Certificate Management
+
+#### Subject: `ssh-certificate-authorities`
+
+| Action   | Description                            |
+| -------- | -------------------------------------- |
+| `read`   | View SSH certificate authorities       |
+| `create` | Create new SSH certificate authorities |
+| `edit`   | Modify SSH CA configurations           |
+| `delete` | Remove SSH certificate authorities     |
+
+#### Subject: `ssh-certificates`
+
+| Action   | Description                       |
+| -------- | --------------------------------- |
+| `read`   | View SSH certificates             |
+| `create` | Issue new SSH certificates        |
+| `edit`   | Modify SSH certificate properties |
+| `delete` | Revoke or remove SSH certificates |
+
+#### Subject: `ssh-certificate-templates`
+
+| Action   | Description                          |
+| -------- | ------------------------------------ |
+| `read`   | View SSH certificate templates       |
+| `create` | Create new SSH certificate templates |
+| `edit`   | Modify SSH template configurations   |
+| `delete` | Remove SSH certificate templates     |
