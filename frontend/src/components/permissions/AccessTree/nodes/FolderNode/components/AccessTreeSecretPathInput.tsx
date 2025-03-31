@@ -29,9 +29,10 @@ export const AccessTreeSecretPathInput = ({
   };
 
   const handleBlur = () => {
-    setTimeout(() => {
+    const timeout: NodeJS.Timeout = setTimeout(() => {
       setIsFocused(false);
     }, 200);
+    return () => clearTimeout(timeout);
   };
 
   useEffect(() => {
@@ -50,8 +51,10 @@ export const AccessTreeSecretPathInput = ({
   const toggleSearch = () => {
     setIsExpanded(!isExpanded);
     if (!isExpanded) {
-      setTimeout(focusInput, 300);
+      const timeout: NodeJS.Timeout = setTimeout(focusInput, 300);
+      return () => clearTimeout(timeout);
     }
+    return () => {};
   };
 
   return (

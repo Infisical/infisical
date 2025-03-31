@@ -81,12 +81,14 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
   }, [selectedPath, environment]);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (initialRender) {
-      setTimeout(() => {
+      timer = setTimeout(() => {
         goToRootNode();
         setInitialRender(false);
       }, 500);
     }
+    return () => clearTimeout(timer);
   }, [nodes, edges, getViewport(), initialRender]);
 
   const handleToggleModalView = () =>
