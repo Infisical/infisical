@@ -6,6 +6,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
@@ -14,6 +15,7 @@ import {
   validateAltNamesField,
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerCaRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -649,6 +651,16 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.IssueCert,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          caId: ca.id,
+          commonName: req.body.commonName,
+          ...req.auditLogInfo
+        }
+      });
+
       return {
         certificate,
         certificateChain,
@@ -707,7 +719,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, issuingCaCertificate, serialNumber, ca } =
+      const { certificate, certificateChain, issuingCaCertificate, serialNumber, ca, commonName } =
         await server.services.certificateAuthority.signCertFromCa({
           isInternal: false,
           caId: req.params.caId,
@@ -728,6 +740,16 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
             dn: ca.dn,
             serialNumber
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignCert,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          caId: ca.id,
+          commonName,
+          ...req.auditLogInfo
         }
       });
 
