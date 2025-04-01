@@ -356,7 +356,7 @@ export const fnSecretBulkDelete = async ({
 interface FolderMap {
   [parentId: string]: TSecretFolders[];
 }
-const buildHierarchy = (folders: TSecretFolders[]): FolderMap => {
+export const buildHierarchy = (folders: TSecretFolders[]): FolderMap => {
   const map: FolderMap = {};
   map.null = []; // Initialize mapping for root directory
 
@@ -371,7 +371,7 @@ const buildHierarchy = (folders: TSecretFolders[]): FolderMap => {
   return map;
 };
 
-const generatePaths = (
+export const generatePaths = (
   map: FolderMap,
   parentId: string = "null",
   basePath: string = "",
