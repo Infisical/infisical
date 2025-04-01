@@ -17,7 +17,9 @@ export enum PostHogEventTypes {
   SecretRequestCreated = "Secret Request Created",
   SecretRequestDeleted = "Secret Request Deleted",
   SignSshKey = "Sign SSH Key",
-  IssueSshCreds = "Issue SSH Credentials"
+  IssueSshCreds = "Issue SSH Credentials",
+  SignCert = "Sign PKI Certificate",
+  IssueCert = "Issue PKI Certificate"
 }
 
 export type TSecretModifiedEvent = {
@@ -159,6 +161,26 @@ export type TIssueSshCredsEvent = {
   };
 };
 
+export type TSignCertificateEvent = {
+  event: PostHogEventTypes.SignCert;
+  properties: {
+    caId?: string;
+    certificateTemplateId?: string;
+    commonName: string;
+    userAgent?: string;
+  };
+};
+
+export type TIssueCertificateEvent = {
+  event: PostHogEventTypes.IssueCert;
+  properties: {
+    caId?: string;
+    certificateTemplateId?: string;
+    commonName: string;
+    userAgent?: string;
+  };
+};
+
 export type TPostHogEvent = { distinctId: string } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
@@ -173,4 +195,6 @@ export type TPostHogEvent = { distinctId: string } & (
   | TSecretRequestDeletedEvent
   | TSignSshKeyEvent
   | TIssueSshCredsEvent
+  | TSignCertificateEvent
+  | TIssueCertificateEvent
 );
