@@ -96,19 +96,25 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
       const eventIsSecretType = !eventType?.length || eventType.some((event) => filterableSecretEvents.includes(event));
       // We only want to filter for environment/secretPath/secretKey if the user is either checking for all event types
+
+      // ? Note(daniel): use the `eventMetadata" @> ?::jsonb` approach to properly use our GIN index
       if (projectId && eventIsSecretType) {
-        if (environment) {
-          void sqlQuery.whereRaw(`"eventMetadata"->>'environment' = ?`, [environment]);
+        if (environment || secretPath) {
+          // Handle both environment and secret path together to only use the GIN index once
+          void sqlQuery.whereRaw(`"eventMetadata" @> ?::jsonb`, [
+            JSON.stringify({
+              ...(environment && { environment }),
+              ...(secretPath && { secretPath })
+            })
+          ]);
         }
 
-        if (secretPath) {
-          void sqlQuery.whereRaw(`"eventMetadata"->>'secretPath' = ?`, [secretPath]);
-        }
+        // Handle secret key separately to include the OR condition
         if (secretKey) {
           void sqlQuery.whereRaw(
-            `("eventMetadata"->>'secretKey' = ? 
-             OR "eventMetadata"->'secrets' @> ?::jsonb)`,
-            [secretKey, JSON.stringify([{ secretKey }])]
+            `("eventMetadata" @> ?::jsonb
+            OR "eventMetadata"->'secrets' @> ?::jsonb)`,
+            [JSON.stringify({ secretKey }), JSON.stringify([{ secretKey }])]
           );
         }
       }
