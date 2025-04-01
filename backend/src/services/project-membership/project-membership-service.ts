@@ -423,7 +423,7 @@ export const projectMembershipServiceFactory = ({
     const usernamesAndEmails = [...emails, ...usernames];
 
     const projectMembers = await projectMembershipDAL.findMembershipsByUsername(projectId, [
-      ...new Set(usernamesAndEmails.map((element) => element.toLowerCase()))
+      ...new Set(usernamesAndEmails.map((element) => element))
     ]);
 
     if (projectMembers.length !== usernamesAndEmails.length) {
