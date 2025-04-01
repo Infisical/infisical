@@ -89,7 +89,7 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
       }, 500);
     }
     return () => clearTimeout(timer);
-  }, [nodes, edges, getViewport(), initialRender]);
+  }, [nodes, edges, getViewport(), initialRender, goToRootNode]);
 
   const handleToggleModalView = () =>
     setViewMode((prev) => (prev === ViewMode.Modal ? ViewMode.Docked : ViewMode.Modal));
