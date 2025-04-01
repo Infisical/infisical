@@ -371,18 +371,32 @@ export const ActionBar = ({
           if (secretFolderKeys.length === 0) return;
 
           // Check which secrets already exist in this path
-          const { secrets: existingSecrets } = await fetchDashboardProjectSecretsByKeys({
-            secretPath: normalizedPath,
-            environment,
-            projectId: workspaceId,
-            keys: secretFolderKeys
-          });
-
-          // Create a quick lookup for existing secrets
-          const existingSecretLookup = existingSecrets.reduce<Record<string, boolean>>(
-            (lookup, secret) => ({ ...lookup, [secret.secretKey]: true }),
-            {}
+          const batchSize = 50;
+          const secretBatches = Array.from(
+            { length: Math.ceil(secretFolderKeys.length / batchSize) },
+            (_, i) => secretFolderKeys.slice(i * batchSize, (i + 1) * batchSize)
           );
+
+          const existingSecretLookup: Record<string, boolean> = {};
+
+          const processBatches = async () => {
+            await secretBatches.reduce(async (previous, batch) => {
+              await previous;
+
+              const { secrets: batchSecrets } = await fetchDashboardProjectSecretsByKeys({
+                secretPath: normalizedPath,
+                environment,
+                projectId: workspaceId,
+                keys: batch
+              });
+
+              batchSecrets.forEach((secret) => {
+                existingSecretLookup[secret.secretKey] = true;
+              });
+            }, Promise.resolve());
+          };
+
+          await processBatches();
 
           // Categorize each secret as update or create
           secretFolderKeys.forEach((secretKey) => {
