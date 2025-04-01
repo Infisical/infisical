@@ -666,6 +666,8 @@ export const reshapeBridgeSecret = (
       name: string;
     }[];
     secretMetadata?: ResourceMetadataDTO;
+    isRotatedSecret?: boolean;
+    rotationId?: string;
   },
   secretValueHidden: boolean
 ) => ({
@@ -695,7 +697,8 @@ export const reshapeBridgeSecret = (
   secretMetadata: secret.secretMetadata,
   createdAt: secret.createdAt,
   updatedAt: secret.updatedAt,
-
+  isRotatedSecret: secret.isRotatedSecret,
+  rotationId: secret.rotationId,
   ...(secretValueHidden
     ? {
         secretValue: INFISICAL_SECRET_VALUE_HIDDEN_MASK,

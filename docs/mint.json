@@ -824,6 +824,39 @@
           ]
         },
         {
+          "group": "Secret Rotations",
+          "pages": [
+            "api-reference/endpoints/secret-rotations/list",
+            "api-reference/endpoints/secret-rotations/options",
+            {
+              "group": "Microsoft SQL Server Credentials",
+              "pages": [
+                "api-reference/endpoints/secret-rotations/mssql-credentials/create",
+                "api-reference/endpoints/secret-rotations/mssql-credentials/delete",
+                "api-reference/endpoints/secret-rotations/mssql-credentials/get-by-id",
+                "api-reference/endpoints/secret-rotations/mssql-credentials/get-by-name",
+                "api-reference/endpoints/secret-rotations/mssql-credentials/get-generated-credentials-by-id",
+                "api-reference/endpoints/secret-rotations/mssql-credentials/list",
+                "api-reference/endpoints/secret-rotations/mssql-credentials/rotate-secrets",
+                "api-reference/endpoints/secret-rotations/mssql-credentials/update"
+              ]
+            },
+            {
+              "group": "PostgreSQL Credentials",
+              "pages": [
+                "api-reference/endpoints/secret-rotations/postgres-credentials/create",
+                "api-reference/endpoints/secret-rotations/postgres-credentials/delete",
+                "api-reference/endpoints/secret-rotations/postgres-credentials/get-by-id",
+                "api-reference/endpoints/secret-rotations/postgres-credentials/get-by-name",
+                "api-reference/endpoints/secret-rotations/postgres-credentials/get-generated-credentials-by-id",
+                "api-reference/endpoints/secret-rotations/postgres-credentials/list",
+                "api-reference/endpoints/secret-rotations/postgres-credentials/rotate-secrets",
+                "api-reference/endpoints/secret-rotations/postgres-credentials/update"
+              ]
+            }
+          ]
+        },
+        {
           "group": "Identity Specific Privilege",
           "pages": [
             "api-reference/endpoints/identity-specific-privilege/create-permanent",
@@ -921,6 +954,30 @@
                 "api-reference/endpoints/app-connections/humanitec/create",
                 "api-reference/endpoints/app-connections/humanitec/update",
                 "api-reference/endpoints/app-connections/humanitec/delete"
+              ]
+            },
+            {
+              "group": "Microsoft SQL Server",
+              "pages": [
+                "api-reference/endpoints/app-connections/mssql/list",
+                "api-reference/endpoints/app-connections/mssql/available",
+                "api-reference/endpoints/app-connections/mssql/get-by-id",
+                "api-reference/endpoints/app-connections/mssql/get-by-name",
+                "api-reference/endpoints/app-connections/mssql/create",
+                "api-reference/endpoints/app-connections/mssql/update",
+                "api-reference/endpoints/app-connections/mssql/delete"
+              ]
+            },
+            {
+              "group": "PostgreSQL",
+              "pages": [
+                "api-reference/endpoints/app-connections/postgres/list",
+                "api-reference/endpoints/app-connections/postgres/available",
+                "api-reference/endpoints/app-connections/postgres/get-by-id",
+                "api-reference/endpoints/app-connections/postgres/get-by-name",
+                "api-reference/endpoints/app-connections/postgres/create",
+                "api-reference/endpoints/app-connections/postgres/update",
+                "api-reference/endpoints/app-connections/postgres/delete"
               ]
             }
           ]

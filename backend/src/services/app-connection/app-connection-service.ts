@@ -6,25 +6,27 @@ import { generateHash } from "@app/lib/crypto/encryption";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   decryptAppConnection,
   encryptAppConnectionCredentials,
   getAppConnectionMethodName,
   listAppConnectionOptions,
+  TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM,
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
-import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
-import {
-  TAppConnection,
-  TAppConnectionConfig,
-  TCreateAppConnectionDTO,
-  TUpdateAppConnectionDTO,
-  TValidateAppConnectionCredentials
-} from "@app/services/app-connection/app-connection-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "./app-connection-dal";
+import { AppConnection } from "./app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "./app-connection-maps";
+import {
+  TAppConnection,
+  TAppConnectionConfig,
+  TAppConnectionRaw,
+  TCreateAppConnectionDTO,
+  TUpdateAppConnectionDTO,
+  TValidateAppConnectionCredentials
+} from "./app-connection-types";
 import { ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
@@ -37,6 +39,8 @@ import { ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
+import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
+import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -53,7 +57,9 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.AzureKeyVault]: ValidateAzureKeyVaultConnectionCredentialsSchema,
   [AppConnection.AzureAppConfiguration]: ValidateAzureAppConfigurationConnectionCredentialsSchema,
   [AppConnection.Databricks]: ValidateDatabricksConnectionCredentialsSchema,
-  [AppConnection.Humanitec]: ValidateHumanitecConnectionCredentialsSchema
+  [AppConnection.Humanitec]: ValidateHumanitecConnectionCredentialsSchema,
+  [AppConnection.Postgres]: ValidatePostgresConnectionCredentialsSchema,
+  [AppConnection.MsSql]: ValidateMsSqlConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -163,20 +169,42 @@ export const appConnectionServiceFactory = ({
       orgId: actor.orgId
     } as TAppConnectionConfig);
 
-    const encryptedCredentials = await encryptAppConnectionCredentials({
-      credentials: validatedCredentials,
-      orgId: actor.orgId,
-      kmsService
-    });
-
     try {
-      const connection = await appConnectionDAL.create({
-        orgId: actor.orgId,
-        encryptedCredentials,
-        method,
-        app,
-        ...params
-      });
+      const createTransaction = (connectionCredentials: TAppConnection["credentials"]) =>
+        appConnectionDAL.transaction(async (tx) => {
+          const encryptedCredentials = await encryptAppConnectionCredentials({
+            credentials: connectionCredentials,
+            orgId: actor.orgId,
+            kmsService
+          });
+
+          return appConnectionDAL.create(
+            {
+              orgId: actor.orgId,
+              encryptedCredentials,
+              method,
+              app,
+              ...params
+            },
+            tx
+          );
+        });
+
+      let connection: TAppConnectionRaw;
+
+      if (params.isPlatformManagedCredentials) {
+        connection = await TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM[app](
+          {
+            app,
+            orgId: actor.orgId,
+            credentials: validatedCredentials,
+            method
+          } as TAppConnectionConfig,
+          (platformCredentials) => createTransaction(platformCredentials)
+        );
+      } else {
+        connection = await createTransaction(validatedCredentials);
+      }
 
       return {
         ...connection,
@@ -213,11 +241,18 @@ export const appConnectionServiceFactory = ({
       OrgPermissionSubjects.AppConnections
     );
 
-    let encryptedCredentials: undefined | Buffer;
+    // prevent updating credentials or management status if platform managed
+    if (appConnection.isPlatformManagedCredentials && (params.isPlatformManagedCredentials === false || credentials)) {
+      throw new BadRequestError({
+        message: "Cannot update credentials or management status for platform managed connections"
+      });
+    }
+
+    let updatedCredentials: undefined | TAppConnection["credentials"];
+
+    const { app, method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
 
     if (credentials) {
-      const { app, method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
-
       if (
         !VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[app].safeParse({
           method,
@@ -230,29 +265,58 @@ export const appConnectionServiceFactory = ({
           } Connection with method ${getAppConnectionMethodName(method)}`
         });
 
-      const validatedCredentials = await validateAppConnectionCredentials({
+      updatedCredentials = await validateAppConnectionCredentials({
         app,
         orgId: actor.orgId,
         credentials,
         method
       } as TAppConnectionConfig);
 
-      if (!validatedCredentials)
+      if (!updatedCredentials)
         throw new BadRequestError({ message: "Unable to validate connection - check credentials" });
-
-      encryptedCredentials = await encryptAppConnectionCredentials({
-        credentials: validatedCredentials,
-        orgId: actor.orgId,
-        kmsService
-      });
     }
 
     try {
-      const updatedConnection = await appConnectionDAL.updateById(connectionId, {
-        orgId: actor.orgId,
-        encryptedCredentials,
-        ...params
-      });
+      const updateTransaction = (connectionCredentials: TAppConnection["credentials"] | undefined) =>
+        appConnectionDAL.transaction(async (tx) => {
+          const encryptedCredentials = connectionCredentials
+            ? await encryptAppConnectionCredentials({
+                credentials: connectionCredentials,
+                orgId: actor.orgId,
+                kmsService
+              })
+            : undefined;
+
+          return appConnectionDAL.updateById(
+            connectionId,
+            {
+              orgId: actor.orgId,
+              encryptedCredentials,
+              ...params
+            },
+            tx
+          );
+        });
+
+      let updatedConnection: TAppConnectionRaw;
+
+      if (params.isPlatformManagedCredentials) {
+        if (!updatedCredentials)
+          // prevent enabling platform managed credentials without re-confirming credentials
+          throw new BadRequestError({ message: "Credentials required to transition to platform managed credentials" });
+
+        updatedConnection = await TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM[app](
+          {
+            app,
+            orgId: actor.orgId,
+            credentials: updatedCredentials,
+            method
+          } as TAppConnectionConfig,
+          (platformCredentials) => updateTransaction(platformCredentials)
+        );
+      } else {
+        updatedConnection = await updateTransaction(updatedCredentials);
+      }
 
       return await decryptAppConnection(updatedConnection, kmsService);
     } catch (err) {

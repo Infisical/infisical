@@ -33,6 +33,7 @@ export const KeyStorePrefixes = {
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
+  SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
   SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,

@@ -18,6 +18,7 @@ import {
   faLock,
   faMinusSquare,
   faPlus,
+  faRotate,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -28,6 +29,7 @@ import { twMerge } from "tailwind-merge";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
 import {
   Button,
   DeleteActionModal,
@@ -52,6 +54,7 @@ import {
   useSubscription,
   useWorkspace
 } from "@app/context";
+import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
@@ -112,6 +115,7 @@ export const ActionBar = ({
     "addDynamicSecret",
     "addSecretImport",
     "bulkDeleteSecrets",
+    "addSecretRotation",
     "moveSecrets",
     "misc",
     "upgradePlan"
@@ -367,6 +371,23 @@ export const ActionBar = ({
               <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
+                  onToggleRowType(RowType.SecretRotation);
+                }}
+                icon={
+                  filter?.include[RowType.SecretRotation] && (
+                    <FontAwesomeIcon icon={faCheckCircle} />
+                  )
+                }
+                iconPos="right"
+              >
+                <div className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faRotate} className="text-mineshaft-400" />
+                  <span>Secret Rotations</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
                   onToggleRowType(RowType.Secret);
                 }}
                 icon={filter?.include[RowType.Secret] && <FontAwesomeIcon icon={faCheckCircle} />}
@@ -548,6 +569,33 @@ export const ActionBar = ({
                   )}
                 </ProjectPermissionCan>
                 <ProjectPermissionCan
+                  I={ProjectPermissionSecretRotationActions.Create}
+                  a={subject(ProjectPermissionSub.SecretRotation, {
+                    environment,
+                    secretPath
+                  })}
+                >
+                  {(isAllowed) => (
+                    <Button
+                      leftIcon={<FontAwesomeIcon icon={faRotate} className="pr-2" />}
+                      onClick={() => {
+                        if (subscription && subscription.secretRotation) {
+                          handlePopUpOpen("addSecretRotation");
+                          handlePopUpClose("misc");
+                          return;
+                        }
+                        handlePopUpOpen("upgradePlan");
+                      }}
+                      variant="outline_bg"
+                      className="h-10 text-left"
+                      isFullWidth
+                      isDisabled={!isAllowed}
+                    >
+                      Add Secret Rotation
+                    </Button>
+                  )}
+                </ProjectPermissionCan>
+                <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
                   a={subject(ProjectPermissionSub.SecretImports, {
                     environment,
@@ -658,6 +706,12 @@ export const ActionBar = ({
         environments={[{ slug: environment, name: environment, id: "not-used" }]}
         secretPath={secretPath}
         isSingleEnvironmentMode
+      />
+      <CreateSecretRotationV2Modal
+        secretPath={secretPath}
+        environment={environment}
+        isOpen={popUp.addSecretRotation.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addSecretRotation", isOpen)}
       />
       <Modal
         isOpen={popUp.addFolder.isOpen}

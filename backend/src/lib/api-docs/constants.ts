@@ -1,3 +1,8 @@
+import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
+import {
+  SECRET_ROTATION_CONNECTION_MAP,
+  SECRET_ROTATION_NAME_MAP
+} from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
@@ -817,7 +822,8 @@ export const DASHBOARD = {
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
-    includeImports: "Whether to include project secret imports in the response."
+    includeImports: "Whether to include project secret imports in the response.",
+    includeSecretRotations: "Whether to include project secret rotations in the response."
   },
   SECRET_DETAILS_LIST: {
     projectId: "The ID of the project to list secrets/folders from.",
@@ -832,7 +838,8 @@ export const DASHBOARD = {
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
     includeImports: "Whether to include project secret imports in the response.",
-    includeDynamicSecrets: "Whether to include dynamic project secrets in the response."
+    includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
+    includeSecretRotations: "Whether to include secret rotations in the response."
   }
 } as const;
 
@@ -1653,7 +1660,8 @@ export const AppConnections = {
       name: `The name of the ${appName} Connection to create. Must be slug-friendly.`,
       description: `An optional description for the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
-      method: `The method used to authenticate with ${appName}.`
+      method: `The method used to authenticate with ${appName}.`,
+      isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`
     };
   },
   UPDATE: (app: AppConnection) => {
@@ -1663,12 +1671,23 @@ export const AppConnections = {
       name: `The updated name of the ${appName} Connection. Must be slug-friendly.`,
       description: `The updated description of the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
-      method: `The method used to authenticate with ${appName}.`
+      method: `The method used to authenticate with ${appName}.`,
+      isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`
     };
   },
   DELETE: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to be deleted.`
-  })
+  }),
+  CREDENTIALS: {
+    SQL_CONNECTION: {
+      host: "The hostname of the database server.",
+      port: "The port number of the database.",
+      database: "The name of the database to connect to.",
+      username: "The username to connect to the database with.",
+      password: "The password to connect to the database with.",
+      sslCertificate: "The SSL certificate to use for connection."
+    }
+  }
 };
 
 export const SecretSyncs = {
@@ -1782,6 +1801,73 @@ export const SecretSyncs = {
       org: "The ID of the Humanitec org to sync secrets to.",
       env: "The ID of the Humanitec environment to sync secrets to.",
       scope: "The Humanitec scope that secrets should be synced to."
+    }
+  }
+};
+
+export const SecretRotations = {
+  LIST: (type?: SecretRotation) => ({
+    projectId: `The ID of the project to list ${type ? SECRET_ROTATION_NAME_MAP[type] : "Secret"} Rotations from.`
+  }),
+  GET_BY_ID: (type: SecretRotation) => ({
+    rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to retrieve.`
+  }),
+  GET_GENERATED_CREDENTIALS_BY_ID: (type: SecretRotation) => ({
+    rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to retrieve the generated credentials for.`
+  }),
+  GET_BY_NAME: (type: SecretRotation) => ({
+    rotationName: `The name of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to retrieve.`,
+    projectId: `The ID of the project the ${SECRET_ROTATION_NAME_MAP[type]} Rotation is located in.`,
+    secretPath: `The secret path the ${SECRET_ROTATION_NAME_MAP[type]} Rotation is located at.`,
+    environment: `The environment the ${SECRET_ROTATION_NAME_MAP[type]} Rotation is located in.`
+  }),
+  CREATE: (type: SecretRotation) => {
+    const destinationName = SECRET_ROTATION_NAME_MAP[type];
+    return {
+      name: `The name of the ${destinationName} Rotation to create. Must be slug-friendly.`,
+      description: `An optional description for the ${destinationName} Rotation.`,
+      projectId: "The ID of the project to create the rotation in.",
+      environment: `The slug of the project environment to create the rotation in.`,
+      secretPath: `The secret path of the project to create the rotation in.`,
+      connectionId: `The ID of the ${
+        APP_CONNECTION_NAME_MAP[SECRET_ROTATION_CONNECTION_MAP[type]]
+      } Connection to use for rotation.`,
+      isAutoRotationEnabled: `Whether secrets should be automatically rotated when the specified rotation interval has elapsed.`,
+      rotationInterval: `The interval, in days, to automatically rotate secrets.`,
+      rotateAtUtc: `The hours and minutes rotation should occur at in UTC. Defaults to Midnight (00:00) UTC.`
+    };
+  },
+  UPDATE: (type: SecretRotation) => {
+    const typeName = SECRET_ROTATION_NAME_MAP[type];
+    return {
+      rotationId: `The ID of the ${typeName} Rotation to be updated.`,
+      name: `The updated name of the ${typeName} Rotation. Must be slug-friendly.`,
+      description: `The updated description of the ${typeName} Rotation.`,
+      isAutoRotationEnabled: `Whether secrets should be automatically rotated when the specified rotation interval has elapsed.`,
+      rotationInterval: `The updated interval, in days, to automatically rotate secrets.`,
+      rotateAtUtc: `The updated hours and minutes rotation should occur at in UTC.`
+    };
+  },
+  DELETE: (type: SecretRotation) => ({
+    rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to be deleted.`,
+    deleteSecrets: `Whether the mapped secrets belonging to this rotation should be deleted.`,
+    revokeGeneratedCredentials: `Whether the generated credentials associated with this rotation should be revoked.`
+  }),
+  ROTATE: (type: SecretRotation) => ({
+    rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to rotate generated credentials for.`
+  }),
+  PARAMETERS: {
+    SQL_CREDENTIALS: {
+      username1:
+        "The username of the first login to rotate passwords for. This user must already exists in your database.",
+      username2:
+        "The username of the second login to rotate passwords for. This user must already exists in your database."
+    }
+  },
+  SECRETS_MAPPING: {
+    SQL_CREDENTIALS: {
+      username: "The name of the secret that the active username will be mapped to.",
+      password: "The name of the secret that the generated password will be mapped to."
     }
   }
 };

@@ -48,6 +48,8 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { Blur } from "@app/components/v2/Blur";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faKey, faRotate } from "@fortawesome/free-solid-svg-icons";
 import {
   FontAwesomeSpriteName,
   formSchema,
@@ -91,6 +93,7 @@ export const SecretItem = memo(
   }: Props) => {
     const { currentWorkspace } = useWorkspace();
     const { permission } = useProjectPermission();
+    const { isRotatedSecret } = secret;
 
     const {
       handleSubmit,
@@ -151,7 +154,6 @@ export const SecretItem = memo(
           secretTags: selectedTagSlugs
         })
       );
-
     const { secretValueHidden } = secret;
 
     const [isSecValueCopied, setIsSecValueCopied] = useToggle(false);
@@ -221,29 +223,43 @@ export const SecretItem = memo(
         <div
           className={twMerge(
             "border-b border-mineshaft-600 bg-mineshaft-800 shadow-none hover:bg-mineshaft-700",
-            isDirty && "border-primary-400/50"
+            isDirty && "border-primary-400/50",
+            isRotatedSecret && "bg-mineshaft-700/60"
           )}
         >
           <div className="group flex">
             <div
               className={twMerge(
-                "flex h-11 w-11 items-center justify-center px-4 py-3",
+                "flex h-11 w-11 items-center justify-center px-4 py-3 text-mineshaft-300",
                 isDirty && "text-primary"
               )}
             >
-              <Checkbox
-                id={`checkbox-${secret.id}`}
-                isChecked={isSelected}
-                onCheckedChange={() => onToggleSecretSelect(secret)}
-                className={twMerge("ml-3 hidden group-hover:flex", isSelected && "flex")}
-              />
-              <FontAwesomeSymbol
-                className={twMerge(
-                  "ml-3 block h-3.5 w-3.5 group-hover:hidden",
-                  isSelected && "hidden"
-                )}
-                symbolName={FontAwesomeSpriteName.SecretKey}
-              />
+              {secret.isRotatedSecret ? (
+                <div className="relative">
+                  <FontAwesomeIcon icon={faKey} size="xs" className={twMerge("ml-3 h-3.5 w-3.5")} />
+                  <FontAwesomeIcon
+                    icon={faRotate}
+                    size="xs"
+                    className="absolute -bottom-[0.05rem] -right-[0.2rem] text-mineshaft-400"
+                  />
+                </div>
+              ) : (
+                <>
+                  <Checkbox
+                    id={`checkbox-${secret.id}`}
+                    isChecked={isSelected}
+                    onCheckedChange={() => onToggleSecretSelect(secret)}
+                    className={twMerge("ml-3 hidden group-hover:flex", isSelected && "flex")}
+                  />
+                  <FontAwesomeSymbol
+                    className={twMerge(
+                      "ml-3 block h-3.5 w-3.5 group-hover:hidden",
+                      isSelected && "hidden"
+                    )}
+                    symbolName={FontAwesomeSpriteName.SecretKey}
+                  />
+                </>
+              )}
             </div>
             <div className="flex h-11 w-80 flex-shrink-0 items-center px-4 py-2">
               <Controller
@@ -252,7 +268,7 @@ export const SecretItem = memo(
                 render={({ field, fieldState: { error } }) => (
                   <Input
                     autoComplete="off"
-                    isReadOnly={isReadOnly}
+                    isReadOnly={isReadOnly || isRotatedSecret}
                     autoCapitalization={currentWorkspace?.autoCapitalization}
                     variant="plain"
                     isDisabled={isOverriden}
@@ -294,7 +310,7 @@ export const SecretItem = memo(
                   control={control}
                   render={({ field }) => (
                     <InfisicalSecretInput
-                      isReadOnly={isReadOnly}
+                      isReadOnly={isReadOnly || isRotatedSecret}
                       key="secret-value"
                       isVisible={isVisible}
                       environment={environment}
@@ -582,7 +598,7 @@ export const SecretItem = memo(
                       secretTags: selectedTagSlugs
                     })}
                     renderTooltip
-                    allowedLabel="Delete"
+                    allowedLabel={isRotatedSecret ? "Cannot Delete Rotated Secret" : "Delete"} // just using label for isRotatedSecret, disabled below
                   >
                     {(isAllowed) => (
                       <IconButton
@@ -592,7 +608,7 @@ export const SecretItem = memo(
                         size="md"
                         className="p-0 opacity-0 group-hover:opacity-100"
                         onClick={() => onDeleteSecret(secret)}
-                        isDisabled={!isAllowed}
+                        isDisabled={!isAllowed || isRotatedSecret}
                       >
                         <FontAwesomeSymbol
                           symbolName={FontAwesomeSpriteName.Close}

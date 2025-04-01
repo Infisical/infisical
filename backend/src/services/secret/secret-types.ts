@@ -297,7 +297,7 @@ export type TUpdateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   secrets: {
     secretKey: string;
     newSecretName?: string;
-    secretValue: string;
+    secretValue?: string;
     secretComment?: string;
     skipMultilineEncoding?: boolean;
     tagIds?: string[];

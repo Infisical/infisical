@@ -11,15 +11,19 @@ import {
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Button,
   DeleteActionModal,
   EmptyState,
   IconButton,
+  Modal,
+  ModalContent,
   PageHeader,
   Skeleton,
   Spinner,
@@ -33,13 +37,9 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useProjectPermission,
-  useSubscription,
-  useWorkspace
-} from "@app/context";
+import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
+import { ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteSecretRotation,
@@ -47,26 +47,20 @@ import {
   useGetSecretRotations,
   useRestartSecretRotation
 } from "@app/hooks/api";
-import { TSecretRotationProviderTemplate } from "@app/hooks/api/types";
-
-import { CreateRotationForm } from "./components/CreateRotationForm";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const Page = () => {
   const { currentWorkspace } = useWorkspace();
-  const { permission } = useProjectPermission();
+
+  const navigate = useNavigate();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
-    "createRotation",
     "activeBot",
     "deleteRotation",
-    "upgradePlan"
+    "upgradePlan",
+    "secretRotationV2"
   ] as const);
   const workspaceId = currentWorkspace?.id || "";
-  const canCreateRotation = permission.can(
-    ProjectPermissionActions.Create,
-    ProjectPermissionSub.SecretRotation
-  );
-  const { subscription } = useSubscription();
 
   const { data: secretRotationProviders, isPending: isRotationProviderLoading } =
     useGetSecretRotationProviders({ workspaceId });
@@ -125,18 +119,6 @@ const Page = () => {
     }
   };
 
-  const handleCreateRotation = async (provider: TSecretRotationProviderTemplate) => {
-    if (subscription && !subscription?.secretRotation) {
-      handlePopUpOpen("upgradePlan");
-      return;
-    }
-    if (!canCreateRotation) {
-      createNotification({ type: "error", text: "Access permission denied!!" });
-      return;
-    }
-    handlePopUpOpen("createRotation", provider);
-  };
-
   return (
     <div className="container mx-auto w-full max-w-7xl bg-bunker-800 text-white">
       <PageHeader
@@ -157,6 +139,22 @@ const Page = () => {
           </span>
         </a>
       </PageHeader>
+      <NoticeBannerV2 title="Secret Rotations Update">
+        <p className="text-sm text-bunker-200">
+          Infisical is revamping it&#39;s Secret Rotation experience.
+        </p>
+        <p className="mt-2 text-sm text-bunker-200">
+          Secret Rotations can now be created from the{" "}
+          <Link
+            className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
+            to={`/${ProjectType.SecretManager}/$projectId/overview` as const}
+            params={{ projectId: currentWorkspace.id }}
+          >
+            Secret Manager Dashboard
+          </Link>{" "}
+          from the actions dropdown.
+        </p>
+      </NoticeBannerV2>
       <div className="mb-6">
         <div className="mb-2 mt-6 text-xl font-semibold text-gray-200">Rotated Secrets</div>
         <div className="flex flex-col space-y-2">
@@ -241,7 +239,7 @@ const Page = () => {
                         <Td>
                           <div className="flex justify-end space-x-2">
                             <ProjectPermissionCan
-                              I={ProjectPermissionActions.Edit}
+                              I={ProjectPermissionSecretRotationActions.Edit}
                               a={ProjectPermissionSub.SecretRotation}
                               allowedLabel="Rotate now"
                               renderTooltip
@@ -263,7 +261,7 @@ const Page = () => {
                               )}
                             </ProjectPermissionCan>
                             <ProjectPermissionCan
-                              I={ProjectPermissionActions.Delete}
+                              I={ProjectPermissionSecretRotationActions.Delete}
                               a={ProjectPermissionSub.SecretRotation}
                               allowedLabel="Rotate now"
                               renderTooltip
@@ -310,10 +308,12 @@ const Page = () => {
               key={`infisical-rotation-provider-${provider.name}`}
               tabIndex={0}
               role="button"
-              onKeyDown={(evt) => {
-                if (evt.key === "Enter") handlePopUpOpen("createRotation", provider);
+              onKeyDown={() => {
+                handlePopUpOpen("secretRotationV2", provider.title);
               }}
-              onClick={() => handleCreateRotation(provider)}
+              onClick={() => {
+                handlePopUpOpen("secretRotationV2", provider.title);
+              }}
             >
               <img
                 src={`/images/secretRotation/${provider.image}`}
@@ -344,12 +344,6 @@ const Page = () => {
           </div>
         </a>
       </div>
-      <CreateRotationForm
-        isOpen={popUp.createRotation.isOpen}
-        workspaceId={workspaceId}
-        onToggle={(isOpen) => handlePopUpToggle("createRotation", isOpen)}
-        provider={(popUp.createRotation.data as TSecretRotationProviderTemplate) || {}}
-      />
       <DeleteActionModal
         isOpen={popUp.deleteRotation.isOpen}
         title="Are you sure want to delete this rotation?"
@@ -363,6 +357,45 @@ const Page = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You can add secret rotation if you switch to Infisical's Team plan."
       />
+      <Modal
+        isOpen={popUp.secretRotationV2.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("secretRotationV2", isOpen)}
+      >
+        <ModalContent className="max-w-5xl" title="Secret Rotation Update">
+          <div className="flex flex-col gap-2">
+            <p className="text-mineshaft-200">
+              Infisical is revamping it&#39;s Secret Rotation experience. Navigate to the{" "}
+              <Link
+                className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
+                to={`/${ProjectType.SecretManager}/$projectId/overview` as const}
+                params={{ projectId: currentWorkspace.id }}
+              >
+                Secret Manager Dashboard
+              </Link>{" "}
+              to create a Secret Rotations.
+            </p>
+            <div className="overflow-clip rounded border border-mineshaft-600">
+              <img
+                src="/images/secretRotation/secret-rotations-v2-location.png"
+                alt="Secret Rotation V2 location"
+              />
+            </div>
+            <div className="mt-2 flex gap-2">
+              <Button
+                onClick={() =>
+                  navigate({
+                    to: `/${ProjectType.SecretManager}/$projectId/overview` as const,
+                    params: { projectId: currentWorkspace.id }
+                  })
+                }
+                colorSchema="secondary"
+              >
+                Navigate to Secret Manager
+              </Button>
+            </div>
+          </div>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };
@@ -377,7 +410,7 @@ export const SecretRotationPage = () => {
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
       <ProjectPermissionCan
-        I={ProjectPermissionActions.Read}
+        I={ProjectPermissionSecretRotationActions.Read}
         a={ProjectPermissionSub.SecretRotation}
         passThrough={false}
         renderGuardBanner

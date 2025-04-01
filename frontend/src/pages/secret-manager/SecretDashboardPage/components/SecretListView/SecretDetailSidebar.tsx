@@ -366,7 +366,7 @@ export const SecretDetailSidebar = ({
                             >
                               <div className="flex items-center gap-2">
                                 <InfisicalSecretInput
-                                  isReadOnly={isReadOnly || !isAllowed}
+                                  isReadOnly={isReadOnly || !isAllowed || secret?.isRotatedSecret}
                                   environment={environment}
                                   secretPath={secretPath}
                                   key="secret-value"
@@ -881,21 +881,23 @@ export const SecretDetailSidebar = ({
                             </div>
                           </div>
                         </div>
-                        <div
-                          className={`flex items-center justify-center ${version === secretVersion.length ? "hidden" : ""}`}
-                        >
-                          <Tooltip content="Restore Secret Value">
-                            <IconButton
-                              ariaLabel="Restore"
-                              variant="outline_bg"
-                              size="sm"
-                              className="h-8 w-8 rounded-md"
-                              onClick={() => setValue("value", secretValue)}
-                            >
-                              <FontAwesomeIcon icon={faArrowRotateRight} />
-                            </IconButton>
-                          </Tooltip>
-                        </div>
+                        {!secret?.isRotatedSecret && (
+                          <div
+                            className={`flex items-center justify-center ${version === secretVersion.length ? "hidden" : ""}`}
+                          >
+                            <Tooltip content="Restore Secret Value">
+                              <IconButton
+                                ariaLabel="Restore"
+                                variant="outline_bg"
+                                size="sm"
+                                className="h-8 w-8 rounded-md"
+                                onClick={() => setValue("value", secretValue)}
+                              >
+                                <FontAwesomeIcon icon={faArrowRotateRight} />
+                              </IconButton>
+                            </Tooltip>
+                          </div>
+                        )}
                       </div>
                     )
                   )}

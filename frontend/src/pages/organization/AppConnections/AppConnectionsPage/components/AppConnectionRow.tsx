@@ -6,6 +6,7 @@ import {
   faEdit,
   faEllipsisV,
   faInfoCircle,
+  faServer,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -14,6 +15,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -42,7 +44,7 @@ export const AppConnectionRow = ({
   onEditCredentials,
   onEditDetails
 }: Props) => {
-  const { id, name, method, app, description } = appConnection;
+  const { id, name, method, app, description, isPlatformManagedCredentials } = appConnection;
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
@@ -100,70 +102,82 @@ export const AppConnectionRow = ({
       </Td>
 
       <Td>
-        <Tooltip className="max-w-sm text-center" content="Options">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton
-                ariaLabel="Options"
-                colorSchema="secondary"
-                className="w-6"
-                variant="plain"
-              >
-                <FontAwesomeIcon icon={faEllipsisV} />
-              </IconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
-                onClick={() => handleCopyId()}
-              >
-                Copy Connection ID
-              </DropdownMenuItem>
-              <OrgPermissionCan
-                I={OrgPermissionAppConnectionActions.Edit}
-                a={OrgPermissionSubjects.AppConnections}
-              >
-                {(isAllowed: boolean) => (
-                  <DropdownMenuItem
-                    isDisabled={!isAllowed}
-                    icon={<FontAwesomeIcon icon={faEdit} />}
-                    onClick={() => onEditDetails(appConnection)}
-                  >
-                    Edit Details
-                  </DropdownMenuItem>
-                )}
-              </OrgPermissionCan>
-              <OrgPermissionCan
-                I={OrgPermissionAppConnectionActions.Edit}
-                a={OrgPermissionSubjects.AppConnections}
-              >
-                {(isAllowed: boolean) => (
-                  <DropdownMenuItem
-                    isDisabled={!isAllowed}
-                    icon={<FontAwesomeIcon icon={faAsterisk} />}
-                    onClick={() => onEditCredentials(appConnection)}
-                  >
-                    Edit Credentials
-                  </DropdownMenuItem>
-                )}
-              </OrgPermissionCan>
-              <OrgPermissionCan
-                I={OrgPermissionAppConnectionActions.Delete}
-                a={OrgPermissionSubjects.AppConnections}
-              >
-                {(isAllowed: boolean) => (
-                  <DropdownMenuItem
-                    isDisabled={!isAllowed}
-                    icon={<FontAwesomeIcon icon={faTrash} />}
-                    onClick={() => onDelete(appConnection)}
-                  >
-                    Delete Connection
-                  </DropdownMenuItem>
-                )}
-              </OrgPermissionCan>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </Tooltip>
+        <div className="flex items-center justify-end gap-2">
+          {isPlatformManagedCredentials && (
+            <Tooltip side="left" content="This connection's credentials are managed by Infisical.">
+              <div>
+                <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
+                  <FontAwesomeIcon icon={faServer} />
+                  <span>Platform Managed Credentials</span>
+                </Badge>
+              </div>
+            </Tooltip>
+          )}
+          <Tooltip className="max-w-sm text-center" content="Options">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  ariaLabel="Options"
+                  colorSchema="secondary"
+                  className="w-6"
+                  variant="plain"
+                >
+                  <FontAwesomeIcon icon={faEllipsisV} />
+                </IconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
+                  onClick={() => handleCopyId()}
+                >
+                  Copy Connection ID
+                </DropdownMenuItem>
+                <OrgPermissionCan
+                  I={OrgPermissionAppConnectionActions.Edit}
+                  a={OrgPermissionSubjects.AppConnections}
+                >
+                  {(isAllowed: boolean) => (
+                    <DropdownMenuItem
+                      isDisabled={!isAllowed}
+                      icon={<FontAwesomeIcon icon={faEdit} />}
+                      onClick={() => onEditDetails(appConnection)}
+                    >
+                      Edit Details
+                    </DropdownMenuItem>
+                  )}
+                </OrgPermissionCan>
+                <OrgPermissionCan
+                  I={OrgPermissionAppConnectionActions.Edit}
+                  a={OrgPermissionSubjects.AppConnections}
+                >
+                  {(isAllowed: boolean) => (
+                    <DropdownMenuItem
+                      isDisabled={!isAllowed}
+                      icon={<FontAwesomeIcon icon={faAsterisk} />}
+                      onClick={() => onEditCredentials(appConnection)}
+                    >
+                      {isPlatformManagedCredentials ? "View" : "Edit"} Credentials
+                    </DropdownMenuItem>
+                  )}
+                </OrgPermissionCan>
+                <OrgPermissionCan
+                  I={OrgPermissionAppConnectionActions.Delete}
+                  a={OrgPermissionSubjects.AppConnections}
+                >
+                  {(isAllowed: boolean) => (
+                    <DropdownMenuItem
+                      isDisabled={!isAllowed}
+                      icon={<FontAwesomeIcon icon={faTrash} />}
+                      onClick={() => onDelete(appConnection)}
+                    >
+                      Delete Connection
+                    </DropdownMenuItem>
+                  )}
+                </OrgPermissionCan>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Tooltip>
+        </div>
       </Td>
     </Tr>
   );

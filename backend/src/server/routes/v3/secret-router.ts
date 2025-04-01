@@ -7,6 +7,7 @@ import { RAW_SECRETS, SECRETS } from "@app/lib/api-docs";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -38,13 +39,6 @@ type TSecretReferenceNode = z.infer<typeof SecretReferenceNode> & { children: TS
 const SecretReferenceNodeTree: z.ZodType<TSecretReferenceNode> = SecretReferenceNode.extend({
   children: z.lazy(() => SecretReferenceNodeTree.array())
 });
-
-const BaseSecretNameSchema = z.string().trim().min(1);
-
-const SecretNameSchema = BaseSecretNameSchema.refine(
-  (el) => !el.includes(" "),
-  "Secret name cannot contain spaces."
-).refine((el) => !el.includes(":"), "Secret name cannot contain colon.");
 
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -630,6 +624,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretValue: z
           .string()
           .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+          .optional()
           .describe(RAW_SECRETS.UPDATE.secretValue),
         secretPath: z
           .string()
@@ -2049,6 +2044,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretValue: z
               .string()
               .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+              .optional()
               .describe(RAW_SECRETS.UPDATE.secretValue),
             secretPath: z
               .string()
