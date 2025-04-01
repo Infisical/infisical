@@ -646,6 +646,10 @@ export const secretQueueFactory = ({
       }
     );
 
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    if (!folder) return;
+    await folderDAL.updateById(folder.id, { lastSecretModified: new Date() });
+
     await secretSyncQueue.queueSecretSyncsSyncSecretsByPath({ projectId, environmentSlug: environment, secretPath });
 
     await syncIntegrations({ secretPath, projectId, environment, deDupeQueue, isManual: false });
