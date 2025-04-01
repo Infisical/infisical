@@ -1,10 +1,12 @@
 import { Fragment } from "react";
 import { faFile, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import {
   Button,
   EmptyState,
+  Spinner,
   Table,
   TableContainer,
   TableSkeleton,
@@ -52,7 +54,9 @@ export const LogsTable = ({ filter, refetchInterval }: Props) => {
         <Table>
           <THead>
             <Tr>
-              <Th className="w-24" />
+              <Th className="w-24">
+                <Spinner size="xs" className={twMerge(isPending ? "opacity-100" : "opacity-0")} />
+              </Th>
               <Th className="w-64">
                 Timestamp
                 <Tooltip
@@ -94,7 +98,7 @@ export const LogsTable = ({ filter, refetchInterval }: Props) => {
         <Button
           className="mb-20 mt-4 px-4 py-3 text-sm"
           isFullWidth
-          variant="star"
+          variant="outline_bg"
           isLoading={isFetchingNextPage}
           isDisabled={isFetchingNextPage || !hasNextPage}
           onClick={() => fetchNextPage()}

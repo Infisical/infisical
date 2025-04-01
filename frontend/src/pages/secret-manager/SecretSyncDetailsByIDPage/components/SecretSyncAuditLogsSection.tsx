@@ -41,7 +41,6 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
             startDate: new Date(new Date().setDate(new Date().getDate() - auditLogsRetentionDays)),
             eventType: INTEGRATION_EVENTS
           }}
-          filterClassName="bg-mineshaft-900 static"
         />
       ) : (
         <div className="flex h-full items-center justify-center rounded-lg bg-mineshaft-800 text-sm text-mineshaft-200">
