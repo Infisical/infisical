@@ -8,12 +8,50 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	authenticationv1 "k8s.io/api/authentication/v1"
+
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
+	"github.com/aws/smithy-go/ptr"
 	infisicalSdk "github.com/infisical/go-sdk"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func GetServiceAccountToken(k8sClient client.Client, namespace string, serviceAccountName string) (string, error) {
+func GetServiceAccountToken(k8sClient client.Client, namespace string, serviceAccountName string, autoCreateServiceAccountToken bool, serviceAccountTokenAudiences []string) (string, error) {
+
+	if autoCreateServiceAccountToken {
+		if len(serviceAccountTokenAudiences) == 0 {
+			return "", fmt.Errorf("serviceAccountTokenAudiences is required when autoCreateServiceAccountToken is true")
+		}
+
+		restClient, err := GetRestClientFromClient()
+		if err != nil {
+			return "", fmt.Errorf("failed to get REST client: %w", err)
+		}
+
+		tokenRequest := &authenticationv1.TokenRequest{
+			Spec: authenticationv1.TokenRequestSpec{
+				Audiences:         serviceAccountTokenAudiences,
+				ExpirationSeconds: ptr.Int64(600), // 10 minutes. the token only needs to be valid for when we do the initial k8s login.
+			},
+		}
+
+		result := &authenticationv1.TokenRequest{}
+		err = restClient.
+			Post().
+			Namespace(namespace).
+			Resource("serviceaccounts").
+			Name(serviceAccountName).
+			SubResource("token").
+			Body(tokenRequest).
+			Do(context.Background()).
+			Into(result)
+
+		if err != nil {
+			return "", fmt.Errorf("failed to create token: %w", err)
+		}
+
+		return result.Status.Token, nil
+	}
 
 	serviceAccount := &corev1.ServiceAccount{}
 	err := k8sClient.Get(context.TODO(), client.ObjectKey{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
@@ -172,7 +210,9 @@ func HandleKubernetesAuth(ctx context.Context, reconcilerClient client.Client, s
 				Namespace: infisicalPushSecret.Spec.Authentication.KubernetesAuth.ServiceAccountRef.Namespace,
 				Name:      infisicalPushSecret.Spec.Authentication.KubernetesAuth.ServiceAccountRef.Name,
 			},
-			SecretsScope: v1alpha1.MachineIdentityScopeInWorkspace{},
+			SecretsScope:                  v1alpha1.MachineIdentityScopeInWorkspace{},
+			AutoCreateServiceAccountToken: infisicalPushSecret.Spec.Authentication.KubernetesAuth.AutoCreateServiceAccountToken,
+			ServiceAccountTokenAudiences:  infisicalPushSecret.Spec.Authentication.KubernetesAuth.ServiceAccountTokenAudiences,
 		}
 
 	case SecretCrd.INFISICAL_DYNAMIC_SECRET:
@@ -188,7 +228,9 @@ func HandleKubernetesAuth(ctx context.Context, reconcilerClient client.Client, s
 				Namespace: infisicalDynamicSecret.Spec.Authentication.KubernetesAuth.ServiceAccountRef.Namespace,
 				Name:      infisicalDynamicSecret.Spec.Authentication.KubernetesAuth.ServiceAccountRef.Name,
 			},
-			SecretsScope: v1alpha1.MachineIdentityScopeInWorkspace{},
+			SecretsScope:                  v1alpha1.MachineIdentityScopeInWorkspace{},
+			AutoCreateServiceAccountToken: infisicalDynamicSecret.Spec.Authentication.KubernetesAuth.AutoCreateServiceAccountToken,
+			ServiceAccountTokenAudiences:  infisicalDynamicSecret.Spec.Authentication.KubernetesAuth.ServiceAccountTokenAudiences,
 		}
 	}
 
@@ -196,7 +238,14 @@ func HandleKubernetesAuth(ctx context.Context, reconcilerClient client.Client, s
 		return AuthenticationDetails{}, ErrAuthNotApplicable
 	}
 
-	serviceAccountToken, err := GetServiceAccountToken(reconcilerClient, kubernetesAuthSpec.ServiceAccountRef.Namespace, kubernetesAuthSpec.ServiceAccountRef.Name)
+	serviceAccountToken, err := GetServiceAccountToken(
+		reconcilerClient,
+		kubernetesAuthSpec.ServiceAccountRef.Namespace,
+		kubernetesAuthSpec.ServiceAccountRef.Name,
+		kubernetesAuthSpec.AutoCreateServiceAccountToken,
+		kubernetesAuthSpec.ServiceAccountTokenAudiences,
+	)
+
 	if err != nil {
 		return AuthenticationDetails{}, fmt.Errorf("unable to get service account token [err=%s]", err)
 	}
