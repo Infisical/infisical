@@ -29,9 +29,6 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
       </div>
       <LogsSection
         refetchInterval={4000}
-        remappedHeaders={{
-          Metadata: "Sync Status"
-        }}
         showFilters={false}
         presets={{
           eventMetadata: { integrationId: integration.id },

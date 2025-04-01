@@ -18,7 +18,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
 import { useDeleteGroup } from "@app/hooks/api";
 import { useGetGroupById } from "@app/hooks/api/groups/queries";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -93,7 +93,10 @@ const Page = () => {
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="p-1">
-                <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Groups}>
+                <OrgPermissionCan
+                  I={OrgPermissionGroupActions.Edit}
+                  a={OrgPermissionSubjects.Groups}
+                >
                   {(isAllowed) => (
                     <DropdownMenuItem
                       className={twMerge(
@@ -113,7 +116,10 @@ const Page = () => {
                     </DropdownMenuItem>
                   )}
                 </OrgPermissionCan>
-                <OrgPermissionCan I={OrgPermissionActions.Delete} a={OrgPermissionSubjects.Groups}>
+                <OrgPermissionCan
+                  I={OrgPermissionGroupActions.Delete}
+                  a={OrgPermissionSubjects.Groups}
+                >
                   {(isAllowed) => (
                     <DropdownMenuItem
                       className={twMerge(
@@ -179,7 +185,7 @@ export const GroupDetailsByIDPage = () => {
       </Helmet>
       <OrgPermissionCan
         passThrough={false}
-        I={OrgPermissionActions.Read}
+        I={OrgPermissionGroupActions.Read}
         a={OrgPermissionSubjects.Groups}
       >
         <Page />

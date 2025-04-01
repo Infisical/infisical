@@ -923,16 +923,14 @@ const getAppsCodefresh = async ({ accessToken }: { accessToken: string }) => {
 /**
  * Return list of projects for Windmill integration
  */
-const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
-  const { data } = await request.get<{ id: string; name: string }[]>(
-    `${IntegrationUrls.WINDMILL_API_URL}/workspaces/list`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "application/json"
-      }
+const getAppsWindmill = async ({ accessToken, url }: { accessToken: string; url?: string | null }) => {
+  const apiUrl = url ? `${url}/api` : IntegrationUrls.WINDMILL_API_URL;
+  const { data } = await request.get<{ id: string; name: string }[]>(`${apiUrl}/workspaces/list`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Accept-Encoding": "application/json"
     }
-  );
+  });
 
   // check for write access of secrets in windmill workspaces
   const writeAccessCheck = data.map(async (app) => {
@@ -941,7 +939,7 @@ const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
       const folderPath = "f/folder/variable";
 
       const { data: writeUser } = await request.post<object>(
-        `${IntegrationUrls.WINDMILL_API_URL}/w/${app.id}/variables/create`,
+        `${apiUrl}/w/${app.id}/variables/create`,
         {
           path: userPath,
           value: "variable",
@@ -957,7 +955,7 @@ const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
       );
 
       const { data: writeFolder } = await request.post<object>(
-        `${IntegrationUrls.WINDMILL_API_URL}/w/${app.id}/variables/create`,
+        `${apiUrl}/w/${app.id}/variables/create`,
         {
           path: folderPath,
           value: "variable",
@@ -974,14 +972,14 @@ const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
 
       // is write access is allowed then delete the created secrets from workspace
       if (writeUser && writeFolder) {
-        await request.delete(`${IntegrationUrls.WINDMILL_API_URL}/w/${app.id}/variables/delete/${userPath}`, {
+        await request.delete(`${apiUrl}/w/${app.id}/variables/delete/${userPath}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "Accept-Encoding": "application/json"
           }
         });
 
-        await request.delete(`${IntegrationUrls.WINDMILL_API_URL}/w/${app.id}/variables/delete/${folderPath}`, {
+        await request.delete(`${apiUrl}/w/${app.id}/variables/delete/${folderPath}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "Accept-Encoding": "application/json"
@@ -1316,7 +1314,8 @@ export const getApps = async ({
 
     case Integrations.WINDMILL:
       return getAppsWindmill({
-        accessToken
+        accessToken,
+        url
       });
 
     case Integrations.DIGITAL_OCEAN_APP_PLATFORM:

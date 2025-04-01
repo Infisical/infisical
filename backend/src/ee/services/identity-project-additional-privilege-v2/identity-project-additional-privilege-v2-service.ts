@@ -2,16 +2,17 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
-import { validatePermissionBoundary } from "@app/lib/casl/boundary";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
+import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TIdentityProjectAdditionalPrivilegeV2DALFactory } from "./identity-project-additional-privilege-v2-dal";
 import {
   IdentityProjectAdditionalPrivilegeTemporaryMode,
@@ -64,10 +65,10 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
+      ProjectPermissionIdentityActions.Edit,
       subject(ProjectPermissionSub.Identity, { identityId })
     );
-    const { permission: targetIdentityPermission } = await permissionService.getProjectPermission({
+    const { permission: targetIdentityPermission, membership } = await permissionService.getProjectPermission({
       actor: ActorType.IDENTITY,
       actorId: identityId,
       projectId: identityProjectMembership.projectId,
@@ -79,13 +80,26 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
     // we need to validate that the privilege given is not higher than the assigning users permission
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetIdentityPermission.update(targetIdentityPermission.rules.concat(customPermission));
-    const permissionBoundary = validatePermissionBoundary(permission, targetIdentityPermission);
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      ProjectPermissionIdentityActions.GrantPrivileges,
+      ProjectPermissionSub.Identity,
+      permission,
+      targetIdentityPermission
+    );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
-        message: "Failed to update more privileged identity",
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to update more privileged identity",
+          membership.shouldUseNewPrivilegeSystem,
+          ProjectPermissionIdentityActions.GrantPrivileges,
+          ProjectPermissionSub.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
+    validateHandlebarTemplate("Identity Additional Privilege Create", JSON.stringify(customPermission || []), {
+      allowedExpressions: (val) => val.includes("identity.")
+    });
 
     const existingSlug = await identityProjectAdditionalPrivilegeDAL.findOne({
       slug,
@@ -150,10 +164,10 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
+      ProjectPermissionIdentityActions.Edit,
       subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
     );
-    const { permission: targetIdentityPermission } = await permissionService.getProjectPermission({
+    const { permission: targetIdentityPermission, membership } = await permissionService.getProjectPermission({
       actor: ActorType.IDENTITY,
       actorId: identityProjectMembership.identityId,
       projectId: identityProjectMembership.projectId,
@@ -165,13 +179,27 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
     // we need to validate that the privilege given is not higher than the assigning users permission
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetIdentityPermission.update(targetIdentityPermission.rules.concat(data.permissions || []));
-    const permissionBoundary = validatePermissionBoundary(permission, targetIdentityPermission);
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      ProjectPermissionIdentityActions.GrantPrivileges,
+      ProjectPermissionSub.Identity,
+      permission,
+      targetIdentityPermission
+    );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
-        message: "Failed to update more privileged identity",
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to update more privileged identity",
+          membership.shouldUseNewPrivilegeSystem,
+          ProjectPermissionIdentityActions.GrantPrivileges,
+          ProjectPermissionSub.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
+
+    validateHandlebarTemplate("Identity Additional Privilege Update", JSON.stringify(data.permissions || []), {
+      allowedExpressions: (val) => val.includes("identity.")
+    });
 
     if (data?.slug) {
       const existingSlug = await identityProjectAdditionalPrivilegeDAL.findOne({
@@ -227,7 +255,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
         message: `Failed to find identity with membership ${identityPrivilege.projectMembershipId}`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: identityProjectMembership.projectId,
@@ -236,7 +264,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
+      ProjectPermissionIdentityActions.Edit,
       subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
     );
     const { permission: identityRolePermission } = await permissionService.getProjectPermission({
@@ -247,11 +275,21 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    const permissionBoundary = validatePermissionBoundary(permission, identityRolePermission);
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      ProjectPermissionIdentityActions.GrantPrivileges,
+      ProjectPermissionSub.Identity,
+      permission,
+      identityRolePermission
+    );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
-        message: "Failed to update more privileged identity",
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to update more privileged identity",
+          membership.shouldUseNewPrivilegeSystem,
+          ProjectPermissionIdentityActions.GrantPrivileges,
+          ProjectPermissionSub.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -287,7 +325,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
+      ProjectPermissionIdentityActions.Read,
       subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
     );
 
@@ -322,7 +360,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
+      ProjectPermissionIdentityActions.Read,
       subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
     );
 
@@ -358,7 +396,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
+      ProjectPermissionIdentityActions.Read,
       subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
     );
 

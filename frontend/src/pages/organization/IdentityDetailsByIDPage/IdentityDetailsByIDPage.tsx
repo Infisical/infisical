@@ -7,7 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteIdentity, useGetIdentityById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { ViewIdentityAuthModal } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityAuthModal";
@@ -132,7 +132,7 @@ export const IdentityDetailsByIDPage = () => {
       </Helmet>
       <OrgPermissionCan
         passThrough={false}
-        I={OrgPermissionActions.Read}
+        I={OrgPermissionIdentityActions.Read}
         a={OrgPermissionSubjects.Identity}
       >
         <Page />

@@ -1,20 +1,22 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TProjectEnvironments, TSecretFolders, TSecretFoldersUpdate } from "@app/db/schemas";
+import { TableName, TSecretFolders, TSecretFoldersUpdate } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { groupBy, removeTrailingSlash } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { isValidSecretPath } from "@app/lib/validator";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
 import { TFindFoldersDeepByParentIdsDTO } from "./secret-folder-types";
 
-export const validateFolderName = (folderName: string) => {
-  const validNameRegex = /^[a-zA-Z0-9-_]+$/;
-  return validNameRegex.test(folderName);
-};
+export const validateFolderName = characterValidator([
+  CharacterType.AlphaNumeric,
+  CharacterType.Hyphen,
+  CharacterType.Underscore
+]);
 
 const sqlFindMultipleFolderByEnvPathQuery = (db: Knex, query: Array<{ envId: string; secretPath: string }>) => {
   // this is removing an trailing slash like /folder1/folder2/ -> /folder1/folder2
@@ -41,12 +43,12 @@ const sqlFindMultipleFolderByEnvPathQuery = (db: Knex, query: Array<{ envId: str
       void baseQb
         .select({
           depth: 1,
-          // latestFolderVerId: db.raw("NULL::uuid"),
           path: db.raw("'/'")
         })
         .from(TableName.SecretFolder)
         .where({
-          parentId: null
+          parentId: null,
+          name: "root"
         })
         .whereIn(
           "envId",
@@ -69,9 +71,7 @@ const sqlFindMultipleFolderByEnvPathQuery = (db: Knex, query: Array<{ envId: str
               .where((wb) =>
                 formatedQuery.map(({ secretPath }) =>
                   wb.orWhereRaw(
-                    `depth = array_position(ARRAY[${secretPath.map(() => "?").join(",")}]::varchar[], ${
-                      TableName.SecretFolder
-                    }.name,depth)`,
+                    `secret_folders.name = (ARRAY[${secretPath.map(() => "?").join(",")}]::varchar[])[depth]`,
                     [...secretPath]
                   )
                 )
@@ -107,7 +107,6 @@ const sqlFindFolderByPathQuery = (db: Knex, projectId: string, environments: str
       void baseQb
         .select({
           depth: 1,
-          // latestFolderVerId: db.raw("NULL::uuid"),
           path: db.raw("'/'")
         })
         .from(TableName.SecretFolder)
@@ -117,6 +116,11 @@ const sqlFindFolderByPathQuery = (db: Knex, projectId: string, environments: str
           parentId: null
         })
         .whereIn(`${TableName.Environment}.slug`, environments)
+        .select(
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("projectId").withSchema(TableName.Environment)
+        )
         .select(selectAllTableCols(TableName.SecretFolder))
         .union(
           (qb) =>
@@ -128,21 +132,20 @@ const sqlFindFolderByPathQuery = (db: Knex, projectId: string, environments: str
                 depth: db.raw("parent.depth + 1"),
                 path: db.raw(
                   "CONCAT((CASE WHEN parent.path = '/' THEN '' ELSE parent.path END),'/', secret_folders.name)"
-                )
+                ),
+                envSlug: db.ref("envSlug").withSchema("parent"),
+                envName: db.ref("envName").withSchema("parent"),
+                projectId: db.ref("projectId").withSchema("parent")
               })
               .select(selectAllTableCols(TableName.SecretFolder))
-              .whereRaw(
-                `depth = array_position(ARRAY[${pathSegments
-                  .map(() => "?")
-                  .join(",")}]::varchar[], secret_folders.name,depth)`,
-                [...pathSegments]
-              )
+              .whereRaw(`secret_folders.name = (ARRAY[${pathSegments.map(() => "?").join(",")}]::varchar[])[depth]`, [
+                ...pathSegments
+              ])
               .from(TableName.SecretFolder)
               .join("parent", "parent.id", `${TableName.SecretFolder}.parentId`)
         );
     })
     .from<TSecretFolders & { depth: number; path: string }>("parent")
-    .leftJoin<TProjectEnvironments>(TableName.Environment, `${TableName.Environment}.id`, "parent.envId")
     .select<
       (TSecretFolders & {
         depth: number;
@@ -152,13 +155,7 @@ const sqlFindFolderByPathQuery = (db: Knex, projectId: string, environments: str
         envName: string;
         projectId: string;
       })[]
-    >(
-      selectAllTableCols("parent" as TableName.SecretFolder),
-      db.ref("id").withSchema(TableName.Environment).as("envId"),
-      db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-      db.ref("name").withSchema(TableName.Environment).as("envName"),
-      db.ref("projectId").withSchema(TableName.Environment)
-    );
+    >(selectAllTableCols("parent" as TableName.SecretFolder));
 };
 
 const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: string[]) =>
@@ -193,9 +190,9 @@ const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: str
                 // the root folder check is used to avoid last / and also root name in folders
                 depth: db.raw("parent.depth + 1"),
                 path: db.raw(
-                  `CONCAT( CASE 
-                  WHEN  ${TableName.SecretFolder}."parentId" is NULL THEN '' 
-                  ELSE  CONCAT('/', secret_folders.name) 
+                  `CONCAT( CASE
+                  WHEN  ${TableName.SecretFolder}."parentId" is NULL THEN ''
+                  ELSE  CONCAT('/', secret_folders.name)
                 END, parent.path )`
                 ),
                 child: db.raw("COALESCE(parent.child, parent.id)"),
@@ -220,19 +217,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       throw new BadRequestError({
         message: "Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed."
       });
-
+    const formatedPath = removeTrailingSlash(path);
     try {
-      const folder = await sqlFindFolderByPathQuery(
-        tx || db.replicaNode(),
-        projectId,
-        [environment],
-        removeTrailingSlash(path)
-      )
-        .orderBy("depth", "desc")
+      const query = sqlFindFolderByPathQuery(tx || db.replicaNode(), projectId, [environment], formatedPath)
+        .where("path", formatedPath)
         .first();
-      if (folder && folder.path !== removeTrailingSlash(path)) {
-        return;
-      }
+      const folder = await query;
       if (!folder) return;
       const { envId: id, envName: name, envSlug: slug, ...el } = folder;
       return { ...el, envId: id, environment: { id, name, slug } };
@@ -250,22 +240,13 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       });
 
     try {
-      const pathDepth = removeTrailingSlash(path).split("/").filter(Boolean).length + 1;
-
+      const formatedPath = removeTrailingSlash(path);
       const folders = await sqlFindFolderByPathQuery(
         tx || db.replicaNode(),
         projectId,
         environments,
-        removeTrailingSlash(path)
-      )
-        .orderBy("depth", "desc")
-        .where("depth", pathDepth);
-
-      const firstFolder = folders[0];
-
-      if (firstFolder && firstFolder.path !== removeTrailingSlash(path)) {
-        return [];
-      }
+        formatedPath
+      ).where("path", removeTrailingSlash(path));
 
       return folders.map((folder) => {
         const { envId: id, envName: name, envSlug: slug, ...el } = folder;
@@ -323,7 +304,6 @@ export const secretFolderDALFactory = (db: TDbClient) => {
   const findSecretPathByFolderIds = async (projectId: string, folderIds: string[], tx?: Knex) => {
     try {
       const folders = await sqlFindSecretPathByFolderId(tx || db.replicaNode(), projectId, folderIds);
-
       //  travelling all the way from leaf node to root contains real path
       const rootFolders = groupBy(
         folders.filter(({ parentId }) => parentId === null),
@@ -486,7 +466,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
                   db.raw("parents.depth + 1 as depth"),
                   db.raw(
                     `CONCAT(
-                        CASE WHEN parents.path = '/' THEN '' ELSE parents.path END, 
+                        CASE WHEN parents.path = '/' THEN '' ELSE parents.path END,
                         CASE WHEN  ${TableName.SecretFolder}."parentId" is NULL THEN '' ELSE CONCAT('/', secret_folders.name) END
                     )`
                   ),

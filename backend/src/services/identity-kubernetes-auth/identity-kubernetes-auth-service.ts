@@ -5,11 +5,14 @@ import jwt from "jsonwebtoken";
 
 import { IdentityAuthMethod, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -84,6 +87,9 @@ export const identityKubernetesAuthServiceFactory = ({
       tokenReviewerJwt = decryptor({
         cipherTextBlob: identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt
       }).toString();
+    } else {
+      // if no token reviewer is provided means the incoming token has to act as reviewer
+      tokenReviewerJwt = serviceAccountJwt;
     }
 
     const { data } = await axios
@@ -254,7 +260,7 @@ export const identityKubernetesAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -291,7 +297,9 @@ export const identityKubernetesAuthServiceFactory = ({
           accessTokenTTL,
           accessTokenNumUsesLimit,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
-          encryptedKubernetesTokenReviewerJwt: encryptor({ plainText: Buffer.from(tokenReviewerJwt) }).cipherTextBlob,
+          encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
+            ? encryptor({ plainText: Buffer.from(tokenReviewerJwt) }).cipherTextBlob
+            : null,
           encryptedKubernetesCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob
         },
         tx
@@ -345,7 +353,7 @@ export const identityKubernetesAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -387,10 +395,12 @@ export const identityKubernetesAuthServiceFactory = ({
       updateQuery.encryptedKubernetesCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
     }
 
-    if (tokenReviewerJwt !== undefined) {
+    if (tokenReviewerJwt) {
       updateQuery.encryptedKubernetesTokenReviewerJwt = encryptor({
         plainText: Buffer.from(tokenReviewerJwt)
       }).cipherTextBlob;
+    } else if (tokenReviewerJwt === null) {
+      updateQuery.encryptedKubernetesTokenReviewerJwt = null;
     }
 
     const updatedKubernetesAuth = await identityKubernetesAuthDAL.updateById(identityKubernetesAuth.id, updateQuery);
@@ -439,7 +449,7 @@ export const identityKubernetesAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -476,14 +486,14 @@ export const identityKubernetesAuthServiceFactory = ({
         message: "The identity does not have kubernetes auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
@@ -492,11 +502,21 @@ export const identityKubernetesAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      OrgPermissionIdentityActions.RevokeAuth,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
-        message: "Failed to revoke kubernetes auth of identity with more privileged role",
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to revoke kubernetes auth of identity with more privileged role",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.RevokeAuth,
+          OrgPermissionSubjects.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 

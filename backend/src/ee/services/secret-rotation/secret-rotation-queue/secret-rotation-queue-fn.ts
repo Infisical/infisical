@@ -8,15 +8,41 @@ import axios from "axios";
 import jmespath from "jmespath";
 import knex from "knex";
 
-import { getConfig } from "@app/lib/config/env";
-import { getDbConnectionHost } from "@app/lib/knex";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
 import { TAssignOp, TDbProviderClients, TDirectAssignOp, THttpProviderFunction } from "../templates/types";
 import { TSecretRotationData, TSecretRotationDbFn } from "./secret-rotation-queue-types";
 
-const REGEX = /\${([^}]+)}/g;
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
+
+const replaceTemplateVariables = (str: string, getValue: (key: string) => unknown) => {
+  // Use array to collect pieces and join at the end (more efficient for large strings)
+  const parts: string[] = [];
+  let pos = 0;
+
+  while (pos < str.length) {
+    const start = str.indexOf("${", pos);
+    if (start === -1) {
+      parts.push(str.slice(pos));
+      break;
+    }
+
+    parts.push(str.slice(pos, start));
+    const end = str.indexOf("}", start + 2);
+
+    if (end === -1) {
+      parts.push(str.slice(start));
+      break;
+    }
+
+    const varName = str.slice(start + 2, end);
+    parts.push(String(getValue(varName)));
+    pos = end + 1;
+  }
+
+  return parts.join("");
+};
 
 export const interpolate = (data: any, getValue: (key: string) => unknown) => {
   if (!data) return;
@@ -24,7 +50,7 @@ export const interpolate = (data: any, getValue: (key: string) => unknown) => {
   if (typeof data === "number") return data;
 
   if (typeof data === "string") {
-    return data.replace(REGEX, (_a, b) => getValue(b) as string);
+    return replaceTemplateVariables(data, getValue);
   }
 
   if (typeof data === "object" && Array.isArray(data)) {
@@ -88,32 +114,14 @@ export const secretRotationDbFn = async ({
   variables,
   options
 }: TSecretRotationDbFn) => {
-  const appCfg = getConfig();
-
   const ssl = ca ? { rejectUnauthorized: false, ca } : undefined;
-  const isCloud = Boolean(appCfg.LICENSE_SERVER_KEY); // quick and dirty way to check if its cloud or not
-  const dbHost = appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI);
-
-  if (
-    isCloud &&
-    // internal ips
-    (host === "host.docker.internal" || host.match(/^10\.\d+\.\d+\.\d+/) || host.match(/^192\.168\.\d+\.\d+/))
-  )
-    throw new Error("Invalid db host");
-  if (
-    host === "localhost" ||
-    host === "127.0.0.1" ||
-    // database infisical uses
-    dbHost === host
-  )
-    throw new Error("Invalid db host");
-
+  const [hostIp] = await verifyHostInputValidity(host);
   const db = knex({
     client,
     connection: {
       database,
       port,
-      host,
+      host: hostIp,
       user: username,
       password,
       connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,

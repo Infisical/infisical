@@ -3,8 +3,7 @@ import slugify from "@sindresorhus/slugify";
 
 import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import { validatePermissionBoundary } from "@app/lib/casl/boundary";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -14,7 +13,8 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { OrgPermissionGroupActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TGroupDALFactory } from "./group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "./group-fns";
@@ -67,14 +67,14 @@ export const groupServiceFactory = ({
   const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       actorOrgId,
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Create, OrgPermissionSubjects.Groups);
 
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.groups)
@@ -87,14 +87,26 @@ export const groupServiceFactory = ({
       actorOrgId
     );
     const isCustomRole = Boolean(customRole);
+    if (role !== OrgMembershipRole.NoAccess) {
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
+        OrgPermissionGroupActions.GrantPrivileges,
+        OrgPermissionSubjects.Groups,
+        permission,
+        rolePermission
+      );
 
-    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
-    if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
-        message: "Failed to create a more privileged group",
-        details: { missingPermissions: permissionBoundary.missingPermissions }
-      });
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to create group",
+            membership.shouldUseNewPrivilegeSystem,
+            OrgPermissionGroupActions.GrantPrivileges,
+            OrgPermissionSubjects.Groups
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    }
 
     const group = await groupDAL.transaction(async (tx) => {
       const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
@@ -133,14 +145,15 @@ export const groupServiceFactory = ({
   }: TUpdateGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       actorOrgId,
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Groups);
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.groups)
@@ -161,11 +174,21 @@ export const groupServiceFactory = ({
       );
 
       const isCustomRole = Boolean(customOrgRole);
-      const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
+        OrgPermissionGroupActions.GrantPrivileges,
+        OrgPermissionSubjects.Groups,
+        permission,
+        rolePermission
+      );
       if (!permissionBoundary.isValid)
-        throw new ForbiddenRequestError({
-          name: "PermissionBoundaryError",
-          message: "Failed to update a more privileged group",
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to update group",
+            membership.shouldUseNewPrivilegeSystem,
+            OrgPermissionGroupActions.GrantPrivileges,
+            OrgPermissionSubjects.Groups
+          ),
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
       if (isCustomRole) customRole = customOrgRole;
@@ -215,7 +238,7 @@ export const groupServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups);
 
     const plan = await licenseService.getPlan(actorOrgId);
 
@@ -242,7 +265,7 @@ export const groupServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
     const group = await groupDAL.findById(id);
     if (!group) {
@@ -275,7 +298,7 @@ export const groupServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
     const group = await groupDAL.findOne({
       orgId: actorOrgId,
@@ -303,14 +326,14 @@ export const groupServiceFactory = ({
   const addUserToGroup = async ({ id, username, actor, actorId, actorAuthMethod, actorOrgId }: TAddUserToGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       actorOrgId,
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
     // check if group with slug exists
     const group = await groupDAL.findOne({
@@ -338,11 +361,22 @@ export const groupServiceFactory = ({
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
-    const permissionBoundary = validatePermissionBoundary(permission, groupRolePermission);
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      OrgPermissionGroupActions.AddMembers,
+      OrgPermissionSubjects.Groups,
+      permission,
+      groupRolePermission
+    );
+
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
-        message: "Failed to add user to more privileged group",
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to add user to more privileged group",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionGroupActions.AddMembers,
+          OrgPermissionSubjects.Groups
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -374,14 +408,14 @@ export const groupServiceFactory = ({
   }: TRemoveUserFromGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       actorOrgId,
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
     // check if group with slug exists
     const group = await groupDAL.findOne({
@@ -409,11 +443,21 @@ export const groupServiceFactory = ({
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
-    const permissionBoundary = validatePermissionBoundary(permission, groupRolePermission);
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      OrgPermissionGroupActions.RemoveMembers,
+      OrgPermissionSubjects.Groups,
+      permission,
+      groupRolePermission
+    );
     if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
-        message: "Failed to delete user from more privileged group",
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to delete user from more privileged group",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionGroupActions.RemoveMembers,
+          OrgPermissionSubjects.Groups
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 

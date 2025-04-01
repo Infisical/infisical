@@ -250,7 +250,11 @@ const Page = () => {
     limit: 10
   });
 
-  const { data: snapshotCount, isPending: isSnapshotCountLoading } = useGetWsSnapshotCount({
+  const {
+    data: snapshotCount,
+    isPending: isSnapshotCountLoading,
+    isFetching: isSnapshotCountFetching
+  } = useGetWsSnapshotCount({
     workspaceId,
     environment,
     directory: secretPath,
@@ -414,7 +418,7 @@ const Page = () => {
             onSearchChange={handleSearchChange}
             onToggleTagFilter={handleTagToggle}
             snapshotCount={snapshotCount || 0}
-            isSnapshotCountLoading={isSnapshotCountLoading}
+            isSnapshotCountLoading={isSnapshotCountLoading && isSnapshotCountFetching}
             onToggleRowType={handleToggleRowType}
             onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
             protectedBranchPolicyName={boardPolicy?.name}

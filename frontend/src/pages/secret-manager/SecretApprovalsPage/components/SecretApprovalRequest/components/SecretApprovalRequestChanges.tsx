@@ -127,7 +127,9 @@ export const SecretApprovalRequestChanges = ({
   } = useForm<TReviewFormSchema>({
     resolver: zodResolver(reviewFormSchema)
   });
-
+  const shouldBlockSelfReview =
+    secretApprovalRequestDetails?.policy?.allowedSelfApprovals === false &&
+    secretApprovalRequestDetails?.committerUserId === userSession.id;
   const isApproving = variables?.status === ApprovalStatus.APPROVED && isUpdatingRequestStatus;
   const isRejecting = variables?.status === ApprovalStatus.REJECTED && isUpdatingRequestStatus;
 
@@ -245,117 +247,119 @@ export const SecretApprovalRequestChanges = ({
               </div>
             </div>
           </div>
-          {!hasMerged && secretApprovalRequestDetails.status === "open" && (
-            <DropdownMenu
-              open={popUp.reviewChanges.isOpen}
-              onOpenChange={(isOpen) => handlePopUpToggle("reviewChanges", isOpen)}
-            >
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline_bg"
-                  rightIcon={<FontAwesomeIcon className="ml-2" icon={faAngleDown} />}
-                >
-                  Review
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" asChild className="mt-3">
-                <form onSubmit={handleSubmit(handleSubmitReview)}>
-                  <div className="flex w-[400px] flex-col space-y-2 p-5">
-                    <div className="text-lg font-medium">Finish your review</div>
-                    <Controller
-                      control={control}
-                      name="comment"
-                      render={({ field, fieldState: { error } }) => (
-                        <FormControl errorText={error?.message} isError={Boolean(error)}>
-                          <TextArea
-                            {...field}
-                            placeholder="Leave a comment..."
-                            reSize="none"
-                            className="text-md mt-2 h-48 border border-mineshaft-600 bg-bunker-800"
-                          />
-                        </FormControl>
-                      )}
-                    />
-                    <Controller
-                      control={control}
-                      name="status"
-                      defaultValue={ApprovalStatus.APPROVED}
-                      render={({ field, fieldState: { error } }) => (
-                        <FormControl errorText={error?.message} isError={Boolean(error)}>
-                          <RadioGroup
-                            value={field.value}
-                            onValueChange={field.onChange}
-                            className="mb-4 space-y-2"
-                            aria-label="Status"
-                          >
-                            <div className="flex items-center gap-2">
-                              <RadioGroupItem
-                                id="approve"
-                                className="h-4 w-4 rounded-full border border-gray-300 text-primary focus:ring-2 focus:ring-mineshaft-500"
-                                value={ApprovalStatus.APPROVED}
-                                aria-labelledby="approve-label"
-                              >
-                                <RadioGroupIndicator className="flex h-full w-full items-center justify-center after:h-2 after:w-2 after:rounded-full after:bg-current" />
-                              </RadioGroupItem>
-                              <span
-                                id="approve-label"
-                                className="cursor-pointer"
-                                onClick={() => field.onChange(ApprovalStatus.APPROVED)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    field.onChange(ApprovalStatus.APPROVED);
-                                  }
-                                }}
-                                tabIndex={0}
-                                role="button"
-                              >
-                                Approve
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <RadioGroupItem
-                                id="reject"
-                                className="h-4 w-4 rounded-full border border-gray-300 text-primary focus:ring-2 focus:ring-mineshaft-500"
-                                value={ApprovalStatus.REJECTED}
-                                aria-labelledby="reject-label"
-                              >
-                                <RadioGroupIndicator className="flex h-full w-full items-center justify-center after:h-2 after:w-2 after:rounded-full after:bg-current" />
-                              </RadioGroupItem>
-                              <span
-                                id="reject-label"
-                                className="cursor-pointer"
-                                onClick={() => field.onChange(ApprovalStatus.REJECTED)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    field.onChange(ApprovalStatus.REJECTED);
-                                  }
-                                }}
-                                tabIndex={0}
-                                role="button"
-                              >
-                                Reject
-                              </span>
-                            </div>
-                          </RadioGroup>
-                        </FormControl>
-                      )}
-                    />
-                    <div className="flex justify-end">
-                      <Button
-                        type="submit"
-                        isLoading={isApproving || isRejecting || isSubmitting}
-                        variant="outline_bg"
-                      >
-                        Submit Review
-                      </Button>
+          {!hasMerged &&
+            secretApprovalRequestDetails.status === "open" &&
+            !shouldBlockSelfReview && (
+              <DropdownMenu
+                open={popUp.reviewChanges.isOpen}
+                onOpenChange={(isOpen) => handlePopUpToggle("reviewChanges", isOpen)}
+              >
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline_bg"
+                    rightIcon={<FontAwesomeIcon className="ml-2" icon={faAngleDown} />}
+                  >
+                    Review
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" asChild className="mt-3">
+                  <form onSubmit={handleSubmit(handleSubmitReview)}>
+                    <div className="flex w-[400px] flex-col space-y-2 p-5">
+                      <div className="text-lg font-medium">Finish your review</div>
+                      <Controller
+                        control={control}
+                        name="comment"
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl errorText={error?.message} isError={Boolean(error)}>
+                            <TextArea
+                              {...field}
+                              placeholder="Leave a comment..."
+                              reSize="none"
+                              className="text-md mt-2 h-48 border border-mineshaft-600 bg-bunker-800"
+                            />
+                          </FormControl>
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="status"
+                        defaultValue={ApprovalStatus.APPROVED}
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl errorText={error?.message} isError={Boolean(error)}>
+                            <RadioGroup
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              className="mb-4 space-y-2"
+                              aria-label="Status"
+                            >
+                              <div className="flex items-center gap-2">
+                                <RadioGroupItem
+                                  id="approve"
+                                  className="h-4 w-4 rounded-full border border-gray-300 text-primary focus:ring-2 focus:ring-mineshaft-500"
+                                  value={ApprovalStatus.APPROVED}
+                                  aria-labelledby="approve-label"
+                                >
+                                  <RadioGroupIndicator className="flex h-full w-full items-center justify-center after:h-2 after:w-2 after:rounded-full after:bg-current" />
+                                </RadioGroupItem>
+                                <span
+                                  id="approve-label"
+                                  className="cursor-pointer"
+                                  onClick={() => field.onChange(ApprovalStatus.APPROVED)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      field.onChange(ApprovalStatus.APPROVED);
+                                    }
+                                  }}
+                                  tabIndex={0}
+                                  role="button"
+                                >
+                                  Approve
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <RadioGroupItem
+                                  id="reject"
+                                  className="h-4 w-4 rounded-full border border-gray-300 text-primary focus:ring-2 focus:ring-mineshaft-500"
+                                  value={ApprovalStatus.REJECTED}
+                                  aria-labelledby="reject-label"
+                                >
+                                  <RadioGroupIndicator className="flex h-full w-full items-center justify-center after:h-2 after:w-2 after:rounded-full after:bg-current" />
+                                </RadioGroupItem>
+                                <span
+                                  id="reject-label"
+                                  className="cursor-pointer"
+                                  onClick={() => field.onChange(ApprovalStatus.REJECTED)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      field.onChange(ApprovalStatus.REJECTED);
+                                    }
+                                  }}
+                                  tabIndex={0}
+                                  role="button"
+                                >
+                                  Reject
+                                </span>
+                              </div>
+                            </RadioGroup>
+                          </FormControl>
+                        )}
+                      />
+                      <div className="flex justify-end">
+                        <Button
+                          type="submit"
+                          isLoading={isApproving || isRejecting || isSubmitting}
+                          variant="outline_bg"
+                        >
+                          Submit Review
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </form>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                  </form>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
         </div>
         <div className="flex flex-col space-y-4">
           {secretApprovalRequestDetails.commits.map(
@@ -422,40 +426,45 @@ export const SecretApprovalRequestChanges = ({
       <div className="sticky top-0 w-1/5 pt-4" style={{ minWidth: "240px" }}>
         <div className="text-sm text-bunker-300">Reviewers</div>
         <div className="mt-2 flex flex-col space-y-2 text-sm">
-          {secretApprovalRequestDetails?.policy?.approvers.map((requiredApprover) => {
-            const reviewer = reviewedUsers?.[requiredApprover.userId];
-            return (
-              <div
-                className="flex flex-nowrap items-center space-x-2 rounded bg-mineshaft-800 px-2 py-1"
-                key={`required-approver-${requiredApprover.userId}`}
-              >
-                <div className="flex-grow text-sm">
-                  <Tooltip
-                    content={`${requiredApprover.firstName || ""} ${
-                      requiredApprover.lastName || ""
-                    }`}
-                  >
-                    <span>{requiredApprover?.email} </span>
-                  </Tooltip>
-                  <span className="text-red">*</span>
-                </div>
-                <div>
-                  {reviewer?.comment && (
-                    <Tooltip content={reviewer.comment}>
-                      <FontAwesomeIcon
-                        icon={faComment}
-                        size="xs"
-                        className="mr-1 text-mineshaft-300"
-                      />
+          {secretApprovalRequestDetails?.policy?.approvers
+            .filter(
+              (requiredApprover) =>
+                !(shouldBlockSelfReview && requiredApprover.userId === userSession.id)
+            )
+            .map((requiredApprover) => {
+              const reviewer = reviewedUsers?.[requiredApprover.userId];
+              return (
+                <div
+                  className="flex flex-nowrap items-center space-x-2 rounded bg-mineshaft-800 px-2 py-1"
+                  key={`required-approver-${requiredApprover.userId}`}
+                >
+                  <div className="flex-grow text-sm">
+                    <Tooltip
+                      content={`${requiredApprover.firstName || ""} ${
+                        requiredApprover.lastName || ""
+                      }`}
+                    >
+                      <span>{requiredApprover?.email} </span>
                     </Tooltip>
-                  )}
-                  <Tooltip content={reviewer?.status || ApprovalStatus.PENDING}>
-                    {getReviewedStatusSymbol(reviewer?.status)}
-                  </Tooltip>
+                    <span className="text-red">*</span>
+                  </div>
+                  <div>
+                    {reviewer?.comment && (
+                      <Tooltip content={reviewer.comment}>
+                        <FontAwesomeIcon
+                          icon={faComment}
+                          size="xs"
+                          className="mr-1 text-mineshaft-300"
+                        />
+                      </Tooltip>
+                    )}
+                    <Tooltip content={reviewer?.status || ApprovalStatus.PENDING}>
+                      {getReviewedStatusSymbol(reviewer?.status)}
+                    </Tooltip>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
           {secretApprovalRequestDetails?.reviewers
             .filter(
               (reviewer) =>

@@ -7,6 +7,7 @@ import {
   faAngleDown,
   faArrowDown,
   faArrowUp,
+  faFileImport,
   faFingerprint,
   faFolder,
   faFolderBlank,
@@ -97,7 +98,8 @@ export enum EntryType {
 enum RowType {
   Folder = "folder",
   DynamicSecret = "dynamic",
-  Secret = "secret"
+  Secret = "secret",
+  Import = "import"
 }
 
 type Filter = {
@@ -107,7 +109,8 @@ type Filter = {
 const DEFAULT_FILTER_STATE = {
   [RowType.Folder]: true,
   [RowType.DynamicSecret]: true,
-  [RowType.Secret]: true
+  [RowType.Secret]: true,
+  [RowType.Import]: true
 };
 
 export const OverviewPage = () => {
@@ -199,12 +202,16 @@ export const OverviewPage = () => {
     setVisibleEnvs(userAvailableEnvs);
   }, [userAvailableEnvs]);
 
-  const { isImportedSecretPresentInEnv, getImportedSecretByKey, getEnvImportedSecretKeyCount } =
-    useGetImportedSecretsAllEnvs({
-      projectId: workspaceId,
-      path: secretPath,
-      environments: (userAvailableEnvs || []).map(({ slug }) => slug)
-    });
+  const {
+    secretImports,
+    isImportedSecretPresentInEnv,
+    getImportedSecretByKey,
+    getEnvImportedSecretKeyCount
+  } = useGetImportedSecretsAllEnvs({
+    projectId: workspaceId,
+    path: secretPath,
+    environments: (userAvailableEnvs || []).map(({ slug }) => slug)
+  });
 
   const { isPending: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
     {
@@ -216,6 +223,7 @@ export const OverviewPage = () => {
       includeFolders: filter.folder,
       includeDynamicSecrets: filter.dynamic,
       includeSecrets: filter.secret,
+      includeImports: filter.import,
       search: debouncedSearchFilter,
       limit,
       offset
@@ -230,11 +238,28 @@ export const OverviewPage = () => {
     totalFolderCount,
     totalSecretCount,
     totalDynamicSecretCount,
+    totalImportCount,
     totalCount = 0,
     totalUniqueFoldersInPage,
     totalUniqueSecretsInPage,
+    totalUniqueSecretImportsInPage,
     totalUniqueDynamicSecretsInPage
   } = overview ?? {};
+
+  const secretImportsShaped = secretImports
+    ?.flatMap(({ data }) => data)
+    .filter(Boolean)
+    .flatMap((item) => item?.secrets || []);
+
+  const handleIsImportedSecretPresentInEnv = (envSlug: string, secretName: string) => {
+    if (secrets?.some((s) => s.key === secretName && s.env === envSlug)) {
+      return false;
+    }
+    if (secretImportsShaped.some((s) => s.key === secretName && s.sourceEnv === envSlug)) {
+      return true;
+    }
+    return isImportedSecretPresentInEnv(envSlug, secretName);
+  };
 
   useResetPageHelper({
     totalCount,
@@ -248,7 +273,18 @@ export const OverviewPage = () => {
   const { dynamicSecretNames, isDynamicSecretPresentInEnv } =
     useDynamicSecretOverview(dynamicSecrets);
 
-  const { secKeys, getSecretByKey, getEnvSecretKeyCount } = useSecretOverview(secrets);
+  const { secKeys, getEnvSecretKeyCount } = useSecretOverview(
+    secrets?.concat(secretImportsShaped) || []
+  );
+
+  const getSecretByKey = useCallback(
+    (env: string, key: string) => {
+      const sec = secrets?.find((s) => s.env === env && s.key === key);
+      return sec;
+    },
+    [secrets]
+  );
+
   const { data: tags } = useGetWsTags(
     permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? workspaceId : ""
   );
@@ -678,7 +714,6 @@ export const OverviewPage = () => {
         <SecretV2MigrationSection />
       </div>
     );
-
   return (
     <div className="">
       <Helmet>
@@ -767,6 +802,19 @@ export const OverviewPage = () => {
                     </Button>
                   </DropdownMenuItem> */}
                   <DropdownMenuLabel>Filter project resources</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleToggleRowType(RowType.Import);
+                    }}
+                    icon={filter[RowType.Import] && <FontAwesomeIcon icon={faCheckCircle} />}
+                    iconPos="right"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faFileImport} className="text-green-700" />
+                      <span>Imports</span>
+                    </div>
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.preventDefault();
@@ -1099,7 +1147,7 @@ export const OverviewPage = () => {
                         onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, key)}
                         secretPath={secretPath}
                         getImportedSecretByKey={getImportedSecretByKey}
-                        isImportedSecretPresentInEnv={isImportedSecretPresentInEnv}
+                        isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
                         onSecretCreate={handleSecretCreate}
                         onSecretDelete={handleSecretDelete}
                         onSecretUpdate={handleSecretUpdate}
@@ -1116,7 +1164,8 @@ export const OverviewPage = () => {
                         (page * perPage > totalCount ? totalCount % perPage : perPage) -
                           (totalUniqueFoldersInPage || 0) -
                           (totalUniqueDynamicSecretsInPage || 0) -
-                          (totalUniqueSecretsInPage || 0),
+                          (totalUniqueSecretsInPage || 0) -
+                          (totalUniqueSecretImportsInPage || 0),
                         0
                       )}
                     />
@@ -1156,6 +1205,7 @@ export const OverviewPage = () => {
                   dynamicSecretCount={totalDynamicSecretCount}
                   secretCount={totalSecretCount}
                   folderCount={totalFolderCount}
+                  importCount={totalImportCount}
                 />
               }
               className="rounded-b-md border-t border-solid border-t-mineshaft-600"

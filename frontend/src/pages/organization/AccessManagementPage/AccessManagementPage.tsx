@@ -1,17 +1,30 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Button, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrgPermission } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionGroupActions,
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useOrgPermission
+} from "@app/context";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
+import { UpgradePrivilegeSystemModal } from "./components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal";
 import { OrgGroupsTab, OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
 
 export const AccessManagementPage = () => {
   const { t } = useTranslation();
   const { permission } = useOrgPermission();
+  const { currentOrg } = useOrganization();
+
   const navigate = useNavigate({
     from: ROUTE_PATHS.Organization.AccessControlPage.path
   });
@@ -20,6 +33,8 @@ export const AccessManagementPage = () => {
     select: (el) => el.selectedTab,
     structuralSharing: true
   });
+
+  const [isUpgradePrivilegeSystemModalOpen, setIsUpgradePrivilegeSystemModalOpen] = useState(false);
 
   const updateSelectedTab = (tab: string) => {
     navigate({
@@ -37,13 +52,16 @@ export const AccessManagementPage = () => {
     {
       key: OrgAccessControlTabSections.Groups,
       label: "Groups",
-      isHidden: permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Groups),
+      isHidden: permission.cannot(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups),
       component: OrgGroupsTab
     },
     {
       key: OrgAccessControlTabSections.Identities,
       label: "Identities",
-      isHidden: permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Identity),
+      isHidden: permission.cannot(
+        OrgPermissionIdentityActions.Read,
+        OrgPermissionSubjects.Identity
+      ),
       component: OrgIdentityTab
     },
     {
@@ -63,6 +81,30 @@ export const AccessManagementPage = () => {
         <PageHeader
           title="Organization Access Control"
           description="Manage fine-grained access for users, groups, roles, and identities within your organization resources."
+        />
+        {!currentOrg.shouldUseNewPrivilegeSystem && (
+          <div className="mb-4 mt-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
+            <div className="mb-1 flex items-center text-sm">
+              <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
+              Your organization is using legacy privilege management
+            </div>
+            <p className="mb-2 mt-1 text-sm text-bunker-300">
+              We&apos;ve developed an improved privilege management system to better serve your
+              security needs. Upgrade to our new permission-based approach that allows you to
+              explicitly designate who can modify specific access levels, rather than relying on hierarchy comparisons.
+            </p>
+            <Button
+              colorSchema="primary"
+              className="mt-2 w-fit text-xs"
+              onClick={() => setIsUpgradePrivilegeSystemModalOpen(true)}
+            >
+              Learn More & Upgrade
+            </Button>
+          </div>
+        )}
+        <UpgradePrivilegeSystemModal
+          isOpen={isUpgradePrivilegeSystemModalOpen}
+          onOpenChange={setIsUpgradePrivilegeSystemModalOpen}
         />
         <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
           <TabList>

@@ -143,6 +143,7 @@ export const useGetProjectSecretsOverview = (
     search = "",
     includeSecrets,
     includeFolders,
+    includeImports,
     includeDynamicSecrets,
     environments
   }: TGetDashboardProjectSecretsOverviewDTO,
@@ -170,6 +171,7 @@ export const useGetProjectSecretsOverview = (
       projectId,
       includeSecrets,
       includeFolders,
+      includeImports,
       includeDynamicSecrets,
       environments
     }),
@@ -184,6 +186,7 @@ export const useGetProjectSecretsOverview = (
         projectId,
         includeSecrets,
         includeFolders,
+        includeImports,
         includeDynamicSecrets,
         environments
       }),
@@ -197,12 +200,15 @@ export const useGetProjectSecretsOverview = (
         ? unique(select.dynamicSecrets, (i) => i.name)
         : [];
 
+      const uniqueSecretImports = select.imports ? unique(select.imports, (i) => i.id) : [];
+
       return {
         ...select,
         secrets: secrets ? mergePersonalSecrets(secrets) : undefined,
         totalUniqueSecretsInPage: uniqueSecrets.length,
         totalUniqueDynamicSecretsInPage: uniqueDynamicSecrets.length,
-        totalUniqueFoldersInPage: uniqueFolders.length
+        totalUniqueFoldersInPage: uniqueFolders.length,
+        totalUniqueSecretImportsInPage: uniqueSecretImports.length
       };
     }, []),
     placeholderData: (previousData) => previousData

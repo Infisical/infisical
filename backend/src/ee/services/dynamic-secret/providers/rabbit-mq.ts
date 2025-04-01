@@ -3,7 +3,6 @@ import https from "https";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
-import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
@@ -79,14 +78,13 @@ async function deleteRabbitMqUser({ axiosInstance, usernameToDelete }: TDeleteRa
 export const RabbitMqProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretRabbitMqSchema.parseAsync(inputs);
-    verifyHostInputValidity(providerInputs.host);
-
-    return providerInputs;
+    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
+    return { ...providerInputs, hostIp };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretRabbitMqSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretRabbitMqSchema> & { hostIp: string }) => {
     const axiosInstance = axios.create({
-      baseURL: `${removeTrailingSlash(providerInputs.host)}:${providerInputs.port}/api`,
+      baseURL: `${providerInputs.hostIp}:${providerInputs.port}/api`,
       auth: {
         username: providerInputs.username,
         password: providerInputs.password

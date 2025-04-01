@@ -469,6 +469,58 @@ export const secretImportServiceFactory = ({
     return count;
   };
 
+  const getProjectImportMultiEnvCount = async ({
+    path: secretPath,
+    environments,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    search
+  }: Omit<TGetSecretImportsDTO, "environment"> & { environments: string[] }) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    const filteredEnvironments = [];
+    for (const environment of environments) {
+      if (
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+        )
+      ) {
+        filteredEnvironments.push(environment);
+      }
+    }
+    if (filteredEnvironments.length === 0) {
+      return 0;
+    }
+
+    for (const environment of filteredEnvironments) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+      );
+    }
+
+    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
+    if (!folders?.length)
+      throw new NotFoundError({
+        message: `Folder with path '${secretPath}' not found on environments with slugs '${environments.join(", ")}'`
+      });
+    const counts = await Promise.all(
+      folders.map((folder) => secretImportDAL.getProjectImportCount({ folderId: folder.id, search }))
+    );
+
+    return counts.reduce((sum, count) => sum + count, 0);
+  };
+
   const getImports = async ({
     path: secretPath,
     environment,
@@ -688,6 +740,59 @@ export const secretImportServiceFactory = ({
     }));
   };
 
+  const getImportsMultiEnv = async ({
+    path: secretPath,
+    environments,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    search,
+    limit,
+    offset
+  }: Omit<TGetSecretImportsDTO, "environment"> & { environments: string[] }) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    const filteredEnvironments = [];
+    for (const environment of environments) {
+      if (
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+        )
+      ) {
+        filteredEnvironments.push(environment);
+      }
+    }
+    if (filteredEnvironments.length === 0) {
+      return [];
+    }
+
+    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, filteredEnvironments, secretPath);
+    if (!folders?.length)
+      throw new NotFoundError({
+        message: `Folder with path '${secretPath}' not found on environments with slugs '${environments.join(", ")}'`
+      });
+
+    const secImportsArrays = await Promise.all(
+      folders.map(async (folder) => {
+        const imports = await secretImportDAL.find({ folderId: folder.id, search, limit, offset });
+        return imports.map((importItem) => ({
+          ...importItem,
+          environment: folder.environment.slug
+        }));
+      })
+    );
+    return secImportsArrays.flat();
+  };
+
   return {
     createImport,
     updateImport,
@@ -698,6 +803,8 @@ export const secretImportServiceFactory = ({
     getRawSecretsFromImports,
     resyncSecretImportReplication,
     getProjectImportCount,
-    fnSecretsFromImports
+    fnSecretsFromImports,
+    getProjectImportMultiEnvCount,
+    getImportsMultiEnv
   };
 };

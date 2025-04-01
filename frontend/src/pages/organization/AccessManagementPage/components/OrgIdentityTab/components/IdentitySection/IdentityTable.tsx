@@ -32,7 +32,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetIdentityMembershipOrgs, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -207,7 +207,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     <Td>{name}</Td>
                     <Td>
                       <OrgPermissionCan
-                        I={OrgPermissionActions.Edit}
+                        I={OrgPermissionIdentityActions.Edit}
                         a={OrgPermissionSubjects.Identity}
                       >
                         {(isAllowed) => {
@@ -243,7 +243,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="p-1">
                           <OrgPermissionCan
-                            I={OrgPermissionActions.Edit}
+                            I={OrgPermissionIdentityActions.Edit}
                             a={OrgPermissionSubjects.Identity}
                           >
                             {(isAllowed) => (
@@ -267,7 +267,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                             )}
                           </OrgPermissionCan>
                           <OrgPermissionCan
-                            I={OrgPermissionActions.Delete}
+                            I={OrgPermissionIdentityActions.Delete}
                             a={OrgPermissionSubjects.Identity}
                           >
                             {(isAllowed) => (

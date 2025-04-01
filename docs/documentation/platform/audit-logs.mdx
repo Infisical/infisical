@@ -1,6 +1,6 @@
 ---
 title: "Overview"
-description: "Track evert event action performed within Infisical projects."
+description: "Track all actions performed within Infisical"
 ---
 
 <Info>
@@ -9,20 +9,76 @@ description: "Track evert event action performed within Infisical projects."
     If you're using Infisical Cloud, then it is available under the **Pro**,
     and **Enterprise Tier** with varying retention periods. If you're self-hosting Infisical,
     then you should contact sales@infisical.com to purchase an enterprise license to use it.
+
 </Info>
 
 Infisical provides audit logs for security and compliance teams to monitor information access.
 With the Audit Log functionality, teams can:
+
 - **Track** 40+ different events;
 - **Filter** audit logs by event, actor, source, date or any combination of these filters;
 - **Inspect** extensive metadata in the event of any suspicious activity or incident review.
 
 ![Audit logs](../../images/platform/audit-logs/audit-logs-table.png)
 
+## Audit Log Structure
+
 Each log contains the following data:
 
-- **Event**: The underlying action such as create, list, read, update, or delete secret(s).
-- **Actor**: The entity responsible for performing or causing the event; this can be a user or service.
-- **Timestamp**: The date and time at which point the event occurred.
-- **Source** (User agent + IP): The software (user agent) and network address (IP) from which the event was initiated.
-- **Metadata**: Additional data to provide context for each event. For example, this could be the path at which a secret was fetched from etc.
+| Field                     | Type     | Description                                               | Purpose                                                       |
+| ------------------------- | -------- | --------------------------------------------------------- | ------------------------------------------------------------- |
+| **event**                 | Object   | Contains details about the action performed               | Captures what happened                                        |
+| event.type                | String   | The specific action that occurred (e.g., "create-secret") | Identifies the exact operation                                |
+| event.metadata            | Object   | Context-specific details about the event                  | Provides detailed information relevant to the specific action |
+| **actor**                 | Object   | Information about who performed the action                | Identifies the responsible entity                             |
+| actor.type                | String   | Category of actor (user, service, identity, etc.)         | Distinguishes between human and non-human actors              |
+| actor.metadata            | Object   | Details about the specific actor                          | Provides identity information                                 |
+| actor.metadata.userId     | String   | Unique identifier for user actors                         | Links to specific user account                                |
+| actor.metadata.email      | String   | Email address for user actors                             | Email of the executing user                                   |
+| actor.metadata.username   | String   | Username for user actors                                  | Username of the executing user                                |
+| actor.metadata.serviceId  | String   | Identifier for service actors                             | ID of specific service token                                  |
+| actor.metadata.identityId | String   | Identifier for identity actors                            | ID to specific identity                                       |
+| actor.metadata.permission | Object   | Permission context for the action                         | Shows permission template data when action was performed      |
+| **orgId**                 | String   | Organization identifier                                   | Indicates which organization the action occurred in           |
+| **projectId**             | String   | Project identifier                                        | Indicates which project the action affected                   |
+| **ipAddress**             | String   | Source IP address                                         | Shows where the request originated from                       |
+| **userAgent**             | String   | Client application information                            | Identifies browser or application used                        |
+| **userAgentType**         | String   | Category of client (web, CLI, SDK, etc.)                  | Classifies the access method                                  |
+| **timestamp**             | DateTime | When the action occurred                                  | Records the exact time of the event                           |
+
+<Accordion title="Example Payload">
+```json
+{
+   "id": "[UUID]",
+   "ipAddress": "[IP_ADDRESS]",
+   "userAgent": "[USER_AGENT_STRING]",
+   "userAgentType": "web",
+   "expiresAt": "[TIMESTAMP]",
+   "createdAt": "[TIMESTAMP]",
+   "updatedAt": "[TIMESTAMP]",
+   "orgId": "[ORGANIZATION_UUID]",
+   "projectId": "[PROJECT_UUID]",
+   "projectName": "[PROJECT_NAME]",
+   "event": {
+       "type": "get-secrets",
+       "metadata": {
+           "secretPath": "[PATH]",
+           "environment": "[ENVIRONMENT_NAME]",
+           "numberOfSecrets": [NUMBER]
+       }
+   },
+   "actor": {
+       "type": "user",
+       "metadata": {
+           "email": "[EMAIL]",
+           "userId": "[USER_UUID]",
+           "username": "[USERNAME]",
+           "permission": {
+               "metadata": {},
+               "auth": {}
+           }
+       }
+   }
+}
+```
+</Accordion>

@@ -12,6 +12,7 @@ export type TSecretApprovalPolicy = {
   approvers: Approver[];
   updatedAt: Date;
   enforcementLevel: EnforcementLevel;
+  allowedSelfApprovals: boolean;
 };
 
 export enum ApproverType {
@@ -42,6 +43,7 @@ export type TCreateSecretPolicyDTO = {
   approvers?: Approver[];
   approvals?: number;
   enforcementLevel: EnforcementLevel;
+  allowedSelfApprovals: boolean;
 };
 
 export type TUpdateSecretPolicyDTO = {
@@ -50,6 +52,7 @@ export type TUpdateSecretPolicyDTO = {
   approvers?: Approver[];
   secretPath?: string | null;
   approvals?: number;
+  allowedSelfApprovals?: boolean;
   enforcementLevel?: EnforcementLevel;
   // for invalidating list
   workspaceId: string;

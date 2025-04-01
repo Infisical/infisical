@@ -3,9 +3,11 @@ import { ForbiddenError, MongoAbility, PureAbility, subject } from "@casl/abilit
 import { z } from "zod";
 
 import { TOrganizations } from "@app/db/schemas";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
 
+import { OrgPermissionSet } from "./org-permission";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
@@ -145,4 +147,57 @@ const escapeHandlebarsMissingDict = (obj: Record<string, string>, key: string) =
   return new Proxy(obj, handler);
 };
 
-export { escapeHandlebarsMissingDict, isAuthMethodSaml, validateOrgSSO };
+// This function serves as a transition layer between the old and new privilege management system
+// the old privilege management system is based on the actor having more privileges than the managed permission
+// the new privilege management system is based on the actor having the appropriate permission to perform the privilege change,
+// regardless of the actor's privilege level.
+const validatePrivilegeChangeOperation = (
+  shouldUseNewPrivilegeSystem: boolean,
+  opAction: OrgPermissionSet[0] | ProjectPermissionSet[0],
+  opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1],
+  actorPermission: MongoAbility,
+  managedPermission: MongoAbility
+) => {
+  if (shouldUseNewPrivilegeSystem) {
+    if (actorPermission.can(opAction, opSubject)) {
+      return {
+        isValid: true,
+        missingPermissions: []
+      };
+    }
+
+    return {
+      isValid: false,
+      missingPermissions: [
+        {
+          action: opAction,
+          subject: opSubject
+        }
+      ]
+    };
+  }
+
+  // if not, we check if the actor is indeed more privileged than the managed permission - this is the old system
+  return validatePermissionBoundary(actorPermission, managedPermission);
+};
+
+const constructPermissionErrorMessage = (
+  baseMessage: string,
+  shouldUseNewPrivilegeSystem: boolean,
+  opAction: OrgPermissionSet[0] | ProjectPermissionSet[0],
+  opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1]
+) => {
+  return `${baseMessage}${
+    shouldUseNewPrivilegeSystem
+      ? `. Actor is missing permission ${opAction as string} on ${opSubject as string}`
+      : ". Actor privilege level is not high enough to perform this action"
+  }`;
+};
+
+export {
+  constructPermissionErrorMessage,
+  escapeHandlebarsMissingDict,
+  isAuthMethodSaml,
+  validateOrgSSO,
+  validatePrivilegeChangeOperation
+};

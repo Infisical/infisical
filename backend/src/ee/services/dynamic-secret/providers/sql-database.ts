@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { withGatewayProxy } from "@app/lib/gateway";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
@@ -117,8 +118,21 @@ type TSqlDatabaseProviderDTO = {
 export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
-    verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.projectGatewayId));
-    return providerInputs;
+
+    const [hostIp] = await verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.projectGatewayId));
+    validateHandlebarTemplate("SQL creation", providerInputs.creationStatement, {
+      allowedExpressions: (val) => ["username", "password", "expiration", "database"].includes(val)
+    });
+    if (providerInputs.renewStatement) {
+      validateHandlebarTemplate("SQL renew", providerInputs.renewStatement, {
+        allowedExpressions: (val) => ["username", "expiration", "database"].includes(val)
+      });
+    }
+    validateHandlebarTemplate("SQL revoke", providerInputs.revocationStatement, {
+      allowedExpressions: (val) => ["username", "database"].includes(val)
+    });
+
+    return { ...providerInputs, hostIp };
   };
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>) => {
@@ -144,7 +158,8 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
             }
           : undefined
       },
-      acquireConnectionTimeout: EXTERNAL_REQUEST_TIMEOUT
+      acquireConnectionTimeout: EXTERNAL_REQUEST_TIMEOUT,
+      pool: { min: 0, max: 7 }
     });
     return db;
   };
@@ -178,7 +193,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
     let isConnected = false;
-    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+    const gatewayCallback = async (host = providerInputs.hostIp, port = providerInputs.port) => {
       const db = await $getClient({ ...providerInputs, port, host });
       // oracle needs from keyword
       const testStatement = providerInputs.client === SqlProviders.Oracle ? "SELECT 1 FROM DUAL" : "SELECT 1";

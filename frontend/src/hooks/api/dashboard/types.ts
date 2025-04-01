@@ -9,13 +9,16 @@ export type DashboardProjectSecretsOverviewResponse = {
   folders?: (TSecretFolder & { environment: string })[];
   dynamicSecrets?: (TDynamicSecret & { environment: string })[];
   secrets?: SecretV3Raw[];
+  imports?: TSecretImport[];
   totalSecretCount?: number;
   totalFolderCount?: number;
   totalDynamicSecretCount?: number;
+  totalImportCount?: number;
   totalCount: number;
   totalUniqueSecretsInPage: number;
   totalUniqueDynamicSecretsInPage: number;
   totalUniqueFoldersInPage: number;
+  totalUniqueSecretImportsInPage: number;
 };
 
 export type DashboardProjectSecretsDetailsResponse = {
@@ -63,6 +66,7 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
   includeSecrets?: boolean;
   includeFolders?: boolean;
   includeDynamicSecrets?: boolean;
+  includeImports?: boolean;
   environments: string[];
 };
 

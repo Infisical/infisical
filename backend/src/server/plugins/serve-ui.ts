@@ -34,7 +34,7 @@ export const registerServeUI = async (
         TELEMETRY_CAPTURING_ENABLED: appCfg.TELEMETRY_ENABLED
       };
       const js = `window.__INFISICAL_RUNTIME_ENV__ = Object.freeze(${JSON.stringify(config)});`;
-      void res.send(js);
+      return res.send(js);
     }
   });
 
@@ -57,7 +57,7 @@ export const registerServeUI = async (
           reply.callNotFound();
           return;
         }
-        void reply.sendFile("index.html");
+        return reply.sendFile("index.html");
       }
     });
   }

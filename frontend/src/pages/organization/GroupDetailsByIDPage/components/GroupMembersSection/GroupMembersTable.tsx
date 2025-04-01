@@ -24,7 +24,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useListGroupUsers, useOidcManageGroupMembershipsEnabled } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -177,7 +177,7 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
           />
         )}
         {!groupMemberships?.users.length && (
-          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Groups}>
+          <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
             {(isAllowed) => (
               <Tooltip
                 className="text-center"

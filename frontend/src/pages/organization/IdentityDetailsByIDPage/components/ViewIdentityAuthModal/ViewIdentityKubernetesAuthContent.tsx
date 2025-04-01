@@ -70,20 +70,26 @@ export const ViewIdentityKubernetesAuthContent = ({
         {data.kubernetesHost}
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay className="col-span-2" label="Token Reviewer JWT">
-        <Tooltip
-          side="right"
-          className="max-w-xl p-2"
-          content={
-            <p className="break-words rounded bg-mineshaft-600 p-2">{data.tokenReviewerJwt}</p>
-          }
-        >
-          <div className="w-min">
-            <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
-              <FontAwesomeIcon icon={faEye} />
-              <span>Reveal</span>
-            </Badge>
-          </div>
-        </Tooltip>
+        {data.tokenReviewerJwt ? (
+          <Tooltip
+            side="right"
+            className="max-w-xl p-2"
+            content={
+              <p className="break-words rounded bg-mineshaft-600 p-2">
+                {data.tokenReviewerJwt || "Not provided"}
+              </p>
+            }
+          >
+            <div className="w-min">
+              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+                <FontAwesomeIcon icon={faEye} />
+                <span>Reveal</span>
+              </Badge>
+            </div>
+          </Tooltip>
+        ) : (
+          <p className="text-base italic leading-4 text-bunker-400">Not set</p>
+        )}
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay className="col-span-2" label="Allowed Service Account Names">
         {data.allowedNames

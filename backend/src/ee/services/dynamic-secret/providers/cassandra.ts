@@ -3,9 +3,10 @@ import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
-import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
+import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretCassandraSchema, TDynamicProviderFns } from "./models";
 
 const generatePassword = (size = 48) => {
@@ -20,14 +21,28 @@ const generateUsername = () => {
 export const CassandraProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretCassandraSchema.parseAsync(inputs);
-    if (providerInputs.host === "localhost" || providerInputs.host === "127.0.0.1") {
-      throw new BadRequestError({ message: "Invalid db host" });
+    const hostIps = await Promise.all(
+      providerInputs.host
+        .split(",")
+        .filter(Boolean)
+        .map((el) => verifyHostInputValidity(el).then((ip) => ip[0]))
+    );
+    validateHandlebarTemplate("Cassandra creation", providerInputs.creationStatement, {
+      allowedExpressions: (val) => ["username", "password", "expiration", "keyspace"].includes(val)
+    });
+    if (providerInputs.renewStatement) {
+      validateHandlebarTemplate("Cassandra renew", providerInputs.renewStatement, {
+        allowedExpressions: (val) => ["username", "expiration", "keyspace"].includes(val)
+      });
     }
+    validateHandlebarTemplate("Cassandra revoke", providerInputs.revocationStatement, {
+      allowedExpressions: (val) => ["username"].includes(val)
+    });
 
-    return providerInputs;
+    return { ...providerInputs, hostIps };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretCassandraSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretCassandraSchema> & { hostIps: string[] }) => {
     const sslOptions = providerInputs.ca ? { rejectUnauthorized: false, ca: providerInputs.ca } : undefined;
     const client = new cassandra.Client({
       sslOptions,
@@ -40,7 +55,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
       },
       keyspace: providerInputs.keyspace,
       localDataCenter: providerInputs?.localDataCenter,
-      contactPoints: providerInputs.host.split(",").filter(Boolean)
+      contactPoints: providerInputs.hostIps
     });
     return client;
   };

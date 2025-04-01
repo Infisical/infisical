@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretSapAseSchema, TDynamicProviderFns } from "./models";
@@ -27,14 +28,25 @@ export const SapAseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSapAseSchema.parseAsync(inputs);
 
-    verifyHostInputValidity(providerInputs.host);
-    return providerInputs;
+    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
+    validateHandlebarTemplate("SAP ASE creation", providerInputs.creationStatement, {
+      allowedExpressions: (val) => ["username", "password"].includes(val)
+    });
+    if (providerInputs.revocationStatement) {
+      validateHandlebarTemplate("SAP ASE revoke", providerInputs.revocationStatement, {
+        allowedExpressions: (val) => ["username"].includes(val)
+      });
+    }
+    return { ...providerInputs, hostIp };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSapAseSchema>, useMaster?: boolean) => {
+  const $getClient = async (
+    providerInputs: z.infer<typeof DynamicSecretSapAseSchema> & { hostIp: string },
+    useMaster?: boolean
+  ) => {
     const connectionString =
       `DRIVER={FreeTDS};` +
-      `SERVER=${providerInputs.host};` +
+      `SERVER=${providerInputs.hostIp};` +
       `PORT=${providerInputs.port};` +
       `DATABASE=${useMaster ? "master" : providerInputs.database};` +
       `UID=${providerInputs.username};` +
@@ -83,7 +95,7 @@ export const SapAseProvider = (): TDynamicProviderFns => {
       password
     });
 
-    const queries = creationStatement.trim().replace(/\n/g, "").split(";").filter(Boolean);
+    const queries = creationStatement.trim().replaceAll("\n", "").split(";").filter(Boolean);
 
     for await (const query of queries) {
       // If it's an adduser query, we need to first call sp_addlogin on the MASTER database.
@@ -104,7 +116,7 @@ export const SapAseProvider = (): TDynamicProviderFns => {
       username
     });
 
-    const queries = revokeStatement.trim().replace(/\n/g, "").split(";").filter(Boolean);
+    const queries = revokeStatement.trim().replaceAll("\n", "").split(";").filter(Boolean);
 
     const client = await $getClient(providerInputs);
     const masterClient = await $getClient(providerInputs, true);

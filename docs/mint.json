@@ -402,7 +402,8 @@
           ]
         },
         "integrations/frameworks/terraform",
-        "integrations/platforms/ansible"
+        "integrations/platforms/ansible",
+        "integrations/platforms/apache-airflow"
       ]
     },
     {
@@ -1186,7 +1187,15 @@
       "group": "Internals",
       "pages": [
         "internals/overview",
-        "internals/permissions",
+        {
+          "group": "Permissions",
+          "pages": [
+            "internals/permissions/overview",
+            "internals/permissions/project-permissions",
+            "internals/permissions/organization-permissions",
+            "internals/permissions/migration"
+          ]
+        },
         "internals/components",
         "internals/security",
         "internals/service-tokens"

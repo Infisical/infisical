@@ -10,7 +10,7 @@ import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/en
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { LogsFilter } from "./LogsFilter";
-import { LogsTable, TAuditLogTableHeader } from "./LogsTable";
+import { LogsTable } from "./LogsTable";
 import { AuditLogFilterFormData, auditLogFilterFormSchema } from "./types";
 
 type Props = {
@@ -25,22 +25,11 @@ type Props = {
 
   showFilters?: boolean;
   filterClassName?: string;
-  isOrgAuditLogs?: boolean;
-  showActorColumn?: boolean;
-  remappedHeaders?: Partial<Record<TAuditLogTableHeader, string>>;
   refetchInterval?: number;
 };
 
 export const LogsSection = withPermission(
-  ({
-    presets,
-    filterClassName,
-    remappedHeaders,
-    isOrgAuditLogs,
-    showActorColumn,
-    refetchInterval,
-    showFilters
-  }: Props) => {
+  ({ presets, filterClassName, refetchInterval, showFilters }: Props) => {
     const { subscription } = useSubscription();
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
@@ -90,9 +79,6 @@ export const LogsSection = withPermission(
         )}
         <LogsTable
           refetchInterval={refetchInterval}
-          remappedHeaders={remappedHeaders}
-          isOrgAuditLogs={isOrgAuditLogs}
-          showActorColumn={!!showActorColumn}
           filter={{
             secretPath: debouncedSecretPath || undefined,
             eventMetadata: presets?.eventMetadata,

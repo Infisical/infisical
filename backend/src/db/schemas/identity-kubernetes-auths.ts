@@ -28,7 +28,7 @@ export const IdentityKubernetesAuthsSchema = z.object({
   allowedNamespaces: z.string(),
   allowedNames: z.string(),
   allowedAudience: z.string(),
-  encryptedKubernetesTokenReviewerJwt: zodBuffer,
+  encryptedKubernetesTokenReviewerJwt: zodBuffer.nullable().optional(),
   encryptedKubernetesCaCertificate: zodBuffer.nullable().optional()
 });
 

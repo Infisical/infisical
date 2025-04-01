@@ -176,7 +176,7 @@ export const MinimizedOrgSidebar = () => {
         <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
           <div>
             <div className="flex items-center hover:bg-mineshaft-700">
-              <DropdownMenu open={openOrg} onOpenChange={setOpenOrg} modal>
+              <DropdownMenu open={openOrg} onOpenChange={setOpenOrg} modal={false}>
                 <DropdownMenuTrigger
                   onMouseEnter={() => setOpenOrg(true)}
                   onMouseLeave={() => setOpenOrg(false)}
@@ -329,7 +329,7 @@ export const MinimizedOrgSidebar = () => {
                 )}
               </Link>
               <div className="my-1 w-full bg-mineshaft-500" style={{ height: "1px" }} />
-              <DropdownMenu open={open} onOpenChange={setOpen}>
+              <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
                 <DropdownMenuTrigger
                   onMouseEnter={() => setOpen(true)}
                   onMouseLeave={() => setOpen(false)}
@@ -370,17 +370,11 @@ export const MinimizedOrgSidebar = () => {
                       Gateways
                     </DropdownMenuItem>
                   </Link>
-                  {(window.location.origin.includes("https://app.infisical.com") ||
-                    window.location.origin.includes("https://eu.infisical.com") ||
-                    window.location.origin.includes("https://gamma.infisical.com")) && (
-                    <Link to="/organization/billing">
-                      <DropdownMenuItem
-                        icon={<FontAwesomeIcon className="w-3" icon={faMoneyBill} />}
-                      >
-                        Usage & Billing
-                      </DropdownMenuItem>
-                    </Link>
-                  )}
+                  <Link to="/organization/billing">
+                    <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faMoneyBill} />}>
+                      Usage & Billing
+                    </DropdownMenuItem>
+                  </Link>
                   <Link to="/organization/audit-logs">
                     <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faBook} />}>
                       Audit Logs
@@ -402,7 +396,7 @@ export const MinimizedOrgSidebar = () => {
                 : "mb-4"
             } flex w-full cursor-default flex-col items-center px-1 text-sm text-mineshaft-400`}
           >
-            <DropdownMenu open={openSupport} onOpenChange={setOpenSupport}>
+            <DropdownMenu open={openSupport} onOpenChange={setOpenSupport} modal={false}>
               <DropdownMenuTrigger
                 onMouseEnter={() => setOpenSupport(true)}
                 onMouseLeave={() => setOpenSupport(false)}
@@ -485,7 +479,7 @@ export const MinimizedOrgSidebar = () => {
                 </button>
               </Tooltip>
             )}
-            <DropdownMenu open={openUser} onOpenChange={setOpenUser}>
+            <DropdownMenu open={openUser} onOpenChange={setOpenUser} modal={false}>
               <DropdownMenuTrigger
                 onMouseEnter={() => setOpenUser(true)}
                 onMouseLeave={() => setOpenUser(false)}

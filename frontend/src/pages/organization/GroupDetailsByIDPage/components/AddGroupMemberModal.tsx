@@ -20,7 +20,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
 import { useAddUserToGroup, useListGroupUsers } from "@app/hooks/api";
 import { EFilterReturnedUsers } from "@app/hooks/api/groups/types";
@@ -124,7 +124,7 @@ export const AddGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
                       </Td>
                       <Td className="flex justify-end">
                         <OrgPermissionCan
-                          I={OrgPermissionActions.Edit}
+                          I={OrgPermissionGroupActions.Edit}
                           a={OrgPermissionSubjects.Groups}
                         >
                           {(isAllowed) => {

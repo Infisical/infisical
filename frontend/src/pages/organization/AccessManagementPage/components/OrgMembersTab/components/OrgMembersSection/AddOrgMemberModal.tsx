@@ -23,7 +23,7 @@ import {
   useGetUserWorkspaces
 } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { OrgInviteLink } from "./OrgInviteLink";
@@ -168,6 +168,21 @@ export const AddOrgMemberModal = ({
     reset();
   };
 
+  const getGroupHeaderLabel = (type: ProjectType) => {
+    switch (type) {
+      case ProjectType.SecretManager:
+        return "Secrets";
+      case ProjectType.CertificateManager:
+        return "PKI";
+      case ProjectType.KMS:
+        return "KMS";
+      case ProjectType.SSH:
+        return "SSH";
+      default:
+        return "Other";
+    }
+  };
+
   return (
     <Modal
       isOpen={popUp?.addMember?.isOpen}
@@ -247,6 +262,8 @@ export const AddOrgMemberModal = ({
                         getOptionLabel={(project) => project.name}
                         getOptionValue={(project) => project.id}
                         options={projects}
+                        groupBy="type"
+                        getGroupHeaderLabel={getGroupHeaderLabel}
                         placeholder="Select projects..."
                       />
                     </FormControl>

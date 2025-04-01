@@ -15,6 +15,7 @@ export type Organization = {
   defaultMembershipRole: string;
   enforceMfa: boolean;
   selectedMfaMethod?: MfaMethod;
+  shouldUseNewPrivilegeSystem: boolean;
   allowSecretSharingOutsideOrganization?: boolean;
 };
 

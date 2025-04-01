@@ -20,7 +20,7 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { useGetIdentityById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -54,7 +54,10 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="min-w-[120px]" align="end">
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
+            <OrgPermissionCan
+              I={OrgPermissionIdentityActions.Edit}
+              a={OrgPermissionSubjects.Identity}
+            >
               {(isAllowed) => (
                 <DropdownMenuItem
                   className={twMerge(
@@ -75,7 +78,10 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
                 </DropdownMenuItem>
               )}
             </OrgPermissionCan>
-            <OrgPermissionCan I={OrgPermissionActions.Delete} a={OrgPermissionSubjects.Identity}>
+            <OrgPermissionCan
+              I={OrgPermissionIdentityActions.Delete}
+              a={OrgPermissionSubjects.Identity}
+            >
               {(isAllowed) => (
                 <DropdownMenuItem
                   className={twMerge(

@@ -13,6 +13,7 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/systemd"
+	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/go-resty/resty/v2"
 	"github.com/pion/dtls/v3"
 	"github.com/pion/logging"
@@ -40,7 +41,11 @@ type Gateway struct {
 }
 
 func NewGateway(identityToken string) (Gateway, error) {
-	httpClient := resty.New()
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return Gateway{}, fmt.Errorf("unable to get client with custom headers [err=%v]", err)
+	}
+
 	httpClient.SetAuthToken(identityToken)
 
 	return Gateway{
@@ -89,7 +94,7 @@ func (g *Gateway) ConnectWithRelay() error {
 		turnClientCfg.Conn = turn.NewSTUNConn(conn)
 	} else {
 		log.Info().Msgf("Provided relay port %s. Using non TLS connection.", relayPort)
-		conn, err := net.ListenPacket("udp4", turnAddr.String())
+		conn, err := net.ListenPacket("udp4", "0.0.0.0:0")
 		if err != nil {
 			return fmt.Errorf("Failed to connect with relay server: %w", err)
 		}
@@ -342,7 +347,9 @@ func (g *Gateway) registerRelayIsActive(ctx context.Context, errCh chan error) e
 			case <-ticker.C:
 				log.Debug().Msg("Performing relay connection health check")
 				err := g.createPermissionForStaticIps(g.config.InfisicalStaticIp)
-				if err != nil && !strings.Contains(err.Error(), "tls:") {
+				// try again error message from server happens to avoid congestion
+				// https://github.com/pion/turn/blob/master/internal/client/udp_conn.go#L382
+				if err != nil && !strings.Contains(err.Error(), "try again") {
 					failures++
 					log.Warn().Err(err).Int("failures", failures).Msg("Failed to refresh TURN permissions")
 					if failures >= maxFailures {
@@ -351,6 +358,7 @@ func (g *Gateway) registerRelayIsActive(ctx context.Context, errCh chan error) e
 					}
 					continue
 				}
+				failures = 0 // reset
 			}
 		}
 	}()

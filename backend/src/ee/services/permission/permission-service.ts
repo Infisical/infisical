@@ -244,22 +244,20 @@ export const permissionServiceFactory = ({
 
     const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
     const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
-    const metadataKeyValuePair = escapeHandlebarsMissingDict(
-      objectify(
-        userProjectPermission.metadata,
-        (i) => i.key,
-        (i) => i.value
-      ),
-      "identity.metadata"
+    const unescapedMetadata = objectify(
+      userProjectPermission.metadata,
+      (i) => i.key,
+      (i) => i.value
     );
-    const templateValue = {
-      id: userProjectPermission.userId,
-      username: userProjectPermission.username,
-      metadata: metadataKeyValuePair
-    };
+    const metadataKeyValuePair = escapeHandlebarsMissingDict(unescapedMetadata, "identity.metadata");
+    requestContext.set("identityPermissionMetadata", { metadata: unescapedMetadata });
     const interpolateRules = templatedRules(
       {
-        identity: templateValue
+        identity: {
+          id: userProjectPermission.userId,
+          username: userProjectPermission.username,
+          metadata: metadataKeyValuePair
+        }
       },
       { data: false }
     );
@@ -331,15 +329,16 @@ export const permissionServiceFactory = ({
         ? escapeHandlebarsMissingDict(unescapedIdentityAuthInfo as never, "identity.auth")
         : {};
     const metadataKeyValuePair = escapeHandlebarsMissingDict(unescapedMetadata, "identity.metadata");
-    const templateValue = {
-      id: identityProjectPermission.identityId,
-      username: identityProjectPermission.username,
-      metadata: metadataKeyValuePair,
-      auth: identityAuthInfo
-    };
+
+    requestContext.set("identityPermissionMetadata", { metadata: unescapedMetadata, auth: unescapedIdentityAuthInfo });
     const interpolateRules = templatedRules(
       {
-        identity: templateValue
+        identity: {
+          id: identityProjectPermission.identityId,
+          username: identityProjectPermission.username,
+          metadata: metadataKeyValuePair,
+          auth: identityAuthInfo
+        }
       },
       { data: false }
     );
@@ -398,14 +397,18 @@ export const permissionServiceFactory = ({
     const scopes = ServiceTokenScopes.parse(serviceToken.scopes || []);
     return {
       permission: buildServiceTokenProjectPermission(scopes, serviceToken.permissions),
-      membership: undefined
+      membership: {
+        shouldUseNewPrivilegeSystem: true
+      }
     };
   };
 
   type TProjectPermissionRT<T extends ActorType> = T extends ActorType.SERVICE
     ? {
         permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-        membership: undefined;
+        membership: {
+          shouldUseNewPrivilegeSystem: boolean;
+        };
         hasRole: (arg: string) => boolean;
       } // service token doesn't have both membership and roles
     : {
@@ -414,6 +417,7 @@ export const permissionServiceFactory = ({
           orgAuthEnforced: boolean | null | undefined;
           orgId: string;
           roles: Array<{ role: string }>;
+          shouldUseNewPrivilegeSystem: boolean;
         };
         hasRole: (role: string) => boolean;
       };
@@ -440,14 +444,13 @@ export const permissionServiceFactory = ({
         ),
         "identity.metadata"
       );
-      const templateValue = {
-        id: userProjectPermission.userId,
-        username: userProjectPermission.username,
-        metadata: metadataKeyValuePair
-      };
       const interpolateRules = templatedRules(
         {
-          identity: templateValue
+          identity: {
+            id: userProjectPermission.userId,
+            username: userProjectPermission.username,
+            metadata: metadataKeyValuePair
+          }
         },
         { data: false }
       );
@@ -487,14 +490,13 @@ export const permissionServiceFactory = ({
         ),
         "identity.metadata"
       );
-      const templateValue = {
-        id: identityProjectPermission.identityId,
-        username: identityProjectPermission.username,
-        metadata: metadataKeyValuePair
-      };
       const interpolateRules = templatedRules(
         {
-          identity: templateValue
+          identity: {
+            id: identityProjectPermission.identityId,
+            username: identityProjectPermission.username,
+            metadata: metadataKeyValuePair
+          }
         },
         { data: false }
       );

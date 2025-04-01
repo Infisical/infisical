@@ -27,7 +27,6 @@ import (
 	"github.com/Infisical/infisical-merge/packages/srp"
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/fatih/color"
-	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
 	"github.com/posthog/posthog-go"
 	"github.com/rs/cors"
@@ -178,10 +177,16 @@ var loginCmd = &cobra.Command{
 			return
 		}
 
+		customHeaders, err := util.GetInfisicalCustomHeadersMap()
+		if err != nil {
+			util.HandleError(err, "Unable to get custom headers")
+		}
+
 		infisicalClient := infisicalSdk.NewInfisicalClient(context.Background(), infisicalSdk.Config{
 			SiteUrl:          config.INFISICAL_URL,
 			UserAgent:        api.USER_AGENT,
 			AutoTokenRefresh: false,
+			CustomHeaders:    customHeaders,
 		})
 
 		loginMethod, err := cmd.Flags().GetString("method")
@@ -359,7 +364,10 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 		for i < 6 {
 			mfaVerifyCode := askForMFACode("email")
 
-			httpClient := resty.New()
+			httpClient, err := util.GetRestyClientWithCustomHeaders()
+			if err != nil {
+				util.HandleError(err, "Unable to get resty client with custom headers")
+			}
 			httpClient.SetAuthToken(loginTwoResponse.Token)
 			verifyMFAresponse, mfaErrorResponse, requestError := api.CallVerifyMfaToken(httpClient, api.VerifyMfaTokenRequest{
 				Email:    email,
@@ -726,7 +734,10 @@ func askForLoginCredentials() (email string, password string, err error) {
 
 func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2Response, *api.GetLoginTwoV2Response, error) {
 	log.Debug().Msg(fmt.Sprint("getFreshUserCredentials: ", "email", email, "password: ", password))
-	httpClient := resty.New()
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return nil, nil, err
+	}
 	httpClient.SetRetryCount(5)
 
 	params := srp.GetParams(4096)
@@ -776,7 +787,10 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 func GetJwtTokenWithOrganizationId(oldJwtToken string, email string) string {
 	log.Debug().Msg(fmt.Sprint("GetJwtTokenWithOrganizationId: ", "oldJwtToken", oldJwtToken))
 
-	httpClient := resty.New()
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		util.HandleError(err, "Unable to get resty client with custom headers")
+	}
 	httpClient.SetAuthToken(oldJwtToken)
 
 	organizationResponse, err := api.CallGetAllOrganizations(httpClient)
@@ -811,7 +825,10 @@ func GetJwtTokenWithOrganizationId(oldJwtToken string, email string) string {
 		for i < 6 {
 			mfaVerifyCode := askForMFACode(selectedOrgRes.MfaMethod)
 
-			httpClient := resty.New()
+			httpClient, err := util.GetRestyClientWithCustomHeaders()
+			if err != nil {
+				util.HandleError(err, "Unable to get resty client with custom headers")
+			}
 			httpClient.SetAuthToken(selectedOrgRes.Token)
 			verifyMFAresponse, mfaErrorResponse, requestError := api.CallVerifyMfaToken(httpClient, api.VerifyMfaTokenRequest{
 				Email:     email,
@@ -913,7 +930,14 @@ func askToPasteJwtToken(success chan models.UserCredentials, failure chan error)
 	}
 
 	// verify JTW
-	httpClient := resty.New().
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		failure <- err
+		fmt.Println("Error getting resty client with custom headers", err)
+		os.Exit(1)
+	}
+
+	httpClient.
 		SetAuthToken(userCredentials.JTWToken).
 		SetHeader("Accept", "application/json")
 

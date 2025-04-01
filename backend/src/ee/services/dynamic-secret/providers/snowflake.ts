@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { DynamicSecretSnowflakeSchema, TDynamicProviderFns } from "./models";
 
@@ -31,6 +32,18 @@ const getDaysToExpiry = (expiryDate: Date) => {
 export const SnowflakeProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSnowflakeSchema.parseAsync(inputs);
+    validateHandlebarTemplate("Snowflake creation", providerInputs.creationStatement, {
+      allowedExpressions: (val) => ["username", "password", "expiration"].includes(val)
+    });
+    if (providerInputs.renewStatement) {
+      validateHandlebarTemplate("Snowflake renew", providerInputs.renewStatement, {
+        allowedExpressions: (val) => ["username", "expiration"].includes(val)
+      });
+    }
+    validateHandlebarTemplate("Snowflake revoke", providerInputs.revocationStatement, {
+      allowedExpressions: (val) => ["username"].includes(val)
+    });
+
     return providerInputs;
   };
 

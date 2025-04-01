@@ -244,7 +244,7 @@ export const KUBERNETES_AUTH = {
     kubernetesHost: "The host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert: "The PEM-encoded CA cert for the Kubernetes API server.",
     tokenReviewerJwt:
-      "The long-lived service account JWT token for Infisical to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods.",
+      "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
       "The comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
     allowedNames: "The comma-separated list of trusted service account names that can authenticate with Infisical.",
@@ -260,7 +260,7 @@ export const KUBERNETES_AUTH = {
     kubernetesHost: "The new host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert: "The new PEM-encoded CA cert for the Kubernetes API server.",
     tokenReviewerJwt:
-      "The new long-lived service account JWT token for Infisical to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods.",
+      "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
       "The new comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
     allowedNames: "The new comma-separated list of trusted service account names that can authenticate with Infisical.",
@@ -631,7 +631,8 @@ export const FOLDERS = {
     workspaceId: "The ID of the project to list folders from.",
     environment: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
-    directory: "The directory to list folders from. (Deprecated in favor of path)"
+    directory: "The directory to list folders from. (Deprecated in favor of path)",
+    recursive: "Whether or not to fetch all folders from the specified base path, and all of its subdirectories."
   },
   GET_BY_ID: {
     folderId: "The ID of the folder to get details."
@@ -815,7 +816,8 @@ export const DASHBOARD = {
     search: "The text string to filter secret keys and folder names by.",
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
-    includeDynamicSecrets: "Whether to include dynamic project secrets in the response."
+    includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
+    includeImports: "Whether to include project secret imports in the response."
   },
   SECRET_DETAILS_LIST: {
     projectId: "The ID of the project to list secrets/folders from.",

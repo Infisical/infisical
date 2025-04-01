@@ -13,6 +13,7 @@ import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { DynamicSecretAwsElastiCacheSchema, TDynamicProviderFns } from "./models";
 
@@ -144,6 +145,14 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
     // We can't return the parsed statements here because we need to use the handlebars template to generate the username and password, before we can use the parsed statements.
     CreateElastiCacheUserSchema.parse(JSON.parse(providerInputs.creationStatement));
     DeleteElasticCacheUserSchema.parse(JSON.parse(providerInputs.revocationStatement));
+    validateHandlebarTemplate("AWS ElastiCache creation", providerInputs.creationStatement, {
+      allowedExpressions: (val) => ["username", "password", "expiration"].includes(val)
+    });
+    if (providerInputs.revocationStatement) {
+      validateHandlebarTemplate("AWS ElastiCache revoke", providerInputs.revocationStatement, {
+        allowedExpressions: (val) => ["username"].includes(val)
+      });
+    }
 
     return providerInputs;
   };

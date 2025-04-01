@@ -10,7 +10,6 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/util"
-	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -70,8 +69,12 @@ var bootstrapCmd = &cobra.Command{
 			return
 		}
 
-		httpClient := resty.New().
-			SetHeader("Accept", "application/json")
+		httpClient, err := util.GetRestyClientWithCustomHeaders()
+		if err != nil {
+			log.Error().Msgf("Failed to get resty client with custom headers: %v", err)
+			return
+		}
+		httpClient.SetHeader("Accept", "application/json")
 
 		bootstrapResponse, err := api.CallBootstrapInstance(httpClient, api.BootstrapInstanceRequest{
 			Domain:       util.AppendAPIEndpoint(domain),

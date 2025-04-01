@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretRedisDBSchema, TDynamicProviderFns } from "./models";
@@ -51,16 +52,28 @@ const executeTransactions = async (connection: Redis, commands: string[]): Promi
 export const RedisDatabaseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretRedisDBSchema.parseAsync(inputs);
-    verifyHostInputValidity(providerInputs.host);
-    return providerInputs;
+    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
+    validateHandlebarTemplate("Redis creation", providerInputs.creationStatement, {
+      allowedExpressions: (val) => ["username", "password", "expiration"].includes(val)
+    });
+    if (providerInputs.renewStatement) {
+      validateHandlebarTemplate("Redis renew", providerInputs.renewStatement, {
+        allowedExpressions: (val) => ["username", "expiration"].includes(val)
+      });
+    }
+    validateHandlebarTemplate("Redis revoke", providerInputs.revocationStatement, {
+      allowedExpressions: (val) => ["username"].includes(val)
+    });
+
+    return { ...providerInputs, hostIp };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretRedisDBSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretRedisDBSchema> & { hostIp: string }) => {
     let connection: Redis | null = null;
     try {
       connection = new Redis({
         username: providerInputs.username,
-        host: providerInputs.host,
+        host: providerInputs.hostIp,
         port: providerInputs.port,
         password: providerInputs.password,
         ...(providerInputs.ca && {

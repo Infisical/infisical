@@ -24,7 +24,7 @@ const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick(
   allowedAudience: true
 }).extend({
   caCert: z.string(),
-  tokenReviewerJwt: z.string()
+  tokenReviewerJwt: z.string().optional().nullable()
 });
 
 export const registerIdentityKubernetesRouter = async (server: FastifyZodProvider) => {
@@ -98,7 +98,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         .object({
           kubernetesHost: z.string().trim().min(1).describe(KUBERNETES_AUTH.ATTACH.kubernetesHost),
           caCert: z.string().trim().default("").describe(KUBERNETES_AUTH.ATTACH.caCert),
-          tokenReviewerJwt: z.string().trim().min(1).describe(KUBERNETES_AUTH.ATTACH.tokenReviewerJwt),
+          tokenReviewerJwt: z.string().trim().optional().describe(KUBERNETES_AUTH.ATTACH.tokenReviewerJwt),
           allowedNamespaces: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNamespaces), // TODO: validation
           allowedNames: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNames),
           allowedAudience: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedAudience),
@@ -195,7 +195,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         .object({
           kubernetesHost: z.string().trim().min(1).optional().describe(KUBERNETES_AUTH.UPDATE.kubernetesHost),
           caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.UPDATE.caCert),
-          tokenReviewerJwt: z.string().trim().min(1).optional().describe(KUBERNETES_AUTH.UPDATE.tokenReviewerJwt),
+          tokenReviewerJwt: z.string().trim().nullable().optional().describe(KUBERNETES_AUTH.UPDATE.tokenReviewerJwt),
           allowedNamespaces: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNamespaces), // TODO: validation
           allowedNames: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNames),
           allowedAudience: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedAudience),

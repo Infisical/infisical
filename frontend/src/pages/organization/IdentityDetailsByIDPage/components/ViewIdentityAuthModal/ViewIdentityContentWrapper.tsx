@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
 
 type Props = {
   children: ReactNode;
@@ -36,7 +36,10 @@ export const ViewIdentityContentWrapper = ({ children, onDelete, onEdit }: Props
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="min-w-[120px]" align="end">
-                <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
+                <OrgPermissionCan
+                  I={OrgPermissionIdentityActions.Edit}
+                  a={OrgPermissionSubjects.Identity}
+                >
                   {(isAllowed) => (
                     <DropdownMenuItem
                       isDisabled={!isAllowed}
@@ -47,7 +50,10 @@ export const ViewIdentityContentWrapper = ({ children, onDelete, onEdit }: Props
                     </DropdownMenuItem>
                   )}
                 </OrgPermissionCan>
-                <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
+                <OrgPermissionCan
+                  I={OrgPermissionIdentityActions.Delete}
+                  a={OrgPermissionSubjects.Identity}
+                >
                   {(isAllowed) => (
                     <DropdownMenuItem
                       isDisabled={!isAllowed}

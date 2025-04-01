@@ -70,6 +70,19 @@ export const DefaultResponseErrorsSchema = {
   })
 };
 
+export const booleanSchema = z
+  .union([z.boolean(), z.string().trim()])
+  .transform((value) => {
+    if (typeof value === "string") {
+      // ie if not empty, 0 or false, return true
+      return Boolean(value) && Number(value) !== 0 && value.toLowerCase() !== "false";
+    }
+
+    return value;
+  })
+  .optional()
+  .default(true);
+
 export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
   z.object({
     environment: z.object({
