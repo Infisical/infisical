@@ -419,7 +419,8 @@
             "integrations/app-connections/databricks",
             "integrations/app-connections/gcp",
             "integrations/app-connections/github",
-            "integrations/app-connections/humanitec"
+            "integrations/app-connections/humanitec",
+            "integrations/app-connections/vercel"
           ]
         }
       ]
@@ -438,7 +439,8 @@
             "integrations/secret-syncs/databricks",
             "integrations/secret-syncs/gcp-secret-manager",
             "integrations/secret-syncs/github",
-            "integrations/secret-syncs/humanitec"
+            "integrations/secret-syncs/humanitec",
+            "integrations/secret-syncs/vercel"
           ]
         }
       ]
@@ -922,6 +924,18 @@
                 "api-reference/endpoints/app-connections/humanitec/update",
                 "api-reference/endpoints/app-connections/humanitec/delete"
               ]
+            },
+            {
+              "group": "Vercel",
+              "pages": [
+                "api-reference/endpoints/app-connections/vercel/list",
+                "api-reference/endpoints/app-connections/vercel/available",
+                "api-reference/endpoints/app-connections/vercel/get-by-id",
+                "api-reference/endpoints/app-connections/vercel/get-by-name",
+                "api-reference/endpoints/app-connections/vercel/create",
+                "api-reference/endpoints/app-connections/vercel/update",
+                "api-reference/endpoints/app-connections/vercel/delete"
+              ]
             }
           ]
         },
@@ -1037,6 +1051,19 @@
                 "api-reference/endpoints/secret-syncs/humanitec/delete",
                 "api-reference/endpoints/secret-syncs/humanitec/sync-secrets",
                 "api-reference/endpoints/secret-syncs/humanitec/remove-secrets"
+              ]
+            },
+            {
+              "group": "Vercel",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/vercel/list",
+                "api-reference/endpoints/secret-syncs/vercel/get-by-id",
+                "api-reference/endpoints/secret-syncs/vercel/get-by-name",
+                "api-reference/endpoints/secret-syncs/vercel/create",
+                "api-reference/endpoints/secret-syncs/vercel/update",
+                "api-reference/endpoints/secret-syncs/vercel/delete",
+                "api-reference/endpoints/secret-syncs/vercel/sync-secrets",
+                "api-reference/endpoints/secret-syncs/vercel/remove-secrets"
               ]
             }
           ]

@@ -155,7 +155,7 @@ async function fetchPreviewBranches(projectId: string, apiToken: string): Promis
       }
     }
   );
-  return data.map((b) => b.ref);
+  return data.filter((b) => b.ref !== "main").map((b) => b.ref);
 }
 
 type VercelTeam = {

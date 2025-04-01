@@ -12,27 +12,14 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 
 import { VercelEnvironmentType } from "./vercel-sync-enums";
 
-const VercelSyncDestinationConfigSchema = z
-  .object({
-    app: z.string().min(1, "App ID is required").describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.app),
-    appName: z.string().min(1, "App Name is required").describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.appName),
-    env: z
-      .enum([VercelEnvironmentType.Development, VercelEnvironmentType.Preview, VercelEnvironmentType.Production])
-      .describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.env),
-    branch: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.branch)
-  })
-  .refine(
-    (data) => {
-      if (data.env === VercelEnvironmentType.Preview) {
-        return !!data.branch && data.branch.trim().length > 0;
-      }
-      return true;
-    },
-    {
-      message: "Branch is required for Preview environments",
-      path: ["branch"]
-    }
-  );
+const VercelSyncDestinationConfigSchema = z.object({
+  app: z.string().min(1, "App ID is required").describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.app),
+  appName: z.string().min(1, "App Name is required").describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.appName),
+  env: z
+    .enum([VercelEnvironmentType.Development, VercelEnvironmentType.Preview, VercelEnvironmentType.Production])
+    .describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.env),
+  branch: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.branch)
+});
 
 const VercelSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 

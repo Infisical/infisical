@@ -1787,7 +1787,7 @@ export const SecretSyncs = {
       app: "The ID of the Vercel app to sync secrets to.",
       appName: "The name of the Vercel app to sync secrets to.",
       env: "The ID of the Vercel environment to sync secrets to.",
-      branch: "The branch to sync secrets to. Required for Preview environments."
+      branch: "The branch to sync preview secrets to."
     }
   }
 };
