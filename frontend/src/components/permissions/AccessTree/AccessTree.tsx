@@ -188,7 +188,7 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
                   )}
                   <Tooltip position="bottom" align="center" content={undockButtonLabel}>
                     <IconButton
-                      className="mr-1 rounded"
+                      className="ml-1 w-10 rounded"
                       colorSchema="secondary"
                       variant="plain"
                       onClick={handleToggleUndockedView}
@@ -205,7 +205,7 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
                   </Tooltip>
                   <Tooltip align="end" position="bottom" content={windowButtonLabel}>
                     <IconButton
-                      className="rounded"
+                      className="w-10 rounded"
                       colorSchema="secondary"
                       variant="plain"
                       onClick={handleToggleModalView}
