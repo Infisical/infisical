@@ -633,7 +633,7 @@ export const FOLDERS = {
     path: "The path to list folders from.",
     directory: "The directory to list folders from. (Deprecated in favor of path)",
     recursive: "Whether or not to fetch all folders from the specified base path, and all of its subdirectories.",
-    lastSecretModified: "The timestamp filters folders with secrets modified after the specified date."
+    lastSecretModified: "The ISO 8601 timestamp filters folders with secrets modified after the specified date."
   },
   GET_BY_ID: {
     folderId: "The ID of the folder to get details."
