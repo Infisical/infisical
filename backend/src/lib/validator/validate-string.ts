@@ -37,7 +37,7 @@ export enum CharacterType {
   Comma = "comma", // ,
   Semicolon = "semicolon", // ;
   Exclamation = "exclamation", // !
-  Fullstop = "fullStop" // !
+  Fullstop = "fullStop" // .
 }
 
 /**

@@ -114,7 +114,7 @@ export const AllProjectView = ({ type, onListViewToggle }: Props) => {
     offset,
     totalCount: searchedProjects?.totalCount || 0
   });
-  const requestedWorkspaceDetails = popUp.requestAccessConfirmation.data as Workspace;
+  const requestedWorkspaceDetails = (popUp.requestAccessConfirmation.data || {}) as Workspace;
 
   return (
     <div>
