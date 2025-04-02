@@ -1,11 +1,20 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FilterableSelect, FormControl, Modal, ModalContent } from "@app/components/v2";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  FilterableSelect,
+  FormControl,
+  Modal,
+  ModalContent
+} from "@app/components/v2";
 import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import {
   OrgPermissionActions,
@@ -48,7 +57,12 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { currentWorkspace } = useWorkspace();
+  const navigate = useNavigate({ from: "" });
   const { permission } = useOrgPermission();
+  const requesterEmail = useSearch({
+    strict: false,
+    select: (el) => el?.requesterEmail
+  });
 
   const orgId = currentOrg?.id || "";
   const workspaceId = currentWorkspace?.id || "";
@@ -62,6 +76,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
+    setValue,
     watch,
     formState: { isSubmitting, errors }
   } = useForm<TAddMemberForm>({
@@ -70,6 +85,12 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   const { mutateAsync: addMembersToProject } = useAddUsersToOrg();
+
+  useEffect(() => {
+    if (requesterEmail) {
+      handlePopUpToggle("addMember", true);
+    }
+  }, [requesterEmail]);
 
   const onAddMembers = async ({ orgMemberships, projectRoleSlugs }: TAddMemberForm) => {
     if (!currentWorkspace) return;
@@ -126,12 +147,13 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     reset();
   };
 
-  const filteredOrgUsers = useMemo(() => {
+  const { append } = useFieldArray<TAddMemberForm>({ control, name: "orgMemberships" });
+  const projectInviteList = useMemo(() => {
     const wsUserUsernames = new Map();
     members?.forEach((member) => {
       wsUserUsernames.set(member.user.username, true);
     });
-    return (orgUsers || [])
+    const list = (orgUsers || [])
       .filter(({ user: u }) => !wsUserUsernames.has(u.username))
       .map(({ id, inviteEmail, user: { firstName, lastName, email } }) => ({
         value: id,
@@ -140,12 +162,30 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             ? `${firstName} ${lastName}`
             : firstName || lastName || email || inviteEmail
       }));
+    const requesterStatus = { isProjectUser: wsUserUsernames.has(requesterEmail), userLabel: "" };
+    if (!requesterStatus.isProjectUser) {
+      const userDetails = orgUsers?.find((el) => el.user.username === requesterEmail);
+      if (userDetails) {
+        const { user } = userDetails;
+        const label =
+          user.firstName && user.lastName
+            ? `${user.firstName} ${user.lastName}`
+            : user.firstName || user.lastName || (user.email as string);
+        requesterStatus.userLabel = label;
+        setValue("orgMemberships", [
+          {
+            value: userDetails.id,
+            label
+          }
+        ]);
+      }
+    }
+
+    return { list, requesterStatus };
   }, [orgUsers, members]);
 
   const selectedOrgMemberships = watch("orgMemberships");
   const selectedRoleSlugs = watch("projectRoleSlugs");
-
-  const { append } = useFieldArray<TAddMemberForm>({ control, name: "orgMemberships" });
 
   const canInviteNewMembers = permission.can(
     OrgPermissionActions.Create,
@@ -155,7 +195,13 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   return (
     <Modal
       isOpen={popUp?.addMember?.isOpen}
-      onOpenChange={(isOpen) => handlePopUpToggle("addMember", isOpen)}
+      onOpenChange={(isOpen) => {
+        if (!isOpen)
+          navigate({
+            search: (prev) => ({ ...prev, requesterEmail: "" })
+          });
+        handlePopUpToggle("addMember", isOpen);
+      }}
     >
       <ModalContent
         bodyClassName="overflow-visible"
@@ -185,7 +231,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                       noOptionsMessage={() => (
                         <>
                           <p>
-                            {!filteredOrgUsers.length && (
+                            {!projectInviteList.list.length && (
                               <p>All organization members are already assigned to this project.</p>
                             )}
                           </p>
@@ -221,7 +267,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                       placeholder="Add one or more users..."
                       isMulti
                       name="members"
-                      options={filteredOrgUsers}
+                      options={projectInviteList.list}
                       value={field.value}
                       onChange={field.onChange}
                     />
@@ -231,7 +277,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                       placeholder="Add one or more users..."
                       isMulti
                       name="members"
-                      options={filteredOrgUsers}
+                      options={projectInviteList.list}
                       value={field.value}
                       onChange={field.onChange}
                     />
@@ -239,7 +285,6 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                 </FormControl>
               )}
             />
-
             <Controller
               control={control}
               name="projectRoleSlugs"
@@ -263,6 +308,19 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                 </FormControl>
               )}
             />
+            {requesterEmail && projectInviteList.requesterStatus.isProjectUser && (
+              <Alert hideTitle variant="danger">
+                <AlertDescription>Requested user is part of the project.</AlertDescription>
+              </Alert>
+            )}
+            {requesterEmail && !projectInviteList.requesterStatus.isProjectUser && (
+              <Alert hideTitle>
+                <AlertDescription>
+                  Assign a role to provide access to requesting user{" "}
+                  <b>{projectInviteList.requesterStatus.userLabel}</b>.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
           <div className="mt-8 flex items-center">
             <Button

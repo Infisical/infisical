@@ -107,3 +107,13 @@ export const useMigrateProjectToV3 = () => {
     }
   });
 };
+
+export const useRequestProjectAccess = () => {
+  return useMutation<object, object, { projectId: string; comment: string }>({
+    mutationFn: ({ projectId, comment }) => {
+      return apiRequest.post(`/api/v1/workspace/${projectId}/project-access`, {
+        comment
+      });
+    }
+  });
+};
