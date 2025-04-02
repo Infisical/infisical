@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { faCopy, faKey, faRefresh } from "@fortawesome/free-solid-svg-icons";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { faCheck, faCopy, faKey, faRefresh } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button, Checkbox, IconButton, Slider } from "@app/components/v2";
+import { useTimedReset } from "@app/hooks";
 
 type PasswordOptionsType = {
   length: number;
@@ -24,11 +25,13 @@ const PasswordGeneratorModal = ({
   isOpen,
   onClose,
   onUsePassword,
-  minLength = 6,
-  maxLength = 32
+  minLength = 12,
+  maxLength = 64
 }: PasswordGeneratorModalProps) => {
-  const [password, setPassword] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [copyText, isCopying, setCopyText] = useTimedReset<string>({
+    initialState: "Copy"
+  });
+  const [refresh, setRefresh] = useState(false);
   const [passwordOptions, setPasswordOptions] = useState<PasswordOptionsType>({
     length: minLength,
     useUppercase: true,
@@ -61,8 +64,7 @@ const PasswordGeneratorModal = ({
       newPassword += availableChars[randomIndex];
     }
 
-    setPassword(newPassword);
-    setCopied(false);
+    return newPassword;
   };
 
   useEffect(() => {
@@ -81,14 +83,20 @@ const PasswordGeneratorModal = ({
     return () => {};
   }, [isOpen, onClose]);
 
-  useEffect(() => {
-    generatePassword();
-  }, [passwordOptions]);
+  const password = useMemo(() => {
+    return generatePassword();
+  }, [
+    passwordOptions.length,
+    passwordOptions.useUppercase,
+    passwordOptions.useLowercase,
+    passwordOptions.useNumbers,
+    passwordOptions.useSpecialChars,
+    refresh
+  ]);
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(password).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopyText("Copied");
     });
   };
 
@@ -105,7 +113,7 @@ const PasswordGeneratorModal = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div
         ref={modalRef}
-        className="w-full max-w-md rounded-lg border border-mineshaft-600 bg-mineshaft-800 shadow-xl"
+        className="w-full max-w-lg rounded-lg border border-mineshaft-600 bg-mineshaft-800 shadow-xl"
       >
         <div className="p-6">
           <h2 className="mb-1 text-xl font-semibold text-bunker-200">Password Generator</h2>
@@ -119,7 +127,7 @@ const PasswordGeneratorModal = ({
                   size="xs"
                   colorSchema="secondary"
                   variant="outline_bg"
-                  onClick={generatePassword}
+                  onClick={() => setRefresh((prev) => !prev)}
                   className="w-full text-bunker-300 hover:text-bunker-100"
                 >
                   <FontAwesomeIcon icon={faRefresh} className="mr-1 h-3 w-3" />
@@ -133,8 +141,8 @@ const PasswordGeneratorModal = ({
                   onClick={copyToClipboard}
                   className="w-full text-bunker-300 hover:text-bunker-100"
                 >
-                  <FontAwesomeIcon icon={faCopy} className="mr-1 h-3 w-3" />
-                  {copied ? "Copied!" : "Copy"}
+                  <FontAwesomeIcon icon={isCopying ? faCheck : faCopy} className="mr-1 h-3 w-3" />
+                  {copyText}
                 </Button>
               </div>
             </div>
@@ -235,8 +243,8 @@ export type PasswordGeneratorProps = {
 export const PasswordGenerator = ({
   onUsePassword,
   isDisabled = false,
-  minLength = 6,
-  maxLength = 32
+  minLength = 12,
+  maxLength = 64
 }: PasswordGeneratorProps) => {
   const [showGenerator, setShowGenerator] = useState(false);
 
