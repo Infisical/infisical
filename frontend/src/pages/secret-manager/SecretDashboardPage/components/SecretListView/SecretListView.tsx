@@ -387,7 +387,7 @@ export const SecretListView = ({
                         {folders.map((folderName, idx) => (
                           <div
                             key={`imported-folder-${idx + 1}`}
-                            className="py-0.5 text-xs text-red-300"
+                            className="truncate py-0.5 text-xs text-red-300"
                           >
                             {folderName}
                           </div>
