@@ -83,14 +83,7 @@ const PasswordGeneratorModal = ({
 
   const password = useMemo(() => {
     return generatePassword();
-  }, [
-    passwordOptions.length,
-    passwordOptions.useUppercase,
-    passwordOptions.useLowercase,
-    passwordOptions.useNumbers,
-    passwordOptions.useSpecialChars,
-    refresh
-  ]);
+  }, [passwordOptions, refresh]);
 
   const copyToClipboard = () => {
     navigator.clipboard
