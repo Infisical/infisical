@@ -793,6 +793,39 @@ export const secretImportServiceFactory = ({
     return secImportsArrays.flat();
   };
 
+  const getFolderIsImportedBy = async ({
+    path: secretPath,
+    environment,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetSecretImportsDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+    );
+
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    if (!folder)
+      throw new NotFoundError({
+        message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
+      });
+
+    const importedBy = await secretImportDAL.getFolderIsImportedBy(secretPath, folder.envId);
+
+    return importedBy;
+  };
+
   return {
     createImport,
     updateImport,
@@ -805,6 +838,7 @@ export const secretImportServiceFactory = ({
     getProjectImportCount,
     fnSecretsFromImports,
     getProjectImportMultiEnvCount,
-    getImportsMultiEnv
+    getImportsMultiEnv,
+    getFolderIsImportedBy
   };
 };

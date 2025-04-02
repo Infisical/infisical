@@ -169,6 +169,27 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  const getFolderIsImportedBy = async (secretPath: string, environment: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
+        .where({ importPath: secretPath, importEnv: environment })
+        .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .select(
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("name").withSchema(TableName.SecretFolder).as("folderName"),
+          db.ref("parentId").withSchema(TableName.SecretFolder).as("parentFolderId")
+        );
+
+      return docs.map(({ envName, folderName, parentFolderId }) => ({
+        envName,
+        folderName: parentFolderId ? folderName : "Project Root Folder"
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "get secret imports count" });
+    }
+  };
+
   return {
     ...secretImportOrm,
     find,
@@ -176,6 +197,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     findByFolderIds,
     findLastImportPosition,
     updateAllPosition,
-    getProjectImportCount
+    getProjectImportCount,
+    getFolderIsImportedBy
   };
 };

@@ -470,7 +470,14 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           totalFolderCount: z.number().optional(),
           totalDynamicSecretCount: z.number().optional(),
           totalSecretCount: z.number().optional(),
-          totalCount: z.number()
+          totalCount: z.number(),
+          importedBy: z
+            .object({
+              envName: z.string(),
+              folderName: z.string()
+            })
+            .array()
+            .optional()
         })
       }
     },
@@ -699,6 +706,16 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
+      const importedBy = await server.services.secretImport.getFolderIsImportedBy({
+        path: secretPath,
+        environment,
+        projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
       return {
         imports,
         folders,
@@ -709,7 +726,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         totalDynamicSecretCount,
         totalSecretCount,
         totalCount:
-          (totalImportCount ?? 0) + (totalFolderCount ?? 0) + (totalDynamicSecretCount ?? 0) + (totalSecretCount ?? 0)
+          (totalImportCount ?? 0) + (totalFolderCount ?? 0) + (totalDynamicSecretCount ?? 0) + (totalSecretCount ?? 0),
+        importedBy
       };
     }
   });
