@@ -69,8 +69,6 @@ const PasswordGeneratorModal = ({
 
   useEffect(() => {
     if (isOpen) {
-      generatePassword();
-
       const handleClickOutside = (event: MouseEvent) => {
         if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
           onClose();
@@ -95,9 +93,14 @@ const PasswordGeneratorModal = ({
   ]);
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(password).then(() => {
-      setCopyText("Copied");
-    });
+    navigator.clipboard
+      .writeText(password)
+      .then(() => {
+        setCopyText("Copied");
+      })
+      .catch(() => {
+        setCopyText("Copy failed");
+      });
   };
 
   const usePassword = () => {
