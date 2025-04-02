@@ -14,9 +14,7 @@ type Props = {
 };
 
 export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: Props) => {
-  const { control, watch } = useFormContext<TSecretRotationV2Form>();
-
-  console.log(watch("rotateAtUtc"));
+  const { control } = useFormContext<TSecretRotationV2Form>();
 
   return (
     <>

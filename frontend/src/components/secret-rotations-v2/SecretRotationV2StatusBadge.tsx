@@ -4,7 +4,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { Tooltip } from "@app/components/v2";
-import { Badge, BadgeProps } from "@app/components/v2/Badge/Badge";
+import { Badge } from "@app/components/v2/Badge/Badge";
 import { SecretRotationStatus, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 
 type Props = {
@@ -78,40 +78,30 @@ export const SecretRotationV2StatusBadge = ({ secretRotation, className }: Props
   const daysToRotation =
     (new Date(nextRotationAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24);
 
-  let variant: BadgeProps["variant"];
-  let label: string;
-  let tooltipContent: string;
-
-  if (daysToRotation >= 7) {
-    variant = "success";
-    label = `Rotates ${formatDistanceToNow(nextRotationAt, { addSuffix: true })}`;
-    tooltipContent = `Rotates ${format(nextRotationAt, "MM/dd/yyyy")} at ${format(nextRotationAt, "h:mm aa")}.`;
-  } else if (daysToRotation < 0) {
-    variant = "primary";
-    label = "Rotating";
-    tooltipContent = `Rotates on ${format(nextRotationAt, "MM/dd/yyyy")} at ${format(nextRotationAt, "h:mm aa")}.`;
-  } else if (daysToRotation < 1) {
-    variant = "primary";
-    label = `Rotates ${formatDistanceToNow(nextRotationAt, { addSuffix: true })}`;
-    tooltipContent = `Rotates on ${format(nextRotationAt, "MM/dd/yyyy")} at ${format(nextRotationAt, "h:mm aa")}.`;
-  } else {
-    variant = "primary";
-    label = `Rotates ${formatDistanceToNow(nextRotationAt, { addSuffix: true })}`;
-    tooltipContent = `Rotates on ${format(nextRotationAt, "MM/dd/yyyy")} at ${format(nextRotationAt, "h:mm aa")}.`;
-  }
-
   return (
-    <Tooltip className="max-w-lg" content={tooltipContent}>
+    <Tooltip
+      className="max-w-lg"
+      content={
+        <>
+          <span>
+            Rotates on {format(nextRotationAt, "MM/dd/yyyy")} at {format(nextRotationAt, "h:mm aa")}
+          </span>{" "}
+          <span className="text-mineshaft-300">(Local Time)</span>
+        </>
+      }
+    >
       <div>
         <Badge
-          variant={variant}
+          variant={daysToRotation >= 7 ? "success" : "primary"}
           className={twMerge(
             "flex h-5 w-min items-center gap-1.5 whitespace-nowrap capitalize",
             className
           )}
         >
           <FontAwesomeIcon icon={faRotate} />
-          {label}
+          {daysToRotation < 0
+            ? "Rotating"
+            : `Rotates ${formatDistanceToNow(nextRotationAt, { addSuffix: true })}`}
         </Badge>
       </div>
     </Tooltip>

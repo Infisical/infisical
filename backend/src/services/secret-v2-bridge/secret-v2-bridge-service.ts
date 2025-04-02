@@ -2234,6 +2234,10 @@ export const secretV2BridgeServiceFactory = ({
     const destinationActions = [ProjectPermissionSecretActions.Create, ProjectPermissionSecretActions.Edit] as const;
 
     sourceSecrets.forEach((secret) => {
+      if (secret.isRotatedSecret) {
+        throw new BadRequestError({ message: `Cannot move rotated secret: ${secret.key}` });
+      }
+
       for (const sourceAction of sourceActions) {
         if (
           sourceAction === ProjectPermissionSecretActions.DescribeSecret ||

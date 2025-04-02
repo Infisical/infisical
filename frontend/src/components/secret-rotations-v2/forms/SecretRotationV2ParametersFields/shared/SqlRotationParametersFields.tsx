@@ -46,10 +46,17 @@ export const SqlRotationParametersFields = () => {
       />
       <NoticeBannerV2 title="Example Create User Statement">
         <p className="mb-3 text-sm text-mineshaft-300">
-          Infisical requires two database users to be created for rotation. Below is an example
-          statement for creating the required users. You may need to modify it to suit your needs.
+          Infisical requires two database users to be created for rotation.
         </p>
-        <p className="text-sm">
+        <p className="mb-3 text-sm text-mineshaft-300">
+          These users are intended to be solely managed by Infisical. Altering their login after
+          rotation may cause unexpected failure.
+        </p>
+        <p className="mb-3 text-sm text-mineshaft-300">
+          Below is an example statement for creating the required users. You may need to modify it
+          to suit your needs.
+        </p>
+        <p className="mb-3 text-sm">
           <pre className="whitespace-pre-wrap rounded border border-mineshaft-700 bg-mineshaft-800 p-2 text-mineshaft-300">
             {rotationOption!.template.createUserStatement}
           </pre>

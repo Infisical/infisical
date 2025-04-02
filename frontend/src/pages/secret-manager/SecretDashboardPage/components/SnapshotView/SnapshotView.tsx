@@ -33,11 +33,13 @@ type Props = {
 const LOADER_TEXT = ["Fetching your snapshot", "Creating the difference view"];
 
 const deepCompareSecrets = (lhs: SecretV3RawSanitized, rhs: SecretV3RawSanitized) =>
-  lhs.key === rhs.key &&
-  lhs.value === rhs.value &&
-  lhs.comment === rhs.comment &&
-  lhs?.valueOverride === rhs?.valueOverride &&
-  JSON.stringify(lhs.tags) === JSON.stringify(rhs.tags);
+  lhs.isRotatedSecret ||
+  rhs.isRotatedSecret ||
+  (lhs.key === rhs.key &&
+    lhs.value === rhs.value &&
+    lhs.comment === rhs.comment &&
+    lhs?.valueOverride === rhs?.valueOverride &&
+    JSON.stringify(lhs.tags) === JSON.stringify(rhs.tags));
 
 export const SnapshotView = ({
   snapshotId,

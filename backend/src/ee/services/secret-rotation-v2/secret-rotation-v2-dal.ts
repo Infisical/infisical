@@ -189,9 +189,11 @@ export const secretRotationV2DALFactory = (
       .countDistinct(`${TableName.SecretRotationV2}.name`);
 
     if (search) {
-      void query
-        .whereILike(`${TableName.SecretV2}.key`, `%${search}%`)
-        .orWhereILike(`${TableName.SecretRotationV2}.name`, `%${search}%`);
+      void query.where((qb) => {
+        void qb
+          .whereILike(`${TableName.SecretV2}.key`, `%${search}%`)
+          .orWhereILike(`${TableName.SecretRotationV2}.name`, `%${search}%`);
+      });
     }
 
     const result = await query;

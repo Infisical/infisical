@@ -15,7 +15,7 @@ export type TAwsConnectionInput = z.infer<typeof CreateAwsConnectionSchema> & {
   app: AppConnection.AWS;
 };
 
-export type TValidateAwsConnectionCredentials = typeof ValidateAwsConnectionCredentialsSchema;
+export type TValidateAwsConnectionCredentialsSchema = typeof ValidateAwsConnectionCredentialsSchema;
 
 export type TAwsConnectionConfig = DiscriminativePick<TAwsConnectionInput, "method" | "app" | "credentials"> & {
   orgId: string;

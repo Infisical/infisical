@@ -80,7 +80,7 @@ export const secretRotationV2QueueServiceFactory = async ({
     {
       batchSize: 1,
       workerCount: 1,
-      pollingIntervalSeconds: 0.5
+      pollingIntervalSeconds: appCfg.isRotationDevelopmentMode ? 0.5 : 30
     }
   );
 
@@ -122,7 +122,7 @@ export const secretRotationV2QueueServiceFactory = async ({
     },
     {
       batchSize: 1,
-      workerCount: 30,
+      workerCount: 2,
       pollingIntervalSeconds: 0.5
     }
   );
@@ -179,8 +179,8 @@ export const secretRotationV2QueueServiceFactory = async ({
     },
     {
       batchSize: 1,
-      workerCount: 5,
-      pollingIntervalSeconds: 30
+      workerCount: 2,
+      pollingIntervalSeconds: 1
     }
   );
 

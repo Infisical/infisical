@@ -44,7 +44,24 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
             isError={Boolean(error)}
             errorText={error?.message}
             label={`${connectionName} Connection`}
-            helperText={isUpdate ? "Cannot be updated" : undefined}
+            helperText={
+              isUpdate ? (
+                "Cannot be updated"
+              ) : (
+                <p>
+                  Check out{" "}
+                  <a
+                    href={`https://infisical.com/docs/integrations/app-connections/${app}`}
+                    target="_blank"
+                    className="underline"
+                    rel="noopener noreferrer"
+                  >
+                    our docs
+                  </a>{" "}
+                  to ensure your connection has the required permissions for secret rotation.
+                </p>
+              )
+            }
           >
             <FilterableSelect
               value={value}

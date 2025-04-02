@@ -18,10 +18,7 @@ const SQL_CONNECTION_CLIENT_MAP = {
   [AppConnection.MsSql]: "mssql"
 };
 
-export const getSqlConnectionClient = async (
-  appConnection: Pick<TSqlConnection, "credentials" | "app">,
-  options?: Record<string, unknown>
-) => {
+export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection, "credentials" | "app">) => {
   const {
     app,
     credentials: { host: baseHost, database, port, sslCertificate, password, username }
@@ -41,7 +38,15 @@ export const getSqlConnectionClient = async (
       password,
       connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
       ssl,
-      options
+      // following dynamic secret mssql driver requirements (see sql-database.ts)
+      // @ts-expect-error this is because of knexjs type signature issue. This is directly passed to driver
+      options:
+        app === AppConnection.MsSql
+          ? {
+              trustServerCertificate: !sslCertificate,
+              cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {}
+            }
+          : undefined
     }
   });
 

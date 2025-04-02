@@ -13,7 +13,8 @@ export const verifyHostInputValidity = async (host: string, isGateway = false) =
 
   const reservedHosts = [appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI)].concat(
     (appCfg.DB_READ_REPLICAS || []).map((el) => getDbConnectionHost(el.DB_CONNECTION_URI)),
-    getDbConnectionHost(appCfg.REDIS_URL)
+    getDbConnectionHost(appCfg.REDIS_URL),
+    getDbConnectionHost(appCfg.AUDIT_LOGS_DB_CONNECTION_URI)
   );
 
   // get host db ip

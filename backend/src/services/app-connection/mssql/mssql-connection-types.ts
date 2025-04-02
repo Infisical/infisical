@@ -13,4 +13,4 @@ export type TMsSqlConnectionInput = z.infer<typeof CreateMsSqlConnectionSchema> 
   app: AppConnection.MsSql;
 };
 
-export type TValidateMsSqlConnectionCredentials = typeof ValidateMsSqlConnectionCredentialsSchema;
+export type TValidateMsSqlConnectionCredentialsSchema = typeof ValidateMsSqlConnectionCredentialsSchema;

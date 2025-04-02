@@ -14,15 +14,11 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.MsSqlCredentials]: AppConnection.MsSql
 };
 
-export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) =>
-  new Date(
-    Date.UTC(
-      new Date().getUTCFullYear(),
-      new Date().getUTCMonth(),
-      new Date().getUTCDate(),
-      hours,
-      minutes,
-      0,
-      0
-    )
+export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {
+  const now = new Date();
+
+  // convert utc rotation time to local datetime
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hours, minutes, 0, 0)
   );
+};

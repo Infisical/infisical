@@ -548,6 +548,7 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     try {
       const secrets = await (tx || db.replicaNode())(TableName.SecretV2)
         .where({ folderId })
+
         .where((bd) => {
           query.forEach((el) => {
             if (el.type === SecretType.Personal && !el.userId) {
@@ -559,10 +560,20 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
               userId: el.type === SecretType.Personal ? el.userId : null
             });
           });
-        });
-      return secrets;
+        })
+        .leftJoin(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretRotationV2SecretMapping}.secretId`
+        )
+        .select(selectAllTableCols(TableName.SecretV2))
+        .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
+      return secrets.map((secret) => ({
+        ...secret,
+        isRotatedSecret: Boolean(secret.rotationId)
+      }));
     } catch (error) {
-      throw new DatabaseError({ error, name: "find by blind indexes" });
+      throw new DatabaseError({ error, name: "find by secret keys" });
     }
   };
 

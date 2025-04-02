@@ -3,40 +3,54 @@ import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sq
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 
 import { AWSRegion } from "./app-connection-enums";
-import { TAwsConnection, TAwsConnectionConfig, TAwsConnectionInput, TValidateAwsConnectionCredentials } from "./aws";
+import {
+  TAwsConnection,
+  TAwsConnectionConfig,
+  TAwsConnectionInput,
+  TValidateAwsConnectionCredentialsSchema
+} from "./aws";
 import {
   TAzureAppConfigurationConnection,
   TAzureAppConfigurationConnectionConfig,
   TAzureAppConfigurationConnectionInput,
-  TValidateAzureAppConfigurationConnectionCredentials
+  TValidateAzureAppConfigurationConnectionCredentialsSchema
 } from "./azure-app-configuration";
 import {
   TAzureKeyVaultConnection,
   TAzureKeyVaultConnectionConfig,
   TAzureKeyVaultConnectionInput,
-  TValidateAzureKeyVaultConnectionCredentials
+  TValidateAzureKeyVaultConnectionCredentialsSchema
 } from "./azure-key-vault";
 import {
   TDatabricksConnection,
   TDatabricksConnectionConfig,
   TDatabricksConnectionInput,
-  TValidateDatabricksConnectionCredentials
+  TValidateDatabricksConnectionCredentialsSchema
 } from "./databricks";
-import { TGcpConnection, TGcpConnectionConfig, TGcpConnectionInput, TValidateGcpConnectionCredentials } from "./gcp";
+import {
+  TGcpConnection,
+  TGcpConnectionConfig,
+  TGcpConnectionInput,
+  TValidateGcpConnectionCredentialsSchema
+} from "./gcp";
 import {
   TGitHubConnection,
   TGitHubConnectionConfig,
   TGitHubConnectionInput,
-  TValidateGitHubConnectionCredentials
+  TValidateGitHubConnectionCredentialsSchema
 } from "./github";
 import {
   THumanitecConnection,
   THumanitecConnectionConfig,
   THumanitecConnectionInput,
-  TValidateHumanitecConnectionCredentials
+  TValidateHumanitecConnectionCredentialsSchema
 } from "./humanitec";
-import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentials } from "./mssql";
-import { TPostgresConnection, TPostgresConnectionInput, TValidatePostgresConnectionCredentials } from "./postgres";
+import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
+import {
+  TPostgresConnection,
+  TPostgresConnectionInput,
+  TValidatePostgresConnectionCredentialsSchema
+} from "./postgres";
 
 export type TAppConnection = { id: string } & (
   | TAwsConnection
@@ -87,16 +101,16 @@ export type TAppConnectionConfig =
   | THumanitecConnectionConfig
   | TSqlConnectionConfig;
 
-export type TValidateAppConnectionCredentials =
-  | TValidateAwsConnectionCredentials
-  | TValidateGitHubConnectionCredentials
-  | TValidateGcpConnectionCredentials
-  | TValidateAzureKeyVaultConnectionCredentials
-  | TValidateAzureAppConfigurationConnectionCredentials
-  | TValidateDatabricksConnectionCredentials
-  | TValidateHumanitecConnectionCredentials
-  | TValidatePostgresConnectionCredentials
-  | TValidateMsSqlConnectionCredentials;
+export type TValidateAppConnectionCredentialsSchema =
+  | TValidateAwsConnectionCredentialsSchema
+  | TValidateGitHubConnectionCredentialsSchema
+  | TValidateGcpConnectionCredentialsSchema
+  | TValidateAzureKeyVaultConnectionCredentialsSchema
+  | TValidateAzureAppConfigurationConnectionCredentialsSchema
+  | TValidateDatabricksConnectionCredentialsSchema
+  | TValidateHumanitecConnectionCredentialsSchema
+  | TValidatePostgresConnectionCredentialsSchema
+  | TValidateMsSqlConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

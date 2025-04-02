@@ -151,7 +151,7 @@ export const registerSecretRotationEndpoints = <
       rateLimit: readLimit
     },
     schema: {
-      description: `Get the specified ${rotationType} Rotation by name and project ID.`,
+      description: `Get the specified ${rotationType} Rotation by name, secret path, environment and project ID.`,
       params: z.object({
         rotationName: z
           .string()

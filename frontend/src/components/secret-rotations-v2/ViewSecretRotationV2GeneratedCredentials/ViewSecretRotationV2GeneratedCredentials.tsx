@@ -59,11 +59,12 @@ const Content = ({ secretRotation }: ContentProps) => {
     <div className="flex flex-col gap-y-4">
       {Component}
       {nextRotationAt && (
-        <div className="flex items-center gap-x-1.5 text-sm text-mineshaft-300">
+        <div className="flex items-center gap-x-1.5 text-sm text-mineshaft-200">
           <FontAwesomeIcon icon={faRotate} className="text-mineshaft-400" />
           <span>
             Next rotation occurs on: {format(nextRotationAt, "MM/dd/yyyy")} at{" "}
-            {format(nextRotationAt, "h:mm aa")}
+            {format(nextRotationAt, "h:mm aa")}{" "}
+            <span className="text-mineshaft-300">(Local Time)</span>
           </span>
         </div>
       )}

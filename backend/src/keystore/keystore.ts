@@ -8,7 +8,8 @@ export const PgSqlLock = {
   SuperAdminInit: 2024,
   KmsRootKeyInit: 2025,
   OrgGatewayRootCaInit: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-root-ca:${orgId}`),
-  OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`)
+  OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`),
+  SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`)
 } as const;
 
 export type TKeyStoreFactory = ReturnType<typeof keyStoreFactory>;

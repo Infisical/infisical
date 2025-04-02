@@ -13,4 +13,4 @@ export type TPostgresConnectionInput = z.infer<typeof CreatePostgresConnectionSc
   app: AppConnection.Postgres;
 };
 
-export type TValidatePostgresConnectionCredentials = typeof ValidatePostgresConnectionCredentialsSchema;
+export type TValidatePostgresConnectionCredentialsSchema = typeof ValidatePostgresConnectionCredentialsSchema;

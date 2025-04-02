@@ -25,7 +25,7 @@ import {
   TAppConnectionRaw,
   TCreateAppConnectionDTO,
   TUpdateAppConnectionDTO,
-  TValidateAppConnectionCredentials
+  TValidateAppConnectionCredentialsSchema
 } from "./app-connection-types";
 import { ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
@@ -50,7 +50,7 @@ export type TAppConnectionServiceFactoryDep = {
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
 
-const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAppConnectionCredentials> = {
+const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAppConnectionCredentialsSchema> = {
   [AppConnection.AWS]: ValidateAwsConnectionCredentialsSchema,
   [AppConnection.GitHub]: ValidateGitHubConnectionCredentialsSchema,
   [AppConnection.GCP]: ValidateGcpConnectionCredentialsSchema,
@@ -170,25 +170,21 @@ export const appConnectionServiceFactory = ({
     } as TAppConnectionConfig);
 
     try {
-      const createTransaction = (connectionCredentials: TAppConnection["credentials"]) =>
-        appConnectionDAL.transaction(async (tx) => {
-          const encryptedCredentials = await encryptAppConnectionCredentials({
-            credentials: connectionCredentials,
-            orgId: actor.orgId,
-            kmsService
-          });
-
-          return appConnectionDAL.create(
-            {
-              orgId: actor.orgId,
-              encryptedCredentials,
-              method,
-              app,
-              ...params
-            },
-            tx
-          );
+      const createConnection = async (connectionCredentials: TAppConnection["credentials"]) => {
+        const encryptedCredentials = await encryptAppConnectionCredentials({
+          credentials: connectionCredentials,
+          orgId: actor.orgId,
+          kmsService
         });
+
+        return appConnectionDAL.create({
+          orgId: actor.orgId,
+          encryptedCredentials,
+          method,
+          app,
+          ...params
+        });
+      };
 
       let connection: TAppConnectionRaw;
 
@@ -200,10 +196,10 @@ export const appConnectionServiceFactory = ({
             credentials: validatedCredentials,
             method
           } as TAppConnectionConfig,
-          (platformCredentials) => createTransaction(platformCredentials)
+          (platformCredentials) => createConnection(platformCredentials)
         );
       } else {
-        connection = await createTransaction(validatedCredentials);
+        connection = await createConnection(validatedCredentials);
       }
 
       return {
@@ -277,26 +273,21 @@ export const appConnectionServiceFactory = ({
     }
 
     try {
-      const updateTransaction = (connectionCredentials: TAppConnection["credentials"] | undefined) =>
-        appConnectionDAL.transaction(async (tx) => {
-          const encryptedCredentials = connectionCredentials
-            ? await encryptAppConnectionCredentials({
-                credentials: connectionCredentials,
-                orgId: actor.orgId,
-                kmsService
-              })
-            : undefined;
-
-          return appConnectionDAL.updateById(
-            connectionId,
-            {
+      const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined) => {
+        const encryptedCredentials = connectionCredentials
+          ? await encryptAppConnectionCredentials({
+              credentials: connectionCredentials,
               orgId: actor.orgId,
-              encryptedCredentials,
-              ...params
-            },
-            tx
-          );
+              kmsService
+            })
+          : undefined;
+
+        return appConnectionDAL.updateById(connectionId, {
+          orgId: actor.orgId,
+          encryptedCredentials,
+          ...params
         });
+      };
 
       let updatedConnection: TAppConnectionRaw;
 
@@ -312,10 +303,10 @@ export const appConnectionServiceFactory = ({
             credentials: updatedCredentials,
             method
           } as TAppConnectionConfig,
-          (platformCredentials) => updateTransaction(platformCredentials)
+          (platformCredentials) => updateConnection(platformCredentials)
         );
       } else {
-        updatedConnection = await updateTransaction(updatedCredentials);
+        updatedConnection = await updateConnection(updatedCredentials);
       }
 
       return await decryptAppConnection(updatedConnection, kmsService);

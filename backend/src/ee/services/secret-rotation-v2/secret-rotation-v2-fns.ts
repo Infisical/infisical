@@ -23,7 +23,7 @@ export const listSecretRotationOptions = () => {
   return Object.values(SECRET_ROTATION_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
 };
 
-const getNextUTCMidnight = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"] = { hours: 0, minutes: 0 }) => {
+const getNextUTCDayInterval = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"] = { hours: 0, minutes: 0 }) => {
   const now = new Date();
 
   return new Date(
@@ -39,7 +39,7 @@ const getNextUTCMidnight = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]
   );
 };
 
-const getNextUTCMinute = ({ minutes }: TSecretRotationV2["rotateAtUtc"] = { hours: 0, minutes: 0 }) => {
+const getNextUTCMinuteInterval = ({ minutes }: TSecretRotationV2["rotateAtUtc"] = { hours: 0, minutes: 0 }) => {
   const now = new Date();
   return new Date(
     Date.UTC(
@@ -58,10 +58,10 @@ export const getNextUtcRotationInterval = (rotateAtUtc?: TSecretRotationV2["rota
   const appCfg = getConfig();
 
   if (appCfg.isRotationDevelopmentMode) {
-    return getNextUTCMinute(rotateAtUtc);
+    return getNextUTCMinuteInterval(rotateAtUtc);
   }
 
-  return getNextUTCMidnight(rotateAtUtc);
+  return getNextUTCDayInterval(rotateAtUtc);
 };
 
 export const encryptSecretRotationCredentials = async ({
