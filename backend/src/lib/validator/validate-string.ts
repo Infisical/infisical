@@ -36,7 +36,8 @@ export enum CharacterType {
   DoubleQuote = "doubleQuote", // "
   Comma = "comma", // ,
   Semicolon = "semicolon", // ;
-  Exclamation = "exclamation" // !
+  Exclamation = "exclamation", // !
+  Fullstop = "fullStop" // !
 }
 
 /**
@@ -81,7 +82,8 @@ export const characterValidator = (allowedCharacters: CharacterType[]) => {
     [CharacterType.DoubleQuote]: '\\"',
     [CharacterType.Comma]: ",",
     [CharacterType.Semicolon]: ";",
-    [CharacterType.Exclamation]: "!"
+    [CharacterType.Exclamation]: "!",
+    [CharacterType.Fullstop]: "."
   };
 
   // Combine patterns from allowed characters

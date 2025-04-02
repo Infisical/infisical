@@ -8,15 +8,17 @@ import {
   ProjectSlackConfigsSchema,
   ProjectType,
   SecretFoldersSchema,
+  SortDirection,
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
-import { ProjectFilterType } from "@app/services/project/project-types";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { ProjectFilterType, SearchProjectSortBy } from "@app/services/project/project-types";
 import { validateSlackChannelsField } from "@app/services/slack/slack-auth-validators";
 
 import { integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
@@ -702,6 +704,107 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       );
 
       return environmentsFolders;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/search",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      body: z.object({
+        limit: z.number().default(100),
+        offset: z.number().default(0),
+        type: z.nativeEnum(ProjectType).optional(),
+        orderBy: z.nativeEnum(SearchProjectSortBy).optional().default(SearchProjectSortBy.NAME),
+        orderDirection: z.nativeEnum(SortDirection).optional().default(SortDirection.ASC),
+        name: z
+          .string()
+          .trim()
+          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
+            message: "Invalid pattern: only alphanumeric characters, spaces, - are allowed."
+          })
+          .optional()
+      }),
+      response: {
+        200: z.object({
+          projects: SanitizedProjectSchema.extend({ isMember: z.boolean() }).array(),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { docs: projects, totalCount } = await server.services.project.searchProjects({
+        permission: req.permission,
+        ...req.body
+      });
+
+      return { projects, totalCount };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:workspaceId/project-access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        comment: z
+          .string()
+          .trim()
+          .refine(
+            (val) =>
+              characterValidator([
+                CharacterType.AlphaNumeric,
+                CharacterType.Hyphen,
+                CharacterType.Comma,
+                CharacterType.Fullstop,
+                CharacterType.Spaces,
+                CharacterType.Exclamation
+              ])(val),
+            {
+              message: "Invalid pattern: only alphanumeric characters, spaces, - are allowed."
+            }
+          )
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.project.requestProjectAccess({
+        permission: req.permission,
+        comment: req.body.comment,
+        projectId: req.params.workspaceId
+      });
+
+      if (req.auth.actor === ActorType.USER) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: req.params.workspaceId,
+          event: {
+            type: EventType.PROJECT_ACCESS_REQUEST,
+            metadata: {
+              projectId: req.params.workspaceId,
+              requesterEmail: req.auth.user.email || req.auth.user.username,
+              requesterId: req.auth.userId
+            }
+          }
+        });
+      }
+
+      return { message: "Project access request has been send to project admins" };
     }
   });
 };

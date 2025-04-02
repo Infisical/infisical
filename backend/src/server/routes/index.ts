@@ -662,6 +662,7 @@ export const registerRoutes = async (
   });
 
   const orgAdminService = orgAdminServiceFactory({
+    smtpService,
     projectDAL,
     permissionService,
     projectUserMembershipRoleDAL,
@@ -964,7 +965,8 @@ export const registerRoutes = async (
     projectSlackConfigDAL,
     slackIntegrationDAL,
     projectTemplateService,
-    groupProjectDAL
+    groupProjectDAL,
+    smtpService
   });
 
   const projectEnvService = projectEnvServiceFactory({
