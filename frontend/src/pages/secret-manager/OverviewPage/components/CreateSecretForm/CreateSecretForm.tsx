@@ -7,7 +7,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FilterableSelect, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  FilterableSelect,
+  FormControl,
+  Input,
+  PasswordGenerator
+} from "@app/components/v2";
 import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
@@ -226,10 +232,13 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
             isError={Boolean(errors?.value)}
             errorText={errors?.value?.message}
           >
-            <InfisicalSecretInput
-              {...field}
-              containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
-            />
+            <div className="flex items-center gap-2">
+              <InfisicalSecretInput
+                {...field}
+                containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+              />
+              <PasswordGenerator onUsePassword={field.onChange} />
+            </div>
           </FormControl>
         )}
       />

@@ -6,7 +6,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  IconButton,
+  Input,
+  PasswordGenerator,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import { useTimedReset } from "@app/hooks";
 import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api";
 import { SecretSharingAccessType } from "@app/hooks/api/secretSharing";
@@ -167,16 +175,19 @@ export const ShareSecretForm = ({
             errorText={error?.message}
             isOptional
           >
-            <Input
-              {...field}
-              placeholder="Password"
-              type="password"
-              autoComplete="new-password"
-              autoCorrect="off"
-              spellCheck="false"
-              aria-autocomplete="none"
-              data-form-type="other"
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                {...field}
+                placeholder="Password"
+                type="password"
+                autoComplete="new-password"
+                autoCorrect="off"
+                spellCheck="false"
+                aria-autocomplete="none"
+                data-form-type="other"
+              />
+              <PasswordGenerator onUsePassword={field.onChange} />
+            </div>
           </FormControl>
         )}
       />
