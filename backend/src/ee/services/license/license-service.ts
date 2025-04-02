@@ -87,10 +87,14 @@ export const licenseServiceFactory = ({
   );
 
   const syncLicenseKeyOnPremFeatures = async () => {
-    const {
-      data: { currentPlan }
-    } = await licenseServerOnPremApi.request.get<{ currentPlan: TFeatureSet }>("/api/license/v1/plan");
-    onPremFeatures = currentPlan;
+    try {
+      const {
+        data: { currentPlan }
+      } = await licenseServerOnPremApi.request.get<{ currentPlan: TFeatureSet }>("/api/license/v1/plan");
+      onPremFeatures = currentPlan;
+    } catch (error) {
+      logger.error(error, "Failed to synchronize license key features");
+    }
   };
 
   const init = async () => {
