@@ -45,3 +45,24 @@ export type TGetSecretsFromImportDTO = {
   environment: string;
   path: string;
 } & TProjectPermission;
+
+export type FolderResult = {
+  envName: string;
+  folderName: string;
+};
+
+export type SecretResult = {
+  envName: string;
+  secretId: string;
+  folderName: string;
+};
+
+export type FolderInfo = {
+  folderName: string;
+  secrets?: string[];
+};
+
+export type EnvInfo = {
+  envName: string;
+  folders: FolderInfo[];
+};

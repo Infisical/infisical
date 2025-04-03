@@ -38,6 +38,7 @@ import {
   TResyncSecretImportReplicationDTO,
   TUpdateSecretImportDTO
 } from "./secret-import-types";
+import { logger } from "@app/lib/logger";
 
 type TSecretImportServiceFactoryDep = {
   secretImportDAL: TSecretImportDALFactory;
@@ -821,8 +822,8 @@ export const secretImportServiceFactory = ({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
       });
 
-    const importedBy = await secretImportDAL.getFolderIsImportedBy(secretPath, folder.envId);
-
+    const importedBy = await secretImportDAL.getFolderIsImportedBy(secretPath, folder.envId, environment, projectId);
+    logger.info("importedBy", JSON.stringify(importedBy));
     return importedBy;
   };
 

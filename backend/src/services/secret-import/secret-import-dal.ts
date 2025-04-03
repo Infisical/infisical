@@ -5,6 +5,8 @@ import { TableName, TSecretImports } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
+import { EnvInfo, FolderInfo, FolderResult, SecretResult } from "./secret-import-types";
+
 export type TSecretImportDALFactory = ReturnType<typeof secretImportDALFactory>;
 
 export const secretImportDALFactory = (db: TDbClient) => {
@@ -169,24 +171,104 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getFolderIsImportedBy = async (secretPath: string, environment: string, tx?: Knex) => {
+  const getFolderIsImportedBy = async (
+    secretPath: string,
+    environmentId: string,
+    environment: string,
+    projectId: string,
+    tx?: Knex
+  ) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
-        .where({ importPath: secretPath, importEnv: environment })
+      const knexInstance = tx || db.replicaNode();
+
+      const folderImports = await knexInstance(TableName.SecretImport)
+        .where({ importPath: secretPath, importEnv: environmentId })
         .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .select(
-          db.ref("name").withSchema(TableName.Environment).as("envName"),
-          db.ref("name").withSchema(TableName.SecretFolder).as("folderName"),
-          db.ref("parentId").withSchema(TableName.SecretFolder).as("parentFolderId")
+          knexInstance.ref("name").withSchema(TableName.Environment).as("envName"),
+          knexInstance.ref("name").withSchema(TableName.SecretFolder).as("folderName"),
+          knexInstance.ref("parentId").withSchema(TableName.SecretFolder).as("parentFolderId")
         );
 
-      return docs.map(({ envName, folderName, parentFolderId }) => ({
+      const secretReferences = await knexInstance(TableName.SecretReferenceV2)
+        .where({ secretPath, environment })
+        .join(TableName.SecretV2, `${TableName.SecretReferenceV2}.secretId`, `${TableName.SecretV2}.id`)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .select(
+          knexInstance.ref("key").withSchema(TableName.SecretV2).as("secretId"),
+          knexInstance.ref("name").withSchema(TableName.SecretFolder).as("folderName"),
+          knexInstance.ref("name").withSchema(TableName.Environment).as("envName"),
+          knexInstance.ref("parentId").withSchema(TableName.SecretFolder).as("parentFolderId")
+        );
+
+      const folderResults = folderImports.map(({ envName, folderName, parentFolderId }) => ({
         envName,
-        folderName: parentFolderId ? folderName : "Project Root Folder"
+        folderName: parentFolderId ? folderName : "/"
       }));
+
+      const secretResults = secretReferences.map(({ envName, secretId, folderName, parentFolderId }) => ({
+        envName,
+        secretId,
+        folderName: parentFolderId ? folderName : "/"
+      }));
+
+      type ResultItem = FolderResult | SecretResult;
+      const allResults: ResultItem[] = [...folderResults, ...secretResults];
+
+      type EnvFolderMap = {
+        [envName: string]: {
+          [folderName: string]: {
+            secrets: string[];
+          };
+        };
+      };
+
+      const groupedByEnv = allResults.reduce<EnvFolderMap>((acc, item) => {
+        const env = item.envName;
+        const folder = item.folderName;
+
+        const updatedAcc = { ...acc };
+
+        if (!updatedAcc[env]) {
+          updatedAcc[env] = {};
+        }
+
+        if (!updatedAcc[env][folder]) {
+          updatedAcc[env][folder] = { secrets: [] };
+        }
+
+        if ("secretId" in item && item.secretId) {
+          updatedAcc[env][folder].secrets = [...updatedAcc[env][folder].secrets, item.secretId];
+        }
+
+        return updatedAcc;
+      }, {});
+
+      const formattedResult: EnvInfo[] = Object.keys(groupedByEnv).map((envName) => {
+        const envData = groupedByEnv[envName];
+
+        const folders: FolderInfo[] = Object.keys(envData).map((folderName) => {
+          const folderData = envData[folderName];
+          const hasSecrets = folderData.secrets.length > 0;
+
+          return {
+            folderName,
+            ...(hasSecrets && { secrets: folderData.secrets })
+          };
+        });
+
+        return {
+          envName,
+          folders
+        };
+      });
+
+      return formattedResult;
     } catch (error) {
-      throw new DatabaseError({ error, name: "get secret imports count" });
+      throw new DatabaseError({ error, name: "get secret imports and references" });
     }
   };
 

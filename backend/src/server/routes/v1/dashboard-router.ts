@@ -474,7 +474,12 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           importedBy: z
             .object({
               envName: z.string(),
-              folderName: z.string()
+              folders: z
+                .object({
+                  folderName: z.string(),
+                  secrets: z.array(z.string()).optional()
+                })
+                .array()
             })
             .array()
             .optional()

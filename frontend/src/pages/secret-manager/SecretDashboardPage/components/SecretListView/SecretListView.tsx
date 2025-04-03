@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -20,6 +19,7 @@ import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPa
 import { SecretDetailSidebar } from "./SecretDetailSidebar";
 import { SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
+import { SecretDeletionImpact } from "./SecretDeletionImpact";
 
 type Props = {
   secrets?: SecretV3RawSanitized[];
@@ -29,10 +29,8 @@ type Props = {
   tags?: WsTag[];
   isVisible?: boolean;
   isProtectedBranch?: boolean;
-  importedBy?: { envName: string; folderName: string }[];
+  importedBy?: { envName: string; folders: { folderName: string; secrets?: string[] }[] }[];
 };
-
-type GroupedFolders = Record<string, string[]>;
 
 export const SecretListView = ({
   secrets = [],
@@ -358,48 +356,7 @@ export const SecretListView = ({
         onDeleteApproved={handleSecretDelete}
         buttonText="Delete Secret"
       >
-        {importedBy && importedBy.length > 0 && (
-          <div className="mb-4 mt-4 rounded-md border border-red-500/50 bg-red-900/30 p-3">
-            <div className="flex items-start gap-2.5">
-              <div className="mt-0.5 flex-shrink-0 text-red-500">
-                <FontAwesomeIcon icon={faWarning} />
-              </div>
-              <div className="w-full">
-                <p className="mb-3 text-sm text-red-400">
-                  Warning: This secret is currently being imported by another folder, so deletion
-                  will affect both locations.
-                </p>
-
-                <div className="flex w-full">
-                  {Object.entries(
-                    importedBy.reduce<GroupedFolders>((acc, { envName, folderName }) => {
-                      if (!acc[envName]) acc[envName] = [];
-                      acc[envName].push(folderName);
-                      return acc;
-                    }, {})
-                  ).map(([envName, folders], index, array) => (
-                    <div
-                      key={envName}
-                      className={`${index !== array.length - 1 ? "mr-16" : ""} flex-1`}
-                    >
-                      <div className="mb-1 text-sm font-medium text-red-300">{envName}</div>
-                      <div className="border-l border-red-500/30 pl-2">
-                        {folders.map((folderName, idx) => (
-                          <div
-                            key={`imported-folder-${idx + 1}`}
-                            className="truncate py-0.5 text-xs text-red-300"
-                          >
-                            {folderName}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {importedBy && importedBy.length > 0 && <SecretDeletionImpact importedBy={importedBy} />}
       </DeleteActionModal>
       <SecretDetailSidebar
         environment={environment}
