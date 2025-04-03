@@ -58,7 +58,7 @@ const RequestAccessModal = ({ projectId, onPopUpToggle }: RequestAccessModalProp
           createNotification({
             type: "success",
             title: "Project Access Request Sent",
-            text: "Projects admins will receive an email of your request"
+            text: "Project admins will receive an email of your request"
           });
           onPopUpToggle();
         }
