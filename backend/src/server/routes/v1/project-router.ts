@@ -724,7 +724,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .string()
           .trim()
           .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
-            message: "Invalid pattern: only alphanumeric characters, spaces, - are allowed."
+            message: "Invalid pattern: only alphanumeric characters, - are allowed."
           })
           .optional()
       }),
@@ -771,9 +771,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
                 CharacterType.Exclamation
               ])(val),
             {
-              message: "Invalid pattern: only alphanumeric characters, spaces, - are allowed."
+              message: "Invalid pattern: only alphanumeric characters, spaces, -.!, are allowed."
             }
           )
+          .optional()
       }),
       response: {
         200: z.object({

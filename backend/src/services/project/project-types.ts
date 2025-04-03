@@ -176,5 +176,5 @@ export type TSearchProjectsDTO = {
 export type TProjectAccessRequestDTO = {
   permission: OrgServiceActor;
   projectId: string;
-  comment: string;
+  comment?: string;
 };

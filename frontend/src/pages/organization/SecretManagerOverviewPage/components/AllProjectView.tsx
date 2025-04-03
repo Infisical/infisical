@@ -58,7 +58,7 @@ const RequestAccessModal = ({ projectId, onPopUpToggle }: RequestAccessModalProp
           createNotification({
             type: "success",
             title: "Project Access Request Sent",
-            text: "Project admins will receive an email and will grant you access."
+            text: "Projects admins will receive an email of your request"
           });
           onPopUpToggle();
         }
@@ -257,14 +257,7 @@ export const AllProjectView = ({ type, onListViewToggle }: Props) => {
             icon={faFolderOpen}
             className="mb-4 mt-2 w-full text-center text-5xl text-mineshaft-400"
           />
-          <div className="text-center font-light">
-            You are not part of any projects in this organization yet. When you are, they will
-            appear here.
-          </div>
-          <div className="mt-0.5 text-center font-light">
-            Create a new project, or ask other organization members to give you necessary
-            permissions.
-          </div>
+          <div className="text-center font-light">No Projects Found</div>
         </div>
       )}
       <Modal
