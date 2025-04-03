@@ -633,7 +633,8 @@ export const FOLDERS = {
     path: "The path to list folders from.",
     directory: "The directory to list folders from. (Deprecated in favor of path)",
     recursive: "Whether or not to fetch all folders from the specified base path, and all of its subdirectories.",
-    lastSecretModified: "The timestamp used to filter folders with secrets modified after the specified date. The format for this timestamp is ISO 8601 (e.g. 2025-04-01T09:41:45-04:00)"
+    lastSecretModified:
+      "The timestamp used to filter folders with secrets modified after the specified date. The format for this timestamp is ISO 8601 (e.g. 2025-04-01T09:41:45-04:00)"
   },
   GET_BY_ID: {
     folderId: "The ID of the folder to get details."
@@ -1787,6 +1788,12 @@ export const SecretSyncs = {
       org: "The ID of the Humanitec org to sync secrets to.",
       env: "The ID of the Humanitec environment to sync secrets to.",
       scope: "The Humanitec scope that secrets should be synced to."
+    },
+    TERRAFORM_CLOUD: {
+      org: "The ID of the Terraform Cloud org to sync secrets to.",
+      project: "The ID of the Terraform Cloud project to sync secrets to.",
+      workspace: "The ID of the Terraform Cloud workspace to sync secrets to.",
+      scope: "The Terraform Cloud scope that secrets should be synced to."
     }
   }
 };

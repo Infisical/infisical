@@ -8,6 +8,7 @@ import { registerDatabricksSyncRouter } from "./databricks-sync-router";
 import { registerGcpSyncRouter } from "./gcp-sync-router";
 import { registerGitHubSyncRouter } from "./github-sync-router";
 import { registerHumanitecSyncRouter } from "./humanitec-sync-router";
+import { registerTerraformCloudSyncRouter } from "./terraform-cloud-sync-router";
 
 export * from "./secret-sync-router";
 
@@ -19,5 +20,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.AzureKeyVault]: registerAzureKeyVaultSyncRouter,
   [SecretSync.AzureAppConfiguration]: registerAzureAppConfigurationSyncRouter,
   [SecretSync.Databricks]: registerDatabricksSyncRouter,
-  [SecretSync.Humanitec]: registerHumanitecSyncRouter
+  [SecretSync.Humanitec]: registerHumanitecSyncRouter,
+  [SecretSync.TerraformCloud]: registerTerraformCloudSyncRouter
 };

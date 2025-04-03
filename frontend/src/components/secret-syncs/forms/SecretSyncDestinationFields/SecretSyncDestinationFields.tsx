@@ -11,11 +11,13 @@ import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
+import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
 
 export const SecretSyncDestinationFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
 
   const destination = watch("destination");
+  console.log(destination);
 
   switch (destination) {
     case SecretSync.AWSParameterStore:
@@ -34,6 +36,8 @@ export const SecretSyncDestinationFields = () => {
       return <DatabricksSyncFields />;
     case SecretSync.Humanitec:
       return <HumanitecSyncFields />;
+    case SecretSync.TerraformCloud:
+      return <TerraformCloudSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

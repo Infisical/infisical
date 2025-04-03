@@ -8,6 +8,7 @@ import { THumanitecConnection } from "@app/hooks/api/appConnections/types/humani
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TGcpConnection } from "./gcp-connection";
+import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
@@ -15,6 +16,7 @@ export * from "./azure-key-vault-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
 export * from "./humanitec-connection";
+export * from "./terraform-cloud-connection";
 
 export type TAppConnection =
   | TAwsConnection
@@ -23,7 +25,8 @@ export type TAppConnection =
   | TAzureKeyVaultConnection
   | TAzureAppConfigurationConnection
   | TDatabricksConnection
-  | THumanitecConnection;
+  | THumanitecConnection
+  | TTerraformCloudConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -58,4 +61,5 @@ export type TAppConnectionMap = {
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
   [AppConnection.Databricks]: TDatabricksConnection;
   [AppConnection.Humanitec]: THumanitecConnection;
+  [AppConnection.TerraformCloud]: TTerraformCloudConnection;
 };

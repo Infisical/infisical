@@ -40,6 +40,11 @@ import {
   HumanitecConnectionMethod,
   validateHumanitecConnectionCredentials
 } from "./humanitec";
+import {
+  getTerraformCloudConnectionListItem,
+  TerraformCloudConnectionMethod,
+  validateTerraformCloudConnectionCredentials
+} from "./terraform-cloud";
 
 export const listAppConnectionOptions = () => {
   return [
@@ -49,7 +54,8 @@ export const listAppConnectionOptions = () => {
     getAzureKeyVaultConnectionListItem(),
     getAzureAppConfigurationConnectionListItem(),
     getDatabricksConnectionListItem(),
-    getHumanitecConnectionListItem()
+    getHumanitecConnectionListItem(),
+    getTerraformCloudConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -114,6 +120,8 @@ export const validateAppConnectionCredentials = async (
       return validateAzureAppConfigurationConnectionCredentials(appConnection);
     case AppConnection.Humanitec:
       return validateHumanitecConnectionCredentials(appConnection);
+    case AppConnection.TerraformCloud:
+      return validateTerraformCloudConnectionCredentials(appConnection);
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection ${app}`);
@@ -137,6 +145,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DatabricksConnectionMethod.ServicePrincipal:
       return "Service Principal";
     case HumanitecConnectionMethod.API_TOKEN:
+      return "API Token";
+    case TerraformCloudConnectionMethod.API_TOKEN:
       return "API Token";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions

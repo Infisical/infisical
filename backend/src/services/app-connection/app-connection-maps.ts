@@ -7,5 +7,6 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.AzureKeyVault]: "Azure Key Vault",
   [AppConnection.AzureAppConfiguration]: "Azure App Configuration",
   [AppConnection.Databricks]: "Databricks",
-  [AppConnection.Humanitec]: "Humanitec"
+  [AppConnection.Humanitec]: "Humanitec",
+  [AppConnection.TerraformCloud]: "Terraform Cloud"
 };

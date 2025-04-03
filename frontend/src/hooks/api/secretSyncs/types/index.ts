@@ -9,6 +9,7 @@ import { TAzureAppConfigurationSync } from "./azure-app-configuration-sync";
 import { TAzureKeyVaultSync } from "./azure-key-vault-sync";
 import { TGcpSync } from "./gcp-sync";
 import { THumanitecSync } from "./humanitec-sync";
+import { TTerraformCloudSync } from "./terraform-cloud-sync";
 
 export type TSecretSyncOption = {
   name: string;
@@ -24,7 +25,8 @@ export type TSecretSync =
   | TAzureKeyVaultSync
   | TAzureAppConfigurationSync
   | TDatabricksSync
-  | THumanitecSync;
+  | THumanitecSync
+  | TTerraformCloudSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 
