@@ -27,6 +27,7 @@ import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { recursivelyGetSecretPaths } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretImportDALFactory } from "./secret-import-dal";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fns";
 import {
@@ -38,7 +39,6 @@ import {
   TResyncSecretImportReplicationDTO,
   TUpdateSecretImportDTO
 } from "./secret-import-types";
-import { logger } from "@app/lib/logger";
 
 type TSecretImportServiceFactoryDep = {
   secretImportDAL: TSecretImportDALFactory;
@@ -823,8 +823,30 @@ export const secretImportServiceFactory = ({
       });
 
     const importedBy = await secretImportDAL.getFolderIsImportedBy(secretPath, folder.envId, environment, projectId);
-    logger.info("importedBy", JSON.stringify(importedBy));
-    return importedBy;
+
+    const deepPaths: { path: string; folderId: string }[] = [];
+
+    await Promise.all(
+      importedBy.map(async (el) => {
+        const envDeepPaths = await recursivelyGetSecretPaths({
+          folderDAL,
+          projectEnvDAL,
+          projectId,
+          environment: el.envSlug,
+          currentPath: "/"
+        });
+        deepPaths.push(...envDeepPaths);
+      })
+    );
+
+    return importedBy.map((el) => ({
+      ...el,
+      folders: el.folders.map((folderItem) => ({
+        folderId: folderItem.folderId,
+        secrets: folderItem.secrets,
+        folderName: deepPaths.find((p) => p.folderId === folderItem.folderId)?.path || `...${folderItem.folderName}`
+      }))
+    }));
   };
 
   return {

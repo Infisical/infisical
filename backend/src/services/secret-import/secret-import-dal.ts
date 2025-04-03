@@ -187,8 +187,9 @@ export const secretImportDALFactory = (db: TDbClient) => {
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .select(
           knexInstance.ref("name").withSchema(TableName.Environment).as("envName"),
+          knexInstance.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           knexInstance.ref("name").withSchema(TableName.SecretFolder).as("folderName"),
-          knexInstance.ref("parentId").withSchema(TableName.SecretFolder).as("parentFolderId")
+          knexInstance.ref("id").withSchema(TableName.SecretFolder).as("folderId")
         );
 
       const secretReferences = await knexInstance(TableName.SecretReferenceV2)
@@ -201,18 +202,23 @@ export const secretImportDALFactory = (db: TDbClient) => {
           knexInstance.ref("key").withSchema(TableName.SecretV2).as("secretId"),
           knexInstance.ref("name").withSchema(TableName.SecretFolder).as("folderName"),
           knexInstance.ref("name").withSchema(TableName.Environment).as("envName"),
-          knexInstance.ref("parentId").withSchema(TableName.SecretFolder).as("parentFolderId")
+          knexInstance.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          knexInstance.ref("id").withSchema(TableName.SecretFolder).as("folderId")
         );
 
-      const folderResults = folderImports.map(({ envName, folderName, parentFolderId }) => ({
+      const folderResults = folderImports.map(({ envName, envSlug, folderName, folderId }) => ({
         envName,
-        folderName: parentFolderId ? folderName : "/"
+        envSlug,
+        folderName,
+        folderId
       }));
 
-      const secretResults = secretReferences.map(({ envName, secretId, folderName, parentFolderId }) => ({
+      const secretResults = secretReferences.map(({ envName, envSlug, secretId, folderName, folderId }) => ({
         envName,
+        envSlug,
         secretId,
-        folderName: parentFolderId ? folderName : "/"
+        folderName,
+        folderId
       }));
 
       type ResultItem = FolderResult | SecretResult;
@@ -220,8 +226,12 @@ export const secretImportDALFactory = (db: TDbClient) => {
 
       type EnvFolderMap = {
         [envName: string]: {
-          [folderName: string]: {
-            secrets: string[];
+          envSlug: string;
+          folders: {
+            [folderName: string]: {
+              secrets: string[];
+              folderId: string;
+            };
           };
         };
       };
@@ -229,19 +239,23 @@ export const secretImportDALFactory = (db: TDbClient) => {
       const groupedByEnv = allResults.reduce<EnvFolderMap>((acc, item) => {
         const env = item.envName;
         const folder = item.folderName;
+        const { envSlug } = item;
 
         const updatedAcc = { ...acc };
 
         if (!updatedAcc[env]) {
-          updatedAcc[env] = {};
+          updatedAcc[env] = {
+            envSlug,
+            folders: {}
+          };
         }
 
-        if (!updatedAcc[env][folder]) {
-          updatedAcc[env][folder] = { secrets: [] };
+        if (!updatedAcc[env].folders[folder]) {
+          updatedAcc[env].folders[folder] = { secrets: [], folderId: item.folderId };
         }
 
         if ("secretId" in item && item.secretId) {
-          updatedAcc[env][folder].secrets = [...updatedAcc[env][folder].secrets, item.secretId];
+          updatedAcc[env].folders[folder].secrets = [...updatedAcc[env].folders[folder].secrets, item.secretId];
         }
 
         return updatedAcc;
@@ -250,18 +264,20 @@ export const secretImportDALFactory = (db: TDbClient) => {
       const formattedResult: EnvInfo[] = Object.keys(groupedByEnv).map((envName) => {
         const envData = groupedByEnv[envName];
 
-        const folders: FolderInfo[] = Object.keys(envData).map((folderName) => {
-          const folderData = envData[folderName];
+        const folders: FolderInfo[] = Object.keys(envData.folders).map((folderName) => {
+          const folderData = envData.folders[folderName];
           const hasSecrets = folderData.secrets.length > 0;
 
           return {
             folderName,
+            folderId: folderData.folderId,
             ...(hasSecrets && { secrets: folderData.secrets })
           };
         });
 
         return {
           envName,
+          envSlug: envData.envSlug,
           folders
         };
       });

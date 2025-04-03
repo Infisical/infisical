@@ -1,29 +1,111 @@
-import React from "react";
-import { faFolder, faKey, faServer, faWarning } from "@fortawesome/free-solid-svg-icons";
+import React, { useEffect, useState } from "react";
+import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import { Select, SelectItem } from "@app/components/v2";
+
+import { SecretTreeView } from "../ActionBar/ReplicateFolderFromBoard/SecretTreeView";
 
 interface Folder {
   folderName: string;
   secrets?: string[];
 }
 
-interface ImportedByEnvironment {
+interface Environment {
   envName: string;
   folders: Folder[];
 }
 
 interface SecretDeletionImpactProps {
-  importedBy?: ImportedByEnvironment[];
+  importedBy?: Environment[];
+}
+
+interface SecretItem {
+  id: string;
+  secretKey: string;
+  secretValue?: string;
+  secretPath?: string;
+}
+
+interface FolderStructure {
+  items: SecretItem[];
+  subFolders: {
+    [key: string]: FolderStructure;
+  };
 }
 
 export const SecretDeletionImpact: React.FC<SecretDeletionImpactProps> = ({ importedBy = [] }) => {
-  const truncateId = (id: string): string => {
-    if (id.length <= 16) return id;
-    return `${id.substring(0, 8)}...${id.substring(id.length - 8)}`;
+  const [treeData, setTreeData] = useState<FolderStructure | null>(null);
+  const [selectedEnv, setSelectedEnv] = useState<string>(importedBy[0]?.envName || "");
+
+  const handleEnvironmentChange = (value: string) => {
+    setSelectedEnv(value);
   };
 
+  function transformImportedDataToTreeView(
+    environments: Environment[],
+    selectedEnvironment: string
+  ): FolderStructure | null {
+    const environment = environments.find((env) => env.envName === selectedEnvironment);
+    if (!environment) return null;
+
+    const rootStructure: FolderStructure = {
+      items: [],
+      subFolders: {}
+    };
+
+    environment.folders.forEach((folder) => {
+      const path = folder.folderName;
+      const pathParts = path.split("/").filter((part) => part !== "");
+
+      if (pathParts.length === 0) {
+        if (folder.secrets && folder.secrets.length > 0) {
+          folder.secrets.forEach((secret) => {
+            rootStructure.items.push({
+              id: `${selectedEnvironment}:${path}:${secret}`,
+              secretKey: secret,
+              secretPath: path
+            });
+          });
+        }
+        return;
+      }
+
+      let current = rootStructure;
+
+      pathParts.forEach((part, index) => {
+        if (!current.subFolders[part]) {
+          current.subFolders[part] = {
+            items: [],
+            subFolders: {}
+          };
+        }
+
+        current = current.subFolders[part];
+
+        const isLastPart = index === pathParts.length - 1;
+        if (isLastPart && folder.secrets && folder.secrets.length > 0) {
+          folder.secrets.forEach((secret) => {
+            current.items.push({
+              id: `${selectedEnvironment}:${path}:${secret}`,
+              secretKey: secret,
+              secretPath: path
+            });
+          });
+        }
+      });
+    });
+
+    return rootStructure;
+  }
+
+  useEffect(() => {
+    const transformedData = transformImportedDataToTreeView(importedBy, selectedEnv);
+    setTreeData(transformedData);
+  }, [selectedEnv, importedBy]);
+
   return (
-    <div className="mt-4 max-h-[40vh] overflow-y-auto rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5 shadow-lg">
+    <div className="mt-4 max-h-[50vh] overflow-y-auto rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5 shadow-lg">
       <div className="mb-4 flex items-start gap-3 rounded-md border border-red-800 bg-red-900/20 p-3">
         <div className="flex-shrink-0 text-red-400">
           <FontAwesomeIcon icon={faWarning} className="h-5 w-5" />
@@ -35,83 +117,25 @@ export const SecretDeletionImpact: React.FC<SecretDeletionImpactProps> = ({ impo
       </div>
 
       <div className="space-y-4">
-        {importedBy.map((envData, envIndex) => (
-          <div
-            key={`${envData.envName}-${envIndex + 1}`}
-            className="rounded-lg border border-mineshaft-600 bg-mineshaft-700 p-4 shadow-sm"
-          >
-            <h5 className="mb-3 flex items-center text-sm font-semibold text-gray-300">
-              <FontAwesomeIcon icon={faServer} className="mr-2 h-4 w-4 text-mineshaft-400" />
-              {envData.envName} Environment
-            </h5>
+        <SecretTreeView data={treeData} basePath="/" onChange={() => {}} isDisabled />
+      </div>
 
-            {envData.folders.length > 0 && (
-              <div className="mb-5">
-                <div className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400">
-                  Affected Folders
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {envData.folders
-                    .filter((folder) => !folder.secrets || folder.secrets.length === 0)
-                    .map((folder, folderIndex) => (
-                      <div
-                        key={`folder-${folderIndex + 1}-${envData.envName}`}
-                        className="flex items-center rounded-md border border-mineshaft-500 px-3 py-2 transition-colors"
-                      >
-                        <FontAwesomeIcon icon={faFolder} className="mr-2 h-4 w-4 text-yellow-700" />
-                        <span className="text-sm">{folder.folderName}</span>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {envData.folders.some((folder) => folder.secrets && folder.secrets.length > 0) && (
-              <div>
-                <div className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400">
-                  Affected Secrets
-                </div>
-                <div className="space-y-4">
-                  {envData.folders
-                    .filter((folder) => folder.secrets && folder.secrets.length > 0)
-                    .map((folder) => (
-                      <div
-                        key={`folder-secrets-${folder.folderName}-${envData.envName}`}
-                        className="rounded-md bg-mineshaft-600/70 p-3"
-                      >
-                        <div className="mb-2 flex items-center">
-                          <FontAwesomeIcon
-                            icon={faFolder}
-                            className="mr-2 h-3.5 w-3.5 text-yellow-700"
-                          />
-                          <span className="text-xs font-medium">{folder.folderName}</span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 border-l-2 border-mineshaft-400 pl-2">
-                          {(folder.secrets || []).map((secret) => (
-                            <div
-                              key={`secret-${secret}-${envData.envName}`}
-                              className="flex items-center rounded-md border border-mineshaft-400 px-3 py-2 transition-colors"
-                            >
-                              <FontAwesomeIcon
-                                icon={faKey}
-                                className="mr-2 h-4 w-4 text-mineshaft-400"
-                              />
-                              <div>
-                                <span className="block font-mono text-xs font-medium">
-                                  {truncateId(secret)}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+      <div className="mt-4 flex justify-end">
+        <Select
+          className="w-44 rounded-md border border-mineshaft-600 bg-mineshaft-700 text-gray-200"
+          onValueChange={handleEnvironmentChange}
+          defaultValue={selectedEnv}
+        >
+          {importedBy.map((env) => (
+            <SelectItem
+              value={env.envName}
+              key={env.envName}
+              className="data-[highlighted]:bg-mineshaft-600"
+            >
+              <div className="flex items-center gap-2 text-gray-200">{env.envName}</div>
+            </SelectItem>
+          ))}
+        </Select>
       </div>
     </div>
   );
