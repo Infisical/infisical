@@ -6,5 +6,5 @@ export const VERCEL_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Vercel",
   destination: SecretSync.Vercel,
   connection: AppConnection.Vercel,
-  canImportSecrets: false
+  canImportSecrets: true
 };

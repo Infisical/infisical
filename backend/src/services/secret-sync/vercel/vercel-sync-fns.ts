@@ -3,7 +3,6 @@ import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { VercelEnvironmentType } from "./vercel-sync-enums";
@@ -207,7 +206,8 @@ export const VercelSyncFns = {
   },
 
   getSecrets: async (secretSync: TVercelSyncWithCredentials): Promise<TSecretMap> => {
-    throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
+    const vercelSecrets = await getVercelSecrets(secretSync);
+    return Object.fromEntries(vercelSecrets.map((s) => [s.key, { value: s.value ?? "" }]));
   },
 
   removeSecrets: async (secretSync: TVercelSyncWithCredentials, secretMap: TSecretMap) => {

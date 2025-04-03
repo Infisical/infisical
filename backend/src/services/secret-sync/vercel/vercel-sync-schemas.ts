@@ -21,7 +21,7 @@ const VercelSyncDestinationConfigSchema = z.object({
   branch: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.branch)
 });
 
-const VercelSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
+const VercelSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
 export const VercelSyncSchema = BaseSecretSyncSchema(SecretSync.Vercel, VercelSyncOptionsConfig).extend({
   destination: z.literal(SecretSync.Vercel),
@@ -46,5 +46,5 @@ export const VercelSyncListItemSchema = z.object({
   name: z.literal("Vercel"),
   connection: z.literal(AppConnection.Vercel),
   destination: z.literal(SecretSync.Vercel),
-  canImportSecrets: z.literal(false)
+  canImportSecrets: z.literal(true)
 });
