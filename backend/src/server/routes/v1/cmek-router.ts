@@ -414,7 +414,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      description: "Get public key for a KMS key",
+      description: "Get the public key for a KMS key that is used for signing and verifying data.",
       params: z.object({
         keyId: z.string().uuid().describe(KMS.GET_PUBLIC_KEY.keyId)
       }),
@@ -444,7 +444,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      description: "List signing algorithms for a KMS key",
+      description: "List all available signing algorithms for a KMS key",
       params: z.object({
         keyId: z.string().uuid().describe(KMS.LIST_SIGNING_ALGORITHMS.keyId)
       }),
@@ -472,7 +472,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
-      description: "Sign data with KMS key",
+      description: "Sign data with a KMS key.",
       params: z.object({
         keyId: z.string().uuid().describe(KMS.SIGN.keyId)
       }),
@@ -519,7 +519,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
-      description: "Verify data with KMS key",
+      description: "Verify data signatures with a KMS key.",
       params: z.object({
         keyId: z.string().uuid().describe(KMS.VERIFY.keyId)
       }),
