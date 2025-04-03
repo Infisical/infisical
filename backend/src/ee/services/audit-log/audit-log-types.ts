@@ -1,3 +1,5 @@
+import { SigningAlgorithm } from "aws-sdk/clients/acmpca";
+
 import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
@@ -240,6 +242,11 @@ export enum EventType {
   GET_CMEK = "get-cmek",
   CMEK_ENCRYPT = "cmek-encrypt",
   CMEK_DECRYPT = "cmek-decrypt",
+  CMEK_SIGN = "cmek-sign",
+  CMEK_VERIFY = "cmek-verify",
+  CMEK_LIST_SIGNING_ALGORITHMS = "cmek-list-signing-algorithms",
+  CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
+
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
   GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
   GET_PROJECT_TEMPLATES = "get-project-templates",
@@ -1946,6 +1953,39 @@ interface CmekDecryptEvent {
   };
 }
 
+interface CmekSignEvent {
+  type: EventType.CMEK_SIGN;
+  metadata: {
+    keyId: string;
+    signingAlgorithm: SigningAlgorithm;
+    signature: string;
+  };
+}
+
+interface CmekVerifyEvent {
+  type: EventType.CMEK_VERIFY;
+  metadata: {
+    keyId: string;
+    signingAlgorithm: SigningAlgorithm;
+    signature: string;
+    signatureValid: boolean;
+  };
+}
+
+interface CmekListSigningAlgorithmsEvent {
+  type: EventType.CMEK_LIST_SIGNING_ALGORITHMS;
+  metadata: {
+    keyId: string;
+  };
+}
+
+interface CmekGetPublicKeyEvent {
+  type: EventType.CMEK_GET_PUBLIC_KEY;
+  metadata: {
+    keyId: string;
+  };
+}
+
 interface GetExternalGroupOrgRoleMappingsEvent {
   type: EventType.GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS;
   metadata?: Record<string, never>; // not needed, based off orgId
@@ -2468,6 +2508,10 @@ export type Event =
   | GetCmeksEvent
   | CmekEncryptEvent
   | CmekDecryptEvent
+  | CmekSignEvent
+  | CmekVerifyEvent
+  | CmekListSigningAlgorithmsEvent
+  | CmekGetPublicKeyEvent
   | GetExternalGroupOrgRoleMappingsEvent
   | UpdateExternalGroupOrgRoleMappingsEvent
   | GetProjectTemplatesEvent

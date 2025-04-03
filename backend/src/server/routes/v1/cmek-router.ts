@@ -433,6 +433,17 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
 
       const publicKey = await server.services.cmek.getPublicKey({ keyId }, permission);
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: permission.orgId,
+        event: {
+          type: EventType.CMEK_GET_PUBLIC_KEY,
+          metadata: {
+            keyId
+          }
+        }
+      });
+
       return publicKey;
     }
   });
@@ -454,13 +465,23 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const result = await server.services.cmek.listSigningAlgorithms(
-        {
-          keyId: req.params.keyId
-        },
-        req.permission
-      );
+      const { keyId } = req.params;
+
+      const result = await server.services.cmek.listSigningAlgorithms({ keyId }, req.permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.CMEK_LIST_SIGNING_ALGORITHMS,
+          metadata: {
+            keyId
+          }
+        }
+      });
+
       return result;
     }
   });
@@ -508,6 +529,18 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
 
       const result = await server.services.cmek.cmekSign({ keyId: inputKeyId, data, signingAlgorithm }, permission);
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: permission.orgId,
+        event: {
+          type: EventType.CMEK_SIGN,
+          metadata: {
+            keyId: inputKeyId,
+            signingAlgorithm,
+            signature: result.signature
+          }
+        }
+      });
       return result;
     }
   });
@@ -524,8 +557,28 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         keyId: z.string().uuid().describe(KMS.VERIFY.keyId)
       }),
       body: z.object({
-        data: z.string().describe(KMS.VERIFY.data),
-        signature: z.string().describe(KMS.VERIFY.signature),
+        data: z
+          .string()
+          .superRefine((data, ctx) => {
+            if (!isBase64(data)) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "data must be base64 encoded"
+              });
+            }
+          })
+          .describe(KMS.VERIFY.data),
+        signature: z
+          .string()
+          .superRefine((data, ctx) => {
+            if (!isBase64(data)) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "signature must be base64 encoded"
+              });
+            }
+          })
+          .describe(KMS.VERIFY.signature),
         signingAlgorithm: z.nativeEnum(SigningAlgorithm)
       }),
       response: {
@@ -545,6 +598,20 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       } = req;
 
       const result = await server.services.cmek.cmekVerify({ keyId, data, signature, signingAlgorithm }, permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: permission.orgId,
+        event: {
+          type: EventType.CMEK_VERIFY,
+          metadata: {
+            keyId,
+            signatureValid: result.signatureValid,
+            signingAlgorithm,
+            signature
+          }
+        }
+      });
 
       return result;
     }
