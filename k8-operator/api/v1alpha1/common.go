@@ -51,7 +51,7 @@ type GenericKubernetesAuth struct {
 	ServiceAccountRef KubernetesServiceAccountRef `json:"serviceAccountRef"`
 
 	// Optionally automatically create a service account token for the configured service account.
-	// If this is set to `true`, the operator will automatically create a service account token for the configured service account.
+	// If this is set to `true`, the operator will automatically create a service account token for the configured service account. This field is recommended in most cases.
 	// +kubebuilder:validation:Optional
 	AutoCreateServiceAccountToken bool `json:"autoCreateServiceAccountToken"`
 	// The audiences to use for the service account token. This is only relevant if `autoCreateServiceAccountToken` is true.

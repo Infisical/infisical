@@ -19,10 +19,6 @@ import (
 func GetServiceAccountToken(k8sClient client.Client, namespace string, serviceAccountName string, autoCreateServiceAccountToken bool, serviceAccountTokenAudiences []string) (string, error) {
 
 	if autoCreateServiceAccountToken {
-		if len(serviceAccountTokenAudiences) == 0 {
-			return "", fmt.Errorf("serviceAccountTokenAudiences is required when autoCreateServiceAccountToken is true")
-		}
-
 		restClient, err := GetRestClientFromClient()
 		if err != nil {
 			return "", fmt.Errorf("failed to get REST client: %w", err)
@@ -30,9 +26,14 @@ func GetServiceAccountToken(k8sClient client.Client, namespace string, serviceAc
 
 		tokenRequest := &authenticationv1.TokenRequest{
 			Spec: authenticationv1.TokenRequestSpec{
-				Audiences:         serviceAccountTokenAudiences,
 				ExpirationSeconds: ptr.Int64(600), // 10 minutes. the token only needs to be valid for when we do the initial k8s login.
 			},
+		}
+
+		if len(serviceAccountTokenAudiences) > 0 {
+			// Conditionally add the audiences if they are specified.
+			// Failing to do this causes a default audience to be used, which is not what we want if the user doesn't specify any.
+			tokenRequest.Spec.Audiences = serviceAccountTokenAudiences
 		}
 
 		result := &authenticationv1.TokenRequest{}
