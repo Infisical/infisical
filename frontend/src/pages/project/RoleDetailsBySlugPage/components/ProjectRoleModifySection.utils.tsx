@@ -45,7 +45,9 @@ const CmekPolicyActionSchema = z.object({
   delete: z.boolean().optional(),
   create: z.boolean().optional(),
   encrypt: z.boolean().optional(),
-  decrypt: z.boolean().optional()
+  decrypt: z.boolean().optional(),
+  sign: z.boolean().optional(),
+  verify: z.boolean().optional()
 });
 
 const DynamicSecretPolicyActionSchema = z.object({
@@ -421,6 +423,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canCreate = action.includes(ProjectPermissionCmekActions.Create);
       const canEncrypt = action.includes(ProjectPermissionCmekActions.Encrypt);
       const canDecrypt = action.includes(ProjectPermissionCmekActions.Decrypt);
+      const canSign = action.includes(ProjectPermissionCmekActions.Sign);
+      const canVerify = action.includes(ProjectPermissionCmekActions.Verify);
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
@@ -431,6 +435,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canDelete) formVal[subject]![0].delete = true;
       if (canEncrypt) formVal[subject]![0].encrypt = true;
       if (canDecrypt) formVal[subject]![0].decrypt = true;
+      if (canSign) formVal[subject]![0].sign = true;
+      if (canVerify) formVal[subject]![0].verify = true;
       return;
     }
 
@@ -683,7 +689,9 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Modify", value: "edit" },
       { label: "Remove", value: "delete" },
       { label: "Encrypt", value: "encrypt" },
-      { label: "Decrypt", value: "decrypt" }
+      { label: "Decrypt", value: "decrypt" },
+      { label: "Sign", value: "sign" },
+      { label: "Verify", value: "verify" }
     ]
   },
   [ProjectPermissionSub.Kms]: {

@@ -633,7 +633,8 @@ export const FOLDERS = {
     path: "The path to list folders from.",
     directory: "The directory to list folders from. (Deprecated in favor of path)",
     recursive: "Whether or not to fetch all folders from the specified base path, and all of its subdirectories.",
-    lastSecretModified: "The timestamp used to filter folders with secrets modified after the specified date. The format for this timestamp is ISO 8601 (e.g. 2025-04-01T09:41:45-04:00)"
+    lastSecretModified:
+      "The timestamp used to filter folders with secrets modified after the specified date. The format for this timestamp is ISO 8601 (e.g. 2025-04-01T09:41:45-04:00)"
   },
   GET_BY_ID: {
     folderId: "The ID of the folder to get details."
@@ -1590,7 +1591,8 @@ export const KMS = {
     projectId: "The ID of the project to create the key in.",
     name: "The name of the key to be created. Must be slug-friendly.",
     description: "An optional description of the key.",
-    encryptionAlgorithm: "The algorithm to use when performing cryptographic operations with the key."
+    encryptionAlgorithm: "The algorithm to use when performing cryptographic operations with the key.",
+    type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key."
   },
   UPDATE_KEY: {
     keyId: "The ID of the key to be updated.",
@@ -1623,6 +1625,24 @@ export const KMS = {
   DECRYPT: {
     keyId: "The ID of the key to decrypt the data with.",
     ciphertext: "The ciphertext to be decrypted (base64 encoded)."
+  },
+
+  LIST_SIGNING_ALGORITHMS: {
+    keyId: "The ID of the key to list the signing algorithms for. The key must be for signing and verifying."
+  },
+
+  GET_PUBLIC_KEY: {
+    keyId: "The ID of the key to get the public key for. The key must be for signing and verifying."
+  },
+
+  SIGN: {
+    keyId: "The ID of the key to sign the data with.",
+    data: "The data in string format to be signed (base64 encoded)."
+  },
+  VERIFY: {
+    keyId: "The ID of the key to verify the data with.",
+    data: "The data in string format to be verified (base64 encoded).",
+    signature: "The signature to be verified (base64 encoded)."
   }
 };
 

@@ -4,7 +4,8 @@ import {
 } from "@app/ee/services/project-template/project-template-types";
 import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
-import { SymmetricEncryption } from "@app/lib/crypto/cipher";
+import { SymmetricKeyEncryptDecrypt } from "@app/lib/crypto/cipher";
+import { AsymmetricKeySignVerify } from "@app/lib/crypto/sign/types";
 import { TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
@@ -1897,7 +1898,7 @@ interface CreateCmekEvent {
     keyId: string;
     name: string;
     description?: string;
-    encryptionAlgorithm: SymmetricEncryption;
+    encryptionAlgorithm: SymmetricKeyEncryptDecrypt | AsymmetricKeySignVerify;
   };
 }
 

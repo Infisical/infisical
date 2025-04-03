@@ -4,18 +4,22 @@ import { InternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { KMS } from "@app/lib/api-docs";
 import { getBase64SizeInBytes, isBase64 } from "@app/lib/base64";
-import { SymmetricEncryption } from "@app/lib/crypto/cipher";
+import { AllowedEncryptionKeyAlgorithms, SymmetricKeyEncryptDecrypt } from "@app/lib/crypto/cipher";
+import { AsymmetricKeySignVerify, SigningAlgorithm } from "@app/lib/crypto/sign";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CmekOrderBy } from "@app/services/cmek/cmek-types";
+import { CmekOrderBy, TCmekKeyEncryptionAlgorithm } from "@app/services/cmek/cmek-types";
+import { KmsKeyIntent } from "@app/services/kms/kms-types";
 
 const keyNameSchema = slugSchema({ min: 1, max: 32, field: "Name" });
 const keyDescriptionSchema = z.string().trim().max(500).optional();
 
-const CmekSchema = KmsKeysSchema.merge(InternalKmsSchema.pick({ version: true, encryptionAlgorithm: true })).omit({
+const CmekSchema = KmsKeysSchema.merge(
+  InternalKmsSchema.pick({ version: true, encryptionAlgorithm: true, type: true })
+).omit({
   isReserved: true
 });
 
@@ -45,16 +49,46 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       description: "Create KMS key",
-      body: z.object({
-        projectId: z.string().describe(KMS.CREATE_KEY.projectId),
-        name: keyNameSchema.describe(KMS.CREATE_KEY.name),
-        description: keyDescriptionSchema.describe(KMS.CREATE_KEY.description),
-        encryptionAlgorithm: z
-          .nativeEnum(SymmetricEncryption)
-          .optional()
-          .default(SymmetricEncryption.AES_GCM_256)
-          .describe(KMS.CREATE_KEY.encryptionAlgorithm) // eventually will support others
-      }),
+      body: z
+        .object({
+          projectId: z.string().describe(KMS.CREATE_KEY.projectId),
+          name: keyNameSchema.describe(KMS.CREATE_KEY.name),
+          description: keyDescriptionSchema.describe(KMS.CREATE_KEY.description),
+          type: z
+            .nativeEnum(KmsKeyIntent)
+            .optional()
+            .default(KmsKeyIntent.ENCRYPT_DECRYPT)
+            .describe(KMS.CREATE_KEY.type),
+          encryptionAlgorithm: z
+            .enum(AllowedEncryptionKeyAlgorithms)
+            .optional()
+            .default(SymmetricKeyEncryptDecrypt.AES_GCM_256)
+            .describe(KMS.CREATE_KEY.encryptionAlgorithm)
+        })
+        .superRefine((data, ctx) => {
+          if (
+            data.type === KmsKeyIntent.ENCRYPT_DECRYPT &&
+            !Object.values(SymmetricKeyEncryptDecrypt).includes(data.encryptionAlgorithm as SymmetricKeyEncryptDecrypt)
+          ) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `encryptionAlgorithm must be a valid symmetric encryption algorithm. Valid options are: ${Object.values(
+                SymmetricKeyEncryptDecrypt
+              ).join(", ")}`
+            });
+          }
+          if (
+            data.type === KmsKeyIntent.SIGN_VERIFY &&
+            !Object.values(AsymmetricKeySignVerify).includes(data.encryptionAlgorithm as AsymmetricKeySignVerify)
+          ) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `encryptionAlgorithm must be a valid asymmetric sign-verify algorithm. Valid options are: ${Object.values(
+                AsymmetricKeySignVerify
+              ).join(", ")}`
+            });
+          }
+        }),
       response: {
         200: z.object({
           key: CmekSchema
@@ -64,12 +98,19 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
-        body: { projectId, name, description, encryptionAlgorithm },
+        body: { projectId, name, description, encryptionAlgorithm, type },
         permission
       } = req;
 
       const cmek = await server.services.cmek.createCmek(
-        { orgId: permission.orgId, projectId, name, description, encryptionAlgorithm },
+        {
+          orgId: permission.orgId,
+          projectId,
+          name,
+          description,
+          encryptionAlgorithm: encryptionAlgorithm as TCmekKeyEncryptionAlgorithm,
+          type
+        },
         permission
       );
 
@@ -82,7 +123,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             keyId: cmek.id,
             name,
             description,
-            encryptionAlgorithm
+            encryptionAlgorithm: encryptionAlgorithm as TCmekKeyEncryptionAlgorithm
           }
         }
       });
@@ -363,6 +404,149 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       });
 
       return { ciphertext };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/keys/:keyId/public-key",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get public key for a KMS key",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.GET_PUBLIC_KEY.keyId)
+      }),
+      response: {
+        200: z.object({
+          publicKey: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        permission
+      } = req;
+
+      const publicKey = await server.services.cmek.getPublicKey({ keyId }, permission);
+
+      return publicKey;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/keys/:keyId/signing-algorithms",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "List signing algorithms for a KMS key",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.LIST_SIGNING_ALGORITHMS.keyId)
+      }),
+      response: {
+        200: z.object({
+          signingAlgorithms: z.array(z.nativeEnum(SigningAlgorithm))
+        })
+      }
+    },
+    handler: async (req) => {
+      const result = await server.services.cmek.listSigningAlgorithms(
+        {
+          keyId: req.params.keyId
+        },
+        req.permission
+      );
+      return result;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/keys/:keyId/sign",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Sign data with KMS key",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.SIGN.keyId)
+      }),
+      body: z.object({
+        signingAlgorithm: z.nativeEnum(SigningAlgorithm),
+        data: z
+          .string()
+          .superRefine((data, ctx) => {
+            if (!isBase64(data)) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "data must be base64 encoded"
+              });
+            }
+          })
+          .describe(KMS.SIGN.data)
+      }),
+      response: {
+        200: z.object({
+          signature: z.string(),
+          keyId: z.string().uuid(),
+          signingAlgorithm: z.nativeEnum(SigningAlgorithm)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId: inputKeyId },
+        body: { data, signingAlgorithm },
+        permission
+      } = req;
+
+      const result = await server.services.cmek.cmekSign({ keyId: inputKeyId, data, signingAlgorithm }, permission);
+
+      return result;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/keys/:keyId/verify",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Verify data with KMS key",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.VERIFY.keyId)
+      }),
+      body: z.object({
+        data: z.string().describe(KMS.VERIFY.data),
+        signature: z.string().describe(KMS.VERIFY.signature),
+        signingAlgorithm: z.nativeEnum(SigningAlgorithm)
+      }),
+      response: {
+        200: z.object({
+          signatureValid: z.boolean(),
+          keyId: z.string().uuid(),
+          signingAlgorithm: z.nativeEnum(SigningAlgorithm)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        body: { data, signature, signingAlgorithm },
+        permission
+      } = req;
+
+      const result = await server.services.cmek.cmekVerify({ keyId, data, signature, signingAlgorithm }, permission);
+
+      return result;
     }
   });
 

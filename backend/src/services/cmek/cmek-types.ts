@@ -1,12 +1,18 @@
-import { SymmetricEncryption } from "@app/lib/crypto/cipher";
+import { SymmetricKeyEncryptDecrypt } from "@app/lib/crypto/cipher";
+import { AsymmetricKeySignVerify, SigningAlgorithm } from "@app/lib/crypto/sign";
 import { OrderByDirection } from "@app/lib/types";
+
+import { KmsKeyIntent } from "../kms/kms-types";
+
+export type TCmekKeyEncryptionAlgorithm = SymmetricKeyEncryptDecrypt | AsymmetricKeySignVerify;
 
 export type TCreateCmekDTO = {
   orgId: string;
   projectId: string;
   name: string;
   description?: string;
-  encryptionAlgorithm: SymmetricEncryption;
+  encryptionAlgorithm: TCmekKeyEncryptionAlgorithm;
+  type: KmsKeyIntent;
 };
 
 export type TUpdabteCmekByIdDTO = {
@@ -38,3 +44,24 @@ export type TCmekDecryptDTO = {
 export enum CmekOrderBy {
   Name = "name"
 }
+
+export type TCmekListSigningAlgorithmsDTO = {
+  keyId: string;
+};
+
+export type TCmekGetPublicKeyDTO = {
+  keyId: string;
+};
+
+export type TCmekSignDTO = {
+  keyId: string;
+  data: string;
+  signingAlgorithm: SigningAlgorithm;
+};
+
+export type TCmekVerifyDTO = {
+  keyId: string;
+  data: string;
+  signature: string;
+  signingAlgorithm: SigningAlgorithm;
+};
