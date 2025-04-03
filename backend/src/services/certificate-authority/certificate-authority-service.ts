@@ -1818,7 +1818,8 @@ export const certificateAuthorityServiceFactory = ({
       certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
       issuingCaCertificate,
       serialNumber,
-      ca
+      ca,
+      commonName: cn
     };
   };
 

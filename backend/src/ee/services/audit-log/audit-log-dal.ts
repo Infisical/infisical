@@ -9,13 +9,14 @@ import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { EventType } from "./audit-log-types";
+import { EventType, filterableSecretEvents } from "./audit-log-types";
 
 export type TAuditLogDALFactory = ReturnType<typeof auditLogDALFactory>;
 
 type TFindQuery = {
   actor?: string;
   projectId?: string;
+  environment?: string;
   orgId?: string;
   eventType?: string;
   startDate?: string;
@@ -32,6 +33,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
     {
       orgId,
       projectId,
+      environment,
       userAgentType,
       startDate,
       endDate,
@@ -40,12 +42,14 @@ export const auditLogDALFactory = (db: TDbClient) => {
       actorId,
       actorType,
       secretPath,
+      secretKey,
       eventType,
       eventMetadata
     }: Omit<TFindQuery, "actor" | "eventType"> & {
       actorId?: string;
       actorType?: ActorType;
       secretPath?: string;
+      secretKey?: string;
       eventType?: EventType[];
       eventMetadata?: Record<string, string>;
     },
@@ -90,8 +94,29 @@ export const auditLogDALFactory = (db: TDbClient) => {
         });
       }
 
-      if (projectId && secretPath) {
-        void sqlQuery.whereRaw(`"eventMetadata" @> jsonb_build_object('secretPath', ?::text)`, [secretPath]);
+      const eventIsSecretType = !eventType?.length || eventType.some((event) => filterableSecretEvents.includes(event));
+      // We only want to filter for environment/secretPath/secretKey if the user is either checking for all event types
+
+      // ? Note(daniel): use the `eventMetadata" @> ?::jsonb` approach to properly use our GIN index
+      if (projectId && eventIsSecretType) {
+        if (environment || secretPath) {
+          // Handle both environment and secret path together to only use the GIN index once
+          void sqlQuery.whereRaw(`"eventMetadata" @> ?::jsonb`, [
+            JSON.stringify({
+              ...(environment && { environment }),
+              ...(secretPath && { secretPath })
+            })
+          ]);
+        }
+
+        // Handle secret key separately to include the OR condition
+        if (secretKey) {
+          void sqlQuery.whereRaw(
+            `("eventMetadata" @> ?::jsonb
+            OR "eventMetadata"->'secrets' @> ?::jsonb)`,
+            [JSON.stringify({ secretKey }), JSON.stringify([{ secretKey }])]
+          );
+        }
       }
 
       // Filter by actor type

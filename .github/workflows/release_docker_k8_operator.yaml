@@ -4,6 +4,10 @@ on:
         tags:
             - "infisical-k8-operator/v*.*.*"
 
+permissions:
+    contents: write
+    pull-requests: write
+
 jobs:
     release-image:
         name: Generate Helm Chart PR
