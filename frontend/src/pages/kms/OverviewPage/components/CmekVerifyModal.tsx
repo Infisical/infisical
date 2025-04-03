@@ -68,13 +68,22 @@ const VerifyForm = ({ cmek }: FormProps) => {
     }
   });
 
-  const handleSignData = async (formData: FormData) => {
+  const handleVerifyData = async (formData: FormData) => {
     try {
-      await cmekVerify.mutateAsync({ ...formData, keyId: cmek.id });
-      createNotification({
-        text: "Successfully signed data",
-        type: "success"
-      });
+      const result = await cmekVerify.mutateAsync({ ...formData, keyId: cmek.id });
+
+      if (result.signatureValid) {
+        createNotification({
+          text: "Successfully verified signature",
+          type: "success"
+        });
+      } else {
+        createNotification({
+          title: "Signature Verification Failed",
+          text: "The signature is invalid. The signature was not created using the same signing algorithm and key as the one used to sign the data. The data and signature may have been tampered with.",
+          type: "error"
+        });
+      }
     } catch (err) {
       console.error(err);
       createNotification({
@@ -98,7 +107,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
   );
 
   return (
-    <form onSubmit={handleSubmit(handleSignData)}>
+    <form onSubmit={handleSubmit(handleVerifyData)}>
       {signatureValid !== undefined ? (
         <div className="mb-6 flex flex-col gap-2">
           <div className="flex items-center justify-between space-x-2">
