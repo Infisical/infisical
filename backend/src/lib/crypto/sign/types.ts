@@ -21,19 +21,19 @@ export enum SigningAlgorithm {
   // RSA PSS algorithms
   // These are NOT deterministic and include randomness.
   // This means that the output signature is different each time for the same input.
-  RSASSA_PSS_SHA_256 = "RSASSA_PSS_SHA_256",
-  RSASSA_PSS_SHA_384 = "RSASSA_PSS_SHA_384",
   RSASSA_PSS_SHA_512 = "RSASSA_PSS_SHA_512",
+  RSASSA_PSS_SHA_384 = "RSASSA_PSS_SHA_384",
+  RSASSA_PSS_SHA_256 = "RSASSA_PSS_SHA_256",
 
   // RSA PKCS#1 v1.5 algorithms
   // These are deterministic and the output is the same each time for the same input.
-  RSASSA_PKCS1_V1_5_SHA_256 = "RSASSA_PKCS1_V1_5_SHA_256",
-  RSASSA_PKCS1_V1_5_SHA_384 = "RSASSA_PKCS1_V1_5_SHA_384",
   RSASSA_PKCS1_V1_5_SHA_512 = "RSASSA_PKCS1_V1_5_SHA_512",
+  RSASSA_PKCS1_V1_5_SHA_384 = "RSASSA_PKCS1_V1_5_SHA_384",
+  RSASSA_PKCS1_V1_5_SHA_256 = "RSASSA_PKCS1_V1_5_SHA_256",
 
   // ECDSA algorithms
   // None of these are deterministic and include randomness like RSA PSS.
-  ECDSA_SHA_256 = "ECDSA_SHA_256",
+  ECDSA_SHA_512 = "ECDSA_SHA_512",
   ECDSA_SHA_384 = "ECDSA_SHA_384",
-  ECDSA_SHA_512 = "ECDSA_SHA_512"
+  ECDSA_SHA_256 = "ECDSA_SHA_256"
 }
