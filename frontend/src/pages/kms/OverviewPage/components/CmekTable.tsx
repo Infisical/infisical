@@ -8,6 +8,7 @@ import {
   faCopy,
   faEdit,
   faEllipsis,
+  faFileSignature,
   faInfoCircle,
   faKey,
   faLock,
@@ -51,14 +52,17 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
+import { kmsKeyUsageOptions } from "@app/helpers/kms";
 import { usePagination, usePopUp, useResetPageHelper, useTimedReset } from "@app/hooks";
 import { useGetCmeksByProjectId, useUpdateCmek } from "@app/hooks/api/cmeks";
-import { CmekOrderBy, TCmek } from "@app/hooks/api/cmeks/types";
+import { CmekOrderBy, KmsKeyUsage, TCmek } from "@app/hooks/api/cmeks/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { CmekDecryptModal } from "./CmekDecryptModal";
 import { CmekEncryptModal } from "./CmekEncryptModal";
 import { CmekModal } from "./CmekModal";
+import { CmekSignModal } from "./CmekSignModal";
+import { CmekVerifyModal } from "./CmekVerifyModal";
 import { DeleteCmekModal } from "./DeleteCmekModal";
 
 const getStatusBadgeProps = (
@@ -123,7 +127,9 @@ export const CmekTable = () => {
     "upsertKey",
     "deleteKey",
     "encryptData",
-    "decryptData"
+    "decryptData",
+    "signData",
+    "verifyData"
   ] as const);
 
   const handleSort = () => {
@@ -179,6 +185,15 @@ export const CmekTable = () => {
     ProjectPermissionSub.Cmek
   );
 
+  const cannotSignData = permission.cannot(
+    ProjectPermissionCmekActions.Sign,
+    ProjectPermissionSub.Cmek
+  );
+
+  const cannotVerifyData = permission.cannot(
+    ProjectPermissionCmekActions.Verify,
+    ProjectPermissionSub.Cmek
+  );
   return (
     <motion.div
       key="kms-keys-tab"
@@ -246,6 +261,7 @@ export const CmekTable = () => {
                   </div>
                 </Th>
                 <Th>Key ID</Th>
+                <Th>Key Usage</Th>
                 <Th>Algorithm</Th>
                 <Th>Status</Th>
                 <Th>Version</Th>
@@ -257,7 +273,15 @@ export const CmekTable = () => {
               {!isPending &&
                 keys.length > 0 &&
                 keys.map((cmek) => {
-                  const { name, id, version, description, encryptionAlgorithm, isDisabled } = cmek;
+                  const {
+                    name,
+                    id,
+                    version,
+                    description,
+                    encryptionAlgorithm,
+                    isDisabled,
+                    keyUsage
+                  } = cmek;
                   const { variant, label } = getStatusBadgeProps(isDisabled);
 
                   return (
@@ -295,6 +319,14 @@ export const CmekTable = () => {
                           </IconButton>
                         </div>
                       </Td>
+                      <Td>
+                        <div className="flex items-center gap-2">
+                          {kmsKeyUsageOptions[keyUsage].label}
+                          <Tooltip content={kmsKeyUsageOptions[keyUsage].tooltip}>
+                            <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
+                          </Tooltip>
+                        </div>
+                      </Td>
                       <Td className="uppercase">{encryptionAlgorithm}</Td>
                       <Td>
                         <Badge variant={variant}>{label}</Badge>
@@ -314,50 +346,104 @@ export const CmekTable = () => {
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="min-w-[160px]">
-                              <Tooltip
-                                content={
-                                  // eslint-disable-next-line no-nested-ternary
-                                  cannotEncryptData
-                                    ? "Access Restricted"
-                                    : isDisabled
-                                      ? "Key Disabled"
-                                      : ""
-                                }
-                                position="left"
-                              >
-                                <div>
-                                  <DropdownMenuItem
-                                    onClick={() => handlePopUpOpen("encryptData", cmek)}
-                                    icon={<FontAwesomeIcon icon={faLock} />}
-                                    iconPos="left"
-                                    isDisabled={cannotEncryptData || isDisabled}
+                              {keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && (
+                                <>
+                                  <Tooltip
+                                    content={
+                                      // eslint-disable-next-line no-nested-ternary
+                                      cannotEncryptData
+                                        ? "Access Restricted"
+                                        : isDisabled
+                                          ? "Key Disabled"
+                                          : ""
+                                    }
+                                    position="left"
                                   >
-                                    Encrypt Data
-                                  </DropdownMenuItem>
-                                </div>
-                              </Tooltip>
-                              <Tooltip
-                                content={
-                                  // eslint-disable-next-line no-nested-ternary
-                                  cannotDecryptData
-                                    ? "Access Restricted"
-                                    : isDisabled
-                                      ? "Key Disabled"
-                                      : ""
-                                }
-                                position="left"
-                              >
-                                <div>
-                                  <DropdownMenuItem
-                                    onClick={() => handlePopUpOpen("decryptData", cmek)}
-                                    icon={<FontAwesomeIcon icon={faLockOpen} />}
-                                    iconPos="left"
-                                    isDisabled={cannotDecryptData || isDisabled}
+                                    <div>
+                                      <DropdownMenuItem
+                                        onClick={() => handlePopUpOpen("encryptData", cmek)}
+                                        icon={<FontAwesomeIcon icon={faLock} />}
+                                        iconPos="left"
+                                        isDisabled={cannotEncryptData || isDisabled}
+                                      >
+                                        Encrypt Data
+                                      </DropdownMenuItem>
+                                    </div>
+                                  </Tooltip>
+                                  <Tooltip
+                                    content={
+                                      // eslint-disable-next-line no-nested-ternary
+                                      cannotDecryptData
+                                        ? "Access Restricted"
+                                        : isDisabled
+                                          ? "Key Disabled"
+                                          : ""
+                                    }
+                                    position="left"
                                   >
-                                    Decrypt Data
-                                  </DropdownMenuItem>
-                                </div>
-                              </Tooltip>
+                                    <div>
+                                      <DropdownMenuItem
+                                        onClick={() => handlePopUpOpen("decryptData", cmek)}
+                                        icon={<FontAwesomeIcon icon={faLockOpen} />}
+                                        iconPos="left"
+                                        isDisabled={cannotDecryptData || isDisabled}
+                                      >
+                                        Decrypt Data
+                                      </DropdownMenuItem>
+                                    </div>
+                                  </Tooltip>
+                                </>
+                              )}
+
+                              {keyUsage === KmsKeyUsage.SIGN_VERIFY && (
+                                <>
+                                  <Tooltip
+                                    content={
+                                      // eslint-disable-next-line no-nested-ternary
+                                      cannotSignData
+                                        ? "Access Restricted"
+                                        : isDisabled
+                                          ? "Key Disabled"
+                                          : ""
+                                    }
+                                    position="left"
+                                  >
+                                    <div>
+                                      <DropdownMenuItem
+                                        onClick={() => handlePopUpOpen("signData", cmek)}
+                                        icon={<FontAwesomeIcon icon={faFileSignature} />}
+                                        iconPos="left"
+                                        isDisabled={cannotSignData || isDisabled}
+                                      >
+                                        Sign Data
+                                      </DropdownMenuItem>
+                                    </div>
+                                  </Tooltip>
+                                  <Tooltip
+                                    content={
+                                      // eslint-disable-next-line no-nested-ternary
+                                      cannotVerifyData
+                                        ? "Access Restricted"
+                                        : isDisabled
+                                          ? "Key Disabled"
+                                          : ""
+                                    }
+                                    position="left"
+                                  >
+                                    <div>
+                                      <DropdownMenuItem
+                                        onClick={() => handlePopUpOpen("verifyData", cmek)}
+                                        icon={<FontAwesomeIcon icon={faCheckCircle} />}
+                                        iconPos="left"
+                                        isDisabled={cannotVerifyData || isDisabled}
+                                      >
+                                        Verify Data
+                                      </DropdownMenuItem>
+                                    </div>
+                                  </Tooltip>
+                                </>
+                              )}
+
                               <Tooltip
                                 content={cannotEditKey ? "Access Restricted" : ""}
                                 position="left"
@@ -455,6 +541,16 @@ export const CmekTable = () => {
           isOpen={popUp.decryptData.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("decryptData", isOpen)}
           cmek={popUp.decryptData.data as TCmek}
+        />
+        <CmekSignModal
+          isOpen={popUp.signData.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("signData", isOpen)}
+          cmek={popUp.signData.data as TCmek}
+        />
+        <CmekVerifyModal
+          isOpen={popUp.verifyData.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("verifyData", isOpen)}
+          cmek={popUp.verifyData.data as TCmek}
         />
       </div>
     </motion.div>
