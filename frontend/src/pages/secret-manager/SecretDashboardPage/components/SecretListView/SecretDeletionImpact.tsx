@@ -110,10 +110,19 @@ export const SecretDeletionImpact: React.FC<SecretDeletionImpactProps> = ({ impo
         <div className="flex-shrink-0 text-red-400">
           <FontAwesomeIcon icon={faWarning} className="h-5 w-5" />
         </div>
-        <p className="text-sm font-medium text-red-300">
-          Warning: This secret is currently being imported by another folder, so deletion will
-          affect both locations.
-        </p>
+        <div>
+          <p className="text-sm font-medium text-red-300">
+            Warning: This secret is imported by another folder
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-xs text-red-300">
+            <li>Deleting will remove it from all locations where it&apos;s imported</li>
+            <li className="mt-1">
+              Any dependent secrets will display their reference syntax (like{" "}
+              {"{env.secretPath.key}"}) instead of actual values
+            </li>
+            <li className="mt-1">Dependent secrets themselves will not be automatically deleted</li>
+          </ul>
+        </div>
       </div>
 
       <div className="space-y-4">
