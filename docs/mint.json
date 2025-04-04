@@ -1,6 +1,6 @@
 {
   "name": "Infisical",
-  "openapi": "https://1243-190-31-36-142.ngrok-free.app/api/docs/json",
+  "openapi": "https://app.infisical.com/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
