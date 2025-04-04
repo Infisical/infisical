@@ -60,6 +60,7 @@ const envSchema = z
     HTTPS_ENABLED: zodStrBool,
     ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     DB_SSL_REJECT_UNAUTHORIZED: zodStrBool.default("true"),
+    DB_SSL_REQUIRED: zodStrBool.default("true"),
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
     SMTP_IGNORE_TLS: zodStrBool.default("false"),

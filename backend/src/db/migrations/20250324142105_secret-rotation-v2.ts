@@ -28,6 +28,7 @@ export async function up(knex: Knex): Promise<void> {
       t.binary("encryptedLastRotationMessage"); // we encrypt this because it may contain sensitive info (SQL errors showing credentials)
       t.string("lastRotationJobId");
       t.datetime("nextRotationAt");
+      t.boolean("isLastRotationManual").notNullable().defaultTo(true); // creation is considered a "manual" rotation
     });
 
     await createOnUpdateTrigger(knex, TableName.SecretRotationV2);

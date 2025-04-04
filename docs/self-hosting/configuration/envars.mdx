@@ -442,8 +442,13 @@ When set, all visits to the Infisical login page will automatically redirect use
 ## External Database Connections
 
 <ParamField query="DB_SSL_REJECT_UNAUTHORIZED" type="boolean" default="true" optional>
-    Whether external database connections should reject unauthorized SSL certificates. Only set this to `false` if
-    the database you are connecting to is within your internal network.
+    Specify whether external database connections should reject unauthorized SSL certificates.
+    We highly recommend keeping this value set to `true` for production use-cases.
+</ParamField>
+
+<ParamField query="DB_SSL_REQUIRED" type="boolean" default="true" optional>
+    Specify whether external database connections should require SSL.
+    We highly recommend keeping this value set to `true` for production use-cases.
 </ParamField>
 
 

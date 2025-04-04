@@ -19,17 +19,45 @@ const SQL_CONNECTION_CLIENT_MAP = {
   [AppConnection.MsSql]: "mssql"
 };
 
-export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection, "credentials" | "app">) => {
+const getConnectionConfig = ({
+  app,
+  credentials: { sslCertificate, host }
+}: Pick<TSqlConnection, "credentials" | "app">) => {
   const appCfg = getConfig();
 
+  switch (app) {
+    case AppConnection.Postgres: {
+      return {
+        ssl: appCfg.DB_SSL_REQUIRED
+          ? {
+              rejectUnauthorized: appCfg.DB_SSL_REJECT_UNAUTHORIZED,
+              ca: sslCertificate,
+              servername: host
+            }
+          : false
+      };
+    }
+    case AppConnection.MsSql: {
+      return {
+        options: appCfg.DB_SSL_REQUIRED
+          ? {
+              trustServerCertificate: !appCfg.DB_SSL_REJECT_UNAUTHORIZED,
+              encrypt: true,
+              cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {}
+            }
+          : undefined
+      };
+    }
+    default:
+      throw new Error(`Unhandled SQL Connection Config: ${app as AppConnection}`);
+  }
+};
+
+export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection, "credentials" | "app">) => {
   const {
     app,
-    credentials: { host: baseHost, database, port, sslCertificate, password, username }
+    credentials: { host: baseHost, database, port, password, username }
   } = appConnection;
-
-  const ssl = sslCertificate
-    ? { rejectUnauthorized: appCfg.DB_SSL_REJECT_UNAUTHORIZED, ca: sslCertificate, servername: baseHost }
-    : undefined;
 
   const [host] = await verifyHostInputValidity(baseHost);
 
@@ -42,16 +70,7 @@ export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection,
       user: username,
       password,
       connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
-      ssl,
-      // following dynamic secret mssql driver requirements (see sql-database.ts)
-      // @ts-expect-error this is because of knexjs type signature issue. This is directly passed to driver
-      options:
-        app === AppConnection.MsSql
-          ? {
-              trustServerCertificate: !appCfg.DB_SSL_REJECT_UNAUTHORIZED,
-              cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {}
-            }
-          : undefined
+      ...getConnectionConfig(appConnection)
     }
   });
 

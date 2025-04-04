@@ -597,7 +597,7 @@ export const secretRotationV2ServiceFactory = ({
     const nextRotationAt = calculateNextRotationAt({
       ...(secretRotation as TSecretRotationV2),
       ...payload,
-      isManualRotation: false
+      isManualRotation: secretRotation.isLastRotationManual
     });
 
     let secretsMappingUpdated = false;
@@ -892,6 +892,7 @@ export const secretRotationV2ServiceFactory = ({
             {
               encryptedGeneratedCredentials: encryptedUpdatedCredentials,
               activeIndex: inactiveIndex,
+              isLastRotationManual: isManualRotation,
               lastRotatedAt: currentTime,
               lastRotationAttemptedAt: currentTime,
               nextRotationAt: calculateNextRotationAt({
