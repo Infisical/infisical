@@ -302,7 +302,9 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     const publicKey = await kmsService.getPublicKey({ kmsId: keyId });
 
-    return { publicKey, projectId: key.projectId };
+    const base64EncodedPublicKey = publicKey.toString("base64");
+
+    return { publicKey: base64EncodedPublicKey, projectId: key.projectId };
   };
 
   const cmekSign = async ({ keyId, data, signingAlgorithm }: TCmekSignDTO, actor: OrgServiceActor) => {

@@ -454,13 +454,16 @@ export const kmsServiceFactory = ({
 
     const publicKeyBuffer = signingService(encryptionAlgorithm).getPublicKeyFromPrivateKey(kmsKey);
 
-    return crypto
-      .createPublicKey({
-        key: publicKeyBuffer,
-        format: "pem",
-        type: "spki"
-      })
-      .export({ type: "spki", format: "pem" }) as string; // format 'pem' makes it a string
+    return (
+      crypto
+        .createPublicKey({
+          key: publicKeyBuffer,
+          format: "pem",
+          type: "spki"
+        })
+        // We return as a DER encoded X.509 certificate (https://datatracker.ietf.org/doc/html/rfc5280)
+        .export({ type: "spki", format: "der" })
+    );
   };
 
   const signWithKmsKey = async ({ kmsId }: Pick<TSignWithKmsDTO, "kmsId">) => {
