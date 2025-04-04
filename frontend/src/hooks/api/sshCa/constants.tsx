@@ -12,3 +12,8 @@ export const sshCertTypeToNameMap: { [K in SshCertType]: string } = {
   [SshCertType.USER]: "User",
   [SshCertType.HOST]: "Host"
 };
+
+export enum SshCaKeySource {
+  INTERNAL = "internal",
+  EXTERNAL = "external"
+}

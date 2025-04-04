@@ -5,5 +5,6 @@ export const sanitizedSshCa = SshCertificateAuthoritiesSchema.pick({
   projectId: true,
   friendlyName: true,
   status: true,
-  keyAlgorithm: true
+  keyAlgorithm: true,
+  keySource: true
 });

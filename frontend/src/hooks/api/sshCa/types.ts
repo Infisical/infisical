@@ -1,5 +1,5 @@
 import { CertKeyAlgorithm } from "../certificates/enums";
-import { SshCaStatus, SshCertType } from "./constants";
+import { SshCaKeySource, SshCaStatus, SshCertType } from "./constants";
 
 export type TSshCertificate = {
   id: string;
@@ -19,16 +19,27 @@ export type TSshCertificateAuthority = {
   status: SshCaStatus;
   friendlyName: string;
   keyAlgorithm: CertKeyAlgorithm;
+  keySource: SshCaKeySource;
   createdAt: string;
   updatedAt: string;
   publicKey: string;
 };
 
-export type TCreateSshCaDTO = {
-  projectId: string;
-  friendlyName?: string;
-  keyAlgorithm: CertKeyAlgorithm;
-};
+export type TCreateSshCaDTO =
+  | {
+      projectId: string;
+      friendlyName?: string;
+      keySource: SshCaKeySource.INTERNAL;
+      keyAlgorithm: CertKeyAlgorithm;
+    }
+  | {
+      projectId: string;
+      friendlyName?: string;
+      keySource: SshCaKeySource.EXTERNAL;
+      keyAlgorithm: CertKeyAlgorithm;
+      publicKey: string;
+      privateKey: string;
+    };
 
 export type TUpdateSshCaDTO = {
   caId: string;

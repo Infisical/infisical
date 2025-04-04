@@ -7,6 +7,11 @@ export enum SshCaStatus {
   DISABLED = "disabled"
 }
 
+export enum SshCaKeySource {
+  INTERNAL = "internal",
+  EXTERNAL = "external"
+}
+
 export enum SshCertType {
   USER = "user",
   HOST = "host"
@@ -15,6 +20,9 @@ export enum SshCertType {
 export type TCreateSshCaDTO = {
   friendlyName: string;
   keyAlgorithm: CertKeyAlgorithm;
+  publicKey?: string;
+  privateKey?: string;
+  keySource: SshCaKeySource;
 } & TProjectPermission;
 
 export type TGetSshCaDTO = {

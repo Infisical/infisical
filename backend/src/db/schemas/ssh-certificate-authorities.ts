@@ -14,7 +14,8 @@ export const SshCertificateAuthoritiesSchema = z.object({
   projectId: z.string(),
   status: z.string(),
   friendlyName: z.string(),
-  keyAlgorithm: z.string()
+  keyAlgorithm: z.string(),
+  keySource: z.string()
 });
 
 export type TSshCertificateAuthorities = z.infer<typeof SshCertificateAuthoritiesSchema>;

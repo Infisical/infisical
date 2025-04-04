@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { normalizeSshPrivateKey } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-schema";
-import { SshCaStatus } from "@app/ee/services/ssh/ssh-certificate-authority-types";
+import { SshCaKeySource, SshCaStatus } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-schema";
 import { SSH_CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -20,14 +21,34 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Create SSH CA",
-      body: z.object({
-        projectId: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.projectId),
-        friendlyName: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.friendlyName),
-        keyAlgorithm: z
-          .nativeEnum(CertKeyAlgorithm)
-          .default(CertKeyAlgorithm.RSA_2048)
-          .describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.keyAlgorithm)
-      }),
+      body: z
+        .object({
+          projectId: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.projectId),
+          friendlyName: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.friendlyName),
+          keyAlgorithm: z
+            .nativeEnum(CertKeyAlgorithm)
+            .default(CertKeyAlgorithm.RSA_2048)
+            .describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.keyAlgorithm),
+          publicKey: z.string().trim().optional().describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.publicKey),
+          privateKey: z
+            .string()
+            .trim()
+            .optional()
+            .transform((val) => (val ? normalizeSshPrivateKey(val) : undefined))
+            .describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.privateKey),
+          keySource: z
+            .nativeEnum(SshCaKeySource)
+            .default(SshCaKeySource.INTERNAL)
+            .describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.keySource)
+        })
+        .refine((data) => data.keySource === SshCaKeySource.INTERNAL || (!!data.publicKey && !!data.privateKey), {
+          message: "publicKey and privateKey are required when keySource is external",
+          path: ["publicKey"]
+        })
+        .refine((data) => data.keySource === SshCaKeySource.EXTERNAL || !!data.keyAlgorithm, {
+          message: "keyAlgorithm is required when keySource is internal",
+          path: ["keyAlgorithm"]
+        }),
       response: {
         200: z.object({
           ca: sanitizedSshCa.extend({
