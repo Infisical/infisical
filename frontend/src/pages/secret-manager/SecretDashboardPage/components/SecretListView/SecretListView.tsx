@@ -19,6 +19,7 @@ import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPa
 import { SecretDetailSidebar } from "./SecretDetailSidebar";
 import { SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
+import { SecretDeletionImpact } from "./SecretDeletionImpact";
 
 type Props = {
   secrets?: SecretV3RawSanitized[];
@@ -28,6 +29,7 @@ type Props = {
   tags?: WsTag[];
   isVisible?: boolean;
   isProtectedBranch?: boolean;
+  importedBy?: { envName: string; folders: { folderName: string; secrets?: string[] }[] }[];
 };
 
 export const SecretListView = ({
@@ -37,7 +39,8 @@ export const SecretListView = ({
   secretPath = "/",
   tags: wsTags = [],
   isVisible,
-  isProtectedBranch = false
+  isProtectedBranch = false,
+  importedBy
 }: Props) => {
   const queryClient = useQueryClient();
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -352,7 +355,9 @@ export const SecretListView = ({
         onChange={(isOpen) => handlePopUpToggle("deleteSecret", isOpen)}
         onDeleteApproved={handleSecretDelete}
         buttonText="Delete Secret"
-      />
+      >
+        {importedBy && importedBy.length > 0 && <SecretDeletionImpact importedBy={importedBy} />}
+      </DeleteActionModal>
       <SecretDetailSidebar
         environment={environment}
         secretPath={secretPath}

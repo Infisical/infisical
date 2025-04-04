@@ -206,7 +206,8 @@ const Page = () => {
     totalFolderCount = 0,
     totalDynamicSecretCount = 0,
     totalSecretCount = 0,
-    totalCount = 0
+    totalCount = 0,
+    importedBy
   } = data ?? {};
 
   useResetPageHelper({
@@ -507,6 +508,7 @@ const Page = () => {
                   workspaceId={workspaceId}
                   secretPath={secretPath}
                   isProtectedBranch={isProtectedBranch}
+                  importedBy={importedBy}
                 />
               )}
               {canReadSecret && <SecretNoAccessListView count={noAccessSecretCount} />}

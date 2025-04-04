@@ -31,6 +31,7 @@ export type DashboardProjectSecretsDetailsResponse = {
   totalDynamicSecretCount?: number;
   totalSecretCount?: number;
   totalCount: number;
+  importedBy?: { envName: string; folders: { folderName: string; secrets?: string[] }[] }[];
 };
 
 export type DashboardProjectSecretsByKeys = {

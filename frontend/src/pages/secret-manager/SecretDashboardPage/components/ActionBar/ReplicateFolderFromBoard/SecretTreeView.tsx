@@ -41,6 +41,7 @@ interface FolderProps {
   isExpanded?: boolean;
   level: number;
   basePath?: string;
+  isDisabled?: boolean;
 }
 
 interface TreeViewProps {
@@ -48,6 +49,7 @@ interface TreeViewProps {
   basePath?: string;
   className?: string;
   onChange: (items: SecretItem[]) => void;
+  isDisabled?: boolean;
 }
 
 const getAllItemsInFolder = (folder: FolderStructure): SecretItem[] => {
@@ -81,7 +83,8 @@ const Folder: React.FC<FolderProps> = ({
   onFolderSelect,
   isExpanded = false,
   level,
-  basePath
+  basePath,
+  isDisabled = false
 }) => {
   const [open, setOpen] = useState(isExpanded);
   const displayName = useMemo(() => getDisplayName(name), [name]);
@@ -127,13 +130,16 @@ const Folder: React.FC<FolderProps> = ({
               className={`h-4 w-4 text-${level === 0 ? "mineshaft-300" : "yellow"}`}
             />
           </div>
-          <Checkbox
-            id="folder-root"
-            className="data-[state=indeterminate]:bg-secondary data-[state=checked]:bg-primary"
-            isChecked={allSelected || someSelected}
-            onCheckedChange={handleFolderSelect}
-            isIndeterminate={someSelected && !allSelected}
-          />
+          {!isDisabled && (
+            <Checkbox
+              id="folder-root"
+              className="data-[state=indeterminate]:bg-secondary data-[state=checked]:bg-primary"
+              isChecked={allSelected || someSelected}
+              onCheckedChange={handleFolderSelect}
+              isIndeterminate={someSelected && !allSelected}
+              isDisabled={isDisabled}
+            />
+          )}
 
           <label
             htmlFor={`folder-${path}`}
@@ -158,12 +164,15 @@ const Folder: React.FC<FolderProps> = ({
                 <div className="ml-6 mr-2">
                   <FontAwesomeIcon icon={faKey} className="h-3 w-3" />
                 </div>
-                <Checkbox
-                  id={`folder-${item.id}`}
-                  className="data-[state=indeterminate]:bg-secondary data-[state=checked]:bg-primary"
-                  isChecked={selectedItemIds.includes(item.id)}
-                  onCheckedChange={(checked) => onItemSelect(item, !!checked)}
-                />
+                {!isDisabled && (
+                  <Checkbox
+                    id={`folder-${item.id}`}
+                    className="data-[state=indeterminate]:bg-secondary data-[state=checked]:bg-primary"
+                    isChecked={selectedItemIds.includes(item.id)}
+                    onCheckedChange={(checked) => onItemSelect(item, !!checked)}
+                    isDisabled={isDisabled}
+                  />
+                )}
                 <label
                   htmlFor={item.id}
                   className="ml-2 flex-1 cursor-pointer truncate"
@@ -184,6 +193,7 @@ const Folder: React.FC<FolderProps> = ({
                 onItemSelect={onItemSelect}
                 onFolderSelect={onFolderSelect}
                 level={level + 1}
+                isDisabled={isDisabled}
               />
             ))}
           </div>
@@ -197,7 +207,8 @@ export const SecretTreeView: React.FC<TreeViewProps> = ({
   data,
   basePath = "/",
   className = "",
-  onChange
+  onChange,
+  isDisabled = false
 }) => {
   const [selectedItems, setSelectedItems] = useState<SecretItem[]>([]);
   const rootPath = "/";
@@ -305,16 +316,19 @@ export const SecretTreeView: React.FC<TreeViewProps> = ({
                 onFolderSelect={handleFolderSelect}
                 isExpanded
                 level={0}
+                isDisabled={isDisabled}
               />
             ))
           )}
         </div>
 
-        <div className="flex justify-end pb-2 pr-2 pt-2">
-          <h3 className="flex items-center text-mineshaft-400">
-            {selectedItems.length} Item{selectedItems.length === 1 ? "" : "s"} Selected
-          </h3>
-        </div>
+        {!isDisabled && (
+          <div className="flex justify-end pb-2 pr-2 pt-2">
+            <h3 className="flex items-center text-mineshaft-400">
+              {selectedItems.length} Item{selectedItems.length === 1 ? "" : "s"} Selected
+            </h3>
+          </div>
+        )}
       </div>
     </div>
   );
