@@ -38,6 +38,14 @@ type KubernetesAuthDetails struct {
 
 	// +kubebuilder:validation:Required
 	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`
+
+	// Optionally automatically create a service account token for the configured service account.
+	// If this is set to `true`, the operator will automatically create a service account token for the configured service account.
+	// +kubebuilder:validation:Optional
+	AutoCreateServiceAccountToken bool `json:"autoCreateServiceAccountToken"`
+	// The audiences to use for the service account token. This is only relevant if `autoCreateServiceAccountToken` is true.
+	// +kubebuilder:validation:Optional
+	ServiceAccountTokenAudiences []string `json:"serviceAccountTokenAudiences"`
 }
 
 type KubernetesServiceAccountRef struct {

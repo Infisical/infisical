@@ -24,3 +24,6 @@ Dockerfile.cross
 *.swp
 *.swo
 *~
+
+# Testing directories
+auto-token

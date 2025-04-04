@@ -19,6 +19,13 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - pods
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - ""
+  resources:
   - secrets
   verbs:
   - create
@@ -35,6 +42,12 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts/token
+  verbs:
+  - create
 - apiGroups:
   - apps
   resources:
@@ -55,6 +68,12 @@ rules:
   - list
   - update
   - watch
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
 - apiGroups:
   - secrets.infisical.com
   resources:
