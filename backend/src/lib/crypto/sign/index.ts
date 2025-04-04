@@ -1,2 +1,2 @@
 export { signingService } from "./signing";
-export { AsymmetricKeySignVerify, SigningAlgorithm } from "./types";
+export { AsymmetricKeyAlgorithm, SigningAlgorithm } from "./types";

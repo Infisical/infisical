@@ -22,7 +22,7 @@ import {
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { KmsKeyIntent } from "../kms/kms-types";
+import { KmsKeyUsage } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 
 type TCmekServiceFactoryDep = {
@@ -228,7 +228,10 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     const { cipherTextBlob } = await encrypt({ plainText: Buffer.from(plaintext, "base64") });
 
-    return cipherTextBlob.toString("base64");
+    return {
+      ciphertext: cipherTextBlob.toString("base64"),
+      projectId: key.projectId
+    };
   };
 
   const listSigningAlgorithms = async ({ keyId }: TCmekListSigningAlgorithmsDTO, actor: OrgServiceActor) => {
@@ -249,7 +252,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
 
-    if (key.type !== KmsKeyIntent.SIGN_VERIFY) {
+    if (key.keyUsage !== KmsKeyUsage.SIGN_VERIFY) {
       throw new BadRequestError({ message: `Key with ID '${keyId}' is not intended for signing` });
     }
 
@@ -276,7 +279,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
       throw new BadRequestError({ message: `Unsupported encryption algorithm: ${encryptionAlgorithm}` });
     }
 
-    return { signingAlgorithms: selectedAlgorithm.signingAlgorithms };
+    return { signingAlgorithms: selectedAlgorithm.signingAlgorithms, projectId: key.projectId };
   };
 
   const getPublicKey = async ({ keyId }: TCmekGetPublicKeyDTO, actor: OrgServiceActor) => {
@@ -299,7 +302,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     const publicKey = await kmsService.getPublicKey({ kmsId: keyId });
 
-    return { publicKey };
+    return { publicKey, projectId: key.projectId };
   };
 
   const cmekSign = async ({ keyId, data, signingAlgorithm }: TCmekSignDTO, actor: OrgServiceActor) => {
@@ -329,6 +332,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
     return {
       signature: signature.toString("base64"),
       keyId: key.id,
+      projectId: key.projectId,
       signingAlgorithm: algorithm
     };
   };
@@ -363,6 +367,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
     return {
       signatureValid,
       keyId: key.id,
+      projectId: key.projectId,
       signingAlgorithm: algorithm
     };
   };
@@ -391,7 +396,10 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     const plaintextBlob = await decrypt({ cipherTextBlob: Buffer.from(ciphertext, "base64") });
 
-    return plaintextBlob.toString("base64");
+    return {
+      plaintext: plaintextBlob.toString("base64"),
+      projectId: key.projectId
+    };
   };
 
   return {

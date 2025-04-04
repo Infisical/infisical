@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsKeyIntent } from "@app/services/kms/kms-types";
+import { KmsKeyUsage } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { OrgPermissionKmipActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -404,7 +404,7 @@ export const kmipOperationServiceFactory = ({
       algorithm,
       isReserved: false,
       projectId,
-      type: KmsKeyIntent.ENCRYPT_DECRYPT,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
       orgId: project.orgId
     });
 

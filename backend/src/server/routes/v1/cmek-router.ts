@@ -4,22 +4,20 @@ import { InternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { KMS } from "@app/lib/api-docs";
 import { getBase64SizeInBytes, isBase64 } from "@app/lib/base64";
-import { AllowedEncryptionKeyAlgorithms, SymmetricKeyEncryptDecrypt } from "@app/lib/crypto/cipher";
-import { AsymmetricKeySignVerify, SigningAlgorithm } from "@app/lib/crypto/sign";
+import { AllowedEncryptionKeyAlgorithms, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CmekOrderBy, TCmekKeyEncryptionAlgorithm } from "@app/services/cmek/cmek-types";
-import { KmsKeyIntent } from "@app/services/kms/kms-types";
+import { KmsKeyUsage } from "@app/services/kms/kms-types";
 
 const keyNameSchema = slugSchema({ min: 1, max: 32, field: "Name" });
 const keyDescriptionSchema = z.string().trim().max(500).optional();
 
-const CmekSchema = KmsKeysSchema.merge(
-  InternalKmsSchema.pick({ version: true, encryptionAlgorithm: true, type: true })
-).omit({
+const CmekSchema = KmsKeysSchema.merge(InternalKmsSchema.pick({ version: true, encryptionAlgorithm: true })).omit({
   isReserved: true
 });
 
@@ -54,37 +52,37 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           projectId: z.string().describe(KMS.CREATE_KEY.projectId),
           name: keyNameSchema.describe(KMS.CREATE_KEY.name),
           description: keyDescriptionSchema.describe(KMS.CREATE_KEY.description),
-          type: z
-            .nativeEnum(KmsKeyIntent)
+          keyUsage: z
+            .nativeEnum(KmsKeyUsage)
             .optional()
-            .default(KmsKeyIntent.ENCRYPT_DECRYPT)
+            .default(KmsKeyUsage.ENCRYPT_DECRYPT)
             .describe(KMS.CREATE_KEY.type),
           encryptionAlgorithm: z
             .enum(AllowedEncryptionKeyAlgorithms)
             .optional()
-            .default(SymmetricKeyEncryptDecrypt.AES_GCM_256)
+            .default(SymmetricKeyAlgorithm.AES_GCM_256)
             .describe(KMS.CREATE_KEY.encryptionAlgorithm)
         })
         .superRefine((data, ctx) => {
           if (
-            data.type === KmsKeyIntent.ENCRYPT_DECRYPT &&
-            !Object.values(SymmetricKeyEncryptDecrypt).includes(data.encryptionAlgorithm as SymmetricKeyEncryptDecrypt)
+            data.keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT &&
+            !Object.values(SymmetricKeyAlgorithm).includes(data.encryptionAlgorithm as SymmetricKeyAlgorithm)
           ) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message: `encryptionAlgorithm must be a valid symmetric encryption algorithm. Valid options are: ${Object.values(
-                SymmetricKeyEncryptDecrypt
+                SymmetricKeyAlgorithm
               ).join(", ")}`
             });
           }
           if (
-            data.type === KmsKeyIntent.SIGN_VERIFY &&
-            !Object.values(AsymmetricKeySignVerify).includes(data.encryptionAlgorithm as AsymmetricKeySignVerify)
+            data.keyUsage === KmsKeyUsage.SIGN_VERIFY &&
+            !Object.values(AsymmetricKeyAlgorithm).includes(data.encryptionAlgorithm as AsymmetricKeyAlgorithm)
           ) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message: `encryptionAlgorithm must be a valid asymmetric sign-verify algorithm. Valid options are: ${Object.values(
-                AsymmetricKeySignVerify
+                AsymmetricKeyAlgorithm
               ).join(", ")}`
             });
           }
@@ -98,7 +96,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
-        body: { projectId, name, description, encryptionAlgorithm, type },
+        body: { projectId, name, description, encryptionAlgorithm, keyUsage },
         permission
       } = req;
 
@@ -109,7 +107,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           name,
           description,
           encryptionAlgorithm: encryptionAlgorithm as TCmekKeyEncryptionAlgorithm,
-          type
+          keyUsage
         },
         permission
       );
@@ -167,7 +165,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: permission.orgId,
+        projectId: cmek.projectId!,
         event: {
           type: EventType.UPDATE_CMEK,
           metadata: {
@@ -210,7 +208,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: permission.orgId,
+        projectId: cmek.projectId!,
         event: {
           type: EventType.DELETE_CMEK,
           metadata: {
@@ -390,11 +388,11 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         permission
       } = req;
 
-      const ciphertext = await server.services.cmek.cmekEncrypt({ keyId, plaintext }, permission);
+      const { ciphertext, projectId } = await server.services.cmek.cmekEncrypt({ keyId, plaintext }, permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: permission.orgId,
+        projectId,
         event: {
           type: EventType.CMEK_ENCRYPT,
           metadata: {
@@ -431,11 +429,11 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         permission
       } = req;
 
-      const publicKey = await server.services.cmek.getPublicKey({ keyId }, permission);
+      const { publicKey, projectId } = await server.services.cmek.getPublicKey({ keyId }, permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: permission.orgId,
+        projectId,
         event: {
           type: EventType.CMEK_GET_PUBLIC_KEY,
           metadata: {
@@ -444,7 +442,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return publicKey;
+      return { publicKey };
     }
   });
 
@@ -469,11 +467,14 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { keyId } = req.params;
 
-      const result = await server.services.cmek.listSigningAlgorithms({ keyId }, req.permission);
+      const { signingAlgorithms, projectId } = await server.services.cmek.listSigningAlgorithms(
+        { keyId },
+        req.permission
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        projectId,
         event: {
           type: EventType.CMEK_LIST_SIGNING_ALGORITHMS,
           metadata: {
@@ -482,7 +483,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return result;
+      return { signingAlgorithms };
     }
   });
 
@@ -527,11 +528,14 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         permission
       } = req;
 
-      const result = await server.services.cmek.cmekSign({ keyId: inputKeyId, data, signingAlgorithm }, permission);
+      const { projectId, ...result } = await server.services.cmek.cmekSign(
+        { keyId: inputKeyId, data, signingAlgorithm },
+        permission
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: permission.orgId,
+        projectId,
         event: {
           type: EventType.CMEK_SIGN,
           metadata: {
@@ -597,11 +601,14 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         permission
       } = req;
 
-      const result = await server.services.cmek.cmekVerify({ keyId, data, signature, signingAlgorithm }, permission);
+      const { projectId, ...result } = await server.services.cmek.cmekVerify(
+        { keyId, data, signature, signingAlgorithm },
+        permission
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: permission.orgId,
+        projectId,
         event: {
           type: EventType.CMEK_VERIFY,
           metadata: {
@@ -645,11 +652,11 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         permission
       } = req;
 
-      const plaintext = await server.services.cmek.cmekDecrypt({ keyId, ciphertext }, permission);
+      const { plaintext, projectId } = await server.services.cmek.cmekDecrypt({ keyId, ciphertext }, permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: permission.orgId,
+        projectId,
         event: {
           type: EventType.CMEK_DECRYPT,
           metadata: {

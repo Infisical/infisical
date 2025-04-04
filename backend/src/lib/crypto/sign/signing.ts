@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { AsymmetricKeySignVerify, SigningAlgorithm, TAsymmetricSignVerifyFns } from "./types";
+import { AsymmetricKeyAlgorithm, SigningAlgorithm, TAsymmetricSignVerifyFns } from "./types";
 
 // Map of signing algorithms to their parameters
 interface SigningParams {
@@ -22,7 +22,7 @@ const SHA512_DIGEST_LENGTH = 64;
  * @param algorithm The signing algorithm to use
  * @returns Object with sign and verify functions
  */
-export const signingService = (algorithm: AsymmetricKeySignVerify): TAsymmetricSignVerifyFns => {
+export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSignVerifyFns => {
   const $getSigningParams = (signingAlgorithm: SigningAlgorithm): SigningParams => {
     switch (signingAlgorithm) {
       // RSA PSS
@@ -76,10 +76,10 @@ export const signingService = (algorithm: AsymmetricKeySignVerify): TAsymmetricS
   };
 
   // For ECC key generation, nodejs has some strange and hardly documented curve naming conventions
-  const $getEcCurveName = (keyAlgorithm: AsymmetricKeySignVerify): string => {
+  const $getEcCurveName = (keyAlgorithm: AsymmetricKeyAlgorithm): string => {
     // We will support more in the future
     switch (keyAlgorithm) {
-      case AsymmetricKeySignVerify.ECC_NIST_P256:
+      case AsymmetricKeyAlgorithm.ECC_NIST_P256:
         return "prime256v1";
       default:
         throw new Error(`Unsupported EC curve: ${keyAlgorithm}`);
@@ -172,7 +172,6 @@ export const signingService = (algorithm: AsymmetricKeySignVerify): TAsymmetricS
       type: "pkcs8"
     });
 
-    // Return public key in PEM format for both RSA and EC
     const publicKey = crypto.createPublicKey(privateKeyObj).export({
       type: "spki",
       format: "pem"
@@ -210,7 +209,8 @@ export const signingService = (algorithm: AsymmetricKeySignVerify): TAsymmetricS
       }
       // For PKCS1 v1.5 padding
       return signer.sign({
-        key: privateKeyObject
+        key: privateKeyObject,
+        padding
       });
     }
     if (signingAlgorithm.startsWith("ECDSA")) {
@@ -252,7 +252,8 @@ export const signingService = (algorithm: AsymmetricKeySignVerify): TAsymmetricS
         // For PKCS1 v1.5 padding
         return verifier.verify(
           {
-            key: publicKey.toString()
+            key: publicKey.toString(),
+            padding
           },
           signature
         );

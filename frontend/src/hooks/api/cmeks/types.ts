@@ -2,17 +2,17 @@ import { z } from "zod";
 
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
-export enum KmsKeyIntent {
+export enum KmsKeyUsage {
   ENCRYPT_DECRYPT = "encrypt-decrypt",
   SIGN_VERIFY = "sign-verify"
 }
 
 export type TCmek = {
   id: string;
-  type: KmsKeyIntent;
+  keyUsage: KmsKeyUsage;
   name: string;
   description?: string;
-  encryptionAlgorithm: AsymmetricKeySignVerify | SymmetricKeyEncryptDecrypt;
+  encryptionAlgorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm;
   projectId: string;
   isDisabled: boolean;
   isReserved: boolean;
@@ -25,7 +25,7 @@ export type TCmek = {
 type ProjectRef = { projectId: string };
 type KeyRef = { keyId: string };
 
-export type TCreateCmek = Pick<TCmek, "name" | "description" | "encryptionAlgorithm" | "type"> &
+export type TCreateCmek = Pick<TCmek, "name" | "description" | "encryptionAlgorithm" | "keyUsage"> &
   ProjectRef;
 export type TUpdateCmek = KeyRef &
   Partial<Pick<TCmek, "name" | "description" | "isDisabled">> &
@@ -80,20 +80,20 @@ export enum CmekOrderBy {
   Name = "name"
 }
 
-export enum AsymmetricKeySignVerify {
+export enum AsymmetricKeyAlgorithm {
   RSA_4096 = "rsa-4096",
   ECC_NIST_P256 = "ecc-nist-p256"
 }
 
 // Supported symmetric encrypt/decrypt algorithms
-export enum SymmetricKeyEncryptDecrypt {
+export enum SymmetricKeyAlgorithm {
   AES_GCM_256 = "aes-256-gcm",
   AES_GCM_128 = "aes-128-gcm"
 }
 
 export const AllowedEncryptionKeyAlgorithms = z.enum([
-  ...Object.values(SymmetricKeyEncryptDecrypt),
-  ...Object.values(AsymmetricKeySignVerify)
+  ...Object.values(SymmetricKeyAlgorithm),
+  ...Object.values(AsymmetricKeyAlgorithm)
 ] as [string, ...string[]]).options;
 
 export enum SigningAlgorithm {

@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
-import { SymmetricKeyEncryptDecrypt } from "@app/lib/crypto/cipher";
-import { AsymmetricKeySignVerify, SigningAlgorithm } from "@app/lib/crypto/sign/types";
+import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 
 export enum KmsDataKey {
   Organization,
@@ -14,7 +14,7 @@ export enum KmsType {
   Internal = "internal"
 }
 
-export enum KmsKeyIntent {
+export enum KmsKeyUsage {
   ENCRYPT_DECRYPT = "encrypt-decrypt",
   SIGN_VERIFY = "sign-verify"
 }
@@ -31,8 +31,8 @@ export type TEncryptWithKmsDataKeyDTO =
 export type TGenerateKMSDTO = {
   orgId: string;
   projectId?: string;
-  encryptionAlgorithm?: SymmetricKeyEncryptDecrypt | AsymmetricKeySignVerify;
-  type?: KmsKeyIntent;
+  encryptionAlgorithm?: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
+  keyUsage?: KmsKeyUsage;
   isReserved?: boolean;
   name?: string;
   description?: string;
@@ -91,10 +91,10 @@ export type TGetKeyMaterialDTO = {
 
 export type TImportKeyMaterialDTO = {
   key: Buffer;
-  algorithm: SymmetricKeyEncryptDecrypt;
+  algorithm: SymmetricKeyAlgorithm;
   name?: string;
   isReserved: boolean;
   projectId: string;
   orgId: string;
-  type: KmsKeyIntent;
+  keyUsage: KmsKeyUsage;
 };

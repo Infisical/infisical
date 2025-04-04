@@ -18,9 +18,9 @@ import { useWorkspace } from "@app/context";
 import { keyUsageDefaultOption, kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
   AllowedEncryptionKeyAlgorithms,
-  AsymmetricKeySignVerify,
-  KmsKeyIntent,
-  SymmetricKeyEncryptDecrypt,
+  AsymmetricKeyAlgorithm,
+  KmsKeyUsage,
+  SymmetricKeyAlgorithm,
   TCmek,
   useCreateCmek,
   useUpdateCmek
@@ -31,7 +31,7 @@ const formSchema = z.object({
   name: slugSchema({ min: 1, max: 32, field: "Name" }),
   description: z.string().max(500).optional(),
   encryptionAlgorithm: z.enum(AllowedEncryptionKeyAlgorithms),
-  type: z.nativeEnum(KmsKeyIntent)
+  keyUsage: z.nativeEnum(KmsKeyUsage)
 });
 
 export type FormData = z.infer<typeof formSchema>;
@@ -65,22 +65,25 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
     defaultValues: {
       name: cmek?.name,
       description: cmek?.description,
-      encryptionAlgorithm: SymmetricKeyEncryptDecrypt.AES_GCM_256,
-      type: KmsKeyIntent.ENCRYPT_DECRYPT
+      encryptionAlgorithm: SymmetricKeyAlgorithm.AES_GCM_256,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     }
   });
 
-  const handleCreateCmek = async ({ encryptionAlgorithm, name, description, type }: FormData) => {
+  const handleCreateCmek = async ({
+    encryptionAlgorithm,
+    name,
+    description,
+    keyUsage
+  }: FormData) => {
     const mutation = isUpdate
       ? updateCmek.mutateAsync({ keyId: cmek.id, projectId, name, description })
       : createCmek.mutateAsync({
           projectId,
           name,
           description,
-          type,
-          encryptionAlgorithm: encryptionAlgorithm as
-            | AsymmetricKeySignVerify
-            | SymmetricKeyEncryptDecrypt
+          keyUsage,
+          encryptionAlgorithm: encryptionAlgorithm as AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm
         });
 
     try {
@@ -99,7 +102,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
     }
   };
 
-  const selectedType = watch("type");
+  const selectedKeyUsage = watch("keyUsage");
 
   return (
     <form onSubmit={handleSubmit(handleCreateCmek)}>
@@ -116,13 +119,13 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
           <>
             <Controller
               control={control}
-              name="type"
+              name="keyUsage"
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <FormControl
                   className="w-full"
                   tooltipText={
                     <div className="space-y-4">
-                      {Object.entries(KmsKeyIntent).map(([key, value]) => (
+                      {Object.entries(KmsKeyUsage).map(([key, value]) => (
                         <div key={`key-usage-${key}`}>
                           <p className="font-bold">{kmsKeyUsageOptions[value].label}</p>
                           <p>{kmsKeyUsageOptions[value].tooltip}</p>
@@ -137,8 +140,8 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                   <Select
                     defaultValue={field.value}
                     onValueChange={(e) => {
-                      if (keyUsageDefaultOption[e as KmsKeyIntent]) {
-                        setValue("encryptionAlgorithm", keyUsageDefaultOption[e as KmsKeyIntent], {
+                      if (keyUsageDefaultOption[e as KmsKeyUsage]) {
+                        setValue("encryptionAlgorithm", keyUsageDefaultOption[e as KmsKeyUsage], {
                           shouldDirty: true,
                           shouldValidate: true
                         });
@@ -148,7 +151,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                     }}
                     className="w-full"
                   >
-                    {Object.entries(KmsKeyIntent)?.map(([key, value]) => (
+                    {Object.entries(KmsKeyUsage)?.map(([key, value]) => (
                       <SelectItem value={value} key={`key-usage-${key}`}>
                         {kmsKeyUsageOptions[value].label}
                       </SelectItem>
@@ -176,14 +179,14 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                     {Object.entries(AllowedEncryptionKeyAlgorithms)
                       // eslint-disable-next-line @typescript-eslint/no-unused-vars
                       ?.filter(([_, value]) => {
-                        if (selectedType === KmsKeyIntent.ENCRYPT_DECRYPT) {
-                          return Object.values(SymmetricKeyEncryptDecrypt).includes(
-                            value as unknown as SymmetricKeyEncryptDecrypt
+                        if (selectedKeyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
+                          return Object.values(SymmetricKeyAlgorithm).includes(
+                            value as unknown as SymmetricKeyAlgorithm
                           );
                         }
-                        if (selectedType === KmsKeyIntent.SIGN_VERIFY) {
-                          return Object.values(AsymmetricKeySignVerify).includes(
-                            value as unknown as AsymmetricKeySignVerify
+                        if (selectedKeyUsage === KmsKeyUsage.SIGN_VERIFY) {
+                          return Object.values(AsymmetricKeyAlgorithm).includes(
+                            value as unknown as AsymmetricKeyAlgorithm
                           );
                         }
 

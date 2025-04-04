@@ -55,7 +55,7 @@ import {
 import { kmsKeyUsageOptions } from "@app/helpers/kms";
 import { usePagination, usePopUp, useResetPageHelper, useTimedReset } from "@app/hooks";
 import { useGetCmeksByProjectId, useUpdateCmek } from "@app/hooks/api/cmeks";
-import { CmekOrderBy, KmsKeyIntent, TCmek } from "@app/hooks/api/cmeks/types";
+import { CmekOrderBy, KmsKeyUsage, TCmek } from "@app/hooks/api/cmeks/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { CmekDecryptModal } from "./CmekDecryptModal";
@@ -273,8 +273,15 @@ export const CmekTable = () => {
               {!isPending &&
                 keys.length > 0 &&
                 keys.map((cmek) => {
-                  const { name, id, version, description, encryptionAlgorithm, isDisabled, type } =
-                    cmek;
+                  const {
+                    name,
+                    id,
+                    version,
+                    description,
+                    encryptionAlgorithm,
+                    isDisabled,
+                    keyUsage
+                  } = cmek;
                   const { variant, label } = getStatusBadgeProps(isDisabled);
 
                   return (
@@ -314,8 +321,8 @@ export const CmekTable = () => {
                       </Td>
                       <Td>
                         <div className="flex items-center gap-2">
-                          {kmsKeyUsageOptions[type].label}
-                          <Tooltip content={kmsKeyUsageOptions[type].tooltip}>
+                          {kmsKeyUsageOptions[keyUsage].label}
+                          <Tooltip content={kmsKeyUsageOptions[keyUsage].tooltip}>
                             <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
                           </Tooltip>
                         </div>
@@ -339,7 +346,7 @@ export const CmekTable = () => {
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="min-w-[160px]">
-                              {type === KmsKeyIntent.ENCRYPT_DECRYPT && (
+                              {keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && (
                                 <>
                                   <Tooltip
                                     content={
@@ -388,7 +395,7 @@ export const CmekTable = () => {
                                 </>
                               )}
 
-                              {type === KmsKeyIntent.SIGN_VERIFY && (
+                              {keyUsage === KmsKeyUsage.SIGN_VERIFY && (
                                 <>
                                   <Tooltip
                                     content={
