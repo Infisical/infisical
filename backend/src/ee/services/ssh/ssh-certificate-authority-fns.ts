@@ -322,6 +322,91 @@ const validateSshPublicKey = async (publicKey: string) => {
   }
 };
 
+export const getKeyAlgorithmFromFingerprintOutput = (output: string): CertKeyAlgorithm | undefined => {
+  const parts = output.trim().split(" ");
+  const bitsInt = parseInt(parts[0], 10);
+  const keyTypeRaw = parts.at(-1)?.replace(/[()]/g, ""); // remove surrounding parentheses
+
+  if (keyTypeRaw === "RSA") {
+    return bitsInt === 2048 ? CertKeyAlgorithm.RSA_2048 : CertKeyAlgorithm.RSA_4096;
+  }
+
+  if (keyTypeRaw === "ECDSA") {
+    return bitsInt === 256 ? CertKeyAlgorithm.ECDSA_P256 : CertKeyAlgorithm.ECDSA_P384;
+  }
+
+  return undefined;
+};
+
+export const normalizeSshPrivateKey = (raw: string): string => {
+  return `${raw
+    .replace(/\r\n/g, "\n") // Windows CRLF → LF
+    .replace(/\r/g, "\n") // Old Mac CR → LF
+    .replace(/\\n/g, "\n") // Double-escaped \n
+    .trim()}\n`;
+};
+
+/**
+ * Validate the format of the SSH private key
+ *
+ * Returns the SSH public key corresponding to the private key
+ * and the key algorithm categorization.
+ */
+export const validateSshPrivateKey = async (privateKey: string) => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ssh-privkey-"));
+  const privateKeyFile = path.join(tempDir, "id_key");
+
+  try {
+    await fs.writeFile(privateKeyFile, privateKey, {
+      encoding: "utf8",
+      mode: 0o600
+    });
+
+    // This will fail if the private key is malformed or unreadable
+    const { stdout: publicKey } = await execFileAsync("ssh-keygen", ["-y", "-f", privateKeyFile], {
+      timeout: EXEC_TIMEOUT_MS
+    });
+
+    const { stdout: fingerprint } = await execFileAsync("ssh-keygen", ["-lf", privateKeyFile]);
+    const keyAlgorithm = getKeyAlgorithmFromFingerprintOutput(fingerprint);
+
+    if (!keyAlgorithm) {
+      throw new BadRequestError({
+        message: "Failed to validate SSH private key format: The key algorithm is not supported."
+      });
+    }
+
+    return {
+      publicKey,
+      keyAlgorithm
+    };
+  } catch (err) {
+    throw new BadRequestError({
+      message: "Failed to validate SSH private key format: could not be parsed."
+    });
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  }
+};
+
+/**
+ * Validate that the provided public and private keys are valid and constitute
+ * a matching SSH key pair.
+ */
+export const validateExternalSshCaKeyPair = async (publicKey: string, privateKey: string) => {
+  await validateSshPublicKey(publicKey);
+
+  const { publicKey: derivedPublicKey, keyAlgorithm } = await validateSshPrivateKey(privateKey);
+
+  if (publicKey.trim() !== derivedPublicKey.trim()) {
+    throw new BadRequestError({
+      message: "Failed to validate matching SSH key pair."
+    });
+  }
+
+  return keyAlgorithm;
+};
+
 /**
  * Create an SSH certificate for a user or host.
  */

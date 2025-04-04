@@ -12,12 +12,14 @@ import {
   Modal,
   ModalContent,
   Select,
-  SelectItem
+  SelectItem,
+  TextArea
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useCreateSshCa, useGetSshCaById, useUpdateSshCa } from "@app/hooks/api";
 import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
+import { SshCaKeySource } from "@app/hooks/api/sshCa/constants";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -26,9 +28,17 @@ type Props = {
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["sshCa"]>, state?: boolean) => void;
 };
 
+const sshCaKeySources = [
+  { label: "Internal", value: SshCaKeySource.INTERNAL },
+  { label: "External", value: SshCaKeySource.EXTERNAL }
+];
+
 const schema = z
   .object({
     friendlyName: z.string(),
+    keySource: z.nativeEnum(SshCaKeySource),
+    publicKey: z.string().optional(),
+    privateKey: z.string().optional(),
     keyAlgorithm: z.enum([
       CertKeyAlgorithm.RSA_2048,
       CertKeyAlgorithm.RSA_4096,
@@ -53,30 +63,47 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting }
+    formState: { isSubmitting },
+    watch
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       friendlyName: "",
-      keyAlgorithm: CertKeyAlgorithm.RSA_2048
+      keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+      keySource: SshCaKeySource.INTERNAL,
+      publicKey: "",
+      privateKey: ""
     }
   });
+
+  const caKeySource = watch("keySource");
 
   useEffect(() => {
     if (ca) {
       reset({
         friendlyName: ca.friendlyName,
-        keyAlgorithm: ca.keyAlgorithm
+        keyAlgorithm: ca.keyAlgorithm,
+        keySource: ca.keySource,
+        publicKey: ca.publicKey
       });
     } else {
       reset({
         friendlyName: "",
-        keyAlgorithm: CertKeyAlgorithm.RSA_2048
+        keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+        keySource: SshCaKeySource.INTERNAL,
+        publicKey: "",
+        privateKey: ""
       });
     }
   }, [ca]);
 
-  const onFormSubmit = async ({ friendlyName, keyAlgorithm }: FormData) => {
+  const onFormSubmit = async ({
+    friendlyName,
+    keySource,
+    keyAlgorithm,
+    publicKey,
+    privateKey
+  }: FormData) => {
     try {
       if (!projectId) return;
 
@@ -89,7 +116,10 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         const { id: newCaId } = await createMutateAsync({
           projectId,
           friendlyName,
-          keyAlgorithm
+          keySource,
+          keyAlgorithm,
+          publicKey,
+          privateKey
         });
 
         navigate({
@@ -147,32 +177,98 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               </FormControl>
             )}
           />
-          <Controller
-            control={control}
-            name="keyAlgorithm"
-            defaultValue={CertKeyAlgorithm.RSA_2048}
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Key Algorithm"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full"
-                  isDisabled={Boolean(ca)}
+          {caKeySource && (
+            <Controller
+              control={control}
+              name="keySource"
+              defaultValue={SshCaKeySource.INTERNAL}
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Key Source"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                  isRequired
                 >
-                  {certKeyAlgorithms.map(({ label, value }) => (
-                    <SelectItem value={String(value || "")} key={label}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
+                  <Select
+                    defaultValue={field.value}
+                    {...field}
+                    onValueChange={(e) => onChange(e)}
+                    className="w-full"
+                    isDisabled={Boolean(ca)}
+                  >
+                    {sshCaKeySources.map(({ label, value }) => (
+                      <SelectItem value={String(value || "")} key={label}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+          )}
+          {caKeySource === SshCaKeySource.INTERNAL && (
+            <Controller
+              control={control}
+              name="keyAlgorithm"
+              defaultValue={CertKeyAlgorithm.RSA_2048}
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Key Algorithm"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                  isRequired={caKeySource === SshCaKeySource.INTERNAL}
+                >
+                  <Select
+                    defaultValue={field.value}
+                    {...field}
+                    onValueChange={(e) => onChange(e)}
+                    className="w-full"
+                    isDisabled={Boolean(ca)}
+                  >
+                    {certKeyAlgorithms.map(({ label, value }) => (
+                      <SelectItem value={String(value || "")} key={label}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+          )}
+          {caKeySource === SshCaKeySource.EXTERNAL && !ca && (
+            <>
+              <Controller
+                control={control}
+                defaultValue=""
+                name="publicKey"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Public Key"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isRequired={caKeySource === SshCaKeySource.EXTERNAL}
+                  >
+                    <Input {...field} placeholder="ssh-rsa AAA..." />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                defaultValue=""
+                name="privateKey"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Private Key"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                    isRequired={caKeySource === SshCaKeySource.EXTERNAL}
+                  >
+                    <TextArea {...field} placeholder="-----BEGIN OPENSSH PRIVATE KEY----- ..." />
+                  </FormControl>
+                )}
+              />
+            </>
+          )}
           <div className="flex items-center">
             <Button
               className="mr-4"

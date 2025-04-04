@@ -633,7 +633,8 @@ export const FOLDERS = {
     path: "The path to list folders from.",
     directory: "The directory to list folders from. (Deprecated in favor of path)",
     recursive: "Whether or not to fetch all folders from the specified base path, and all of its subdirectories.",
-    lastSecretModified: "The timestamp used to filter folders with secrets modified after the specified date. The format for this timestamp is ISO 8601 (e.g. 2025-04-01T09:41:45-04:00)"
+    lastSecretModified:
+      "The timestamp used to filter folders with secrets modified after the specified date. The format for this timestamp is ISO 8601 (e.g. 2025-04-01T09:41:45-04:00)"
   },
   GET_BY_ID: {
     folderId: "The ID of the folder to get details."
@@ -1234,7 +1235,11 @@ export const SSH_CERTIFICATE_AUTHORITIES = {
   CREATE: {
     projectId: "The ID of the project to create the SSH CA in.",
     friendlyName: "A friendly name for the SSH CA.",
-    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA."
+    keyAlgorithm:
+      "The type of public key algorithm and size, in bits, of the key pair for the SSH CA; required if keySource is internal.",
+    publicKey: "The public key for the SSH CA key pair; required if keySource is external.",
+    privateKey: "The private key for the SSH CA key pair; required if keySource is external.",
+    keySource: "The source of the SSH CA key pair. This can be one of internal or external."
   },
   GET: {
     sshCaId: "The ID of the SSH CA to get."
