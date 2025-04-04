@@ -1,6 +1,6 @@
 {
   "name": "Infisical",
-  "openapi": "https://app.infisical.com/api/docs/json",
+  "openapi": "https://1243-190-31-36-142.ngrok-free.app/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
@@ -419,7 +419,8 @@
             "integrations/app-connections/databricks",
             "integrations/app-connections/gcp",
             "integrations/app-connections/github",
-            "integrations/app-connections/humanitec"
+            "integrations/app-connections/humanitec",
+            "integrations/app-connections/terraform-cloud"
           ]
         }
       ]
@@ -438,7 +439,8 @@
             "integrations/secret-syncs/databricks",
             "integrations/secret-syncs/gcp-secret-manager",
             "integrations/secret-syncs/github",
-            "integrations/secret-syncs/humanitec"
+            "integrations/secret-syncs/humanitec",
+            "integrations/secret-syncs/terraform-cloud"
           ]
         }
       ]
@@ -922,6 +924,18 @@
                 "api-reference/endpoints/app-connections/humanitec/update",
                 "api-reference/endpoints/app-connections/humanitec/delete"
               ]
+            },
+            {
+              "group": "Terraform Cloud",
+              "pages": [
+                "api-reference/endpoints/app-connections/terraform-cloud/list",
+                "api-reference/endpoints/app-connections/terraform-cloud/available",
+                "api-reference/endpoints/app-connections/terraform-cloud/get-by-id",
+                "api-reference/endpoints/app-connections/terraform-cloud/get-by-name",
+                "api-reference/endpoints/app-connections/terraform-cloud/create",
+                "api-reference/endpoints/app-connections/terraform-cloud/update",
+                "api-reference/endpoints/app-connections/terraform-cloud/delete"
+              ]
             }
           ]
         },
@@ -1037,6 +1051,19 @@
                 "api-reference/endpoints/secret-syncs/humanitec/delete",
                 "api-reference/endpoints/secret-syncs/humanitec/sync-secrets",
                 "api-reference/endpoints/secret-syncs/humanitec/remove-secrets"
+              ]
+            },
+            {
+              "group": "Terraform Cloud",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/terraform-cloud/list",
+                "api-reference/endpoints/secret-syncs/terraform-cloud/get-by-id",
+                "api-reference/endpoints/secret-syncs/terraform-cloud/get-by-name",
+                "api-reference/endpoints/secret-syncs/terraform-cloud/create",
+                "api-reference/endpoints/secret-syncs/terraform-cloud/update",
+                "api-reference/endpoints/secret-syncs/terraform-cloud/delete",
+                "api-reference/endpoints/secret-syncs/terraform-cloud/sync-secrets",
+                "api-reference/endpoints/secret-syncs/terraform-cloud/remove-secrets"
               ]
             }
           ]
