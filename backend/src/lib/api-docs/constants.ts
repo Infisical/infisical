@@ -637,7 +637,8 @@ export const FOLDERS = {
     environment: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
     directory: "The directory to list folders from. (Deprecated in favor of path)",
-    recursive: "Whether or not to fetch all folders from the specified base path, and all of its subdirectories."
+    recursive: "Whether or not to fetch all folders from the specified base path, and all of its subdirectories.",
+    lastSecretModified: "The timestamp used to filter folders with secrets modified after the specified date. The format for this timestamp is ISO 8601 (e.g. 2025-04-01T09:41:45-04:00)"
   },
   GET_BY_ID: {
     folderId: "The ID of the folder to get details."
@@ -847,9 +848,13 @@ export const AUDIT_LOGS = {
   EXPORT: {
     projectId:
       "Optionally filter logs by project ID. If not provided, logs from the entire organization will be returned.",
+    environment:
+      "The environment to filter logs by. If not provided, logs from all environments will be returned. Note that the projectId parameter must also be provided.",
     eventType: "The type of the event to export.",
     secretPath:
       "The path of the secret to query audit logs for. Note that the projectId parameter must also be provided.",
+    secretKey:
+      "The key of the secret to query audit logs for. Note that the projectId parameter must also be provided.",
     userAgentType: "Choose which consuming application to export audit logs for.",
     eventMetadata:
       "Filter by event metadata key-value pairs. Formatted as `key1=value1,key2=value2`, with comma-separation.",

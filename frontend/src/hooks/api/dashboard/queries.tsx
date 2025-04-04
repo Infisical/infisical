@@ -352,12 +352,13 @@ const fetchAccessibleSecrets = async ({
   projectId,
   secretPath,
   environment,
-  filterByAction
+  filterByAction,
+  recursive = false
 }: TGetAccessibleSecretsDTO) => {
   const { data } = await apiRequest.get<{ secrets: SecretV3Raw[] }>(
     "/api/v1/dashboard/accessible-secrets",
     {
-      params: { projectId, secretPath, environment, filterByAction }
+      params: { projectId, secretPath, environment, filterByAction, recursive }
     }
   );
 
@@ -437,7 +438,8 @@ export const useGetAccessibleSecrets = ({
   secretPath,
   environment,
   filterByAction,
-  options
+  options,
+  recursive = false
 }: TGetAccessibleSecretsDTO & {
   options?: Omit<
     UseQueryOptions<
@@ -455,8 +457,10 @@ export const useGetAccessibleSecrets = ({
       projectId,
       secretPath,
       environment,
-      filterByAction
+      filterByAction,
+      recursive
     }),
-    queryFn: () => fetchAccessibleSecrets({ projectId, secretPath, environment, filterByAction })
+    queryFn: () =>
+      fetchAccessibleSecrets({ projectId, secretPath, environment, filterByAction, recursive })
   });
 };

@@ -402,7 +402,8 @@ export const secretFolderServiceFactory = ({
     orderDirection,
     limit,
     offset,
-    recursive
+    recursive,
+    lastSecretModified
   }: TGetFolderDTO) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
@@ -425,7 +426,16 @@ export const secretFolderServiceFactory = ({
       const recursiveFolders = await folderDAL.findByEnvsDeep({ parentIds: [parentFolder.id] });
       // remove the parent folder
       return recursiveFolders
-        .filter((folder) => folder.id !== parentFolder.id)
+        .filter((folder) => {
+          if (lastSecretModified) {
+            if (!folder.lastSecretModified) return false;
+
+            if (folder.lastSecretModified < new Date(lastSecretModified)) {
+              return false;
+            }
+          }
+          return folder.id !== parentFolder.id;
+        })
         .map((folder) => ({
           ...folder,
           relativePath: folder.path
@@ -445,6 +455,11 @@ export const secretFolderServiceFactory = ({
         offset
       }
     );
+    if (lastSecretModified) {
+      return folders.filter((el) =>
+        el.lastSecretModified ? el.lastSecretModified >= new Date(lastSecretModified) : false
+      );
+    }
     return folders;
   };
 
@@ -619,10 +634,29 @@ export const secretFolderServiceFactory = ({
         const relevantFolders = folders.filter((folder) => folder.envId === env.id);
         const foldersMap = Object.fromEntries(relevantFolders.map((folder) => [folder.id, folder]));
 
-        const foldersWithPath = relevantFolders.map((folder) => ({
-          ...folder,
-          path: buildFolderPath(folder, foldersMap)
-        }));
+        const foldersWithPath = relevantFolders
+          .map((folder) => {
+            try {
+              return {
+                ...folder,
+                path: buildFolderPath(folder, foldersMap)
+              };
+            } catch (error) {
+              return null;
+            }
+          })
+          .filter(Boolean) as {
+          path: string;
+          id: string;
+          createdAt: Date;
+          updatedAt: Date;
+          name: string;
+          envId: string;
+          version?: number | null | undefined;
+          parentId?: string | null | undefined;
+          isReserved?: boolean | undefined;
+          description?: string | undefined;
+        }[];
 
         return [env.slug, { ...env, folders: foldersWithPath }];
       })

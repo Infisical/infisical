@@ -35,7 +35,6 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
           startDate: new Date(new Date().setDate(new Date().getDate() - auditLogsRetentionDays)),
           eventType: INTEGRATION_EVENTS
         }}
-        filterClassName="bg-mineshaft-900 static"
       />
     </div>
   ) : (
