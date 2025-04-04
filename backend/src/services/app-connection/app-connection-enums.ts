@@ -5,7 +5,8 @@ export enum AppConnection {
   GCP = "gcp",
   AzureKeyVault = "azure-key-vault",
   AzureAppConfiguration = "azure-app-configuration",
-  Humanitec = "humanitec"
+  Humanitec = "humanitec",
+  TerraformCloud = "terraform-cloud"
 }
 
 export enum AWSRegion {

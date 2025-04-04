@@ -8,7 +8,8 @@ import {
   AzureKeyVaultConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
-  TAppConnection
+  TAppConnection,
+  TerraformCloudConnectionMethod
 } from "@app/hooks/api/appConnections/types";
 import { DatabricksConnectionMethod } from "@app/hooks/api/appConnections/types/databricks-connection";
 import { HumanitecConnectionMethod } from "@app/hooks/api/appConnections/types/humanitec-connection";
@@ -26,7 +27,8 @@ export const APP_CONNECTION_MAP: Record<AppConnection, { name: string; image: st
     image: "Microsoft Azure.png"
   },
   [AppConnection.Databricks]: { name: "Databricks", image: "Databricks.png" },
-  [AppConnection.Humanitec]: { name: "Humanitec", image: "Humanitec.png" }
+  [AppConnection.Humanitec]: { name: "Humanitec", image: "Humanitec.png" },
+  [AppConnection.TerraformCloud]: { name: "Terraform Cloud", image: "Terraform Cloud.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -46,6 +48,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DatabricksConnectionMethod.ServicePrincipal:
       return { name: "Service Principal", icon: faUser };
     case HumanitecConnectionMethod.API_TOKEN:
+      return { name: "API Token", icon: faKey };
+    case TerraformCloudConnectionMethod.API_TOKEN:
       return { name: "API Token", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);

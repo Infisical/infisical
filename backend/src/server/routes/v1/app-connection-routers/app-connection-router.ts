@@ -22,6 +22,10 @@ import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
+import {
+  SanitizedTerraformCloudConnectionSchema,
+  TerraformCloudConnectionListItemSchema
+} from "@app/services/app-connection/terraform-cloud";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps
@@ -32,7 +36,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAzureKeyVaultConnectionSchema.options,
   ...SanitizedAzureAppConfigurationConnectionSchema.options,
   ...SanitizedDatabricksConnectionSchema.options,
-  ...SanitizedHumanitecConnectionSchema.options
+  ...SanitizedHumanitecConnectionSchema.options,
+  ...SanitizedTerraformCloudConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -42,7 +47,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AzureKeyVaultConnectionListItemSchema,
   AzureAppConfigurationConnectionListItemSchema,
   DatabricksConnectionListItemSchema,
-  HumanitecConnectionListItemSchema
+  HumanitecConnectionListItemSchema,
+  TerraformCloudConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

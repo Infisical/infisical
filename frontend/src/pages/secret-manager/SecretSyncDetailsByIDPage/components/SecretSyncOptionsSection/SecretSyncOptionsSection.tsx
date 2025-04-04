@@ -48,6 +48,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.AzureAppConfiguration:
     case SecretSync.Databricks:
     case SecretSync.Humanitec:
+    case SecretSync.TerraformCloud:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

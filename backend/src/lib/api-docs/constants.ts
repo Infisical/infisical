@@ -1788,6 +1788,13 @@ export const SecretSyncs = {
       org: "The ID of the Humanitec org to sync secrets to.",
       env: "The ID of the Humanitec environment to sync secrets to.",
       scope: "The Humanitec scope that secrets should be synced to."
+    },
+    TERRAFORM_CLOUD: {
+      org: "The ID of the Terraform Cloud org to sync secrets to.",
+      destinationName: "The name of the Terraform Cloud variable set / workspace to sync secrets to.",
+      destinationId: "The ID of the Terraform Cloud variable set / workspace to sync secrets to.",
+      scope: "The Terraform Cloud scope that secrets should be synced to.",
+      category: "The Terraform Cloud category that secrets should be synced to."
     }
   }
 };

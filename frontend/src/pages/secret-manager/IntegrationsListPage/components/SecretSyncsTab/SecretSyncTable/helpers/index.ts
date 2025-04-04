@@ -73,6 +73,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       }
       secondaryText = `Organization - ${destinationConfig.org}`;
       break;
+    case SecretSync.TerraformCloud:
+      primaryText = destinationConfig.org;
+      secondaryText = destinationConfig.destinationName;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

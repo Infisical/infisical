@@ -38,6 +38,12 @@ import {
   THumanitecConnectionInput,
   TValidateHumanitecConnectionCredentials
 } from "./humanitec";
+import {
+  TTerraformCloudConnection,
+  TTerraformCloudConnectionConfig,
+  TTerraformCloudConnectionInput,
+  TValidateTerraformCloudConnectionCredentials
+} from "./terraform-cloud";
 
 export type TAppConnection = { id: string } & (
   | TAwsConnection
@@ -47,6 +53,7 @@ export type TAppConnection = { id: string } & (
   | TAzureAppConfigurationConnection
   | TDatabricksConnection
   | THumanitecConnection
+  | TTerraformCloudConnection
 );
 
 export type TAppConnectionInput = { id: string } & (
@@ -57,6 +64,7 @@ export type TAppConnectionInput = { id: string } & (
   | TAzureAppConfigurationConnectionInput
   | TDatabricksConnectionInput
   | THumanitecConnectionInput
+  | TTerraformCloudConnectionInput
 );
 
 export type TCreateAppConnectionDTO = Pick<
@@ -75,7 +83,8 @@ export type TAppConnectionConfig =
   | TAzureKeyVaultConnectionConfig
   | TAzureAppConfigurationConnectionConfig
   | TDatabricksConnectionConfig
-  | THumanitecConnectionConfig;
+  | THumanitecConnectionConfig
+  | TTerraformCloudConnectionConfig;
 
 export type TValidateAppConnectionCredentials =
   | TValidateAwsConnectionCredentials
@@ -84,7 +93,8 @@ export type TValidateAppConnectionCredentials =
   | TValidateAzureKeyVaultConnectionCredentials
   | TValidateAzureAppConfigurationConnectionCredentials
   | TValidateDatabricksConnectionCredentials
-  | TValidateHumanitecConnectionCredentials;
+  | TValidateHumanitecConnectionCredentials
+  | TValidateTerraformCloudConnectionCredentials;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

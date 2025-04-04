@@ -21,6 +21,7 @@ import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -71,6 +72,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Humanitec:
       DestinationFieldsComponent = <HumanitecSyncReviewFields />;
+      break;
+    case SecretSync.TerraformCloud:
+      DestinationFieldsComponent = <TerraformCloudSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

@@ -37,6 +37,8 @@ import { ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
+import { ValidateTerraformCloudConnectionCredentialsSchema } from "./terraform-cloud";
+import { terraformCloudConnectionService } from "./terraform-cloud/terraform-cloud-connection-service";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -53,7 +55,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.AzureKeyVault]: ValidateAzureKeyVaultConnectionCredentialsSchema,
   [AppConnection.AzureAppConfiguration]: ValidateAzureAppConfigurationConnectionCredentialsSchema,
   [AppConnection.Databricks]: ValidateDatabricksConnectionCredentialsSchema,
-  [AppConnection.Humanitec]: ValidateHumanitecConnectionCredentialsSchema
+  [AppConnection.Humanitec]: ValidateHumanitecConnectionCredentialsSchema,
+  [AppConnection.TerraformCloud]: ValidateTerraformCloudConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -375,6 +378,7 @@ export const appConnectionServiceFactory = ({
     gcp: gcpConnectionService(connectAppConnectionById),
     databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     aws: awsConnectionService(connectAppConnectionById),
-    humanitec: humanitecConnectionService(connectAppConnectionById)
+    humanitec: humanitecConnectionService(connectAppConnectionById),
+    terraformCloud: terraformCloudConnectionService(connectAppConnectionById)
   };
 };
