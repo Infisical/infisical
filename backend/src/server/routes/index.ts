@@ -1609,6 +1609,10 @@ export const registerRoutes = async (
     if (rateLimitSyncJob) {
       cronJobs.push(rateLimitSyncJob);
     }
+    const licenseSyncJob = await licenseService.initializeBackgroundSync();
+    if (licenseSyncJob) {
+      cronJobs.push(licenseSyncJob);
+    }
   }
 
   server.decorate<FastifyZodProvider["store"]>("store", {
