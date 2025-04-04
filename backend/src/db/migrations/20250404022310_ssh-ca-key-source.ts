@@ -15,6 +15,12 @@ export async function up(knex: Knex): Promise<void> {
       t.string("keySource").notNullable().alter();
     });
   }
+
+  if (await knex.schema.hasColumn(TableName.SshCertificate, "sshCaId")) {
+    await knex.schema.alterTable(TableName.SshCertificate, (t) => {
+      t.uuid("sshCaId").nullable().alter();
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {

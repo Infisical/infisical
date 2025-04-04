@@ -98,6 +98,7 @@ as part of the SSH operation.
     Here's some guidance on each field:
 
     - Friendly Name: A friendly name for the CA; this is only for display.
+    - Key Source: Whether the CA's key pair should be generated internally or supplied from an external source. Select **Internal**.
     - Key Algorithm: The type of public key algorithm and size, in bits, of the key pair for the CA. Supported key algorithms are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384` with the default being `RSA 2048`.
 
   </Step>
@@ -217,6 +218,16 @@ infisical login
 
 In the following steps, we show how to configure host key signing for clients to verify the identity of a remote host before attempting the SSH operation; this is recommended to reduce the probability of a client accessing a malicious machine.
 
+<Note>
+This guide expects that the remote host already has an existing SSH key pair (typically found in the `/etc/ssh/` folder at `/etc/ssh/ssh_host_<algo>_key` and `.pub`).
+
+In the event that the remote host does not have an existing SSH key pair, you can generate a new key pair using the `ssh-keygen` command: `ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N ''`. This will generate:
+
+- A private key: `/etc/ssh/ssh_host_rsa_key`.
+- A public key: `/etc/ssh/ssh_host_rsa_key.pub`.
+
+</Note>
+
 <Steps>
   <Step title="Configuring a SSH CA for host key signing">
     1.1. In the same SSH project, create another SSH CA in the **Certificate Authorities** tab; this CA will be used for host key signing.
@@ -228,7 +239,9 @@ In the following steps, we show how to configure host key signing for clients to
     Here's some guidance on each field:
 
     - Friendly Name: A friendly name for the CA; this is only for display.
-    - Key Algorithm: The type of public key algorithm and size, in bits, of the key pair for the CA. Supported key algorithms are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384` with the default being `RSA 2048`.
+    - Key Source: Whether the CA's key pair should be generated internally or supplied from an external source. Select **External**.
+    - Public Key: The public key for the CA (i.e. the host's SSH public key).
+    - Private Key: The private key for the CA (i.e. the host's SSH private key).
 
   </Step>
   <Step title="Configuring a certificate template on the CA">
@@ -262,12 +275,12 @@ In the following steps, we show how to configure host key signing for clients to
     <Note>
       You should select **Sign SSH Key** under the **Operation** field.
 
-      Then input your host's public key under the **SSH Public Key** field and hostname under the **Principal(s)** field; the host's public key is likely in the `/etc/ssh` folder of the host.
+      Then input your host's SSH public key under the **SSH Public Key** field and hostname under the **Principal(s)** field; the host's public key should be in the `/etc/ssh` folder of the host as used in step 1.
     </Note>
 
     ![ssh host issue certificate 3](/images/platform/ssh/ssh-host-issue-cert-3.png)
 
-    2.2. Create a file containing the certificate in the SSH folder of the remote host; we'll call it `key-cert.pub`.
+    2.2. Create a file containing the certificate in the SSH folder of the remote host; we'll call it `ssh_host_key-cert.pub`.
 
     2.2. Set permissions on the certificate to be `0640`:
 
@@ -278,9 +291,13 @@ In the following steps, we show how to configure host key signing for clients to
     2.3. Next, add the following lines to the `/etc/ssh/sshd_config` file on the remote host.
 
     ```bash
-    HostKey /etc/ssh/ssh_host_key
+    HostKey /etc/ssh/ssh_host_rsa_key
     HostCertificate /etc/ssh/ssh_host_key-cert.pub
     ```
+
+    <Note>
+      You should adjust the `HostKey` directive to match the path to the host's SSH private key as used in step 1.
+    </Note>
 
     2.4. Finally, reload the SSH daemon on the remote host to apply the changes.
 
@@ -314,3 +331,33 @@ In the following steps, we show how to configure host key signing for clients to
 
   </Step>
 </Steps>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="How can I confirm if the Infisical SSH workflow is working?">
+    After configuring Infisical SSH, you can add the `-vvv` flag as part of the
+    SSH operation to see verbose output from the SSH client.
+
+    ```bash
+    ssh -vvv username@hostname
+    ```
+
+    You should see output from the SSH client that includes the following if both client key signing and host key signing are working:
+
+    Host certificate was verified and trusted:
+
+    ```bash
+    debug1: Host 'example.com' is known and matches the ECDSA-CERT host certificate.
+    debug1: Found CA key in /Users/user/.ssh/known_hosts:1
+    ```
+
+    You authenticated with your user certificate:
+
+    ```bash
+    debug1: Offering public key: Added via Infisical CLI RSA-CERT SHA256:...
+    debug1: Server accepts key: Added via Infisical CLI RSA-CERT SHA256:...
+    ```
+
+  </Accordion>
+</AccordionGroup>
