@@ -1,0 +1,85 @@
+FROM node:20-slim
+
+# ? Setup a test SoftHSM module. In production a real HSM is used.
+
+ARG SOFTHSM2_VERSION=2.5.0
+
+ENV SOFTHSM2_VERSION=${SOFTHSM2_VERSION} \
+    SOFTHSM2_SOURCES=/tmp/softhsm2
+
+# Install build dependencies including python3 (required for pkcs11js and partially TDS driver)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    autoconf \
+    automake \
+    git \
+    libtool \
+    libssl-dev \
+    python3 \
+    make \
+    g++ \
+    openssh-client \
+    curl \
+    pkg-config \
+    perl \
+    wget
+
+# Install dependencies for TDS driver (required for SAP ASE dynamic secrets)
+RUN apt-get install -y \
+    unixodbc \
+    unixodbc-dev \
+    freetds-dev \
+    freetds-bin \
+    tdsodbc
+
+RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+
+# Build and install SoftHSM2
+RUN git clone https://github.com/opendnssec/SoftHSMv2.git ${SOFTHSM2_SOURCES}
+WORKDIR ${SOFTHSM2_SOURCES}
+
+RUN git checkout ${SOFTHSM2_VERSION} -b ${SOFTHSM2_VERSION} \
+    && sh autogen.sh \
+    && ./configure --prefix=/usr/local --disable-gost \
+    && make \
+    && make install
+
+WORKDIR /root
+RUN rm -fr ${SOFTHSM2_SOURCES}
+
+# Install pkcs11-tool
+RUN apt-get install -y opensc
+
+RUN mkdir -p /etc/softhsm2/tokens && \
+    softhsm2-util --init-token --slot 0 --label "auth-app" --pin 1234 --so-pin 0000
+    
+WORKDIR /openssl-build
+RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
+    && tar -xf openssl-3.1.2.tar.gz \
+    && cd openssl-3.1.2 \
+    && ./Configure enable-fips \
+    && make \
+    && make install_fips
+
+# ? App setup
+
+# Install Infisical CLI
+RUN curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash && \
+    apt-get update && \
+    apt-get install -y infisical=0.8.1
+
+WORKDIR /app
+
+COPY package.json package.json
+COPY package-lock.json package-lock.json
+
+RUN npm install
+
+COPY . .
+
+ENV HOST=0.0.0.0
+ENV OPENSSL_CONF=/app/nodejs.cnf
+ENV OPENSSL_MODULES=/usr/local/lib/ossl-modules
+ENV NODE_OPTIONS=--force-fips
+
+CMD ["npm", "run", "dev:docker"]
