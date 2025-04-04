@@ -1,5 +1,6 @@
 import "./lib/telemetry/instrumentation";
 
+import crypto from "crypto";
 import dotenv from "dotenv";
 import { Redis } from "ioredis";
 
@@ -16,6 +17,8 @@ import { bootstrapCheck } from "./server/boot-strap-check";
 import { smtpServiceFactory } from "./services/smtp/smtp-service";
 
 dotenv.config();
+
+console.log("FIPS mode enabled:", crypto.getFips());
 
 const run = async () => {
   const logger = initLogger();
