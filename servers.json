@@ -1,0 +1,15 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Infisical DB",
+      "Group": "Servers",
+      "Host": "host.docker.internal",
+      "Port": 5432,
+      "MaintenanceDB": "infisical",
+      "Username": "infisical",
+      "PassFile": "/pgpass",
+      "SSLMode": "disable",
+      "SavePassword": true
+    }
+  }
+}

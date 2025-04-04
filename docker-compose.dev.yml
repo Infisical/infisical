@@ -132,6 +132,8 @@ services:
   pgadmin:
     image: dpage/pgadmin4
     restart: always
+    volumes:
+      - ./servers.json:/pgadmin4/servers.json
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: pass
