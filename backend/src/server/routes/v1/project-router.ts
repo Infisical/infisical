@@ -760,6 +760,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         comment: z
           .string()
           .trim()
+          .max(2500)
           .refine(
             (val) =>
               characterValidator([
