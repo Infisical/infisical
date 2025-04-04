@@ -153,6 +153,12 @@ export const secretRotationV2ServiceFactory = ({
     tx: Knex;
     secretPath: string;
   }) => {
+    if (new Set(secretKeys).size !== secretKeys.length) {
+      throw new BadRequestError({
+        message: `Secrets mapping keys must be unique. "${secretKeys.join(", ")}" contains duplicate keys.`
+      });
+    }
+
     const conflictingSecrets = await secretV2BridgeDAL.find(
       {
         $in: {

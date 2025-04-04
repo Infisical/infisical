@@ -1,7 +1,6 @@
 import { faWrench } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { createNotification } from "@app/components/notifications";
 import { Spinner, Tooltip } from "@app/components/v2";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import { SecretRotation, useSecretRotationV2Options } from "@app/hooks/api/secretRotationsV2";
@@ -42,58 +41,6 @@ export const SecretRotationV2Select = ({ onSelect }: Props) => {
             type="button"
             key={type}
             onClick={() => onSelect(type)}
-            className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
-          >
-            <img
-              src={`/images/integrations/${image}`}
-              width={size}
-              className="mt-auto"
-              alt={`${name} logo`}
-            />
-            <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
-              {name}
-            </div>
-          </button>
-        );
-      })}
-      {/* templates for kubecon, remove once implemented */}
-      {[
-        {
-          name: "MySQL Credentials",
-          image: "MySql.png"
-        },
-        {
-          name: "SendGrid API Key",
-          image: "SendGrid.png"
-        },
-        {
-          name: "AWS IAM User Credentials",
-          image: "Amazon Web Services.png"
-        }
-      ].map(({ name, image }) => {
-        let size: number;
-
-        switch (name) {
-          case "MySQL Credentials":
-            size = 80;
-            break;
-          case "SendGrid API Key":
-            size = 50;
-            break;
-          default:
-            size = 45;
-        }
-
-        return (
-          <button
-            type="button"
-            key={name}
-            onClick={() =>
-              createNotification({
-                type: "info",
-                text: `${name} Rotation is under development. Please check back soon.`
-              })
-            }
             className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
           >
             <img

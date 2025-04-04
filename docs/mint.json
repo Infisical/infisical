@@ -177,11 +177,8 @@
           "group": "Secret Rotation",
           "pages": [
             "documentation/platform/secret-rotation/overview",
-            "documentation/platform/secret-rotation/sendgrid",
             "documentation/platform/secret-rotation/postgres",
-            "documentation/platform/secret-rotation/mysql",
-            "documentation/platform/secret-rotation/mssql",
-            "documentation/platform/secret-rotation/aws-iam"
+            "documentation/platform/secret-rotation/mssql"
           ]
         },
         {
@@ -419,7 +416,9 @@
             "integrations/app-connections/databricks",
             "integrations/app-connections/gcp",
             "integrations/app-connections/github",
-            "integrations/app-connections/humanitec"
+            "integrations/app-connections/humanitec",
+            "integrations/app-connections/mssql",
+            "integrations/app-connections/postgres"
           ]
         }
       ]

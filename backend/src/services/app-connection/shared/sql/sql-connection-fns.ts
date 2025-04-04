@@ -5,6 +5,7 @@ import {
   TSqlCredentialsRotationGeneratedCredentials,
   TSqlCredentialsRotationWithConnection
 } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials/sql-credentials-rotation-types";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -19,12 +20,16 @@ const SQL_CONNECTION_CLIENT_MAP = {
 };
 
 export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection, "credentials" | "app">) => {
+  const appCfg = getConfig();
+
   const {
     app,
     credentials: { host: baseHost, database, port, sslCertificate, password, username }
   } = appConnection;
 
-  const ssl = sslCertificate ? { rejectUnauthorized: false, ca: sslCertificate } : undefined;
+  const ssl = sslCertificate
+    ? { rejectUnauthorized: appCfg.DB_SSL_REJECT_UNAUTHORIZED, ca: sslCertificate, servername: baseHost }
+    : undefined;
 
   const [host] = await verifyHostInputValidity(baseHost);
 
@@ -43,7 +48,7 @@ export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection,
       options:
         app === AppConnection.MsSql
           ? {
-              trustServerCertificate: !sslCertificate,
+              trustServerCertificate: !appCfg.DB_SSL_REJECT_UNAUTHORIZED,
               cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {}
             }
           : undefined

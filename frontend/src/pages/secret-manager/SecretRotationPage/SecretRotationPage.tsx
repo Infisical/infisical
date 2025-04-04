@@ -141,7 +141,7 @@ const Page = () => {
       </PageHeader>
       <NoticeBannerV2 title="Secret Rotations Update">
         <p className="text-sm text-bunker-200">
-          Infisical is revamping it&#39;s Secret Rotation experience.
+          Infisical is revamping its Secret Rotation experience.
         </p>
         <p className="mt-2 text-sm text-bunker-200">
           Secret Rotations can now be created from the{" "}
@@ -364,7 +364,7 @@ const Page = () => {
         <ModalContent className="max-w-5xl" title="Secret Rotation Update">
           <div className="flex flex-col gap-2">
             <p className="text-mineshaft-200">
-              Infisical is revamping it&#39;s Secret Rotation experience. Navigate to the{" "}
+              Infisical is revamping its Secret Rotation experience. Navigate to the{" "}
               <Link
                 className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
                 to={`/${ProjectType.SecretManager}/$projectId/overview` as const}
@@ -372,7 +372,7 @@ const Page = () => {
               >
                 Secret Manager Dashboard
               </Link>{" "}
-              to create a Secret Rotations.
+              to create a Secret Rotation.
             </p>
             <div className="overflow-clip rounded border border-mineshaft-600">
               <img

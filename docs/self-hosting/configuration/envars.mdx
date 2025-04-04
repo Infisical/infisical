@@ -439,6 +439,14 @@ When set, all visits to the Infisical login page will automatically redirect use
   information.
 </Accordion>
 
+## External Database Connections
+
+<ParamField query="DB_SSL_REJECT_UNAUTHORIZED" type="boolean" default="true" optional>
+    Whether external database connections should reject unauthorized SSL certificates. Only set this to `false` if
+    the database you are connecting to is within your internal network.
+</ParamField>
+
+
 ## App Connections
 
 You can configure third-party app connections for re-use across Infisical Projects.

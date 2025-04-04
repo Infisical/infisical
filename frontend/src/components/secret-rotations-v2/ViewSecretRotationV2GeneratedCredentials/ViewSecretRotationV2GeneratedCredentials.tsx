@@ -41,13 +41,21 @@ const Content = ({ secretRotation }: ContentProps) => {
     );
   }
 
+  if (!generatedCredentialsResponse) {
+    return (
+      <div className="flex w-full justify-center">
+        <p className="text-sm text-red">No generated credentials found for this rotation.</p>
+      </div>
+    );
+  }
+
   let Component: ReactNode;
-  switch (generatedCredentialsResponse!.type) {
+  switch (generatedCredentialsResponse.type) {
     case SecretRotation.PostgresCredentials:
     case SecretRotation.MsSqlCredentials:
       Component = (
         <ViewSqlRotationGeneratedCredentials
-          generatedCredentialsResponse={generatedCredentialsResponse!}
+          generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );
       break;
