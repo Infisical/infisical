@@ -285,7 +285,9 @@ export enum EventType {
   KMIP_OPERATION_ACTIVATE = "kmip-operation-activate",
   KMIP_OPERATION_REVOKE = "kmip-operation-revoke",
   KMIP_OPERATION_LOCATE = "kmip-operation-locate",
-  KMIP_OPERATION_REGISTER = "kmip-operation-register"
+  KMIP_OPERATION_REGISTER = "kmip-operation-register",
+
+  PROJECT_ACCESS_REQUEST = "project-access-request"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -2277,6 +2279,15 @@ interface KmipOperationRegisterEvent {
   };
 }
 
+interface ProjectAccessRequestEvent {
+  type: EventType.PROJECT_ACCESS_REQUEST;
+  metadata: {
+    projectId: string;
+    requesterId: string;
+    requesterEmail: string;
+  };
+}
+
 interface SetupKmipEvent {
   type: EventType.SETUP_KMIP;
   metadata: {
@@ -2511,5 +2522,6 @@ export type Event =
   | KmipOperationRevokeEvent
   | KmipOperationLocateEvent
   | KmipOperationRegisterEvent
+  | ProjectAccessRequestEvent
   | CreateSecretRequestEvent
   | SecretApprovalRequestReview;

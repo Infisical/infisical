@@ -233,3 +233,8 @@ export enum ActionProjectType {
   // project operations that happen on all types
   Any = "any"
 }
+
+export enum SortDirection {
+  ASC = "asc",
+  DESC = "desc"
+}

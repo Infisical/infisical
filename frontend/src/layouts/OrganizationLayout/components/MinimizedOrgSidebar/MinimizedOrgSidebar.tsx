@@ -14,6 +14,7 @@ import {
   faPlug,
   faSignOut,
   faUser,
+  faUserCog,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -385,6 +386,19 @@ export const MinimizedOrgSidebar = () => {
                       Organization Settings
                     </DropdownMenuItem>
                   </Link>
+                  <DropdownMenuLabel>Admin Panels</DropdownMenuLabel>
+                  {user?.superAdmin && (
+                    <Link to="/admin">
+                      <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faUserCog} />}>
+                        Server Admin Console
+                      </DropdownMenuItem>
+                    </Link>
+                  )}
+                  <Link to="/organization/admin">
+                    <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faCog} />}>
+                      Organization Admin Console
+                    </DropdownMenuItem>
+                  </Link>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -541,18 +555,6 @@ export const MinimizedOrgSidebar = () => {
                     />
                   </DropdownMenuItem>
                 </a>
-                {user?.superAdmin && (
-                  <Link to="/admin">
-                    <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
-                      Server Admin Console
-                    </DropdownMenuItem>
-                  </Link>
-                )}
-                <div className="mt-1 border-t border-mineshaft-600 pt-1">
-                  <Link to="/organization/admin">
-                    <DropdownMenuItem>Organization Admin Console</DropdownMenuItem>
-                  </Link>
-                </div>
                 <div className="mt-1 h-1 border-t border-mineshaft-600" />
                 <DropdownMenuItem onClick={logOutUser} icon={<FontAwesomeIcon icon={faSignOut} />}>
                   Log Out
