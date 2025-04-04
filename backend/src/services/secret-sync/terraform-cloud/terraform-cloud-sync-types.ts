@@ -60,7 +60,7 @@ export type TerraformCloudVariable = {
   sensitive: boolean;
   description: string;
   category: "terraform" | "env";
-  source: "project" | "workspace";
+  source: "varset" | "workspace";
 };
 
 export type TerraformCloudApiResponse<T> = {
@@ -83,8 +83,3 @@ export type TerraformCloudApiResponse<T> = {
     };
   };
 };
-
-export enum TerraformCloudSyncScope {
-  Project = "project",
-  Workspace = "workspace"
-}

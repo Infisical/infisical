@@ -3,9 +3,9 @@ import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { TerraformCloudSyncScope } from "./terraform-cloud-sync-enums";
 import {
   TerraformCloudApiResponse,
@@ -25,10 +25,14 @@ const getTerraformCloudVariables = async (
   } = secretSync;
 
   let url;
-  if (destinationConfig.scope === TerraformCloudSyncScope.Project) {
-    url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${destinationConfig.org}/projects/${destinationConfig.project}/vars`;
+  let source: TerraformCloudVariable["source"];
+
+  if (destinationConfig.scope === TerraformCloudSyncScope.VariableSet) {
+    url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/varsets/${destinationConfig.destinationId}/relationships/vars`;
+    source = "varset";
   } else {
-    url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${destinationConfig.org}/workspaces/${destinationConfig.workspace}/vars`;
+    url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${destinationConfig.destinationId}/vars`;
+    source = "workspace";
   }
 
   const response = await request.get<TerraformCloudApiResponse<TerraformCloudApiVariable[]>>(url, {
@@ -49,7 +53,7 @@ const getTerraformCloudVariables = async (
     sensitive: variable.attributes.sensitive,
     description: variable.attributes.description || "",
     category: variable.attributes.category,
-    source: destinationConfig.scope === TerraformCloudSyncScope.Project ? "project" : "workspace"
+    source
   }));
 
   return variables;
@@ -68,10 +72,11 @@ const deleteVariable = async (
 
   try {
     let url;
-    if (destinationConfig.scope === TerraformCloudSyncScope.Project) {
-      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${destinationConfig.org}/projects/${destinationConfig.project}/vars/${variable.id}`;
+
+    if (destinationConfig.scope === TerraformCloudSyncScope.VariableSet) {
+      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/varsets/${destinationConfig.destinationId}/relationships/vars/${variable.id}`;
     } else {
-      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${destinationConfig.org}/workspaces/${destinationConfig.workspace}/vars/${variable.id}`;
+      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${destinationConfig.destinationId}/vars/${variable.id}`;
     }
 
     await request.delete(url, {
@@ -104,10 +109,11 @@ const createVariable = async (
     } = secretSync;
 
     let url;
-    if (destinationConfig.scope === TerraformCloudSyncScope.Project) {
-      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${destinationConfig.org}/projects/${destinationConfig.project}/vars`;
+
+    if (destinationConfig.scope === TerraformCloudSyncScope.VariableSet) {
+      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/varsets/${destinationConfig.destinationId}/relationships/vars`;
     } else {
-      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${destinationConfig.org}/workspaces/${destinationConfig.workspace}/vars`;
+      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${destinationConfig.destinationId}/vars`;
     }
 
     await request.post(
@@ -119,9 +125,8 @@ const createVariable = async (
             key,
             value: secretMap[key].value,
             description: secretMap[key].comment || "",
-            category: "env",
-            sensitive: true,
-            hcl: false
+            category: secretSync.destinationConfig.category,
+            sensitive: true
           }
         }
       },
@@ -156,10 +161,11 @@ const updateVariable = async (
     } = secretSync;
 
     let url;
-    if (destinationConfig.scope === TerraformCloudSyncScope.Project) {
-      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${destinationConfig.org}/projects/${destinationConfig.project}/vars/${variable.id}`;
+
+    if (destinationConfig.scope === TerraformCloudSyncScope.VariableSet) {
+      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/varsets/${destinationConfig.destinationId}/relationships/vars/${variable.id}`;
     } else {
-      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${destinationConfig.org}/workspaces/${destinationConfig.workspace}/vars/${variable.id}`;
+      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${destinationConfig.destinationId}/vars/${variable.id}`;
     }
 
     await request.patch(
@@ -170,7 +176,8 @@ const updateVariable = async (
           id: variable.id,
           attributes: {
             value: secretMap[variable.key].value,
-            description: secretMap[variable.key].comment || ""
+            description: secretMap[variable.key].comment || "",
+            category: secretSync.destinationConfig.category
           }
         }
       },

@@ -6,7 +6,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   CreateTerraformCloudConnectionSchema,
   SanitizedTerraformCloudConnectionSchema,
-  TerraformCloudOrgWithApps,
+  TTerraformCloudOrganization,
   UpdateTerraformCloudConnectionSchema
 } from "@app/services/app-connection/terraform-cloud";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -38,10 +38,12 @@ export const registerTerraformCloudConnectionRouter = async (server: FastifyZodP
           .object({
             id: z.string(),
             name: z.string(),
-            projects: z
+            variableSets: z
               .object({
                 id: z.string(),
-                name: z.string()
+                name: z.string(),
+                description: z.string().optional(),
+                global: z.boolean().optional()
               })
               .array(),
             workspaces: z
@@ -58,7 +60,7 @@ export const registerTerraformCloudConnectionRouter = async (server: FastifyZodP
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const organizations: TerraformCloudOrgWithApps[] =
+      const organizations: TTerraformCloudOrganization[] =
         await server.services.appConnection.terraformCloud.listOrganizations(connectionId, req.permission);
 
       return organizations;

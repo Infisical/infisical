@@ -1,4 +1,9 @@
 export enum TerraformCloudSyncScope {
-  Project = "project",
+  VariableSet = "variable-set",
   Workspace = "workspace"
+}
+
+export enum TerraformCloudSyncCategory {
+  Environment = "env",
+  Terraform = "terraform"
 }

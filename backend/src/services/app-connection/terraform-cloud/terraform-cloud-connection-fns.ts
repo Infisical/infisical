@@ -10,7 +10,7 @@ import {
   TTerraformCloudConnection,
   TTerraformCloudConnectionConfig,
   TTerraformCloudOrganization,
-  TTerraformCloudProject,
+  TTerraformCloudVariableSet,
   TTerraformCloudWorkspace
 } from "./terraform-cloud-connection-types";
 
@@ -81,12 +81,12 @@ export const listOrganizations = async (
   }
 
   const orgEntities = orgsResponse.data.data;
-  const orgsWithProjectsAndWorkspaces: TTerraformCloudOrganization[] = [];
+  const orgsWithVariableSetsAndWorkspaces: TTerraformCloudOrganization[] = [];
 
-  const projectPromises = orgEntities.map((org) =>
+  const variableSetPromises = orgEntities.map((org) =>
     request
-      .get<{ data: { id: string; attributes: { name: string } }[] }>(
-        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${org.id}/projects`,
+      .get<{ data: { id: string; attributes: { name: string; description?: string; global?: boolean } }[] }>(
+        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${org.id}/varsets`,
         {
           headers: {
             Authorization: `Bearer ${apiToken}`,
@@ -111,19 +111,21 @@ export const listOrganizations = async (
       .catch(() => ({ data: { data: [] } }))
   );
 
-  const [projectResponses, workspaceResponses] = await Promise.all([
-    Promise.all(projectPromises),
+  const [variableSetResponses, workspaceResponses] = await Promise.all([
+    Promise.all(variableSetPromises),
     Promise.all(workspacePromises)
   ]);
 
   for (let i = 0; i < orgEntities.length; i += 1) {
     const org = orgEntities[i];
-    const projectsData = projectResponses[i].data?.data || [];
+    const variableSetsData = variableSetResponses[i].data?.data || [];
     const workspacesData = workspaceResponses[i].data?.data || [];
 
-    const projects: TTerraformCloudProject[] = projectsData.map((project) => ({
-      id: project.id,
-      name: project.attributes.name
+    const variableSets: TTerraformCloudVariableSet[] = variableSetsData.map((varSet) => ({
+      id: varSet.id,
+      name: varSet.attributes.name,
+      description: varSet.attributes.description,
+      global: varSet.attributes.global
     }));
 
     const workspaces: TTerraformCloudWorkspace[] = workspacesData.map((workspace) => ({
@@ -131,13 +133,13 @@ export const listOrganizations = async (
       name: workspace.attributes.name
     }));
 
-    orgsWithProjectsAndWorkspaces.push({
+    orgsWithVariableSetsAndWorkspaces.push({
       id: org.id,
       name: org.attributes.name,
-      projects,
+      variableSets,
       workspaces
     });
   }
 
-  return orgsWithProjectsAndWorkspaces;
+  return orgsWithVariableSetsAndWorkspaces;
 };

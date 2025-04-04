@@ -39,9 +39,11 @@ export type TerraformCloudOrgWithApps = TerraformCloudOrg & {
   apps: TerraformCloudApp[];
 };
 
-export type TTerraformCloudProject = {
+export type TTerraformCloudVariableSet = {
   id: string;
   name: string;
+  description?: string;
+  global?: boolean;
 };
 
 export type TTerraformCloudWorkspace = {
@@ -52,15 +54,15 @@ export type TTerraformCloudWorkspace = {
 export type TTerraformCloudOrganization = {
   id: string;
   name: string;
-  projects: TTerraformCloudProject[];
+  variableSets: TTerraformCloudVariableSet[];
   workspaces: TTerraformCloudWorkspace[];
 };
 
 export type TTerraformCloudConnectionOrganization = TTerraformCloudOrganization;
-export type TTerraformCloudConnectionProject = TTerraformCloudProject;
+export type TTerraformCloudConnectionVariableSet = TTerraformCloudVariableSet;
 export type TTerraformCloudConnectionWorkspace = TTerraformCloudWorkspace;
 
 export enum TerraformCloudSyncScope {
-  Project = "project",
+  VariableSet = "variableSet",
   Workspace = "workspace"
 }

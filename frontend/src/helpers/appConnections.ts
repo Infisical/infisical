@@ -8,7 +8,8 @@ import {
   AzureKeyVaultConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
-  TAppConnection
+  TAppConnection,
+  TerraformCloudConnectionMethod
 } from "@app/hooks/api/appConnections/types";
 import { DatabricksConnectionMethod } from "@app/hooks/api/appConnections/types/databricks-connection";
 import { HumanitecConnectionMethod } from "@app/hooks/api/appConnections/types/humanitec-connection";

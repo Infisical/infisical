@@ -1791,9 +1791,10 @@ export const SecretSyncs = {
     },
     TERRAFORM_CLOUD: {
       org: "The ID of the Terraform Cloud org to sync secrets to.",
-      project: "The ID of the Terraform Cloud project to sync secrets to.",
-      workspace: "The ID of the Terraform Cloud workspace to sync secrets to.",
-      scope: "The Terraform Cloud scope that secrets should be synced to."
+      destinationName: "The name of the Terraform Cloud variable set / workspace to sync secrets to.",
+      destinationId: "The ID of the Terraform Cloud variable set / workspace to sync secrets to.",
+      scope: "The Terraform Cloud scope that secrets should be synced to.",
+      category: "The Terraform Cloud category that secrets should be synced to."
     }
   }
 };

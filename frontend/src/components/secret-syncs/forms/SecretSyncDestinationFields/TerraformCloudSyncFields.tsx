@@ -7,9 +7,10 @@ import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/Se
 import { FilterableSelect, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
 import {
   TERRAFORM_CLOUD_SYNC_SCOPES,
+  TerraformCloudSyncCategory,
   TerraformCloudSyncScope,
   TTerraformCloudConnectionOrganization,
-  TTerraformCloudConnectionProject,
+  TTerraformCloudConnectionVariableSet,
   TTerraformCloudConnectionWorkspace,
   useTerraformCloudConnectionListOrganizations
 } from "@app/hooks/api/appConnections/terraform-cloud";
@@ -32,7 +33,7 @@ export const TerraformCloudSyncFields = () => {
     });
 
   const selectedOrg = organizations?.find((org) => org.id === currentOrg);
-  const projects = selectedOrg?.projects || [];
+  const variableSets = selectedOrg?.variableSets || [];
   const workspaces = selectedOrg?.workspaces || [];
 
   return (
@@ -40,8 +41,8 @@ export const TerraformCloudSyncFields = () => {
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.org", "");
-          setValue("destinationConfig.project", "");
-          setValue("destinationConfig.workspace", "");
+          setValue("destinationConfig.destinationId", "");
+          setValue("destinationConfig.destinationName", "");
         }}
       />
       <Controller
@@ -61,8 +62,8 @@ export const TerraformCloudSyncFields = () => {
                 onChange(
                   (option as SingleValue<TTerraformCloudConnectionOrganization>)?.id ?? null
                 );
-                setValue("destinationConfig.project", "");
-                setValue("destinationConfig.workspace", "");
+                setValue("destinationConfig.destinationId", "");
+                setValue("destinationConfig.destinationName", "");
               }}
               options={organizations}
               placeholder="Select an organization..."
@@ -73,9 +74,37 @@ export const TerraformCloudSyncFields = () => {
         )}
       />
       <Controller
+        name="destinationConfig.category"
+        control={control}
+        defaultValue={TerraformCloudSyncCategory.Environment}
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl
+            errorText={error?.message}
+            isError={Boolean(error?.message)}
+            label="Category"
+          >
+            <Select
+              value={value}
+              onValueChange={onChange}
+              className="w-full border border-mineshaft-500 capitalize"
+              position="popper"
+              defaultValue={TerraformCloudSyncCategory.Environment}
+              placeholder="Select category..."
+              dropdownContainerClassName="max-w-none"
+            >
+              {Object.values(TerraformCloudSyncCategory).map((category) => (
+                <SelectItem className="capitalize" value={category} key={category}>
+                  {category.replace("-", " ")}
+                </SelectItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+      />
+      <Controller
         name="destinationConfig.scope"
         control={control}
-        defaultValue={TerraformCloudSyncScope.Project}
+        defaultValue={TerraformCloudSyncScope.VariableSet}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
             errorText={error?.message}
@@ -106,12 +135,8 @@ export const TerraformCloudSyncFields = () => {
               value={value}
               onValueChange={(val) => {
                 onChange(val);
-                // Reset either project or workspace based on which scope was selected
-                if (val === TerraformCloudSyncScope.Project) {
-                  setValue("destinationConfig.workspace", "");
-                } else {
-                  setValue("destinationConfig.project", "");
-                }
+                setValue("destinationConfig.destinationId", "");
+                setValue("destinationConfig.destinationName", "");
               }}
               className="w-full border border-mineshaft-500 capitalize"
               position="popper"
@@ -127,22 +152,22 @@ export const TerraformCloudSyncFields = () => {
           </FormControl>
         )}
       />
-      {currentScope === TerraformCloudSyncScope.Project && (
+      {currentScope === TerraformCloudSyncScope.VariableSet && (
         <Controller
-          name="destinationConfig.project"
+          name="destinationConfig.destinationId"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
               isError={Boolean(error)}
               errorText={error?.message}
-              label="Project"
+              label="Variable Set"
               helperText={
                 <Tooltip
                   className="max-w-md"
-                  content="Ensure that the project exists in the selected organization and the service account used on this connection has write permissions for the specified project."
+                  content="Ensure that the variable set exists in the selected organization and the service account used on this connection has write permissions for the specified variable set."
                 >
                   <div>
-                    <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
+                    <span>Don&#39;t see the variable set you&#39;re looking for?</span>{" "}
                     <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
                   </div>
                 </Tooltip>
@@ -152,12 +177,20 @@ export const TerraformCloudSyncFields = () => {
                 menuPlacement="top"
                 isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}
                 isDisabled={!connectionId || !currentOrg}
-                value={projects.find((project) => project.id === value) ?? null}
+                value={variableSets.find((variableSet) => variableSet.id === value) ?? null}
                 onChange={(option) => {
-                  onChange((option as SingleValue<TTerraformCloudConnectionProject>)?.id ?? null);
+                  const selectedOption =
+                    option as SingleValue<TTerraformCloudConnectionVariableSet>;
+                  onChange(selectedOption?.id ?? null);
+
+                  if (selectedOption) {
+                    setValue("destinationConfig.destinationName", selectedOption.name);
+                  } else {
+                    setValue("destinationConfig.destinationName", "");
+                  }
                 }}
-                options={projects}
-                placeholder="Select a project..."
+                options={variableSets}
+                placeholder="Select a variable set..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id.toString()}
               />
@@ -167,7 +200,7 @@ export const TerraformCloudSyncFields = () => {
       )}
       {currentScope === TerraformCloudSyncScope.Workspace && (
         <Controller
-          name="destinationConfig.workspace"
+          name="destinationConfig.destinationId"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
@@ -192,7 +225,14 @@ export const TerraformCloudSyncFields = () => {
                 isDisabled={!connectionId || !currentOrg}
                 value={workspaces.find((workspace) => workspace.id === value) ?? null}
                 onChange={(option) => {
-                  onChange((option as SingleValue<TTerraformCloudConnectionWorkspace>)?.id ?? null);
+                  const selectedOption = option as SingleValue<TTerraformCloudConnectionWorkspace>;
+                  onChange(selectedOption?.id ?? null);
+
+                  if (selectedOption) {
+                    setValue("destinationConfig.destinationName", selectedOption.name);
+                  } else {
+                    setValue("destinationConfig.destinationName", "");
+                  }
                 }}
                 options={workspaces}
                 placeholder="Select a workspace..."

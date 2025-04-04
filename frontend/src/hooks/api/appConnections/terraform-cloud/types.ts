@@ -1,11 +1,11 @@
 export type TTerraformCloudOrganization = {
   name: string;
   id: string;
-  projects: TTerraformCloudProject[];
+  variableSets: TTerraformCloudVariableSet[];
   workspaces: TTerraformCloudWorkspace[];
 };
 
-export type TTerraformCloudProject = {
+export type TTerraformCloudVariableSet = {
   id: string;
   name: string;
 };
@@ -18,13 +18,15 @@ export type TTerraformCloudWorkspace = {
 export type TTerraformCloudConnectionOrganization = {
   id: string;
   name: string;
-  projects: TTerraformCloudConnectionProject[];
+  variableSets: TTerraformCloudConnectionVariableSet[];
   workspaces: TTerraformCloudConnectionWorkspace[];
 };
 
-export type TTerraformCloudConnectionProject = {
+export type TTerraformCloudConnectionVariableSet = {
   id: string;
   name: string;
+  description: string;
+  global: boolean;
 };
 
 export type TTerraformCloudConnectionWorkspace = {
@@ -33,14 +35,19 @@ export type TTerraformCloudConnectionWorkspace = {
 };
 
 export enum TerraformCloudSyncScope {
-  Project = "project",
+  VariableSet = "variable-set",
   Workspace = "workspace"
 }
 
+export enum TerraformCloudSyncCategory {
+  Environment = "env",
+  Terraform = "terraform"
+}
+
 export const TERRAFORM_CLOUD_SYNC_SCOPES = {
-  [TerraformCloudSyncScope.Project]: {
-    name: "Project",
-    description: "Sync secrets to a specific project in Terraform Cloud."
+  [TerraformCloudSyncScope.VariableSet]: {
+    name: "Variable Set",
+    description: "Sync secrets to a specific variable set in Terraform Cloud."
   },
   [TerraformCloudSyncScope.Workspace]: {
     name: "Workspace",

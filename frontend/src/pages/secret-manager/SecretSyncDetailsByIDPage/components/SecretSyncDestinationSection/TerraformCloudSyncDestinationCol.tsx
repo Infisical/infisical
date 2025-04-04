@@ -15,11 +15,13 @@ export const TerraformCloudSyncDestinationSection = ({ secretSync }: Props) => {
 
   let Components: ReactNode;
   switch (destinationConfig.scope) {
-    case TerraformCloudSyncScope.Project:
+    case TerraformCloudSyncScope.VariableSet:
       Components = (
         <>
           <SecretSyncLabel label="Organization">{destinationConfig.org}</SecretSyncLabel>
-          <SecretSyncLabel label="Project">{destinationConfig.project}</SecretSyncLabel>
+          <SecretSyncLabel label="Variable Set">
+            {destinationConfig.destinationName}
+          </SecretSyncLabel>
         </>
       );
       break;
@@ -27,7 +29,7 @@ export const TerraformCloudSyncDestinationSection = ({ secretSync }: Props) => {
       Components = (
         <>
           <SecretSyncLabel label="Organization">{destinationConfig.org}</SecretSyncLabel>
-          <SecretSyncLabel label="Workspace">{destinationConfig.workspace}</SecretSyncLabel>
+          <SecretSyncLabel label="Workspace">{destinationConfig.destinationName}</SecretSyncLabel>
         </>
       );
       break;

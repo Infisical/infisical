@@ -2,18 +2,24 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
 
+import { TerraformCloudSyncCategory } from "../../appConnections/terraform-cloud";
+
 export type TTerraformCloudSync = TRootSecretSync & {
   destination: SecretSync.TerraformCloud;
   destinationConfig:
     | {
-        scope: TerraformCloudSyncScope.Project;
+        scope: TerraformCloudSyncScope.VariableSet;
         org: string;
-        project: string;
+        category: TerraformCloudSyncCategory;
+        destinationId: string;
+        destinationName: string;
       }
     | {
         scope: TerraformCloudSyncScope.Workspace;
         org: string;
-        workspace: string;
+        category: TerraformCloudSyncCategory;
+        destinationId: string;
+        destinationName: string;
       };
   connection: {
     app: AppConnection.TerraformCloud;
@@ -23,6 +29,6 @@ export type TTerraformCloudSync = TRootSecretSync & {
 };
 
 export enum TerraformCloudSyncScope {
-  Project = "project",
+  VariableSet = "variable-set",
   Workspace = "workspace"
 }

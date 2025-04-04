@@ -9,24 +9,39 @@ import {
   GenericUpdateSecretSyncFieldsSchema
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
-import { TerraformCloudSyncScope } from "@app/services/secret-sync/terraform-cloud/terraform-cloud-sync-enums";
+import {
+  TerraformCloudSyncCategory,
+  TerraformCloudSyncScope
+} from "@app/services/secret-sync/terraform-cloud/terraform-cloud-sync-enums";
 
 const TerraformCloudSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
   z.object({
-    scope: z.literal(TerraformCloudSyncScope.Project).describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.scope),
+    scope: z
+      .literal(TerraformCloudSyncScope.VariableSet)
+      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.scope),
     org: z.string().min(1, "Org ID is required").describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.org),
-    project: z
+    destinationName: z
       .string()
-      .min(1, "Project ID is required")
-      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.project)
+      .min(1, "Variable set name is required")
+      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.destinationName),
+    destinationId: z
+      .string()
+      .min(1, "Variable set ID is required")
+      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.destinationId),
+    category: z.nativeEnum(TerraformCloudSyncCategory).describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.category)
   }),
   z.object({
     scope: z.literal(TerraformCloudSyncScope.Workspace).describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.scope),
     org: z.string().min(1, "Org ID is required").describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.org),
-    workspace: z
+    destinationName: z
+      .string()
+      .min(1, "Workspace name is required")
+      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.destinationName),
+    destinationId: z
       .string()
       .min(1, "Workspace ID is required")
-      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.workspace)
+      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.destinationId),
+    category: z.nativeEnum(TerraformCloudSyncCategory).describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.category)
   })
 ]);
 
