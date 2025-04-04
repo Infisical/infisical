@@ -667,6 +667,7 @@ export const registerRoutes = async (
   });
 
   const orgAdminService = orgAdminServiceFactory({
+    smtpService,
     projectDAL,
     permissionService,
     projectUserMembershipRoleDAL,
@@ -969,7 +970,8 @@ export const registerRoutes = async (
     projectSlackConfigDAL,
     slackIntegrationDAL,
     projectTemplateService,
-    groupProjectDAL
+    groupProjectDAL,
+    smtpService
   });
 
   const projectEnvService = projectEnvServiceFactory({
@@ -1641,6 +1643,10 @@ export const registerRoutes = async (
     const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
     if (rateLimitSyncJob) {
       cronJobs.push(rateLimitSyncJob);
+    }
+    const licenseSyncJob = await licenseService.initializeBackgroundSync();
+    if (licenseSyncJob) {
+      cronJobs.push(licenseSyncJob);
     }
   }
 

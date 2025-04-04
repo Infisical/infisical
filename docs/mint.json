@@ -161,6 +161,7 @@
             "documentation/platform/access-controls/additional-privileges",
             "documentation/platform/access-controls/temporary-access",
             "documentation/platform/access-controls/access-requests",
+            "documentation/platform/access-controls/project-access-requests",
             "documentation/platform/pr-workflows",
             "documentation/platform/groups"
           ]
@@ -207,7 +208,10 @@
         },
         {
           "group": "Gateway",
-          "pages": ["documentation/platform/gateways/overview", "documentation/platform/gateways/gateway-security"]
+          "pages": [
+            "documentation/platform/gateways/overview",
+            "documentation/platform/gateways/gateway-security"
+          ]
         },
         "documentation/platform/project-templates",
         {

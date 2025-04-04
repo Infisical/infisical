@@ -3,19 +3,21 @@ title: "Projects"
 description: "Learn more and understand the concept of Infisical projects."
 ---
 
-A project in Infisical belongs to an [organization](./organization) and contains a number of environments, folders, and secrets. 
-Only users and machine identities who belong to a project can access resources inside of it according to predefined permissions. 
+A project in Infisical belongs to an [organization](./organization) and contains a number of environments, folders, and secrets.
+Only users and machine identities who belong to a project can access resources inside of it according to predefined permissions.
+
+Infisical also allows users to request project access. Refer to the [project access request section](./access-controls/project-access-requests)
 
 ## Project environments
 
-For both visual and organizational structure, Infisical allows splitting up secrets into environments (e.g., development, staging, production). In project settings, such environments can be 
-customized depending on the intended use case. 
+For both visual and organizational structure, Infisical allows splitting up secrets into environments (e.g., development, staging, production). In project settings, such environments can be
+customized depending on the intended use case.
 
 ![project secrets overview](../../images/platform/project/project-environments.png)
 
 ## Secrets Overview
 
-The **Secrets Overview** page captures a birds-eye-view of secrets and [folders](./folder) across environments. 
+The **Secrets Overview** page captures a birds-eye-view of secrets and [folders](./folder) across environments.
 This is useful for comparing secrets, identifying if anything is missing, and making quick changes.
 
 ![project secrets overview](../../images/platform/project/project-secrets-overview-open.png)
@@ -98,7 +100,7 @@ Then:
 - If users B and C fetch the secret D back, they both get the value E.
 
 <Info>
-    Please keep in mind that secret reminders won't work with personal overrides.
+  Please keep in mind that secret reminders won't work with personal overrides.
 </Info>
 
 ![project override secret](../../images/platform/project/project-secrets-override.png)
@@ -112,4 +114,3 @@ To view the full details of each secret, you can hover over it and press on the 
 This opens up a side-drawer:
 
 ![project secrets drawer](../../images/platform/project/project-secrets-drawer.png)
-

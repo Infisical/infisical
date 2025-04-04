@@ -41,7 +41,9 @@ export enum SmtpTemplates {
   ExternalImportFailed = "externalImportFailed.handlebars",
   ExternalImportStarted = "externalImportStarted.handlebars",
   SecretRequestCompleted = "secretRequestCompleted.handlebars",
-  SecretRotationFailed = "secretRotationFailed.handlebars"
+  SecretRotationFailed = "secretRotationFailed.handlebars",
+  ProjectAccessRequest = "projectAccess.handlebars",
+  OrgAdminProjectDirectAccess = "orgAdminProjectGrantAccess.handlebars"
 }
 
 export enum SmtpHost {
