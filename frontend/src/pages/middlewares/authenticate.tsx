@@ -6,9 +6,19 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { userKeys } from "@app/hooks/api";
 import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { clearSession, fetchUserDetails, logoutUser } from "@app/hooks/api/users/queries";
+import { SessionStorageKeys } from "@app/const";
+import { formatISO, addSeconds } from "date-fns";
 
 export const Route = createFileRoute("/_authenticate")({
   beforeLoad: async ({ context, location }) => {
+    sessionStorage.setItem(
+      SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
+      JSON.stringify({
+        expiry: formatISO(addSeconds(new Date(), 60)),
+        data: location.href
+      })
+    );
+
     if (!context.serverConfig.initialized) {
       throw redirect({ to: "/admin/signup" });
     }
