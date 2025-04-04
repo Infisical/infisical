@@ -86,7 +86,7 @@ export const licenseServiceFactory = ({
     appCfg.LICENSE_KEY || ""
   );
 
-  const syncLicenseKeyOnPremFeatures = async () => {
+  const syncLicenseKeyOnPremFeatures = async (shouldThrow: boolean = false) => {
     try {
       const {
         data: { currentPlan }
@@ -94,6 +94,7 @@ export const licenseServiceFactory = ({
       onPremFeatures = currentPlan;
     } catch (error) {
       logger.error(error, "Failed to synchronize license key features");
+      if (shouldThrow) throw error;
     }
   };
 
@@ -110,7 +111,7 @@ export const licenseServiceFactory = ({
       if (appCfg.LICENSE_KEY) {
         const token = await licenseServerOnPremApi.refreshLicense();
         if (token) {
-          await syncLicenseKeyOnPremFeatures();
+          await syncLicenseKeyOnPremFeatures(true);
           instanceType = InstanceType.EnterpriseOnPrem;
           logger.info(`Instance type: ${InstanceType.EnterpriseOnPrem}`);
           isValidLicense = true;
