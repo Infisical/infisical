@@ -73,6 +73,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       }
       secondaryText = `Organization - ${destinationConfig.org}`;
       break;
+    case SecretSync.Vercel:
+      primaryText = destinationConfig.appName || destinationConfig.app;
+      secondaryText = destinationConfig.env;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

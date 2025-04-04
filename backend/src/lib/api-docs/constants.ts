@@ -1788,6 +1788,12 @@ export const SecretSyncs = {
       org: "The ID of the Humanitec org to sync secrets to.",
       env: "The ID of the Humanitec environment to sync secrets to.",
       scope: "The Humanitec scope that secrets should be synced to."
+    },
+    VERCEL: {
+      app: "The ID of the Vercel app to sync secrets to.",
+      appName: "The name of the Vercel app to sync secrets to.",
+      env: "The ID of the Vercel environment to sync secrets to.",
+      branch: "The branch to sync preview secrets to."
     }
   }
 };
