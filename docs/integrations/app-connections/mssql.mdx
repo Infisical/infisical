@@ -17,14 +17,14 @@ Infisical supports connecting to Microsoft SQL Server using database principals.
         -- Grant server-level connect permission
         GRANT CONNECT SQL TO [infisical_app];
 
+        -- If you intend to use Platform Managed Credentials (see below)
+        GRANT ALTER ANY LOGIN TO [infisical_app];
+
         -- Switch to the specific database where you want to create the user
         USE my_database;
 
         -- Create the database user mapped to the login
         CREATE USER [infisical_app] FOR LOGIN [infisical_app];
-
-        -- If you intend to use Platform Managed Credentials (see below)
-        GRANT ALTER ANY LOGIN TO [infisical_app];
         ```
     </Step>
     <Step title="Grant Relevant Permissions">
