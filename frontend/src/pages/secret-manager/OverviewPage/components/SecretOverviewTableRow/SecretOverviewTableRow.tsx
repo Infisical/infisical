@@ -2,10 +2,12 @@ import { faCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
   faCheck,
+  faCodeBranch,
   faEye,
   faEyeSlash,
   faFileImport,
   faKey,
+  faRotate,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -15,6 +17,7 @@ import { Button, Checkbox, TableContainer, Td, Tooltip, Tr } from "@app/componen
 import { useToggle } from "@app/hooks";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
+import { getExpandedRowStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 
 import { SecretEditRow } from "./SecretEditRow";
 import SecretRenameRow from "./SecretRenameRow";
@@ -149,14 +152,7 @@ export const SecretOverviewTableRow = ({
               isFormExpanded && "border-b-2 border-mineshaft-500"
             }`}
           >
-            <div
-              className="ml-2 p-2"
-              style={{
-                marginLeft: scrollOffset,
-                width: "calc(100vw - 350px)", // 350px accounts for sidebar and margin
-                maxWidth: "1270px" // largest width of table on ultra wide
-              }}
-            >
+            <div className="ml-2 p-2" style={getExpandedRowStyle(scrollOffset)}>
               <SecretRenameRow
                 secretKey={secretKey}
                 environments={environments}
@@ -214,6 +210,16 @@ export const SecretOverviewTableRow = ({
                                   <FontAwesomeIcon icon={faFileImport} />
                                 </Tooltip>
                               )}
+                              {secret?.isRotatedSecret && (
+                                <Tooltip content="Rotated Secret">
+                                  <FontAwesomeIcon icon={faRotate} />
+                                </Tooltip>
+                              )}
+                              {secret?.valueOverride && (
+                                <Tooltip content="Personal Override">
+                                  <FontAwesomeIcon icon={faCodeBranch} />
+                                </Tooltip>
+                              )}
                             </div>
                           </td>
                           <td className="col-span-2 h-8 w-full">
@@ -237,6 +243,7 @@ export const SecretOverviewTableRow = ({
                               onSecretCreate={onSecretCreate}
                               onSecretUpdate={onSecretUpdate}
                               environment={slug}
+                              isRotatedSecret={secret?.isRotatedSecret}
                             />
                           </td>
                         </tr>

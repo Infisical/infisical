@@ -1,7 +1,7 @@
 import { faEye } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { Badge, Table, TBody, Td, Th, THead, Tooltip, Tr } from "@app/components/v2";
 import { TAwsParameterStoreSync } from "@app/hooks/api/secretSyncs/types/aws-parameter-store-sync";
 
@@ -16,9 +16,9 @@ export const AwsParameterStoreSyncOptionsSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      {keyId && <SecretSyncLabel label="KMS Key">{keyId}</SecretSyncLabel>}
+      {keyId && <GenericFieldLabel label="KMS Key">{keyId}</GenericFieldLabel>}
       {tags && tags.length > 0 && (
-        <SecretSyncLabel label="Resource Tags">
+        <GenericFieldLabel label="Resource Tags">
           <Tooltip
             side="right"
             className="max-w-xl p-1"
@@ -48,12 +48,12 @@ export const AwsParameterStoreSyncOptionsSection = ({ secretSync }: Props) => {
               </Badge>
             </div>
           </Tooltip>
-        </SecretSyncLabel>
+        </GenericFieldLabel>
       )}
       {syncSecretMetadataAsTags && (
-        <SecretSyncLabel label="Sync Secret Metadata as Resource Tags">
+        <GenericFieldLabel label="Sync Secret Metadata as Resource Tags">
           <Badge variant="success">Enabled</Badge>
-        </SecretSyncLabel>
+        </GenericFieldLabel>
       )}
     </>
   );

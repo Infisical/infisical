@@ -3,7 +3,7 @@ import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { Badge, IconButton } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
@@ -78,16 +78,16 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
         </div>
         <div>
           <div className="space-y-3">
-            <SecretSyncLabel label="Initial Sync Behavior">
+            <GenericFieldLabel label="Initial Sync Behavior">
               {SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP[initialSyncBehavior](destination).name}
-            </SecretSyncLabel>
+            </GenericFieldLabel>
             {/* <SecretSyncLabel label="Prefix">{prependPrefix}</SecretSyncLabel>
             <SecretSyncLabel label="Suffix">{appendSuffix}</SecretSyncLabel> */}
             {AdditionalSyncOptionsComponent}
             {disableSecretDeletion && (
-              <SecretSyncLabel label="Secret Deletion">
+              <GenericFieldLabel label="Secret Deletion">
                 <Badge variant="primary">Disabled</Badge>
-              </SecretSyncLabel>
+              </GenericFieldLabel>
             )}
           </div>
         </div>

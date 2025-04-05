@@ -48,11 +48,11 @@ export const SanitizedAwsConnectionSchema = z.discriminatedUnion("method", [
 
 export const ValidateAwsConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
-    method: z.literal(AwsConnectionMethod.AssumeRole).describe(AppConnections?.CREATE(AppConnection.AWS).method),
+    method: z.literal(AwsConnectionMethod.AssumeRole).describe(AppConnections.CREATE(AppConnection.AWS).method),
     credentials: AwsConnectionAssumeRoleCredentialsSchema.describe(AppConnections.CREATE(AppConnection.AWS).credentials)
   }),
   z.object({
-    method: z.literal(AwsConnectionMethod.AccessKey).describe(AppConnections?.CREATE(AppConnection.AWS).method),
+    method: z.literal(AwsConnectionMethod.AccessKey).describe(AppConnections.CREATE(AppConnection.AWS).method),
     credentials: AwsConnectionAccessTokenCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.AWS).credentials
     )

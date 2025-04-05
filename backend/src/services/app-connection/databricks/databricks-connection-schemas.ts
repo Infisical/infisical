@@ -49,7 +49,7 @@ export const ValidateDatabricksConnectionCredentialsSchema = z.discriminatedUnio
   z.object({
     method: z
       .literal(DatabricksConnectionMethod.ServicePrincipal)
-      .describe(AppConnections?.CREATE(AppConnection.Databricks).method),
+      .describe(AppConnections.CREATE(AppConnection.Databricks).method),
     credentials: DatabricksConnectionServicePrincipalInputCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.Databricks).credentials
     )

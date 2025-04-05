@@ -76,7 +76,7 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
           <FontAwesomeIcon icon={faKey} />
         </div>
         <div className="flex flex-grow items-center space-x-4 px-4 py-3">
-          {mode === "modified" ? (
+          {mode === "modified" && !preSecret?.isRotatedSecret ? (
             <>
               <div>{preSecret?.key}</div>
               <div className="rounded-lg bg-primary px-1 py-0.5 text-xs font-bold text-black">
@@ -90,7 +90,14 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
               </div>
             </>
           ) : (
-            postSecret.key
+            <>
+              {postSecret.key}
+              {postSecret.isRotatedSecret && (
+                <span className="ml-2 text-mineshaft-400">
+                  Rotated Secrets are not affected by Rollback
+                </span>
+              )}
+            </>
           )}
         </div>
       </div>

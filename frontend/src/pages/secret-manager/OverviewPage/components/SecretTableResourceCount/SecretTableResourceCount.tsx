@@ -1,4 +1,10 @@
-import { faFileImport, faFingerprint, faFolder, faKey } from "@fortawesome/free-solid-svg-icons";
+import {
+  faFileImport,
+  faFingerprint,
+  faFolder,
+  faKey,
+  faRotate
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Tooltip } from "@app/components/v2";
@@ -8,13 +14,15 @@ type Props = {
   importCount?: number;
   secretCount?: number;
   dynamicSecretCount?: number;
+  secretRotationCount?: number;
 };
 
 export const SecretTableResourceCount = ({
   folderCount = 0,
   dynamicSecretCount = 0,
   secretCount = 0,
-  importCount = 0
+  importCount = 0,
+  secretRotationCount = 0
 }: Props) => {
   return (
     <div className="flex items-center gap-2 divide-x divide-mineshaft-500 text-sm text-mineshaft-400">
@@ -63,6 +71,22 @@ export const SecretTableResourceCount = ({
           <div className="flex items-center gap-2 pl-2">
             <FontAwesomeIcon icon={faFingerprint} className="text-yellow-700" />
             <span>{dynamicSecretCount}</span>
+          </div>
+        </Tooltip>
+      )}
+      {secretRotationCount > 0 && (
+        <Tooltip
+          className="max-w-sm"
+          content={
+            <p className="whitespace-nowrap text-center">
+              Total secret rotation count{" "}
+              <span className="text-center text-mineshaft-400">(matching filters)</span>
+            </p>
+          }
+        >
+          <div className="flex items-center gap-2 pl-2">
+            <FontAwesomeIcon icon={faRotate} className="text-mineshaft-400" />
+            <span>{secretRotationCount}</span>
           </div>
         </Tooltip>
       )}

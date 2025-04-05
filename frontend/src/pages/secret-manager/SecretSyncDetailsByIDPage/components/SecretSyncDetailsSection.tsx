@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { SecretSyncLabel, SecretSyncStatusBadge } from "@app/components/secret-syncs";
+import { GenericFieldLabel, SecretSyncStatusBadge } from "@app/components/secret-syncs";
 import { IconButton } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
@@ -55,22 +55,22 @@ export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) =
       </div>
       <div>
         <div className="space-y-3">
-          <SecretSyncLabel label="Name">{name}</SecretSyncLabel>
-          <SecretSyncLabel label="Description">{description}</SecretSyncLabel>
+          <GenericFieldLabel label="Name">{name}</GenericFieldLabel>
+          <GenericFieldLabel label="Description">{description}</GenericFieldLabel>
           {syncStatus && (
-            <SecretSyncLabel label="Status">
+            <GenericFieldLabel label="Status">
               <SecretSyncStatusBadge status={syncStatus} />
-            </SecretSyncLabel>
+            </GenericFieldLabel>
           )}
           {lastSyncedAt && (
-            <SecretSyncLabel label="Last Synced">
+            <GenericFieldLabel label="Last Synced">
               {format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}
-            </SecretSyncLabel>
+            </GenericFieldLabel>
           )}
           {syncStatus === SecretSyncStatus.Failed && failureMessage && (
-            <SecretSyncLabel labelClassName="text-red" label="Last Sync Error">
+            <GenericFieldLabel labelClassName="text-red" label="Last Sync Error">
               <p className="break-words rounded bg-mineshaft-600 p-2 text-xs">{failureMessage}</p>
-            </SecretSyncLabel>
+            </GenericFieldLabel>
           )}
         </div>
       </div>

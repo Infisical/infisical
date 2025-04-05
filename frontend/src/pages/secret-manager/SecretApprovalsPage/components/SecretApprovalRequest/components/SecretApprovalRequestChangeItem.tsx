@@ -97,7 +97,13 @@ export const SecretApprovalRequestChangeItem = ({
                 <Td className="text-red-600">OLD</Td>
                 <Td>{secretVersion?.secretKey}</Td>
                 <Td>
-                  <SecretInput isReadOnly value={secretVersion?.secretValue} />
+                  {newVersion?.isRotatedSecret ? (
+                    <span className="text-mineshaft-400">
+                      Rotated Secret value will not be affected
+                    </span>
+                  ) : (
+                    <SecretInput isReadOnly value={secretVersion?.secretValue} />
+                  )}
                 </Td>
                 <Td>{secretVersion?.secretComment}</Td>
                 <Td className="flex flex-wrap gap-2">
@@ -146,7 +152,13 @@ export const SecretApprovalRequestChangeItem = ({
                 <Td className="text-green-600">NEW</Td>
                 <Td>{newVersion?.secretKey}</Td>
                 <Td>
-                  <SecretInput isReadOnly value={newVersion?.secretValue} />
+                  {newVersion?.isRotatedSecret ? (
+                    <span className="text-mineshaft-400">
+                      Rotated Secret value will not be affected
+                    </span>
+                  ) : (
+                    <SecretInput isReadOnly value={newVersion?.secretValue} />
+                  )}
                 </Td>
                 <Td>{newVersion?.secretComment}</Td>
                 <Td className="flex flex-wrap gap-2">

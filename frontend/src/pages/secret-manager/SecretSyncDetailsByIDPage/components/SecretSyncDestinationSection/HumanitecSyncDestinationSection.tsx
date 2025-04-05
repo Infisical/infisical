@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import {
   HumanitecSyncScope,
   THumanitecSync
@@ -18,17 +18,17 @@ export const HumanitecSyncDestinationSection = ({ secretSync }: Props) => {
     case HumanitecSyncScope.Application:
       Components = (
         <>
-          <SecretSyncLabel label="Application">{destinationConfig.app}</SecretSyncLabel>
-          <SecretSyncLabel label="Organization">{destinationConfig.org}</SecretSyncLabel>
+          <GenericFieldLabel label="Application">{destinationConfig.app}</GenericFieldLabel>
+          <GenericFieldLabel label="Organization">{destinationConfig.org}</GenericFieldLabel>
         </>
       );
       break;
     case HumanitecSyncScope.Environment:
       Components = (
         <>
-          <SecretSyncLabel label="Application">{destinationConfig.app}</SecretSyncLabel>
-          <SecretSyncLabel label="Organization">{destinationConfig.org}</SecretSyncLabel>
-          <SecretSyncLabel label="Environment">{destinationConfig.env}</SecretSyncLabel>
+          <GenericFieldLabel label="Application">{destinationConfig.app}</GenericFieldLabel>
+          <GenericFieldLabel label="Organization">{destinationConfig.org}</GenericFieldLabel>
+          <GenericFieldLabel label="Environment">{destinationConfig.env}</GenericFieldLabel>
         </>
       );
       break;
@@ -40,9 +40,9 @@ export const HumanitecSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <SecretSyncLabel className="capitalize" label="Scope">
+      <GenericFieldLabel className="capitalize" label="Scope">
         {destinationConfig.scope.replace("-", " ")}
-      </SecretSyncLabel>
+      </GenericFieldLabel>
       {Components}
     </>
   );

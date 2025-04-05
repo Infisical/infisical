@@ -16,7 +16,7 @@ export type TAzureAppConfigurationConnectionInput = z.infer<typeof CreateAzureAp
   app: AppConnection.AzureAppConfiguration;
 };
 
-export type TValidateAzureAppConfigurationConnectionCredentials =
+export type TValidateAzureAppConfigurationConnectionCredentialsSchema =
   typeof ValidateAzureAppConfigurationConnectionCredentialsSchema;
 
 export type TAzureAppConfigurationConnectionConfig = DiscriminativePick<

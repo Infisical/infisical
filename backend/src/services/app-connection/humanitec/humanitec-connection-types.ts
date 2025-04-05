@@ -15,7 +15,7 @@ export type THumanitecConnectionInput = z.infer<typeof CreateHumanitecConnection
   app: AppConnection.Humanitec;
 };
 
-export type TValidateHumanitecConnectionCredentials = typeof ValidateHumanitecConnectionCredentialsSchema;
+export type TValidateHumanitecConnectionCredentialsSchema = typeof ValidateHumanitecConnectionCredentialsSchema;
 
 export type THumanitecConnectionConfig = DiscriminativePick<
   THumanitecConnectionInput,

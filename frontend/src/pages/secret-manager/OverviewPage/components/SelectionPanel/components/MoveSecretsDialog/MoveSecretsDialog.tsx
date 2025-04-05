@@ -156,7 +156,10 @@ const Content = ({
     );
 
     Object.values(secrets).forEach((secretRecord) =>
-      Object.entries(secretRecord).map(([env, secret]) => secretsByEnv[env].push(secret))
+      Object.entries(secretRecord).forEach(([env, secret]) => {
+        if (secret.isRotatedSecret) return;
+        secretsByEnv[env].push(secret);
+      })
     );
 
     // eslint-disable-next-line no-restricted-syntax

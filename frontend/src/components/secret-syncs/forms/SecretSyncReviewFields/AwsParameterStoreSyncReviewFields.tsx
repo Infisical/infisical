@@ -2,7 +2,7 @@ import { useFormContext } from "react-hook-form";
 import { faEye } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { Badge, Table, TBody, Td, Th, THead, Tooltip, Tr } from "@app/components/v2";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
@@ -17,9 +17,9 @@ export const AwsParameterStoreSyncOptionsReviewFields = () => {
 
   return (
     <>
-      {keyId && <SecretSyncLabel label="KMS Key">{keyId}</SecretSyncLabel>}
+      {keyId && <GenericFieldLabel label="KMS Key">{keyId}</GenericFieldLabel>}
       {tags && tags.length > 0 && (
-        <SecretSyncLabel label="Resource Tags">
+        <GenericFieldLabel label="Resource Tags">
           <Tooltip
             side="right"
             className="max-w-xl p-1"
@@ -49,12 +49,12 @@ export const AwsParameterStoreSyncOptionsReviewFields = () => {
               </Badge>
             </div>
           </Tooltip>
-        </SecretSyncLabel>
+        </GenericFieldLabel>
       )}
       {syncSecretMetadataAsTags && (
-        <SecretSyncLabel label="Sync Secret Metadata as Resource Tags">
+        <GenericFieldLabel label="Sync Secret Metadata as Resource Tags">
           <Badge variant="success">Enabled</Badge>
-        </SecretSyncLabel>
+        </GenericFieldLabel>
       )}
     </>
   );
@@ -71,13 +71,13 @@ export const AwsParameterStoreDestinationReviewFields = () => {
 
   return (
     <>
-      <SecretSyncLabel label="Region">
+      <GenericFieldLabel label="Region">
         {awsRegion?.name}
         <Badge className="ml-1" variant="success">
           {awsRegion?.slug}{" "}
         </Badge>
-      </SecretSyncLabel>
-      <SecretSyncLabel label="Path">{path}</SecretSyncLabel>
+      </GenericFieldLabel>
+      <GenericFieldLabel label="Path">{path}</GenericFieldLabel>
     </>
   );
 };

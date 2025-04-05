@@ -2,7 +2,7 @@ import { faEdit, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { Badge, IconButton, Tooltip } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
@@ -55,8 +55,8 @@ export const SecretSyncSourceSection = ({ secretSync, onEditSource }: Props) => 
         </div>
         <div>
           <div className="space-y-3">
-            <SecretSyncLabel label="Environment">{environment?.name}</SecretSyncLabel>
-            <SecretSyncLabel label="Path">{folder?.path}</SecretSyncLabel>
+            <GenericFieldLabel label="Environment">{environment?.name}</GenericFieldLabel>
+            <GenericFieldLabel label="Path">{folder?.path}</GenericFieldLabel>
           </div>
         </div>
       </div>

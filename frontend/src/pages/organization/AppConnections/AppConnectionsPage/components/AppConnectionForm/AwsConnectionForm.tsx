@@ -22,7 +22,7 @@ import {
 
 type Props = {
   appConnection?: TAwsConnection;
-  onSubmit: (formData: FormData) => void;
+  onSubmit: (formData: FormData) => Promise<void>;
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({

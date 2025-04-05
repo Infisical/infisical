@@ -53,6 +53,7 @@ type Props = {
     secretId?: string
   ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
+  isRotatedSecret?: boolean;
 };
 
 export const SecretEditRow = ({
@@ -68,7 +69,8 @@ export const SecretEditRow = ({
   environment,
   secretPath,
   isVisible,
-  secretId
+  secretId,
+  isRotatedSecret
 }: Props) => {
   const {
     handleSubmit,
@@ -148,7 +150,7 @@ export const SecretEditRow = ({
         isOpen={isModalOpen}
         onClose={toggleModal}
         title="Do you want to delete the selected secret?"
-        deleteKey="delete"
+        deleteKey={secretName}
         onDeleteApproved={handleDeleteSecret}
       />
 
@@ -163,7 +165,7 @@ export const SecretEditRow = ({
             render={({ field }) => (
               <InfisicalSecretInput
                 {...field}
-                isReadOnly={isImportedSecret}
+                isReadOnly={isImportedSecret || isRotatedSecret}
                 value={field.value as string}
                 key="secret-input"
                 isVisible={isVisible}
@@ -287,13 +289,13 @@ export const SecretEditRow = ({
             >
               {(isAllowed) => (
                 <div className="opacity-0 group-hover:opacity-100">
-                  <Tooltip content="Delete">
+                  <Tooltip content={isRotatedSecret ? "Cannot Delete Rotated Secret" : "Delete"}>
                     <IconButton
                       variant="plain"
                       ariaLabel="delete-value"
                       className="h-full"
                       onClick={toggleModal}
-                      isDisabled={isDeleting || !isAllowed}
+                      isDisabled={isDeleting || !isAllowed || isRotatedSecret}
                     >
                       <FontAwesomeIcon icon={faTrash} />
                     </IconButton>

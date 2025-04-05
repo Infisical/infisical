@@ -4,10 +4,10 @@ import { GetAccessTokenResponse } from "google-auth-library/build/src/auth/oauth
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { AppConnection } from "../app-connection-enums";
-import { getAppConnectionMethodName } from "../app-connection-fns";
 import { GcpConnectionMethod } from "./gcp-connection-enums";
 import {
   GCPApp,

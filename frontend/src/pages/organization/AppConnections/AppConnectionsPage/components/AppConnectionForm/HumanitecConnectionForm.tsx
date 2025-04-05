@@ -21,7 +21,7 @@ import {
 
 type Props = {
   appConnection?: THumanitecConnection;
-  onSubmit: (formData: FormData) => void;
+  onSubmit: (formData: FormData) => Promise<void>;
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
@@ -30,7 +30,7 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
 
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
-    method: z.literal(HumanitecConnectionMethod.API_TOKEN),
+    method: z.literal(HumanitecConnectionMethod.ApiToken),
     credentials: z.object({
       apiToken: z.string().trim().min(1, "Service API Token required")
     })
@@ -46,7 +46,7 @@ export const HumanitecConnectionForm = ({ appConnection, onSubmit }: Props) => {
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.Humanitec,
-      method: HumanitecConnectionMethod.API_TOKEN
+      method: HumanitecConnectionMethod.ApiToken
     }
   });
 

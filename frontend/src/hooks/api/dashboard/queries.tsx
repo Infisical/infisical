@@ -132,6 +132,21 @@ export const fetchDashboardProjectSecretsByKeys = async ({
   return data;
 };
 
+const mergePersonalRotationSecrets = (secrets: (SecretV3Raw | null)[]) => {
+  const actualSecrets: SecretV3Raw[] = [];
+  const dummySecrets: null[] = [];
+
+  secrets.forEach((secret) => {
+    if (secret !== null) {
+      actualSecrets.push(secret);
+    } else {
+      dummySecrets.push(secret);
+    }
+  });
+
+  return [...mergePersonalSecrets(actualSecrets), ...dummySecrets];
+};
+
 export const useGetProjectSecretsOverview = (
   {
     projectId,
@@ -145,6 +160,7 @@ export const useGetProjectSecretsOverview = (
     includeFolders,
     includeImports,
     includeDynamicSecrets,
+    includeSecretRotations,
     environments
   }: TGetDashboardProjectSecretsOverviewDTO,
   options?: Omit<
@@ -173,6 +189,7 @@ export const useGetProjectSecretsOverview = (
       includeFolders,
       includeImports,
       includeDynamicSecrets,
+      includeSecretRotations,
       environments
     }),
     queryFn: () =>
@@ -188,10 +205,11 @@ export const useGetProjectSecretsOverview = (
         includeFolders,
         includeImports,
         includeDynamicSecrets,
+        includeSecretRotations,
         environments
       }),
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsOverview>>) => {
-      const { secrets, ...select } = data;
+      const { secrets, secretRotations, ...select } = data;
       const uniqueSecrets = secrets ? unique(secrets, (i) => i.secretKey) : [];
 
       const uniqueFolders = select.folders ? unique(select.folders, (i) => i.name) : [];
@@ -201,14 +219,22 @@ export const useGetProjectSecretsOverview = (
         : [];
 
       const uniqueSecretImports = select.imports ? unique(select.imports, (i) => i.id) : [];
+      const uniqueSecretRotations = secretRotations ? unique(secretRotations, (i) => i.name) : [];
 
       return {
         ...select,
         secrets: secrets ? mergePersonalSecrets(secrets) : undefined,
+        secretRotations: secretRotations?.map((rotation) => {
+          return {
+            ...rotation,
+            secrets: mergePersonalRotationSecrets(rotation.secrets)
+          };
+        }),
         totalUniqueSecretsInPage: uniqueSecrets.length,
         totalUniqueDynamicSecretsInPage: uniqueDynamicSecrets.length,
         totalUniqueFoldersInPage: uniqueFolders.length,
-        totalUniqueSecretImportsInPage: uniqueSecretImports.length
+        totalUniqueSecretImportsInPage: uniqueSecretImports.length,
+        totalUniqueSecretRotationsInPage: uniqueSecretRotations.length
       };
     }, []),
     placeholderData: (previousData) => previousData
@@ -230,6 +256,7 @@ export const useGetProjectSecretsDetails = (
     viewSecretValue,
     includeImports,
     includeDynamicSecrets,
+    includeSecretRotations,
     tags
   }: TGetDashboardProjectSecretsDetailsDTO,
   options?: Omit<
@@ -260,6 +287,7 @@ export const useGetProjectSecretsDetails = (
       includeFolders,
       includeImports,
       includeDynamicSecrets,
+      includeSecretRotations,
       tags
     }),
     queryFn: () =>
@@ -277,12 +305,17 @@ export const useGetProjectSecretsDetails = (
         includeFolders,
         includeImports,
         includeDynamicSecrets,
+        includeSecretRotations,
         tags
       }),
     select: useCallback(
       (data: Awaited<ReturnType<typeof fetchProjectSecretsDetails>>) => ({
         ...data,
-        secrets: data.secrets ? mergePersonalSecrets(data.secrets) : undefined
+        secrets: data.secrets ? mergePersonalSecrets(data.secrets) : undefined,
+        secretRotations: data.secretRotations?.map((rotation) => ({
+          ...rotation,
+          secrets: mergePersonalRotationSecrets(rotation.secrets)
+        }))
       }),
       []
     ),
@@ -372,7 +405,7 @@ export const useGetProjectSecretsQuickSearch = (
         tags
       }),
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsQuickSearch>>) => {
-      const { secrets, folders, dynamicSecrets } = data;
+      const { secrets, folders, dynamicSecrets, secretRotations } = data;
 
       const groupedFolders = groupBy(folders, (folder) => folder.path);
       const groupedSecrets = groupBy(
@@ -384,11 +417,16 @@ export const useGetProjectSecretsQuickSearch = (
         (dynamicSecret) =>
           `${dynamicSecret.path === "/" ? "" : dynamicSecret.path}/${dynamicSecret.name}`
       );
+      const groupedRotations = groupBy(
+        secretRotations,
+        (rotation) => `${rotation.folder.path === "/" ? "" : rotation.folder.path}/${rotation.name}`
+      );
 
       return {
         folders: groupedFolders,
         secrets: groupedSecrets,
-        dynamicSecrets: groupedDynamicSecrets
+        dynamicSecrets: groupedDynamicSecrets,
+        secretRotations: groupedRotations
       };
     }, []),
     placeholderData: (previousData) => previousData

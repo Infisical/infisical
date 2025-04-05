@@ -15,7 +15,7 @@ export type TGcpConnectionInput = z.infer<typeof CreateGcpConnectionSchema> & {
   app: AppConnection.GCP;
 };
 
-export type TValidateGcpConnectionCredentials = typeof ValidateGcpConnectionCredentialsSchema;
+export type TValidateGcpConnectionCredentialsSchema = typeof ValidateGcpConnectionCredentialsSchema;
 
 export type TGcpConnectionConfig = DiscriminativePick<TGcpConnectionInput, "method" | "app" | "credentials"> & {
   orgId: string;

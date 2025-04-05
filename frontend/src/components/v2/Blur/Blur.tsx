@@ -9,7 +9,7 @@ interface IProps {
 
 export const Blur = ({ className, tooltipText }: IProps) => {
   return (
-    <Tooltip content={tooltipText} isDisabled={!tooltipText}>
+    <Tooltip content={tooltipText} className="max-w-md" isDisabled={!tooltipText}>
       <div
         className={twMerge("flex w-80 flex-grow items-center py-1 pl-4 pr-2", className)}
         tabIndex={0}

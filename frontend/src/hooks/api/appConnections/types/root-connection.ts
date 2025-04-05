@@ -6,4 +6,5 @@ export type TRootAppConnection = {
   orgId: string;
   createdAt: string;
   updatedAt: string;
+  isPlatformManagedCredentials?: boolean;
 };

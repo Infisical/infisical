@@ -1,4 +1,4 @@
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { Badge } from "@app/components/v2";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
 import {
@@ -17,17 +17,17 @@ export const AwsSecretsManagerSyncDestinationSection = ({ secretSync }: Props) =
 
   return (
     <>
-      <SecretSyncLabel label="Region">
+      <GenericFieldLabel label="Region">
         {awsRegion?.name}
         <Badge className="ml-1" variant="success">
           {awsRegion?.slug}{" "}
         </Badge>
-      </SecretSyncLabel>
-      <SecretSyncLabel label="Mapping Behavior" className="capitalize">
+      </GenericFieldLabel>
+      <GenericFieldLabel label="Mapping Behavior" className="capitalize">
         {destinationConfig.mappingBehavior}
-      </SecretSyncLabel>
+      </GenericFieldLabel>
       {destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.ManyToOne && (
-        <SecretSyncLabel label="Secret Name">{destinationConfig.secretName}</SecretSyncLabel>
+        <GenericFieldLabel label="Secret Name">{destinationConfig.secretName}</GenericFieldLabel>
       )}
     </>
   );

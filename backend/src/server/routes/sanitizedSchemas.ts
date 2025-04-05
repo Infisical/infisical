@@ -134,7 +134,9 @@ export const secretRawSchema = z.object({
       membershipId: z.string().nullable().optional()
     })
     .optional()
-    .nullable()
+    .nullable(),
+  isRotatedSecret: z.boolean().optional(),
+  rotationId: z.string().uuid().nullish()
 });
 
 export const ProjectPermissionSchema = z.object({

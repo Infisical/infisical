@@ -28,7 +28,7 @@ import {
 
 type Props = {
   appConnection?: TGcpConnection;
-  onSubmit: (formData: FormData) => void;
+  onSubmit: (formData: FormData) => Promise<void>;
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({

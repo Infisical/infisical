@@ -277,8 +277,10 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               reviewers: approvalRequestUser.extend({ status: z.string(), comment: z.string().optional() }).array(),
               secretPath: z.string(),
               commits: secretRawSchema
-                .omit({ _id: true, environment: true, workspace: true, type: true, version: true })
+                .omit({ _id: true, environment: true, workspace: true, type: true, version: true, secretValue: true })
                 .extend({
+                  secretValue: z.string().optional(),
+                  isRotatedSecret: z.boolean().optional(),
                   op: z.string(),
                   tags: SanitizedTagSchema.array().optional(),
                   secretMetadata: ResourceMetadataSchema.nullish(),

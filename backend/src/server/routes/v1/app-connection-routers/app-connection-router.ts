@@ -22,6 +22,11 @@ import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
+import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
+import {
+  PostgresConnectionListItemSchema,
+  SanitizedPostgresConnectionSchema
+} from "@app/services/app-connection/postgres";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps
@@ -32,7 +37,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAzureKeyVaultConnectionSchema.options,
   ...SanitizedAzureAppConfigurationConnectionSchema.options,
   ...SanitizedDatabricksConnectionSchema.options,
-  ...SanitizedHumanitecConnectionSchema.options
+  ...SanitizedHumanitecConnectionSchema.options,
+  ...SanitizedPostgresConnectionSchema.options,
+  ...SanitizedMsSqlConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -42,7 +49,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AzureKeyVaultConnectionListItemSchema,
   AzureAppConfigurationConnectionListItemSchema,
   DatabricksConnectionListItemSchema,
-  HumanitecConnectionListItemSchema
+  HumanitecConnectionListItemSchema,
+  PostgresConnectionListItemSchema,
+  MsSqlConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

@@ -1,4 +1,4 @@
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TDatabricksSync } from "@app/hooks/api/secretSyncs/types/databricks-sync";
 
 type Props = {
@@ -10,5 +10,5 @@ export const DatabricksSyncDestinationSection = ({ secretSync }: Props) => {
     destinationConfig: { scope }
   } = secretSync;
 
-  return <SecretSyncLabel label="Secret Scope">{scope}</SecretSyncLabel>;
+  return <GenericFieldLabel label="Secret Scope">{scope}</GenericFieldLabel>;
 };

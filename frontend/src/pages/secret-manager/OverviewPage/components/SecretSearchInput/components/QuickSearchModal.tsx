@@ -6,7 +6,8 @@ import {
   faFingerprint,
   faFolder,
   faKey,
-  faMagnifyingGlass
+  faMagnifyingGlass,
+  faRotate
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
@@ -34,6 +35,7 @@ import { useDebounce } from "@app/hooks";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
 import { WsTag } from "@app/hooks/api/tags/types";
 import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { QuickSearchSecretRotationItem } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput/components/QuickSearchSecretRotationItem";
 import { RowType } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.types";
 
 import { QuickSearchDynamicSecretItem } from "./QuickSearchDynamicSecretItem";
@@ -51,7 +53,11 @@ export type QuickSearchModalProps = {
   onOpenChange: (isOpen: boolean) => void;
 };
 
-type ResourceType = RowType.Secret | RowType.DynamicSecret | RowType.Folder;
+type ResourceType =
+  | RowType.Secret
+  | RowType.DynamicSecret
+  | RowType.Folder
+  | RowType.SecretRotation;
 
 const Content = ({
   environments,
@@ -67,7 +73,8 @@ const Content = ({
   const [showFilter, setShowFilter] = useState<Record<ResourceType, boolean>>({
     [RowType.Secret]: true,
     [RowType.Folder]: true,
-    [RowType.DynamicSecret]: true
+    [RowType.DynamicSecret]: true,
+    [RowType.SecretRotation]: true
   });
   const isEnabled = Boolean(search.trim()) || Boolean(Object.values(filterTags).length);
   const { data, isPending } = useGetProjectSecretsQuickSearch(
@@ -81,12 +88,13 @@ const Content = ({
     { enabled: isEnabled }
   );
 
-  const { folders = {}, secrets = {}, dynamicSecrets = {} } = data ?? {};
+  const { folders = {}, secrets = {}, dynamicSecrets = {}, secretRotations = {} } = data ?? {};
 
   const isEmpty =
     (!showFilter[RowType.Folder] || Object.values(folders).length === 0) &&
     (!showFilter[RowType.Secret] || Object.values(secrets).length === 0) &&
-    (!showFilter[RowType.DynamicSecret] || Object.values(dynamicSecrets).length === 0);
+    (!showFilter[RowType.DynamicSecret] || Object.values(dynamicSecrets).length === 0) &&
+    (!showFilter[RowType.SecretRotation] || Object.values(secretRotations).length === 0);
 
   const handleToggleTag = (tag: string) => {
     setFilterTags((prev) => {
@@ -159,6 +167,19 @@ const Content = ({
               <div className="flex items-center gap-2">
                 <FontAwesomeIcon icon={faFingerprint} className="text-yellow-700" />
                 <span>Dynamic Secrets</span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.preventDefault();
+                handleToggleShowType(RowType.SecretRotation);
+              }}
+              icon={showFilter[RowType.SecretRotation] && <FontAwesomeIcon icon={faCheckCircle} />}
+              iconPos="right"
+            >
+              <div className="flex items-center gap-2">
+                <FontAwesomeIcon icon={faRotate} className="text-mineshaft-400" />
+                <span>Secret Rotations</span>
               </div>
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -238,6 +259,14 @@ const Content = ({
                       onClose={onClose}
                       dynamicSecretGroup={dynamicSecretGroup}
                       key={key}
+                    />
+                  ))}
+                {showFilter[RowType.SecretRotation] &&
+                  Object.entries(secretRotations).map(([key, secretRotationGroup]) => (
+                    <QuickSearchSecretRotationItem
+                      key={key}
+                      onClose={onClose}
+                      secretRotationGroup={secretRotationGroup}
                     />
                   ))}
                 {showFilter[RowType.Secret] &&

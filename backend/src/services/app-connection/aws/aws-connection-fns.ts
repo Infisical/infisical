@@ -92,7 +92,7 @@ export const validateAwsConnectionCredentials = async (appConnection: TAwsConnec
     resp = await sts.getCallerIdentity().promise();
   } catch (e: unknown) {
     throw new BadRequestError({
-      message: `Unable to validate connection - verify credentials`
+      message: `Unable to validate connection: verify credentials`
     });
   }
 

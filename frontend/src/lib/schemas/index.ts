@@ -11,3 +11,10 @@ export const GenericResourceNameSchema = z
     /^[a-zA-Z0-9\-_\s]+$/,
     "Name can only contain alphanumeric characters, dashes, underscores, and spaces"
   );
+
+export const BaseSecretNameSchema = z.string().trim().min(1);
+
+export const SecretNameSchema = BaseSecretNameSchema.refine(
+  (el) => !el.includes(" "),
+  "Secret name cannot contain spaces."
+).refine((el) => !el.includes(":"), "Secret name cannot contain colon.");

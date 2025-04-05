@@ -56,7 +56,7 @@ export type TFeatureSet = {
   trial_end: null;
   has_used_trial: true;
   secretApproval: false;
-  secretRotation: true;
+  secretRotation: false;
   caCrl: false;
   instanceUserManagement: false;
   externalKms: false;

@@ -15,6 +15,6 @@ export type TGitHubConnectionInput = z.infer<typeof CreateGitHubConnectionSchema
   app: AppConnection.GitHub;
 };
 
-export type TValidateGitHubConnectionCredentials = typeof ValidateGitHubConnectionCredentialsSchema;
+export type TValidateGitHubConnectionCredentialsSchema = typeof ValidateGitHubConnectionCredentialsSchema;
 
 export type TGitHubConnectionConfig = DiscriminativePick<TGitHubConnectionInput, "method" | "app" | "credentials">;
