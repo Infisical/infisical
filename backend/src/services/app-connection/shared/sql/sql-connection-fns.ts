@@ -5,7 +5,6 @@ import {
   TSqlCredentialsRotationGeneratedCredentials,
   TSqlCredentialsRotationWithConnection
 } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials/sql-credentials-rotation-types";
-import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -21,16 +20,14 @@ const SQL_CONNECTION_CLIENT_MAP = {
 
 const getConnectionConfig = ({
   app,
-  credentials: { sslCertificate, host }
+  credentials: { host, sslCertificate, sslEnabled, sslRejectUnauthorized }
 }: Pick<TSqlConnection, "credentials" | "app">) => {
-  const appCfg = getConfig();
-
   switch (app) {
     case AppConnection.Postgres: {
       return {
-        ssl: appCfg.DB_SSL_REQUIRED
+        ssl: sslEnabled
           ? {
-              rejectUnauthorized: appCfg.DB_SSL_REJECT_UNAUTHORIZED,
+              rejectUnauthorized: sslRejectUnauthorized,
               ca: sslCertificate,
               servername: host
             }
@@ -39,13 +36,13 @@ const getConnectionConfig = ({
     }
     case AppConnection.MsSql: {
       return {
-        options: appCfg.DB_SSL_REQUIRED
+        options: sslEnabled
           ? {
-              trustServerCertificate: !appCfg.DB_SSL_REJECT_UNAUTHORIZED,
+              trustServerCertificate: !sslRejectUnauthorized,
               encrypt: true,
               cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {}
             }
-          : undefined
+          : { encrypt: false }
       };
     }
     default:

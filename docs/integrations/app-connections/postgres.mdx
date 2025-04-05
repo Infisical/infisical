@@ -12,7 +12,7 @@ Infisical supports connecting to PostgreSQL using a database role.
         Infisical recommends creating a designated role in your PostgreSQL database for your connection.
         ```SQL
         -- create user role
-        CREATE ROLE infisical_role WITH LOGIN PASSWORD 'my-password'
+        CREATE ROLE infisical_role WITH LOGIN PASSWORD 'my-password';
 
         -- grant login access to the specified database
         GRANT CONNECT ON DATABASE my_database TO infisical_role;
@@ -27,6 +27,7 @@ Infisical supports connecting to PostgreSQL using a database role.
             <Tab title="Secret Rotation">
                 For Secret Rotations, your Infisical user will require the ability to alter other users' passwords:
                 ```SQL
+                -- enable permissions to alter login credentials
                 ALTER ROLE infisical_role WITH CREATEROLE;
                 ```
             </Tab>
@@ -88,6 +89,8 @@ Infisical supports connecting to PostgreSQL using a database role.
                 "database": "default",
                 "username": "infisical_role",
                 "password": "my-password",
+                "sslEnabled": true,
+                "sslRejectUnauthorized": true
             },
         }'
         ```
@@ -110,7 +113,9 @@ Infisical supports connecting to PostgreSQL using a database role.
                     "host": "123.4.5.6",
                     "port": 5432,
                     "database": "default",
-                    "username": "infisical_role"
+                    "username": "infisical_role",
+                    "sslEnabled": true,
+                    "sslRejectUnauthorized": true
                 }
             }
         }

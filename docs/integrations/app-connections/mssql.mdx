@@ -11,16 +11,20 @@ Infisical supports connecting to Microsoft SQL Server using database principals.
     <Step title="Create a Principal">
         Infisical recommends creating a designated server login and database user in your Microsoft SQL Server database for your connection.
         ```SQL
-        -- create server-level login
-        CREATE LOGIN infisical_login WITH PASSWORD = 'my-password';
+        -- Create login at the server level
+        CREATE LOGIN [infisical_app] WITH PASSWORD = 'my-password';
 
-        -- create database-level user with login from above
+        -- Grant server-level connect permission
+        GRANT CONNECT SQL TO [infisical_app];
+
+        -- Switch to the specific database where you want to create the user
         USE my_database;
-        CREATE USER infisical_user FOR LOGIN infisical_login;
-        GRANT CONNECT TO infisical_user;
+
+        -- Create the database user mapped to the login
+        CREATE USER [infisical_app] FOR LOGIN [infisical_app];
 
         -- If you intend to use Platform Managed Credentials (see below)
-        GRANT ALTER ANY LOGIN TO infisical_login;
+        GRANT ALTER ANY LOGIN TO [infisical_app];
         ```
     </Step>
     <Step title="Grant Relevant Permissions">
@@ -95,6 +99,8 @@ Infisical supports connecting to Microsoft SQL Server using database principals.
                 "database": "default",
                 "username": "infisical_login",
                 "password": "my-password",
+                "sslEnabled": true,
+                "sslRejectUnauthorized": true
             },
         }'
         ```
@@ -117,7 +123,9 @@ Infisical supports connecting to Microsoft SQL Server using database principals.
                     "host": "123.4.5.6",
                     "port": 1433,
                     "database": "default",
-                    "username": "infisical_login"
+                    "username": "infisical_login",
+                    "sslEnabled": true,
+                    "sslRejectUnauthorized": true
                 }
             }
         }

@@ -1691,6 +1691,8 @@ export const AppConnections = {
       database: "The name of the database to connect to.",
       username: "The username to connect to the database with.",
       password: "The password to connect to the database with.",
+      sslEnabled: "Whether or not to use SSL when connecting to the database.",
+      sslRejectUnauthorized: "Whether or not to reject unauthorized SSL certificates.",
       sslCertificate: "The SSL certificate to use for connection."
     }
   }

@@ -24,7 +24,7 @@ import {
 
 type Props = {
   appConnection?: TMsSqlConnection;
-  onSubmit: (formData: FormData) => void;
+  onSubmit: (formData: FormData) => Promise<void>;
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
@@ -44,6 +44,7 @@ type FormData = z.infer<typeof formSchema>;
 export const MsSqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [selectedTabIndex, setSelectedTabIndex] = useState(0);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -56,7 +57,9 @@ export const MsSqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
         database: "default",
         username: "",
         password: "",
-        sslCertificate: ""
+        sslEnabled: true,
+        sslRejectUnauthorized: true,
+        sslCertificate: undefined
       }
     }
   });
@@ -69,18 +72,23 @@ export const MsSqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
 
   const isPlatformManagedCredentials = appConnection?.isPlatformManagedCredentials ?? false;
 
-  const confirmSubmit = (formData: FormData) => {
+  const confirmSubmit = async (formData: FormData) => {
     if (formData.isPlatformManagedCredentials) {
       setShowConfirmation(true);
       return;
     }
 
-    onSubmit(formData);
+    await onSubmit(formData);
   };
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(confirmSubmit)}>
+      <form
+        onSubmit={(e) => {
+          setSelectedTabIndex(0);
+          handleSubmit(confirmSubmit)(e);
+        }}
+      >
         {!isUpdate && <GenericAppConnectionsFields />}
         <Controller
           name="method"
@@ -113,7 +121,11 @@ export const MsSqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
             </FormControl>
           )}
         />
-        <SqlConnectionFields isPlatformManagedCredentials={isPlatformManagedCredentials} />
+        <SqlConnectionFields
+          isPlatformManagedCredentials={isPlatformManagedCredentials}
+          selectedTabIndex={selectedTabIndex}
+          setSelectedTabIndex={setSelectedTabIndex}
+        />
         {isPlatformManagedCredentials ? (
           <PlatformManagedNoticeBanner />
         ) : (

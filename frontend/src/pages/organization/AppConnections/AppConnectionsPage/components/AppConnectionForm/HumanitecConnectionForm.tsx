@@ -21,7 +21,7 @@ import {
 
 type Props = {
   appConnection?: THumanitecConnection;
-  onSubmit: (formData: FormData) => void;
+  onSubmit: (formData: FormData) => Promise<void>;
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({

@@ -8,5 +8,12 @@ export const BaseSqlUsernameAndPasswordConnectionSchema = z.object({
   database: z.string().trim().min(1, "Database required").describe(AppConnections.CREDENTIALS.SQL_CONNECTION.database),
   username: z.string().trim().min(1, "Username required").describe(AppConnections.CREDENTIALS.SQL_CONNECTION.username),
   password: z.string().trim().min(1, "Password required").describe(AppConnections.CREDENTIALS.SQL_CONNECTION.password),
-  sslCertificate: z.string().trim().optional().describe(AppConnections.CREDENTIALS.SQL_CONNECTION.sslCertificate)
+  sslEnabled: z.boolean().describe(AppConnections.CREDENTIALS.SQL_CONNECTION.sslEnabled),
+  sslRejectUnauthorized: z.boolean().describe(AppConnections.CREDENTIALS.SQL_CONNECTION.sslRejectUnauthorized),
+  sslCertificate: z
+    .string()
+    .trim()
+    .transform((value) => value || undefined)
+    .optional()
+    .describe(AppConnections.CREDENTIALS.SQL_CONNECTION.sslCertificate)
 });

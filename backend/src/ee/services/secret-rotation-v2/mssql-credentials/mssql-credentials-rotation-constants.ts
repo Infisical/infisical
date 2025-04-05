@@ -7,7 +7,20 @@ export const MSSQL_CREDENTIALS_ROTATION_LIST_OPTION: TSecretRotationV2ListItem =
   type: SecretRotation.MsSqlCredentials,
   connection: AppConnection.MsSql,
   template: {
-    createUserStatement: `CREATE LOGIN [my_mssql_user] WITH PASSWORD = 'my_temporary_password'; CREATE USER [my_mssql_user] FOR LOGIN [my_mssql_user]; GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [my_mssql_user];`,
+    createUserStatement: `-- Create login at the server level
+CREATE LOGIN [infisical_user] WITH PASSWORD = 'my-password';
+
+-- Grant server-level connect permission
+GRANT CONNECT SQL TO [infisical_user];
+
+-- Switch to the database where you want to create the user
+USE my_database;
+
+-- Create the database user mapped to the login
+CREATE USER [infisical_user] FOR LOGIN [infisical_user];
+
+-- Grant permissions to the user on the schema in this database
+GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [infisical_user];`,
     secretsMapping: {
       username: "MSSQL_DB_USERNAME",
       password: "MSSQL_DB_PASSWORD"

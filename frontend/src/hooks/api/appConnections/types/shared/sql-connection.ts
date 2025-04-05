@@ -4,4 +4,6 @@ export type TBaseSqlConnectionCredentials = {
   username: string;
   password: string;
   database: string;
+  sslEnabled: boolean;
+  sslRejectUnauthorized: boolean;
 };

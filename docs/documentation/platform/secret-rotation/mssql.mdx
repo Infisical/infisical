@@ -11,19 +11,19 @@ description: "Learn how to automatically rotate Microsoft SQL Server credentials
 An example creation statement might look like:
     ```SQL
     -- create server-level logins
-    CREATE LOGIN infisical_user_1 WITH PASSWORD = 'my-password';
-    CREATE LOGIN infisical_user_2 WITH PASSWORD = 'my-password';
+    CREATE LOGIN [infisical_user_1] WITH PASSWORD = 'my-password';
+    CREATE LOGIN [infisical_user_2] WITH PASSWORD = 'my-password';
+    GRANT CONNECT SQL TO [infisical_user_1];
+    GRANT CONNECT SQL TO [infisical_user_2];
 
     -- create database-level users with login from above
     USE my_database;
-    CREATE USER infisical_user_1 FOR LOGIN infisical_user_1;
-    CREATE USER infisical_user_2 FOR LOGIN infisical_user_2;
-    GRANT CONNECT TO infisical_user_1;
-    GRANT CONNECT TO infisical_user_2;
+    CREATE USER [infisical_user_1] FOR LOGIN [infisical_user_1];
+    CREATE USER [infisical_user_2] FOR LOGIN [infisical_user_2];
 
     -- grant relevant permissions
-    GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO infisical_user_1;
-    GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO infisical_user_2;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [infisical_user_1];
+    GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [infisical_user_2];
     ```
 
 <Tip>
