@@ -96,7 +96,7 @@ export const MsSqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
               tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.Postgres].name
+                APP_CONNECTION_MAP[AppConnection.MsSql].name
               }. This field cannot be changed after creation.`}
               errorText={error?.message}
               isError={Boolean(error?.message)}

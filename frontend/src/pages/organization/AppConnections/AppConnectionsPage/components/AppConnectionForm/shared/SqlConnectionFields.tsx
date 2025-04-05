@@ -133,7 +133,7 @@ export const SqlConnectionFields = ({
                 <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                   <Switch
                     className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                    id="platform-managed"
+                    id="ssl-enabled"
                     thumbClassName="bg-mineshaft-800"
                     isChecked={value}
                     onCheckedChange={onChange}
@@ -144,7 +144,6 @@ export const SqlConnectionFields = ({
                 </FormControl>
               )}
             />
-
             <Controller
               name="credentials.sslCertificate"
               control={control}
@@ -175,7 +174,7 @@ export const SqlConnectionFields = ({
                 >
                   <Switch
                     className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                    id="platform-managed"
+                    id="ssl-reject-unauthorized"
                     thumbClassName="bg-mineshaft-800"
                     isChecked={sslEnabled ? value : false}
                     onCheckedChange={onChange}
@@ -187,8 +186,8 @@ export const SqlConnectionFields = ({
                         className="max-w-md"
                         content={
                           <p>
-                            If enabled, Infisical will only connect to servers that have valid,
-                            trusted SSL certificates.
+                            If enabled, Infisical will only connect to the server if it has a valid,
+                            trusted SSL certificate.
                           </p>
                         }
                       >
