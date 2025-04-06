@@ -205,6 +205,7 @@ export const projectRoleFormSchema = z.object({
       ),
       [ProjectPermissionSub.SshCertificates]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SshCertificateTemplates]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SshHosts]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretApproval]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretRollback]: SecretRollbackPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Project]: WorkspacePolicyActionSchema.array().default([]),
@@ -291,7 +292,11 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.SecretApproval,
         ProjectPermissionSub.Tags,
         ProjectPermissionSub.SecretRotation,
-        ProjectPermissionSub.Kms
+        ProjectPermissionSub.Kms,
+        ProjectPermissionSub.SshHosts,
+        ProjectPermissionSub.SshCertificateTemplates,
+        ProjectPermissionSub.SshCertificateAuthorities,
+        ProjectPermissionSub.SshCertificates
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -853,6 +858,15 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SshCertificateTemplates]: {
     title: "SSH Certificate Templates",
+    actions: [
+      { label: "Read", value: "read" },
+      { label: "Create", value: "create" },
+      { label: "Modify", value: "edit" },
+      { label: "Remove", value: "delete" }
+    ]
+  },
+  [ProjectPermissionSub.SshHosts]: {
+    title: "SSH Hosts",
     actions: [
       { label: "Read", value: "read" },
       { label: "Create", value: "create" },

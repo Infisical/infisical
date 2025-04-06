@@ -30,13 +30,9 @@ type Props = {
   ) => void;
 };
 
-// TODO: something to do with allowed principals
-
 export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const { data, isPending } = useListWorkspaceSshHosts(currentWorkspace?.id || "");
-
-  console.log("hosts data: ", data);
 
   return (
     <div>
