@@ -5,11 +5,12 @@ import { Knex } from "knex";
 import { Logger } from "pino";
 
 import { PgSqlLock } from "./keystore/keystore";
+import { NodeClickHouseClient } from "@clickhouse/client/dist/client";
 
 dotenv.config();
 
 type TArgs = {
-  auditLogDb?: Knex;
+  auditLogDb?: Knex | NodeClickHouseClient;
   applicationDb: Knex;
   logger: Logger;
 };
@@ -29,7 +30,7 @@ const migrationStatusCheckErrorHandler = (err: Error) => {
   }
   throw err;
 };
-
+// TODO: Ready this function for clickhouse migrations
 export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs) => {
   try {
     // akhilmhdh(Feb 10 2025): 2 years  from now remove this
