@@ -26,6 +26,7 @@ type TFindQuery = {
   offset?: number;
 };
 
+// TODO: Move the implementation of PG here to a PG implementation file
 export const auditLogDALFactory = (db: TDbClient) => {
   const auditLogOrm = ormify(db, TableName.AuditLog);
 
