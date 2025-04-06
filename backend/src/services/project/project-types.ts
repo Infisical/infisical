@@ -1,7 +1,11 @@
 import { Knex } from "knex";
 
 import { ProjectType, TProjectKeys } from "@app/db/schemas";
+import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
+import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
 import { TProjectPermission } from "@app/lib/types";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TProjectSshConfigDALFactory } from "@app/services/project/project-ssh-config-dal";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
@@ -159,3 +163,12 @@ export type TUpdateProjectSlackConfig = {
   isSecretRequestNotificationEnabled: boolean;
   secretRequestChannels: string;
 } & TProjectPermission;
+
+export type TBootstrapSshProjectDTO = {
+  projectId: string;
+  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "transaction" | "create">;
+  sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "create">;
+  projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "create">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  tx?: Knex;
+};

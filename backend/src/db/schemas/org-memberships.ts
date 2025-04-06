@@ -5,14 +5,12 @@
 
 import { z } from "zod";
 
-
-
 import { TImmutableDBKeys } from "./models";
 
 export const OrgMembershipsSchema = z.object({
   id: z.string().uuid(),
   role: z.string(),
-  status: z.string().default('invited'),
+  status: z.string().default("invited"),
   inviteEmail: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),

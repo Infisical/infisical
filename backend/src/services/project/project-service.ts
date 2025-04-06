@@ -20,6 +20,7 @@ import {
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
+import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
 import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
 import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
 import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
@@ -60,8 +61,9 @@ import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal
 import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
-import { assignWorkspaceKeysToMembers, createProjectKey } from "./project-fns";
+import { assignWorkspaceKeysToMembers, bootstrapSshProject, createProjectKey } from "./project-fns";
 import { TProjectQueueFactory } from "./project-queue";
+import { TProjectSshConfigDALFactory } from "./project-ssh-config-dal";
 import {
   TCreateProjectDTO,
   TDeleteProjectDTO,
@@ -95,8 +97,8 @@ export const DEFAULT_PROJECT_ENVS = [
 ];
 
 type TProjectServiceFactoryDep = {
-  // TODO: Pick
   projectDAL: TProjectDALFactory;
+  projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "create">;
   projectQueue: TProjectQueueFactory;
   userDAL: TUserDALFactory;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
@@ -118,7 +120,8 @@ type TProjectServiceFactoryDep = {
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
-  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "find">;
+  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "find" | "create" | "transaction">;
+  sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "create">;
   sshCertificateDAL: Pick<TSshCertificateDALFactory, "find" | "countSshCertificatesInProject">;
   sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find">;
   sshHostDAL: Pick<TSshHostDALFactory, "find" | "findSshHostsWithLoginMappings">;
@@ -139,6 +142,7 @@ type TProjectServiceFactoryDep = {
     | "getKmsById"
     | "getProjectSecretManagerKmsKeyId"
     | "deleteInternalKms"
+    | "createCipherPairWithDataKey"
   >;
   projectTemplateService: TProjectTemplateServiceFactory;
 };
@@ -147,6 +151,7 @@ export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 
 export const projectServiceFactory = ({
   projectDAL,
+  projectSshConfigDAL,
   secretDAL,
   secretV2BridgeDAL,
   projectQueue,
@@ -172,6 +177,7 @@ export const projectServiceFactory = ({
   pkiCollectionDAL,
   pkiAlertDAL,
   sshCertificateAuthorityDAL,
+  sshCertificateAuthoritySecretDAL,
   sshCertificateDAL,
   sshCertificateTemplateDAL,
   sshHostDAL,
@@ -260,6 +266,17 @@ export const projectServiceFactory = ({
         },
         tx
       );
+
+      if (type === ProjectType.SSH) {
+        await bootstrapSshProject({
+          projectId: project.id,
+          sshCertificateAuthorityDAL,
+          sshCertificateAuthoritySecretDAL,
+          kmsService,
+          projectSshConfigDAL,
+          tx
+        });
+      }
 
       // set ghost user as admin of project
       const projectMembership = await projectMembershipDAL.create(

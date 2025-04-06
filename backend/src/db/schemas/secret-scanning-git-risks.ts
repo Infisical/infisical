@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-
-
 import { TImmutableDBKeys } from "./models";
 
 export const SecretScanningGitRisksSchema = z.object({
@@ -45,4 +43,6 @@ export const SecretScanningGitRisksSchema = z.object({
 
 export type TSecretScanningGitRisks = z.infer<typeof SecretScanningGitRisksSchema>;
 export type TSecretScanningGitRisksInsert = Omit<z.input<typeof SecretScanningGitRisksSchema>, TImmutableDBKeys>;
-export type TSecretScanningGitRisksUpdate = Partial<Omit<z.input<typeof SecretScanningGitRisksSchema>, TImmutableDBKeys>>;
+export type TSecretScanningGitRisksUpdate = Partial<
+  Omit<z.input<typeof SecretScanningGitRisksSchema>, TImmutableDBKeys>
+>;

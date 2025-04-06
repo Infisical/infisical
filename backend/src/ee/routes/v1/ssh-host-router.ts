@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
 import { isValidHostname } from "@app/ee/services/ssh-host/ssh-host-validators";
 import { SSH_HOSTS } from "@app/lib/api-docs";
@@ -260,6 +261,79 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       //   });
 
       return host;
+    }
+  });
+
+  server.route({
+    // TODO: consider just using the SSH issue creds endpoint
+    method: "POST",
+    url: "/:sshHostId/issue",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Issue SSH credentials (certificate + key)",
+      params: z.object({
+        sshHostId: z.string().describe(SSH_HOSTS.DELETE.sshHostId)
+      }),
+      response: {
+        200: z.object({
+          serialNumber: z.string().describe(SSH_HOSTS.ISSUE_SSH_CREDENTIALS.serialNumber),
+          signedKey: z.string().describe(SSH_HOSTS.ISSUE_SSH_CREDENTIALS.signedKey),
+          privateKey: z.string().describe(SSH_HOSTS.ISSUE_SSH_CREDENTIALS.privateKey),
+          publicKey: z.string().describe(SSH_HOSTS.ISSUE_SSH_CREDENTIALS.publicKey),
+          keyAlgorithm: z.nativeEnum(SshCertKeyAlgorithm).describe(SSH_HOSTS.ISSUE_SSH_CREDENTIALS.keyAlgorithm)
+        })
+      }
+    },
+    handler: () => {
+      // const { serialNumber, signedPublicKey, privateKey, publicKey, certificateTemplate, ttl, keyId } =
+      //   await server.services.sshCertificateAuthority.issueSshCreds({
+      //     actor: req.permission.type,
+      //     actorId: req.permission.id,
+      //     actorAuthMethod: req.permission.authMethod,
+      //     actorOrgId: req.permission.orgId,
+      //     ...req.body
+      //   });
+      // await server.services.auditLog.createAuditLog({
+      //   ...req.auditLogInfo,
+      //   orgId: req.permission.orgId,
+      //   event: {
+      //     type: EventType.ISSUE_SSH_CREDS,
+      //     metadata: {
+      //       certificateTemplateId: certificateTemplate.id,
+      //       keyAlgorithm: req.body.keyAlgorithm,
+      //       certType: req.body.certType,
+      //       principals: req.body.principals,
+      //       ttl: String(ttl),
+      //       keyId
+      //     }
+      //   }
+      // });
+      // await server.services.telemetry.sendPostHogEvents({
+      //   event: PostHogEventTypes.IssueSshCreds,
+      //   distinctId: getTelemetryDistinctId(req),
+      //   properties: {
+      //     certificateTemplateId: req.body.certificateTemplateId,
+      //     principals: req.body.principals,
+      //     ...req.auditLogInfo
+      //   }
+      // });
+      // return {
+      //   serialNumber,
+      //   signedKey: signedPublicKey,
+      //   privateKey,
+      //   publicKey,
+      //   keyAlgorithm: req.body.keyAlgorithm
+      // };
+      return {
+        serialNumber: "",
+        signedKey: "",
+        privateKey: "",
+        publicKey: "",
+        keyAlgorithm: SshCertKeyAlgorithm.ED25519
+      };
     }
   });
 };

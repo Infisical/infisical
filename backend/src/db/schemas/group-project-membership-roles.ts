@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-
-
 import { TImmutableDBKeys } from "./models";
 
 export const GroupProjectMembershipRolesSchema = z.object({
@@ -24,5 +22,10 @@ export const GroupProjectMembershipRolesSchema = z.object({
 });
 
 export type TGroupProjectMembershipRoles = z.infer<typeof GroupProjectMembershipRolesSchema>;
-export type TGroupProjectMembershipRolesInsert = Omit<z.input<typeof GroupProjectMembershipRolesSchema>, TImmutableDBKeys>;
-export type TGroupProjectMembershipRolesUpdate = Partial<Omit<z.input<typeof GroupProjectMembershipRolesSchema>, TImmutableDBKeys>>;
+export type TGroupProjectMembershipRolesInsert = Omit<
+  z.input<typeof GroupProjectMembershipRolesSchema>,
+  TImmutableDBKeys
+>;
+export type TGroupProjectMembershipRolesUpdate = Partial<
+  Omit<z.input<typeof GroupProjectMembershipRolesSchema>, TImmutableDBKeys>
+>;

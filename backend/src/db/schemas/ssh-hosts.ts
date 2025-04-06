@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-
-
 import { TImmutableDBKeys } from "./models";
 
 export const SshHostsSchema = z.object({
@@ -16,7 +14,9 @@ export const SshHostsSchema = z.object({
   projectId: z.string(),
   hostname: z.string(),
   userCertTtl: z.string(),
-  hostCertTtl: z.string()
+  hostCertTtl: z.string(),
+  userSshCaId: z.string().uuid(),
+  hostSshCaId: z.string().uuid()
 });
 
 export type TSshHosts = z.infer<typeof SshHostsSchema>;

@@ -40,6 +40,7 @@ export enum TableName {
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
   ApiKey = "api_keys",
+  ProjectSshConfig = "project_ssh_configs",
   Project = "projects",
   ProjectBot = "project_bots",
   Environment = "project_environments",

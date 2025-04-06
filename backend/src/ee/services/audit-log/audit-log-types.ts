@@ -3,6 +3,7 @@ import {
   TUpdateProjectTemplateDTO
 } from "@app/ee/services/project-template/project-template-types";
 import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
 import { SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { TProjectPermission } from "@app/lib/types";
@@ -1358,7 +1359,7 @@ interface IssueSshCreds {
   type: EventType.ISSUE_SSH_CREDS;
   metadata: {
     certificateTemplateId: string;
-    keyAlgorithm: CertKeyAlgorithm;
+    keyAlgorithm: SshCertKeyAlgorithm;
     certType: SshCertType;
     principals: string[];
     ttl: string;

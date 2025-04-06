@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-
-
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityUniversalAuthsSchema = z.object({
@@ -24,4 +22,6 @@ export const IdentityUniversalAuthsSchema = z.object({
 
 export type TIdentityUniversalAuths = z.infer<typeof IdentityUniversalAuthsSchema>;
 export type TIdentityUniversalAuthsInsert = Omit<z.input<typeof IdentityUniversalAuthsSchema>, TImmutableDBKeys>;
-export type TIdentityUniversalAuthsUpdate = Partial<Omit<z.input<typeof IdentityUniversalAuthsSchema>, TImmutableDBKeys>>;
+export type TIdentityUniversalAuthsUpdate = Partial<
+  Omit<z.input<typeof IdentityUniversalAuthsSchema>, TImmutableDBKeys>
+>;

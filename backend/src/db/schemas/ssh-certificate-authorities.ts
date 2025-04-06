@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-
-
 import { TImmutableDBKeys } from "./models";
 
 export const SshCertificateAuthoritiesSchema = z.object({
@@ -22,4 +20,6 @@ export const SshCertificateAuthoritiesSchema = z.object({
 
 export type TSshCertificateAuthorities = z.infer<typeof SshCertificateAuthoritiesSchema>;
 export type TSshCertificateAuthoritiesInsert = Omit<z.input<typeof SshCertificateAuthoritiesSchema>, TImmutableDBKeys>;
-export type TSshCertificateAuthoritiesUpdate = Partial<Omit<z.input<typeof SshCertificateAuthoritiesSchema>, TImmutableDBKeys>>;
+export type TSshCertificateAuthoritiesUpdate = Partial<
+  Omit<z.input<typeof SshCertificateAuthoritiesSchema>, TImmutableDBKeys>
+>;

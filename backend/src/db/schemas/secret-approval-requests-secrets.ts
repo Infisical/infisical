@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-
-
 import { TImmutableDBKeys } from "./models";
 
 export const SecretApprovalRequestsSecretsSchema = z.object({
@@ -25,8 +23,8 @@ export const SecretApprovalRequestsSecretsSchema = z.object({
   secretReminderNote: z.string().nullable().optional(),
   secretReminderRepeatDays: z.number().nullable().optional(),
   skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
-  algorithm: z.string().default('aes-256-gcm'),
-  keyEncoding: z.string().default('utf8'),
+  algorithm: z.string().default("aes-256-gcm"),
+  keyEncoding: z.string().default("utf8"),
   metadata: z.unknown().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -37,5 +35,10 @@ export const SecretApprovalRequestsSecretsSchema = z.object({
 });
 
 export type TSecretApprovalRequestsSecrets = z.infer<typeof SecretApprovalRequestsSecretsSchema>;
-export type TSecretApprovalRequestsSecretsInsert = Omit<z.input<typeof SecretApprovalRequestsSecretsSchema>, TImmutableDBKeys>;
-export type TSecretApprovalRequestsSecretsUpdate = Partial<Omit<z.input<typeof SecretApprovalRequestsSecretsSchema>, TImmutableDBKeys>>;
+export type TSecretApprovalRequestsSecretsInsert = Omit<
+  z.input<typeof SecretApprovalRequestsSecretsSchema>,
+  TImmutableDBKeys
+>;
+export type TSecretApprovalRequestsSecretsUpdate = Partial<
+  Omit<z.input<typeof SecretApprovalRequestsSecretsSchema>, TImmutableDBKeys>
+>;

@@ -4,12 +4,12 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { normalizeSshPrivateKey } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-schema";
 import { SshCaKeySource, SshCaStatus } from "@app/ee/services/ssh/ssh-certificate-authority-types";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-schema";
 import { SSH_CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 export const registerSshCaRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -26,8 +26,8 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
           projectId: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.projectId),
           friendlyName: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.friendlyName),
           keyAlgorithm: z
-            .nativeEnum(CertKeyAlgorithm)
-            .default(CertKeyAlgorithm.RSA_2048)
+            .nativeEnum(SshCertKeyAlgorithm)
+            .default(SshCertKeyAlgorithm.ED25519)
             .describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.keyAlgorithm),
           publicKey: z.string().trim().optional().describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.publicKey),
           privateKey: z

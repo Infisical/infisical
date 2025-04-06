@@ -184,6 +184,7 @@ import { pkiCollectionServiceFactory } from "@app/services/pki-collection/pki-co
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
+import { projectSshConfigDALFactory } from "@app/services/project/project-ssh-config-dal";
 import { projectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { projectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { projectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -292,6 +293,7 @@ export const registerRoutes = async (
   const apiKeyDAL = apiKeyDALFactory(db);
 
   const projectDAL = projectDALFactory(db);
+  const projectSshConfigDAL = projectSshConfigDALFactory(db);
   const projectMembershipDAL = projectMembershipDALFactory(db);
   const projectUserAdditionalPrivilegeDAL = projectUserAdditionalPrivilegeDALFactory(db);
   const projectUserMembershipRoleDAL = projectUserMembershipRoleDALFactory(db);
@@ -943,6 +945,7 @@ export const registerRoutes = async (
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
+    projectSshConfigDAL,
     secretDAL,
     secretV2BridgeDAL,
     queueService,
@@ -964,6 +967,7 @@ export const registerRoutes = async (
     pkiAlertDAL,
     pkiCollectionDAL,
     sshCertificateAuthorityDAL,
+    sshCertificateAuthoritySecretDAL,
     sshCertificateDAL,
     sshCertificateTemplateDAL,
     sshHostDAL,

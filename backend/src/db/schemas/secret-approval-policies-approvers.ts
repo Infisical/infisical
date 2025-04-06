@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-
-
 import { TImmutableDBKeys } from "./models";
 
 export const SecretApprovalPoliciesApproversSchema = z.object({
@@ -19,5 +17,10 @@ export const SecretApprovalPoliciesApproversSchema = z.object({
 });
 
 export type TSecretApprovalPoliciesApprovers = z.infer<typeof SecretApprovalPoliciesApproversSchema>;
-export type TSecretApprovalPoliciesApproversInsert = Omit<z.input<typeof SecretApprovalPoliciesApproversSchema>, TImmutableDBKeys>;
-export type TSecretApprovalPoliciesApproversUpdate = Partial<Omit<z.input<typeof SecretApprovalPoliciesApproversSchema>, TImmutableDBKeys>>;
+export type TSecretApprovalPoliciesApproversInsert = Omit<
+  z.input<typeof SecretApprovalPoliciesApproversSchema>,
+  TImmutableDBKeys
+>;
+export type TSecretApprovalPoliciesApproversUpdate = Partial<
+  Omit<z.input<typeof SecretApprovalPoliciesApproversSchema>, TImmutableDBKeys>
+>;

@@ -7,14 +7,15 @@ import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-cer
 import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
 import { TSshCertificateBodyDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-body-dal";
 import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { SshCertTemplateStatus } from "../ssh-certificate-template/ssh-certificate-template-types";
 import {
+  createSshCaHelper,
   createSshCert,
   createSshKeyPair,
   getSshPublicKey,
@@ -89,52 +90,16 @@ export const sshCertificateAuthorityServiceFactory = ({
       ProjectPermissionSub.SshCertificateAuthorities
     );
 
-    const newCa = await sshCertificateAuthorityDAL.transaction(async (tx) => {
-      let publicKey: string;
-      let privateKey: string;
-      let keyAlgorithm: CertKeyAlgorithm = requestedKeyAlgorithm;
-
-      if (keySource === SshCaKeySource.INTERNAL) {
-        // generate SSH CA key pair internally
-        ({ publicKey, privateKey } = await createSshKeyPair(requestedKeyAlgorithm));
-      } else {
-        // use external SSH CA key pair
-        if (!externalPk || !externalSk) {
-          throw new BadRequestError({
-            message: "Public and private keys are required if generateSigningKey is false"
-          });
-        }
-        publicKey = externalPk;
-        privateKey = externalSk;
-
-        keyAlgorithm = await validateExternalSshCaKeyPair(publicKey, privateKey);
-      }
-
-      const ca = await sshCertificateAuthorityDAL.create(
-        {
-          projectId,
-          friendlyName,
-          status: SshCaStatus.ACTIVE,
-          keyAlgorithm,
-          keySource
-        },
-        tx
-      );
-
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-
-      await sshCertificateAuthoritySecretDAL.create(
-        {
-          sshCaId: ca.id,
-          encryptedPrivateKey: secretManagerEncryptor({ plainText: Buffer.from(privateKey, "utf8") }).cipherTextBlob
-        },
-        tx
-      );
-
-      return { ...ca, publicKey };
+    const newCa = await createSshCaHelper({
+      projectId,
+      friendlyName,
+      keyAlgorithm: requestedKeyAlgorithm,
+      keySource,
+      externalPk,
+      externalSk,
+      sshCertificateAuthorityDAL,
+      sshCertificateAuthoritySecretDAL,
+      kmsService
     });
 
     return newCa;

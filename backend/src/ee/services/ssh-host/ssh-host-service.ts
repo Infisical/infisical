@@ -29,6 +29,7 @@ export type TSshHostServiceFactory = ReturnType<typeof sshHostServiceFactory>;
  */
 
 export const sshHostServiceFactory = ({
+  projectDAL
   sshHostDAL,
   sshHostLoginMappingDAL,
   permissionService
@@ -69,6 +70,10 @@ export const sshHostServiceFactory = ({
           message: `SSH host with hostname ${hostname} already exists`
         });
       }
+
+      // attach hosts?
+
+      // create host ssh cas in default bound to default user ca and host ca
 
       const host = await sshHostDAL.create(
         {

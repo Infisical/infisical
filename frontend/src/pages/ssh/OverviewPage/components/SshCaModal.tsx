@@ -17,9 +17,11 @@ import {
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useCreateSshCa, useGetSshCaById, useUpdateSshCa } from "@app/hooks/api";
-import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
-import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
-import { SshCaKeySource } from "@app/hooks/api/sshCa/constants";
+import {
+  SshCaKeySource,
+  SshCertKeyAlgorithm,
+  sshCertKeyAlgorithms
+} from "@app/hooks/api/sshCa/constants";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -40,10 +42,11 @@ const schema = z
     publicKey: z.string().optional(),
     privateKey: z.string().optional(),
     keyAlgorithm: z.enum([
-      CertKeyAlgorithm.RSA_2048,
-      CertKeyAlgorithm.RSA_4096,
-      CertKeyAlgorithm.ECDSA_P256,
-      CertKeyAlgorithm.ECDSA_P384
+      SshCertKeyAlgorithm.RSA_2048,
+      SshCertKeyAlgorithm.RSA_4096,
+      SshCertKeyAlgorithm.ECDSA_P256,
+      SshCertKeyAlgorithm.ECDSA_P384,
+      SshCertKeyAlgorithm.ED25519
     ])
   })
   .required();
@@ -69,7 +72,7 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     resolver: zodResolver(schema),
     defaultValues: {
       friendlyName: "",
-      keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+      keyAlgorithm: SshCertKeyAlgorithm.ED25519,
       keySource: SshCaKeySource.INTERNAL,
       publicKey: "",
       privateKey: ""
@@ -89,7 +92,7 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     } else {
       reset({
         friendlyName: "",
-        keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+        keyAlgorithm: SshCertKeyAlgorithm.ED25519,
         keySource: SshCaKeySource.INTERNAL,
         publicKey: "",
         privateKey: ""
@@ -210,7 +213,7 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             <Controller
               control={control}
               name="keyAlgorithm"
-              defaultValue={CertKeyAlgorithm.RSA_2048}
+              defaultValue={SshCertKeyAlgorithm.ED25519}
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <FormControl
                   label="Key Algorithm"
@@ -225,7 +228,7 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     className="w-full"
                     isDisabled={Boolean(ca)}
                   >
-                    {certKeyAlgorithms.map(({ label, value }) => (
+                    {sshCertKeyAlgorithms.map(({ label, value }) => (
                       <SelectItem value={String(value || "")} key={label}>
                         {label}
                       </SelectItem>

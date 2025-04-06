@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-
-
 import { TImmutableDBKeys } from "./models";
 
 export const IntegrationsSchema = z.object({
@@ -27,7 +25,7 @@ export const IntegrationsSchema = z.object({
   metadata: z.unknown().nullable().optional(),
   integrationAuthId: z.string().uuid(),
   envId: z.string().uuid(),
-  secretPath: z.string().default('/'),
+  secretPath: z.string().default("/"),
   createdAt: z.date(),
   updatedAt: z.date(),
   lastUsed: z.date().nullable().optional(),

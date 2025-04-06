@@ -1342,6 +1342,13 @@ export const SSH_HOSTS = {
   },
   DELETE: {
     sshHostId: "The ID of the SSH host to delete."
+  },
+  ISSUE_SSH_CREDENTIALS: {
+    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH host.",
+    serialNumber: "The serial number of the issued SSH certificate.",
+    signedKey: "The SSH certificate or signed SSH public key.",
+    privateKey: "The private key corresponding to the issued SSH certificate.",
+    publicKey: "The public key of the issued SSH certificate."
   }
 };
 

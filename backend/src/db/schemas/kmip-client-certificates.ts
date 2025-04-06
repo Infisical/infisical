@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-
-
 import { TImmutableDBKeys } from "./models";
 
 export const KmipClientCertificatesSchema = z.object({
@@ -20,4 +18,6 @@ export const KmipClientCertificatesSchema = z.object({
 
 export type TKmipClientCertificates = z.infer<typeof KmipClientCertificatesSchema>;
 export type TKmipClientCertificatesInsert = Omit<z.input<typeof KmipClientCertificatesSchema>, TImmutableDBKeys>;
-export type TKmipClientCertificatesUpdate = Partial<Omit<z.input<typeof KmipClientCertificatesSchema>, TImmutableDBKeys>>;
+export type TKmipClientCertificatesUpdate = Partial<
+  Omit<z.input<typeof KmipClientCertificatesSchema>, TImmutableDBKeys>
+>;

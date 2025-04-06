@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-
-
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityProjectMembershipsSchema = z.object({
@@ -18,5 +16,10 @@ export const IdentityProjectMembershipsSchema = z.object({
 });
 
 export type TIdentityProjectMemberships = z.infer<typeof IdentityProjectMembershipsSchema>;
-export type TIdentityProjectMembershipsInsert = Omit<z.input<typeof IdentityProjectMembershipsSchema>, TImmutableDBKeys>;
-export type TIdentityProjectMembershipsUpdate = Partial<Omit<z.input<typeof IdentityProjectMembershipsSchema>, TImmutableDBKeys>>;
+export type TIdentityProjectMembershipsInsert = Omit<
+  z.input<typeof IdentityProjectMembershipsSchema>,
+  TImmutableDBKeys
+>;
+export type TIdentityProjectMembershipsUpdate = Partial<
+  Omit<z.input<typeof IdentityProjectMembershipsSchema>, TImmutableDBKeys>
+>;

@@ -11,7 +11,7 @@ import { TImmutableDBKeys } from "./models";
 
 export const WebhooksSchema = z.object({
   id: z.string().uuid(),
-  secretPath: z.string().default('/'),
+  secretPath: z.string().default("/"),
   url: z.string().nullable().optional(),
   lastStatus: z.string().nullable().optional(),
   lastRunErrorMessage: z.string().nullable().optional(),
@@ -27,7 +27,7 @@ export const WebhooksSchema = z.object({
   urlCipherText: z.string().nullable().optional(),
   urlIV: z.string().nullable().optional(),
   urlTag: z.string().nullable().optional(),
-  type: z.string().default('general').nullable().optional(),
+  type: z.string().default("general").nullable().optional(),
   encryptedPassKey: zodBuffer.nullable().optional(),
   encryptedUrl: zodBuffer
 });

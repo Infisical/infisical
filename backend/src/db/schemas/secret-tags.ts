@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-
-
 import { TImmutableDBKeys } from "./models";
 
 export const SecretTagsSchema = z.object({
@@ -17,7 +15,7 @@ export const SecretTagsSchema = z.object({
   updatedAt: z.date(),
   createdBy: z.string().uuid().nullable().optional(),
   projectId: z.string(),
-  createdByActorType: z.string().default('user')
+  createdByActorType: z.string().default("user")
 });
 
 export type TSecretTags = z.infer<typeof SecretTagsSchema>;

@@ -226,6 +226,9 @@ import {
   TProjectSplitBackfillIds,
   TProjectSplitBackfillIdsInsert,
   TProjectSplitBackfillIdsUpdate,
+  TProjectSshConfigs,
+  TProjectSshConfigsInsert,
+  TProjectSshConfigsUpdate,
   TProjectsUpdate,
   TProjectTemplates,
   TProjectTemplatesInsert,
@@ -356,12 +359,12 @@ import {
   TSshCertificateTemplates,
   TSshCertificateTemplatesInsert,
   TSshCertificateTemplatesUpdate,
-  TSshHosts,
-  TSshHostsInsert,
-  TSshHostsUpdate,
   TSshHostLoginMappings,
   TSshHostLoginMappingsInsert,
   TSshHostLoginMappingsUpdate,
+  TSshHosts,
+  TSshHostsInsert,
+  TSshHostsUpdate,
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
@@ -560,6 +563,11 @@ declare module "knex/types/tables" {
     [TableName.SuperAdmin]: KnexOriginal.CompositeTableType<TSuperAdmin, TSuperAdminInsert, TSuperAdminUpdate>;
     [TableName.ApiKey]: KnexOriginal.CompositeTableType<TApiKeys, TApiKeysInsert, TApiKeysUpdate>;
     [TableName.Project]: KnexOriginal.CompositeTableType<TProjects, TProjectsInsert, TProjectsUpdate>;
+    [TableName.ProjectSshConfig]: KnexOriginal.CompositeTableType<
+      TProjectSshConfigs,
+      TProjectSshConfigsInsert,
+      TProjectSshConfigsUpdate
+    >;
     [TableName.ProjectMembership]: KnexOriginal.CompositeTableType<
       TProjectMemberships,
       TProjectMembershipsInsert,

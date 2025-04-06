@@ -24,4 +24,6 @@ export const KmipOrgServerCertificatesSchema = z.object({
 
 export type TKmipOrgServerCertificates = z.infer<typeof KmipOrgServerCertificatesSchema>;
 export type TKmipOrgServerCertificatesInsert = Omit<z.input<typeof KmipOrgServerCertificatesSchema>, TImmutableDBKeys>;
-export type TKmipOrgServerCertificatesUpdate = Partial<Omit<z.input<typeof KmipOrgServerCertificatesSchema>, TImmutableDBKeys>>;
+export type TKmipOrgServerCertificatesUpdate = Partial<
+  Omit<z.input<typeof KmipOrgServerCertificatesSchema>, TImmutableDBKeys>
+>;

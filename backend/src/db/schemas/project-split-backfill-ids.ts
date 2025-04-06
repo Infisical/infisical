@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-
-
 import { TImmutableDBKeys } from "./models";
 
 export const ProjectSplitBackfillIdsSchema = z.object({
@@ -18,4 +16,6 @@ export const ProjectSplitBackfillIdsSchema = z.object({
 
 export type TProjectSplitBackfillIds = z.infer<typeof ProjectSplitBackfillIdsSchema>;
 export type TProjectSplitBackfillIdsInsert = Omit<z.input<typeof ProjectSplitBackfillIdsSchema>, TImmutableDBKeys>;
-export type TProjectSplitBackfillIdsUpdate = Partial<Omit<z.input<typeof ProjectSplitBackfillIdsSchema>, TImmutableDBKeys>>;
+export type TProjectSplitBackfillIdsUpdate = Partial<
+  Omit<z.input<typeof ProjectSplitBackfillIdsSchema>, TImmutableDBKeys>
+>;
