@@ -238,6 +238,7 @@ import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
 import { workflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
+import { NodeClickHouseClient } from "@clickhouse/client/dist/client";
 
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectIdentity } from "../plugins/auth/inject-identity";
@@ -262,7 +263,7 @@ export const registerRoutes = async (
     keyStore,
     envConfig
   }: {
-    auditLogDb?: Knex;
+    auditLogDb?: Knex | NodeClickHouseClient;
     db: Knex;
     hsmModule: HsmModule;
     smtp: TSmtpService;
