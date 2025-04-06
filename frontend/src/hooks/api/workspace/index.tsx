@@ -35,6 +35,7 @@ export {
   useListWorkspaceSshCas,
   useListWorkspaceSshCertificates,
   useListWorkspaceSshCertificateTemplates,
+  useListWorkspaceSshHosts,
   useNameWorkspaceSecrets,
   useToggleAutoCapitalization,
   useUpdateIdentityWorkspaceRole,

@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+
+
 import { TImmutableDBKeys } from "./models";
 
 export const ExternalGroupOrgRoleMappingsSchema = z.object({
@@ -18,10 +20,5 @@ export const ExternalGroupOrgRoleMappingsSchema = z.object({
 });
 
 export type TExternalGroupOrgRoleMappings = z.infer<typeof ExternalGroupOrgRoleMappingsSchema>;
-export type TExternalGroupOrgRoleMappingsInsert = Omit<
-  z.input<typeof ExternalGroupOrgRoleMappingsSchema>,
-  TImmutableDBKeys
->;
-export type TExternalGroupOrgRoleMappingsUpdate = Partial<
-  Omit<z.input<typeof ExternalGroupOrgRoleMappingsSchema>, TImmutableDBKeys>
->;
+export type TExternalGroupOrgRoleMappingsInsert = Omit<z.input<typeof ExternalGroupOrgRoleMappingsSchema>, TImmutableDBKeys>;
+export type TExternalGroupOrgRoleMappingsUpdate = Partial<Omit<z.input<typeof ExternalGroupOrgRoleMappingsSchema>, TImmutableDBKeys>>;

@@ -143,6 +143,7 @@ export type TGetProjectKmsKey = TProjectPermission;
 export type TListProjectCertificateTemplatesDTO = TProjectPermission;
 
 export type TListProjectSshCasDTO = TProjectPermission;
+export type TListProjectSshHostsDTO = TProjectPermission;
 export type TListProjectSshCertificateTemplatesDTO = TProjectPermission;
 export type TListProjectSshCertificatesDTO = {
   offset: number;

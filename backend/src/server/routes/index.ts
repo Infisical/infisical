@@ -93,6 +93,9 @@ import { sshCertificateBodyDALFactory } from "@app/ee/services/ssh-certificate/s
 import { sshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
 import { sshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
 import { sshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-service";
+import { sshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
+import { sshHostLoginMappingDALFactory } from "@app/ee/services/ssh-host/ssh-host-login-mapping-dal";
+import { sshHostServiceFactory } from "@app/ee/services/ssh-host/ssh-host-service";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -382,6 +385,8 @@ export const registerRoutes = async (
   const sshCertificateAuthorityDAL = sshCertificateAuthorityDALFactory(db);
   const sshCertificateAuthoritySecretDAL = sshCertificateAuthoritySecretDALFactory(db);
   const sshCertificateTemplateDAL = sshCertificateTemplateDALFactory(db);
+  const sshHostDAL = sshHostDALFactory(db);
+  const sshHostLoginMappingDAL = sshHostLoginMappingDALFactory(db);
 
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
@@ -790,6 +795,12 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const sshHostService = sshHostServiceFactory({
+    sshHostDAL,
+    sshHostLoginMappingDAL,
+    permissionService
+  });
+
   const certificateAuthorityService = certificateAuthorityServiceFactory({
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
@@ -955,6 +966,7 @@ export const registerRoutes = async (
     sshCertificateAuthorityDAL,
     sshCertificateDAL,
     sshCertificateTemplateDAL,
+    sshHostDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore,
@@ -1567,6 +1579,7 @@ export const registerRoutes = async (
     certificate: certificateService,
     sshCertificateAuthority: sshCertificateAuthorityService,
     sshCertificateTemplate: sshCertificateTemplateService,
+    sshHost: sshHostService,
     certificateAuthority: certificateAuthorityService,
     certificateTemplate: certificateTemplateService,
     certificateAuthorityCrl: certificateAuthorityCrlService,

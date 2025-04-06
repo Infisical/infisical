@@ -18,10 +18,5 @@ export const CertificateAuthoritySecretSchema = z.object({
 });
 
 export type TCertificateAuthoritySecret = z.infer<typeof CertificateAuthoritySecretSchema>;
-export type TCertificateAuthoritySecretInsert = Omit<
-  z.input<typeof CertificateAuthoritySecretSchema>,
-  TImmutableDBKeys
->;
-export type TCertificateAuthoritySecretUpdate = Partial<
-  Omit<z.input<typeof CertificateAuthoritySecretSchema>, TImmutableDBKeys>
->;
+export type TCertificateAuthoritySecretInsert = Omit<z.input<typeof CertificateAuthoritySecretSchema>, TImmutableDBKeys>;
+export type TCertificateAuthoritySecretUpdate = Partial<Omit<z.input<typeof CertificateAuthoritySecretSchema>, TImmutableDBKeys>>;

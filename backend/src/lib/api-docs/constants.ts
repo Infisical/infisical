@@ -503,6 +503,9 @@ export const PROJECTS = {
   LIST_SSH_CAS: {
     projectId: "The ID of the project to list SSH CAs for."
   },
+  LIST_SSH_HOSTS: {
+    projectId: "The ID of the project to list SSH hosts for."
+  },
   LIST_SSH_CERTIFICATES: {
     projectId: "The ID of the project to list SSH certificates for.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th SSH certificate.",
@@ -1310,6 +1313,35 @@ export const SSH_CERTIFICATE_TEMPLATES = {
   },
   DELETE: {
     certificateTemplateId: "The ID of the SSH certificate template to delete."
+  }
+};
+
+export const SSH_HOSTS = {
+  GET: {
+    sshHostId: "The ID of the SSH host to get."
+  },
+  CREATE: {
+    projectId: "The ID of the project to create the SSH host in.",
+    hostname: "The hostname of the SSH host.",
+    userCertTtl: "The time to live for user certificates issued under this host.",
+    hostCertTtl: "The time to live for host certificates issued under this host.",
+    loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
+    allowedPrincipals: "A list of allowed principals that can log in as the login user.",
+    loginMappings:
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals."
+  },
+  UPDATE: {
+    sshHostId: "The ID of the SSH host to update.",
+    hostname: "The hostname of the SSH host to update to.",
+    userCertTtl: "The time to live for user certificates issued under this host to update to.",
+    hostCertTtl: "The time to live for host certificates issued under this host to update to.",
+    loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
+    allowedPrincipals: "A list of allowed principals that can log in as the login user.",
+    loginMappings:
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals."
+  },
+  DELETE: {
+    sshHostId: "The ID of the SSH host to delete."
   }
 };
 

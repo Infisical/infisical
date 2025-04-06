@@ -22,6 +22,7 @@ import { InfisicalProjectTemplate } from "@app/ee/services/project-template/proj
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
 import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
 import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
+import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -75,6 +76,7 @@ import {
   TListProjectSshCasDTO,
   TListProjectSshCertificatesDTO,
   TListProjectSshCertificateTemplatesDTO,
+  TListProjectSshHostsDTO,
   TLoadProjectKmsBackupDTO,
   TToggleProjectAutoCapitalizationDTO,
   TUpdateAuditLogsRetentionDTO,
@@ -119,6 +121,7 @@ type TProjectServiceFactoryDep = {
   sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "find">;
   sshCertificateDAL: Pick<TSshCertificateDALFactory, "find" | "countSshCertificatesInProject">;
   sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find">;
+  sshHostDAL: Pick<TSshHostDALFactory, "find" | "findSshHostsWithLoginMappings">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -171,6 +174,7 @@ export const projectServiceFactory = ({
   sshCertificateAuthorityDAL,
   sshCertificateDAL,
   sshCertificateTemplateDAL,
+  sshHostDAL,
   keyStore,
   kmsService,
   projectBotDAL,
@@ -1038,6 +1042,32 @@ export const projectServiceFactory = ({
   };
 
   /**
+   * Return list of SSH hosts for project
+   */
+  const listProjectSshHosts = async ({
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    actor,
+    projectId
+  }: TListProjectSshHostsDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshHosts);
+
+    const hosts = await sshHostDAL.findSshHostsWithLoginMappings(projectId);
+
+    return hosts;
+  };
+
+  /**
    * Return list of SSH certificates for project
    */
   const listProjectSshCertificates = async ({
@@ -1355,6 +1385,7 @@ export const projectServiceFactory = ({
     listProjectPkiCollections,
     listProjectCertificateTemplates,
     listProjectSshCas,
+    listProjectSshHosts,
     listProjectSshCertificates,
     listProjectSshCertificateTemplates,
     updateVersionLimit,

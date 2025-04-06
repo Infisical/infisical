@@ -18,10 +18,5 @@ export const SshCertificateAuthoritySecretsSchema = z.object({
 });
 
 export type TSshCertificateAuthoritySecrets = z.infer<typeof SshCertificateAuthoritySecretsSchema>;
-export type TSshCertificateAuthoritySecretsInsert = Omit<
-  z.input<typeof SshCertificateAuthoritySecretsSchema>,
-  TImmutableDBKeys
->;
-export type TSshCertificateAuthoritySecretsUpdate = Partial<
-  Omit<z.input<typeof SshCertificateAuthoritySecretsSchema>, TImmutableDBKeys>
->;
+export type TSshCertificateAuthoritySecretsInsert = Omit<z.input<typeof SshCertificateAuthoritySecretsSchema>, TImmutableDBKeys>;
+export type TSshCertificateAuthoritySecretsUpdate = Partial<Omit<z.input<typeof SshCertificateAuthoritySecretsSchema>, TImmutableDBKeys>>;

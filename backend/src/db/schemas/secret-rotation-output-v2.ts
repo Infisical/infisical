@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+
+
 import { TImmutableDBKeys } from "./models";
 
 export const SecretRotationOutputV2Schema = z.object({
@@ -16,6 +18,4 @@ export const SecretRotationOutputV2Schema = z.object({
 
 export type TSecretRotationOutputV2 = z.infer<typeof SecretRotationOutputV2Schema>;
 export type TSecretRotationOutputV2Insert = Omit<z.input<typeof SecretRotationOutputV2Schema>, TImmutableDBKeys>;
-export type TSecretRotationOutputV2Update = Partial<
-  Omit<z.input<typeof SecretRotationOutputV2Schema>, TImmutableDBKeys>
->;
+export type TSecretRotationOutputV2Update = Partial<Omit<z.input<typeof SecretRotationOutputV2Schema>, TImmutableDBKeys>>;

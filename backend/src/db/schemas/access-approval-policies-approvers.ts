@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+
+
 import { TImmutableDBKeys } from "./models";
 
 export const AccessApprovalPoliciesApproversSchema = z.object({
@@ -17,10 +19,5 @@ export const AccessApprovalPoliciesApproversSchema = z.object({
 });
 
 export type TAccessApprovalPoliciesApprovers = z.infer<typeof AccessApprovalPoliciesApproversSchema>;
-export type TAccessApprovalPoliciesApproversInsert = Omit<
-  z.input<typeof AccessApprovalPoliciesApproversSchema>,
-  TImmutableDBKeys
->;
-export type TAccessApprovalPoliciesApproversUpdate = Partial<
-  Omit<z.input<typeof AccessApprovalPoliciesApproversSchema>, TImmutableDBKeys>
->;
+export type TAccessApprovalPoliciesApproversInsert = Omit<z.input<typeof AccessApprovalPoliciesApproversSchema>, TImmutableDBKeys>;
+export type TAccessApprovalPoliciesApproversUpdate = Partial<Omit<z.input<typeof AccessApprovalPoliciesApproversSchema>, TImmutableDBKeys>>;

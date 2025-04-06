@@ -356,6 +356,12 @@ import {
   TSshCertificateTemplates,
   TSshCertificateTemplatesInsert,
   TSshCertificateTemplatesUpdate,
+  TSshHosts,
+  TSshHostsInsert,
+  TSshHostsUpdate,
+  TSshHostLoginMappings,
+  TSshHostLoginMappingsInsert,
+  TSshHostLoginMappingsUpdate,
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
@@ -419,6 +425,7 @@ declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: KnexOriginal.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
     [TableName.Groups]: KnexOriginal.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
+    [TableName.SshHost]: KnexOriginal.CompositeTableType<TSshHosts, TSshHostsInsert, TSshHostsUpdate>;
     [TableName.SshCertificateAuthority]: KnexOriginal.CompositeTableType<
       TSshCertificateAuthorities,
       TSshCertificateAuthoritiesInsert,
@@ -443,6 +450,11 @@ declare module "knex/types/tables" {
       TSshCertificateBodies,
       TSshCertificateBodiesInsert,
       TSshCertificateBodiesUpdate
+    >;
+    [TableName.SshHostLoginMapping]: KnexOriginal.CompositeTableType<
+      TSshHostLoginMappings,
+      TSshHostLoginMappingsInsert,
+      TSshHostLoginMappingsUpdate
     >;
     [TableName.CertificateAuthority]: KnexOriginal.CompositeTableType<
       TCertificateAuthorities,

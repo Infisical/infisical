@@ -79,6 +79,7 @@ import { Route as secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedir
 import { Route as projectAccessControlPageRouteCertManagerImport } from './pages/project/AccessControlPage/route-cert-manager'
 import { Route as sshSettingsPageRouteImport } from './pages/ssh/SettingsPage/route'
 import { Route as sshOverviewPageRouteImport } from './pages/ssh/OverviewPage/route'
+import { Route as sshSshHostsPageRouteImport } from './pages/ssh/SshHostsPage/route'
 import { Route as secretManagerSettingsPageRouteImport } from './pages/secret-manager/SettingsPage/route'
 import { Route as secretManagerSecretRotationPageRouteImport } from './pages/secret-manager/SecretRotationPage/route'
 import { Route as secretManagerOverviewPageRouteImport } from './pages/secret-manager/OverviewPage/route'
@@ -803,6 +804,12 @@ const sshSettingsPageRouteRoute = sshSettingsPageRouteImport.update({
 const sshOverviewPageRouteRoute = sshOverviewPageRouteImport.update({
   id: '/overview',
   path: '/overview',
+  getParentRoute: () => sshLayoutRoute,
+} as any)
+
+const sshSshHostsPageRouteRoute = sshSshHostsPageRouteImport.update({
+  id: '/hosts',
+  path: '/hosts',
   getParentRoute: () => sshLayoutRoute,
 } as any)
 
@@ -2146,6 +2153,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof secretManagerSettingsPageRouteImport
       parentRoute: typeof secretManagerLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/hosts': {
+      id: '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/hosts'
+      path: '/hosts'
+      fullPath: '/ssh/$projectId/hosts'
+      preLoaderRoute: typeof sshSshHostsPageRouteImport
+      parentRoute: typeof sshLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/overview': {
       id: '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/overview'
       path: '/overview'
@@ -3463,6 +3477,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdRouteWithChildr
   )
 
 interface sshLayoutRouteChildren {
+  sshSshHostsPageRouteRoute: typeof sshSshHostsPageRouteRoute
   sshOverviewPageRouteRoute: typeof sshOverviewPageRouteRoute
   sshSettingsPageRouteRoute: typeof sshSettingsPageRouteRoute
   projectAccessControlPageRouteSshRoute: typeof projectAccessControlPageRouteSshRoute
@@ -3473,6 +3488,7 @@ interface sshLayoutRouteChildren {
 }
 
 const sshLayoutRouteChildren: sshLayoutRouteChildren = {
+  sshSshHostsPageRouteRoute: sshSshHostsPageRouteRoute,
   sshOverviewPageRouteRoute: sshOverviewPageRouteRoute,
   sshSettingsPageRouteRoute: sshSettingsPageRouteRoute,
   projectAccessControlPageRouteSshRoute: projectAccessControlPageRouteSshRoute,
@@ -3755,6 +3771,7 @@ export interface FileRoutesByFullPath {
   '/secret-manager/$projectId/overview': typeof secretManagerOverviewPageRouteRoute
   '/secret-manager/$projectId/secret-rotation': typeof secretManagerSecretRotationPageRouteRoute
   '/secret-manager/$projectId/settings': typeof secretManagerSettingsPageRouteRoute
+  '/ssh/$projectId/hosts': typeof sshSshHostsPageRouteRoute
   '/ssh/$projectId/overview': typeof sshOverviewPageRouteRoute
   '/ssh/$projectId/settings': typeof sshSettingsPageRouteRoute
   '/cert-manager/$projectId/access-management': typeof projectAccessControlPageRouteCertManagerRoute
@@ -3927,6 +3944,7 @@ export interface FileRoutesByTo {
   '/secret-manager/$projectId/overview': typeof secretManagerOverviewPageRouteRoute
   '/secret-manager/$projectId/secret-rotation': typeof secretManagerSecretRotationPageRouteRoute
   '/secret-manager/$projectId/settings': typeof secretManagerSettingsPageRouteRoute
+  '/ssh/$projectId/hosts': typeof sshSshHostsPageRouteRoute
   '/ssh/$projectId/overview': typeof sshOverviewPageRouteRoute
   '/ssh/$projectId/settings': typeof sshSettingsPageRouteRoute
   '/cert-manager/$projectId/access-management': typeof projectAccessControlPageRouteCertManagerRoute
@@ -4115,6 +4133,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/overview': typeof secretManagerOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/secret-rotation': typeof secretManagerSecretRotationPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/settings': typeof secretManagerSettingsPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/hosts': typeof sshSshHostsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/overview': typeof sshOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/settings': typeof sshSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/access-management': typeof projectAccessControlPageRouteCertManagerRoute
@@ -4296,6 +4315,7 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/overview'
     | '/secret-manager/$projectId/secret-rotation'
     | '/secret-manager/$projectId/settings'
+    | '/ssh/$projectId/hosts'
     | '/ssh/$projectId/overview'
     | '/ssh/$projectId/settings'
     | '/cert-manager/$projectId/access-management'
@@ -4467,6 +4487,7 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/overview'
     | '/secret-manager/$projectId/secret-rotation'
     | '/secret-manager/$projectId/settings'
+    | '/ssh/$projectId/hosts'
     | '/ssh/$projectId/overview'
     | '/ssh/$projectId/settings'
     | '/cert-manager/$projectId/access-management'
@@ -4653,6 +4674,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/secret-rotation'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/settings'
+    | '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/hosts'
     | '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/access-management'
@@ -5195,6 +5217,7 @@ export const routeTree = rootRoute
       "filePath": "ssh/layout.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId",
       "children": [
+        "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/hosts",
         "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/overview",
         "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/settings",
         "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/access-management",
@@ -5243,6 +5266,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/settings": {
       "filePath": "secret-manager/SettingsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/hosts": {
+      "filePath": "ssh/SshHostsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/overview": {
       "filePath": "ssh/OverviewPage/route.tsx",

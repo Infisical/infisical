@@ -112,6 +112,7 @@ export enum ProjectPermissionSub {
   SshCertificateAuthorities = "ssh-certificate-authorities",
   SshCertificates = "ssh-certificates",
   SshCertificateTemplates = "ssh-certificate-templates",
+  SshHosts = "ssh-hosts",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
   Kms = "kms",
@@ -195,6 +196,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
+  | [ProjectPermissionActions, ProjectPermissionSub.SshHosts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
@@ -419,6 +421,12 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.SshHosts).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.PkiAlerts).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
@@ -571,7 +579,8 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.PkiCollections,
     ProjectPermissionSub.SshCertificateAuthorities,
     ProjectPermissionSub.SshCertificates,
-    ProjectPermissionSub.SshCertificateTemplates
+    ProjectPermissionSub.SshCertificateTemplates,
+    ProjectPermissionSub.SshHosts
   ].forEach((el) => {
     can(
       [
@@ -831,7 +840,7 @@ const buildMemberPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificates);
   can([ProjectPermissionActions.Create], ProjectPermissionSub.SshCertificates);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificateTemplates);
-
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.SshHosts);
   can(
     [
       ProjectPermissionCmekActions.Create,
@@ -892,6 +901,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateAuthorities);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SshHosts);
   can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
 
   return rules;

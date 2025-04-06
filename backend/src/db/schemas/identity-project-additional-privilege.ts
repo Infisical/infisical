@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+
+
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityProjectAdditionalPrivilegeSchema = z.object({
@@ -22,10 +24,5 @@ export const IdentityProjectAdditionalPrivilegeSchema = z.object({
 });
 
 export type TIdentityProjectAdditionalPrivilege = z.infer<typeof IdentityProjectAdditionalPrivilegeSchema>;
-export type TIdentityProjectAdditionalPrivilegeInsert = Omit<
-  z.input<typeof IdentityProjectAdditionalPrivilegeSchema>,
-  TImmutableDBKeys
->;
-export type TIdentityProjectAdditionalPrivilegeUpdate = Partial<
-  Omit<z.input<typeof IdentityProjectAdditionalPrivilegeSchema>, TImmutableDBKeys>
->;
+export type TIdentityProjectAdditionalPrivilegeInsert = Omit<z.input<typeof IdentityProjectAdditionalPrivilegeSchema>, TImmutableDBKeys>;
+export type TIdentityProjectAdditionalPrivilegeUpdate = Partial<Omit<z.input<typeof IdentityProjectAdditionalPrivilegeSchema>, TImmutableDBKeys>>;

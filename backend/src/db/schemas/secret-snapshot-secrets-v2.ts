@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+
+
 import { TImmutableDBKeys } from "./models";
 
 export const SecretSnapshotSecretsV2Schema = z.object({
@@ -18,6 +20,4 @@ export const SecretSnapshotSecretsV2Schema = z.object({
 
 export type TSecretSnapshotSecretsV2 = z.infer<typeof SecretSnapshotSecretsV2Schema>;
 export type TSecretSnapshotSecretsV2Insert = Omit<z.input<typeof SecretSnapshotSecretsV2Schema>, TImmutableDBKeys>;
-export type TSecretSnapshotSecretsV2Update = Partial<
-  Omit<z.input<typeof SecretSnapshotSecretsV2Schema>, TImmutableDBKeys>
->;
+export type TSecretSnapshotSecretsV2Update = Partial<Omit<z.input<typeof SecretSnapshotSecretsV2Schema>, TImmutableDBKeys>>;

@@ -120,18 +120,32 @@ export const ProjectLayout = () => {
                         </Link>
                       )}
                       {isSSH && (
-                        <Link
-                          to={`/${ProjectType.SSH}/$projectId/overview` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="lock-closed">
-                              Overview
-                            </MenuItem>
-                          )}
-                        </Link>
+                        <>
+                          <Link
+                            to={`/${ProjectType.SSH}/$projectId/overview` as const}
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="lock-closed">
+                                Overview
+                              </MenuItem>
+                            )}
+                          </Link>
+                          <Link
+                            to={`/${ProjectType.SSH}/$projectId/hosts` as const}
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="server" iconMode="reverse">
+                                Hosts
+                              </MenuItem>
+                            )}
+                          </Link>
+                        </>
                       )}
                       {isSecretManager && (
                         <Link

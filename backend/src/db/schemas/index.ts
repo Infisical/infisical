@@ -120,6 +120,8 @@ export * from "./ssh-certificate-authority-secrets";
 export * from "./ssh-certificate-bodies";
 export * from "./ssh-certificate-templates";
 export * from "./ssh-certificates";
+export * from "./ssh-host-login-mappings";
+export * from "./ssh-hosts";
 export * from "./super-admin";
 export * from "./totp-configs";
 export * from "./trusted-ips";
