@@ -246,8 +246,8 @@ const envSchema = z
           return JSON.parse(val) as string[];
         })
     ),
-    SHOULD_USE_CLICKHOUSE: zodStrBool.default("false"),
 
+    SHOULD_USE_AUDIT_LOG_DB: z.enum(["POSTGRES", "CLICKHOUSE"]).default("POSTGRES"),
     CLICKHOUSE_DB_CONNECTION_URI: zpStr(z.string()),
     CLICKHOUSE_DB_USER: zpStr(z.string()),
     CLICKHOUSE_DB_PASSWORD: zpStr(z.string())
