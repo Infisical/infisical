@@ -42,7 +42,12 @@ enum ProjectsViewMode {
   LIST = "list"
 }
 
-export const MyProjectView = ({ type, onAddNewProject, onUpgradePlan, isAddingProjectsAllowed }: Props) => {
+export const MyProjectView = ({
+  type,
+  onAddNewProject,
+  onUpgradePlan,
+  isAddingProjectsAllowed
+}: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 

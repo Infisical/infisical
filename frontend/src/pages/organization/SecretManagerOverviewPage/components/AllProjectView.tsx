@@ -26,10 +26,10 @@ import {
   Skeleton,
   Tooltip
 } from "@app/components/v2";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useRequestProjectAccess, useSearchProjects } from "@app/hooks/api";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
 
 type Props = {
@@ -86,7 +86,12 @@ const RequestAccessModal = ({ projectId, onPopUpToggle }: RequestAccessModalProp
   );
 };
 
-export const AllProjectView = ({ type, onAddNewProject, onUpgradePlan, isAddingProjectsAllowed }: Props) => {
+export const AllProjectView = ({
+  type,
+  onAddNewProject,
+  onUpgradePlan,
+  isAddingProjectsAllowed
+}: Props) => {
   const navigate = useNavigate();
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);

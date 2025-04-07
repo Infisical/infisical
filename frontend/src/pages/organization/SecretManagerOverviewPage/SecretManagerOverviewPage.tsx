@@ -86,19 +86,18 @@ export const ProductOverviewPage = ({ type }: Props) => {
             </div>
           }
           description={formatDescription(type)}
-        >
-        </PageHeader>
+        />
       </div>
       {projectListView === ProjectListView.MyProjects ? (
-        <MyProjectView 
-          type={type} 
+        <MyProjectView
+          type={type}
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
         />
       ) : (
-        <AllProjectView 
-          type={type} 
+        <AllProjectView
+          type={type}
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
