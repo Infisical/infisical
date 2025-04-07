@@ -7,6 +7,7 @@ import {
   faBorderAll,
   faList,
   faMagnifyingGlass,
+  faPlus,
   faSearch,
   faStar as faSolidStar
 } from "@fortawesome/free-solid-svg-icons";
@@ -14,8 +15,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import { IconButton, Input, Pagination, Skeleton, Tooltip } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { OrgPermissionCan } from "@app/components/permissions";
+import { Button, IconButton, Input, Pagination, Skeleton, Tooltip } from "@app/components/v2";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetUserWorkspaces } from "@app/hooks/api";
@@ -24,11 +26,11 @@ import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
 
-import { ProjectListToggle, ProjectListView } from "./ProjectListToggle";
-
 type Props = {
   type: ProjectType;
-  onListViewToggle: (value: ProjectListView) => void;
+  onAddNewProject: () => void;
+  onUpgradePlan: () => void;
+  isAddingProjectsAllowed: boolean;
 };
 
 enum ProjectOrderBy {
@@ -40,7 +42,12 @@ enum ProjectsViewMode {
   LIST = "list"
 }
 
-export const MyProjectView = ({ type, onListViewToggle }: Props) => {
+export const MyProjectView = ({
+  type,
+  onAddNewProject,
+  onUpgradePlan,
+  isAddingProjectsAllowed
+}: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 
@@ -318,11 +325,10 @@ export const MyProjectView = ({ type, onListViewToggle }: Props) => {
   return (
     <div>
       <div className="flex w-full flex-row">
-        <ProjectListToggle value={ProjectListView.MyProjects} onChange={onListViewToggle} />
         <div className="flex-grow" />
         <Input
           className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-          containerClassName="max-w-md"
+          containerClassName="w-full"
           placeholder="Search by project name..."
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
@@ -376,6 +382,25 @@ export const MyProjectView = ({ type, onListViewToggle }: Props) => {
             <FontAwesomeIcon icon={faList} />
           </IconButton>
         </div>
+        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
+          {(isAllowed) => (
+            <Button
+              isDisabled={!isAllowed}
+              colorSchema="primary"
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() => {
+                if (isAddingProjectsAllowed) {
+                  onAddNewProject();
+                } else {
+                  onUpgradePlan();
+                }
+              }}
+              className="ml-2"
+            >
+              Add New Project
+            </Button>
+          )}
+        </OrgPermissionCan>
       </div>
       {projectsComponents}
       {!isProjectViewLoading && Boolean(filteredWorkspaces.length) && (
