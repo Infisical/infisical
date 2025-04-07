@@ -18,7 +18,7 @@ import { TAccessProjectDTO, TListOrgProjectsDTO } from "./org-admin-types";
 
 type TOrgAdminServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  projectDAL: Pick<TProjectDALFactory, "find" | "findById" | "findProjectGhostUser">;
+  projectDAL: Pick<TProjectDALFactory, "find" | "findById" | "findProjectGhostUser" | "findOne">;
   projectMembershipDAL: Pick<
     TProjectMembershipDALFactory,
     "findOne" | "create" | "transaction" | "delete" | "findAllProjectMembers"
@@ -95,7 +95,7 @@ export const orgAdminServiceFactory = ({
       OrgPermissionSubjects.AdminConsole
     );
 
-    const project = await projectDAL.findById(projectId);
+    const project = await projectDAL.findOne({ id: projectId, orgId: actorOrgId });
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
     if (project.version === ProjectVersion.V1) {
