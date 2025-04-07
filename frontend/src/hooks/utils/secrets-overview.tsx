@@ -72,6 +72,55 @@ export const useDynamicSecretOverview = (
   return { dynamicSecretNames, isDynamicSecretPresentInEnv };
 };
 
+export const useSecretRotationOverview = (
+  secretRotations: DashboardProjectSecretsOverview["secretRotations"]
+) => {
+  const secretRotationNames = useMemo(() => {
+    const names = new Set<string>();
+    secretRotations?.forEach((secretRotation) => {
+      names.add(secretRotation.name);
+    });
+    return [...names];
+  }, [secretRotations]);
+
+  const isSecretRotationPresentInEnv = useCallback(
+    (name: string, env: string) => {
+      return Boolean(
+        secretRotations?.find(
+          ({ name: secretRotationName, environment }) =>
+            secretRotationName === name && environment.slug === env
+        )
+      );
+    },
+    [secretRotations]
+  );
+
+  const getSecretRotationByName = useCallback(
+    (env: string, name: string) => {
+      const secretRotation = secretRotations?.find(
+        (rotation) => rotation.environment.slug === env && rotation.name === name
+      );
+      return secretRotation;
+    },
+    [secretRotations]
+  );
+
+  const getSecretRotationStatusesByName = useCallback(
+    (name: string) =>
+      secretRotations
+        ?.filter((rotation) => rotation.name === name)
+        .map((rotation) => rotation.rotationStatus),
+    [secretRotations]
+  );
+
+  return {
+    secretRotationNames,
+    isSecretRotationPresentInEnv,
+    getSecretRotationByName,
+    getSecretRotationStatusesByName
+  };
+};
+
 export const useSecretOverview = (secrets: DashboardProjectSecretsOverview["secrets"]) => {
   const secKeys = useMemo(() => {
     const keys = new Set<string>();

@@ -1,104 +1,160 @@
 ---
-title: "PostgreSQL/CockroachDB"
-description: "Learn how to automatically rotate PostgreSQL/CockroachDB user passwords."
+title: "PostgreSQL Credentials"
+description: "Learn how to automatically rotate PostgreSQL credentials."
 ---
 
-The Infisical Postgres secret rotation allows you to automatically rotate your Postgres database user's password at a predefined interval.
+## Prerequisites
+
+1. Create a [PostgreSQL Connection](/integrations/app-connections/postgres) with the required **Secret Rotation** permissions
+2. Create two designated database users for Infisical to rotate the credentials for. Be sure to grant each user login permissions for the desired database with the necessary privileges their use case will require.
+
+    An example creation statement might look like:
+    ```SQL
+    -- create user roles
+    CREATE USER infisical_user_1 WITH ENCRYPTED PASSWORD 'temporary_password';
+    CREATE USER infisical_user_2 WITH ENCRYPTED PASSWORD 'temporary_password';
+
+    -- grant database connection permissions
+    GRANT CONNECT ON DATABASE my_database TO infisical_user_1;
+    GRANT CONNECT ON DATABASE my_database TO infisical_user_2;
+
+    -- grant relevant table permissions
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO infisical_user_1;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO infisical_user_2;
+    ```
+
+    <Tip>
+        To learn more about PostgreSQL's permission system, please visit their [documentation](https://www.postgresql.org/docs/current/sql-grant.html).
+    </Tip>
 
 
-## Prerequisite
+## Create a PostgreSQL Credentials Rotation in Infisical
 
-1. Create two users with the required permission in your PostgreSQL instance. We'll refer to them as `user-a` and `user-b`.
-2. Create another PostgreSQL user with just the permission to update the passwords of `user-a` and `user-b`. We'll refer to this user as the `admin` user.
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to your Secret Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
+        ![Secret Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
 
-To learn more about Postgres permission system, please visit this [documentation](https://www.postgresql.org/docs/9.1/sql-grant.html).
+        2. Select the **PostgreSQL Credentials** option.
+        ![Select PostgreSQL Credentials](/images/secret-rotations-v2/postgres-credentials/select-postgres-credentials-option.png)
 
+        3. Select the **PostgreSQL Connection** to use and configure the rotation behavior. Then click **Next**.
+        ![Rotation Configuration](/images/secret-rotations-v2/postgres-credentials/postgres-credentials-configuration.png)
 
-## How it works 
+            - **PostgreSQL Connection** - the connection that will perform the rotation of the configured database user credentials.
+            - **Rotation Interval** - the interval, in days, that once elapsed will trigger a rotation.
+            - **Rotate At** - the local time of day when rotation should occur once the interval has elapsed.
+            - **Auto-Rotation Enabled** - whether secrets should automatically be rotated once the rotation interval has elapsed. Disable this option to manually rotate secrets or pause secret rotation.
 
-1. Infisical connects to your database using the provided `admin` user account.
-2. A random value is generated and the password for `user-a` is updated with the new value.
-3. The new password is then tested by logging into the database
-4. If test is success, it's saved to the output secret mappings so that rest of the system gets the newly rotated value(s).
-5. The process is then repeated for `user-b` on the next rotation.
-6. The cycle repeats until secret rotation is deleted/stopped.
+        4. Input the usernames of the database users created above that will be used for rotation. Then click **Next**.
+        ![Rotation Parameters](/images/secret-rotations-v2/postgres-credentials/postgres-credentials-parameters.png)
 
-## Rotation Configuration
+            - **Database Username 1** - the username of the first user that will be used for rotation.
+            - **Database Username 2** - the username of the second user that will be used for rotation.
 
-<Steps>
-  <Step title="Open Secret Rotation Page">
-	Head over to Secret Rotation configuration page of your project by clicking on `Secret Rotation` in the left side bar 
-  </Step>
-  <Step title="Click on PostgresSQL card" />
+        5. Specify the secret names that the active credentials should be mapped to. Then click **Next**.
+        ![Rotation Secrets Mapping](/images/secret-rotations-v2/postgres-credentials/postgres-credentials-secrets-mapping.png)
 
-  <Step title="Provide the inputs">
-	<ParamField path="Admin Username" type="string" required="true">
-		Rotator admin username
-	</ParamField>
+            - **Username** - the name of the secret that the active username will be mapped to.
+            - **Password** - the name of the secret that the active password will be mapped to.
 
-	<ParamField path="Admin password" type="string" required="true">
-		Rotator admin password
-	</ParamField>
+        6. Give your rotation a name and description (optional). Then click **Next**.
+        ![Rotation Details](/images/secret-rotations-v2/postgres-credentials/postgres-credentials-details.png)
 
-	<ParamField path="Host" type="string" required="true">
-		Database host url
-	</ParamField>
+            - **Name** - the name of the secret rotation configuration. Must be slug-friendly.
+            - **Description** (optional) - a description of this rotation configuration.
 
-	<ParamField path="Port" type="number" required="true">
-		Database port number
-	</ParamField>
+        7. Review your configuration, then click **Create Secret Rotation**.
+        ![Rotation Review](/images/secret-rotations-v2/postgres-credentials/postgres-credentials-confirm.png)
 
-	<ParamField path="Username1" type="string" required="true">
-		The first username of two to rotate - `user-a`
-	</ParamField>
+        8. Your **PostgreSQL Credentials** are now available for use via the mapped secrets.
+        ![Rotation Created](/images/secret-rotations-v2/postgres-credentials/postgres-credentials-created.png)
+    </Tab>
+    <Tab title="API">
+        To create a PostgreSQL Credentials Rotation, make an API request to the [Create PostgreSQL
+        Credentials Rotation](/api-reference/endpoints/secret-rotations/postgres-credentials/create) API endpoint.
 
-	<ParamField path="Username2" type="string" required="true">
-		The second username of two to rotate - `user-b`
-	</ParamField>
- 
-	<ParamField path="CA" type="string" optional>
-		Optional database certificate to connect with database
-	</ParamField>
-  </Step>
-  <Step title="Configure the output secret mapping">
+        ### Sample request
 
-  	When a secret rotation is successful, the updated values needs to be saved to an existing key(s) in your project. 
+        ```bash Request
+        curl --request POST \
+        --url https://us.infisical.com/api/v2/secret-rotations/postgres-credentials \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-pg-rotation",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "my database credentials rotation",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "environment": "dev",
+            "secretPath": "/",
+            "isAutoRotationEnabled": true,
+            "rotationInterval": 30,
+            "rotateAtUtc": {
+                "hours": 0,
+                "minutes": 0
+            },
+            "parameters": {
+                "username1": "infisical_user_1",
+                "username2": "infisical_user_2"
+            },
+            "secretsMapping": {
+                "username": "POSTGRES_DB_USERNAME",
+                "password": "POSTGRES_DB_PASSWORD"
+            }
+        }'
+        ```
 
-	<ParamField path="Environment" type="string" required>
-		The environment where the rotated credentials should be mapped to.
-	</ParamField>
+        ### Sample response
 
-	<ParamField path="Secret Path" type="string" required>
-		The secret path where the rotated credentials should be mapped to.
-	</ParamField>
-
-	<ParamField path="Interval" type="number" required>
-		What interval should the credentials be rotated in days.
-	</ParamField>
-
-	<ParamField path="DB USERNAME" type="string" required>
-		Select an existing secret key where the rotated database username value should be saved to.
-	</ParamField>
-
-	<ParamField path="DB PASSWORD" type="string" required>
-		Select an existing select key where the rotated database password value should be saved to.
-	</ParamField>
-  </Step>
-</Steps>
-
-## FAQ
-
-<AccordionGroup>
-  <Accordion title="Why can't we delete the other user when rotating?">
-  	When a system has multiple nodes by horizontal scaling, redeployment doesn't happen instantly.
-
-	This means that when the secrets are rotated, and the redeployment is triggered, the existing system will still be using the old credentials until the change rolls out. 
-
-	To avoid causing failure for them, the old credentials are not removed. Instead, in the next rotation, the previous user's credentials are updated.
-  </Accordion>
-  <Accordion title="Why do you need root user account?">
-	The admin account is used by Infisical to update the credentials for `user-a` and `user-b`. 
-
-	You don't need to grant all permission for your admin account but rather just the permissions to update both of the user's passwords.
-  </Accordion>
-</AccordionGroup>
+        ```bash Response
+        {
+            "secretRotation": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-pg-rotation",
+                "description": "my database credentials rotation",
+                "secretsMapping": {
+                    "username": "POSTGRES_DB_USERNAME",
+                    "password": "POSTGRES_DB_PASSWORD"
+                },
+                "isAutoRotationEnabled": true,
+                "activeIndex": 0,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "rotationInterval": 30,
+                "rotationStatus": "success",
+                "lastRotationAttemptedAt": "2023-11-07T05:31:56Z",
+                "lastRotatedAt": "2023-11-07T05:31:56Z",
+                "lastRotationJobId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "nextRotationAt": "2023-11-07T05:31:56Z",
+                "connection": {
+                    "app": "postgres",
+                    "name": "my-pg-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/"
+                },
+                "rotateAtUtc": {
+                    "hours": 0,
+                    "minutes": 0
+                },
+                "lastRotationMessage": null,
+                "type": "postgres-credentials",
+                "parameters": {
+                    "username1": "infisical_user_1",
+                    "username2": "infisical_user_2"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

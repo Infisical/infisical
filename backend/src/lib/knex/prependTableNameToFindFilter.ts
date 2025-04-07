@@ -7,7 +7,7 @@ export const prependTableNameToFindFilter = (tableName: TableName, filterObj: ob
   Object.fromEntries(
     Object.entries(filterObj).map(([key, value]) =>
       key.startsWith("$")
-        ? [key, prependTableNameToFindFilter(tableName, value as object)]
+        ? [key, value ? prependTableNameToFindFilter(tableName, value as object) : value]
         : [`${tableName}.${key}`, value]
     )
   );

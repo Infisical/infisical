@@ -28,7 +28,8 @@ type Props = {
   type:
     | ProjectPermissionSub.DynamicSecrets
     | ProjectPermissionSub.SecretFolders
-    | ProjectPermissionSub.SecretImports;
+    | ProjectPermissionSub.SecretImports
+    | ProjectPermissionSub.SecretRotation;
 };
 
 export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: Props) => {
