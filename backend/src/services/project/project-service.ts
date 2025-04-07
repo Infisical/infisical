@@ -1068,6 +1068,7 @@ export const projectServiceFactory = ({
     actor,
     projectId
   }: TListProjectSshHostsDTO) => {
+    console.log("listProjectSshHosts: ", actor, actorId, actorAuthMethod, actorOrgId, projectId);
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

@@ -52,17 +52,8 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
               data.map((host) => {
                 return (
                   <Tr
-                    className="h-10"
+                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                     key={`ssh-host-${host.id}`}
-                    // onClick={() =>
-                    //   navigate({
-                    //     to: `/${ProjectType.SSH}/$projectId/ca/$caId` as const,
-                    //     params: {
-                    //       projectId: currentWorkspace.id,
-                    //       caId: ca.id
-                    //     }
-                    //   })
-                    // }
                   >
                     <Td>{host.hostname}</Td>
                     <Td className="flex justify-end">

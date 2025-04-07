@@ -1328,7 +1328,11 @@ export const SSH_HOSTS = {
     loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
     allowedPrincipals: "A list of allowed principals that can log in as the login user.",
     loginMappings:
-      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals."
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals.",
+    userSshCaId:
+      "The ID of the SSH CA to use for user certificates. If not specified, the default user SSH CA will be used if it exists.",
+    hostSshCaId:
+      "The ID of the SSH CA to use for host certificates. If not specified, the default host SSH CA will be used if it exists."
   },
   UPDATE: {
     sshHostId: "The ID of the SSH host to update.",

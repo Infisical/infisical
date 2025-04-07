@@ -12,6 +12,51 @@ import { AuthMode } from "@app/services/auth/auth-type";
 export const registerSshHostRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.array(
+          sanitizedSshHost.extend({
+            loginMappings: z.array(
+              z.object({
+                loginUser: z.string(),
+                allowedPrincipals: z.array(z.string())
+              })
+            )
+          })
+        )
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const hosts = await server.services.sshHost.listSshHosts({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      // TODO: audit log
+      // await server.services.auditLog.createAuditLog({
+      //   ...req.auditLogInfo,
+      //   projectId: certificateTemplate.projectId,
+      //   event: {
+      //     type: EventType.GET_SSH_CERTIFICATE_TEMPLATE,
+      //     metadata: {
+      //       certificateTemplateId: certificateTemplate.id
+      //     }
+      //   }
+      // });
+
+      return hosts;
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:sshHostId",
     config: {
       rateLimit: readLimit
@@ -91,7 +136,9 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
           })
           .array()
           .default([])
-          .describe(SSH_HOSTS.CREATE.loginMappings)
+          .describe(SSH_HOSTS.CREATE.loginMappings),
+        userSshCaId: z.string().describe(SSH_HOSTS.CREATE.userSshCaId).optional(),
+        hostSshCaId: z.string().describe(SSH_HOSTS.CREATE.hostSshCaId).optional()
       }),
       response: {
         200: sanitizedSshHost.extend({
@@ -265,7 +312,6 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    // TODO: consider just using the SSH issue creds endpoint
     method: "POST",
     url: "/:sshHostId/issue",
     config: {
@@ -287,15 +333,18 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    handler: () => {
-      // const { serialNumber, signedPublicKey, privateKey, publicKey, certificateTemplate, ttl, keyId } =
-      //   await server.services.sshCertificateAuthority.issueSshCreds({
-      //     actor: req.permission.type,
-      //     actorId: req.permission.id,
-      //     actorAuthMethod: req.permission.authMethod,
-      //     actorOrgId: req.permission.orgId,
-      //     ...req.body
-      //   });
+    handler: async (req) => {
+      const { serialNumber, signedPublicKey, privateKey, publicKey, keyAlgorithm } =
+        await server.services.sshHost.issueSshCredsFromHost({
+          sshHostId: req.params.sshHostId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+
+      // TODO: add audit log
+
       // await server.services.auditLog.createAuditLog({
       //   ...req.auditLogInfo,
       //   orgId: req.permission.orgId,
@@ -320,19 +369,13 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       //     ...req.auditLogInfo
       //   }
       // });
-      // return {
-      //   serialNumber,
-      //   signedKey: signedPublicKey,
-      //   privateKey,
-      //   publicKey,
-      //   keyAlgorithm: req.body.keyAlgorithm
-      // };
+
       return {
-        serialNumber: "",
-        signedKey: "",
-        privateKey: "",
-        publicKey: "",
-        keyAlgorithm: SshCertKeyAlgorithm.ED25519
+        serialNumber,
+        signedKey: signedPublicKey,
+        privateKey,
+        publicKey,
+        keyAlgorithm
       };
     }
   });

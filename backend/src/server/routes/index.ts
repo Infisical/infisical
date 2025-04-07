@@ -798,9 +798,15 @@ export const registerRoutes = async (
   });
 
   const sshHostService = sshHostServiceFactory({
+    userDAL,
+    projectDAL,
+    projectSshConfigDAL,
+    sshCertificateAuthorityDAL,
+    sshCertificateAuthoritySecretDAL,
     sshHostDAL,
     sshHostLoginMappingDAL,
-    permissionService
+    permissionService,
+    kmsService
   });
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({

@@ -1,5 +1,7 @@
 import { TProjectPermission } from "@app/lib/types";
 
+export type TListSshHostsDTO = Omit<TProjectPermission, "projectId">;
+
 export type TCreateSshHostDTO = {
   hostname: string;
   userCertTtl: string;
@@ -8,6 +10,8 @@ export type TCreateSshHostDTO = {
     loginUser: string;
     allowedPrincipals: string[];
   }[];
+  userSshCaId?: string;
+  hostSshCaId?: string;
 } & TProjectPermission;
 
 export type TUpdateSshHostDTO = {
@@ -26,5 +30,9 @@ export type TGetSshHostDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteSshHostDTO = {
+  sshHostId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TIssueSshCredsFromHostDTO = {
   sshHostId: string;
 } & Omit<TProjectPermission, "projectId">;

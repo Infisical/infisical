@@ -11,6 +11,7 @@ import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certif
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
+import { ActorType } from "@app/services/auth/auth-type";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import {
@@ -21,6 +22,7 @@ import {
   SshCaKeySource,
   SshCaStatus,
   SshCertType,
+  TConvertActorToPrincipalsDTO,
   TCreateSshCaHelperDTO,
   TCreateSshCertDTO
 } from "./ssh-certificate-authority-types";
@@ -439,17 +441,32 @@ export const createSshCert = async ({
   clientPublicKey,
   keyId,
   principals,
-  requestedTtl,
+  requestedTtl, // in ms lib format
   certType
 }: TCreateSshCertDTO) => {
-  // validate if the requested [certType] is allowed under the template configuration
-  validateSshCertificateType(template, certType);
+  let ttl: number | undefined;
 
-  // validate if the requested [principals] are valid for the given [certType] under the template configuration
-  validateSshCertificatePrincipals(certType, template, principals);
+  if (!template && requestedTtl) {
+    const parsedTtl = Math.ceil(ms(requestedTtl) / 1000);
+    if (parsedTtl > 0) ttl = parsedTtl;
+  }
 
-  // validate if the requested TTL is valid under the template configuration
-  const ttl = validateSshCertificateTtl(template, requestedTtl);
+  if (template) {
+    // validate if the requested [certType] is allowed under the template configuration
+    validateSshCertificateType(template, certType);
+
+    // validate if the requested [principals] are valid for the given [certType] under the template configuration
+    validateSshCertificatePrincipals(certType, template, principals);
+
+    // validate if the requested TTL is valid under the template configuration
+    ttl = validateSshCertificateTtl(template, requestedTtl);
+  }
+
+  if (!ttl) {
+    throw new BadRequestError({
+      message: "Failed to create SSH certificate due to missing TTL"
+    });
+  }
 
   validateSshCertificateKeyId(keyId);
   await validateSshPublicKey(clientPublicKey);
@@ -560,4 +577,24 @@ export const createSshCaHelper = async ({
   }
 
   return sshCertificateAuthorityDAL.transaction(processCreation);
+};
+
+/**
+ * Convert an actor to a list of principals to be included in an SSH certificate.
+ *
+ * (dangtony98): This function is only supported for user actors at the moment and returns
+ * only the email of the associated user. In the future, we will consider other
+ * actor types and attributes such as group membership slugs and/or metadata to be
+ * included in the list of principals.
+ */
+export const convertActorToPrincipals = async ({ userDAL, actor, actorId }: TConvertActorToPrincipalsDTO) => {
+  if (actor !== ActorType.USER) {
+    throw new BadRequestError({
+      message: "Failed to convert actor to principals due to unsupported actor type"
+    });
+  }
+
+  const user = await userDAL.findById(actorId);
+
+  return [user.username];
 };

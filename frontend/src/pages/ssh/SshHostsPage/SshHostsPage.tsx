@@ -16,7 +16,7 @@ export const SshHostsPage = () => {
         <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
           <div className="mx-auto mb-6 w-full max-w-7xl">
             <PageHeader
-              title="Overview"
+              title="Hosts"
               description="Infisical SSH lets you issue SSH credentials to clients to provide short-lived, secure SSH access to infrastructure."
             />
             <SshHostsSection />

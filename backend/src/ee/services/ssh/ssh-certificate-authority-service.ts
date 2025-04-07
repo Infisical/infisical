@@ -7,22 +7,14 @@ import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-cer
 import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
 import { TSshCertificateBodyDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-body-dal";
 import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
-import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { SshCertTemplateStatus } from "../ssh-certificate-template/ssh-certificate-template-types";
+import { createSshCaHelper, createSshCert, createSshKeyPair, getSshPublicKey } from "./ssh-certificate-authority-fns";
 import {
-  createSshCaHelper,
-  createSshCert,
-  createSshKeyPair,
-  getSshPublicKey,
-  validateExternalSshCaKeyPair
-} from "./ssh-certificate-authority-fns";
-import {
-  SshCaKeySource,
   SshCaStatus,
   TCreateSshCaDTO,
   TDeleteSshCaDTO,
