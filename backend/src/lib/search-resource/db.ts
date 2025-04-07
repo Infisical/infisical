@@ -76,10 +76,9 @@ const buildKnexQuery = (
           return void qb.orWhereILike(el, `%${value}%`);
         });
       });
-      break;
     }
     default:
-      break;
+      throw new Error(`Unsupported operator: ${String(operator)}`);
   }
 };
 

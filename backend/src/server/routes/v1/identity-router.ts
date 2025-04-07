@@ -355,7 +355,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
                     })
                     .partial()
                 ])
-                .describe(IDENTITIES.SEARCH.search.name)
+                .describe(IDENTITIES.SEARCH.search.role)
             })
             .describe(IDENTITIES.SEARCH.search.desc)
             .partial()
