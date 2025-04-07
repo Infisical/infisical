@@ -1252,21 +1252,24 @@ export const secretV2BridgeServiceFactory = ({
       : secretVersionDAL
           .findOne({
             folderId,
+            version,
             type: secretType,
             userId: secretType === SecretType.Personal ? actorId : null,
             key: secretName
           })
           .then((el) =>
-            SecretsV2Schema.extend({
-              tags: z
-                .object({ slug: z.string(), name: z.string(), id: z.string(), color: z.string() })
-                .array()
-                .default([])
-                .optional()
-            }).parse({
-              ...el,
-              id: el.secretId
-            })
+            el
+              ? SecretsV2Schema.extend({
+                  tags: z
+                    .object({ slug: z.string(), name: z.string(), id: z.string(), color: z.string() })
+                    .array()
+                    .default([])
+                    .optional()
+                }).parse({
+                  ...el,
+                  id: el.secretId
+                })
+              : undefined
           ));
 
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
