@@ -21,6 +21,7 @@ import {
   TGetIdentityByIdDTO,
   TListOrgIdentitiesByOrgIdDTO,
   TListProjectIdentitiesByIdentityIdDTO,
+  TSearchOrgIdentitiesByOrgIdDTO,
   TUpdateIdentityDTO
 } from "./identity-types";
 
@@ -288,6 +289,33 @@ export const identityServiceFactory = ({
     return { identityMemberships, totalCount };
   };
 
+  const searchOrgIdentities = async ({
+    orgId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    limit,
+    offset,
+    orderBy,
+    orderDirection,
+    searchFilter = {}
+  }: TSearchOrgIdentitiesByOrgIdDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+
+    const { totalCount, docs } = await identityOrgMembershipDAL.searchIdentities({
+      orgId,
+      limit,
+      offset,
+      orderBy,
+      orderDirection,
+      searchFilter
+    });
+
+    return { identityMemberships: docs, totalCount };
+  };
+
   const listProjectIdentitiesByIdentityId = async ({
     identityId,
     actor,
@@ -317,6 +345,7 @@ export const identityServiceFactory = ({
     deleteIdentity,
     listOrgIdentities,
     getIdentityById,
+    searchOrgIdentities,
     listProjectIdentitiesByIdentityId
   };
 };

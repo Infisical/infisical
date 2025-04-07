@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export enum CharacterType {
   Alphabets = "alphabets",
   Numbers = "numbers",
@@ -99,5 +101,12 @@ export const characterValidator = (allowedCharacters: CharacterType[]) => {
    */
   return function validate(input: string): boolean {
     return regex.test(input);
+  };
+};
+
+export const zodValidateCharacters = (allowedCharacters: CharacterType[]) => {
+  const validator = characterValidator(allowedCharacters);
+  return (schema: z.ZodString, fieldName: string) => {
+    return schema.refine(validator, { message: `${fieldName} can only contain ${allowedCharacters.join(",")}` });
   };
 };

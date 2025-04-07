@@ -66,6 +66,17 @@ export const IDENTITIES = {
   },
   LIST: {
     orgId: "The ID of the organization to list identities."
+  },
+  SEARCH: {
+    search: {
+      desc: "The filters to apply to the search.",
+      name: "The name of the identity to filter by.",
+      role: "The organizational role of the identity to filter by."
+    },
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identities to return.",
+    orderBy: "The column to order identities by.",
+    orderDirection: "The direction to order identities in."
   }
 } as const;
 
