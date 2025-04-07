@@ -2,21 +2,20 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faExclamationCircle, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faExclamationCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
-import { Button, PageHeader } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
+import { PageHeader } from "@app/components/v2";
+import { useSubscription } from "@app/context";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AllProjectView } from "./components/AllProjectView";
 import { MyProjectView } from "./components/MyProjectView";
-import { ProjectListView } from "./components/ProjectListToggle";
+import { ProjectListToggle, ProjectListView } from "./components/ProjectListToggle";
 
 const formatDescription = (type: ProjectType) => {
   if (type === ProjectType.SecretManager)
@@ -80,33 +79,30 @@ export const ProductOverviewPage = ({ type }: Props) => {
         </div>
       )}
       <div className="mb-4 flex flex-col items-start justify-start">
-        <PageHeader title="Projects" description={formatDescription(type)}>
-          <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-            {(isAllowed) => (
-              <Button
-                isDisabled={!isAllowed}
-                colorSchema="primary"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => {
-                  if (isAddingProjectsAllowed) {
-                    handlePopUpOpen("addNewWs");
-                  } else {
-                    handlePopUpOpen("upgradePlan");
-                  }
-                }}
-                className="ml-2"
-              >
-                Add New Project
-              </Button>
-            )}
-          </OrgPermissionCan>
+        <PageHeader
+          title={
+            <div className="flex items-center gap-4">
+              <ProjectListToggle value={projectListView} onChange={setProjectListView} />
+            </div>
+          }
+          description={formatDescription(type)}
+        >
         </PageHeader>
       </div>
-      {projectListView === ProjectListView.MyProjects && (
-        <MyProjectView type={type} onListViewToggle={setProjectListView} />
-      )}
-      {projectListView === ProjectListView.AllProjects && (
-        <AllProjectView type={type} onListViewToggle={setProjectListView} />
+      {projectListView === ProjectListView.MyProjects ? (
+        <MyProjectView 
+          type={type} 
+          onAddNewProject={() => handlePopUpOpen("addNewWs")}
+          onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
+          isAddingProjectsAllowed={isAddingProjectsAllowed}
+        />
+      ) : (
+        <AllProjectView 
+          type={type} 
+          onAddNewProject={() => handlePopUpOpen("addNewWs")}
+          onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
+          isAddingProjectsAllowed={isAddingProjectsAllowed}
+        />
       )}
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}

@@ -6,13 +6,15 @@ import {
   faCheck,
   faFolderOpen,
   faList,
-  faMagnifyingGlass
+  faMagnifyingGlass,
+  faPlus
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   FormControl,
@@ -27,13 +29,14 @@ import {
 import { getProjectHomePage } from "@app/helpers/project";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useRequestProjectAccess, useSearchProjects } from "@app/hooks/api";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
-
-import { ProjectListToggle, ProjectListView } from "./ProjectListToggle";
 
 type Props = {
   type: ProjectType;
-  onListViewToggle: (value: ProjectListView) => void;
+  onAddNewProject: () => void;
+  onUpgradePlan: () => void;
+  isAddingProjectsAllowed: boolean;
 };
 
 type RequestAccessModalProps = {
@@ -83,7 +86,7 @@ const RequestAccessModal = ({ projectId, onPopUpToggle }: RequestAccessModalProp
   );
 };
 
-export const AllProjectView = ({ type, onListViewToggle }: Props) => {
+export const AllProjectView = ({ type, onAddNewProject, onUpgradePlan, isAddingProjectsAllowed }: Props) => {
   const navigate = useNavigate();
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);
@@ -119,11 +122,10 @@ export const AllProjectView = ({ type, onListViewToggle }: Props) => {
   return (
     <div>
       <div className="flex w-full flex-row">
-        <ProjectListToggle value={ProjectListView.AllProjects} onChange={onListViewToggle} />
         <div className="flex-grow" />
         <Input
           className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-          containerClassName="max-w-md"
+          containerClassName="w-full"
           placeholder="Search by project name..."
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
@@ -163,6 +165,25 @@ export const AllProjectView = ({ type, onListViewToggle }: Props) => {
             <FontAwesomeIcon icon={faList} />
           </IconButton>
         </div>
+        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
+          {(isAllowed) => (
+            <Button
+              isDisabled={!isAllowed}
+              colorSchema="primary"
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() => {
+                if (isAddingProjectsAllowed) {
+                  onAddNewProject();
+                } else {
+                  onUpgradePlan();
+                }
+              }}
+              className="ml-2"
+            >
+              Add New Project
+            </Button>
+          )}
+        </OrgPermissionCan>
       </div>
       <div className="mt-4 w-full rounded-md">
         {isProjectLoading &&
@@ -266,7 +287,7 @@ export const AllProjectView = ({ type, onListViewToggle }: Props) => {
       >
         <ModalContent
           title="Confirm Access Request"
-          subTitle={`Requesting access to project ${requestedWorkspaceDetails?.name}. You may include a note for the admins.`}
+          subTitle={`Requesting access to project ${requestedWorkspaceDetails?.name}. You may include an optional note for project admins to review your request.`}
         >
           <RequestAccessModal
             onPopUpToggle={() => handlePopUpToggle("requestAccessConfirmation")}
