@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/util"
 	infisicalSdk "github.com/infisical/go-sdk"
 	infisicalSdkUtil "github.com/infisical/go-sdk/packages/util"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -46,6 +48,12 @@ var sshSignKeyCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.NoArgs,
 	Run:                   signKey,
+}
+
+var sshConnectCmd = &cobra.Command{
+	Use:   "connect",
+	Short: "Connect to an SSH host using issued credentials",
+	Run:   sshConnect,
 }
 
 var algoToFileName = map[infisicalSdkUtil.CertKeyAlgorithm]string{
@@ -595,6 +603,122 @@ func signKey(cmd *cobra.Command, args []string) {
 	fmt.Println("Successfully wrote SSH certificate to:", signedKeyPath)
 }
 
+func sshConnect(cmd *cobra.Command, args []string) {
+	token, err := util.GetInfisicalToken(cmd)
+	if err != nil {
+		util.HandleError(err, "Unable to parse token")
+	}
+
+	var infisicalToken string
+	if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
+		infisicalToken = token.Token
+	} else {
+		util.RequireLogin()
+		util.RequireLocalWorkspaceFile()
+
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
+		if err != nil {
+			util.HandleError(err, "Unable to authenticate")
+		}
+
+		if loggedInUserDetails.LoginExpired {
+			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+		}
+
+		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
+	}
+
+	customHeaders, err := util.GetInfisicalCustomHeadersMap()
+	if err != nil {
+		util.HandleError(err, "Unable to get custom headers")
+	}
+
+	infisicalClient := infisicalSdk.NewInfisicalClient(context.Background(), infisicalSdk.Config{
+		SiteUrl:          config.INFISICAL_URL,
+		UserAgent:        api.USER_AGENT,
+		AutoTokenRefresh: false,
+		CustomHeaders:    customHeaders,
+	})
+	infisicalClient.Auth().SetAccessToken(infisicalToken)
+
+	// Fetch SSH Hosts
+	hosts, err := infisicalClient.Ssh().GetSshHosts(infisicalSdk.GetSshHostsOptions{})
+	if err != nil {
+		util.HandleError(err, "Failed to fetch SSH hosts")
+	}
+	if len(hosts) == 0 {
+		util.PrintErrorMessageAndExit("You do not have access to any SSH hosts")
+	}
+
+	// Prompt to select host
+	hostNames := make([]string, len(hosts))
+	for i, h := range hosts {
+		hostNames[i] = h.Hostname
+	}
+
+	hostPrompt := promptui.Select{
+		Label: "Select an SSH Host",
+		Items: hostNames,
+		Size:  10,
+	}
+	hostIdx, _, err := hostPrompt.Run()
+	if err != nil {
+		util.HandleError(err, "Prompt failed")
+	}
+	selectedHost := hosts[hostIdx]
+
+	// Prompt to select login user
+	if len(selectedHost.LoginMappings) == 0 {
+		util.PrintErrorMessageAndExit("No login users available for selected host")
+	}
+
+	loginUsers := make([]string, len(selectedHost.LoginMappings))
+	for i, m := range selectedHost.LoginMappings {
+		loginUsers[i] = m.LoginUser
+	}
+
+	loginPrompt := promptui.Select{
+		Label: "Select Login User",
+		Items: loginUsers,
+		Size:  5,
+	}
+	loginIdx, _, err := loginPrompt.Run()
+	if err != nil {
+		util.HandleError(err, "Prompt failed")
+	}
+	selectedLoginUser := selectedHost.LoginMappings[loginIdx].LoginUser
+
+	// Issue SSH creds for host
+	creds, err := infisicalClient.Ssh().IssueCredentialsFromHost(selectedHost.ID, infisicalSdk.IssueSshCredsFromHostOptions{
+		LoginUser: selectedLoginUser,
+	})
+	if err != nil {
+		util.HandleError(err, "Failed to issue SSH credentials")
+	}
+
+	// Load credentials into SSH agent
+	err = addCredentialsToAgent(creds.PrivateKey, creds.SignedKey)
+	if err != nil {
+		util.HandleError(err, "Failed to add credentials to SSH agent")
+	}
+	fmt.Println("✔ SSH credentials successfully added to agent")
+
+	// Connect to host using system ssh and agent
+	target := fmt.Sprintf("%s@%s", selectedLoginUser, selectedHost.Hostname)
+	fmt.Printf("Connecting to %s...\n", target)
+
+	sshCmd := exec.Command("ssh", target)
+	sshCmd.Stdin = os.Stdin
+	sshCmd.Stdout = os.Stdout
+	sshCmd.Stderr = os.Stderr
+
+	err = sshCmd.Run()
+	if err != nil {
+		util.HandleError(err, "SSH connection failed")
+	}	
+}
+
+
 func init() {
 	sshSignKeyCmd.Flags().String("token", "", "Issue SSH certificate using machine identity access token")
 	sshSignKeyCmd.Flags().String("certificateTemplateId", "", "The ID of the SSH certificate template to issue the SSH certificate for")
@@ -617,5 +741,9 @@ func init() {
 	sshIssueCredentialsCmd.Flags().String("outFilePath", "", "The path to write the SSH credentials to such as ~/.ssh, ./some_folder, ./some_folder/id_rsa-cert.pub. If not provided, the credentials will be saved to the current working directory")
 	sshIssueCredentialsCmd.Flags().Bool("addToAgent", false, "Whether to add issued SSH credentials to the SSH agent")
 	sshCmd.AddCommand(sshIssueCredentialsCmd)
+
+	sshConnectCmd.Flags().String("token", "", "Use a machine identity access token")
+	sshCmd.AddCommand(sshConnectCmd)
 	rootCmd.AddCommand(sshCmd)
+
 }
