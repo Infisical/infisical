@@ -53,7 +53,11 @@ func CheckForUpdate() {
 	}
 }
 
-func DisplayAptInstallationChangeBanner() {
+func DisplayAptInstallationChangeBanner(isSilent bool) {
+	if isSilent {
+		return
+	}
+
 	if runtime.GOOS == "linux" {
 		_, err := exec.LookPath("apt-get")
 		isApt := err == nil

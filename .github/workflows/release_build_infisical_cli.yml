@@ -132,9 +132,10 @@ jobs:
       - name: Install deb-s3
         run: gem install deb-s3
       - name: Configure GPG Key
-        run: echo -n "$GPG_SIGNING_KEY" | base64 --decode | gpg --import
+        run: echo -n "$GPG_SIGNING_KEY" | base64 --decode | gpg --batch --passphrase "$GPG_SIGNING_KEY_PASSPHRASE" --import
         env:
           GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+          GPG_SIGNING_KEY_PASSPHRASE: ${{ secrets.GPG_SIGNING_KEY_PASSPHRASE }}
       - name: Publish to CloudSmith
         run: sh cli/upload_to_cloudsmith.sh
         env:
