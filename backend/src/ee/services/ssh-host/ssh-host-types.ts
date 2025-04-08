@@ -33,6 +33,12 @@ export type TDeleteSshHostDTO = {
   sshHostId: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TIssueSshCredsFromHostDTO = {
+export type TIssueSshHostUserCertDTO = {
   sshHostId: string;
+  loginUser: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TIssueSshHostHostCertDTO = {
+  sshHostId: string;
+  publicKey: string;
 } & Omit<TProjectPermission, "projectId">;

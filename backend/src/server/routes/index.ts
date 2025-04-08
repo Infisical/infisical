@@ -803,6 +803,8 @@ export const registerRoutes = async (
     projectSshConfigDAL,
     sshCertificateAuthorityDAL,
     sshCertificateAuthoritySecretDAL,
+    sshCertificateDAL,
+    sshCertificateBodyDAL,
     sshHostDAL,
     sshHostLoginMappingDAL,
     permissionService,

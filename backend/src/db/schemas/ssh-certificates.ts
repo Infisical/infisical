@@ -18,7 +18,8 @@ export const SshCertificatesSchema = z.object({
   principals: z.string().array(),
   keyId: z.string(),
   notBefore: z.date(),
-  notAfter: z.date()
+  notAfter: z.date(),
+  sshHostId: z.string().uuid().nullable().optional()
 });
 
 export type TSshCertificates = z.infer<typeof SshCertificatesSchema>;

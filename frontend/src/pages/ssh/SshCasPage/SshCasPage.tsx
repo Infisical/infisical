@@ -3,9 +3,9 @@ import { useTranslation } from "react-i18next";
 
 import { PageHeader } from "@app/components/v2";
 
-import { SshHostsSection } from "./components";
+import { SshCaSection } from "./components";
 
-export const SshHostsPage = () => {
+export const SshCasPage = () => {
   const { t } = useTranslation();
   return (
     <>
@@ -16,10 +16,10 @@ export const SshHostsPage = () => {
         <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
           <div className="mx-auto mb-6 w-full max-w-7xl">
             <PageHeader
-              title="Hosts"
-              description="Manage your SSH hosts, configure access policies, and define login behavior for secure connections."
+              title="SSH Certificate Authorities"
+              description="Manage the SSH certificate authorities used to sign user and host certificates, including custom and default CAs."
             />
-            <SshHostsSection />
+            <SshCaSection />
           </div>
         </div>
       </div>

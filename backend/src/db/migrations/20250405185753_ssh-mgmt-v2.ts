@@ -47,6 +47,14 @@ export async function up(knex: Knex): Promise<void> {
     });
     await createOnUpdateTrigger(knex, TableName.ProjectSshConfig);
   }
+
+  const hasColumn = await knex.schema.hasColumn(TableName.SshCertificate, "sshHostId");
+  if (!hasColumn) {
+    await knex.schema.alterTable(TableName.SshCertificate, (t) => {
+      t.uuid("sshHostId").nullable();
+      t.foreign("sshHostId").references("id").inTable(TableName.SshHost).onDelete("SET NULL");
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -58,4 +66,11 @@ export async function down(knex: Knex): Promise<void> {
 
   await knex.schema.dropTableIfExists(TableName.SshHost);
   await dropOnUpdateTrigger(knex, TableName.SshHost);
+
+  const hasColumn = await knex.schema.hasColumn(TableName.SshCertificate, "sshHostId");
+  if (hasColumn) {
+    await knex.schema.alterTable(TableName.SshCertificate, (t) => {
+      t.dropColumn("sshHostId");
+    });
+  }
 }

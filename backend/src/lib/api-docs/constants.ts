@@ -1348,11 +1348,21 @@ export const SSH_HOSTS = {
     sshHostId: "The ID of the SSH host to delete."
   },
   ISSUE_SSH_CREDENTIALS: {
+    sshHostId: "The ID of the SSH host to issue the SSH credentials for.",
+    loginUser: "The login user to issue the SSH credentials for.",
     keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH host.",
     serialNumber: "The serial number of the issued SSH certificate.",
     signedKey: "The SSH certificate or signed SSH public key.",
     privateKey: "The private key corresponding to the issued SSH certificate.",
     publicKey: "The public key of the issued SSH certificate."
+  },
+  ISSUE_HOST_CERT: {
+    publicKey: "The SSH public key to issue the SSH certificate for.",
+    serialNumber: "The serial number of the issued SSH certificate.",
+    signedKey: "The SSH certificate or signed SSH public key."
+  },
+  GET_USER_CA_PUBLIC_KEY: {
+    sshHostId: "The ID of the SSH host to get the user SSH CA public key for."
   }
 };
 

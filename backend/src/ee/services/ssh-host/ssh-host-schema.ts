@@ -5,5 +5,7 @@ export const sanitizedSshHost = SshHostsSchema.pick({
   projectId: true,
   hostname: true,
   userCertTtl: true,
-  hostCertTtl: true
+  hostCertTtl: true,
+  userSshCaId: true,
+  hostSshCaId: true
 });

@@ -93,3 +93,10 @@ export const userEngagementLimit: RateLimitOptions = {
   max: 5,
   keyGenerator: (req) => req.realIp
 };
+
+export const publicSshCaLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 30, // conservative default
+  keyGenerator: (req) => req.realIp
+};

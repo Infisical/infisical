@@ -5,23 +5,31 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
 import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
+import { TSshCertificateBodyDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-body-dal";
+import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { TSshHostLoginMappingDALFactory } from "@app/ee/services/ssh-host/ssh-host-login-mapping-dal";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectSshConfigDALFactory } from "@app/services/project/project-ssh-config-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { convertActorToPrincipals, createSshCert, createSshKeyPair } from "../ssh/ssh-certificate-authority-fns";
+import {
+  convertActorToPrincipals,
+  createSshCert,
+  createSshKeyPair,
+  getSshPublicKey
+} from "../ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "../ssh/ssh-certificate-authority-types";
 import {
   TCreateSshHostDTO,
   TDeleteSshHostDTO,
   TGetSshHostDTO,
-  TIssueSshCredsFromHostDTO,
+  TIssueSshHostHostCertDTO,
+  TIssueSshHostUserCertDTO,
   TListSshHostsDTO,
   TUpdateSshHostDTO
 } from "./ssh-host-types";
@@ -32,6 +40,8 @@ type TSshCertificateAuthorityServiceFactoryDep = {
   projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "findOne">;
   sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "findById">;
   sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "findOne">;
+  sshCertificateDAL: Pick<TSshCertificateDALFactory, "create" | "transaction">;
+  sshCertificateBodyDAL: Pick<TSshCertificateBodyDALFactory, "create">;
   sshHostDAL: Pick<
     TSshHostDALFactory,
     | "transaction"
@@ -64,6 +74,8 @@ export const sshHostServiceFactory = ({
   projectSshConfigDAL,
   sshCertificateAuthorityDAL,
   sshCertificateAuthoritySecretDAL,
+  sshCertificateDAL,
+  sshCertificateBodyDAL,
   sshHostDAL,
   sshHostLoginMappingDAL,
   permissionService,
@@ -104,15 +116,13 @@ export const sshHostServiceFactory = ({
       }
     }
 
-    // const principals = await convertActorToPrincipals({
-    //   actor,
-    //   actorId,
-    //   userDAL
-    // });
+    const principals = await convertActorToPrincipals({
+      actor,
+      actorId,
+      userDAL
+    });
 
-    const hosts = await sshHostDAL.findSshHostsWithPrincipalsAcrossProjects(projectIdsWithAccess, [
-      "dangtony98+2@gmail.com" // hardcode for now
-    ]);
+    const hosts = await sshHostDAL.findSshHostsWithPrincipalsAcrossProjects(projectIdsWithAccess, principals);
 
     return hosts;
   };
@@ -336,13 +346,14 @@ export const sshHostServiceFactory = ({
    *
    * Note: Used for issuing SSH credentials as part of request against a specific SSH Host.
    */
-  const issueSshCredsFromHost = async ({
+  const issueSshHostUserCert = async ({
     sshHostId,
+    loginUser,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
-  }: TIssueSshCredsFromHostDTO) => {
+  }: TIssueSshHostUserCertDTO) => {
     const host = await sshHostDAL.findSshHostByIdWithLoginMappings(sshHostId);
     if (!host) {
       throw new NotFoundError({
@@ -376,15 +387,28 @@ export const sshHostServiceFactory = ({
       cipherTextBlob: sshCaSecret.encryptedPrivateKey
     });
 
-    // create user key pair
-    const keyAlgorithm = SshCertKeyAlgorithm.ED25519; // (dangtony98): will support more algorithms in the future
+    // (dangtony98): will support more algorithms in the future
+    const keyAlgorithm = SshCertKeyAlgorithm.ED25519;
     const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
 
-    const principals = await convertActorToPrincipals({
+    const internalPrincipals = await convertActorToPrincipals({
       actor,
       actorId,
       userDAL
     });
+
+    const mapping = host.loginMappings.find(
+      (m) => m.loginUser === loginUser && m.allowedPrincipals.some((allowed) => internalPrincipals.includes(allowed))
+    );
+
+    if (!mapping) {
+      throw new UnauthorizedError({
+        message: `You are not allowed to login as ${loginUser} on this host`
+      });
+    }
+
+    // (dangtony98): include the loginUser as a principal on the issued certificate
+    const principals = [...internalPrincipals, loginUser];
 
     const { serialNumber, signedPublicKey, ttl } = await createSshCert({
       caPrivateKey: decryptedCaPrivateKey.toString("utf8"),
@@ -395,15 +419,159 @@ export const sshHostServiceFactory = ({
       certType: SshCertType.USER
     });
 
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: host.projectId
+    });
+
+    const encryptedCertificate = secretManagerEncryptor({
+      plainText: Buffer.from(signedPublicKey, "utf8")
+    }).cipherTextBlob;
+
+    await sshCertificateDAL.transaction(async (tx) => {
+      const cert = await sshCertificateDAL.create(
+        {
+          sshCaId: host.hostSshCaId,
+          sshHostId: host.id,
+          serialNumber,
+          certType: SshCertType.USER,
+          principals,
+          keyId,
+          notBefore: new Date(),
+          notAfter: new Date(Date.now() + ttl * 1000)
+        },
+        tx
+      );
+
+      await sshCertificateBodyDAL.create(
+        {
+          sshCertId: cert.id,
+          encryptedCertificate
+        },
+        tx
+      );
+    });
+
     return {
+      host,
+      principals,
       serialNumber,
       signedPublicKey,
       privateKey,
       publicKey,
       ttl,
-      keyId,
       keyAlgorithm
     };
+  };
+
+  const issueSshHostHostCert = async ({
+    sshHostId,
+    publicKey,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TIssueSshHostHostCertDTO) => {
+    const host = await sshHostDAL.findSshHostByIdWithLoginMappings(sshHostId);
+    if (!host) {
+      throw new NotFoundError({
+        message: `SSH host with ID ${sshHostId} not found`
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: host.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshHosts);
+    // TODO: update permissions
+
+    const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: host.hostSshCaId });
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: host.projectId
+    });
+
+    const decryptedCaPrivateKey = secretManagerDecryptor({
+      cipherTextBlob: sshCaSecret.encryptedPrivateKey
+    });
+
+    const principals = [host.hostname];
+    const keyId = `host:${host.hostname}`;
+
+    const { serialNumber, signedPublicKey, ttl } = await createSshCert({
+      caPrivateKey: decryptedCaPrivateKey.toString("utf8"),
+      clientPublicKey: publicKey,
+      keyId,
+      principals,
+      requestedTtl: host.hostCertTtl,
+      certType: SshCertType.HOST
+    });
+
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: host.projectId
+    });
+
+    const encryptedCertificate = secretManagerEncryptor({
+      plainText: Buffer.from(signedPublicKey, "utf8")
+    }).cipherTextBlob;
+
+    await sshCertificateDAL.transaction(async (tx) => {
+      const cert = await sshCertificateDAL.create(
+        {
+          sshCaId: host.hostSshCaId,
+          sshHostId: host.id,
+          serialNumber,
+          certType: SshCertType.HOST,
+          principals,
+          keyId,
+          notBefore: new Date(),
+          notAfter: new Date(Date.now() + ttl * 1000)
+        },
+        tx
+      );
+
+      await sshCertificateBodyDAL.create(
+        {
+          sshCertId: cert.id,
+          encryptedCertificate
+        },
+        tx
+      );
+    });
+
+    return { host, principals, serialNumber, signedPublicKey };
+  };
+
+  const getSshHostUserCaPk = async (sshHostId: string) => {
+    const host = await sshHostDAL.findById(sshHostId);
+    if (!host) {
+      throw new NotFoundError({
+        message: `SSH host with ID ${sshHostId} not found`
+      });
+    }
+
+    const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: host.userSshCaId });
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: host.projectId
+    });
+
+    const decryptedCaPrivateKey = secretManagerDecryptor({
+      cipherTextBlob: sshCaSecret.encryptedPrivateKey
+    });
+
+    const publicKey = await getSshPublicKey(decryptedCaPrivateKey.toString("utf-8"));
+
+    return publicKey;
   };
 
   return {
@@ -412,6 +580,8 @@ export const sshHostServiceFactory = ({
     updateSshHost,
     deleteSshHost,
     getSshHost,
-    issueSshCredsFromHost
+    issueSshHostUserCert,
+    issueSshHostHostCert,
+    getSshHostUserCaPk
   };
 };

@@ -300,7 +300,12 @@ export const validateSshCertificateTtl = (template: TSshCertificateTemplates, tt
  * that it only contains alphanumeric characters with no spaces.
  */
 export const validateSshCertificateKeyId = (keyId: string) => {
-  const regex = characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen]);
+  const regex = characterValidator([
+    CharacterType.AlphaNumeric,
+    CharacterType.Hyphen,
+    CharacterType.Colon,
+    CharacterType.Period
+  ]);
   if (!regex(keyId)) {
     throw new BadRequestError({
       message:

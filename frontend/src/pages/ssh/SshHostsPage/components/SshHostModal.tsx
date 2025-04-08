@@ -217,11 +217,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                 </div>
                 <div className="flex-grow">
                   {i === 0 && (
-                    <FormLabel
-                      label="Allowed Principals"
-                      className="text-xs text-mineshaft-400"
-                      isOptional
-                    />
+                    <FormLabel label="Allowed Principals" className="text-xs text-mineshaft-400" />
                   )}
                   <Controller
                     control={control}

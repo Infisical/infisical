@@ -181,6 +181,12 @@ export enum EventType {
   UPDATE_SSH_CERTIFICATE_TEMPLATE = "update-ssh-certificate-template",
   DELETE_SSH_CERTIFICATE_TEMPLATE = "delete-ssh-certificate-template",
   GET_SSH_CERTIFICATE_TEMPLATE = "get-ssh-certificate-template",
+  CREATE_SSH_HOST = "create-ssh-host",
+  UPDATE_SSH_HOST = "update-ssh-host",
+  DELETE_SSH_HOST = "delete-ssh-host",
+  GET_SSH_HOST = "get-ssh-host",
+  ISSUE_SSH_HOST_USER_CERT = "issue-ssh-host-user-cert",
+  ISSUE_SSH_HOST_HOST_CERT = "issue-ssh-host-host-cert",
   CREATE_CA = "create-certificate-authority",
   GET_CA = "get-certificate-authority",
   UPDATE_CA = "update-certificate-authority",
@@ -1455,6 +1461,76 @@ interface DeleteSshCertificateTemplate {
   };
 }
 
+interface CreateSshHost {
+  type: EventType.CREATE_SSH_HOST;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+    userCertTtl: string;
+    hostCertTtl: string;
+    loginMappings: {
+      loginUser: string;
+      allowedPrincipals: string[];
+    }[];
+    userSshCaId: string;
+    hostSshCaId: string;
+  };
+}
+
+interface UpdateSshHost {
+  type: EventType.UPDATE_SSH_HOST;
+  metadata: {
+    sshHostId: string;
+    hostname?: string;
+    userCertTtl?: string;
+    hostCertTtl?: string;
+    loginMappings?: {
+      loginUser: string;
+      allowedPrincipals: string[];
+    }[];
+    userSshCaId?: string;
+    hostSshCaId?: string;
+  };
+}
+
+interface DeleteSshHost {
+  type: EventType.DELETE_SSH_HOST;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+  };
+}
+
+interface GetSshHost {
+  type: EventType.GET_SSH_HOST;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+  };
+}
+
+interface IssueSshHostUserCert {
+  type: EventType.ISSUE_SSH_HOST_USER_CERT;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+    loginUser: string;
+    principals: string[];
+    ttl: string;
+  };
+}
+
+interface IssueSshHostHostCert {
+  type: EventType.ISSUE_SSH_HOST_HOST_CERT;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+    serialNumber: string;
+    principals: string[];
+    ttl: string;
+  };
+}
+
 interface CreateCa {
   type: EventType.CREATE_CA;
   metadata: {
@@ -2409,6 +2485,12 @@ export type Event =
   | UpdateSshCertificateTemplate
   | GetSshCertificateTemplate
   | DeleteSshCertificateTemplate
+  | CreateSshHost
+  | UpdateSshHost
+  | DeleteSshHost
+  | GetSshHost
+  | IssueSshHostUserCert
+  | IssueSshHostHostCert
   | CreateCa
   | GetCa
   | UpdateCa

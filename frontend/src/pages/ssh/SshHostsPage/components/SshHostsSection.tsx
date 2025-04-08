@@ -21,9 +21,7 @@ export const SshHostsSection = () => {
 
   const onRemoveSshHostSubmit = async (sshHostId: string) => {
     try {
-      console.log("pre onRemoveSshHostSubmit");
       const host = await deleteSshHost({ sshHostId });
-      console.log("post onRemoveSshHostSubmit deleted host: ", host);
 
       createNotification({
         text: `Successfully deleted SSH host: ${host.hostname}`,
