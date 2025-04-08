@@ -126,9 +126,10 @@ jobs:
           GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
       - uses: actions/setup-python@v4
       - run: pip install --upgrade cloudsmith-cli
-      - uses: ruby/setup-ruby@ec02537da5712d66d4d50a0f33b7eb52773b5ed1
+      - uses: ruby/setup-ruby@354a1ad156761f5ee2b7b13fa8e09943a5e8d252
         with:
-          ruby-version: "3.1" # Not needed with a .ruby-version file
+          ruby-version: "3.3" # Not needed with a .ruby-version, .tool-versions or mise.toml
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
       - name: Install deb-s3
         run: gem install deb-s3
       - name: Configure GPG Key
