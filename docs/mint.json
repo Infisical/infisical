@@ -417,13 +417,13 @@
             "integrations/app-connections/aws",
             "integrations/app-connections/azure-app-configuration",
             "integrations/app-connections/azure-key-vault",
+            "integrations/app-connections/camunda",
             "integrations/app-connections/databricks",
             "integrations/app-connections/gcp",
             "integrations/app-connections/github",
             "integrations/app-connections/humanitec",
             "integrations/app-connections/mssql",
-            "integrations/app-connections/postgres",
-            "integrations/app-connections/camunda"
+            "integrations/app-connections/postgres"
           ]
         }
       ]
@@ -439,6 +439,7 @@
             "integrations/secret-syncs/aws-secrets-manager",
             "integrations/secret-syncs/azure-app-configuration",
             "integrations/secret-syncs/azure-key-vault",
+            "integrations/secret-syncs/camunda",
             "integrations/secret-syncs/databricks",
             "integrations/secret-syncs/gcp-secret-manager",
             "integrations/secret-syncs/github",
