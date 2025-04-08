@@ -422,7 +422,8 @@
             "integrations/app-connections/github",
             "integrations/app-connections/humanitec",
             "integrations/app-connections/mssql",
-            "integrations/app-connections/postgres"
+            "integrations/app-connections/postgres",
+            "integrations/app-connections/camunda"
           ]
         }
       ]
