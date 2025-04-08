@@ -15,7 +15,7 @@ monorepo:
   tag_prefix: infisical-cli/
   dir: cli
 
-# builds:
+builds:
 #   - id: darwin-build
 #     binary: infisical
 #     ldflags:
@@ -34,35 +34,35 @@ monorepo:
 #         goarch: "386"
 #     dir: ./cli
 
-#   - id: all-other-builds
-#     env:
-#       - CGO_ENABLED=0
-#     binary: infisical
-#     ldflags:
-#       - -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Version }}
-#       - -X github.com/Infisical/infisical-merge/packages/telemetry.POSTHOG_API_KEY_FOR_CLI={{ .Env.POSTHOG_API_KEY_FOR_CLI }}
-#     flags:
-#       - -trimpath
-#     goos:
-#       - freebsd
-#       - linux
-#       - netbsd
-#       - openbsd
-#       - windows
-#     goarch:
-#       - "386"
-#       - amd64
-#       - arm
-#       - arm64
-#     goarm:
-#       - "6"
-#       - "7"
-#     ignore:
-#       - goos: windows
-#         goarch: "386"
-#       - goos: freebsd
-#         goarch: "386"
-#     dir: ./cli
+  - id: all-other-builds
+    env:
+      - CGO_ENABLED=0
+    binary: infisical
+    ldflags:
+      - -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Version }}
+      - -X github.com/Infisical/infisical-merge/packages/telemetry.POSTHOG_API_KEY_FOR_CLI={{ .Env.POSTHOG_API_KEY_FOR_CLI }}
+    flags:
+      - -trimpath
+    goos:
+      # - freebsd
+      - linux
+      # - netbsd
+      # - openbsd
+      # - windows
+    goarch:
+      - "386"
+      - amd64
+      - arm
+      - arm64
+    goarm:
+      - "6"
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: "386"
+      - goos: freebsd
+        goarch: "386"
+    dir: ./cli
 
 archives:
   - format_overrides:
@@ -138,10 +138,10 @@ nfpms:
     description: The offical Infisical CLI
     license: MIT
     formats:
-      - rpm
+      # - rpm
       - deb
-      - apk
-      - archlinux
+      # - apk
+      # - archlinux
     bindir: /usr/bin
     contents:
       - src: ./completions/infisical.bash
