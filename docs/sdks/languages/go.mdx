@@ -906,6 +906,9 @@ res, err := client.Kms().Signing().SignData(infisical.KmsSignDataOptions{
     <ParamField query="Data" type="string" required>
       The data to sign. Must be a base64 encoded string.
     </ParamField>
+    <ParamField query="IsDigest" type="boolean" optional>
+      Whether the data is already digested or not.
+    </ParamField>
     <ParamField query="SigningAlgorithm" type="string" required>
       The signing algorithm to use. You must use a signing algorithm that matches the key usage.
 
@@ -929,19 +932,9 @@ res, err := client.Kms().Signing().SignData(infisical.KmsSignDataOptions{
   </Expandable>
 </ParamField>
 
-#### Return (object)
-<ParamField query="Return" type="object">
-  <Expandable title="properties">
-    <ParamField query="Signature" type="string" required>
-      The signature of the data that was signed.
-  </ParamField>
-  <ParamField query="KeyId" type="string" required>
-    The ID of the key that was used to sign the data.
-  </ParamField>
-  <ParamField query="SigningAlgorithm" type="string" required>
-      The signing algorithm that was used to sign the data.
-    </ParamField>
-  </Expandable>
+#### Return ([]byte)
+<ParamField query="Return" type="[]byte">
+  The signature of the data that was signed.
 </ParamField>
 
 ### Verifying Data
@@ -966,6 +959,9 @@ res, err := client.Kms().Signing().Verify(infisical.KmsVerifyDataOptions{
     </ParamField>
     <ParamField query="Data" type="string" required>
       The data to verify. Must be a base64 encoded string.
+    </ParamField>
+    <ParamField query="IsDigest" type="boolean" optional>
+      Whether the data is already digested or not.
     </ParamField>
     <ParamField query="SigningAlgorithm" type="string" required>
       The signing algorithm that was used to sign the data.
