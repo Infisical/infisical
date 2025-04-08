@@ -60,7 +60,7 @@ func DisplayAptInstallationChangeBanner() {
 		if isApt {
 			yellow := color.New(color.FgYellow).SprintFunc()
 			msg := fmt.Sprintf("%s",
-				yellow("Update Required: Your current package installation script is outdated and will no longer receive updates.\nPlease update to the new installation script by running. For more information, visit: https://infisical.com/docs/cli/overview#installation debian section\n"),
+				yellow("Update Required: Your current package installation script is outdated and will no longer receive updates.\nPlease update to the new installation script which can be found here https://infisical.com/docs/cli/overview#installation debian section\n"),
 			)
 
 			fmt.Fprintln(os.Stderr, msg)
