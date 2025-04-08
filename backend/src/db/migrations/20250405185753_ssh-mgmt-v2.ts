@@ -17,6 +17,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("userSshCaId").references("id").inTable(TableName.SshCertificateAuthority).onDelete("CASCADE");
       t.uuid("hostSshCaId").notNullable();
       t.foreign("hostSshCaId").references("id").inTable(TableName.SshCertificateAuthority).onDelete("CASCADE");
+      t.unique(["projectId", "hostname"]);
     });
     await createOnUpdateTrigger(knex, TableName.SshHost);
   }

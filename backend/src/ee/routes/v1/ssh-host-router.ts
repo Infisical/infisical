@@ -101,7 +101,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
-      description: "Create SSH Host",
+      description: "Add an SSH Host",
       body: z.object({
         projectId: z.string().describe(SSH_HOSTS.CREATE.projectId),
         hostname: z
@@ -311,7 +311,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Issue SSH credentials (certificate + key)",
+      description: "Issue SSH certificate for user",
       params: z.object({
         sshHostId: z.string().describe(SSH_HOSTS.ISSUE_SSH_CREDENTIALS.sshHostId)
       }),

@@ -56,6 +56,12 @@ var sshConnectCmd = &cobra.Command{
 	Run:   sshConnect,
 }
 
+var sshAddHostCmd = &cobra.Command{
+	Use:   "add-host",
+	Short: "Register a new SSH host with Infisical",
+	Run:   sshAddHost,
+}
+
 var algoToFileName = map[infisicalSdkUtil.CertKeyAlgorithm]string{
 	infisicalSdkUtil.RSA2048:   "id_rsa_2048",
 	infisicalSdkUtil.RSA4096:   "id_rsa_4096",
@@ -689,7 +695,7 @@ func sshConnect(cmd *cobra.Command, args []string) {
 	selectedLoginUser := selectedHost.LoginMappings[loginIdx].LoginUser
 
 	// Issue SSH creds for host
-	creds, err := infisicalClient.Ssh().IssueCredentialsFromHost(selectedHost.ID, infisicalSdk.IssueSshCredsFromHostOptions{
+	creds, err := infisicalClient.Ssh().IssueSshHostUserCert(selectedHost.ID, infisicalSdk.IssueSshHostUserCertOptions{
 		LoginUser: selectedLoginUser,
 	})
 	if err != nil {
@@ -718,7 +724,101 @@ func sshConnect(cmd *cobra.Command, args []string) {
 	}	
 }
 
+func sshAddHost(cmd *cobra.Command, args []string) {
 
+	token, err := util.GetInfisicalToken(cmd)
+	if err != nil {
+		util.HandleError(err, "Unable to parse token")
+	}
+
+	var infisicalToken string
+	if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
+		infisicalToken = token.Token
+	} else {
+		util.RequireLogin()
+		util.RequireLocalWorkspaceFile()
+
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
+		if err != nil {
+			util.HandleError(err, "Unable to authenticate")
+		}
+		if loggedInUserDetails.LoginExpired {
+			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login]")
+		}
+		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
+	}
+
+	projectId, err := cmd.Flags().GetString("projectId")
+	if err != nil {
+		util.HandleError(err, "Unable to parse --projectId flag")
+	}
+	if projectId == "" {
+		util.PrintErrorMessageAndExit("You must provide --projectId")
+	}
+
+	hostname, err := cmd.Flags().GetString("hostname")
+	if err != nil {
+		util.HandleError(err, "Unable to parse --hostname flag")
+	}
+	if hostname == "" {
+		util.PrintErrorMessageAndExit("You must provide --hostname")
+	}
+
+	writeUserCaToFile, err := cmd.Flags().GetBool("writeUserCaToFile")
+	if err != nil {
+		util.HandleError(err, "Unable to parse --writeUserCaToFile flag")
+	}
+
+	userCaOutFilePath, err := cmd.Flags().GetString("userCaOutFilePath")
+	if err != nil {
+		util.HandleError(err, "Unable to parse --userCaOutFilePath flag")
+	}
+
+	customHeaders, err := util.GetInfisicalCustomHeadersMap()
+	if err != nil {
+		util.HandleError(err, "Unable to get custom headers")
+	}
+
+	client := infisicalSdk.NewInfisicalClient(context.Background(), infisicalSdk.Config{
+		SiteUrl:          config.INFISICAL_URL,
+		UserAgent:        api.USER_AGENT,
+		AutoTokenRefresh: false,
+		CustomHeaders:    customHeaders,
+	})
+	client.Auth().SetAccessToken(infisicalToken)
+
+	host, err := client.Ssh().AddSshHost(infisicalSdk.AddSshHostOptions{
+		ProjectID: projectId,
+		Hostname:  hostname,
+	})
+	if err != nil {
+		util.HandleError(err, "Failed to register SSH host")
+	}
+
+	fmt.Println("✅ Successfully registered host:", host.Hostname)
+
+	publicKey, err := client.Ssh().GetSshHostUserCaPublicKey(host.ID)
+	if err != nil {
+		util.HandleError(err, "Failed to fetch associated User CA public key")
+	}
+
+	if writeUserCaToFile {
+		// Expand ~ if used in file path
+		if strings.HasPrefix(userCaOutFilePath, "~") {
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				util.HandleError(err, "Unable to resolve ~ in userCaOutFilePath")
+			}
+			userCaOutFilePath = strings.Replace(userCaOutFilePath, "~", homeDir, 1)
+		}
+
+		if err := writeToFile(userCaOutFilePath, publicKey, 0644); err != nil {
+			util.HandleError(err, "Failed to write User CA public key to file")
+		}
+
+		fmt.Println("📁 Wrote User CA public key to:", userCaOutFilePath)
+	}
+}
 func init() {
 	sshSignKeyCmd.Flags().String("token", "", "Issue SSH certificate using machine identity access token")
 	sshSignKeyCmd.Flags().String("certificateTemplateId", "", "The ID of the SSH certificate template to issue the SSH certificate for")
@@ -744,6 +844,14 @@ func init() {
 
 	sshConnectCmd.Flags().String("token", "", "Use a machine identity access token")
 	sshCmd.AddCommand(sshConnectCmd)
-	rootCmd.AddCommand(sshCmd)
 
+	sshAddHostCmd.Flags().String("token", "", "Use a machine identity access token")
+	sshAddHostCmd.Flags().String("projectId", "", "Project ID the host belongs to (required)")
+	sshAddHostCmd.Flags().String("hostname", "", "Hostname of the SSH host (required)")
+	sshAddHostCmd.Flags().Bool("writeUserCaToFile", false, "Write User CA public key to /etc/ssh/infisical_user_ca.pub")
+	sshAddHostCmd.Flags().String("userCaOutFilePath", "/etc/ssh/infisical_user_ca.pub", "Custom file path to write the User CA public key")
+
+	sshCmd.AddCommand(sshAddHostCmd)
+
+	rootCmd.AddCommand(sshCmd)
 }
