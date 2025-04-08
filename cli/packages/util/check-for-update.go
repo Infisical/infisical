@@ -53,6 +53,21 @@ func CheckForUpdate() {
 	}
 }
 
+func DisplayAptInstallationChangeBanner() {
+	if runtime.GOOS == "linux" {
+		_, err := exec.LookPath("apt-get")
+		isApt := err == nil
+		if isApt {
+			yellow := color.New(color.FgYellow).SprintFunc()
+			msg := fmt.Sprintf("%s",
+				yellow("Update Required: Your current package installation script is outdated and will no longer receive updates.\nPlease update to the new installation script which can be found here https://infisical.com/docs/cli/overview#installation debian section\n"),
+			)
+
+			fmt.Fprintln(os.Stderr, msg)
+		}
+	}
+}
+
 func getLatestTag(repoOwner string, repoName string) (string, string, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", repoOwner, repoName)
 	resp, err := http.Get(url)
