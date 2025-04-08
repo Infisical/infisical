@@ -16,6 +16,7 @@ import { GitHubSyncDestinationSection } from "@app/pages/secret-manager/SecretSy
 
 import { AzureAppConfigurationSyncDestinationSection } from "./AzureAppConfigurationSyncDestinationSection";
 import { AzureKeyVaultSyncDestinationSection } from "./AzureKeyVaultSyncDestinationSection";
+import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
 
@@ -56,6 +57,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.Humanitec:
       DestinationComponents = <HumanitecSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Camunda:
+      DestinationComponents = <CamundaSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

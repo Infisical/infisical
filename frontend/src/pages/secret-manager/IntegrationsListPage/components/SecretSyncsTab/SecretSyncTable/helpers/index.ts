@@ -73,6 +73,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       }
       secondaryText = `Organization - ${destinationConfig.org}`;
       break;
+    case SecretSync.Camunda:
+      primaryText = destinationConfig.clusterUUID;
+      secondaryText = "Cluster";
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

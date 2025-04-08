@@ -10,6 +10,12 @@ import {
   TAwsSecretsManagerSyncWithCredentials
 } from "@app/services/secret-sync/aws-secrets-manager";
 import {
+  TCamundaSync,
+  TCamundaSyncInput,
+  TCamundaSyncListItem,
+  TCamundaSyncWithCredentials
+} from "@app/services/secret-sync/camunda";
+import {
   TDatabricksSync,
   TDatabricksSyncInput,
   TDatabricksSyncListItem,
@@ -58,7 +64,8 @@ export type TSecretSync =
   | TAzureKeyVaultSync
   | TAzureAppConfigurationSync
   | TDatabricksSync
-  | THumanitecSync;
+  | THumanitecSync
+  | TCamundaSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -68,7 +75,8 @@ export type TSecretSyncWithCredentials =
   | TAzureKeyVaultSyncWithCredentials
   | TAzureAppConfigurationSyncWithCredentials
   | TDatabricksSyncWithCredentials
-  | THumanitecSyncWithCredentials;
+  | THumanitecSyncWithCredentials
+  | TCamundaSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -78,7 +86,8 @@ export type TSecretSyncInput =
   | TAzureKeyVaultSyncInput
   | TAzureAppConfigurationSyncInput
   | TDatabricksSyncInput
-  | THumanitecSyncInput;
+  | THumanitecSyncInput
+  | TCamundaSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -88,7 +97,8 @@ export type TSecretSyncListItem =
   | TAzureKeyVaultSyncListItem
   | TAzureAppConfigurationSyncListItem
   | TDatabricksSyncListItem
-  | THumanitecSyncListItem;
+  | THumanitecSyncListItem
+  | TCamundaSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
