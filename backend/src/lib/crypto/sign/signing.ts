@@ -1,15 +1,27 @@
+import { execFile } from "child_process";
 import crypto from "crypto";
+import fs from "fs/promises";
+import os from "os";
+import path from "path";
+import { promisify } from "util";
 
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { AsymmetricKeyAlgorithm, SigningAlgorithm, TAsymmetricSignVerifyFns } from "./types";
 
-// Map of signing algorithms to their parameters
+const execFileAsync = promisify(execFile);
+
 interface SigningParams {
-  hashAlgorithm: string;
-  padding?: number; // Will use crypto.constants values
+  hashAlgorithm: SupportedHashAlgorithm;
+  padding?: number;
   saltLength?: number;
+}
+
+enum SupportedHashAlgorithm {
+  SHA256 = "sha256",
+  SHA384 = "sha384",
+  SHA512 = "sha512"
 }
 
 const SHA256_DIGEST_LENGTH = 32;
@@ -19,76 +31,78 @@ const SHA512_DIGEST_LENGTH = 64;
 /**
  * Service for cryptographic signing and verification operations using asymmetric keys
  *
- * @param algorithm The signing algorithm to use
+ * @param algorithm The key algorithm itself. The signing algorithm is supplied in the individual sign/verify functions.
  * @returns Object with sign and verify functions
  */
 export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSignVerifyFns => {
   const $getSigningParams = (signingAlgorithm: SigningAlgorithm): SigningParams => {
     switch (signingAlgorithm) {
       // RSA PSS
+      case SigningAlgorithm.RSASSA_PSS_SHA_512:
+        return {
+          hashAlgorithm: SupportedHashAlgorithm.SHA512,
+          padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: SHA512_DIGEST_LENGTH
+        };
       case SigningAlgorithm.RSASSA_PSS_SHA_256:
         return {
-          hashAlgorithm: "sha256",
+          hashAlgorithm: SupportedHashAlgorithm.SHA256,
           padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
           saltLength: SHA256_DIGEST_LENGTH
         };
       case SigningAlgorithm.RSASSA_PSS_SHA_384:
         return {
-          hashAlgorithm: "sha384",
+          hashAlgorithm: SupportedHashAlgorithm.SHA384,
           padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
           saltLength: SHA384_DIGEST_LENGTH
         };
-      case SigningAlgorithm.RSASSA_PSS_SHA_512:
-        return {
-          hashAlgorithm: "sha512",
-          padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: SHA512_DIGEST_LENGTH
-        };
 
       // RSA PKCS#1 v1.5
-      case SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_256:
+      case SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_512:
         return {
-          hashAlgorithm: "sha256",
+          hashAlgorithm: SupportedHashAlgorithm.SHA512,
           padding: crypto.constants.RSA_PKCS1_PADDING
         };
       case SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_384:
         return {
-          hashAlgorithm: "sha384",
+          hashAlgorithm: SupportedHashAlgorithm.SHA384,
           padding: crypto.constants.RSA_PKCS1_PADDING
         };
-      case SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_512:
+      case SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_256:
         return {
-          hashAlgorithm: "sha512",
+          hashAlgorithm: SupportedHashAlgorithm.SHA256,
           padding: crypto.constants.RSA_PKCS1_PADDING
         };
 
       // ECDSA
       case SigningAlgorithm.ECDSA_SHA_256:
-        return { hashAlgorithm: "sha256" };
+        return { hashAlgorithm: SupportedHashAlgorithm.SHA256 };
       case SigningAlgorithm.ECDSA_SHA_384:
-        return { hashAlgorithm: "sha384" };
+        return { hashAlgorithm: SupportedHashAlgorithm.SHA384 };
       case SigningAlgorithm.ECDSA_SHA_512:
-        return { hashAlgorithm: "sha512" };
+        return { hashAlgorithm: SupportedHashAlgorithm.SHA512 };
 
       default:
         throw new Error(`Unsupported signing algorithm: ${signingAlgorithm as string}`);
     }
   };
 
-  // For ECC key generation, nodejs has some strange and hardly documented curve naming conventions
-  const $getEcCurveName = (keyAlgorithm: AsymmetricKeyAlgorithm): string => {
+  const $getEcCurveName = (keyAlgorithm: AsymmetricKeyAlgorithm): { full: string; short: string } => {
     // We will support more in the future
     switch (keyAlgorithm) {
       case AsymmetricKeyAlgorithm.ECC_NIST_P256:
-        return "prime256v1";
+        return {
+          full: "prime256v1",
+          short: "p256"
+        };
       default:
         throw new Error(`Unsupported EC curve: ${keyAlgorithm}`);
     }
   };
 
   const $validateAlgorithmWithKeyType = (signingAlgorithm: SigningAlgorithm) => {
-    const isRsaKey = algorithm.startsWith("rsa");
-    const isEccKey = algorithm.startsWith("ecc");
+    const isRsaKey = algorithm.startsWith("RSA");
+    const isEccKey = algorithm.startsWith("ECC");
 
     const isRsaAlgorithm = signingAlgorithm.startsWith("RSASSA");
     const isEccAlgorithm = signingAlgorithm.startsWith("ECDSA");
@@ -102,13 +116,329 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     }
   };
 
+  const $signRsaDigest = async (digest: Buffer, privateKey: Buffer, hashAlgorithm: SupportedHashAlgorithm) => {
+    const script = `openssl pkeyutl -sign -in <(base64 -d <<< "$DIGEST_B64") -inkey <(base64 -d <<< "$KEY_B64") -pkeyopt digest:"$HASH_ALG" | base64`;
+    const result = await execFileAsync("bash", ["-c", script], {
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+      env: {
+        DIGEST_B64: digest.toString("base64"),
+        KEY_B64: privateKey.toString("base64"),
+        HASH_ALG: hashAlgorithm
+      }
+    });
+
+    if (result.stderr) {
+      throw new Error(result.stderr);
+    }
+
+    if (!result.stdout) {
+      throw new Error(
+        "No signature was created. Make sure you are using an appropiate signing algorithm that uses the same hashing algorithm as the one used to create the digest."
+      );
+    }
+
+    return Buffer.from(result.stdout.trim(), "base64");
+  };
+
+  const $signEccDigest = async (digest: Buffer, privateKey: Buffer, hashAlgorithm: SupportedHashAlgorithm) => {
+    const script = `openssl pkeyutl -sign -in <(base64 -d <<< "$DIGEST_B64") -inkey <(base64 -d <<< "$KEY_B64") -pkeyopt digest:"$HASH_ALG" | base64`;
+
+    const result = await execFileAsync("bash", ["-c", script], {
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+      env: {
+        DIGEST_B64: digest.toString("base64"),
+        KEY_B64: privateKey.toString("base64"),
+        HASH_ALG: hashAlgorithm
+      }
+    });
+
+    if (result.stderr) {
+      throw new Error(result.stderr);
+    }
+
+    if (!result.stdout) {
+      throw new Error("No signature was created. Make sure you are using an appropriate ECC key and hash algorithm.");
+    }
+
+    return Buffer.from(result.stdout.trim(), "base64");
+  };
+
+  const $verifyEccDigest = async (
+    digest: Buffer,
+    signature: Buffer,
+    publicKey: Buffer,
+    hashAlgorithm: SupportedHashAlgorithm
+  ) => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ecc-signature-verification-"));
+    const pubKeyFile = path.join(tempDir, "public-key.pem");
+    const sigFile = path.join(tempDir, "signature.sig");
+    const digestFile = path.join(tempDir, "digest.bin");
+
+    try {
+      // Write the necessary files
+      await fs.writeFile(pubKeyFile, publicKey, { mode: 0o600 });
+      await fs.writeFile(sigFile, signature, { mode: 0o600 });
+      await fs.writeFile(digestFile, digest, { mode: 0o600 });
+    } catch {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      throw new BadRequestError({
+        message: "Failed to verify ECC signature due to internal error."
+      });
+    }
+
+    try {
+      // Execute OpenSSL verification command
+      await execFileAsync(
+        "openssl",
+        [
+          "pkeyutl",
+          "-verify",
+          "-in",
+          digestFile,
+          "-inkey",
+          pubKeyFile,
+          "-pubin", // Important for EC public keys
+          "-sigfile",
+          sigFile,
+          "-pkeyopt",
+          `digest:${hashAlgorithm}`
+        ],
+        { timeout: 15_000 }
+      );
+
+      // If we get here, verification succeeded
+      return true;
+    } catch (error) {
+      const err = error as { stderr: string };
+
+      if (
+        !err?.stderr?.toLowerCase()?.includes("signature verification failure") &&
+        !err?.stderr?.toLowerCase()?.includes("bad signature")
+      ) {
+        logger.error(error, "KMS: Failed to verify ECC signature");
+      }
+      return false;
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
+  };
+
+  const $verifyRsaDigest = async (
+    digest: Buffer,
+    signature: Buffer,
+    publicKey: Buffer,
+    hashAlgorithm: SupportedHashAlgorithm
+  ) => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "kms-signature-verification-"));
+    const publicKeyFile = path.join(tempDir, "public-key.pub");
+    const signatureFile = path.join(tempDir, "signature.sig");
+    const digestFile = path.join(tempDir, "digest.bin");
+
+    try {
+      await fs.writeFile(publicKeyFile, publicKey, { mode: 0o600 });
+      await fs.writeFile(signatureFile, signature, { mode: 0o600 });
+      await fs.writeFile(digestFile, digest, { mode: 0o600 });
+    } catch {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      throw new BadRequestError({
+        message: "Failed to verify RSA signature due to internal error."
+      });
+    }
+
+    try {
+      await execFileAsync(
+        "openssl",
+        [
+          "pkeyutl",
+          "-verify",
+          "-in",
+          digestFile,
+          "-inkey",
+          publicKeyFile,
+          "-pubin",
+          "-sigfile",
+          signatureFile,
+          "-pkeyopt",
+          `digest:${hashAlgorithm}`
+        ],
+        { timeout: 15_000 }
+      );
+
+      // it'll throw if the verification was not successful
+      return true;
+    } catch (error) {
+      const err = error as { stdout: string };
+
+      if (!err?.stdout?.toLowerCase()?.includes("signature verification failure")) {
+        logger.error(error, "KMS: Failed to verify signature");
+      }
+      return false;
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
+  };
+
+  const verifyDigestFunctionsMap: Record<
+    AsymmetricKeyAlgorithm,
+    (data: Buffer, signature: Buffer, publicKey: Buffer, hashAlgorithm: SupportedHashAlgorithm) => Promise<boolean>
+  > = {
+    [AsymmetricKeyAlgorithm.ECC_NIST_P256]: $verifyEccDigest,
+    [AsymmetricKeyAlgorithm.RSA_4096]: $verifyRsaDigest
+  };
+
+  const signDigestFunctionsMap: Record<
+    AsymmetricKeyAlgorithm,
+    (data: Buffer, privateKey: Buffer, hashAlgorithm: SupportedHashAlgorithm) => Promise<Buffer>
+  > = {
+    [AsymmetricKeyAlgorithm.ECC_NIST_P256]: $signEccDigest,
+    [AsymmetricKeyAlgorithm.RSA_4096]: $signRsaDigest
+  };
+
+  const sign = async (
+    data: Buffer,
+    privateKey: Buffer,
+    signingAlgorithm: SigningAlgorithm,
+    isDigest: boolean
+  ): Promise<Buffer> => {
+    $validateAlgorithmWithKeyType(signingAlgorithm);
+
+    const { hashAlgorithm, padding, saltLength } = $getSigningParams(signingAlgorithm);
+
+    if (isDigest) {
+      if (signingAlgorithm.startsWith("RSASSA_PSS")) {
+        throw new BadRequestError({
+          message: "RSA PSS does not support digested input"
+        });
+      }
+
+      const signFunction = signDigestFunctionsMap[algorithm];
+
+      if (!signFunction) {
+        throw new BadRequestError({
+          message: `Digested input is not supported for key algorithm ${algorithm}`
+        });
+      }
+
+      const signature = await signFunction(data, privateKey, hashAlgorithm);
+      return signature;
+    }
+
+    const privateKeyObject = crypto.createPrivateKey({
+      key: privateKey,
+      format: "pem",
+      type: "pkcs8"
+    });
+
+    // For RSA signatures
+    if (signingAlgorithm.startsWith("RSA")) {
+      const signer = crypto.createSign(hashAlgorithm);
+      signer.update(data);
+
+      return signer.sign({
+        key: privateKeyObject,
+        padding,
+        ...(signingAlgorithm.includes("PSS") ? { saltLength } : {})
+      });
+    }
+    if (signingAlgorithm.startsWith("ECDSA")) {
+      // For ECDSA signatures
+      const signer = crypto.createSign(hashAlgorithm);
+      signer.update(data);
+      return signer.sign({
+        key: privateKeyObject,
+        dsaEncoding: "der"
+      });
+    }
+    throw new BadRequestError({
+      message: `Signing algorithm ${signingAlgorithm} not implemented`
+    });
+  };
+
+  const verify = async (
+    data: Buffer,
+    signature: Buffer,
+    publicKey: Buffer,
+    signingAlgorithm: SigningAlgorithm,
+    isDigest: boolean
+  ): Promise<boolean> => {
+    try {
+      $validateAlgorithmWithKeyType(signingAlgorithm);
+
+      const { hashAlgorithm, padding, saltLength } = $getSigningParams(signingAlgorithm);
+
+      if (isDigest) {
+        if (signingAlgorithm.startsWith("RSASSA_PSS")) {
+          throw new BadRequestError({
+            message: "RSA PSS does not support digested input"
+          });
+        }
+
+        const verifyFunction = verifyDigestFunctionsMap[algorithm];
+
+        if (!verifyFunction) {
+          throw new BadRequestError({
+            message: `Digested input is not supported for key algorithm ${algorithm}`
+          });
+        }
+
+        const signatureValid = await verifyFunction(data, signature, publicKey, hashAlgorithm);
+
+        return signatureValid;
+      }
+
+      const publicKeyObject = crypto.createPublicKey({
+        key: publicKey,
+        format: "der",
+        type: "spki"
+      });
+
+      // For RSA signatures
+      if (signingAlgorithm.startsWith("RSA")) {
+        const verifier = crypto.createVerify(hashAlgorithm);
+        verifier.update(data);
+
+        return verifier.verify(
+          {
+            key: publicKeyObject,
+            padding,
+            ...(signingAlgorithm.includes("PSS") ? { saltLength } : {})
+          },
+          signature
+        );
+      }
+      // For ECDSA signatures
+      if (signingAlgorithm.startsWith("ECDSA")) {
+        const verifier = crypto.createVerify(hashAlgorithm);
+        verifier.update(data);
+        return verifier.verify(
+          {
+            key: publicKeyObject,
+            dsaEncoding: "der"
+          },
+          signature
+        );
+      }
+      throw new BadRequestError({
+        message: `Verification for algorithm ${signingAlgorithm} not implemented`
+      });
+    } catch (error) {
+      if (error instanceof BadRequestError) {
+        throw error;
+      }
+      logger.error(error, "KMS: Failed to verify signature");
+      return false;
+    }
+  };
+
   const generateAsymmetricPrivateKey = async () => {
     const { privateKey } = await new Promise<{ privateKey: string }>((resolve, reject) => {
-      if (algorithm.startsWith("rsa")) {
+      if (algorithm.startsWith("RSA")) {
         crypto.generateKeyPair(
           "rsa",
           {
-            modulusLength: Number(algorithm.split("-")[1]),
+            modulusLength: Number(algorithm.split("_")[1]),
             publicKeyEncoding: { type: "spki", format: "pem" },
             privateKeyEncoding: { type: "pkcs8", format: "pem" }
           },
@@ -121,7 +451,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
           }
         );
       } else {
-        const namedCurve = $getEcCurveName(algorithm);
+        const { full: namedCurve } = $getEcCurveName(algorithm);
 
         crypto.generateKeyPair(
           "ec",
@@ -147,25 +477,6 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
   };
 
   const getPublicKeyFromPrivateKey = (privateKey: Buffer) => {
-    if (algorithm.startsWith("rsa")) {
-      // For RSA keys in PEM format
-      const privateKeyObj = crypto.createPrivateKey({
-        key: privateKey,
-        format: "pem",
-        type: "pkcs8"
-      });
-
-      const publicKey = crypto.createPublicKey(privateKeyObj).export({
-        type: "spki",
-        format: "pem"
-      });
-
-      if (Buffer.isBuffer(publicKey)) {
-        return publicKey;
-      }
-      return Buffer.from(publicKey);
-    }
-
     const privateKeyObj = crypto.createPrivateKey({
       key: privateKey,
       format: "pem",
@@ -174,109 +485,10 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
 
     const publicKey = crypto.createPublicKey(privateKeyObj).export({
       type: "spki",
-      format: "pem"
+      format: "der"
     });
 
-    if (Buffer.isBuffer(publicKey)) {
-      return publicKey;
-    }
-    return Buffer.from(publicKey);
-  };
-
-  const sign = (data: Buffer, privateKey: Buffer, signingAlgorithm: SigningAlgorithm): Buffer => {
-    $validateAlgorithmWithKeyType(signingAlgorithm);
-
-    const { hashAlgorithm, padding, saltLength } = $getSigningParams(signingAlgorithm);
-
-    const privateKeyObject = crypto.createPrivateKey({
-      key: privateKey,
-      format: "pem",
-      type: "pkcs8"
-    });
-
-    // For RSA signatures
-    if (signingAlgorithm.startsWith("RSASSA")) {
-      const signer = crypto.createSign(hashAlgorithm);
-      signer.update(data);
-
-      if (signingAlgorithm.includes("PSS")) {
-        // For PSS padding
-        return signer.sign({
-          key: privateKeyObject,
-          padding,
-          saltLength
-        });
-      }
-      // For PKCS1 v1.5 padding
-      return signer.sign({
-        key: privateKeyObject,
-        padding
-      });
-    }
-    if (signingAlgorithm.startsWith("ECDSA")) {
-      // For ECDSA signatures
-      const signer = crypto.createSign(hashAlgorithm);
-      signer.update(data);
-      return signer.sign({
-        key: privateKeyObject,
-        dsaEncoding: "ieee-p1363" // Based on AWS KMS implementation, where ECDSA signatures follow the ANSI X9.62-2005 format, which is equivalent to the IEEE-P1363 format
-      });
-    }
-    throw new BadRequestError({
-      message: `Signing algorithm ${signingAlgorithm} not implemented`
-    });
-  };
-
-  const verify = (data: Buffer, signature: Buffer, publicKey: Buffer, signingAlgorithm: SigningAlgorithm): boolean => {
-    try {
-      $validateAlgorithmWithKeyType(signingAlgorithm);
-
-      const { hashAlgorithm, padding, saltLength } = $getSigningParams(signingAlgorithm);
-
-      // For RSA signatures
-      if (signingAlgorithm.startsWith("RSASSA")) {
-        const verifier = crypto.createVerify(hashAlgorithm);
-        verifier.update(data);
-
-        if (signingAlgorithm.includes("PSS")) {
-          // For PSS padding
-          return verifier.verify(
-            {
-              key: publicKey.toString(),
-              padding,
-              saltLength
-            },
-            signature
-          );
-        }
-        // For PKCS1 v1.5 padding
-        return verifier.verify(
-          {
-            key: publicKey.toString(),
-            padding
-          },
-          signature
-        );
-      }
-      // For ECDSA signatures
-      if (signingAlgorithm.startsWith("ECDSA")) {
-        const verifier = crypto.createVerify(hashAlgorithm);
-        verifier.update(data);
-        return verifier.verify(
-          {
-            key: publicKey.toString(),
-            dsaEncoding: "ieee-p1363"
-          },
-          signature
-        );
-      }
-      throw new BadRequestError({
-        message: `Verification for algorithm ${signingAlgorithm} not implemented`
-      });
-    } catch (error) {
-      logger.error(error, "KMS: Failed to verify signature");
-      return false;
-    }
+    return publicKey;
   };
 
   return {

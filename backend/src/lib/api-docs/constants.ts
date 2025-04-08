@@ -1637,12 +1637,16 @@ export const KMS = {
 
   SIGN: {
     keyId: "The ID of the key to sign the data with.",
-    data: "The data in string format to be signed (base64 encoded)."
+    data: "The data in string format to be signed (base64 encoded).",
+    isDigest:
+      "Whether the data is already digested or not. Please be aware that if you are passing a digest the algorithm used to create the digest must match the signing algorithm used to sign the digest.",
+    signingAlgorithm: "The algorithm to use when performing cryptographic operations with the key."
   },
   VERIFY: {
     keyId: "The ID of the key to verify the data with.",
     data: "The data in string format to be verified (base64 encoded). For data larger than 4096 bytes you must first create a digest of the data and then pass the digest in the data parameter.",
-    signature: "The signature to be verified (base64 encoded)."
+    signature: "The signature to be verified (base64 encoded).",
+    isDigest: "Whether the data is already digested or not."
   }
 };
 

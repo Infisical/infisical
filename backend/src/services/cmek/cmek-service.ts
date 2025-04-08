@@ -301,13 +301,10 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
 
     const publicKey = await kmsService.getPublicKey({ kmsId: keyId });
-
-    const base64EncodedPublicKey = publicKey.toString("base64");
-
-    return { publicKey: base64EncodedPublicKey, projectId: key.projectId };
+    return { publicKey: publicKey.toString("base64"), projectId: key.projectId };
   };
 
-  const cmekSign = async ({ keyId, data, signingAlgorithm }: TCmekSignDTO, actor: OrgServiceActor) => {
+  const cmekSign = async ({ keyId, data, signingAlgorithm, isDigest }: TCmekSignDTO, actor: OrgServiceActor) => {
     const key = await kmsDAL.findCmekById(keyId);
 
     if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
@@ -329,7 +326,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     const sign = await kmsService.signWithKmsKey({ kmsId: keyId });
 
-    const { signature, algorithm } = await sign({ data: Buffer.from(data, "base64"), signingAlgorithm });
+    const { signature, algorithm } = await sign({ data: Buffer.from(data, "base64"), signingAlgorithm, isDigest });
 
     return {
       signature: signature.toString("base64"),
@@ -339,7 +336,10 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
     };
   };
 
-  const cmekVerify = async ({ keyId, data, signature, signingAlgorithm }: TCmekVerifyDTO, actor: OrgServiceActor) => {
+  const cmekVerify = async (
+    { keyId, data, signature, signingAlgorithm, isDigest }: TCmekVerifyDTO,
+    actor: OrgServiceActor
+  ) => {
     const key = await kmsDAL.findCmekById(keyId);
 
     if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
@@ -362,6 +362,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
     const verify = await kmsService.verifyWithKmsKey({ kmsId: keyId, signingAlgorithm });
 
     const { signatureValid, algorithm } = await verify({
+      isDigest,
       data: Buffer.from(data, "base64"),
       signature: Buffer.from(signature, "base64")
     });

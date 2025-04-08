@@ -1,16 +1,22 @@
 import { z } from "zod";
 
 export type TAsymmetricSignVerifyFns = {
-  sign: (data: Buffer, key: Buffer, signingAlgorithm: SigningAlgorithm) => Buffer;
-  verify: (data: Buffer, signature: Buffer, key: Buffer, signingAlgorithm: SigningAlgorithm) => boolean;
+  sign: (data: Buffer, key: Buffer, signingAlgorithm: SigningAlgorithm, isDigest: boolean) => Promise<Buffer>;
+  verify: (
+    data: Buffer,
+    signature: Buffer,
+    key: Buffer,
+    signingAlgorithm: SigningAlgorithm,
+    isDigest: boolean
+  ) => Promise<boolean>;
   generateAsymmetricPrivateKey: () => Promise<Buffer>;
   getPublicKeyFromPrivateKey: (privateKey: Buffer) => Buffer;
 };
 
 // Supported asymmetric key types
 export enum AsymmetricKeyAlgorithm {
-  RSA_4096 = "rsa-4096",
-  ECC_NIST_P256 = "ecc-nist-p256"
+  RSA_4096 = "RSA_4096",
+  ECC_NIST_P256 = "ECC_NIST_P256"
 }
 
 export const AsymmetricKeyAlgorithmEnum = z.enum(

@@ -321,7 +321,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      description: "Get KMS key by Name",
+      description: "Get KMS key by name",
       params: z.object({
         keyName: slugSchema({ field: "Key name" }).describe(KMS.GET_KEY_BY_NAME.keyName)
       }),
@@ -500,6 +500,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         signingAlgorithm: z.nativeEnum(SigningAlgorithm),
+        isDigest: z.boolean().optional().default(false).describe(KMS.SIGN.isDigest),
         data: z
           .string()
           .superRefine((data, ctx) => {
@@ -524,12 +525,12 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         params: { keyId: inputKeyId },
-        body: { data, signingAlgorithm },
+        body: { data, signingAlgorithm, isDigest },
         permission
       } = req;
 
       const { projectId, ...result } = await server.services.cmek.cmekSign(
-        { keyId: inputKeyId, data, signingAlgorithm },
+        { keyId: inputKeyId, data, signingAlgorithm, isDigest },
         permission
       );
 
@@ -561,6 +562,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         keyId: z.string().uuid().describe(KMS.VERIFY.keyId)
       }),
       body: z.object({
+        isDigest: z.boolean().optional().default(false).describe(KMS.VERIFY.isDigest),
         data: z
           .string()
           .superRefine((data, ctx) => {
@@ -597,12 +599,12 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         params: { keyId },
-        body: { data, signature, signingAlgorithm },
+        body: { data, signature, signingAlgorithm, isDigest },
         permission
       } = req;
 
       const { projectId, ...result } = await server.services.cmek.cmekVerify(
-        { keyId, data, signature, signingAlgorithm },
+        { keyId, data, signature, signingAlgorithm, isDigest },
         permission
       );
 

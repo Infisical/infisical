@@ -1,5 +1,3 @@
-import crypto from "node:crypto";
-
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 import { z } from "zod";
@@ -452,18 +450,7 @@ export const kmsServiceFactory = ({
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
-    const publicKeyBuffer = signingService(encryptionAlgorithm).getPublicKeyFromPrivateKey(kmsKey);
-
-    return (
-      crypto
-        .createPublicKey({
-          key: publicKeyBuffer,
-          format: "pem",
-          type: "spki"
-        })
-        // We return as a DER encoded X.509 certificate (https://datatracker.ietf.org/doc/html/rfc5280)
-        .export({ type: "spki", format: "der" })
-    );
+    return signingService(encryptionAlgorithm).getPublicKeyFromPrivateKey(kmsKey);
   };
 
   const signWithKmsKey = async ({ kmsId }: Pick<TSignWithKmsDTO, "kmsId">) => {
@@ -479,9 +466,13 @@ export const kmsServiceFactory = ({
 
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const { sign } = signingService(encryptionAlgorithm);
-    return ({ data, signingAlgorithm }: Pick<TSignWithKmsDTO, "data" | "signingAlgorithm">) => {
+    return async ({
+      data,
+      signingAlgorithm,
+      isDigest
+    }: Pick<TSignWithKmsDTO, "data" | "signingAlgorithm" | "isDigest">) => {
       const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
-      const signature = sign(data, kmsKey, signingAlgorithm);
+      const signature = await sign(data, kmsKey, signingAlgorithm, isDigest);
 
       return Promise.resolve({ signature, algorithm: signingAlgorithm });
     };
@@ -503,11 +494,11 @@ export const kmsServiceFactory = ({
 
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const { verify, getPublicKeyFromPrivateKey } = signingService(encryptionAlgorithm);
-    return ({ data, signature }: Pick<TVerifyWithKmsDTO, "data" | "signature">) => {
+    return async ({ data, signature, isDigest }: Pick<TVerifyWithKmsDTO, "data" | "signature" | "isDigest">) => {
       const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
       const publicKey = getPublicKeyFromPrivateKey(kmsKey);
-      const signatureValid = verify(data, signature, publicKey, signingAlgorithm);
+      const signatureValid = await verify(data, signature, publicKey, signingAlgorithm, isDigest);
       return Promise.resolve({ signatureValid, algorithm: signingAlgorithm });
     };
   };

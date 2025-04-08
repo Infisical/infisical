@@ -81,8 +81,8 @@ export enum CmekOrderBy {
 }
 
 export enum AsymmetricKeyAlgorithm {
-  RSA_4096 = "rsa-4096",
-  ECC_NIST_P256 = "ecc-nist-p256"
+  RSA_4096 = "RSA_4096",
+  ECC_NIST_P256 = "ECC_NIST_P256"
 }
 
 // Supported symmetric encrypt/decrypt algorithms

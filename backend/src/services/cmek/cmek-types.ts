@@ -57,6 +57,7 @@ export type TCmekSignDTO = {
   keyId: string;
   data: string;
   signingAlgorithm: SigningAlgorithm;
+  isDigest: boolean;
 };
 
 export type TCmekVerifyDTO = {
@@ -64,4 +65,5 @@ export type TCmekVerifyDTO = {
   data: string;
   signature: string;
   signingAlgorithm: SigningAlgorithm;
+  isDigest: boolean;
 };
