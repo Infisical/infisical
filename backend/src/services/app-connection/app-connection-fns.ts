@@ -27,6 +27,7 @@ import {
   getAzureKeyVaultConnectionListItem,
   validateAzureKeyVaultConnectionCredentials
 } from "./azure-key-vault";
+import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
 import {
   DatabricksConnectionMethod,
   getDatabricksConnectionListItem,
@@ -52,7 +53,8 @@ export const listAppConnectionOptions = () => {
     getDatabricksConnectionListItem(),
     getHumanitecConnectionListItem(),
     getPostgresConnectionListItem(),
-    getMsSqlConnectionListItem()
+    getMsSqlConnectionListItem(),
+    getCamundaConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -108,7 +110,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TAppConnect
     validateAzureAppConfigurationConnectionCredentials as TAppConnectionCredentialsValidator,
   [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
   [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator
+  [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
+  [AppConnection.Camunda]: validateCamundaConnectionCredentials as TAppConnectionCredentialsValidator
 };
 
 export const validateAppConnectionCredentials = async (
@@ -131,6 +134,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Service Account Impersonation";
     case DatabricksConnectionMethod.ServicePrincipal:
       return "Service Principal";
+    case CamundaConnectionMethod.ClientCredentials:
+      return "Client Credentials";
     case HumanitecConnectionMethod.ApiToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
@@ -175,5 +180,6 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.AzureAppConfiguration]: platformManagedCredentialsNotSupported,
   [AppConnection.Humanitec]: platformManagedCredentialsNotSupported,
   [AppConnection.Postgres]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
-  [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform
+  [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
+  [AppConnection.Camunda]: platformManagedCredentialsNotSupported
 };

@@ -12,6 +12,7 @@ import { AppConnectionHeader } from "../AppConnectionHeader";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
+import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
@@ -74,6 +75,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <PostgresConnectionForm onSubmit={onSubmit} />;
     case AppConnection.MsSql:
       return <MsSqlConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Camunda:
+      return <CamundaConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -128,6 +131,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <PostgresConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.MsSql:
       return <MsSqlConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Camunda:
+      return <CamundaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

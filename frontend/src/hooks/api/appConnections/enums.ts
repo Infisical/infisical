@@ -7,5 +7,6 @@ export enum AppConnection {
   Databricks = "databricks",
   Humanitec = "humanitec",
   Postgres = "postgres",
-  MsSql = "mssql"
+  MsSql = "mssql",
+  Camunda = "camunda"
 }

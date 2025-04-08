@@ -7,7 +7,8 @@ export enum AppConnection {
   AzureAppConfiguration = "azure-app-configuration",
   Humanitec = "humanitec",
   Postgres = "postgres",
-  MsSql = "mssql"
+  MsSql = "mssql",
+  Camunda = "camunda"
 }
 
 export enum AWSRegion {
