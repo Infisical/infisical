@@ -13,7 +13,7 @@ export const CamundaSyncReviewFields = () => {
     <>
       <GenericFieldLabel label="Secret Scope">{scope}</GenericFieldLabel>
       <GenericFieldLabel label="Cluster">
-        {clusterName} (uuid:{clusterUUID})
+        {clusterName} (id:{clusterUUID})
       </GenericFieldLabel>
     </>
   );

@@ -46,8 +46,8 @@ export const getCamundaConnectionAccessToken = async (
 ) => {
   const { clientSecret, clientId, accessToken, expiresAt } = credentials;
 
-  // get new token if less than 10 minutes from expiry
-  if (Date.now() < expiresAt - 10_000) {
+  // get new token if less than 30 seconds from expiry
+  if (Date.now() < expiresAt - 30_000) {
     return accessToken;
   }
 
