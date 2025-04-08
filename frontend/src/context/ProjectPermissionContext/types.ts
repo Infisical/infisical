@@ -75,6 +75,15 @@ export enum ProjectPermissionGroupActions {
   GrantPrivileges = "grant-privileges"
 }
 
+export enum ProjectPermissionSshHostActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueUserCert = "issue-user-cert",
+  IssueHostCert = "issue-host-cert"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -225,7 +234,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
-  | [ProjectPermissionActions, ProjectPermissionSub.SshHosts]
+  | [ProjectPermissionSshHostActions, ProjectPermissionSub.SshHosts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]

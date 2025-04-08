@@ -67,6 +67,15 @@ export enum ProjectPermissionGroupActions {
   GrantPrivileges = "grant-privileges"
 }
 
+export enum ProjectPermissionSshHostActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueUserCert = "issue-user-cert",
+  IssueHostCert = "issue-host-cert"
+}
+
 export enum ProjectPermissionSecretSyncActions {
   Read = "read",
   Create = "create",
@@ -147,6 +156,10 @@ export type IdentityManagementSubjectFields = {
   identityId: string;
 };
 
+export type SshHostSubjectFields = {
+  hostname: string;
+};
+
 export type ProjectPermissionSet =
   | [
       ProjectPermissionSecretActions,
@@ -196,7 +209,10 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
-  | [ProjectPermissionActions, ProjectPermissionSub.SshHosts]
+  | [
+      ProjectPermissionSshHostActions,
+      ProjectPermissionSub.SshHosts | (ForcedSubject<ProjectPermissionSub.SshHosts> & SshHostSubjectFields)
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
@@ -288,6 +304,21 @@ const IdentityManagementConditionSchema = z
         .object({
           [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
           [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
+  })
+  .partial();
+
+const SshHostConditionSchema = z
+  .object({
+    hostname: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB],
           [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
         })
         .partial()
@@ -421,12 +452,6 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
-    subject: z.literal(ProjectPermissionSub.SshHosts).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
     subject: z.literal(ProjectPermissionSub.PkiAlerts).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
@@ -549,6 +574,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SshHosts).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSshHostActions).describe(
+      "Describe what action an entity can take."
+    ),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    conditions: SshHostConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
   ...GeneralPermissionSchema
 ]);
 
@@ -579,8 +614,7 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.PkiCollections,
     ProjectPermissionSub.SshCertificateAuthorities,
     ProjectPermissionSub.SshCertificates,
-    ProjectPermissionSub.SshCertificateTemplates,
-    ProjectPermissionSub.SshHosts
+    ProjectPermissionSub.SshCertificateTemplates
   ].forEach((el) => {
     can(
       [
@@ -592,6 +626,18 @@ const buildAdminPermissionRules = () => {
       el
     );
   });
+
+  can(
+    [
+      ProjectPermissionSshHostActions.Read,
+      ProjectPermissionSshHostActions.Edit,
+      ProjectPermissionSshHostActions.Create,
+      ProjectPermissionSshHostActions.Delete,
+      ProjectPermissionSshHostActions.IssueUserCert,
+      ProjectPermissionSshHostActions.IssueHostCert
+    ],
+    ProjectPermissionSub.SshHosts
+  );
 
   can(
     [
@@ -840,7 +886,9 @@ const buildMemberPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificates);
   can([ProjectPermissionActions.Create], ProjectPermissionSub.SshCertificates);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificateTemplates);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.SshHosts);
+
+  can([ProjectPermissionSshHostActions.IssueUserCert], ProjectPermissionSub.SshHosts);
+
   can(
     [
       ProjectPermissionCmekActions.Create,
@@ -901,7 +949,6 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateAuthorities);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SshHosts);
   can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
 
   return rules;

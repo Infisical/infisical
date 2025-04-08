@@ -1,8 +1,8 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionSshHostActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
 import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
 import { TSshCertificateBodyDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-body-dal";
@@ -63,11 +63,6 @@ type TSshCertificateAuthorityServiceFactoryDep = {
 
 export type TSshHostServiceFactory = ReturnType<typeof sshHostServiceFactory>;
 
-/**
- * Checklist:
- * - check permissions across various roles to make sure it makes sense for the SSH hosts
- */
-
 export const sshHostServiceFactory = ({
   userDAL,
   projectDAL,
@@ -82,7 +77,8 @@ export const sshHostServiceFactory = ({
   kmsService
 }: TSshCertificateAuthorityServiceFactoryDep) => {
   /**
-   * Return list of all SSH hosts that a user has access to across all SSH projects in the organization
+   * Return list of all SSH hosts that a user can issue user SSH certificates for
+   * (i.e. is able to access / connect to) across all SSH projects in the organization
    */
   const listSshHosts = async ({ actorId, actorAuthMethod, actor, actorOrgId }: TListSshHostsDTO) => {
     const sshProjects = await projectDAL.find({
@@ -90,11 +86,15 @@ export const sshHostServiceFactory = ({
       type: ProjectType.SSH
     });
 
-    const projectIdsWithAccess: string[] = [];
+    const principals = await convertActorToPrincipals({
+      actor,
+      actorId,
+      userDAL
+    });
+
+    const allAllowedHosts = [];
 
     for await (const project of sshProjects) {
-      let hasAccess = false;
-
       try {
         const { permission } = await permissionService.getProjectPermission({
           actor,
@@ -105,26 +105,22 @@ export const sshHostServiceFactory = ({
           actionProjectType: ActionProjectType.SSH
         });
 
-        // TODO: consider glob-based permission items
-        hasAccess = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SshHosts);
-      } catch {
-        hasAccess = false;
-      }
+        const projectHosts = await sshHostDAL.findSshHostsWithPrincipalsAcrossProjects([project.id], principals);
 
-      if (hasAccess) {
-        projectIdsWithAccess.push(project.id);
+        const allowedHosts = projectHosts.filter((host) =>
+          permission.can(
+            ProjectPermissionSshHostActions.IssueUserCert,
+            subject(ProjectPermissionSub.SshHosts, { hostname: host.hostname })
+          )
+        );
+
+        allAllowedHosts.push(...allowedHosts);
+      } catch {
+        // intentionally ignore projects where user lacks access
       }
     }
 
-    const principals = await convertActorToPrincipals({
-      actor,
-      actorId,
-      userDAL
-    });
-
-    const hosts = await sshHostDAL.findSshHostsWithPrincipalsAcrossProjects(projectIdsWithAccess, principals);
-
-    return hosts;
+    return allAllowedHosts;
   };
 
   const createSshHost = async ({
@@ -149,7 +145,12 @@ export const sshHostServiceFactory = ({
       actionProjectType: ActionProjectType.SSH
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.SshHosts);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSshHostActions.Create,
+      subject(ProjectPermissionSub.SshHosts, {
+        hostname
+      })
+    );
 
     const resolveSshCaId = async ({
       requestedId,
@@ -257,7 +258,12 @@ export const sshHostServiceFactory = ({
       actionProjectType: ActionProjectType.SSH
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SshHosts);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSshHostActions.Edit,
+      subject(ProjectPermissionSub.SshHosts, {
+        hostname: host.hostname
+      })
+    );
 
     const updatedHost = await sshHostDAL.transaction(async (tx) => {
       await sshHostDAL.updateById(
@@ -308,7 +314,12 @@ export const sshHostServiceFactory = ({
       actionProjectType: ActionProjectType.SSH
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.SshHosts);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSshHostActions.Delete,
+      subject(ProjectPermissionSub.SshHosts, {
+        hostname: host.hostname
+      })
+    );
 
     await sshHostDAL.transaction(async (tx) => {
       await sshHostLoginMappingDAL.delete({ sshHostId }, tx);
@@ -335,7 +346,12 @@ export const sshHostServiceFactory = ({
       actionProjectType: ActionProjectType.SSH
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshHosts);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSshHostActions.Read,
+      subject(ProjectPermissionSub.SshHosts, {
+        hostname: host.hostname
+      })
+    );
 
     return host;
   };
@@ -370,9 +386,12 @@ export const sshHostServiceFactory = ({
       actionProjectType: ActionProjectType.SSH
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshHosts);
-
-    // TODO: update permissions
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSshHostActions.IssueUserCert,
+      subject(ProjectPermissionSub.SshHosts, {
+        hostname: host.hostname
+      })
+    );
 
     const keyId = `${actor}-${actorId}`;
 
@@ -488,8 +507,12 @@ export const sshHostServiceFactory = ({
       actionProjectType: ActionProjectType.SSH
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshHosts);
-    // TODO: update permissions
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSshHostActions.IssueHostCert,
+      subject(ProjectPermissionSub.SshHosts, {
+        hostname: host.hostname
+      })
+    );
 
     const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: host.hostSshCaId });
 

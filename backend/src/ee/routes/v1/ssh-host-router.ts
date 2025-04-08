@@ -123,8 +123,8 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
           .describe(SSH_HOSTS.CREATE.hostCertTtl),
         loginMappings: z
           .object({
-            loginUser: z.string().describe(SSH_HOSTS.CREATE.loginUser), // TODO: reinforce validation
-            allowedPrincipals: z.array(z.string()).describe(SSH_HOSTS.CREATE.allowedPrincipals) // TODO: reinforce validation
+            loginUser: z.string().trim().describe(SSH_HOSTS.CREATE.loginUser), // TODO: reinforce validation
+            allowedPrincipals: z.array(z.string().trim()).describe(SSH_HOSTS.CREATE.allowedPrincipals) // TODO: reinforce validation
           })
           .array()
           .default([])
@@ -207,8 +207,8 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
           .describe(SSH_HOSTS.UPDATE.hostCertTtl),
         loginMappings: z
           .object({
-            loginUser: z.string().describe(SSH_HOSTS.CREATE.loginUser),
-            allowedPrincipals: z.array(z.string()).describe(SSH_HOSTS.CREATE.allowedPrincipals)
+            loginUser: z.string().trim().describe(SSH_HOSTS.CREATE.loginUser),
+            allowedPrincipals: z.array(z.string().trim()).describe(SSH_HOSTS.CREATE.allowedPrincipals)
           })
           .array()
           .optional()
