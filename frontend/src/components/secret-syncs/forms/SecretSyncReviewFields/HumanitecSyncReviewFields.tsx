@@ -1,6 +1,6 @@
 import { useFormContext } from "react-hook-form";
 
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
@@ -14,10 +14,10 @@ export const HumanitecSyncReviewFields = () => {
 
   return (
     <>
-      <SecretSyncLabel label="Organization">{orgId}</SecretSyncLabel>
-      <SecretSyncLabel label="Application">{appId}</SecretSyncLabel>
+      <GenericFieldLabel label="Organization">{orgId}</GenericFieldLabel>
+      <GenericFieldLabel label="Application">{appId}</GenericFieldLabel>
       {scope === HumanitecSyncScope.Environment && (
-        <SecretSyncLabel label="Environment">{envId}</SecretSyncLabel>
+        <GenericFieldLabel label="Environment">{envId}</GenericFieldLabel>
       )}
     </>
   );

@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { Badge } from "@app/components/v2";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
@@ -83,8 +83,8 @@ export const SecretSyncReviewFields = () => {
           <span className="text-sm text-mineshaft-300">Source</span>
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <SecretSyncLabel label="Environment">{environment.name}</SecretSyncLabel>
-          <SecretSyncLabel label="Secret Path">{secretPath}</SecretSyncLabel>
+          <GenericFieldLabel label="Environment">{environment.name}</GenericFieldLabel>
+          <GenericFieldLabel label="Secret Path">{secretPath}</GenericFieldLabel>
         </div>
       </div>
       <div className="flex flex-col gap-3">
@@ -92,7 +92,7 @@ export const SecretSyncReviewFields = () => {
           <span className="text-sm text-mineshaft-300">Destination</span>
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <SecretSyncLabel label="Connection">{connection.name}</SecretSyncLabel>
+          <GenericFieldLabel label="Connection">{connection.name}</GenericFieldLabel>
           {DestinationFieldsComponent}
         </div>
       </div>
@@ -101,21 +101,21 @@ export const SecretSyncReviewFields = () => {
           <span className="text-sm text-mineshaft-300">Sync Options</span>
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <SecretSyncLabel label="Auto-Sync">
+          <GenericFieldLabel label="Auto-Sync">
             <Badge variant={isAutoSyncEnabled ? "success" : "danger"}>
               {isAutoSyncEnabled ? "Enabled" : "Disabled"}
             </Badge>
-          </SecretSyncLabel>
-          <SecretSyncLabel label="Initial Sync Behavior">
+          </GenericFieldLabel>
+          <GenericFieldLabel label="Initial Sync Behavior">
             {SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP[initialSyncBehavior](destinationName).name}
-          </SecretSyncLabel>
+          </GenericFieldLabel>
           {/* <SecretSyncLabel label="Prepend Prefix">{prependPrefix}</SecretSyncLabel>
           <SecretSyncLabel label="Append Suffix">{appendSuffix}</SecretSyncLabel> */}
           {AdditionalSyncOptionsFieldsComponent}
           {disableSecretDeletion && (
-            <SecretSyncLabel label="Secret Deletion">
+            <GenericFieldLabel label="Secret Deletion">
               <Badge variant="primary">Disabled</Badge>
-            </SecretSyncLabel>
+            </GenericFieldLabel>
           )}
         </div>
       </div>
@@ -124,8 +124,8 @@ export const SecretSyncReviewFields = () => {
           <span className="text-sm text-mineshaft-300">Details</span>
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <SecretSyncLabel label="Name">{name}</SecretSyncLabel>
-          <SecretSyncLabel label="Description">{description}</SecretSyncLabel>
+          <GenericFieldLabel label="Name">{name}</GenericFieldLabel>
+          <GenericFieldLabel label="Description">{description}</GenericFieldLabel>
         </div>
       </div>
     </div>

@@ -46,6 +46,9 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
 
   const selectedFolderCount = Object.keys(selectedEntries.folder).length;
   const selectedKeysCount = Object.keys(selectedEntries.secret).length;
+  const isRotatedSecretSelected = Object.values(selectedEntries.secret).some((record) =>
+    Object.values(record).some((secret) => secret.isRotatedSecret)
+  );
   const selectedCount = selectedFolderCount + selectedKeysCount;
 
   const { currentWorkspace } = useWorkspace();
@@ -121,7 +124,7 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
             })
           );
 
-          if (entry && canDeleteSecret) {
+          if (entry && canDeleteSecret && !entry.isRotatedSecret) {
             return [
               ...accum,
               {
@@ -186,6 +189,11 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
             </IconButton>
           </Tooltip>
           <div className="ml-1 flex-grow px-2 text-sm">{selectedCount} Selected</div>
+          {isRotatedSecretSelected && (
+            <span className="text-sm text-mineshaft-400">
+              Rotated Secrets will not be affected by action.
+            </span>
+          )}
           {shouldShowDelete && (
             <>
               <Tooltip content={areFoldersSelected ? "Moving folders is not supported" : undefined}>

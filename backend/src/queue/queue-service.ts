@@ -5,6 +5,10 @@ import PgBoss, { WorkOptions } from "pg-boss";
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import {
+  TSecretRotationRotateSecretsJobPayload,
+  TSecretRotationSendNotificationJobPayload
+} from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import {
   TScanFullRepoEventPayload,
   TScanPushEventPayload
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
@@ -44,7 +48,8 @@ export enum QueueName {
   ProjectV3Migration = "project-v3-migration",
   AccessTokenStatusUpdate = "access-token-status-update",
   ImportSecretsFromExternalSource = "import-secrets-from-external-source",
-  AppConnectionSecretSync = "app-connection-secret-sync"
+  AppConnectionSecretSync = "app-connection-secret-sync",
+  SecretRotationV2 = "secret-rotation-v2"
 }
 
 export enum QueueJobs {
@@ -73,7 +78,10 @@ export enum QueueJobs {
   SecretSyncSyncSecrets = "secret-sync-sync-secrets",
   SecretSyncImportSecrets = "secret-sync-import-secrets",
   SecretSyncRemoveSecrets = "secret-sync-remove-secrets",
-  SecretSyncSendActionFailedNotifications = "secret-sync-send-action-failed-notifications"
+  SecretSyncSendActionFailedNotifications = "secret-sync-send-action-failed-notifications",
+  SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
+  SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
+  SecretRotationV2SendNotification = "secret-rotation-v2-send-notification"
 }
 
 export type TQueueJobTypes = {
@@ -213,6 +221,19 @@ export type TQueueJobTypes = {
         name: QueueJobs.SecretSyncSendActionFailedNotifications;
         payload: TQueueSendSecretSyncActionFailedNotificationsDTO;
       };
+  [QueueName.SecretRotationV2]:
+    | {
+        name: QueueJobs.SecretRotationV2QueueRotations;
+        payload: undefined;
+      }
+    | {
+        name: QueueJobs.SecretRotationV2RotateSecrets;
+        payload: TSecretRotationRotateSecretsJobPayload;
+      }
+    | {
+        name: QueueJobs.SecretRotationV2SendNotification;
+        payload: TSecretRotationSendNotificationJobPayload;
+      };
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
@@ -229,6 +250,7 @@ export const queueServiceFactory = (
   const pgBoss = new PgBoss({
     connectionString: dbConnectionUrl,
     archiveCompletedAfterSeconds: 60,
+    cronMonitorIntervalSeconds: 5,
     archiveFailedAfterSeconds: 1000, // we want to keep failed jobs for a longer time so that it can be retried
     deleteAfterSeconds: 30,
     ssl: dbRootCert
@@ -247,15 +269,12 @@ export const queueServiceFactory = (
   >;
 
   const initialize = async () => {
-    const appCfg = getConfig();
-    if (appCfg.SHOULD_INIT_PG_QUEUE) {
-      logger.info("Initializing pg-queue...");
-      await pgBoss.start();
+    logger.info("Initializing pg-queue...");
+    await pgBoss.start();
 
-      pgBoss.on("error", (error) => {
-        logger.error(error, "pg-queue error");
-      });
-    }
+    pgBoss.on("error", (error) => {
+      logger.error(error, "pg-queue error");
+    });
   };
 
   const start = <T extends QueueName>(
@@ -283,7 +302,7 @@ export const queueServiceFactory = (
 
   const startPg = async <T extends QueueName>(
     jobName: QueueJobs,
-    jobsFn: (jobs: PgBoss.Job<TQueueJobTypes[T]["payload"]>[]) => Promise<void>,
+    jobsFn: (jobs: PgBoss.JobWithMetadata<TQueueJobTypes[T]["payload"]>[]) => Promise<void>,
     options: WorkOptions & {
       workerCount: number;
     }
@@ -297,7 +316,7 @@ export const queueServiceFactory = (
 
     await Promise.all(
       Array.from({ length: options.workerCount }).map(() =>
-        pgBoss.work<TQueueJobTypes[T]["payload"]>(jobName, options, jobsFn)
+        pgBoss.work<TQueueJobTypes[T]["payload"]>(jobName, { ...options, includeMetadata: true }, jobsFn)
       )
     );
   };
@@ -340,6 +359,15 @@ export const queueServiceFactory = (
       data,
       options: opts
     });
+  };
+
+  const schedulePg = async <T extends QueueName>(
+    job: TQueueJobTypes[T]["name"],
+    cron: string,
+    data: TQueueJobTypes[T]["payload"],
+    opts?: PgBoss.ScheduleOptions & { jobId?: string }
+  ) => {
+    await pgBoss.schedule(job, cron, data, opts);
   };
 
   const stopRepeatableJob = async <T extends QueueName>(
@@ -403,6 +431,7 @@ export const queueServiceFactory = (
     stopJobById,
     getRepeatableJobs,
     startPg,
-    queuePg
+    queuePg,
+    schedulePg
   };
 };

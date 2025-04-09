@@ -58,6 +58,7 @@ const envSchema = z
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
     QUEUE_WORKERS_ENABLED: zodStrBool.default("true"),
     HTTPS_ENABLED: zodStrBool,
+    ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
     SMTP_IGNORE_TLS: zodStrBool.default("false"),
@@ -192,6 +193,7 @@ const envSchema = z
     GATEWAY_RELAY_REALM: zpStr(z.string().optional()),
     GATEWAY_RELAY_AUTH_SECRET: zpStr(z.string().optional()),
 
+    DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     /* ----------------------------------------------------------------------------- */
 
     /* App Connections ----------------------------------------------------------------------------- */
@@ -262,6 +264,7 @@ const envSchema = z
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL),
     isDevelopmentMode: data.NODE_ENV === "development",
+    isRotationDevelopmentMode: data.NODE_ENV === "development" && data.ROTATION_DEVELOPMENT_MODE,
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
 
     isSecretScanningConfigured:
