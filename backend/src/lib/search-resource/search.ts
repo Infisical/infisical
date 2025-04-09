@@ -39,5 +39,5 @@ export type TSearchResource = {
 };
 
 export const buildSearchZodSchema = <T extends TSearchResource>(schema: z.ZodObject<T>) => {
-  return schema.extend({ $or: schema.array().optional() }).optional();
+  return schema.extend({ $or: schema.array().max(5).optional() }).optional();
 };
