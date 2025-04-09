@@ -103,7 +103,6 @@ const SshHostPolicyActionSchema = z.object({
   [ProjectPermissionSshHostActions.Create]: z.boolean().optional(),
   [ProjectPermissionSshHostActions.Edit]: z.boolean().optional(),
   [ProjectPermissionSshHostActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionSshHostActions.IssueUserCert]: z.boolean().optional(),
   [ProjectPermissionSshHostActions.IssueHostCert]: z.boolean().optional()
 });
 
@@ -570,9 +569,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         [ProjectPermissionSshHostActions.Create]: action.includes(
           ProjectPermissionSshHostActions.Create
         ),
-        [ProjectPermissionSshHostActions.IssueUserCert]: action.includes(
-          ProjectPermissionSshHostActions.IssueUserCert
-        ),
         [ProjectPermissionSshHostActions.IssueHostCert]: action.includes(
           ProjectPermissionSshHostActions.IssueHostCert
         ),
@@ -911,7 +907,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Create", value: ProjectPermissionSshHostActions.Create },
       { label: "Modify", value: ProjectPermissionSshHostActions.Edit },
       { label: "Remove", value: ProjectPermissionSshHostActions.Delete },
-      { label: "Issue User Certificate", value: ProjectPermissionSshHostActions.IssueUserCert },
       { label: "Issue Host Certificate", value: ProjectPermissionSshHostActions.IssueHostCert }
     ]
   },

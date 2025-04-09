@@ -254,7 +254,7 @@ func issueCredentials(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse addToAgent flag")
 	}
 
-	if outFilePath == "" && addToAgent == false {
+	if outFilePath == "" && !addToAgent {
 		util.PrintErrorMessageAndExit("You must provide either --outFilePath or --addToAgent flag to use this command")
 	}
 
@@ -774,6 +774,85 @@ func sshAddHost(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse --userCaOutFilePath flag")
 	}
 
+	writeHostCertToFile, err := cmd.Flags().GetBool("writeHostCertToFile")
+	if err != nil {
+		util.HandleError(err, "Unable to parse --writeHostCertToFile flag")
+	}
+
+	configureSshd, err := cmd.Flags().GetBool("configureSshd")
+	if err != nil {
+		util.HandleError(err, "Unable to parse --configureSshd flag")
+	}
+
+	forceOverwrite, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		util.HandleError(err, "Unable to parse --force flag")
+	}
+
+	if configureSshd && (!writeUserCaToFile || !writeHostCertToFile) {
+		util.PrintErrorMessageAndExit("--configureSshd requires both --writeUserCaToFile and --writeHostCertToFile to also be set")
+	}
+	
+	// Pre-check for file overwrites before proceeding
+	if writeUserCaToFile {
+		if strings.HasPrefix(userCaOutFilePath, "~") {
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				util.HandleError(err, "Unable to resolve ~ in userCaOutFilePath")
+			}
+			userCaOutFilePath = strings.Replace(userCaOutFilePath, "~", homeDir, 1)
+		}
+		if _, err := os.Stat(userCaOutFilePath); err == nil && !forceOverwrite {
+			util.PrintErrorMessageAndExit("File already exists at " + userCaOutFilePath + ". Use --force to overwrite.")
+		}
+	}
+
+	keyTypes := []string{"ed25519", "ecdsa", "rsa"}
+	var hostKeyPath, certOutPath, hostPrivateKeyPath string
+	if writeHostCertToFile {
+		for _, keyType := range keyTypes {
+			pub := fmt.Sprintf("/etc/ssh/ssh_host_%s_key.pub", keyType)
+			cert := fmt.Sprintf("/etc/ssh/ssh_host_%s_key-cert.pub", keyType)
+			priv := fmt.Sprintf("/etc/ssh/ssh_host_%s_key", keyType)
+
+			if _, err := os.Stat(pub); err == nil {
+				hostKeyPath = pub
+				certOutPath = cert
+				hostPrivateKeyPath = priv
+				break
+			}
+		}
+
+		if hostKeyPath == "" {
+			util.PrintErrorMessageAndExit("No supported SSH host public key found at /etc/ssh")
+		}
+
+		if _, err := os.Stat(certOutPath); err == nil && !forceOverwrite && writeHostCertToFile {
+			util.PrintErrorMessageAndExit("File already exists at " + certOutPath + ". Use --force to overwrite.")
+		}
+	}
+
+	if configureSshd {
+		sshdConfig := "/etc/ssh/sshd_config"
+		existing, err := os.ReadFile(sshdConfig)
+		if err != nil {
+			util.HandleError(err, "Failed to read sshd_config")
+		}
+		configLines := []string{
+			"TrustedUserCAKeys " + userCaOutFilePath,
+			"HostKey " + hostPrivateKeyPath,
+			"HostCertificate " + certOutPath,
+		}
+		for _, line := range configLines {
+			for _, existingLine := range strings.Split(string(existing), "\n") {
+				trimmed := strings.TrimSpace(existingLine)
+				if trimmed == line && !strings.HasPrefix(trimmed, "#") && !forceOverwrite {
+					util.PrintErrorMessageAndExit("sshd_config already contains: " + line + ". Use --force to overwrite.")
+				}
+			}
+		}
+	}
+
 	customHeaders, err := util.GetInfisicalCustomHeadersMap()
 	if err != nil {
 		util.HandleError(err, "Unable to get custom headers")
@@ -797,19 +876,10 @@ func sshAddHost(cmd *cobra.Command, args []string) {
 
 	fmt.Println("✅ Successfully registered host:", host.Hostname)
 
-	publicKey, err := client.Ssh().GetSshHostUserCaPublicKey(host.ID)
-	if err != nil {
-		util.HandleError(err, "Failed to fetch associated User CA public key")
-	}
-
 	if writeUserCaToFile {
-		// Expand ~ if used in file path
-		if strings.HasPrefix(userCaOutFilePath, "~") {
-			homeDir, err := os.UserHomeDir()
-			if err != nil {
-				util.HandleError(err, "Unable to resolve ~ in userCaOutFilePath")
-			}
-			userCaOutFilePath = strings.Replace(userCaOutFilePath, "~", homeDir, 1)
+		publicKey, err := client.Ssh().GetSshHostUserCaPublicKey(host.ID)
+		if err != nil {
+			util.HandleError(err, "Failed to fetch associated User CA public key")
 		}
 
 		if err := writeToFile(userCaOutFilePath, publicKey, 0644); err != nil {
@@ -818,7 +888,68 @@ func sshAddHost(cmd *cobra.Command, args []string) {
 
 		fmt.Println("📁 Wrote User CA public key to:", userCaOutFilePath)
 	}
+
+	if writeHostCertToFile {
+		pubKeyBytes, err := os.ReadFile(hostKeyPath)
+		if err != nil {
+			util.HandleError(err, "Failed to read SSH host public key")
+		}
+		res, err := client.Ssh().IssueSshHostHostCert(host.ID, infisicalSdk.IssueSshHostHostCertOptions{
+			PublicKey: string(pubKeyBytes),
+		})
+		if err != nil {
+			util.HandleError(err, "Failed to issue SSH host certificate")
+		}
+		if err := writeToFile(certOutPath, res.SignedKey, 0644); err != nil {
+			util.HandleError(err, "Failed to write SSH host certificate to file")
+		}
+		fmt.Println("📁 Wrote host certificate to:", certOutPath)
+	}
+
+	if configureSshd {
+		sshdConfig := "/etc/ssh/sshd_config"
+		contentBytes, err := os.ReadFile(sshdConfig)
+		if err != nil {
+			util.HandleError(err, "Failed to read sshd_config")
+		}
+		lines := strings.Split(string(contentBytes), "\n")
+
+		configMap := map[string]string{
+			"TrustedUserCAKeys": userCaOutFilePath,
+			"HostKey":           hostPrivateKeyPath,
+			"HostCertificate":   certOutPath,
+		}
+
+		seenKeys := map[string]bool{}
+		for i, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			for key, value := range configMap {
+				if strings.HasPrefix(trimmed, key+" ") {
+					seenKeys[key] = true
+					if strings.HasPrefix(trimmed, "#") || forceOverwrite {
+						lines[i] = fmt.Sprintf("%s %s", key, value)
+					} else {
+						util.PrintErrorMessageAndExit("sshd_config already contains: " + trimmed + ". Use --force to overwrite.")
+					}
+				}
+			}
+		}
+
+		// Append missing lines
+		for key, value := range configMap {
+			if !seenKeys[key] {
+				lines = append(lines, fmt.Sprintf("%s %s", key, value))
+			}
+		}
+
+		// Write back to file
+		if err := os.WriteFile(sshdConfig, []byte(strings.Join(lines, "\n")), 0644); err != nil {
+			util.HandleError(err, "Failed to update sshd_config")
+		}
+		fmt.Println("📄 Updated sshd_config entries")
+	}
 }
+
 func init() {
 	sshSignKeyCmd.Flags().String("token", "", "Issue SSH certificate using machine identity access token")
 	sshSignKeyCmd.Flags().String("certificateTemplateId", "", "The ID of the SSH certificate template to issue the SSH certificate for")
@@ -850,6 +981,9 @@ func init() {
 	sshAddHostCmd.Flags().String("hostname", "", "Hostname of the SSH host (required)")
 	sshAddHostCmd.Flags().Bool("writeUserCaToFile", false, "Write User CA public key to /etc/ssh/infisical_user_ca.pub")
 	sshAddHostCmd.Flags().String("userCaOutFilePath", "/etc/ssh/infisical_user_ca.pub", "Custom file path to write the User CA public key")
+	sshAddHostCmd.Flags().Bool("writeHostCertToFile", false, "Write SSH host certificate to /etc/ssh/ssh_host_<type>_key-cert.pub")
+	sshAddHostCmd.Flags().Bool("configureSshd", false, "Update TrustedUserCAKeys, HostKey, and HostCertificate in the sshd_config file")
+	sshAddHostCmd.Flags().Bool("force", false, "Force overwrite of existing certificate files as part of writeUserCaToFile and writeHostCertToFile")
 
 	sshCmd.AddCommand(sshAddHostCmd)
 

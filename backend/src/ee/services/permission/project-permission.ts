@@ -631,7 +631,6 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionSshHostActions.Edit,
       ProjectPermissionSshHostActions.Create,
       ProjectPermissionSshHostActions.Delete,
-      ProjectPermissionSshHostActions.IssueUserCert,
       ProjectPermissionSshHostActions.IssueHostCert
     ],
     ProjectPermissionSub.SshHosts
@@ -884,8 +883,6 @@ const buildMemberPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificates);
   can([ProjectPermissionActions.Create], ProjectPermissionSub.SshCertificates);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificateTemplates);
-
-  can([ProjectPermissionSshHostActions.IssueUserCert], ProjectPermissionSub.SshHosts);
 
   can(
     [

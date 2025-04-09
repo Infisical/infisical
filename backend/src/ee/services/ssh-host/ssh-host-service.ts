@@ -92,11 +92,11 @@ export const sshHostServiceFactory = ({
       userDAL
     });
 
-    const allAllowedHosts = [];
+    const allowedHosts = [];
 
     for await (const project of sshProjects) {
       try {
-        const { permission } = await permissionService.getProjectPermission({
+        await permissionService.getProjectPermission({
           actor,
           actorId,
           projectId: project.id,
@@ -107,20 +107,13 @@ export const sshHostServiceFactory = ({
 
         const projectHosts = await sshHostDAL.findSshHostsWithPrincipalsAcrossProjects([project.id], principals);
 
-        const allowedHosts = projectHosts.filter((host) =>
-          permission.can(
-            ProjectPermissionSshHostActions.IssueUserCert,
-            subject(ProjectPermissionSub.SshHosts, { hostname: host.hostname })
-          )
-        );
-
-        allAllowedHosts.push(...allowedHosts);
+        allowedHosts.push(...projectHosts);
       } catch {
         // intentionally ignore projects where user lacks access
       }
     }
 
-    return allAllowedHosts;
+    return allowedHosts;
   };
 
   const createSshHost = async ({
@@ -370,7 +363,7 @@ export const sshHostServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: host.projectId,
@@ -379,12 +372,21 @@ export const sshHostServiceFactory = ({
       actionProjectType: ActionProjectType.SSH
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSshHostActions.IssueUserCert,
-      subject(ProjectPermissionSub.SshHosts, {
-        hostname: host.hostname
-      })
+    const internalPrincipals = await convertActorToPrincipals({
+      actor,
+      actorId,
+      userDAL
+    });
+
+    const mapping = host.loginMappings.find(
+      (m) => m.loginUser === loginUser && m.allowedPrincipals.some((allowed) => internalPrincipals.includes(allowed))
     );
+
+    if (!mapping) {
+      throw new UnauthorizedError({
+        message: `You are not allowed to login as ${loginUser} on this host`
+      });
+    }
 
     const keyId = `${actor}-${actorId}`;
 
@@ -402,22 +404,6 @@ export const sshHostServiceFactory = ({
     // (dangtony98): will support more algorithms in the future
     const keyAlgorithm = SshCertKeyAlgorithm.ED25519;
     const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
-
-    const internalPrincipals = await convertActorToPrincipals({
-      actor,
-      actorId,
-      userDAL
-    });
-
-    const mapping = host.loginMappings.find(
-      (m) => m.loginUser === loginUser && m.allowedPrincipals.some((allowed) => internalPrincipals.includes(allowed))
-    );
-
-    if (!mapping) {
-      throw new UnauthorizedError({
-        message: `You are not allowed to login as ${loginUser} on this host`
-      });
-    }
 
     // (dangtony98): include the loginUser as a principal on the issued certificate
     const principals = [...internalPrincipals, loginUser];
@@ -519,7 +505,7 @@ export const sshHostServiceFactory = ({
     });
 
     const principals = [host.hostname];
-    const keyId = `host:${host.hostname}`;
+    const keyId = `host-${host.id}`;
 
     const { serialNumber, signedPublicKey, ttl } = await createSshCert({
       caPrivateKey: decryptedCaPrivateKey.toString("utf8"),
