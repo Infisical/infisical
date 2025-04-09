@@ -134,7 +134,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
 
     if (!result.stdout) {
       throw new Error(
-        "No signature was created. Make sure you are using an appropiate signing algorithm that uses the same hashing algorithm as the one used to create the digest."
+        "No signature was created. Make sure you are using an appropriate signing algorithm that uses the same hashing algorithm as the one used to create the digest."
       );
     }
 
