@@ -2,6 +2,13 @@ import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
 } from "@app/ee/services/project-template/project-template-types";
+import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
+import {
+  TCreateSecretRotationV2DTO,
+  TDeleteSecretRotationV2DTO,
+  TSecretRotationV2Raw,
+  TUpdateSecretRotationV2DTO
+} from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
@@ -56,6 +63,8 @@ export type TCreateAuditLogDTO = {
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
+
+export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
 interface BaseAuthData {
   ipAddress?: string;
@@ -291,7 +300,17 @@ export enum EventType {
   KMIP_OPERATION_ACTIVATE = "kmip-operation-activate",
   KMIP_OPERATION_REVOKE = "kmip-operation-revoke",
   KMIP_OPERATION_LOCATE = "kmip-operation-locate",
-  KMIP_OPERATION_REGISTER = "kmip-operation-register"
+  KMIP_OPERATION_REGISTER = "kmip-operation-register",
+
+  GET_SECRET_ROTATIONS = "get-secret-rotations",
+  GET_SECRET_ROTATION = "get-secret-rotation",
+  GET_SECRET_ROTATION_GENERATED_CREDENTIALS = "get-secret-rotation-generated-credentials",
+  CREATE_SECRET_ROTATION = "create-secret-rotation",
+  UPDATE_SECRET_ROTATION = "update-secret-rotation",
+  DELETE_SECRET_ROTATION = "delete-secret-rotation",
+  SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
+
+  PROJECT_ACCESS_REQUEST = "project-access-request"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -2316,6 +2335,15 @@ interface KmipOperationRegisterEvent {
   };
 }
 
+interface ProjectAccessRequestEvent {
+  type: EventType.PROJECT_ACCESS_REQUEST;
+  metadata: {
+    projectId: string;
+    requesterId: string;
+    requesterEmail: string;
+  };
+}
+
 interface SetupKmipEvent {
   type: EventType.SETUP_KMIP;
   metadata: {
@@ -2338,6 +2366,63 @@ interface RegisterKmipServerEvent {
     commonName: string;
     keyAlgorithm: CertKeyAlgorithm;
     ttl: string;
+  };
+}
+
+interface GetSecretRotationsEvent {
+  type: EventType.GET_SECRET_ROTATIONS;
+  metadata: {
+    type?: SecretRotation;
+    count: number;
+    rotationIds: string[];
+    secretPath?: string;
+    environment?: string;
+  };
+}
+
+interface GetSecretRotationEvent {
+  type: EventType.GET_SECRET_ROTATION;
+  metadata: {
+    type: SecretRotation;
+    rotationId: string;
+    secretPath: string;
+    environment: string;
+  };
+}
+
+interface GetSecretRotationCredentialsEvent {
+  type: EventType.GET_SECRET_ROTATION_GENERATED_CREDENTIALS;
+  metadata: {
+    type: SecretRotation;
+    rotationId: string;
+    secretPath: string;
+    environment: string;
+  };
+}
+
+interface CreateSecretRotationEvent {
+  type: EventType.CREATE_SECRET_ROTATION;
+  metadata: Omit<TCreateSecretRotationV2DTO, "projectId"> & { rotationId: string };
+}
+
+interface UpdateSecretRotationEvent {
+  type: EventType.UPDATE_SECRET_ROTATION;
+  metadata: TUpdateSecretRotationV2DTO;
+}
+
+interface DeleteSecretRotationEvent {
+  type: EventType.DELETE_SECRET_ROTATION;
+  metadata: TDeleteSecretRotationV2DTO;
+}
+
+interface RotateSecretRotationEvent {
+  type: EventType.SECRET_ROTATION_ROTATE_SECRETS;
+  metadata: Pick<TSecretRotationV2Raw, "parameters" | "secretsMapping" | "type" | "connectionId" | "folderId"> & {
+    status: SecretRotationStatus;
+    rotationId: string;
+    jobId?: string | undefined;
+    occurredAt: Date;
+    message?: string | null | undefined;
   };
 }
 
@@ -2554,5 +2639,13 @@ export type Event =
   | KmipOperationRevokeEvent
   | KmipOperationLocateEvent
   | KmipOperationRegisterEvent
+  | ProjectAccessRequestEvent
   | CreateSecretRequestEvent
-  | SecretApprovalRequestReview;
+  | SecretApprovalRequestReview
+  | GetSecretRotationsEvent
+  | GetSecretRotationEvent
+  | GetSecretRotationCredentialsEvent
+  | CreateSecretRotationEvent
+  | UpdateSecretRotationEvent
+  | DeleteSecretRotationEvent
+  | RotateSecretRotationEvent;

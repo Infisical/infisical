@@ -2,6 +2,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
 import { SecretType, SecretV3RawSanitized } from "../secrets/types";
 import {
@@ -82,7 +83,8 @@ export const useGetSnapshotSecrets = ({ snapshotId }: TSnapshotDataProps) =>
           createdAt: secretVersion.createdAt,
           updatedAt: secretVersion.updatedAt,
           type: "modified",
-          version: secretVersion.version
+          version: secretVersion.version,
+          isRotatedSecret: secretVersion.isRotatedSecret
         };
 
         if (secretVersion.type === SecretType.Personal) {
@@ -161,6 +163,12 @@ export const usePerformSecretRollback = () => {
       });
       queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.count({ workspaceId, environment, directory })
+      });
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({
+          projectId: workspaceId,
+          secretPath: directory ?? "/"
+        })
       });
     }
   });

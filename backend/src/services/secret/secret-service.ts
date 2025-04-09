@@ -1558,6 +1558,7 @@ export const secretServiceFactory = ({
         actorOrgId,
         actor,
         actorId,
+        version,
         expandSecretReferences,
         type,
         secretName

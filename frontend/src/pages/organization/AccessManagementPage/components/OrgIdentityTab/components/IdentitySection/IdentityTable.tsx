@@ -1,7 +1,10 @@
+import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
   faArrowDown,
   faArrowUp,
   faEllipsis,
+  faFilter,
   faMagnifyingGlass,
   faServer
 } from "@fortawesome/free-solid-svg-icons";
@@ -12,14 +15,19 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyState,
+  FormControl,
   IconButton,
   Input,
   Pagination,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Select,
   SelectItem,
   Spinner,
@@ -30,11 +38,12 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useGetIdentityMembershipOrgs, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
+import { useGetOrgRoles, useSearchIdentities, useUpdateIdentity } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -68,22 +77,22 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     page,
     setPerPage
   } = usePagination<OrgIdentityOrderBy>(OrgIdentityOrderBy.Name);
+  const [filteredRoles, setFilteredRoles] = useState<string[]>([]);
 
   const organizationId = currentOrg?.id || "";
 
   const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
 
-  const { data, isPending, isFetching } = useGetIdentityMembershipOrgs(
-    {
-      organizationId,
-      offset,
-      limit,
-      orderDirection,
-      orderBy,
-      search: debouncedSearch
-    },
-    { placeholderData: (prevData) => prevData }
-  );
+  const { data, isPending, isFetching } = useSearchIdentities({
+    offset,
+    limit,
+    orderDirection,
+    orderBy,
+    search: {
+      name: debouncedSearch ? { $contains: debouncedSearch } : undefined,
+      role: filteredRoles?.length ? { $in: filteredRoles } : undefined
+    }
+  });
 
   const { totalCount = 0 } = data ?? {};
   useResetPageHelper({
@@ -91,6 +100,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     offset,
     setPage
   });
+  const filterForm = useForm<{ roles: string }>();
 
   const { data: roles } = useGetOrgRoles(organizationId);
 
@@ -132,13 +142,78 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
 
   return (
     <div>
-      <Input
-        containerClassName="mb-4"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search identities by name..."
-      />
+      <div className="mb-4 flex items-center space-x-2">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          placeholder="Search identities by name..."
+        />
+        <div>
+          <Popover>
+            <PopoverTrigger>
+              <IconButton
+                ariaLabel="filter"
+                variant="outline_bg"
+                className={filteredRoles?.length ? "border-primary" : ""}
+              >
+                <Tooltip content="Advance Filter">
+                  <FontAwesomeIcon icon={faFilter} />
+                </Tooltip>
+              </IconButton>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl">
+              <div className="mb-4 border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
+                Advance Filter
+              </div>
+              <form
+                onSubmit={filterForm.handleSubmit((el) => {
+                  setFilteredRoles(el.roles?.split(",")?.filter(Boolean) || []);
+                })}
+              >
+                <Controller
+                  control={filterForm.control}
+                  name="roles"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Roles"
+                      helperText="Eg: admin,viewer"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                    >
+                      <Input {...field} />
+                    </FormControl>
+                  )}
+                />
+                <div className="flex items-center space-x-2">
+                  <Button
+                    type="submit"
+                    size="xs"
+                    colorSchema="primary"
+                    variant="outline_bg"
+                    className="mt-4"
+                  >
+                    Apply Filter
+                  </Button>
+                  {Boolean(filteredRoles.length) && (
+                    <Button
+                      size="xs"
+                      variant="link"
+                      className="ml-4 mt-4"
+                      onClick={() => {
+                        filterForm.reset({ roles: "" });
+                        setFilteredRoles([]);
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </form>
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
       <TableContainer>
         <Table>
           <THead>
@@ -190,7 +265,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
           <TBody>
             {isPending && <TableSkeleton columns={3} innerKey="org-identities" />}
             {!isPending &&
-              data?.identityMemberships.map(({ identity: { id, name }, role, customRole }) => {
+              data?.identities?.map(({ identity: { id, name }, role, customRole }) => {
                 return (
                   <Tr
                     className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
@@ -307,10 +382,10 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
           />
         )}
-        {!isPending && data && data?.identityMemberships.length === 0 && (
+        {!isPending && data && data?.identities.length === 0 && (
           <EmptyState
             title={
-              debouncedSearch.trim().length > 0
+              debouncedSearch.trim().length > 0 || filteredRoles?.length > 0
                 ? "No identities match search filter"
                 : "No identities have been created in this organization"
             }

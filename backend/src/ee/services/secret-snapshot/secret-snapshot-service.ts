@@ -398,8 +398,32 @@ export const secretSnapshotServiceFactory = ({
     if (shouldUseBridge) {
       const rollback = await snapshotDAL.transaction(async (tx) => {
         const rollbackSnaps = await snapshotDAL.findRecursivelySnapshotsV2Bridge(snapshot.id, tx);
-        // this will remove all secrets in current folder
-        const deletedTopLevelSecs = await secretV2BridgeDAL.delete({ folderId: snapshot.folderId }, tx);
+        const secretRotationIds = rollbackSnaps
+          .flatMap((snap) => snap.secretVersions)
+          .filter((el) => el.isRotatedSecret)
+          .map((el) => el.secretId);
+
+        // this will remove all secrets in current folder except rotated secrets which we ignore
+        const deletedTopLevelSecs = await secretV2BridgeDAL.delete(
+          {
+            $complex: {
+              operator: "and",
+              value: [
+                {
+                  operator: "eq",
+                  field: "folderId",
+                  value: snapshot.folderId
+                },
+                {
+                  operator: "notIn",
+                  field: "id",
+                  value: secretRotationIds
+                }
+              ]
+            }
+          },
+          tx
+        );
         const deletedTopLevelSecsGroupById = groupBy(deletedTopLevelSecs, (item) => item.id);
         // this will remove all secrets and folders on child
         // due to sql foreign key and link list connection removing the folders removes everything below too
@@ -424,28 +448,31 @@ export const secretSnapshotServiceFactory = ({
         );
         const secrets = await secretV2BridgeDAL.insertMany(
           rollbackSnaps.flatMap(({ secretVersions, folderId }) =>
-            secretVersions.map(
-              ({
-                latestSecretVersion,
-                version,
-                updatedAt,
-                createdAt,
-                secretId,
-                envId,
-                id,
-                tags,
-                // exclude the bottom fields from the secret - they are for versioning only.
-                userActorId,
-                identityActorId,
-                actorType,
-                ...el
-              }) => ({
-                ...el,
-                id: secretId,
-                version: deletedTopLevelSecsGroupById[secretId] ? latestSecretVersion + 1 : latestSecretVersion,
-                folderId
-              })
-            )
+            secretVersions
+              .filter((v) => !v.isRotatedSecret)
+              .map(
+                ({
+                  latestSecretVersion,
+                  version,
+                  updatedAt,
+                  createdAt,
+                  secretId,
+                  envId,
+                  id,
+                  tags,
+                  // exclude the bottom fields from the secret - they are for versioning only.
+                  userActorId,
+                  identityActorId,
+                  actorType,
+                  isRotatedSecret,
+                  ...el
+                }) => ({
+                  ...el,
+                  id: secretId,
+                  version: deletedTopLevelSecsGroupById[secretId] ? latestSecretVersion + 1 : latestSecretVersion,
+                  folderId
+                })
+              )
           ),
           tx
         );

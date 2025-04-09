@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export enum CharacterType {
   Alphabets = "alphabets",
   Numbers = "numbers",
@@ -36,7 +38,8 @@ export enum CharacterType {
   DoubleQuote = "doubleQuote", // "
   Comma = "comma", // ,
   Semicolon = "semicolon", // ;
-  Exclamation = "exclamation" // !
+  Exclamation = "exclamation", // !
+  Fullstop = "fullStop" // .
 }
 
 /**
@@ -81,7 +84,8 @@ export const characterValidator = (allowedCharacters: CharacterType[]) => {
     [CharacterType.DoubleQuote]: '\\"',
     [CharacterType.Comma]: ",",
     [CharacterType.Semicolon]: ";",
-    [CharacterType.Exclamation]: "!"
+    [CharacterType.Exclamation]: "!",
+    [CharacterType.Fullstop]: "."
   };
 
   // Combine patterns from allowed characters
@@ -97,5 +101,12 @@ export const characterValidator = (allowedCharacters: CharacterType[]) => {
    */
   return function validate(input: string): boolean {
     return regex.test(input);
+  };
+};
+
+export const zodValidateCharacters = (allowedCharacters: CharacterType[]) => {
+  const validator = characterValidator(allowedCharacters);
+  return (schema: z.ZodString, fieldName: string) => {
+    return schema.refine(validator, { message: `${fieldName} can only contain ${allowedCharacters.join(",")}` });
   };
 };

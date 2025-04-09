@@ -32,6 +32,7 @@ export type TSecretApprovalSecChange = {
   secretKey: string;
   secretValue?: string;
   secretComment?: string;
+  isRotatedSecret?: boolean;
   tags?: string[];
 };
 

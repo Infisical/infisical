@@ -16,8 +16,8 @@ import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import {
-  ProjectPermissionActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
 } from "../permission/project-permission";
 import { TSecretRotationDALFactory } from "./secret-rotation-dal";
@@ -69,7 +69,10 @@ export const secretRotationServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretRotationActions.Read,
+      ProjectPermissionSub.SecretRotation
+    );
 
     return {
       custom: [],
@@ -99,7 +102,7 @@ export const secretRotationServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionSecretRotationActions.Read,
       ProjectPermissionSub.SecretRotation
     );
 
@@ -208,7 +211,10 @@ export const secretRotationServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretRotationActions.Read,
+      ProjectPermissionSub.SecretRotation
+    );
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
       const docs = await secretRotationDAL.findSecretV2({ projectId });
@@ -254,7 +260,10 @@ export const secretRotationServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretRotation);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretRotationActions.Edit,
+      ProjectPermissionSub.SecretRotation
+    );
     await secretRotationQueue.removeFromQueue(doc.id, doc.interval);
     await secretRotationQueue.addToQueue(doc.id, doc.interval);
     return doc;
@@ -273,7 +282,7 @@ export const secretRotationServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
+      ProjectPermissionSecretRotationActions.Delete,
       ProjectPermissionSub.SecretRotation
     );
     const deletedDoc = await secretRotationDAL.transaction(async (tx) => {

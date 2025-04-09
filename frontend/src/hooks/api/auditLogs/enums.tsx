@@ -155,5 +155,12 @@ export enum EventType {
   KMIP_OPERATION_REVOKE = "kmip-operation-revoke",
   KMIP_OPERATION_LOCATE = "kmip-operation-locate",
   KMIP_OPERATION_REGISTER = "kmip-operation-register",
-  SECRET_APPROVAL_REQUEST_REVIEW = "secret-approval-request-review"
+  SECRET_APPROVAL_REQUEST_REVIEW = "secret-approval-request-review",
+  GET_SECRET_ROTATIONS = "get-secret-rotations",
+  GET_SECRET_ROTATION = "get-secret-rotation",
+  GET_SECRET_ROTATION_GENERATED_CREDENTIALS = "get-secret-rotation-generated-credentials",
+  CREATE_SECRET_ROTATION = "create-secret-rotation",
+  UPDATE_SECRET_ROTATION = "update-secret-rotation",
+  DELETE_SECRET_ROTATION = "delete-secret-rotation",
+  SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets"
 }

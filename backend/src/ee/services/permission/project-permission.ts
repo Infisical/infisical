@@ -79,6 +79,15 @@ export enum ProjectPermissionSecretSyncActions {
   RemoveSecrets = "remove-secrets"
 }
 
+export enum ProjectPermissionSecretRotationActions {
+  Read = "read",
+  ReadGeneratedCredentials = "read-generated-credentials",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  RotateSecrets = "rotate-secrets"
+}
+
 export enum ProjectPermissionKmipActions {
   CreateClients = "create-clients",
   UpdateClients = "update-clients",
@@ -144,6 +153,11 @@ export type SecretImportSubjectFields = {
   secretPath: string;
 };
 
+export type SecretRotationsSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
 export type IdentityManagementSubjectFields = {
   identityId: string;
 };
@@ -186,7 +200,13 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.Settings]
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
-  | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
+  | [
+      ProjectPermissionSecretRotationActions,
+      (
+        | ProjectPermissionSub.SecretRotation
+        | (ForcedSubject<ProjectPermissionSub.SecretRotation> & SecretRotationsSubjectFields)
+      )
+    ]
   | [
       ProjectPermissionIdentityActions,
       ProjectPermissionSub.Identity | (ForcedSubject<ProjectPermissionSub.Identity> & IdentityManagementSubjectFields)
@@ -298,12 +318,6 @@ const IdentityManagementConditionSchema = z
 const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretApproval).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.SecretRotation).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
@@ -489,6 +503,12 @@ export const ProjectPermissionV1Schema = z.discriminatedUnion("subject", [
       "Describe what action an entity can take."
     )
   }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretRotation).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
   ...GeneralPermissionSchema
 ]);
 
@@ -543,6 +563,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretRotation).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretRotationActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretConditionV1Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
   ...GeneralPermissionSchema
 ]);
 
@@ -556,7 +586,6 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SecretFolders,
     ProjectPermissionSub.SecretImports,
     ProjectPermissionSub.SecretApproval,
-    ProjectPermissionSub.SecretRotation,
     ProjectPermissionSub.Role,
     ProjectPermissionSub.Integrations,
     ProjectPermissionSub.Webhooks,
@@ -682,6 +711,18 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.Kmip
   );
 
+  can(
+    [
+      ProjectPermissionSecretRotationActions.Create,
+      ProjectPermissionSecretRotationActions.Edit,
+      ProjectPermissionSecretRotationActions.Delete,
+      ProjectPermissionSecretRotationActions.Read,
+      ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
+      ProjectPermissionSecretRotationActions.RotateSecrets
+    ],
+    ProjectPermissionSub.SecretRotation
+  );
+
   return rules;
 };
 
@@ -731,7 +772,7 @@ const buildMemberPermissionRules = () => {
   );
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SecretApproval);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.SecretRotation);
+  can([ProjectPermissionSecretRotationActions.Read], ProjectPermissionSub.SecretRotation);
 
   can([ProjectPermissionActions.Read, ProjectPermissionActions.Create], ProjectPermissionSub.SecretRollback);
 
@@ -879,7 +920,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
+  can(ProjectPermissionSecretRotationActions.Read, ProjectPermissionSub.SecretRotation);
   can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
   can(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);

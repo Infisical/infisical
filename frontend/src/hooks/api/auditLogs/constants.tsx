@@ -125,7 +125,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_APP_CONNECTION]: "Create App Connection",
   [EventType.UPDATE_APP_CONNECTION]: "Update App Connection",
   [EventType.DELETE_APP_CONNECTION]: "Delete App Connection",
-  [EventType.GET_SECRET_SYNCS]: "List Secret Syncs",
+  [EventType.GET_SECRET_SYNCS]: "List secret syncs",
   [EventType.GET_SECRET_SYNC]: "Get Secret Sync",
   [EventType.CREATE_SECRET_SYNC]: "Create Secret Sync",
   [EventType.UPDATE_SECRET_SYNC]: "Update Secret Sync",
@@ -154,7 +154,15 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.KMIP_OPERATION_ACTIVATE]: "KMIP operation activate",
   [EventType.KMIP_OPERATION_REVOKE]: "KMIP operation revoke",
   [EventType.KMIP_OPERATION_LOCATE]: "KMIP operation locate",
-  [EventType.KMIP_OPERATION_REGISTER]: "KMIP operation register"
+  [EventType.KMIP_OPERATION_REGISTER]: "KMIP operation register",
+  [EventType.GET_SECRET_ROTATIONS]: "List Secret Rotations",
+  [EventType.GET_SECRET_ROTATION]: "Get Secret Rotation",
+  [EventType.GET_SECRET_ROTATION_GENERATED_CREDENTIALS]:
+    "Get Secret Rotation generated credentials",
+  [EventType.CREATE_SECRET_ROTATION]: "Create Secret Rotation",
+  [EventType.UPDATE_SECRET_ROTATION]: "Update Secret Rotation",
+  [EventType.DELETE_SECRET_ROTATION]: "Delete Secret Rotation",
+  [EventType.SECRET_ROTATION_ROTATE_SECRETS]: "Secret Rotation secrets rotated"
 };
 
 export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {

@@ -694,7 +694,7 @@ func SetRawSecrets(secretArgs []string, secretType string, environmentName strin
 	if err != nil {
 		return nil, fmt.Errorf("unable to get client with custom headers [err=%v]", err)
 	}
-
+	httpClient.SetAuthToken(tokenDetails.Token)
 	httpClient.SetHeader("Accept", "application/json")
 
 	// pull current secrets
