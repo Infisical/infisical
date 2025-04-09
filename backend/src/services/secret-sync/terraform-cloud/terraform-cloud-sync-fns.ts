@@ -1,4 +1,6 @@
 /* eslint-disable no-await-in-loop */
+import { AxiosResponse } from "axios";
+
 import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -12,7 +14,6 @@ import {
   TerraformCloudVariable,
   TTerraformCloudSyncWithCredentials
 } from "./terraform-cloud-sync-types";
-import { AxiosResponse } from "axios";
 
 const getTerraformCloudVariables = async (
   secretSync: TTerraformCloudSyncWithCredentials
