@@ -385,7 +385,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
         {!isPending && data && data?.identities.length === 0 && (
           <EmptyState
             title={
-              debouncedSearch.trim().length > 0
+              debouncedSearch.trim().length > 0 || filteredRoles?.length > 0
                 ? "No identities match search filter"
                 : "No identities have been created in this organization"
             }
