@@ -17,13 +17,13 @@ export const HumanitecConnectionAccessTokenCredentialsSchema = z.object({
 const BaseHumanitecConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.Humanitec) });
 
 export const HumanitecConnectionSchema = BaseHumanitecConnectionSchema.extend({
-  method: z.literal(HumanitecConnectionMethod.API_TOKEN),
+  method: z.literal(HumanitecConnectionMethod.ApiToken),
   credentials: HumanitecConnectionAccessTokenCredentialsSchema
 });
 
 export const SanitizedHumanitecConnectionSchema = z.discriminatedUnion("method", [
   BaseHumanitecConnectionSchema.extend({
-    method: z.literal(HumanitecConnectionMethod.API_TOKEN),
+    method: z.literal(HumanitecConnectionMethod.ApiToken),
     credentials: HumanitecConnectionAccessTokenCredentialsSchema.pick({})
   })
 ]);
@@ -31,8 +31,8 @@ export const SanitizedHumanitecConnectionSchema = z.discriminatedUnion("method",
 export const ValidateHumanitecConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
-      .literal(HumanitecConnectionMethod.API_TOKEN)
-      .describe(AppConnections?.CREATE(AppConnection.Humanitec).method),
+      .literal(HumanitecConnectionMethod.ApiToken)
+      .describe(AppConnections.CREATE(AppConnection.Humanitec).method),
     credentials: HumanitecConnectionAccessTokenCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.Humanitec).credentials
     )

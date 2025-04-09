@@ -12,17 +12,22 @@ import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
+import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TAccessProjectDTO, TListOrgProjectsDTO } from "./org-admin-types";
 
 type TOrgAdminServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  projectDAL: Pick<TProjectDALFactory, "find" | "findById" | "findProjectGhostUser">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findOne" | "create" | "transaction" | "delete">;
+  projectDAL: Pick<TProjectDALFactory, "find" | "findById" | "findProjectGhostUser" | "findOne">;
+  projectMembershipDAL: Pick<
+    TProjectMembershipDALFactory,
+    "findOne" | "create" | "transaction" | "delete" | "findAllProjectMembers"
+  >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "create">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findUserEncKeyByUserId">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create" | "delete">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type TOrgAdminServiceFactory = ReturnType<typeof orgAdminServiceFactory>;
@@ -34,7 +39,8 @@ export const orgAdminServiceFactory = ({
   projectKeyDAL,
   projectBotDAL,
   userDAL,
-  projectUserMembershipRoleDAL
+  projectUserMembershipRoleDAL,
+  smtpService
 }: TOrgAdminServiceFactoryDep) => {
   const listOrgProjects = async ({
     actor,
@@ -89,7 +95,7 @@ export const orgAdminServiceFactory = ({
       OrgPermissionSubjects.AdminConsole
     );
 
-    const project = await projectDAL.findById(projectId);
+    const project = await projectDAL.findOne({ id: projectId, orgId: actorOrgId });
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
     if (project.version === ProjectVersion.V1) {
@@ -183,6 +189,23 @@ export const orgAdminServiceFactory = ({
         tx
       );
       return newProjectMembership;
+    });
+
+    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
+    const filteredProjectMembers = projectMembers
+      .filter(
+        (member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin) && member.userId !== actorId
+      )
+      .map((el) => el.user.email!);
+
+    await smtpService.sendMail({
+      template: SmtpTemplates.OrgAdminProjectDirectAccess,
+      recipients: filteredProjectMembers,
+      subjectLine: "Organization Admin Project Direct Access Issued",
+      substitutions: {
+        projectName: project.name,
+        email: projectMembers.find((el) => el.userId === actorId)?.user?.username
+      }
     });
     return { isExistingMember: false, membership: updatedMembership };
   };

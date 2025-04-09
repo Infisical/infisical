@@ -91,7 +91,8 @@ export const AccessManagementPage = () => {
             <p className="mb-2 mt-1 text-sm text-bunker-300">
               We&apos;ve developed an improved privilege management system to better serve your
               security needs. Upgrade to our new permission-based approach that allows you to
-              explicitly designate who can modify specific access levels, rather than relying on hierarchy comparisons.
+              explicitly designate who can modify specific access levels, rather than relying on
+              hierarchy comparisons.
             </p>
             <Button
               colorSchema="primary"

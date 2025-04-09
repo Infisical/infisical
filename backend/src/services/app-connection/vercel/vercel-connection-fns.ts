@@ -20,7 +20,7 @@ export const getVercelConnectionListItem = () => {
   return {
     name: "Vercel" as const,
     app: AppConnection.Vercel as const,
-    methods: Object.values(VercelConnectionMethod) as [VercelConnectionMethod.API_TOKEN]
+    methods: Object.values(VercelConnectionMethod) as [VercelConnectionMethod.ApiToken]
   };
 };
 

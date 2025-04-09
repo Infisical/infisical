@@ -1,45 +1,58 @@
-import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
+import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+
+import { AWSRegion } from "./app-connection-enums";
 import {
   TAwsConnection,
   TAwsConnectionConfig,
   TAwsConnectionInput,
-  TValidateAwsConnectionCredentials
-} from "@app/services/app-connection/aws";
-import {
-  TDatabricksConnection,
-  TDatabricksConnectionConfig,
-  TDatabricksConnectionInput,
-  TValidateDatabricksConnectionCredentials
-} from "@app/services/app-connection/databricks";
-import {
-  TGitHubConnection,
-  TGitHubConnectionConfig,
-  TGitHubConnectionInput,
-  TValidateGitHubConnectionCredentials
-} from "@app/services/app-connection/github";
-import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
-
+  TValidateAwsConnectionCredentialsSchema
+} from "./aws";
 import {
   TAzureAppConfigurationConnection,
   TAzureAppConfigurationConnectionConfig,
   TAzureAppConfigurationConnectionInput,
-  TValidateAzureAppConfigurationConnectionCredentials
+  TValidateAzureAppConfigurationConnectionCredentialsSchema
 } from "./azure-app-configuration";
 import {
   TAzureKeyVaultConnection,
   TAzureKeyVaultConnectionConfig,
   TAzureKeyVaultConnectionInput,
-  TValidateAzureKeyVaultConnectionCredentials
+  TValidateAzureKeyVaultConnectionCredentialsSchema
 } from "./azure-key-vault";
-import { TGcpConnection, TGcpConnectionConfig, TGcpConnectionInput, TValidateGcpConnectionCredentials } from "./gcp";
+import {
+  TDatabricksConnection,
+  TDatabricksConnectionConfig,
+  TDatabricksConnectionInput,
+  TValidateDatabricksConnectionCredentialsSchema
+} from "./databricks";
+import {
+  TGcpConnection,
+  TGcpConnectionConfig,
+  TGcpConnectionInput,
+  TValidateGcpConnectionCredentialsSchema
+} from "./gcp";
+import {
+  TGitHubConnection,
+  TGitHubConnectionConfig,
+  TGitHubConnectionInput,
+  TValidateGitHubConnectionCredentialsSchema
+} from "./github";
 import {
   THumanitecConnection,
   THumanitecConnectionConfig,
   THumanitecConnectionInput,
-  TValidateHumanitecConnectionCredentials
+  TValidateHumanitecConnectionCredentialsSchema
 } from "./humanitec";
+import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import {
-  TValidateVercelConnectionCredentials,
+  TPostgresConnection,
+  TPostgresConnectionInput,
+  TValidatePostgresConnectionCredentialsSchema
+} from "./postgres";
+import {
+  TValidateVercelConnectionCredentialsSchema,
   TVercelConnection,
   TVercelConnectionConfig,
   TVercelConnectionInput
@@ -54,7 +67,13 @@ export type TAppConnection = { id: string } & (
   | TDatabricksConnection
   | THumanitecConnection
   | TVercelConnection
+  | TPostgresConnection
+  | TMsSqlConnection
 );
+
+export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
+
+export type TSqlConnection = TPostgresConnection | TMsSqlConnection;
 
 export type TAppConnectionInput = { id: string } & (
   | TAwsConnectionInput
@@ -65,11 +84,15 @@ export type TAppConnectionInput = { id: string } & (
   | TDatabricksConnectionInput
   | THumanitecConnectionInput
   | TVercelConnectionInput
+  | TPostgresConnectionInput
+  | TMsSqlConnectionInput
 );
+
+export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput;
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnectionInput,
-  "credentials" | "method" | "name" | "app" | "description"
+  "credentials" | "method" | "name" | "app" | "description" | "isPlatformManagedCredentials"
 >;
 
 export type TUpdateAppConnectionDTO = Partial<Omit<TCreateAppConnectionDTO, "method" | "app">> & {
@@ -84,20 +107,36 @@ export type TAppConnectionConfig =
   | TAzureAppConfigurationConnectionConfig
   | TDatabricksConnectionConfig
   | THumanitecConnectionConfig
-  | TVercelConnectionConfig;
+  | TVercelConnectionConfig
+  | TSqlConnectionConfig;
 
-export type TValidateAppConnectionCredentials =
-  | TValidateAwsConnectionCredentials
-  | TValidateGitHubConnectionCredentials
-  | TValidateGcpConnectionCredentials
-  | TValidateAzureKeyVaultConnectionCredentials
-  | TValidateAzureAppConfigurationConnectionCredentials
-  | TValidateDatabricksConnectionCredentials
-  | TValidateHumanitecConnectionCredentials
-  | TValidateVercelConnectionCredentials;
+export type TValidateAppConnectionCredentialsSchema =
+  | TValidateAwsConnectionCredentialsSchema
+  | TValidateGitHubConnectionCredentialsSchema
+  | TValidateGcpConnectionCredentialsSchema
+  | TValidateAzureKeyVaultConnectionCredentialsSchema
+  | TValidateAzureAppConfigurationConnectionCredentialsSchema
+  | TValidateDatabricksConnectionCredentialsSchema
+  | TValidateHumanitecConnectionCredentialsSchema
+  | TValidatePostgresConnectionCredentialsSchema
+  | TValidateMsSqlConnectionCredentialsSchema
+  | TValidateVercelConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
   region: AWSRegion;
   destination: SecretSync.AWSParameterStore | SecretSync.AWSSecretsManager;
+};
+
+export type TAppConnectionCredentialsValidator = (
+  appConnection: TAppConnectionConfig
+) => Promise<TAppConnection["credentials"]>;
+
+export type TAppConnectionTransitionCredentialsToPlatform = (
+  appConnection: TAppConnectionConfig,
+  callback: (credentials: TAppConnection["credentials"]) => Promise<TAppConnectionRaw>
+) => Promise<TAppConnectionRaw>;
+
+export type TAppConnectionBaseConfig = {
+  supportsPlatformManagedCredentials?: boolean;
 };

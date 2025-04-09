@@ -1,6 +1,6 @@
 import { Job } from "bullmq";
 
-import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { QueueJobs } from "@app/queue";
 import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import {
@@ -133,8 +133,6 @@ export type TDeleteSecretSyncDTO = {
   syncId: string;
   removeSecrets: boolean;
 };
-
-type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
 export enum SecretSyncStatus {
   Pending = "pending",

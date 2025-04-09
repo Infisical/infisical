@@ -16,6 +16,8 @@ import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
+import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
+import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 
 type FormProps = {
@@ -32,7 +34,10 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
   const { name: appName } = APP_CONNECTION_MAP[app];
 
   const onSubmit = async (
-    formData: DiscriminativePick<TAppConnection, "method" | "name" | "app" | "credentials">
+    formData: DiscriminativePick<
+      TAppConnection,
+      "method" | "name" | "app" | "credentials" | "isPlatformManagedCredentials"
+    >
   ) => {
     try {
       const connection = await createAppConnection.mutateAsync(formData);
@@ -68,6 +73,10 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <HumanitecConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Vercel:
       return <VercelConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Postgres:
+      return <PostgresConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.MsSql:
+      return <MsSqlConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -78,7 +87,10 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
   const { name: appName } = APP_CONNECTION_MAP[appConnection.app];
 
   const onSubmit = async (
-    formData: DiscriminativePick<TAppConnection, "method" | "name" | "app" | "credentials">
+    formData: DiscriminativePick<
+      TAppConnection,
+      "method" | "name" | "app" | "credentials" | "isPlatformManagedCredentials"
+    >
   ) => {
     try {
       const connection = await updateAppConnection.mutateAsync({
@@ -117,6 +129,10 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <HumanitecConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Vercel:
       return <VercelConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Postgres:
+      return <PostgresConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.MsSql:
+      return <MsSqlConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

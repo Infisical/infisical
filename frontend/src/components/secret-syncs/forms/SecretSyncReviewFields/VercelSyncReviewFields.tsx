@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
-import { SecretSyncLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import { GenericFieldLabel } from "@app/components/v2";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { VercelEnvironmentType } from "@app/hooks/api/secretSyncs/types/vercel-sync";
 
@@ -13,10 +13,10 @@ export const VercelSyncReviewFields = () => {
 
   return (
     <>
-      <SecretSyncLabel label="Vercel App">{appName}</SecretSyncLabel>
-      <SecretSyncLabel label="Environment">{envId}</SecretSyncLabel>
+      <GenericFieldLabel label="Vercel App">{appName}</GenericFieldLabel>
+      <GenericFieldLabel label="Environment">{envId}</GenericFieldLabel>
       {envId === VercelEnvironmentType.Preview && branchId && (
-        <SecretSyncLabel label="Preview Branch">{branchId}</SecretSyncLabel>
+        <GenericFieldLabel label="Preview Branch">{branchId}</GenericFieldLabel>
       )}
     </>
   );

@@ -98,9 +98,12 @@ export const SnapshotView = ({
       const doesExist = Boolean(secretGroupById?.[id]);
       if (doesExist) {
         diffView.push({
-          mode: deepCompareSecrets(rollSecret, secretGroupById[id])
-            ? TDiffModes.NoChange
-            : TDiffModes.Modified,
+          mode:
+            rollSecret.isRotatedSecret ||
+            secretGroupById[id]?.isRotatedSecret ||
+            deepCompareSecrets(rollSecret, secretGroupById[id])
+              ? TDiffModes.NoChange
+              : TDiffModes.Modified,
           pre: secretGroupById[id],
           post: rollSecret
         });

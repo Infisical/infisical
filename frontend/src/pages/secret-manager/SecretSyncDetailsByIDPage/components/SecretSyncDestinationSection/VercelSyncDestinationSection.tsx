@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TVercelSync, VercelEnvironmentType } from "@app/hooks/api/secretSyncs/types/vercel-sync";
 
 type Props = {
@@ -14,16 +14,16 @@ export const VercelSyncDestinationSection = ({ secretSync }: Props) => {
   if (destinationConfig.env === VercelEnvironmentType.Preview && destinationConfig.branch) {
     Components = (
       <>
-        <SecretSyncLabel label="Vercel App">{destinationConfig.app}</SecretSyncLabel>
-        <SecretSyncLabel label="Environment">{destinationConfig.env}</SecretSyncLabel>
-        <SecretSyncLabel label="Preview Branch">{destinationConfig.branch}</SecretSyncLabel>
+        <GenericFieldLabel label="Vercel App">{destinationConfig.app}</GenericFieldLabel>
+        <GenericFieldLabel label="Environment">{destinationConfig.env}</GenericFieldLabel>
+        <GenericFieldLabel label="Preview Branch">{destinationConfig.branch}</GenericFieldLabel>
       </>
     );
   } else {
     Components = (
       <>
-        <SecretSyncLabel label="Vercel App">{destinationConfig.app}</SecretSyncLabel>
-        <SecretSyncLabel label="Environment">{destinationConfig.env}</SecretSyncLabel>
+        <GenericFieldLabel label="Vercel App">{destinationConfig.app}</GenericFieldLabel>
+        <GenericFieldLabel label="Environment">{destinationConfig.env}</GenericFieldLabel>
       </>
     );
   }

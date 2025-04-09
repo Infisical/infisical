@@ -86,7 +86,7 @@ export const validateDatabricksConnectionCredentials = async (appConnection: TDa
     };
   } catch (e: unknown) {
     throw new BadRequestError({
-      message: `Unable to validate connection - verify credentials`
+      message: `Unable to validate connection: verify credentials`
     });
   }
 };

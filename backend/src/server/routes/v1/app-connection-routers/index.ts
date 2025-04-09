@@ -7,6 +7,8 @@ import { registerDatabricksConnectionRouter } from "./databricks-connection-rout
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
+import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
+import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
 
 export * from "./app-connection-router";
@@ -20,5 +22,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.AzureAppConfiguration]: registerAzureAppConfigurationConnectionRouter,
     [AppConnection.Databricks]: registerDatabricksConnectionRouter,
     [AppConnection.Humanitec]: registerHumanitecConnectionRouter,
-    [AppConnection.Vercel]: registerVercelConnectionRouter
+    [AppConnection.Vercel]: registerVercelConnectionRouter,
+    [AppConnection.Postgres]: registerPostgresConnectionRouter,
+    [AppConnection.MsSql]: registerMsSqlConnectionRouter
   };

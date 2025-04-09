@@ -1,3 +1,3 @@
 export enum VercelConnectionMethod {
-  API_TOKEN = "api-token"
+  ApiToken = "api-token"
 }

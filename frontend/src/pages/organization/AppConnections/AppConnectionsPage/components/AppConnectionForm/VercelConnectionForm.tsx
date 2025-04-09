@@ -33,7 +33,7 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
 
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
-    method: z.literal(VercelConnectionMethod.API_TOKEN),
+    method: z.literal(VercelConnectionMethod.ApiToken),
     credentials: z.object({
       apiToken: z.string().trim().min(1, "Service API Token required")
     })
@@ -49,7 +49,7 @@ export const VercelConnectionForm = ({ appConnection, onSubmit }: Props) => {
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.Vercel,
-      method: VercelConnectionMethod.API_TOKEN
+      method: VercelConnectionMethod.ApiToken
     }
   });
 

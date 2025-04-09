@@ -15,7 +15,7 @@ export type TVercelConnectionInput = z.infer<typeof CreateVercelConnectionSchema
   app: AppConnection.Vercel;
 };
 
-export type TValidateVercelConnectionCredentials = typeof ValidateVercelConnectionCredentialsSchema;
+export type TValidateVercelConnectionCredentialsSchema = typeof ValidateVercelConnectionCredentialsSchema;
 
 export type TVercelConnectionConfig = DiscriminativePick<TVercelConnectionInput, "method" | "app" | "credentials"> & {
   orgId: string;

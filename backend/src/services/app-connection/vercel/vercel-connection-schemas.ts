@@ -14,23 +14,26 @@ export const VercelConnectionAccessTokenCredentialsSchema = z.object({
   apiToken: z.string().trim().min(1, "API Token required")
 });
 
-const BaseVercelConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.Vercel) });
+const BaseVercelConnectionSchema = BaseAppConnectionSchema.extend({
+  app: z.literal(AppConnection.Vercel),
+  isPlatformManagedCredentials: z.boolean().optional()
+});
 
 export const VercelConnectionSchema = BaseVercelConnectionSchema.extend({
-  method: z.literal(VercelConnectionMethod.API_TOKEN),
+  method: z.literal(VercelConnectionMethod.ApiToken),
   credentials: VercelConnectionAccessTokenCredentialsSchema
 });
 
 export const SanitizedVercelConnectionSchema = z.discriminatedUnion("method", [
   BaseVercelConnectionSchema.extend({
-    method: z.literal(VercelConnectionMethod.API_TOKEN),
+    method: z.literal(VercelConnectionMethod.ApiToken),
     credentials: VercelConnectionAccessTokenCredentialsSchema.pick({})
   })
 ]);
 
 export const ValidateVercelConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
-    method: z.literal(VercelConnectionMethod.API_TOKEN).describe(AppConnections?.CREATE(AppConnection.Vercel).method),
+    method: z.literal(VercelConnectionMethod.ApiToken).describe(AppConnections.CREATE(AppConnection.Vercel).method),
     credentials: VercelConnectionAccessTokenCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.Vercel).credentials
     )

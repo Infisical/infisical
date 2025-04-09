@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
-import { ProjectType, TProjectKeys } from "@app/db/schemas";
-import { TProjectPermission } from "@app/lib/types";
+import { ProjectType, SortDirection, TProjectKeys } from "@app/db/schemas";
+import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
@@ -158,3 +158,23 @@ export type TUpdateProjectSlackConfig = {
   isSecretRequestNotificationEnabled: boolean;
   secretRequestChannels: string;
 } & TProjectPermission;
+
+export enum SearchProjectSortBy {
+  NAME = "name"
+}
+
+export type TSearchProjectsDTO = {
+  permission: OrgServiceActor;
+  name?: string;
+  type?: ProjectType;
+  limit?: number;
+  offset?: number;
+  orderBy?: SearchProjectSortBy;
+  orderDirection?: SortDirection;
+};
+
+export type TProjectAccessRequestDTO = {
+  permission: OrgServiceActor;
+  projectId: string;
+  comment?: string;
+};
