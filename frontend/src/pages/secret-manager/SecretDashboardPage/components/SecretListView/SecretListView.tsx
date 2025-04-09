@@ -16,10 +16,10 @@ import { WsTag } from "@app/hooks/api/types";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 
 import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
+import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 import { SecretDetailSidebar } from "./SecretDetailSidebar";
 import { SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
-import { SecretDeletionImpact } from "./SecretDeletionImpact";
 
 type Props = {
   secrets?: SecretV3RawSanitized[];
@@ -361,7 +361,9 @@ export const SecretListView = ({
         onDeleteApproved={handleSecretDelete}
         buttonText="Delete Secret"
       >
-        {importedBy && importedBy.length > 0 && <SecretDeletionImpact importedBy={importedBy} />}
+        {importedBy && importedBy.length > 0 && (
+          <CollapsibleSecretImports importedBy={importedBy} />
+        )}
       </DeleteActionModal>
       <SecretDetailSidebar
         environment={environment}
