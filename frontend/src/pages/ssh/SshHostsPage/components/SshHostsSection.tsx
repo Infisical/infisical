@@ -43,17 +43,19 @@ export const SshHostsSection = () => {
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Hosts</p>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.SshHosts}>
-          {(isAllowed) => (
-            <Button
-              colorSchema="primary"
-              type="submit"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handlePopUpOpen("sshHost")}
-              isDisabled={!isAllowed}
-            >
-              Add Host
-            </Button>
-          )}
+          {(isAllowed) =>
+            isAllowed && (
+              <Button
+                colorSchema="primary"
+                type="submit"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => handlePopUpOpen("sshHost")}
+                isDisabled={!isAllowed}
+              >
+                Add Host
+              </Button>
+            )
+          }
         </ProjectPermissionCan>
       </div>
       <SshHostsTable handlePopUpOpen={handlePopUpOpen} />

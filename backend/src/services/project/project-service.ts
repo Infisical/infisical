@@ -1068,8 +1068,7 @@ export const projectServiceFactory = ({
     actor,
     projectId
   }: TListProjectSshHostsDTO) => {
-    console.log("listProjectSshHosts: ", actor, actorId, actorAuthMethod, actorOrgId, projectId);
-    const { permission } = await permissionService.getProjectPermission({
+    await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -1078,10 +1077,7 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.SSH
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshHosts);
-
     const hosts = await sshHostDAL.findSshHostsWithLoginMappings(projectId);
-
     return hosts;
   };
 

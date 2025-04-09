@@ -100,7 +100,6 @@ const GroupPolicyActionSchema = z.object({
 });
 
 const SshHostPolicyActionSchema = z.object({
-  [ProjectPermissionSshHostActions.Read]: z.boolean().optional(),
   [ProjectPermissionSshHostActions.Create]: z.boolean().optional(),
   [ProjectPermissionSshHostActions.Edit]: z.boolean().optional(),
   [ProjectPermissionSshHostActions.Delete]: z.boolean().optional(),
@@ -559,28 +558,27 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
     }
 
     if (subject === ProjectPermissionSub.SshHosts) {
-      const canRead = action.includes(ProjectPermissionSshHostActions.Read);
-      const canEdit = action.includes(ProjectPermissionSshHostActions.Edit);
-      const canDelete = action.includes(ProjectPermissionSshHostActions.Delete);
-      const canCreate = action.includes(ProjectPermissionSshHostActions.Create);
-      const canIssueUserCert = action.includes(ProjectPermissionSshHostActions.IssueUserCert);
-      const canIssueHostCert = action.includes(ProjectPermissionSshHostActions.IssueHostCert);
+      if (!formVal[subject]) formVal[subject] = [];
 
-      if (!formVal[subject]) formVal[subject] = [{ conditions: [] }];
-
-      if (canRead) formVal[subject]![0][ProjectPermissionSshHostActions.Read] = true;
-      if (canEdit) formVal[subject]![0][ProjectPermissionSshHostActions.Edit] = true;
-      if (canDelete) formVal[subject]![0][ProjectPermissionSshHostActions.Delete] = true;
-      if (canCreate) formVal[subject]![0][ProjectPermissionSshHostActions.Create] = true;
-      if (canIssueUserCert)
-        formVal[subject]![0][ProjectPermissionSshHostActions.IssueUserCert] = true;
-      if (canIssueHostCert)
-        formVal[subject]![0][ProjectPermissionSshHostActions.IssueHostCert] = true;
-
-      formVal[subject]![0].conditions = conditions
-        ? convertCaslConditionToFormOperator(conditions)
-        : [];
-      formVal[subject]![0].inverted = inverted;
+      formVal[subject]!.push({
+        [ProjectPermissionSshHostActions.Edit]: action.includes(
+          ProjectPermissionSshHostActions.Edit
+        ),
+        [ProjectPermissionSshHostActions.Delete]: action.includes(
+          ProjectPermissionSshHostActions.Delete
+        ),
+        [ProjectPermissionSshHostActions.Create]: action.includes(
+          ProjectPermissionSshHostActions.Create
+        ),
+        [ProjectPermissionSshHostActions.IssueUserCert]: action.includes(
+          ProjectPermissionSshHostActions.IssueUserCert
+        ),
+        [ProjectPermissionSshHostActions.IssueHostCert]: action.includes(
+          ProjectPermissionSshHostActions.IssueHostCert
+        ),
+        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+        inverted
+      });
     }
   });
 
@@ -910,11 +908,10 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.SshHosts]: {
     title: "SSH Hosts",
     actions: [
-      { label: "Read", value: ProjectPermissionSshHostActions.Read },
       { label: "Create", value: ProjectPermissionSshHostActions.Create },
       { label: "Modify", value: ProjectPermissionSshHostActions.Edit },
       { label: "Remove", value: ProjectPermissionSshHostActions.Delete },
-      { label: "Connect", value: ProjectPermissionSshHostActions.IssueUserCert },
+      { label: "Issue User Certificate", value: ProjectPermissionSshHostActions.IssueUserCert },
       { label: "Issue Host Certificate", value: ProjectPermissionSshHostActions.IssueHostCert }
     ]
   },

@@ -76,7 +76,6 @@ export enum ProjectPermissionGroupActions {
 }
 
 export enum ProjectPermissionSshHostActions {
-  Read = "read",
   Create = "create",
   Edit = "edit",
   Delete = "delete",

@@ -337,7 +337,7 @@ export const sshHostServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: host.projectId,
@@ -345,13 +345,6 @@ export const sshHostServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SSH
     });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSshHostActions.Read,
-      subject(ProjectPermissionSub.SshHosts, {
-        hostname: host.hostname
-      })
-    );
 
     return host;
   };

@@ -1,2 +1,2 @@
 export { useCreateSshHost, useDeleteSshHost, useUpdateSshHost } from "./mutations";
-export { useGetSshHostById } from "./queries";
+export { fetchSshHostUserCaPublicKey, useGetSshHostById } from "./queries";

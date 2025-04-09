@@ -57,12 +57,12 @@ export const SshCertificatesTable = () => {
                   </Td>
                   <Td>
                     {certificate.notBefore
-                      ? format(new Date(certificate.notBefore), "yyyy-MM-dd")
+                      ? format(new Date(certificate.notBefore), "yyyy-MM-dd | HH:mm:ss")
                       : "-"}
                   </Td>
                   <Td>
                     {certificate.notAfter
-                      ? format(new Date(certificate.notAfter), "yyyy-MM-dd")
+                      ? format(new Date(certificate.notAfter), "yyyy-MM-dd | HH:mm:ss")
                       : "-"}
                   </Td>
                 </Tr>

@@ -68,7 +68,6 @@ export enum ProjectPermissionGroupActions {
 }
 
 export enum ProjectPermissionSshHostActions {
-  Read = "read",
   Create = "create",
   Edit = "edit",
   Delete = "delete",
@@ -629,7 +628,6 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionSshHostActions.Read,
       ProjectPermissionSshHostActions.Edit,
       ProjectPermissionSshHostActions.Create,
       ProjectPermissionSshHostActions.Delete,

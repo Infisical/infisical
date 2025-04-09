@@ -133,7 +133,7 @@ export const ProjectLayout = () => {
                               </MenuItem>
                             )}
                           </Link>
-                          <Link
+                          {/* <Link
                             to={`/${ProjectType.SSH}/$projectId/certificates` as const}
                             params={{
                               projectId: currentWorkspace.id
@@ -144,8 +144,8 @@ export const ProjectLayout = () => {
                                 Certificates
                               </MenuItem>
                             )}
-                          </Link>
-                          <Link
+                          </Link> */}
+                          {/* <Link
                             to={`/${ProjectType.SSH}/$projectId/cas` as const}
                             params={{
                               projectId: currentWorkspace.id
@@ -160,7 +160,7 @@ export const ProjectLayout = () => {
                                 Certificate Authorities
                               </MenuItem>
                             )}
-                          </Link>
+                          </Link> */}
                         </>
                       )}
                       {isSecretManager && (
