@@ -1,6 +1,6 @@
 import { useFormContext } from "react-hook-form";
 
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform-cloud";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
@@ -14,14 +14,14 @@ export const TerraformCloudSyncReviewFields = () => {
 
   return (
     <>
-      <SecretSyncLabel label="Organization">{orgId}</SecretSyncLabel>
+      <GenericFieldLabel label="Organization">{orgId}</GenericFieldLabel>
       {scope === TerraformCloudSyncScope.VariableSet && (
-        <SecretSyncLabel label="Variable Set">{destinationName}</SecretSyncLabel>
+        <GenericFieldLabel label="Variable Set">{destinationName}</GenericFieldLabel>
       )}
       {scope === TerraformCloudSyncScope.Workspace && (
-        <SecretSyncLabel label="Workspace">{destinationName}</SecretSyncLabel>
+        <GenericFieldLabel label="Workspace">{destinationName}</GenericFieldLabel>
       )}
-      <SecretSyncLabel label="Category">{category}</SecretSyncLabel>
+      <GenericFieldLabel label="Category">{category}</GenericFieldLabel>
     </>
   );
 };

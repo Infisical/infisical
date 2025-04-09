@@ -1,21 +1,25 @@
-import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { TAppConnectionOption } from "@app/hooks/api/appConnections/types/app-options";
-import { TAwsConnection } from "@app/hooks/api/appConnections/types/aws-connection";
-import { TDatabricksConnection } from "@app/hooks/api/appConnections/types/databricks-connection";
-import { TGitHubConnection } from "@app/hooks/api/appConnections/types/github-connection";
-import { THumanitecConnection } from "@app/hooks/api/appConnections/types/humanitec-connection";
-
+import { AppConnection } from "../enums";
+import { TAppConnectionOption } from "./app-options";
+import { TAwsConnection } from "./aws-connection";
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
+import { TDatabricksConnection } from "./databricks-connection";
 import { TGcpConnection } from "./gcp-connection";
+import { TGitHubConnection } from "./github-connection";
+import { THumanitecConnection } from "./humanitec-connection";
+import { TMsSqlConnection } from "./mssql-connection";
+import { TPostgresConnection } from "./postgres-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
 export * from "./azure-key-vault-connection";
+export * from "./databricks-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
 export * from "./humanitec-connection";
+export * from "./mssql-connection";
+export * from "./postgres-connection";
 export * from "./terraform-cloud-connection";
 
 export type TAppConnection =
@@ -26,7 +30,9 @@ export type TAppConnection =
   | TAzureAppConfigurationConnection
   | TDatabricksConnection
   | THumanitecConnection
-  | TTerraformCloudConnection;
+  | TTerraformCloudConnection
+  | TPostgresConnection
+  | TMsSqlConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -38,11 +44,11 @@ export type TAvailableAppConnectionsResponse = { appConnections: TAvailableAppCo
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnection,
-  "name" | "credentials" | "method" | "app" | "description"
+  "name" | "credentials" | "method" | "app" | "description" | "isPlatformManagedCredentials"
 >;
 
 export type TUpdateAppConnectionDTO = Partial<
-  Pick<TAppConnection, "name" | "credentials" | "description">
+  Pick<TAppConnection, "name" | "credentials" | "description" | "isPlatformManagedCredentials">
 > & {
   connectionId: string;
   app: AppConnection;
@@ -62,4 +68,6 @@ export type TAppConnectionMap = {
   [AppConnection.Databricks]: TDatabricksConnection;
   [AppConnection.Humanitec]: THumanitecConnection;
   [AppConnection.TerraformCloud]: TTerraformCloudConnection;
+  [AppConnection.Postgres]: TPostgresConnection;
+  [AppConnection.MsSql]: TMsSqlConnection;
 };

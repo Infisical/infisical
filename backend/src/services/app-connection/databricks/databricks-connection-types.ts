@@ -15,7 +15,7 @@ export type TDatabricksConnectionInput = z.infer<typeof CreateDatabricksConnecti
   app: AppConnection.Databricks;
 };
 
-export type TValidateDatabricksConnectionCredentials = typeof ValidateDatabricksConnectionCredentialsSchema;
+export type TValidateDatabricksConnectionCredentialsSchema = typeof ValidateDatabricksConnectionCredentialsSchema;
 
 export type TDatabricksConnectionConfig = DiscriminativePick<
   TDatabricksConnection,

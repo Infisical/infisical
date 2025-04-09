@@ -6,5 +6,7 @@ export enum AppConnection {
   AzureAppConfiguration = "azure-app-configuration",
   Databricks = "databricks",
   Humanitec = "humanitec",
-  TerraformCloud = "terraform-cloud"
+  TerraformCloud = "terraform-cloud",
+  Postgres = "postgres",
+  MsSql = "mssql"
 }

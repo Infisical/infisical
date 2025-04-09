@@ -15,7 +15,8 @@ export type TTerraformCloudConnectionInput = z.infer<typeof CreateTerraformCloud
   app: AppConnection.TerraformCloud;
 };
 
-export type TValidateTerraformCloudConnectionCredentials = typeof ValidateTerraformCloudConnectionCredentialsSchema;
+export type TValidateTerraformCloudConnectionCredentialsSchema =
+  typeof ValidateTerraformCloudConnectionCredentialsSchema;
 
 export type TTerraformCloudConnectionConfig = DiscriminativePick<
   TTerraformCloudConnectionInput,

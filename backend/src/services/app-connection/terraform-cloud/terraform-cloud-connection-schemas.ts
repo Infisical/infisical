@@ -15,17 +15,18 @@ export const TerraformCloudConnectionAccessTokenCredentialsSchema = z.object({
 });
 
 const BaseTerraformCloudConnectionSchema = BaseAppConnectionSchema.extend({
-  app: z.literal(AppConnection.TerraformCloud)
+  app: z.literal(AppConnection.TerraformCloud),
+  isPlatformManagedCredentials: z.boolean().optional()
 });
 
 export const TerraformCloudConnectionSchema = BaseTerraformCloudConnectionSchema.extend({
-  method: z.literal(TerraformCloudConnectionMethod.API_TOKEN),
+  method: z.literal(TerraformCloudConnectionMethod.ApiToken),
   credentials: TerraformCloudConnectionAccessTokenCredentialsSchema
 });
 
 export const SanitizedTerraformCloudConnectionSchema = z.discriminatedUnion("method", [
   BaseTerraformCloudConnectionSchema.extend({
-    method: z.literal(TerraformCloudConnectionMethod.API_TOKEN),
+    method: z.literal(TerraformCloudConnectionMethod.ApiToken),
     credentials: TerraformCloudConnectionAccessTokenCredentialsSchema.pick({})
   })
 ]);
@@ -33,7 +34,7 @@ export const SanitizedTerraformCloudConnectionSchema = z.discriminatedUnion("met
 export const ValidateTerraformCloudConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
-      .literal(TerraformCloudConnectionMethod.API_TOKEN)
+      .literal(TerraformCloudConnectionMethod.ApiToken)
       .describe(AppConnections?.CREATE(AppConnection.TerraformCloud).method),
     credentials: TerraformCloudConnectionAccessTokenCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.TerraformCloud).credentials

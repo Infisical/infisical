@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import {
   TerraformCloudSyncScope,
   TTerraformCloudSync
@@ -18,18 +18,20 @@ export const TerraformCloudSyncDestinationSection = ({ secretSync }: Props) => {
     case TerraformCloudSyncScope.VariableSet:
       Components = (
         <>
-          <SecretSyncLabel label="Organization">{destinationConfig.org}</SecretSyncLabel>
-          <SecretSyncLabel label="Variable Set">
+          <GenericFieldLabel label="Organization">{destinationConfig.org}</GenericFieldLabel>
+          <GenericFieldLabel label="Variable Set">
             {destinationConfig.destinationName}
-          </SecretSyncLabel>
+          </GenericFieldLabel>
         </>
       );
       break;
     case TerraformCloudSyncScope.Workspace:
       Components = (
         <>
-          <SecretSyncLabel label="Organization">{destinationConfig.org}</SecretSyncLabel>
-          <SecretSyncLabel label="Workspace">{destinationConfig.destinationName}</SecretSyncLabel>
+          <GenericFieldLabel label="Organization">{destinationConfig.org}</GenericFieldLabel>
+          <GenericFieldLabel label="Workspace">
+            {destinationConfig.destinationName}
+          </GenericFieldLabel>
         </>
       );
       break;
@@ -41,9 +43,9 @@ export const TerraformCloudSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <SecretSyncLabel className="capitalize" label="Scope">
+      <GenericFieldLabel className="capitalize" label="Scope">
         {destinationConfig.scope.replace("-", " ")}
-      </SecretSyncLabel>
+      </GenericFieldLabel>
       {Components}
     </>
   );

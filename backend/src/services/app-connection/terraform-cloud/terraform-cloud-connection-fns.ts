@@ -18,7 +18,7 @@ export const getTerraformCloudConnectionListItem = () => {
   return {
     name: "Terraform Cloud" as const,
     app: AppConnection.TerraformCloud as const,
-    methods: Object.values(TerraformCloudConnectionMethod) as [TerraformCloudConnectionMethod.API_TOKEN]
+    methods: Object.values(TerraformCloudConnectionMethod) as [TerraformCloudConnectionMethod.ApiToken]
   };
 };
 

@@ -1,30 +1,22 @@
 import { TAppConnections } from "@app/db/schemas/app-connections";
 import { generateHash } from "@app/lib/crypto/encryption";
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { TAppConnectionServiceFactoryDep } from "@app/services/app-connection/app-connection-service";
-import { TAppConnection, TAppConnectionConfig } from "@app/services/app-connection/app-connection-types";
+import { BadRequestError } from "@app/lib/errors";
+import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import {
-  AwsConnectionMethod,
-  getAwsConnectionListItem,
-  validateAwsConnectionCredentials
-} from "@app/services/app-connection/aws";
-import {
-  DatabricksConnectionMethod,
-  getDatabricksConnectionListItem,
-  validateDatabricksConnectionCredentials
-} from "@app/services/app-connection/databricks";
-import {
-  GcpConnectionMethod,
-  getGcpConnectionListItem,
-  validateGcpConnectionCredentials
-} from "@app/services/app-connection/gcp";
-import {
-  getGitHubConnectionListItem,
-  GitHubConnectionMethod,
-  validateGitHubConnectionCredentials
-} from "@app/services/app-connection/github";
+  transferSqlConnectionCredentialsToPlatform,
+  validateSqlConnectionCredentials
+} from "@app/services/app-connection/shared/sql";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { AppConnection } from "./app-connection-enums";
+import { TAppConnectionServiceFactoryDep } from "./app-connection-service";
+import {
+  TAppConnection,
+  TAppConnectionConfig,
+  TAppConnectionCredentialsValidator,
+  TAppConnectionTransitionCredentialsToPlatform
+} from "./app-connection-types";
+import { AwsConnectionMethod, getAwsConnectionListItem, validateAwsConnectionCredentials } from "./aws";
 import {
   AzureAppConfigurationConnectionMethod,
   getAzureAppConfigurationConnectionListItem,
@@ -36,10 +28,19 @@ import {
   validateAzureKeyVaultConnectionCredentials
 } from "./azure-key-vault";
 import {
+  DatabricksConnectionMethod,
+  getDatabricksConnectionListItem,
+  validateDatabricksConnectionCredentials
+} from "./databricks";
+import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
+import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
+import {
   getHumanitecConnectionListItem,
   HumanitecConnectionMethod,
   validateHumanitecConnectionCredentials
 } from "./humanitec";
+import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
+import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import {
   getTerraformCloudConnectionListItem,
   TerraformCloudConnectionMethod,
@@ -55,7 +56,9 @@ export const listAppConnectionOptions = () => {
     getAzureAppConfigurationConnectionListItem(),
     getDatabricksConnectionListItem(),
     getHumanitecConnectionListItem(),
-    getTerraformCloudConnectionListItem()
+    getTerraformCloudConnectionListItem(),
+    getPostgresConnectionListItem(),
+    getMsSqlConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -101,32 +104,23 @@ export const decryptAppConnectionCredentials = async ({
   return JSON.parse(decryptedPlainTextBlob.toString()) as TAppConnection["credentials"];
 };
 
+const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TAppConnectionCredentialsValidator> = {
+  [AppConnection.AWS]: validateAwsConnectionCredentials as TAppConnectionCredentialsValidator,
+  [AppConnection.Databricks]: validateDatabricksConnectionCredentials as TAppConnectionCredentialsValidator,
+  [AppConnection.GitHub]: validateGitHubConnectionCredentials as TAppConnectionCredentialsValidator,
+  [AppConnection.GCP]: validateGcpConnectionCredentials as TAppConnectionCredentialsValidator,
+  [AppConnection.AzureKeyVault]: validateAzureKeyVaultConnectionCredentials as TAppConnectionCredentialsValidator,
+  [AppConnection.AzureAppConfiguration]:
+    validateAzureAppConfigurationConnectionCredentials as TAppConnectionCredentialsValidator,
+  [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
+  [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
+  [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
+  [AppConnection.TerraformCloud]: validateTerraformCloudConnectionCredentials as TAppConnectionCredentialsValidator
+};
+
 export const validateAppConnectionCredentials = async (
   appConnection: TAppConnectionConfig
-): Promise<TAppConnection["credentials"]> => {
-  const { app } = appConnection;
-  switch (app) {
-    case AppConnection.AWS:
-      return validateAwsConnectionCredentials(appConnection);
-    case AppConnection.Databricks:
-      return validateDatabricksConnectionCredentials(appConnection);
-    case AppConnection.GitHub:
-      return validateGitHubConnectionCredentials(appConnection);
-    case AppConnection.GCP:
-      return validateGcpConnectionCredentials(appConnection);
-    case AppConnection.AzureKeyVault:
-      return validateAzureKeyVaultConnectionCredentials(appConnection);
-    case AppConnection.AzureAppConfiguration:
-      return validateAzureAppConfigurationConnectionCredentials(appConnection);
-    case AppConnection.Humanitec:
-      return validateHumanitecConnectionCredentials(appConnection);
-    case AppConnection.TerraformCloud:
-      return validateTerraformCloudConnectionCredentials(appConnection);
-    default:
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`Unhandled App Connection ${app}`);
-  }
-};
+): Promise<TAppConnection["credentials"]> => VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
 
 export const getAppConnectionMethodName = (method: TAppConnection["method"]) => {
   switch (method) {
@@ -144,10 +138,12 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Service Account Impersonation";
     case DatabricksConnectionMethod.ServicePrincipal:
       return "Service Principal";
-    case HumanitecConnectionMethod.API_TOKEN:
+    case HumanitecConnectionMethod.ApiToken:
+    case TerraformCloudConnectionMethod.ApiToken:
       return "API Token";
-    case TerraformCloudConnectionMethod.API_TOKEN:
-      return "API Token";
+    case PostgresConnectionMethod.UsernameAndPassword:
+    case MsSqlConnectionMethod.UsernameAndPassword:
+      return "Username & Password";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -167,4 +163,26 @@ export const decryptAppConnection = async (
     }),
     credentialsHash: generateHash(appConnection.encryptedCredentials)
   } as TAppConnection;
+};
+
+const platformManagedCredentialsNotSupported: TAppConnectionTransitionCredentialsToPlatform = ({ app }) => {
+  throw new BadRequestError({
+    message: `${APP_CONNECTION_NAME_MAP[app]} Connections do not support platform managed credentials.`
+  });
+};
+
+export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
+  AppConnection,
+  TAppConnectionTransitionCredentialsToPlatform
+> = {
+  [AppConnection.AWS]: platformManagedCredentialsNotSupported,
+  [AppConnection.Databricks]: platformManagedCredentialsNotSupported,
+  [AppConnection.GitHub]: platformManagedCredentialsNotSupported,
+  [AppConnection.GCP]: platformManagedCredentialsNotSupported,
+  [AppConnection.AzureKeyVault]: platformManagedCredentialsNotSupported,
+  [AppConnection.AzureAppConfiguration]: platformManagedCredentialsNotSupported,
+  [AppConnection.Humanitec]: platformManagedCredentialsNotSupported,
+  [AppConnection.Postgres]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
+  [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
+  [AppConnection.TerraformCloud]: platformManagedCredentialsNotSupported
 };

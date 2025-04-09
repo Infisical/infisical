@@ -24,8 +24,14 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     method: I["method"];
     credentials: I["credentials"];
     description?: string | null;
+    isPlatformManagedCredentials?: boolean;
   }>;
-  updateSchema: z.ZodType<{ name?: string; credentials?: I["credentials"]; description?: string | null }>;
+  updateSchema: z.ZodType<{
+    name?: string;
+    credentials?: I["credentials"];
+    description?: string | null;
+    isPlatformManagedCredentials?: boolean;
+  }>;
   sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
   const appName = APP_CONNECTION_NAME_MAP[app];
@@ -208,10 +214,10 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { name, method, credentials, description } = req.body;
+      const { name, method, credentials, description, isPlatformManagedCredentials } = req.body;
 
       const appConnection = (await server.services.appConnection.createAppConnection(
-        { name, method, app, credentials, description },
+        { name, method, app, credentials, description, isPlatformManagedCredentials },
         req.permission
       )) as T;
 
@@ -224,7 +230,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
             name,
             method,
             app,
-            connectionId: appConnection.id
+            connectionId: appConnection.id,
+            isPlatformManagedCredentials
           }
         }
       });
@@ -251,11 +258,11 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { name, credentials, description } = req.body;
+      const { name, credentials, description, isPlatformManagedCredentials } = req.body;
       const { connectionId } = req.params;
 
       const appConnection = (await server.services.appConnection.updateAppConnection(
-        { name, credentials, connectionId, description },
+        { name, credentials, connectionId, description, isPlatformManagedCredentials },
         req.permission
       )) as T;
 
@@ -268,7 +275,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
             name,
             description,
             credentialsUpdated: Boolean(credentials),
-            connectionId
+            connectionId,
+            isPlatformManagedCredentials
           }
         }
       });

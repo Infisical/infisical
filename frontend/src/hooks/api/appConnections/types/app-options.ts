@@ -3,6 +3,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 export type TAppConnectionOptionBase = {
   name: string;
   methods: string[];
+  supportsPlatformManagement?: boolean;
 };
 
 export type TAwsConnectionOption = TAppConnectionOptionBase & {
@@ -42,6 +43,14 @@ export type TTerraformCloudConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.TerraformCloud;
 };
 
+export type TPostgresConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Postgres;
+};
+
+export type TMsSqlConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.MsSql;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -50,7 +59,9 @@ export type TAppConnectionOption =
   | TAzureKeyVaultConnectionOption
   | TDatabricksConnectionOption
   | THumanitecConnectionOption
-  | TTerraformCloudConnectionOption;
+  | TTerraformCloudConnectionOption
+  | TPostgresConnectionOption
+  | TMsSqlConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -61,4 +72,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Databricks]: TDatabricksConnectionOption;
   [AppConnection.Humanitec]: THumanitecConnectionOption;
   [AppConnection.TerraformCloud]: TTerraformCloudConnectionOption;
+  [AppConnection.Postgres]: TPostgresConnectionOption;
+  [AppConnection.MsSql]: TMsSqlConnectionOption;
 };

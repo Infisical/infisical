@@ -3,7 +3,7 @@ import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { IconButton } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
@@ -87,7 +87,7 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
         </ProjectPermissionCan>
       </div>
       <div className="flex w-full flex-wrap gap-8">
-        <SecretSyncLabel label={`${app} Connection`}>{connection.name}</SecretSyncLabel>
+        <GenericFieldLabel label={`${app} Connection`}>{connection.name}</GenericFieldLabel>
         {DestinationComponents}
       </div>
     </div>

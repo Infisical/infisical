@@ -1,4 +1,4 @@
-import { TListProjectIdentitiesDTO } from "@app/hooks/api/workspace/types";
+import { TListProjectIdentitiesDTO, TSearchProjectsDTO } from "@app/hooks/api/workspace/types";
 
 import type { CaStatus } from "../ca";
 
@@ -28,6 +28,7 @@ export const workspaceKeys = {
     ...params
   }: TListProjectIdentitiesDTO) =>
     [...workspaceKeys.getWorkspaceIdentityMemberships(workspaceId), params] as const,
+  searchWorkspace: (dto: TSearchProjectsDTO) => ["search-projects", dto] as const,
   getWorkspaceGroupMemberships: (workspaceId: string) =>
     [{ workspaceId }, "workspace-groups"] as const,
   getWorkspaceCas: ({ projectSlug }: { projectSlug: string }) =>

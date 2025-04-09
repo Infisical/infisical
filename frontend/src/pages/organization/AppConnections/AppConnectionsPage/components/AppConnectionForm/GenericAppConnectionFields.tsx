@@ -32,7 +32,8 @@ export const GenericAppConnectionsFields = () => {
         isOptional
       >
         <TextArea
-          className="h-20 !resize-none"
+          className="!resize-none"
+          rows={1}
           placeholder="Connection description..."
           {...register("description")}
         />

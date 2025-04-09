@@ -22,6 +22,11 @@ import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
+import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
+import {
+  PostgresConnectionListItemSchema,
+  SanitizedPostgresConnectionSchema
+} from "@app/services/app-connection/postgres";
 import {
   SanitizedTerraformCloudConnectionSchema,
   TerraformCloudConnectionListItemSchema
@@ -37,7 +42,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAzureAppConfigurationConnectionSchema.options,
   ...SanitizedDatabricksConnectionSchema.options,
   ...SanitizedHumanitecConnectionSchema.options,
-  ...SanitizedTerraformCloudConnectionSchema.options
+  ...SanitizedTerraformCloudConnectionSchema.options,
+  ...SanitizedPostgresConnectionSchema.options,
+  ...SanitizedMsSqlConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -48,7 +55,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AzureAppConfigurationConnectionListItemSchema,
   DatabricksConnectionListItemSchema,
   HumanitecConnectionListItemSchema,
-  TerraformCloudConnectionListItemSchema
+  TerraformCloudConnectionListItemSchema,
+  PostgresConnectionListItemSchema,
+  MsSqlConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

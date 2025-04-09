@@ -33,7 +33,7 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
 
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
-    method: z.literal(TerraformCloudConnectionMethod.API_TOKEN),
+    method: z.literal(TerraformCloudConnectionMethod.ApiToken),
     credentials: z.object({
       apiToken: z.string().trim().min(1, "Service API Token required")
     })
@@ -49,7 +49,7 @@ export const TerraformCloudConnectionForm = ({ appConnection, onSubmit }: Props)
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.TerraformCloud,
-      method: TerraformCloudConnectionMethod.API_TOKEN
+      method: TerraformCloudConnectionMethod.ApiToken
     }
   });
 

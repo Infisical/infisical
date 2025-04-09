@@ -5,6 +5,7 @@
 // TODO(akhilmhdh): With tony find out the api structure and fill it here
 
 import { ForbiddenError } from "@casl/ability";
+import { CronJob } from "cron";
 import { Knex } from "knex";
 
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -85,6 +86,20 @@ export const licenseServiceFactory = ({
     appCfg.LICENSE_KEY || ""
   );
 
+  const syncLicenseKeyOnPremFeatures = async (shouldThrow: boolean = false) => {
+    logger.info("Start syncing license key features");
+    try {
+      const {
+        data: { currentPlan }
+      } = await licenseServerOnPremApi.request.get<{ currentPlan: TFeatureSet }>("/api/license/v1/plan");
+      onPremFeatures = currentPlan;
+      logger.info("Successfully synchronized license key features");
+    } catch (error) {
+      logger.error(error, "Failed to synchronize license key features");
+      if (shouldThrow) throw error;
+    }
+  };
+
   const init = async () => {
     try {
       if (appCfg.LICENSE_SERVER_KEY) {
@@ -98,10 +113,7 @@ export const licenseServiceFactory = ({
       if (appCfg.LICENSE_KEY) {
         const token = await licenseServerOnPremApi.refreshLicense();
         if (token) {
-          const {
-            data: { currentPlan }
-          } = await licenseServerOnPremApi.request.get<{ currentPlan: TFeatureSet }>("/api/license/v1/plan");
-          onPremFeatures = currentPlan;
+          await syncLicenseKeyOnPremFeatures(true);
           instanceType = InstanceType.EnterpriseOnPrem;
           logger.info(`Instance type: ${InstanceType.EnterpriseOnPrem}`);
           isValidLicense = true;
@@ -144,6 +156,15 @@ export const licenseServiceFactory = ({
       isValidLicense = true;
     } catch (error) {
       logger.error(error, `init-license: encountered an error when init license`);
+    }
+  };
+
+  const initializeBackgroundSync = async () => {
+    if (appCfg.LICENSE_KEY) {
+      logger.info("Setting up background sync process for refresh onPremFeatures");
+      const job = new CronJob("*/10 * * * *", syncLicenseKeyOnPremFeatures);
+      job.start();
+      return job;
     }
   };
 
@@ -662,6 +683,7 @@ export const licenseServiceFactory = ({
     getOrgTaxInvoices,
     getOrgTaxIds,
     addOrgTaxId,
-    delOrgTaxId
+    delOrgTaxId,
+    initializeBackgroundSync
   };
 };
