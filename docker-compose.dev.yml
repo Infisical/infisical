@@ -190,6 +190,28 @@ services:
       - 8088:8080
     profiles: [sso]
 
+  clickhouse-server:
+    image: clickhouse/clickhouse-server
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    ports:
+      - "18123:8123"
+      - "19000:9000"
+    environment:
+      CLICKHOUSE_PASSWORD: infisical
+
+  ch-ui:
+    image: ghcr.io/caioricciuti/ch-ui:latest
+    restart: always
+    depends_on:
+      - clickhouse-server
+    ports:
+      - "5521:5521"
+    environment:
+      VITE_CLICKHOUSE_URL: "http://localhost:18123"
+      VITE_CLICKHOUSE_USER: "default"
+      VITE_CLICKHOUSE_PASS: "infisical"
+
 volumes:
   postgres-data:
     driver: local
@@ -198,3 +220,4 @@ volumes:
   ldap_data:
   ldap_config:
   grafana_storage:
+  clickhouse-data:

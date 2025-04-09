@@ -33,9 +33,10 @@ import { maintenanceMode } from "./plugins/maintenanceMode";
 import { registerServeUI } from "./plugins/serve-ui";
 import { fastifySwagger } from "./plugins/swagger";
 import { registerRoutes } from "./routes";
+import { NodeClickHouseClient } from "@clickhouse/client/dist/client";
 
 type TMain = {
-  auditLogDb?: Knex;
+  auditLogDb?: Knex | NodeClickHouseClient;
   db: Knex;
   smtp: TSmtpService;
   logger?: CustomLogger;

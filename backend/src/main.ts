@@ -6,7 +6,7 @@ import { Redis } from "ioredis";
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 
 import { runMigrations } from "./auto-start-migrations";
-import { initAuditLogDbConnection, initDbConnection } from "./db";
+import { clickUpAuditLogDbConnection, initAuditLogDbConnection, initDbConnection } from "./db";
 import { keyStoreFactory } from "./keystore/keystore";
 import { formatSmtpConfig, initEnvConfig } from "./lib/config/env";
 import { initLogger } from "./lib/logger";
@@ -30,12 +30,33 @@ const run = async () => {
     }))
   });
 
-  const auditLogDb = envConfig.AUDIT_LOGS_DB_CONNECTION_URI
-    ? initAuditLogDbConnection({
-        dbConnectionUri: envConfig.AUDIT_LOGS_DB_CONNECTION_URI,
-        dbRootCert: envConfig.AUDIT_LOGS_DB_ROOT_CERT
-      })
-    : undefined;
+  let auditLogDb;
+
+  switch (envConfig.SHOULD_USE_AUDIT_LOG_DB) {
+    case "POSTGRES":
+      auditLogDb =
+        envConfig.SHOULD_USE_AUDIT_LOG_DB === "POSTGRES" && envConfig.AUDIT_LOGS_DB_CONNECTION_URI
+          ? initAuditLogDbConnection({
+              dbConnectionUri: envConfig.AUDIT_LOGS_DB_CONNECTION_URI,
+              dbRootCert: envConfig.AUDIT_LOGS_DB_ROOT_CERT
+            })
+          : undefined;
+
+      break;
+    case "CLICKHOUSE":
+      auditLogDb =
+        envConfig.SHOULD_USE_AUDIT_LOG_DB === "CLICKHOUSE" && envConfig.CLICKHOUSE_DB_CONNECTION_URI
+          ? clickUpAuditLogDbConnection({
+              dbConnectionUri: envConfig.CLICKHOUSE_DB_CONNECTION_URI,
+              dbConnectionPassword: envConfig.CLICKHOUSE_DB_PASSWORD,
+              dbConnectionUser: envConfig.CLICKHOUSE_DB_USER
+            })
+          : undefined;
+      break;
+    default:
+      auditLogDb = undefined;
+      break;
+  }
 
   await runMigrations({ applicationDb: db, auditLogDb, logger });
 
