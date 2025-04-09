@@ -460,4 +460,25 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       return publicKey;
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/:sshHostId/host-ca-public-key",
+    config: {
+      rateLimit: publicSshCaLimit
+    },
+    schema: {
+      description: "Get public key of the host SSH CA linked to the host",
+      params: z.object({
+        sshHostId: z.string().trim().describe(SSH_HOSTS.GET_USER_CA_PUBLIC_KEY.sshHostId)
+      }),
+      response: {
+        200: z.string()
+      }
+    },
+    handler: async (req) => {
+      const publicKey = await server.services.sshHost.getSshHostHostCaPk(req.params.sshHostId);
+      return publicKey;
+    }
+  });
 };

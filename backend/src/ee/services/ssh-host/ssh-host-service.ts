@@ -590,6 +590,30 @@ export const sshHostServiceFactory = ({
     return publicKey;
   };
 
+  const getSshHostHostCaPk = async (sshHostId: string) => {
+    const host = await sshHostDAL.findById(sshHostId);
+    if (!host) {
+      throw new NotFoundError({
+        message: `SSH host with ID ${sshHostId} not found`
+      });
+    }
+
+    const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: host.hostSshCaId });
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: host.projectId
+    });
+
+    const decryptedCaPrivateKey = secretManagerDecryptor({
+      cipherTextBlob: sshCaSecret.encryptedPrivateKey
+    });
+
+    const publicKey = await getSshPublicKey(decryptedCaPrivateKey.toString("utf-8"));
+
+    return publicKey;
+  };
+
   return {
     listSshHosts,
     createSshHost,
@@ -598,6 +622,7 @@ export const sshHostServiceFactory = ({
     getSshHost,
     issueSshHostUserCert,
     issueSshHostHostCert,
-    getSshHostUserCaPk
+    getSshHostUserCaPk,
+    getSshHostHostCaPk
   };
 };
