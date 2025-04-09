@@ -219,7 +219,7 @@
     "pino": "^8.16.2",
     "pkcs11js": "^2.1.6",
     "pkijs": "^3.2.4",
-    "posthog-node": "^3.6.2",
+    "posthog-node": "^4.11.2",
     "probot": "^13.3.8",
     "safe-regex": "^2.1.1",
     "scim-patch": "^0.8.3",
