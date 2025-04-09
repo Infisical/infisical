@@ -388,7 +388,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         searchFilter: req.body.search,
         orgId: req.permission.orgId,
         limit: req.body.limit,
-        offset: req.body.offset
+        offset: req.body.offset,
+        orderBy: req.body.orderBy,
+        orderDirection: req.body.orderDirection
       });
 
       return { identities: identityMemberships, totalCount };
