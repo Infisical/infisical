@@ -11,7 +11,14 @@ function isVercelDefaultEnvType(value: string): value is DefaultVercelEnvType {
   return Object.values(VercelEnvironmentType).map(String).includes(value);
 }
 
-const getVercelSecrets = async (secretSync: TVercelSyncWithCredentials) => {
+const MAX_RETRIES = 5;
+
+const sleep = async () =>
+  new Promise((resolve) => {
+    setTimeout(resolve, 1000);
+  });
+
+const getVercelSecrets = async (secretSync: TVercelSyncWithCredentials, attempt = 0): Promise<VercelApiSecret[]> => {
   const {
     destinationConfig,
     connection: {
@@ -23,64 +30,75 @@ const getVercelSecrets = async (secretSync: TVercelSyncWithCredentials) => {
     decrypt: "true",
     ...(destinationConfig.branch ? { gitBranch: destinationConfig.branch } : {})
   };
-
-  const { data } = await request.get<{ envs: VercelApiSecret[] }>(
-    `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${destinationConfig.app}/env?teamId=${destinationConfig.teamId}`,
-    {
-      params,
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "Accept-Encoding": "application/json"
+  try {
+    const { data } = await request.get<{ envs: VercelApiSecret[] }>(
+      `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${destinationConfig.app}/env?teamId=${destinationConfig.teamId}`,
+      {
+        params,
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Accept-Encoding": "application/json"
+        }
       }
-    }
-  );
+    );
 
-  const filteredSecrets = data.envs.filter((secret) => {
-    if (!isVercelDefaultEnvType(destinationConfig.env)) {
-      if (secret.customEnvironmentIds?.includes(destinationConfig.env)) {
+    const filteredSecrets = data.envs.filter((secret) => {
+      if (!isVercelDefaultEnvType(destinationConfig.env)) {
+        if (secret.customEnvironmentIds?.includes(destinationConfig.env)) {
+          return true;
+        }
+        return false;
+      }
+      if (secret.target.includes(destinationConfig.env)) {
+        // If it's preview environment with a branch specified
+        if (
+          destinationConfig.env === VercelEnvironmentType.Preview &&
+          destinationConfig.branch &&
+          secret.gitBranch &&
+          secret.gitBranch !== destinationConfig.branch
+        ) {
+          return false;
+        }
         return true;
       }
       return false;
-    }
-    if (secret.target.includes(destinationConfig.env)) {
-      // If it's preview environment with a branch specified
-      if (
-        destinationConfig.env === VercelEnvironmentType.Preview &&
-        destinationConfig.branch &&
-        secret.gitBranch &&
-        secret.gitBranch !== destinationConfig.branch
-      ) {
-        return false;
-      }
-      return true;
-    }
-    return false;
-  });
+    });
 
-  // For secrets of type "encrypted", we need to get their decrypted value
-  const secretsWithValues = await Promise.all(
-    filteredSecrets.map(async (secret) => {
-      if (secret.type === "encrypted") {
-        const { data: decryptedSecret } = await request.get(
-          `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${destinationConfig.app}/env/${secret.id}?teamId=${destinationConfig.teamId}`,
-          {
-            params,
-            headers: {
-              Authorization: `Bearer ${apiToken}`,
-              "Accept-Encoding": "application/json"
+    // For secrets of type "encrypted", we need to get their decrypted value
+    const secretsWithValues = await Promise.all(
+      filteredSecrets.map(async (secret) => {
+        if (secret.type === "encrypted") {
+          const { data: decryptedSecret } = await request.get(
+            `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${destinationConfig.app}/env/${secret.id}?teamId=${destinationConfig.teamId}`,
+            {
+              params,
+              headers: {
+                Authorization: `Bearer ${apiToken}`,
+                "Accept-Encoding": "application/json"
+              }
             }
-          }
-        );
-        return decryptedSecret as VercelApiSecret;
-      }
-      return secret;
-    })
-  );
+          );
+          return decryptedSecret as VercelApiSecret;
+        }
+        return secret;
+      })
+    );
 
-  return secretsWithValues;
+    return secretsWithValues;
+  } catch (error) {
+    if ((error as { code: string }).code === "rate_limited" && attempt < MAX_RETRIES) {
+      await sleep();
+      return await getVercelSecrets(secretSync, attempt + 1);
+    }
+    throw error;
+  }
 };
 
-const deleteSecret = async (secretSync: TVercelSyncWithCredentials, vercelSecret: VercelApiSecret) => {
+const deleteSecret = async (
+  secretSync: TVercelSyncWithCredentials,
+  vercelSecret: VercelApiSecret,
+  attempt = 0
+): Promise<void> => {
   const {
     destinationConfig,
     connection: {
@@ -99,6 +117,10 @@ const deleteSecret = async (secretSync: TVercelSyncWithCredentials, vercelSecret
       }
     );
   } catch (error) {
+    if ((error as { code: string }).code === "rate_limited" && attempt < MAX_RETRIES) {
+      await sleep();
+      return await deleteSecret(secretSync, vercelSecret, attempt + 1);
+    }
     throw new SecretSyncError({
       error,
       secretKey: vercelSecret.key
@@ -106,7 +128,12 @@ const deleteSecret = async (secretSync: TVercelSyncWithCredentials, vercelSecret
   }
 };
 
-const createSecret = async (secretSync: TVercelSyncWithCredentials, secretMap: TSecretMap, key: string) => {
+const createSecret = async (
+  secretSync: TVercelSyncWithCredentials,
+  secretMap: TSecretMap,
+  key: string,
+  attempt = 0
+): Promise<void> => {
   try {
     const {
       destinationConfig,
@@ -135,6 +162,10 @@ const createSecret = async (secretSync: TVercelSyncWithCredentials, secretMap: T
       }
     );
   } catch (error) {
+    if ((error as { code: string }).code === "rate_limited" && attempt < MAX_RETRIES) {
+      await sleep();
+      return await createSecret(secretSync, secretMap, key, attempt + 1);
+    }
     throw new SecretSyncError({
       error,
       secretKey: key
@@ -145,8 +176,9 @@ const createSecret = async (secretSync: TVercelSyncWithCredentials, secretMap: T
 const updateSecret = async (
   secretSync: TVercelSyncWithCredentials,
   secretMap: TSecretMap,
-  vercelSecret: VercelApiSecret
-) => {
+  vercelSecret: VercelApiSecret,
+  attempt = 0
+): Promise<void> => {
   try {
     const {
       destinationConfig,
@@ -187,6 +219,10 @@ const updateSecret = async (
       }
     );
   } catch (error) {
+    if ((error as { code: string }).code === "rate_limited" && attempt < MAX_RETRIES) {
+      await sleep();
+      return await updateSecret(secretSync, secretMap, vercelSecret, attempt + 1);
+    }
     throw new SecretSyncError({
       error,
       secretKey: vercelSecret.key
