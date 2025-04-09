@@ -50,7 +50,7 @@ func init() {
 
 		config.INFISICAL_URL = util.AppendAPIEndpoint(config.INFISICAL_URL)
 
-		util.DisplayAptInstallationChangeBanner(silent)
+		// util.DisplayAptInstallationChangeBanner(silent)
 		if !util.IsRunningInDocker() && !silent {
 			util.CheckForUpdate()
 		}
