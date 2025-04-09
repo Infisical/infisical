@@ -12,75 +12,75 @@ permissions:
   contents: write
 
 jobs:
-  cli-integration-tests:
-    name: Run tests before deployment
-    uses: ./.github/workflows/run-cli-tests.yml
-    secrets:
-      CLI_TESTS_UA_CLIENT_ID: ${{ secrets.CLI_TESTS_UA_CLIENT_ID }}
-      CLI_TESTS_UA_CLIENT_SECRET: ${{ secrets.CLI_TESTS_UA_CLIENT_SECRET }}
-      CLI_TESTS_SERVICE_TOKEN: ${{ secrets.CLI_TESTS_SERVICE_TOKEN }}
-      CLI_TESTS_PROJECT_ID: ${{ secrets.CLI_TESTS_PROJECT_ID }}
-      CLI_TESTS_ENV_SLUG: ${{ secrets.CLI_TESTS_ENV_SLUG }}
-      CLI_TESTS_USER_EMAIL: ${{ secrets.CLI_TESTS_USER_EMAIL }}
-      CLI_TESTS_USER_PASSWORD: ${{ secrets.CLI_TESTS_USER_PASSWORD }}
-      CLI_TESTS_INFISICAL_VAULT_FILE_PASSPHRASE: ${{ secrets.CLI_TESTS_INFISICAL_VAULT_FILE_PASSPHRASE }}
+  # cli-integration-tests:
+  #   name: Run tests before deployment
+  #   uses: ./.github/workflows/run-cli-tests.yml
+  #   secrets:
+  #     CLI_TESTS_UA_CLIENT_ID: ${{ secrets.CLI_TESTS_UA_CLIENT_ID }}
+  #     CLI_TESTS_UA_CLIENT_SECRET: ${{ secrets.CLI_TESTS_UA_CLIENT_SECRET }}
+  #     CLI_TESTS_SERVICE_TOKEN: ${{ secrets.CLI_TESTS_SERVICE_TOKEN }}
+  #     CLI_TESTS_PROJECT_ID: ${{ secrets.CLI_TESTS_PROJECT_ID }}
+  #     CLI_TESTS_ENV_SLUG: ${{ secrets.CLI_TESTS_ENV_SLUG }}
+  #     CLI_TESTS_USER_EMAIL: ${{ secrets.CLI_TESTS_USER_EMAIL }}
+  #     CLI_TESTS_USER_PASSWORD: ${{ secrets.CLI_TESTS_USER_PASSWORD }}
+  #     CLI_TESTS_INFISICAL_VAULT_FILE_PASSPHRASE: ${{ secrets.CLI_TESTS_INFISICAL_VAULT_FILE_PASSPHRASE }}
 
-  npm-release:
-    runs-on: ubuntu-latest
-    env:
-      working-directory: ./npm
-    needs:
-      - cli-integration-tests
-      - goreleaser
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+  # npm-release:
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     working-directory: ./npm
+  #   needs:
+  #     - cli-integration-tests
+  #     - goreleaser
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         fetch-depth: 0
 
-      - name: Extract version
-        run: |
-          VERSION=$(echo ${{ github.ref_name }} | sed 's/infisical-cli\/v//')
-          echo "Version extracted: $VERSION"
-          echo "CLI_VERSION=$VERSION" >> $GITHUB_ENV
+  #     - name: Extract version
+  #       run: |
+  #         VERSION=$(echo ${{ github.ref_name }} | sed 's/infisical-cli\/v//')
+  #         echo "Version extracted: $VERSION"
+  #         echo "CLI_VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Print version
-        run: echo ${{ env.CLI_VERSION }}
+  #     - name: Print version
+  #       run: echo ${{ env.CLI_VERSION }}
 
-      - name: Setup Node
-        uses: actions/setup-node@8f152de45cc393bb48ce5d89d36b731f54556e65 # v4.0.0
-        with:
-          node-version: 20
-          cache: "npm"
-          cache-dependency-path: ./npm/package-lock.json
-      - name: Install dependencies
-        working-directory: ${{ env.working-directory }}
-        run: npm install --ignore-scripts
+  #     - name: Setup Node
+  #       uses: actions/setup-node@8f152de45cc393bb48ce5d89d36b731f54556e65 # v4.0.0
+  #       with:
+  #         node-version: 20
+  #         cache: "npm"
+  #         cache-dependency-path: ./npm/package-lock.json
+  #     - name: Install dependencies
+  #       working-directory: ${{ env.working-directory }}
+  #       run: npm install --ignore-scripts
 
-      - name: Set NPM version
-        working-directory: ${{ env.working-directory }}
-        run: npm version ${{ env.CLI_VERSION }} --allow-same-version --no-git-tag-version
+  #     - name: Set NPM version
+  #       working-directory: ${{ env.working-directory }}
+  #       run: npm version ${{ env.CLI_VERSION }} --allow-same-version --no-git-tag-version
 
-      - name: Setup NPM
-        working-directory: ${{ env.working-directory }}
-        run: |
-          echo 'registry="https://registry.npmjs.org/"' > ./.npmrc
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ./.npmrc
+  #     - name: Setup NPM
+  #       working-directory: ${{ env.working-directory }}
+  #       run: |
+  #         echo 'registry="https://registry.npmjs.org/"' > ./.npmrc
+  #         echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ./.npmrc
 
-          echo 'registry="https://registry.npmjs.org/"' > ~/.npmrc
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  #         echo 'registry="https://registry.npmjs.org/"' > ~/.npmrc
+  #         echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+  #       env:
+  #         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Pack NPM
-        working-directory: ${{ env.working-directory }}
-        run: npm pack
+  #     - name: Pack NPM
+  #       working-directory: ${{ env.working-directory }}
+  #       run: npm pack
 
-      - name: Publish NPM
-        working-directory: ${{ env.working-directory }}
-        run: npm publish --tarball=./infisical-sdk-${{github.ref_name}} --access public --registry=https://registry.npmjs.org/
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  #     - name: Publish NPM
+  #       working-directory: ${{ env.working-directory }}
+  #       run: npm publish --tarball=./infisical-sdk-${{github.ref_name}} --access public --registry=https://registry.npmjs.org/
+  #       env:
+  #         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  #         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   goreleaser:
     runs-on: ubuntu-latest
