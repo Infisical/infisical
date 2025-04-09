@@ -1,10 +1,8 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
+import { FilterableSelect, FormControl, Select, SelectItem } from "@app/components/v2";
 import {
   TERRAFORM_CLOUD_SYNC_SCOPES,
   TerraformCloudSyncCategory,
@@ -82,6 +80,28 @@ export const TerraformCloudSyncFields = () => {
             errorText={error?.message}
             isError={Boolean(error?.message)}
             label="Category"
+            tooltipClassName="max-w-lg py-3"
+            tooltipText={
+              <div className="flex flex-col gap-3">
+                <ul className="flex list-disc flex-col gap-3 pl-4">
+                  <li>
+                    <p className="text-mineshaft-300">
+                      <span className="font-medium text-bunker-200">
+                        Environment variables configure Terraform&apos;s behavior (e.g.,
+                        credentials).
+                      </span>
+                    </p>
+                  </li>
+                  <li>
+                    <p className="text-mineshaft-300">
+                      <span className="font-medium text-bunker-200">
+                        Terraform variables are used as input values in your configuration.
+                      </span>
+                    </p>
+                  </li>
+                </ul>
+              </div>
+            }
           >
             <Select
               value={value}
@@ -92,9 +112,9 @@ export const TerraformCloudSyncFields = () => {
               placeholder="Select category..."
               dropdownContainerClassName="max-w-none"
             >
-              {Object.values(TerraformCloudSyncCategory).map((category) => (
-                <SelectItem className="capitalize" value={category} key={category}>
-                  {category.replace("-", " ")}
+              {Object.entries(TerraformCloudSyncCategory).map(([envKey, envValue]) => (
+                <SelectItem className="capitalize" value={envValue} key={envValue}>
+                  {envKey.replace("-", " ")}
                 </SelectItem>
               ))}
             </Select>
@@ -157,22 +177,7 @@ export const TerraformCloudSyncFields = () => {
           name="destinationConfig.destinationId"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Variable Set"
-              helperText={
-                <Tooltip
-                  className="max-w-md"
-                  content="Ensure that the variable set exists in the selected organization and the service account used on this connection has write permissions for the specified variable set."
-                >
-                  <div>
-                    <span>Don&#39;t see the variable set you&#39;re looking for?</span>{" "}
-                    <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                  </div>
-                </Tooltip>
-              }
-            >
+            <FormControl isError={Boolean(error)} errorText={error?.message} label="Variable Set">
               <FilterableSelect
                 menuPlacement="top"
                 isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}
@@ -203,22 +208,7 @@ export const TerraformCloudSyncFields = () => {
           name="destinationConfig.destinationId"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Workspace"
-              helperText={
-                <Tooltip
-                  className="max-w-md"
-                  content="Ensure that the workspace exists in the selected organization and the service account used on this connection has write permissions for the specified workspace."
-                >
-                  <div>
-                    <span>Don&#39;t see the workspace you&#39;re looking for?</span>{" "}
-                    <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                  </div>
-                </Tooltip>
-              }
-            >
+            <FormControl isError={Boolean(error)} errorText={error?.message} label="Workspace">
               <FilterableSelect
                 menuPlacement="top"
                 isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}

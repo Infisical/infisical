@@ -25,21 +25,6 @@ export type TTerraformCloudConnectionConfig = DiscriminativePick<
   orgId: string;
 };
 
-export type TerraformCloudOrg = {
-  id: string;
-  name: string;
-};
-
-export type TerraformCloudApp = {
-  name: string;
-  id: string;
-  envs: { name: string; id: string }[];
-};
-
-export type TerraformCloudOrgWithApps = TerraformCloudOrg & {
-  apps: TerraformCloudApp[];
-};
-
 export type TTerraformCloudVariableSet = {
   id: string;
   name: string;
@@ -58,12 +43,3 @@ export type TTerraformCloudOrganization = {
   variableSets: TTerraformCloudVariableSet[];
   workspaces: TTerraformCloudWorkspace[];
 };
-
-export type TTerraformCloudConnectionOrganization = TTerraformCloudOrganization;
-export type TTerraformCloudConnectionVariableSet = TTerraformCloudVariableSet;
-export type TTerraformCloudConnectionWorkspace = TTerraformCloudWorkspace;
-
-export enum TerraformCloudSyncScope {
-  VariableSet = "variableSet",
-  Workspace = "workspace"
-}

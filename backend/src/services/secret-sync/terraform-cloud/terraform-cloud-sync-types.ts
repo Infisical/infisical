@@ -18,14 +18,6 @@ export type TTerraformCloudSyncWithCredentials = TTerraformCloudSync & {
   connection: TTerraformCloudConnection;
 };
 
-export type TerraformCloudSecret = {
-  description: string;
-  is_secret: boolean;
-  key: string;
-  source: "project" | "workspace";
-  value: string;
-};
-
 export type TerraformCloudApiVariable = {
   id: string;
   type: string;

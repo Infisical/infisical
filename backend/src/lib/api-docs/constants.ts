@@ -1694,6 +1694,9 @@ export const AppConnections = {
       sslEnabled: "Whether or not to use SSL when connecting to the database.",
       sslRejectUnauthorized: "Whether or not to reject unauthorized SSL certificates.",
       sslCertificate: "The SSL certificate to use for connection."
+    },
+    TERRAFORM_CLOUD: {
+      apiToken: "The API token to use to connect with Terraform Cloud."
     }
   }
 };

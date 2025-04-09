@@ -52,7 +52,6 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DatabricksConnectionMethod.ServicePrincipal:
       return { name: "Service Principal", icon: faUser };
     case HumanitecConnectionMethod.ApiToken:
-      return { name: "API Token", icon: faKey };
     case TerraformCloudConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:

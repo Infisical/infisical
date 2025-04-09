@@ -64,62 +64,52 @@ export const listOrganizations = async (
     credentials: { apiToken }
   } = appConnection;
 
-  const orgsResponse = await request.get<{ data: { id: string; attributes: { name: string } }[] }>(
-    `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations`,
-    {
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "Content-Type": "application/vnd.api+json"
-      }
+  const headers = {
+    Authorization: `Bearer ${apiToken}`,
+    "Content-Type": "application/vnd.api+json"
+  };
+
+  const fetchAllPages = async <T>(url: string): Promise<T[]> => {
+    let results: T[] = [];
+    let nextUrl: string | null = url;
+
+    while (nextUrl) {
+      // eslint-disable-next-line no-await-in-loop
+      const res: AxiosResponse<{ data: T[]; links?: { next?: string } }> = await request.get(nextUrl, { headers });
+      results = results.concat(res.data.data);
+      nextUrl = res.data.links?.next || null;
     }
+
+    return results;
+  };
+
+  const orgEntities = await fetchAllPages<{ id: string; attributes: { name: string } }>(
+    `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations`
   );
 
-  if (!orgsResponse.data?.data) {
-    throw new InternalServerError({
-      message: "Failed to get organizations: Response was empty"
-    });
-  }
-
-  const orgEntities = orgsResponse.data.data;
   const orgsWithVariableSetsAndWorkspaces: TTerraformCloudOrganization[] = [];
 
   const variableSetPromises = orgEntities.map((org) =>
-    request
-      .get<{ data: { id: string; attributes: { name: string; description?: string; global?: boolean } }[] }>(
-        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${org.id}/varsets`,
-        {
-          headers: {
-            Authorization: `Bearer ${apiToken}`,
-            "Content-Type": "application/vnd.api+json"
-          }
-        }
-      )
-      .catch(() => ({ data: { data: [] } }))
+    fetchAllPages<{ id: string; attributes: { name: string; description?: string; global?: boolean } }>(
+      `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${org.id}/varsets`
+    ).catch(() => [])
   );
 
   const workspacePromises = orgEntities.map((org) =>
-    request
-      .get<{ data: { id: string; attributes: { name: string } }[] }>(
-        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${org.id}/workspaces`,
-        {
-          headers: {
-            Authorization: `Bearer ${apiToken}`,
-            "Content-Type": "application/vnd.api+json"
-          }
-        }
-      )
-      .catch(() => ({ data: { data: [] } }))
+    fetchAllPages<{ id: string; attributes: { name: string } }>(
+      `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${org.id}/workspaces`
+    ).catch(() => [])
   );
 
-  const [variableSetResponses, workspaceResponses] = await Promise.all([
+  const [variableSetResults, workspaceResults] = await Promise.all([
     Promise.all(variableSetPromises),
     Promise.all(workspacePromises)
   ]);
 
   for (let i = 0; i < orgEntities.length; i += 1) {
     const org = orgEntities[i];
-    const variableSetsData = variableSetResponses[i].data?.data || [];
-    const workspacesData = workspaceResponses[i].data?.data || [];
+    const variableSetsData = variableSetResults[i];
+    const workspacesData = workspaceResults[i];
 
     const variableSets: TTerraformCloudVariableSet[] = variableSetsData.map((varSet) => ({
       id: varSet.id,

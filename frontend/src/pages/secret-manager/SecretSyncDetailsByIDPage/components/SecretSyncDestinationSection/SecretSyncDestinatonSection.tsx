@@ -9,7 +9,6 @@ import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
-import { TerraformCloudSyncDestinationCol } from "@app/pages/secret-manager/IntegrationsListPage/components/SecretSyncsTab/SecretSyncTable/SecretSyncDestinationCol/TerraformCloudSyncDestinationCol";
 import { AwsParameterStoreSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/AwsParameterStoreSyncDestinationSection";
 import { AwsSecretsManagerSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/AwsSecretsManagerSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/DatabricksSyncDestinationSection";
@@ -19,6 +18,7 @@ import { AzureAppConfigurationSyncDestinationSection } from "./AzureAppConfigura
 import { AzureKeyVaultSyncDestinationSection } from "./AzureKeyVaultSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
+import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationCol";
 
 type Props = {
   secretSync: TSecretSync;
@@ -59,7 +59,7 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       DestinationComponents = <HumanitecSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.TerraformCloud:
-      DestinationComponents = <TerraformCloudSyncDestinationCol secretSync={secretSync} />;
+      DestinationComponents = <TerraformCloudSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

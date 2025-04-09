@@ -1,6 +1,5 @@
 /* eslint-disable no-await-in-loop */
 import { request } from "@app/lib/config/request";
-import { logger } from "@app/lib/logger";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -13,6 +12,7 @@ import {
   TerraformCloudVariable,
   TTerraformCloudSyncWithCredentials
 } from "./terraform-cloud-sync-types";
+import { AxiosResponse } from "axios";
 
 const getTerraformCloudVariables = async (
   secretSync: TTerraformCloudSyncWithCredentials
@@ -24,7 +24,7 @@ const getTerraformCloudVariables = async (
     }
   } = secretSync;
 
-  let url;
+  let url: string;
   let source: TerraformCloudVariable["source"];
 
   if (destinationConfig.scope === TerraformCloudSyncScope.VariableSet) {
@@ -35,18 +35,35 @@ const getTerraformCloudVariables = async (
     source = "workspace";
   }
 
-  const response = await request.get<TerraformCloudApiResponse<TerraformCloudApiVariable[]>>(url, {
-    headers: {
-      Authorization: `Bearer ${apiToken}`,
-      "Content-Type": "application/vnd.api+json"
+  const headers = {
+    Authorization: `Bearer ${apiToken}`,
+    "Content-Type": "application/vnd.api+json"
+  };
+
+  const fetchAllPages = async (): Promise<TerraformCloudApiVariable[]> => {
+    let results: TerraformCloudApiVariable[] = [];
+    let nextUrl: string | null = url;
+
+    while (nextUrl) {
+      const res: AxiosResponse<TerraformCloudApiResponse<TerraformCloudApiVariable[]>> = await request.get<
+        TerraformCloudApiResponse<TerraformCloudApiVariable[]>
+      >(nextUrl, {
+        headers
+      });
+
+      if (res.data?.data) {
+        results = results.concat(res.data.data);
+      }
+
+      nextUrl = res.data?.links?.next ?? null;
     }
-  });
 
-  if (!response.data || !response.data.data) {
-    return [];
-  }
+    return results;
+  };
 
-  const variables: TerraformCloudVariable[] = response.data.data.map((variable: TerraformCloudApiVariable) => ({
+  const allVariableData = await fetchAllPages();
+
+  const variables: TerraformCloudVariable[] = allVariableData.map((variable) => ({
     id: variable.id,
     key: variable.attributes.key,
     value: variable.attributes.value || "",
@@ -85,8 +102,6 @@ const deleteVariable = async (
         "Content-Type": "application/vnd.api+json"
       }
     });
-
-    logger.info(`Deleted variable ${variable.key} from Terraform Cloud ${destinationConfig.scope}`);
   } catch (error) {
     throw new SecretSyncError({
       error,
@@ -137,8 +152,6 @@ const createVariable = async (
         }
       }
     );
-
-    logger.info(`Created variable ${key} in Terraform Cloud ${destinationConfig.scope}`);
   } catch (error) {
     throw new SecretSyncError({
       error,
@@ -188,8 +201,6 @@ const updateVariable = async (
         }
       }
     );
-
-    logger.info(`Updated variable ${variable.key} in Terraform Cloud ${destinationConfig.scope}`);
   } catch (error) {
     throw new SecretSyncError({
       error,

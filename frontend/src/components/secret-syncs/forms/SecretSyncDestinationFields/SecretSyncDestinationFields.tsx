@@ -17,7 +17,6 @@ export const SecretSyncDestinationFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
 
   const destination = watch("destination");
-  console.log(destination);
 
   switch (destination) {
     case SecretSync.AWSParameterStore:
