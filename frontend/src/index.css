@@ -191,3 +191,10 @@ html {
 #nprogress .bar {
   @apply bg-primary-400;
 }
+
+[contentEditable="true"]:before {
+  content: attr(placeholder);
+  position: absolute;
+  top: 0.5rem;
+  @apply text-sm text-gray-500 opacity-50;
+}

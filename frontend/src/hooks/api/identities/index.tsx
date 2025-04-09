@@ -46,5 +46,6 @@ export {
   useGetIdentityTokenAuth,
   useGetIdentityTokensTokenAuth,
   useGetIdentityUniversalAuth,
-  useGetIdentityUniversalAuthClientSecrets
+  useGetIdentityUniversalAuthClientSecrets,
+  useSearchIdentities
 } from "./queries";

@@ -582,7 +582,8 @@
             "api-reference/endpoints/identities/update",
             "api-reference/endpoints/identities/delete",
             "api-reference/endpoints/identities/get-by-id",
-            "api-reference/endpoints/identities/list"
+            "api-reference/endpoints/identities/list",
+            "api-reference/endpoints/identities/search"
           ]
         },
         {
