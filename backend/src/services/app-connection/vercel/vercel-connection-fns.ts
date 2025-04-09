@@ -133,29 +133,41 @@ async function fetchOrgProjects(orgId: string, apiToken: string): Promise<Vercel
   );
 }
 
-async function fetchProjectEnvironments(projectId: string, apiToken: string): Promise<VercelEnvironment[]> {
-  return fetchAllPages<VercelEnvironment>(
-    `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${projectId}/custom-environments`,
-    apiToken,
-    {},
-    "environments"
-  );
+async function fetchProjectEnvironments(
+  projectId: string,
+  teamId: string,
+  apiToken: string
+): Promise<VercelEnvironment[]> {
+  try {
+    return await fetchAllPages<VercelEnvironment>(
+      `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${projectId}/custom-environments?teamId=${teamId}`,
+      apiToken,
+      {},
+      "environments"
+    );
+  } catch (error) {
+    return [];
+  }
 }
 
 async function fetchPreviewBranches(projectId: string, apiToken: string): Promise<string[]> {
-  const { data } = await request.get<TVercelBranches[]>(
-    `${IntegrationUrls.VERCEL_API_URL}/v1/integrations/git-branches`,
-    {
-      params: {
-        projectId
-      },
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "Accept-Encoding": "application/json"
+  try {
+    const { data } = await request.get<TVercelBranches[]>(
+      `${IntegrationUrls.VERCEL_API_URL}/v1/integrations/git-branches`,
+      {
+        params: {
+          projectId
+        },
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Accept-Encoding": "application/json"
+        }
       }
-    }
-  );
-  return data.filter((b) => b.ref !== "main").map((b) => b.ref);
+    );
+    return data.filter((b) => b.ref !== "main").map((b) => b.ref);
+  } catch (error) {
+    return [];
+  }
 }
 
 type VercelTeam = {
@@ -203,7 +215,7 @@ export const listProjects = async (appConnection: TVercelConnectionInput): Promi
       const enhancedProjectsPromises = projects.map(async (project) => {
         try {
           const [environments, previewBranches] = await Promise.all([
-            fetchProjectEnvironments(project.id, apiToken),
+            fetchProjectEnvironments(project.name, org.id, apiToken),
             fetchPreviewBranches(project.id, apiToken)
           ]);
 
@@ -251,9 +263,9 @@ export const getProjectEnvironmentVariables = (project: VercelApp): Record<strin
   if (!project.envs) return envVars;
 
   project.envs.forEach((env) => {
-    if (env.value && env.type !== "gitBranch") {
-      const { key, value } = env;
-      envVars[key] = value;
+    if (env.slug && env.type !== "gitBranch") {
+      const { id, slug } = env;
+      envVars[id] = slug;
     }
   });
 

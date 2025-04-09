@@ -102,7 +102,7 @@ export const VercelConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <FormControl
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              label="Service API Token"
+              label="API Token"
             >
               <SecretInput
                 containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"

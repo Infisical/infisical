@@ -14,9 +14,10 @@ export type TVercelSync = TRootSecretSync & {
   destination: SecretSync.Vercel;
   destinationConfig: {
     app: string;
-    env: VercelEnvironment;
+    env: VercelEnvironment | string;
     branch?: string;
     appName?: string;
+    teamId: string;
   };
   connection: {
     app: AppConnection.Vercel;

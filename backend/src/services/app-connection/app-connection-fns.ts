@@ -136,7 +136,6 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DatabricksConnectionMethod.ServicePrincipal:
       return "Service Principal";
     case HumanitecConnectionMethod.ApiToken:
-      return "API Token";
     case VercelConnectionMethod.ApiToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:

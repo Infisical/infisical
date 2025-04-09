@@ -1,12 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { request } from "@app/lib/config/request";
-import { logger } from "@app/lib/logger";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { VercelEnvironmentType } from "./vercel-sync-enums";
-import { TVercelSyncWithCredentials, VercelApiSecret } from "./vercel-sync-types";
+import { DefaultVercelEnvType, TVercelSyncWithCredentials, VercelApiSecret } from "./vercel-sync-types";
+
+function isVercelDefaultEnvType(value: string): value is DefaultVercelEnvType {
+  return Object.values(VercelEnvironmentType).map(String).includes(value);
+}
 
 const getVercelSecrets = async (secretSync: TVercelSyncWithCredentials) => {
   const {
@@ -22,7 +25,7 @@ const getVercelSecrets = async (secretSync: TVercelSyncWithCredentials) => {
   };
 
   const { data } = await request.get<{ envs: VercelApiSecret[] }>(
-    `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${destinationConfig.app}/env`,
+    `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${destinationConfig.app}/env?teamId=${destinationConfig.teamId}`,
     {
       params,
       headers: {
@@ -33,7 +36,12 @@ const getVercelSecrets = async (secretSync: TVercelSyncWithCredentials) => {
   );
 
   const filteredSecrets = data.envs.filter((secret) => {
-    // For environment-specific filtering
+    if (!isVercelDefaultEnvType(destinationConfig.env)) {
+      if (secret.customEnvironmentIds?.includes(destinationConfig.env)) {
+        return true;
+      }
+      return false;
+    }
     if (secret.target.includes(destinationConfig.env)) {
       // If it's preview environment with a branch specified
       if (
@@ -54,7 +62,7 @@ const getVercelSecrets = async (secretSync: TVercelSyncWithCredentials) => {
     filteredSecrets.map(async (secret) => {
       if (secret.type === "encrypted") {
         const { data: decryptedSecret } = await request.get(
-          `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${destinationConfig.app}/env/${secret.id}`,
+          `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${destinationConfig.app}/env/${secret.id}?teamId=${destinationConfig.teamId}`,
           {
             params,
             headers: {
@@ -82,7 +90,7 @@ const deleteSecret = async (secretSync: TVercelSyncWithCredentials, vercelSecret
 
   try {
     await request.delete(
-      `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${destinationConfig.app}/env/${vercelSecret.id}`,
+      `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${destinationConfig.app}/env/${vercelSecret.id}?teamId=${destinationConfig.teamId}`,
       {
         headers: {
           Authorization: `Bearer ${apiToken}`,
@@ -108,12 +116,13 @@ const createSecret = async (secretSync: TVercelSyncWithCredentials, secretMap: T
     } = secretSync;
 
     await request.post(
-      `${IntegrationUrls.VERCEL_API_URL}/v10/projects/${destinationConfig.app}/env`,
+      `${IntegrationUrls.VERCEL_API_URL}/v10/projects/${destinationConfig.app}/env?teamId=${destinationConfig.teamId}`,
       {
         key,
         value: secretMap[key].value,
         type: "encrypted",
-        target: [destinationConfig.env],
+        target: isVercelDefaultEnvType(destinationConfig.env) ? [destinationConfig.env] : [],
+        customEnvironmentIds: !isVercelDefaultEnvType(destinationConfig.env) ? [destinationConfig.env] : [],
         ...(destinationConfig.env === VercelEnvironmentType.Preview && destinationConfig.branch
           ? { gitBranch: destinationConfig.branch }
           : {})
@@ -146,31 +155,37 @@ const updateSecret = async (
       }
     } = secretSync;
 
-    // Only update if not sensitive type
-    if (vercelSecret.type !== "sensitive") {
-      await request.patch(
-        `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${destinationConfig.app}/env/${vercelSecret.id}`,
-        {
-          key: vercelSecret.key,
-          value: secretMap[vercelSecret.key].value,
-          type: vercelSecret.type,
-          target: vercelSecret.target.includes(destinationConfig.env)
-            ? [...vercelSecret.target]
-            : [...vercelSecret.target, destinationConfig.env],
-          ...(destinationConfig.env === VercelEnvironmentType.Preview && destinationConfig.branch
-            ? { gitBranch: destinationConfig.branch }
-            : {})
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${apiToken}`,
-            "Accept-Encoding": "application/json"
-          }
-        }
-      );
-    } else {
-      logger.info(`Vercel secret ${vercelSecret.key} is of type 'sensitive' and cannot be updated through the API`);
+    let target = [...vercelSecret.target];
+    if (isVercelDefaultEnvType(destinationConfig.env) && !vercelSecret.target.includes(destinationConfig.env)) {
+      target = [...target, destinationConfig.env];
     }
+    let customEnvironmentIds = [...(vercelSecret.customEnvironmentIds || [])];
+    if (
+      !isVercelDefaultEnvType(destinationConfig.env) &&
+      !vercelSecret.customEnvironmentIds?.includes(destinationConfig.env)
+    ) {
+      customEnvironmentIds = [...customEnvironmentIds, destinationConfig.env];
+    }
+
+    await request.patch(
+      `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${destinationConfig.app}/env/${vercelSecret.id}?teamId=${destinationConfig.teamId}`,
+      {
+        key: vercelSecret.key,
+        value: secretMap[vercelSecret.key].value,
+        type: vercelSecret.type,
+        target,
+        customEnvironmentIds,
+        ...(destinationConfig.env === VercelEnvironmentType.Preview && destinationConfig.branch
+          ? { gitBranch: destinationConfig.branch }
+          : {})
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      }
+    );
   } catch (error) {
     throw new SecretSyncError({
       error,

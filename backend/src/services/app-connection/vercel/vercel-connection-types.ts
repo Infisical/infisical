@@ -28,8 +28,8 @@ export type VercelTeam = {
 };
 
 export type VercelEnvironment = {
-  key: string;
-  value: string;
+  id: string;
+  slug: string;
   type: string;
   target?: string[];
   gitBranch?: string;

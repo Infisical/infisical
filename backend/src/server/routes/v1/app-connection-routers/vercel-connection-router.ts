@@ -45,11 +45,11 @@ export const registerVercelConnectionRouter = async (server: FastifyZodProvider)
                 name: z.string(),
                 envs: z
                   .object({
-                    key: z.string(),
-                    value: z.string(),
+                    id: z.string(),
+                    slug: z.string(),
                     type: z.string(),
                     target: z.array(z.string()).optional(),
-                    gitBranch: z.string().optional(),
+                    description: z.string().optional(),
                     createdAt: z.number().optional(),
                     updatedAt: z.number().optional()
                   })

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
@@ -39,13 +40,26 @@ export const VercelSyncFields = () => {
     ?.find((project) => project.apps.some((app) => app.id === currentApp))
     ?.apps.find((app) => app.id === currentApp);
 
-  const allApps = projects?.flatMap((project) => project.apps) || [];
+  const allApps =
+    projects?.flatMap((project) =>
+      project.apps.map((app) => ({ ...app, project: project.name, projectId: project.id }))
+    ) || [];
 
-  const environmentOptions = vercelEnvironments.map((env) => ({
-    key: env.slug,
-    type: env.slug,
-    name: env.name
-  }));
+  const environmentOptions = useMemo(() => {
+    return vercelEnvironments
+      .map((env) => ({
+        key: env.slug,
+        type: env.slug,
+        name: env.name
+      }))
+      .concat(
+        selectedProject?.envs?.map((env) => ({
+          key: env.id,
+          type: env.type,
+          name: env.slug
+        })) || []
+      );
+  }, [currentApp]);
 
   const previewBranchOptions =
     selectedProject?.previewBranches?.map((branch) => ({
@@ -77,7 +91,7 @@ export const VercelSyncFields = () => {
             helperText={
               <Tooltip
                 className="max-w-md"
-                content="Ensure that the project exists and the service account used on this connection has write permissions for the specified project."
+                content="Ensure the project exists and the API token scope for this connection includes the desired project."
               >
                 <div>
                   <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
@@ -96,6 +110,10 @@ export const VercelSyncFields = () => {
                 onChange(appId);
                 setValue("destinationConfig.branch", "");
                 setValue(
+                  "destinationConfig.teamId",
+                  (option as SingleValue<TVercelConnectionApp>)?.projectId || ""
+                );
+                setValue(
                   "destinationConfig.appName",
                   (option as SingleValue<TVercelConnectionApp>)?.name || ""
                 );
@@ -104,6 +122,7 @@ export const VercelSyncFields = () => {
               placeholder="Select a project..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id.toString()}
+              groupBy="project"
             />
           </FormControl>
         )}
@@ -124,9 +143,9 @@ export const VercelSyncFields = () => {
               value={
                 value
                   ? {
-                      key: value,
-                      type: value,
-                      name: vercelEnvironments.find((env) => env.slug === value)?.name || value
+                      key: environmentOptions.find((env) => env.key === value)?.key,
+                      type: environmentOptions.find((env) => env.key === value)?.type,
+                      name: environmentOptions.find((env) => env.key === value)?.name
                     }
                   : null
               }
@@ -138,8 +157,8 @@ export const VercelSyncFields = () => {
               }}
               options={environmentOptions}
               placeholder="Select an environment..."
-              getOptionLabel={(option) => option.name || option.key}
-              getOptionValue={(option) => option.key}
+              getOptionLabel={(option) => option.name || option.key || ""}
+              getOptionValue={(option) => option.key || ""}
             />
           </FormControl>
         )}

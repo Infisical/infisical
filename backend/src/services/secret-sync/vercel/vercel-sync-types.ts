@@ -2,6 +2,7 @@ import z from "zod";
 
 import { TVercelConnection } from "@app/services/app-connection/vercel";
 
+import { VercelEnvironmentType } from "./vercel-sync-enums";
 import { CreateVercelSyncSchema, VercelSyncListItemSchema, VercelSyncSchema } from "./vercel-sync-schemas";
 
 export type TVercelSyncListItem = z.infer<typeof VercelSyncListItemSchema>;
@@ -28,9 +29,12 @@ export interface VercelApiSecret {
   value: string;
   type: string;
   target: string[];
+  customEnvironmentIds?: string[];
   gitBranch?: string;
   createdAt?: number;
   updatedAt?: number;
   configurationId?: string;
   system?: boolean;
 }
+
+export type DefaultVercelEnvType = (typeof VercelEnvironmentType)[keyof typeof VercelEnvironmentType];

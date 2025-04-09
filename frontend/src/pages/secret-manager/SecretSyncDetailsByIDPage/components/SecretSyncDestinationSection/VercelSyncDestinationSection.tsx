@@ -14,7 +14,9 @@ export const VercelSyncDestinationSection = ({ secretSync }: Props) => {
   if (destinationConfig.env === VercelEnvironmentType.Preview && destinationConfig.branch) {
     Components = (
       <>
-        <GenericFieldLabel label="Vercel App">{destinationConfig.app}</GenericFieldLabel>
+        <GenericFieldLabel label="Vercel App">
+          {destinationConfig.appName || destinationConfig.app}
+        </GenericFieldLabel>
         <GenericFieldLabel label="Environment">{destinationConfig.env}</GenericFieldLabel>
         <GenericFieldLabel label="Preview Branch">{destinationConfig.branch}</GenericFieldLabel>
       </>
@@ -22,7 +24,9 @@ export const VercelSyncDestinationSection = ({ secretSync }: Props) => {
   } else {
     Components = (
       <>
-        <GenericFieldLabel label="Vercel App">{destinationConfig.app}</GenericFieldLabel>
+        <GenericFieldLabel label="Vercel App">
+          {destinationConfig.appName || destinationConfig.app}
+        </GenericFieldLabel>
         <GenericFieldLabel label="Environment">{destinationConfig.env}</GenericFieldLabel>
       </>
     );

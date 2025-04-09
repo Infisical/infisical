@@ -5,8 +5,8 @@ export type TVercelApp = {
 };
 
 export type TVercelConnectionEnvironment = {
-  key: string;
-  value: string;
+  id: string;
+  slug: string;
   type: string;
   target?: string[];
   gitBranch?: string;
@@ -19,6 +19,7 @@ export type TVercelConnectionApp = {
   name: string;
   envs?: TVercelConnectionEnvironment[];
   previewBranches?: string[];
+  projectId: string;
 };
 
 export type TVercelConnectionOrganization = {

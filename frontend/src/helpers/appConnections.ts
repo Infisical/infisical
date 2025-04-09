@@ -52,9 +52,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DatabricksConnectionMethod.ServicePrincipal:
       return { name: "Service Principal", icon: faUser };
     case HumanitecConnectionMethod.ApiToken:
-      return { name: "API Token", icon: faKey };
     case VercelConnectionMethod.ApiToken:
-      return { name: "Service API Token", icon: faKey };
+      return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };

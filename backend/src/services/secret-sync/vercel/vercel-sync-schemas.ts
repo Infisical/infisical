@@ -15,10 +15,9 @@ import { VercelEnvironmentType } from "./vercel-sync-enums";
 const VercelSyncDestinationConfigSchema = z.object({
   app: z.string().min(1, "App ID is required").describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.app),
   appName: z.string().min(1, "App Name is required").describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.appName),
-  env: z
-    .enum([VercelEnvironmentType.Development, VercelEnvironmentType.Preview, VercelEnvironmentType.Production])
-    .describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.env),
-  branch: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.branch)
+  env: z.nativeEnum(VercelEnvironmentType).or(z.string()).describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.env),
+  branch: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.branch),
+  teamId: z.string().describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.teamId)
 });
 
 const VercelSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };

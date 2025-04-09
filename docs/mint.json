@@ -1123,7 +1123,8 @@
                 "api-reference/endpoints/secret-syncs/vercel/update",
                 "api-reference/endpoints/secret-syncs/vercel/delete",
                 "api-reference/endpoints/secret-syncs/vercel/sync-secrets",
-                "api-reference/endpoints/secret-syncs/vercel/remove-secrets"
+                "api-reference/endpoints/secret-syncs/vercel/remove-secrets",
+                "api-reference/endpoints/secret-syncs/vercel/import-secrets"
               ]
             }
           ]
