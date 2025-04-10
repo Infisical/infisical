@@ -113,7 +113,7 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
     await server.register(fastifyErrHandler);
 
     // Rate limiters and security headers
-    if (appCfg.isProductionMode) {
+    if (appCfg.isProductionMode && !appCfg.isCloud) {
       await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg());
     }
 
