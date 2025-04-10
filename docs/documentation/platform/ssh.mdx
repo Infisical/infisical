@@ -1,363 +1,169 @@
 ---
 title: "Infisical SSH"
 sidebarTitle: "Infisical SSH"
-description: "Learn how to generate SSH credentials to provide secure and centralized SSH access control for your infrastructure."
+description: "Learn how to securely provision user SSH access to your infrastructure using SSH certificates."
 ---
 
 ## Concept
 
-Infisical can be used to issue SSH credentials to clients to provide short-lived, secure SSH access to infrastructure;
-this improves on many limitations of traditional SSH key-based authentication via mitigation of private key compromise, static key management,
+Infisical SSH can be used to provide users short-lived, secure SSH access to infrastructure; the underlying technology is powered by SSH certificates
+and improves on the limitations of traditional SSH key-based authentication via mitigation of private key compromise, static key management,
 unauthorized access, and SSH key sprawl.
 
-The following concepts are useful to know when working with Infisical SSH:
+The following entities and concepts are important to understand when using Infisical SSH:
 
-- SSH Certificate Authority (CA): A trusted authority that issues SSH certificates.
-- Certificate Template: A set of policies bound to a SSH CA for certificates issued under that template; a CA can possess multiple templates, each with different policies for a different purpose (e.g. for admin versus developer access).
-- SSH Certificate: A short-lived, credential issued by the SSH CA granting time-bound access to infrastructure.
+- Administrator: An individual on your team who is responsible for configuring Infisical SSH.
+- Users: Other individuals on your team that need access to the remote host.
+- Host: A remote machine (e.g. EC2 instance, GCP VM, Azure VM, on-prem Linux server, Raspberry Pi, VMware VM, etc.) that users need SSH access to that is registered with Infisical SSH.
 
-<div align="center">
+## Workflow
 
-```mermaid
-graph TD
-    A[SSH CA]
-    A --> B[Certificate Template A]
-    A --> C[Certificate Template N]
-    B --> D[SSH Certificate A]
-    C --> E[SSH Certificate N]
+The typical workflow for using Infisical SSH consists of the following steps:
 
-```
+1. The administrator registers a remote host with Infisical using the Infisical CLI via the `infisical ssh add-host` command.
+2. The administrator configures Infisical SSH to grant users access to the remote host.
+3. User(s) access the remote host using the Infisical CLI via the `infisical ssh connect` command.
 
-</div>
+## Admin Guide for Configuring Infisical SSH
 
-When using Infisical SSH to provision client access to a remote host, an operator must create a SSH CA in Infisical; a certificate template under it,
-specifying policies such as allowed users that can be requested under that template by a client; and configure the host to trust certificates issued by the Infisical SSH CA.
-
-When a client needs access to a host, they authenticate with Infisical and request a SSH certificate (and optionally key pair)
-to be used to access the host for a time-bound session as part of the SSH operation.
-
-## Client Workflow
-
-The following sequence diagram illustrates the client workflow for accessing a remote host using an SSH certificate (and optionally key pair)
-supplied by Infisical.
-
-```mermaid
-sequenceDiagram
-  participant Client as Client
-  participant Infisical as Infisical (SSH CA)
-  participant Host as Remote Host
-
-  Note over Client,Client: Step 1: Client Authentication with Infisical
-  Client->>Infisical: Send credential(s) to authenticate with Infisical
-
-  Infisical-->>Client: Return access token
-
-  Note over Client,Infisical: Step 2: SSH Certificate Request
-  Client->>Infisical: Make authenticated request for SSH certificate via either /api/v1/ssh/issue or /api/v1/ssh/sign
-
-  Infisical-->>Client: Return signed SSH certificate (and optionally key pair)
-
-  Note over Client,Client: Step 3: SSH Operation
-  Client->>Host: SSH into Host using the SSH certificate
-
-  Host-->>Client: Grant access to the host
-```
-
-At a high-level, Infisical issues a signed SSH certificate to a client that can be used to access a remote host.
-
-To be more specific:
-
-1. The client authenticates with Infisical; this can be done using a user or machine identity [authentication method](/documentation/platform/identities/machine-identities) or a user [authentication method](/documentation/platform/identities/user-identities).
-2. The client makes an authenticated request for an SSH certificate via either the `/api/v1/ssh/issue` or `/api/v1/ssh/sign` endpoints. Note that if the client wishes to use an existing SSH key pair, it can use the `/api/v1/ssh/sign` endpoint; otherwise, it can use the `/api/v1/ssh/issue` endpoint to have Infisical issue a new SSH key pair in conjunction with the certificate.
-3. The client uses the issued SSH certificate (and potentially SSH key pair) to temporarily access the host.
-
-<Note>
-  Note that the workflow above requires an operator to perform additional
-  configuration on the remote host to trust SSH certificates issued by
-  Infisical.
-</Note>
-
-## Guide to Configuring Infisical SSH
-
-In the following steps, we explore how to configure Infisical SSH to start issuing SSH certificates to clients as well as a remote host to trust these certificates
-as part of the SSH operation.
+In the following steps, we explore how to configure Infisical SSH to control and streamline your team's SSH access to infrastructure. As part of this guide,
+we will register a remote host with Infisical through a [machine identity](/documentation/platform/identities/machine-identities) and configure Infisical to grant user(s) access to the remote host.
 
 <Steps>
-  <Step title="Configuring a SSH CA for client key signing">
-    1.1. Start by creating a SSH project in the SSH tab of your organization.
+  <Step title="Create an Infisical SSH project">
+    1.1. Start by creating a new Infisical SSH project in Infisical.
     
-    ![ssh project create](/images/platform/ssh/ssh-project.png)
+    ![ssh project create](/images/platform/ssh/v2/ssh-create-project.png)
     
-    1.2. Next, create a SSH CA in the **Certificate Authorities** tab of the
-    project; this CA will be used for client key signing.
+    1.2. Create a custom role in the project under Access Control > Project Roles to grant the machine identity that we will create in step 2 the ability to **Create** and **Issue Host Certificates** on the **SSH Host** resource; this will enable the linked machine identity to bootstrap a remote host with Infisical
+    and establish the necessary configuration on it.
     
-    ![ssh create client ca](/images/platform/ssh/ssh-client-create-ca-1.png)
+    ![ssh custom role bootstrap 1](/images/platform/ssh/v2/ssh-add-bootstrap-role-1.png)
     
-    ![ssh create client ca popup](/images/platform/ssh/ssh-client-create-ca-2.png)
-    
-    Here's some guidance on each field:
-
-    - Friendly Name: A friendly name for the CA; this is only for display.
-    - Key Source: Whether the CA's key pair should be generated internally or supplied from an external source. Select **Internal**.
-    - Key Algorithm: The type of public key algorithm and size, in bits, of the key pair for the CA. Supported key algorithms are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384` with the default being `RSA 2048`.
-
+    ![ssh custom role bootstrap 2](/images/platform/ssh/v2/ssh-add-bootstrap-role-2.png)
   </Step>
-  <Step title="Configuring a certificate template on the CA">
+  <Step title="Create a machine identity for bootstrapping Infisical SSH">
+    2.1. Follow the instructions [here](/documentation/platform/identities/universal-auth) to configure a [machine identity](/documentation/platform/identities/machine-identities) in Infisical with Universal Auth.
 
-    2.1. Next, create a certificate template in the **Certificate Templates** section of the newly-created CA.
+    By the end of this step, you should have a **Client ID** and **Client Secret** on hand as part of the Universal Auth configuration for the identity to authenticate with Infisical
+    as part of registering a remote host in step 3.
 
-    A certificate template is a set of policies for certificates issued under that template; each template is bound to a specific CA.
-
-    With certificate templates, you can specify, for example, that certificates issued under a template are only allowed for users with a specific username like `ec2-user` or perhaps that the max TTL requested cannot exceed 1 hour.
-
-    ![ssh client create template](/images/platform/ssh/ssh-client-create-template-1.png)
-
-    ![ssh client create template popup](/images/platform/ssh/ssh-client-create-template-2.png)
-
-    Here's some guidance on each field:
-
-    - SSH Template Name: A name for the certificate template; this must be a valid slug.
-    - Allowed Users: A comma-separated list of valid usernames (e.g. `ec2-user`) on the remote host for which a client can request a certificate for. If you wish to allow a client to request a certificate for any username, set this to `*`; alternatively, if left blank, the template will not allow issuance of certificates under any username.
-    - Allowed Hosts: A comma-separated list of valid hostnames/domains on the remote host for which a client can request a certificate for. Each item in the list can be either a wildcard hostname (e.g. `*.acme.com`), a specific hostname (e.g. `example.com`), an IPv4 address (e.g. `192.168.1.1`), or an IPv6 address. If left empty, the template will not allow any hostnames; if set to `*`, the template will allow any hostname.
-    - Default TTL: The default Time-to-Live (TTL) for certificates issued under this template when a client does not explicitly specify a TTL in the certificate request. We recommend setting a shorter **Default TTL** for client certificates such as `30m`.
-    - Max TTL: The maximum TTL for certificates issued under this template.
-    - Allow User Certificates: Whether or not to allow issuance of user certificates; this should be set to `true`.
-    - Allow Host Certificates: Whether or not to allow issuance of host certificates; this is not relevant for this step.
-    - Allow Custom Key IDs: Whether or not to allow clients to specify a custom key ID to be included on the certificate as part of the certificate request.
-
-    2.2. Finally, add the user(s) you wish to be able to request a SSH certificate to the SSH project through the **Access Control** tab.
-
-  </Step>
-  <Step title="Configuring the remote host to trust the client">
-  
-    3.1. Begin by downloading the client CA's public key from the CA's details section.
-    
-    ![ssh ca public key](/images/platform/ssh/ssh-client-ca-public-key.png)
-    
     <Note>
-      The CA's public key can also be retrieved programmatically via API by making a `GET` request to the endpoint [here](/api-reference/endpoints/ssh/ca/public-key).
+        You may use other authentication methods as suitable (e.g. [AWS Auth](/documentation/platform/identities/aws-auth), [Azure Auth](/documentation/platform/identities/azure-auth), [GCP Auth](/documentation/platform/identities/gcp-auth), etc.) as part of the machine identity configuration but, to keep this example simple, we will be using Universal Auth.
     </Note>
+
+    2.2. Add the machine identity to the Infisical SSH project you created in the previous step and assign it the custom role you created in step 1.2.
+
+    ![ssh add identity to project](/images/platform/ssh/v2/ssh-add-identity-to-project.png)
+
+  </Step>
+  <Step title="Configure the remote host">
+    3.1. Follow the instructions [here](/cli/overview) to install the Infisical CLI onto the remote host.
     
-    3.2. Next, create a file containing this public key in the SSH folder of the remote host; we'll call the file `ca.pub`.
+    3.2. Run the commands below to register the remote host with Infisical.
 
-    This would result in the file at the path `/etc/ssh/ca.pub`.
-
-    3.3. Next, add the following lines to the `/etc/ssh/sshd_config` file on the remote host.
-
-    ```bash
-    TrustedUserCAKeys /etc/ssh/ca.pub
-
-    PubkeyAcceptedKeyTypes=+ssh-rsa,ssh-rsa-cert-v01@openssh.com
-    ```
-
-    3.4. Finally, reload the SSH daemon on the remote host to apply the changes.
+    Use the **Client ID** and **Client Secret** from the machine identity you created in step 2.1 as part of the `infisical login` command
+    to obtain an access token and save it as an environment variable.
 
     ```bash
-    sudo systemctl reload sshd
+    export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<identity-client-id> --client-secret=<identity-client-secret> --silent --plain)
     ```
 
-    At this point, the remote host is configured to trust SSH certificates issued by the Infisical SSH CA.
+    Next, use the `infisical ssh add-host` command to register the remote host with Infisical. As part of this command, input the ID of the Infisical SSH project you created in step 1 for the `--projectId` flag and the hostname of the remote host for the `--hostname` flag.
+
+    ```bash
+    sudo infisical ssh add-host --projectId=<project-id> --hostname=<hostname> --token="$INFISICAL_TOKEN" --writeUserCaToFile --writeHostCertToFile --configureSshd
+    ```
+
+    <Tip>
+        Note that if you're self-hosting Infisical, you can use the `--domain` flag on the `infisical login` command to specify the domain of your Infisical instance.
+
+        For more information on the `infisical ssh add-host` command, please refer to the Infisical CLI [documentation](/cli/overview).
+    </Tip>
+
+    If successful, you should see output similar to the following:
+
+    ```bash
+    ✅ Successfully registered host: <hostname>
+    📁 Wrote User CA public key to: /etc/ssh/infisical_user_ca.pub
+    📁 Wrote host certificate to: /etc/ssh/ssh_host_ed25519_key-cert.pub
+    📄 Updated sshd_config entries
+    ```
+
+    Back in Infisical, you should now see the remote host you just registered in the Infisical SSH project you created in step 1 under the **Hosts** tab.
+
+    ![ssh hosts](/images/platform/ssh/v2/ssh-added-hosts.png)
+
+  </Step>
+  <Step title="Grant users access to the remote host">
+    4.1. Add the user(s) you wish to grant access to the remote host to the Infisical SSH project under Access Control > Users.
+    
+    ![ssh hosts](/images/platform/ssh/v2/ssh-add-user.png)
+    
+    4.2. On the registered host in the **Hosts** tab, click **Edit SSH Host** and add a login mapping for the user(s) you added in step 4.1.
+
+    The login mapping dictates what user(s) will be allowed access to the remote host and under a specific login user; in the allowed principals,
+    you should input a comma-separated list of usernames of users part of the Infisical SSH project that will be allowed to login to the remote host as the login user.
+
+    For instance, if you add a mapping with the login user `ec2-user` with allowed principals of `bob@acme.com` and `alice@acme.com`
+    then both users with the username `bob@acme.com` and `alice@acme.com` will be allowed to login to the remote host as `ec2-user` which is a system user that
+    exists on the remote host.
+
+    ![ssh host mappings](/images/platform/ssh/v2/ssh-host-login-mappings.png)
+
+    <Note>
+        Note that you should configure authorized principals files for each login user you add to the remote host.
+    </Note>
 
   </Step>
 </Steps>
 
-## Guide to Using Infisical SSH to Access a Host
+## User Guide for SSHing to a Host
 
-In the following steps, we show how to obtain an SSH certificate and use it for a client to access a host via CLI:
-
-<Note>
-  The subsequent guide assumes the following prerequisites:
-
-- SSH Agent is running: The `ssh-agent` must be actively running on the host machine.
-- OpenSSH is installed: The system should have OpenSSH installed; this includes
-  both the `ssh` client and `ssh-agent`.
-- `SSH_AUTH_SOCK` environment variable
-  is set; the `SSH_AUTH_SOCK` variable should point to the UNIX socket that
-  `ssh-agent` uses for communication.
-
-</Note>
+Once Infisical SSH is configured by an administrator, users can SSH to the remote host using the Infisical CLI.
 
 <Steps>
-  <Step title="Authenticate with Infisical">
+    <Step title="Install the Infisical CLI">
+        Follow the instructions [here](/cli/overview) to install the Infisical CLI onto your local machine.
+    </Step>
+    <Step title="Log in with the CLI">
+        Run the `infisical login` command to authenticate with Infisical.
+        
+        ```bash
+        infisical login
+        ```
+    </Step>
+    <Step title="Connect to the remote host">
+        Run the `infisical ssh connect` command to connect to a remote host.
 
-```bash
-infisical login
-```
+        ```bash
+        infisical ssh connect
+        ```
 
-  </Step>
-  <Step title="Obtain a SSH certificate for the client and load it into the SSH agent">
-    Run the `infisical ssh issue-credentials` command, specifying the `--addToAgent` flag to automatically load the SSH certificate into the SSH agent.
-    ```bash
-    infisical ssh issue-credentials --certificateTemplateId=<certificate-template-id> --principals=<username> --addToAgent
-    ```
+        You'll be prompted to select an SSH Host from a list of accessible hosts; this is based on project membership and login mappings configured on hosts by
+        the administrator.
 
-    Here's some guidance on each flag:
+        ```bash
+        Use the arrow keys to navigate: ↓ ↑ → ←
+        ? Select an SSH Host:
+        ▸ ec2-12-345-678-910.ap-northeast-1.compute.amazonaws.com
+        ```
 
-    - `certificateTemplateId`: The ID of the certificate template to use for issuing the SSH certificate.
-    - `principals`: The comma-delimited username(s) or hostname(s) to include in the SSH certificate.
+        After selecting a host, you'll be prompted to select a login user from a list of allowed login users:
 
-    For fuller documentation on commands and flags supported by the Infisical CLI for SSH, refer to the docs [here](/cli/commands/ssh).
+        ```bash
+        ? Select Login User:
+        ▸ ec2-user
+        ```
 
-  </Step>
-  <Step title="SSH into the host">
-    Finally, SSH into the desired host; the SSH operation will be performed using the SSH certificate loaded into the SSH agent.
+        If successful, you should be able to SSH to the remote host.
 
-    ```bash
-    ssh username@hostname
-    ```
+        ```bash
+        ✔ ec2-54-199-104-116.ap-northeast-1.compute.amazonaws.com
+        ✔ ec2-user
+        ✔ SSH credentials successfully added to agent
+        Connecting to ec2-user@ec2-12-345-678-910.ap-northeast-1.compute.amazonaws.com...
+        ```
+    </Step>
 
-  </Step>
 </Steps>
-
-<Note>
-  Note that the above workflow can be executed via API or other client methods
-  such as SDK.
-</Note>
-
-## Guide to Configuring Host Key Signing
-
-In the following steps, we show how to configure host key signing for clients to verify the identity of a remote host before attempting the SSH operation; this is recommended to reduce the probability of a client accessing a malicious machine.
-
-<Note>
-This guide expects that the remote host already has an existing SSH key pair (typically found in the `/etc/ssh/` folder at `/etc/ssh/ssh_host_<algo>_key` and `.pub`).
-
-If the remote host does not have an existing SSH key pair, you can generate a new key pair using the `ssh-keygen` command: `ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N ''`. This will generate:
-
-- A private key: `/etc/ssh/ssh_host_rsa_key`.
-- A public key: `/etc/ssh/ssh_host_rsa_key.pub`.
-
-</Note>
-
-<Steps>
-  <Step title="Configuring a SSH CA for host key signing">
-    1.1. In the same SSH project, create another SSH CA in the **Certificate Authorities** tab; this CA will be used for host key signing.
-    
-    ![ssh create host ca](/images/platform/ssh/ssh-host-create-ca-1.png)
-    
-    ![ssh create host ca popup](/images/platform/ssh/ssh-host-create-ca-2.png)
-    
-    Here's some guidance on each field:
-
-    - Friendly Name: A friendly name for the CA; this is only for display.
-    - Key Source: Whether the CA's key pair should be generated internally or supplied from an external source. Select **External**.
-    - Public Key: The public key for the CA (i.e. the host's SSH public key).
-    - Private Key: The private key for the CA (i.e. the host's SSH private key).
-
-  </Step>
-  <Step title="Configuring a certificate template on the CA">
-  
-    2.1. Next, create a certificate template in the **Certificate Templates** section of the newly-created CA.
-    
-    ![ssh host create template](/images/platform/ssh/ssh-host-create-template-1.png)
-
-    ![ssh host create template popup](/images/platform/ssh/ssh-host-create-template-2.png)
-
-    Here's some guidance on each field:
-
-    - SSH Template Name: A name for the certificate template; this must be a valid slug.
-    - Allowed Users: A comma-separated list of valid usernames (e.g. `ec2-user`) on the remote host for which a client can request a certificate for. If you wish to allow a client to request a certificate for any username, set this to `*`; alternatively, if left blank, the template will not allow issuance of certificates under any username.
-    - Allowed Hosts: A comma-separated list of valid hostnames/domains on the remote host for which a client can request a certificate for. Each item in the list can be either a wildcard hostname (e.g. `*.acme.com`), a specific hostname (e.g. `example.com`), an IPv4 address (e.g. `192.168.1.1`), or an IPv6 address. If left empty, the template will not allow any hostnames; if set to `*`, the template will allow any hostname.
-    - Default TTL: The default Time-to-Live (TTL) for certificates issued under this template when a client does not explicitly specify a TTL in the certificate request. We recommend setting a longer **Default TTL** for host certificates such as `2y`.
-    - Max TTL: The maximum TTL for certificates issued under this template.
-    - Allow User Certificates: Whether or not to allow issuance of user certificates; this is not relevant for this step.
-    - Allow Host Certificates: Whether or not to allow issuance of host certificates; this should be set to `true`.
-    - Allow Custom Key IDs: Whether or not to allow clients to specify a custom key ID to be included on the certificate as part of the certificate request.
-
-  </Step>
-  <Step title="Configuring the remote host with an SSH certificate">
-
-    2.1. Obtain a SSH certificate for the host by requesting one from the **Certificates** tab.
-
-    ![ssh host issue certificate 1](/images/platform/ssh/ssh-host-issue-cert-1.png)
-
-    ![ssh host issue certificate 2](/images/platform/ssh/ssh-host-issue-cert-2.png)
-
-    <Note>
-      You should select **Sign SSH Key** under the **Operation** field.
-
-      Then input your host's SSH public key under the **SSH Public Key** field and hostname under the **Principal(s)** field; the host's public key should be in the `/etc/ssh` folder of the host as used in step 1.
-    </Note>
-
-    ![ssh host issue certificate 3](/images/platform/ssh/ssh-host-issue-cert-3.png)
-
-    2.2. Create a file containing the certificate in the SSH folder of the remote host; we'll call it `ssh_host_key-cert.pub`.
-
-    2.2. Set permissions on the certificate to be `0640`:
-
-    ```bash
-    sudo chmod 0640 /etc/ssh/ssh_host_key-cert.pub
-    ```
-
-    2.3. Next, add the following lines to the `/etc/ssh/sshd_config` file on the remote host.
-
-    ```bash
-    HostKey /etc/ssh/ssh_host_rsa_key
-    HostCertificate /etc/ssh/ssh_host_key-cert.pub
-    ```
-
-    <Note>
-      You should adjust the `HostKey` directive to match the path to the host's SSH private key as used in step 1.
-    </Note>
-
-    2.4. Finally, reload the SSH daemon on the remote host to apply the changes.
-
-    ```bash
-    sudo systemctl reload sshd
-    ```
-
-  </Step>
-  <Step title="Configuring the client to trust the remote host">
-    3.1. Begin by downloading the host CA's public key from the CA's details section.
-    
-    ![ssh host ca public key](/images/platform/ssh/ssh-host-ca-public-key.png)
-    
-    <Note>
-      The CA's public key can also be retrieved programmatically via API by making a `GET` request to the endpoint [here](/api-reference/endpoints/ssh/ca/public-key).
-    </Note>
-
-    3.2. Next, add the resulting public key to the `known_hosts` file on the client machine (e.g. at the path `~/.ssh/known_hosts`).
-
-    ```bash
-    @cert-authority *.example.com ssh-rsa ...
-    ```
-
-  </Step>
-  <Step title="SSH into the host">
-    Finally, SSH into the desired host as usual; the SSH operation will now also include client-side host verification.
-
-    ```bash
-    ssh username@hostname
-    ```
-
-  </Step>
-</Steps>
-
-## FAQ
-
-<AccordionGroup>
-  <Accordion title="How can I confirm if the Infisical SSH workflow is working?">
-    After configuring Infisical SSH, you can add the `-vvv` flag as part of the
-    SSH operation to see verbose output from the SSH client.
-
-    ```bash
-    ssh -vvv username@hostname
-    ```
-
-    You should see output from the SSH client that includes the following if both client key signing and host key signing are working:
-
-    Host certificate was verified and trusted:
-
-    ```bash
-    debug1: Host 'example.com' is known and matches the ECDSA-CERT host certificate.
-    debug1: Found CA key in /Users/user/.ssh/known_hosts:1
-    ```
-
-    You authenticated with your user certificate:
-
-    ```bash
-    debug1: Offering public key: Added via Infisical CLI RSA-CERT SHA256:...
-    debug1: Server accepts key: Added via Infisical CLI RSA-CERT SHA256:...
-    ```
-
-  </Accordion>
-</AccordionGroup>
