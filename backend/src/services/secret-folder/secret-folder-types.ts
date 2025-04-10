@@ -20,6 +20,11 @@ export type TUpdateFolderDTO = {
   description?: string | null;
 } & TProjectPermission;
 
+export type TUpdateFolderPathDTO = {
+  folderId: string;
+  newPath: string;
+} & TProjectPermission;
+
 export type TUpdateManyFoldersDTO = {
   projectSlug: string;
   folders: {
