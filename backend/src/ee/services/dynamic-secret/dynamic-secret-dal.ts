@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
@@ -11,6 +11,41 @@ export type TDynamicSecretDALFactory = ReturnType<typeof dynamicSecretDALFactory
 
 export const dynamicSecretDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.DynamicSecret);
+
+  const findOneWithMetadata = async (filter: { name?: string; folderId?: string }, tx?: Knex) => {
+    const query = (tx || db.replicaNode())(TableName.DynamicSecret)
+      .leftJoin(
+        TableName.ResourceMetadata,
+        `${TableName.ResourceMetadata}.dynamicSecretId`,
+        `${TableName.DynamicSecret}.id`
+      )
+      .select(selectAllTableCols(TableName.DynamicSecret))
+      .select(
+        db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+        db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+        db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+      )
+      .where(filter);
+
+    const docs = sqlNestRelationships({
+      data: await query,
+      key: "id",
+      parentMapper: (el) => el,
+      childrenMapper: [
+        {
+          key: "metadataId",
+          label: "metadata" as const,
+          mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+            id: metadataId,
+            key: metadataKey,
+            value: metadataValue
+          })
+        }
+      ]
+    });
+
+    return docs[0];
+  };
 
   // find dynamic secrets for multiple environments (folder IDs are cross env, thus need to rank for pagination)
   const listDynamicSecretsByFolderIds = async (
@@ -66,5 +101,5 @@ export const dynamicSecretDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, listDynamicSecretsByFolderIds };
+  return { ...orm, listDynamicSecretsByFolderIds, findOneWithMetadata };
 };

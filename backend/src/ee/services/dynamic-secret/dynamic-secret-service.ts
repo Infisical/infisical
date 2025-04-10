@@ -12,6 +12,7 @@ import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { TDynamicSecretLeaseDALFactory } from "../dynamic-secret-lease/dynamic-secret-lease-dal";
@@ -46,6 +47,7 @@ type TDynamicSecretServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   projectGatewayDAL: Pick<TProjectGatewayDALFactory, "findOne">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
 export type TDynamicSecretServiceFactory = ReturnType<typeof dynamicSecretServiceFactory>;
@@ -60,7 +62,8 @@ export const dynamicSecretServiceFactory = ({
   dynamicSecretQueueService,
   projectDAL,
   kmsService,
-  projectGatewayDAL
+  projectGatewayDAL,
+  resourceMetadataDAL
 }: TDynamicSecretServiceFactoryDep) => {
   const create = async ({
     path,
@@ -73,7 +76,8 @@ export const dynamicSecretServiceFactory = ({
     projectSlug,
     actorOrgId,
     defaultTTL,
-    actorAuthMethod
+    actorAuthMethod,
+    metadata
   }: TCreateDynamicSecretDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
@@ -131,16 +135,36 @@ export const dynamicSecretServiceFactory = ({
       projectId
     });
 
-    const dynamicSecretCfg = await dynamicSecretDAL.create({
-      type: provider.type,
-      version: 1,
-      encryptedInput: secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(inputs)) }).cipherTextBlob,
-      maxTTL,
-      defaultTTL,
-      folderId: folder.id,
-      name,
-      projectGatewayId: selectedGatewayId
+    const dynamicSecretCfg = await dynamicSecretDAL.transaction(async (tx) => {
+      const cfg = await dynamicSecretDAL.create(
+        {
+          type: provider.type,
+          version: 1,
+          encryptedInput: secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(inputs)) }).cipherTextBlob,
+          maxTTL,
+          defaultTTL,
+          folderId: folder.id,
+          name,
+          projectGatewayId: selectedGatewayId
+        },
+        tx
+      );
+
+      if (metadata) {
+        await resourceMetadataDAL.insertMany(
+          metadata.map(({ key, value }) => ({
+            key,
+            value,
+            dynamicSecretId: cfg.id,
+            orgId: actorOrgId
+          })),
+          tx
+        );
+      }
+
+      return cfg;
     });
+
     return dynamicSecretCfg;
   };
 
@@ -156,7 +180,8 @@ export const dynamicSecretServiceFactory = ({
     actorId,
     newName,
     actorOrgId,
-    actorAuthMethod
+    actorAuthMethod,
+    metadata
   }: TUpdateDynamicSecretDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
@@ -231,14 +256,36 @@ export const dynamicSecretServiceFactory = ({
     const isConnected = await selectedProvider.validateConnection(newInput);
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
-    const updatedDynamicCfg = await dynamicSecretDAL.updateById(dynamicSecretCfg.id, {
-      encryptedInput: secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(updatedInput)) }).cipherTextBlob,
-      maxTTL,
-      defaultTTL,
-      name: newName ?? name,
-      status: null,
-      statusDetails: null,
-      projectGatewayId: selectedGatewayId
+    const updatedDynamicCfg = await dynamicSecretDAL.transaction(async (tx) => {
+      const cfg = await dynamicSecretDAL.updateById(dynamicSecretCfg.id, {
+        encryptedInput: secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(updatedInput)) }).cipherTextBlob,
+        maxTTL,
+        defaultTTL,
+        name: newName ?? name,
+        status: null,
+        projectGatewayId: selectedGatewayId
+      });
+
+      if (metadata) {
+        await resourceMetadataDAL.delete(
+          {
+            dynamicSecretId: cfg.id
+          },
+          tx
+        );
+
+        await resourceMetadataDAL.insertMany(
+          metadata.map(({ key, value }) => ({
+            key,
+            value,
+            dynamicSecretId: cfg.id,
+            orgId: actorOrgId
+          })),
+          tx
+        );
+      }
+
+      return cfg;
     });
 
     return updatedDynamicCfg;
@@ -342,10 +389,11 @@ export const dynamicSecretServiceFactory = ({
     if (!folder)
       throw new NotFoundError({ message: `Folder with path '${path}' in environment '${environmentSlug}' not found` });
 
-    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
+    const dynamicSecretCfg = await dynamicSecretDAL.findOneWithMetadata({ name, folderId: folder.id });
     if (!dynamicSecretCfg) {
       throw new NotFoundError({ message: `Dynamic secret with name '${name} in folder '${path}' not found` });
     }
+
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
@@ -356,6 +404,7 @@ export const dynamicSecretServiceFactory = ({
     ) as object;
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
     const providerInputs = (await selectedProvider.validateProviderInputs(decryptedStoredInput)) as object;
+
     return { ...dynamicSecretCfg, inputs: providerInputs };
   };
 

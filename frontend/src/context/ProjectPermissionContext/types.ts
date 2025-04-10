@@ -90,7 +90,8 @@ export enum PermissionConditionOperators {
   $REGEX = "$regex",
   $EQ = "$eq",
   $NEQ = "$ne",
-  $GLOB = "$glob"
+  $GLOB = "$glob",
+  $ELEMENTMATCH = "$elemMatch"
 }
 
 export type IdentityManagementSubjectFields = {
@@ -103,7 +104,8 @@ export const formatedConditionsOperatorNames: { [K in PermissionConditionOperato
   [PermissionConditionOperators.$ALL]: "contains all",
   [PermissionConditionOperators.$NEQ]: "not equal to",
   [PermissionConditionOperators.$GLOB]: "matches glob pattern",
-  [PermissionConditionOperators.$REGEX]: "matches regex pattern"
+  [PermissionConditionOperators.$REGEX]: "matches regex pattern",
+  [PermissionConditionOperators.$ELEMENTMATCH]: "element matches"
 };
 
 export type TPermissionConditionOperators = {
@@ -113,12 +115,24 @@ export type TPermissionConditionOperators = {
   [PermissionConditionOperators.$NEQ]: string;
   [PermissionConditionOperators.$REGEX]: string;
   [PermissionConditionOperators.$GLOB]: string;
+  [PermissionConditionOperators.$ELEMENTMATCH]: Record<
+    string,
+    Partial<TPermissionConditionOperators>
+  >;
 };
 
 export type TPermissionCondition = Record<
   string,
   | string
-  | { $in: string[]; $all: string[]; $regex: string; $eq: string; $ne: string; $glob: string }
+  | {
+      $in: string[];
+      $all: string[];
+      $regex: string;
+      $eq: string;
+      $ne: string;
+      $glob: string;
+      $elemMatch: Partial<TPermissionCondition>;
+    }
 >;
 
 export enum ProjectPermissionSub {
