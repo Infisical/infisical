@@ -11,12 +11,11 @@ import {
 import { VercelConnectionMethod } from "./vercel-connection-enums";
 
 export const VercelConnectionAccessTokenCredentialsSchema = z.object({
-  apiToken: z.string().trim().min(1, "API Token required")
+  apiToken: z.string().trim().min(1, "API Token required").describe(AppConnections.CREDENTIALS.VERCEL.apiToken)
 });
 
 const BaseVercelConnectionSchema = BaseAppConnectionSchema.extend({
-  app: z.literal(AppConnection.Vercel),
-  isPlatformManagedCredentials: z.boolean().optional()
+  app: z.literal(AppConnection.Vercel)
 });
 
 export const VercelConnectionSchema = BaseVercelConnectionSchema.extend({

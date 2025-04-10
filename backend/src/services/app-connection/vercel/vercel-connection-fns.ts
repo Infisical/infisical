@@ -9,8 +9,8 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 
 import { VercelConnectionMethod } from "./vercel-connection-enums";
 import {
+  TVercelConnection,
   TVercelConnectionConfig,
-  TVercelConnectionInput,
   VercelApp,
   VercelEnvironment,
   VercelOrgWithApps
@@ -184,7 +184,7 @@ type VercelUserResponse = {
   };
 };
 
-export const listProjects = async (appConnection: TVercelConnectionInput): Promise<VercelOrgWithApps[]> => {
+export const listProjects = async (appConnection: TVercelConnection): Promise<VercelOrgWithApps[]> => {
   const { credentials } = appConnection;
   const { apiToken } = credentials;
 

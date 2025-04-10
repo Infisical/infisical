@@ -27,11 +27,12 @@ description: "Learn how to configure a Vercel Sync for Infisical."
         </Tip>
 
         4. Configure the **Destination** to where secrets should be deployed, then click **Next**.
+        ![Configure Destination](/images/secret-syncs/vercel/vercel-destination.png)
 
-        - **Vercel Connection**: The Vercel Connection to authenticate with.
-        - **Vercel App**: The application to deploy secrets to.
-        - **Vercel App Environment**: The environment to deploy secrets to.
-        - **Vercel Preview Branch (Optional)**: Specify a branch for preview deployments if needed.
+            - **Vercel Connection**: The Vercel Connection to authenticate with.
+            - **Vercel App**: The application to deploy secrets to.
+            - **Vercel App Environment**: The environment to deploy secrets to.
+            - **Vercel Preview Branch (Optional)**: Specify a branch for preview deployments if needed.
 
         After configuring these parameters, click the **Next** button to continue to the Sync Options step.
 
@@ -82,7 +83,8 @@ description: "Learn how to configure a Vercel Sync for Infisical."
                 "app": "prj_bz7zgHvQETPvJWc5tmIr0tGRH9kE",
                 "env": "preview",
                 "branch": "test",
-                "appName": "nextjs-boilerplate"
+                "appName": "nextjs-boilerplate",
+                "teamId": "team_0d444b5088888dd257"
             }
         }'
         ```
@@ -136,7 +138,8 @@ description: "Learn how to configure a Vercel Sync for Infisical."
                     "app": "prj_bz7zgHvQETPvJWc5tmIr0tGRH9kE",
                     "env": "preview",
                     "branch": "test",
-                    "appName": "nextjs-boilerplate"
+                    "appName": "nextjs-boilerplate",
+                    "teamId": "team_0d444b5088888dd257"
                 }
             }
         }

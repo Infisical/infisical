@@ -184,6 +184,7 @@ export const VercelSyncFields = () => {
                 placeholder="Select a branch..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option?.id || ""}
+                isClearable
               />
             </FormControl>
           )}
