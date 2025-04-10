@@ -412,7 +412,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      description: "Get the public key for a KMS key that is used for signing and verifying data.",
+      description:
+        "Get the public key for a KMS key that is used for signing and verifying data. This endpoint is only available for asymmetric keys.",
       params: z.object({
         keyId: z.string().uuid().describe(KMS.GET_PUBLIC_KEY.keyId)
       }),
@@ -501,17 +502,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         signingAlgorithm: z.nativeEnum(SigningAlgorithm),
         isDigest: z.boolean().optional().default(false).describe(KMS.SIGN.isDigest),
-        data: z
-          .string()
-          .superRefine((data, ctx) => {
-            if (!isBase64(data)) {
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "data must be base64 encoded"
-              });
-            }
-          })
-          .describe(KMS.SIGN.data)
+        data: base64Schema.describe(KMS.SIGN.data)
       }),
       response: {
         200: z.object({
@@ -563,28 +554,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         isDigest: z.boolean().optional().default(false).describe(KMS.VERIFY.isDigest),
-        data: z
-          .string()
-          .superRefine((data, ctx) => {
-            if (!isBase64(data)) {
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "data must be base64 encoded"
-              });
-            }
-          })
-          .describe(KMS.VERIFY.data),
-        signature: z
-          .string()
-          .superRefine((data, ctx) => {
-            if (!isBase64(data)) {
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "signature must be base64 encoded"
-              });
-            }
-          })
-          .describe(KMS.VERIFY.signature),
+        data: base64Schema.describe(KMS.VERIFY.data),
+        signature: base64Schema.describe(KMS.VERIFY.signature),
         signingAlgorithm: z.nativeEnum(SigningAlgorithm)
       }),
       response: {

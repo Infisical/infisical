@@ -24,9 +24,16 @@ enum SupportedHashAlgorithm {
   SHA512 = "sha512"
 }
 
+const COMMAND_TIMEOUT = 15_000;
+
 const SHA256_DIGEST_LENGTH = 32;
 const SHA384_DIGEST_LENGTH = 48;
 const SHA512_DIGEST_LENGTH = 64;
+
+const makeTempDir = async (name: string) => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), `${name}-${crypto.randomBytes(16).toString("hex")}-`));
+  return tempDir;
+};
 
 /**
  * Service for cryptographic signing and verification operations using asymmetric keys
@@ -117,52 +124,106 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
   };
 
   const $signRsaDigest = async (digest: Buffer, privateKey: Buffer, hashAlgorithm: SupportedHashAlgorithm) => {
-    const script = `openssl pkeyutl -sign -in <(base64 -d <<< "$DIGEST_B64") -inkey <(base64 -d <<< "$KEY_B64") -pkeyopt digest:"$HASH_ALG" | base64`;
-    const result = await execFileAsync("bash", ["-c", script], {
-      encoding: "utf8",
-      maxBuffer: 10 * 1024 * 1024,
-      env: {
-        DIGEST_B64: digest.toString("base64"),
-        KEY_B64: privateKey.toString("base64"),
-        HASH_ALG: hashAlgorithm
-      }
-    });
+    const tempDir = await makeTempDir("kms-rsa-sign");
+    const digestPath = path.join(tempDir, "digest.bin");
+    const keyPath = path.join(tempDir, "private_key.pem");
+    const sigPath = path.join(tempDir, "signature.bin");
 
-    if (result.stderr) {
-      throw new Error(result.stderr);
-    }
+    try {
+      await fs.writeFile(digestPath, digest, { mode: 0o600 });
+      await fs.writeFile(keyPath, privateKey, { mode: 0o600 });
 
-    if (!result.stdout) {
-      throw new Error(
-        "No signature was created. Make sure you are using an appropriate signing algorithm that uses the same hashing algorithm as the one used to create the digest."
+      const { stderr } = await execFileAsync(
+        "openssl",
+        [
+          "pkeyutl",
+          "-sign",
+          "-in",
+          digestPath,
+          "-inkey",
+          keyPath,
+          "-pkeyopt",
+          `digest:${hashAlgorithm}`,
+          "-out",
+          sigPath
+        ],
+        {
+          maxBuffer: 10 * 1024 * 1024,
+          timeout: COMMAND_TIMEOUT
+        }
       );
-    }
 
-    return Buffer.from(result.stdout.trim(), "base64");
+      if (stderr) {
+        logger.error(stderr, "KMS: Failed to sign RSA digest");
+        throw new BadRequestError({
+          message: "Failed to sign RSA digest due to signing error"
+        });
+      }
+      const signature = await fs.readFile(sigPath);
+
+      if (!signature) {
+        throw new BadRequestError({
+          message:
+            "No signature was created. Make sure you are using an appropriate signing algorithm that uses the same hashing algorithm as the one used to create the digest."
+        });
+      }
+
+      return signature;
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
   };
 
   const $signEccDigest = async (digest: Buffer, privateKey: Buffer, hashAlgorithm: SupportedHashAlgorithm) => {
-    const script = `openssl pkeyutl -sign -in <(base64 -d <<< "$DIGEST_B64") -inkey <(base64 -d <<< "$KEY_B64") -pkeyopt digest:"$HASH_ALG" | base64`;
+    const tempDir = await makeTempDir("ecc-sign");
+    const digestPath = path.join(tempDir, "digest.bin");
+    const keyPath = path.join(tempDir, "private_key.pem");
+    const sigPath = path.join(tempDir, "signature.bin");
 
-    const result = await execFileAsync("bash", ["-c", script], {
-      encoding: "utf8",
-      maxBuffer: 10 * 1024 * 1024,
-      env: {
-        DIGEST_B64: digest.toString("base64"),
-        KEY_B64: privateKey.toString("base64"),
-        HASH_ALG: hashAlgorithm
+    try {
+      await fs.writeFile(digestPath, digest);
+      await fs.writeFile(keyPath, privateKey);
+
+      const { stderr } = await execFileAsync(
+        "openssl",
+        [
+          "pkeyutl",
+          "-sign",
+          "-in",
+          digestPath,
+          "-inkey",
+          keyPath,
+          "-pkeyopt",
+          `digest:${hashAlgorithm}`,
+          "-out",
+          sigPath
+        ],
+        {
+          maxBuffer: 10 * 1024 * 1024,
+          timeout: COMMAND_TIMEOUT
+        }
+      );
+
+      if (stderr) {
+        logger.error(stderr, "KMS: Failed to sign ECC digest");
+        throw new BadRequestError({
+          message: "Failed to sign ECC digest due to signing error"
+        });
       }
-    });
 
-    if (result.stderr) {
-      throw new Error(result.stderr);
+      const signature = await fs.readFile(sigPath);
+
+      if (!signature) {
+        throw new BadRequestError({
+          message:
+            "No signature was created. Make sure you are using an appropriate signing algorithm that uses the same hashing algorithm as the one used to create the digest."
+        });
+      }
+
+      return signature;
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
     }
-
-    if (!result.stdout) {
-      throw new Error("No signature was created. Make sure you are using an appropriate ECC key and hash algorithm.");
-    }
-
-    return Buffer.from(result.stdout.trim(), "base64");
   };
 
   const $verifyEccDigest = async (
@@ -171,25 +232,16 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     publicKey: Buffer,
     hashAlgorithm: SupportedHashAlgorithm
   ) => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ecc-signature-verification-"));
+    const tempDir = await makeTempDir("ecc-signature-verification");
     const pubKeyFile = path.join(tempDir, "public-key.pem");
     const sigFile = path.join(tempDir, "signature.sig");
     const digestFile = path.join(tempDir, "digest.bin");
 
     try {
-      // Write the necessary files
       await fs.writeFile(pubKeyFile, publicKey, { mode: 0o600 });
       await fs.writeFile(sigFile, signature, { mode: 0o600 });
       await fs.writeFile(digestFile, digest, { mode: 0o600 });
-    } catch {
-      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
-      throw new BadRequestError({
-        message: "Failed to verify ECC signature due to internal error."
-      });
-    }
 
-    try {
-      // Execute OpenSSL verification command
       await execFileAsync(
         "openssl",
         [
@@ -205,10 +257,9 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
           "-pkeyopt",
           `digest:${hashAlgorithm}`
         ],
-        { timeout: 15_000 }
+        { timeout: COMMAND_TIMEOUT }
       );
 
-      // If we get here, verification succeeded
       return true;
     } catch (error) {
       const err = error as { stderr: string };
@@ -231,7 +282,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     publicKey: Buffer,
     hashAlgorithm: SupportedHashAlgorithm
   ) => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "kms-signature-verification-"));
+    const tempDir = await makeTempDir("kms-signature-verification");
     const publicKeyFile = path.join(tempDir, "public-key.pub");
     const signatureFile = path.join(tempDir, "signature.sig");
     const digestFile = path.join(tempDir, "digest.bin");
@@ -240,14 +291,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       await fs.writeFile(publicKeyFile, publicKey, { mode: 0o600 });
       await fs.writeFile(signatureFile, signature, { mode: 0o600 });
       await fs.writeFile(digestFile, digest, { mode: 0o600 });
-    } catch {
-      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
-      throw new BadRequestError({
-        message: "Failed to verify RSA signature due to internal error."
-      });
-    }
 
-    try {
       await execFileAsync(
         "openssl",
         [
@@ -263,7 +307,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
           "-pkeyopt",
           `digest:${hashAlgorithm}`
         ],
-        { timeout: 15_000 }
+        { timeout: COMMAND_TIMEOUT }
       );
 
       // it'll throw if the verification was not successful
