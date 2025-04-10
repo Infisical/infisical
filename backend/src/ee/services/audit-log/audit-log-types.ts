@@ -1470,7 +1470,9 @@ interface CreateSshHost {
     hostCertTtl: string;
     loginMappings: {
       loginUser: string;
-      allowedPrincipals: string[];
+      allowedPrincipals: {
+        usernames: string[];
+      };
     }[];
     userSshCaId: string;
     hostSshCaId: string;
@@ -1486,7 +1488,9 @@ interface UpdateSshHost {
     hostCertTtl?: string;
     loginMappings?: {
       loginUser: string;
-      allowedPrincipals: string[];
+      allowedPrincipals: {
+        usernames: string[];
+      };
     }[];
     userSshCaId?: string;
     hostSshCaId?: string;

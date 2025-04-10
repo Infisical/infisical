@@ -13,7 +13,7 @@ import { InfisicalProjectTemplate } from "@app/ee/services/project-template/proj
 import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-schema";
 import { sanitizedSshCertificate } from "@app/ee/services/ssh-certificate/ssh-certificate-schema";
 import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-schema";
-import { sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
+import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
 import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -616,12 +616,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           hosts: z.array(
             sanitizedSshHost.extend({
-              loginMappings: z.array(
-                z.object({
-                  loginUser: z.string(),
-                  allowedPrincipals: z.array(z.string())
-                })
-              )
+              loginMappings: z.array(loginMappingSchema)
             })
           )
         })

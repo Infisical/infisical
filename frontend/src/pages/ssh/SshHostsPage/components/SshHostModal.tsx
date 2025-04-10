@@ -1,9 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronRight, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "@tanstack/react-router";
 import ms from "ms";
 import { z } from "zod";
 
@@ -15,10 +14,17 @@ import {
   IconButton,
   Input,
   Modal,
-  ModalContent
+  ModalContent,
+  Select,
+  SelectItem
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { useCreateSshHost, useGetSshHostById, useUpdateSshHost } from "@app/hooks/api";
+import {
+  useCreateSshHost,
+  useGetSshHostById,
+  useGetWorkspaceUsers,
+  useUpdateSshHost
+} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -40,7 +46,7 @@ const schema = z
     loginMappings: z
       .object({
         loginUser: z.string().trim().min(1),
-        allowedPrincipals: z.string().trim().min(1)
+        allowedPrincipals: z.array(z.string().trim()).default([])
       })
       .array()
       .default([])
@@ -50,9 +56,11 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const navigate = useNavigate();
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
+  const { data: members = [] } = useGetWorkspaceUsers(projectId);
+  const [expandedMappings, setExpandedMappings] = useState<Record<number, boolean>>({});
+
   const { data: sshHost } = useGetSshHostById(
     (popUp?.sshHost?.data as { sshHostId: string })?.sshHostId || ""
   );
@@ -64,6 +72,8 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
+    getValues,
+    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -86,9 +96,13 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
         userCertTtl: sshHost.userCertTtl,
         loginMappings: sshHost.loginMappings.map(({ loginUser, allowedPrincipals }) => ({
           loginUser,
-          allowedPrincipals: allowedPrincipals.join(",")
+          allowedPrincipals: allowedPrincipals.usernames
         }))
       });
+
+      setExpandedMappings(
+        Object.fromEntries(sshHost.loginMappings.map((_, index) => [index, false]))
+      );
     } else {
       reset({
         hostname: "",
@@ -109,7 +123,9 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
           userCertTtl,
           loginMappings: loginMappings.map(({ loginUser, allowedPrincipals }) => ({
             loginUser,
-            allowedPrincipals: allowedPrincipals.split(",")
+            allowedPrincipals: {
+              usernames: allowedPrincipals
+            }
           }))
         });
       } else {
@@ -119,17 +135,11 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
           userCertTtl,
           loginMappings: loginMappings.map(({ loginUser, allowedPrincipals }) => ({
             loginUser,
-            allowedPrincipals: allowedPrincipals.split(",")
+            allowedPrincipals: {
+              usernames: allowedPrincipals
+            }
           }))
         });
-
-        // navigate({
-        //   to: `/${ProjectType.SSH}/$projectId/ca/$caId` as const,
-        //   params: {
-        //     projectId,
-        //     caId: newCaId
-        //   }
-        // });
       }
 
       reset();
@@ -146,6 +156,13 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
         type: "error"
       });
     }
+  };
+
+  const toggleMapping = (index: number) => {
+    setExpandedMappings((prev) => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
   };
 
   return (
@@ -193,68 +210,181 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
               </FormControl>
             )}
           />
-          <div>
+          <div className="mb-4 flex items-center justify-between">
             <FormLabel label="Login Mappings" />
-          </div>
-          <div className="mb-3 flex flex-col space-y-2">
-            {loginMappingsFormFields.fields.map(({ id: metadataFieldId }, i) => (
-              <div key={metadataFieldId} className="flex items-end space-x-2">
-                <div className="flex-grow">
-                  {i === 0 && <span className="text-xs text-mineshaft-400">Login User</span>}
-                  <Controller
-                    control={control}
-                    name={`loginMappings.${i}.loginUser`}
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        className="mb-0"
-                      >
-                        <Input {...field} placeholder="ec2-user" />
-                      </FormControl>
-                    )}
-                  />
-                </div>
-                <div className="flex-grow">
-                  {i === 0 && (
-                    <FormLabel label="Allowed Principals" className="text-xs text-mineshaft-400" />
-                  )}
-                  <Controller
-                    control={control}
-                    name={`loginMappings.${i}.allowedPrincipals`}
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        className="mb-0"
-                      >
-                        <Input {...field} placeholder="alice@example.com, bob@example.com" />
-                      </FormControl>
-                    )}
-                  />
-                </div>
-                <IconButton
-                  ariaLabel="delete key"
-                  className="bottom-0.5 h-9"
-                  variant="outline_bg"
-                  onClick={() => loginMappingsFormFields.remove(i)}
-                >
-                  <FontAwesomeIcon icon={faTrash} />
-                </IconButton>
-              </div>
-            ))}
-          </div>
-          <div className="mt-2 flex justify-end">
             <Button
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               size="xs"
               variant="outline_bg"
-              onClick={() =>
-                loginMappingsFormFields.append({ loginUser: "", allowedPrincipals: "" })
-              }
+              onClick={() => {
+                const newIndex = loginMappingsFormFields.fields.length;
+                loginMappingsFormFields.append({ loginUser: "", allowedPrincipals: [""] });
+                setExpandedMappings((prev) => ({
+                  ...prev,
+                  [newIndex]: true
+                }));
+              }}
             >
               Add Login Mapping
             </Button>
+          </div>
+          <div className="mb-4 flex flex-col space-y-4">
+            {loginMappingsFormFields.fields.map(({ id: metadataFieldId }, i) => (
+              <div
+                key={metadataFieldId}
+                className="flex flex-col space-y-2 rounded-md border border-mineshaft-600 p-4"
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <button
+                    type="button"
+                    className="flex cursor-pointer items-center py-1 text-sm text-mineshaft-200"
+                    onClick={() => toggleMapping(i)}
+                  >
+                    <FontAwesomeIcon
+                      icon={expandedMappings[i] ? faChevronDown : faChevronRight}
+                      className="mr-4"
+                      size="sm"
+                    />
+                    <Controller
+                      control={control}
+                      name={`loginMappings.${i}.loginUser`}
+                      render={({ field }) => (
+                        <span className="text-sm font-medium leading-tight">
+                          {field.value || "New Login Mapping"}
+                        </span>
+                      )}
+                    />
+                  </button>
+                  <IconButton
+                    ariaLabel="delete login mapping"
+                    variant="plain"
+                    onClick={() => loginMappingsFormFields.remove(i)}
+                  >
+                    <FontAwesomeIcon icon={faTrash} />
+                  </IconButton>
+                </div>
+
+                {expandedMappings[i] && (
+                  <>
+                    <div>
+                      <span className="text-xs text-mineshaft-400">Login User</span>
+                      <Controller
+                        control={control}
+                        name={`loginMappings.${i}.loginUser`}
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            isError={Boolean(error?.message)}
+                            errorText={error?.message}
+                            className="mb-0"
+                          >
+                            <Input
+                              {...field}
+                              placeholder="ec2-user"
+                              onChange={(e) => {
+                                const newValue = e.target.value;
+                                const loginMappings = getValues("loginMappings");
+                                const isDuplicate = loginMappings.some(
+                                  (mapping, index) => index !== i && mapping.loginUser === newValue
+                                );
+
+                                if (isDuplicate) {
+                                  createNotification({
+                                    text: "This login user already exists",
+                                    type: "error"
+                                  });
+                                  return;
+                                }
+
+                                field.onChange(e);
+                              }}
+                            />
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+                    <div className="flex flex-col space-y-2">
+                      <div className="mb-2 mt-4 flex items-center justify-between">
+                        <FormLabel
+                          label="Allowed Principals"
+                          className="text-xs text-mineshaft-400"
+                        />
+                        <Button
+                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                          size="xs"
+                          variant="outline_bg"
+                          onClick={() => {
+                            const current = getValues(`loginMappings.${i}.allowedPrincipals`) ?? [];
+                            setValue(`loginMappings.${i}.allowedPrincipals`, [...current, ""]);
+                          }}
+                        >
+                          Add Principal
+                        </Button>
+                      </div>
+                      <Controller
+                        control={control}
+                        name={`loginMappings.${i}.allowedPrincipals`}
+                        render={({ field: { value = [], onChange }, fieldState: { error } }) => (
+                          <div className="flex flex-col space-y-2">
+                            {(value.length === 0 ? [""] : value).map(
+                              (principal: string, principalIndex: number) => (
+                                <div
+                                  key={`${metadataFieldId}-principal-${principal}`}
+                                  className="flex items-center space-x-2"
+                                >
+                                  <div className="flex-1">
+                                    <Select
+                                      value={principal}
+                                      onValueChange={(newValue) => {
+                                        if (value.includes(newValue)) {
+                                          createNotification({
+                                            text: "This principal is already added",
+                                            type: "error"
+                                          });
+                                          return;
+                                        }
+                                        const newPrincipals = [...value];
+                                        newPrincipals[principalIndex] = newValue;
+                                        onChange(newPrincipals);
+                                      }}
+                                      placeholder="Select a member"
+                                      className="w-full"
+                                    >
+                                      {members.map((member) => (
+                                        <SelectItem
+                                          key={member.user.id}
+                                          value={member.user.username}
+                                        >
+                                          {member.user.username}
+                                        </SelectItem>
+                                      ))}
+                                    </Select>
+                                  </div>
+                                  <IconButton
+                                    size="sm"
+                                    ariaLabel="delete principal"
+                                    variant="plain"
+                                    className="h-9"
+                                    onClick={() => {
+                                      const newPrincipals = value.filter(
+                                        (_, idx) => idx !== principalIndex
+                                      );
+                                      onChange(newPrincipals);
+                                    }}
+                                  >
+                                    <FontAwesomeIcon icon={faTrash} />
+                                  </IconButton>
+                                </div>
+                              )
+                            )}
+                            {error && <span className="text-sm text-red-500">{error.message}</span>}
+                          </div>
+                        )}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
           </div>
           <div className="flex items-center">
             <Button

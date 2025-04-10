@@ -91,9 +91,9 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                         host.loginMappings.map(({ loginUser, allowedPrincipals }) => (
                           <div key={`${host.id}-${loginUser}`} className="mb-2">
                             <div className="text-mineshaft-200">{loginUser}</div>
-                            {allowedPrincipals.map((principal) => (
-                              <div key={principal} className="ml-4">
-                                └─ {principal}
+                            {allowedPrincipals.usernames.map((username) => (
+                              <div key={`${host.id}-${loginUser}-${username}`} className="ml-4">
+                                └─ {username}
                               </div>
                             ))}
                           </div>

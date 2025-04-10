@@ -3,7 +3,8 @@ import { z } from "zod";
 export enum TableName {
   Users = "users",
   SshHost = "ssh_hosts",
-  SshHostLoginMapping = "ssh_host_login_mappings",
+  SshHostLoginUser = "ssh_host_login_users",
+  SshHostLoginUserMapping = "ssh_host_login_user_mappings",
   SshCertificateAuthority = "ssh_certificate_authorities",
   SshCertificateAuthoritySecret = "ssh_certificate_authority_secrets",
   SshCertificateTemplate = "ssh_certificate_templates",

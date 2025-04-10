@@ -11,52 +11,49 @@ export type TSshHostDALFactory = ReturnType<typeof sshHostDALFactory>;
 export const sshHostDALFactory = (db: TDbClient) => {
   const sshHostOrm = ormify(db, TableName.SshHost);
 
-  const findSshHostsWithPrincipalsAcrossProjects = async (projectIds: string[], principals: string[], tx?: Knex) => {
+  const findSshHostsWithPrincipalsAcrossProjects = async (projectIds: string[], userId: string, tx?: Knex) => {
     try {
-      const matchingSshHosts = await (tx || db.replicaNode())(TableName.SshHost)
+      const user = await (tx || db.replicaNode())(TableName.Users).where({ id: userId }).select("username").first();
+
+      if (!user) {
+        throw new DatabaseError({ name: `${TableName.Users}: UserNotFound`, error: new Error("User not found") });
+      }
+
+      const rows = await (tx || db.replicaNode())(TableName.SshHost)
+        .leftJoin(TableName.SshHostLoginUser, `${TableName.SshHost}.id`, `${TableName.SshHostLoginUser}.sshHostId`)
         .leftJoin(
-          TableName.SshHostLoginMapping,
-          `${TableName.SshHost}.id`,
-          `${TableName.SshHostLoginMapping}.sshHostId`
+          TableName.SshHostLoginUserMapping,
+          `${TableName.SshHostLoginUser}.id`,
+          `${TableName.SshHostLoginUserMapping}.sshHostLoginUserId`
         )
         .whereIn(`${TableName.SshHost}.projectId`, projectIds)
-        .whereRaw(`"${TableName.SshHostLoginMapping}"."allowedPrincipals" && ?::text[]`, [principals])
+        .andWhere(`${TableName.SshHostLoginUserMapping}.userId`, userId)
         .select(
           db.ref("id").withSchema(TableName.SshHost).as("sshHostId"),
           db.ref("projectId").withSchema(TableName.SshHost),
           db.ref("hostname").withSchema(TableName.SshHost),
           db.ref("userCertTtl").withSchema(TableName.SshHost),
           db.ref("hostCertTtl").withSchema(TableName.SshHost),
-          db.ref("loginUser").withSchema(TableName.SshHostLoginMapping),
-          db.ref("allowedPrincipals").withSchema(TableName.SshHostLoginMapping),
+          db.ref("loginUser").withSchema(TableName.SshHostLoginUser),
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("userId").withSchema(TableName.SshHostLoginUserMapping),
           db.ref("userSshCaId").withSchema(TableName.SshHost),
           db.ref("hostSshCaId").withSchema(TableName.SshHost)
         )
         .orderBy(`${TableName.SshHost}.updatedAt`, "desc");
 
-      const grouped = groupBy(matchingSshHosts, (r) => r.sshHostId);
+      const grouped = groupBy(rows, (r) => r.sshHostId);
       return Object.values(grouped).map((hostRows) => {
         const { sshHostId, hostname, userCertTtl, hostCertTtl, userSshCaId, hostSshCaId, projectId } = hostRows[0];
 
-        const loginMappingGrouped = groupBy(
-          hostRows.filter((r) => r.loginUser),
-          (r) => r.loginUser
-        );
+        const loginMappingGrouped = groupBy(hostRows, (r) => r.loginUser);
 
-        const loginMappings = Object.entries(loginMappingGrouped)
-          .map(([loginUser, entries]) => {
-            const filteredPrincipals = unique(entries.flatMap((entry) => entry.allowedPrincipals ?? [])).filter(
-              (principal) => principals.includes(principal)
-            );
-
-            if (filteredPrincipals.length === 0) return null;
-
-            return {
-              loginUser,
-              allowedPrincipals: filteredPrincipals
-            };
-          })
-          .filter(Boolean) as { loginUser: string; allowedPrincipals: string[] }[];
+        const loginMappings = Object.entries(loginMappingGrouped).map(([loginUser]) => ({
+          loginUser,
+          allowedPrincipals: {
+            usernames: [user.username]
+          }
+        }));
 
         return {
           id: sshHostId,
@@ -77,11 +74,13 @@ export const sshHostDALFactory = (db: TDbClient) => {
   const findSshHostsWithLoginMappings = async (projectId: string, tx?: Knex) => {
     try {
       const rows = await (tx || db.replicaNode())(TableName.SshHost)
+        .leftJoin(TableName.SshHostLoginUser, `${TableName.SshHost}.id`, `${TableName.SshHostLoginUser}.sshHostId`)
         .leftJoin(
-          TableName.SshHostLoginMapping,
-          `${TableName.SshHost}.id`,
-          `${TableName.SshHostLoginMapping}.sshHostId`
+          TableName.SshHostLoginUserMapping,
+          `${TableName.SshHostLoginUser}.id`,
+          `${TableName.SshHostLoginUserMapping}.sshHostLoginUserId`
         )
+        .leftJoin(TableName.Users, `${TableName.SshHostLoginUserMapping}.userId`, `${TableName.Users}.id`)
         .where(`${TableName.SshHost}.projectId`, projectId)
         .select(
           db.ref("id").withSchema(TableName.SshHost).as("sshHostId"),
@@ -89,8 +88,9 @@ export const sshHostDALFactory = (db: TDbClient) => {
           db.ref("hostname").withSchema(TableName.SshHost),
           db.ref("userCertTtl").withSchema(TableName.SshHost),
           db.ref("hostCertTtl").withSchema(TableName.SshHost),
-          db.ref("loginUser").withSchema(TableName.SshHostLoginMapping),
-          db.ref("allowedPrincipals").withSchema(TableName.SshHostLoginMapping),
+          db.ref("loginUser").withSchema(TableName.SshHostLoginUser),
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("userId").withSchema(TableName.SshHostLoginUserMapping),
           db.ref("userSshCaId").withSchema(TableName.SshHost),
           db.ref("hostSshCaId").withSchema(TableName.SshHost)
         )
@@ -107,13 +107,15 @@ export const sshHostDALFactory = (db: TDbClient) => {
 
         const loginMappings = Object.entries(loginMappingGrouped).map(([loginUser, entries]) => ({
           loginUser,
-          allowedPrincipals: unique(entries.flatMap((entry) => entry.allowedPrincipals ?? []))
+          allowedPrincipals: {
+            usernames: unique(entries.map((e) => e.username)).filter(Boolean)
+          }
         }));
 
         return {
           id: sshHostId,
-          projectId,
           hostname,
+          projectId,
           userCertTtl,
           hostCertTtl,
           loginMappings,
@@ -129,11 +131,13 @@ export const sshHostDALFactory = (db: TDbClient) => {
   const findSshHostByIdWithLoginMappings = async (sshHostId: string, tx?: Knex) => {
     try {
       const rows = await (tx || db.replicaNode())(TableName.SshHost)
+        .leftJoin(TableName.SshHostLoginUser, `${TableName.SshHost}.id`, `${TableName.SshHostLoginUser}.sshHostId`)
         .leftJoin(
-          TableName.SshHostLoginMapping,
-          `${TableName.SshHost}.id`,
-          `${TableName.SshHostLoginMapping}.sshHostId`
+          TableName.SshHostLoginUserMapping,
+          `${TableName.SshHostLoginUser}.id`,
+          `${TableName.SshHostLoginUserMapping}.sshHostLoginUserId`
         )
+        .leftJoin(TableName.Users, `${TableName.SshHostLoginUserMapping}.userId`, `${TableName.Users}.id`)
         .where(`${TableName.SshHost}.id`, sshHostId)
         .select(
           db.ref("id").withSchema(TableName.SshHost).as("sshHostId"),
@@ -141,8 +145,9 @@ export const sshHostDALFactory = (db: TDbClient) => {
           db.ref("hostname").withSchema(TableName.SshHost),
           db.ref("userCertTtl").withSchema(TableName.SshHost),
           db.ref("hostCertTtl").withSchema(TableName.SshHost),
-          db.ref("loginUser").withSchema(TableName.SshHostLoginMapping),
-          db.ref("allowedPrincipals").withSchema(TableName.SshHostLoginMapping),
+          db.ref("loginUser").withSchema(TableName.SshHostLoginUser),
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("userId").withSchema(TableName.SshHostLoginUserMapping),
           db.ref("userSshCaId").withSchema(TableName.SshHost),
           db.ref("hostSshCaId").withSchema(TableName.SshHost)
         );
@@ -158,7 +163,9 @@ export const sshHostDALFactory = (db: TDbClient) => {
 
       const loginMappings = Object.entries(loginMappingGrouped).map(([loginUser, entries]) => ({
         loginUser,
-        allowedPrincipals: unique(entries.flatMap((entry) => entry.allowedPrincipals ?? []))
+        allowedPrincipals: {
+          usernames: unique(entries.map((e) => e.username)).filter(Boolean)
+        }
       }));
 
       return {
@@ -178,8 +185,8 @@ export const sshHostDALFactory = (db: TDbClient) => {
 
   return {
     ...sshHostOrm,
-    findSshHostsWithPrincipalsAcrossProjects,
     findSshHostsWithLoginMappings,
+    findSshHostsWithPrincipalsAcrossProjects,
     findSshHostByIdWithLoginMappings
   };
 };

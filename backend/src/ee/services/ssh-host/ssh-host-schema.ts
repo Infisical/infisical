@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { SshHostsSchema } from "@app/db/schemas";
 
 export const sanitizedSshHost = SshHostsSchema.pick({
@@ -8,4 +10,11 @@ export const sanitizedSshHost = SshHostsSchema.pick({
   hostCertTtl: true,
   userSshCaId: true,
   hostSshCaId: true
+});
+
+export const loginMappingSchema = z.object({
+  loginUser: z.string(),
+  allowedPrincipals: z.object({
+    usernames: z.array(z.string())
+  })
 });

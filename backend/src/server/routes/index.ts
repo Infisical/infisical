@@ -94,8 +94,9 @@ import { sshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-c
 import { sshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
 import { sshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-service";
 import { sshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
-import { sshHostLoginMappingDALFactory } from "@app/ee/services/ssh-host/ssh-host-login-mapping-dal";
+import { sshHostLoginUserMappingDALFactory } from "@app/ee/services/ssh-host/ssh-host-login-user-mapping-dal";
 import { sshHostServiceFactory } from "@app/ee/services/ssh-host/ssh-host-service";
+import { sshHostLoginUserDALFactory } from "@app/ee/services/ssh-host/ssh-login-user-dal";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -388,7 +389,8 @@ export const registerRoutes = async (
   const sshCertificateAuthoritySecretDAL = sshCertificateAuthoritySecretDALFactory(db);
   const sshCertificateTemplateDAL = sshCertificateTemplateDALFactory(db);
   const sshHostDAL = sshHostDALFactory(db);
-  const sshHostLoginMappingDAL = sshHostLoginMappingDALFactory(db);
+  const sshHostLoginUserDAL = sshHostLoginUserDALFactory(db);
+  const sshHostLoginUserMappingDAL = sshHostLoginUserMappingDALFactory(db);
 
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
@@ -806,7 +808,8 @@ export const registerRoutes = async (
     sshCertificateDAL,
     sshCertificateBodyDAL,
     sshHostDAL,
-    sshHostLoginMappingDAL,
+    sshHostLoginUserDAL,
+    sshHostLoginUserMappingDAL,
     permissionService,
     kmsService
   });

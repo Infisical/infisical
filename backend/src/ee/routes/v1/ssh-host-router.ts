@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
-import { sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
+import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
 import { isValidHostname } from "@app/ee/services/ssh-host/ssh-host-validators";
 import { SSH_HOSTS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
@@ -23,17 +23,12 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.array(
           sanitizedSshHost.extend({
-            loginMappings: z.array(
-              z.object({
-                loginUser: z.string(),
-                allowedPrincipals: z.array(z.string())
-              })
-            )
+            loginMappings: z.array(loginMappingSchema)
           })
         )
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const hosts = await server.services.sshHost.listSshHosts({
         actor: req.permission.type,
@@ -41,7 +36,6 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
-      // TODO: consider adding audit log
 
       return hosts;
     }
@@ -59,12 +53,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: sanitizedSshHost.extend({
-          loginMappings: z.array(
-            z.object({
-              loginUser: z.string(),
-              allowedPrincipals: z.array(z.string())
-            })
-          )
+          loginMappings: z.array(loginMappingSchema)
         })
       }
     },
@@ -121,25 +110,13 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
           .default("1y")
           .describe(SSH_HOSTS.CREATE.hostCertTtl),
-        loginMappings: z
-          .object({
-            loginUser: z.string().trim().describe(SSH_HOSTS.CREATE.loginUser), // TODO: reinforce validation
-            allowedPrincipals: z.array(z.string().trim()).describe(SSH_HOSTS.CREATE.allowedPrincipals) // TODO: reinforce validation
-          })
-          .array()
-          .default([])
-          .describe(SSH_HOSTS.CREATE.loginMappings),
+        loginMappings: z.array(loginMappingSchema).default([]).describe(SSH_HOSTS.CREATE.loginMappings),
         userSshCaId: z.string().describe(SSH_HOSTS.CREATE.userSshCaId).optional(),
         hostSshCaId: z.string().describe(SSH_HOSTS.CREATE.hostSshCaId).optional()
       }),
       response: {
         200: sanitizedSshHost.extend({
-          loginMappings: z.array(
-            z.object({
-              loginUser: z.string(),
-              allowedPrincipals: z.array(z.string())
-            })
-          )
+          loginMappings: z.array(loginMappingSchema)
         })
       }
     },
@@ -205,23 +182,11 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
           .optional()
           .describe(SSH_HOSTS.UPDATE.hostCertTtl),
-        loginMappings: z
-          .object({
-            loginUser: z.string().trim().describe(SSH_HOSTS.CREATE.loginUser),
-            allowedPrincipals: z.array(z.string().trim()).describe(SSH_HOSTS.CREATE.allowedPrincipals)
-          })
-          .array()
-          .optional()
-          .describe(SSH_HOSTS.CREATE.loginMappings)
+        loginMappings: z.array(loginMappingSchema).optional().describe(SSH_HOSTS.CREATE.loginMappings)
       }),
       response: {
         200: sanitizedSshHost.extend({
-          loginMappings: z.array(
-            z.object({
-              loginUser: z.string(),
-              allowedPrincipals: z.array(z.string())
-            })
-          )
+          loginMappings: z.array(loginMappingSchema)
         })
       }
     },
@@ -268,12 +233,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: sanitizedSshHost.extend({
-          loginMappings: z.array(
-            z.object({
-              loginUser: z.string(),
-              allowedPrincipals: z.array(z.string())
-            })
-          )
+          loginMappings: z.array(loginMappingSchema)
         })
       }
     },

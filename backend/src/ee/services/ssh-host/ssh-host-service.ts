@@ -9,8 +9,10 @@ import { TSshCertificateBodyDALFactory } from "@app/ee/services/ssh-certificate/
 import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
-import { TSshHostLoginMappingDALFactory } from "@app/ee/services/ssh-host/ssh-host-login-mapping-dal";
+import { TSshHostLoginUserMappingDALFactory } from "@app/ee/services/ssh-host/ssh-host-login-user-mapping-dal";
+import { TSshHostLoginUserDALFactory } from "@app/ee/services/ssh-host/ssh-login-user-dal";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -34,8 +36,8 @@ import {
   TUpdateSshHostDTO
 } from "./ssh-host-types";
 
-type TSshCertificateAuthorityServiceFactoryDep = {
-  userDAL: Pick<TUserDALFactory, "findById">;
+type TSshHostServiceFactoryDep = {
+  userDAL: Pick<TUserDALFactory, "findById" | "find">;
   projectDAL: Pick<TProjectDALFactory, "find">;
   projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "findOne">;
   sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "findById">;
@@ -53,11 +55,9 @@ type TSshCertificateAuthorityServiceFactoryDep = {
     | "findSshHostByIdWithLoginMappings"
     | "findSshHostsWithPrincipalsAcrossProjects"
   >;
-  sshHostLoginMappingDAL: Pick<
-    TSshHostLoginMappingDALFactory,
-    "transaction" | "create" | "findById" | "updateById" | "deleteById" | "findOne" | "insertMany" | "delete"
-  >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  sshHostLoginUserDAL: TSshHostLoginUserDALFactory;
+  sshHostLoginUserMappingDAL: TSshHostLoginUserMappingDALFactory;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getUserProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -72,24 +72,24 @@ export const sshHostServiceFactory = ({
   sshCertificateDAL,
   sshCertificateBodyDAL,
   sshHostDAL,
-  sshHostLoginMappingDAL,
+  sshHostLoginUserMappingDAL,
+  sshHostLoginUserDAL,
   permissionService,
   kmsService
-}: TSshCertificateAuthorityServiceFactoryDep) => {
+}: TSshHostServiceFactoryDep) => {
   /**
    * Return list of all SSH hosts that a user can issue user SSH certificates for
    * (i.e. is able to access / connect to) across all SSH projects in the organization
    */
   const listSshHosts = async ({ actorId, actorAuthMethod, actor, actorOrgId }: TListSshHostsDTO) => {
+    if (actor !== ActorType.USER) {
+      // (dangtony98): only support user for now
+      throw new BadRequestError({ message: `Actor type ${actor} not supported` });
+    }
+
     const sshProjects = await projectDAL.find({
       orgId: actorOrgId,
       type: ProjectType.SSH
-    });
-
-    const principals = await convertActorToPrincipals({
-      actor,
-      actorId,
-      userDAL
     });
 
     const allowedHosts = [];
@@ -105,7 +105,7 @@ export const sshHostServiceFactory = ({
           actionProjectType: ActionProjectType.SSH
         });
 
-        const projectHosts = await sshHostDAL.findSshHostsWithPrincipalsAcrossProjects([project.id], principals);
+        const projectHosts = await sshHostDAL.findSshHostsWithPrincipalsAcrossProjects([project.id], actorId); // TODO: consider fn rename
 
         allowedHosts.push(...projectHosts);
       } catch {
@@ -208,14 +208,50 @@ export const sshHostServiceFactory = ({
         tx
       );
 
-      await sshHostLoginMappingDAL.insertMany(
-        loginMappings.map(({ loginUser, allowedPrincipals }) => ({
+      await sshHostLoginUserDAL.insertMany(
+        loginMappings.map(({ loginUser }) => ({
           sshHostId: host.id,
-          loginUser,
-          allowedPrincipals
+          loginUser
         })),
         tx
       );
+
+      for await (const { loginUser, allowedPrincipals } of loginMappings) {
+        const sshHostLoginUser = await sshHostLoginUserDAL.create(
+          {
+            sshHostId: host.id,
+            loginUser
+          },
+          tx
+        );
+
+        const users = await userDAL.find(
+          {
+            $in: {
+              username: allowedPrincipals.usernames
+            }
+          },
+          { tx }
+        );
+
+        for await (const user of users) {
+          await permissionService.getUserProjectPermission({
+            userId: user.id,
+            projectId,
+            authMethod: actorAuthMethod,
+            userOrgId: actorOrgId,
+            actionProjectType: ActionProjectType.SSH
+          });
+        }
+
+        await sshHostLoginUserMappingDAL.insertMany(
+          users.map((user) => ({
+            sshHostLoginUserId: sshHostLoginUser.id,
+            userId: user.id
+          })),
+          tx
+        );
+      }
 
       const newSshHostWithLoginMappings = await sshHostDAL.findSshHostByIdWithLoginMappings(host.id, tx);
       if (!newSshHostWithLoginMappings) {
@@ -270,16 +306,58 @@ export const sshHostServiceFactory = ({
       );
 
       if (loginMappings) {
-        await sshHostLoginMappingDAL.delete({ sshHostId }, tx);
+        await sshHostLoginUserDAL.delete({ sshHostId: host.id }, tx);
         if (loginMappings.length) {
-          await sshHostLoginMappingDAL.insertMany(
-            loginMappings.map(({ loginUser, allowedPrincipals }) => ({
-              sshHostId: host.id,
-              loginUser,
-              allowedPrincipals
-            })),
-            tx
-          );
+          for await (const { loginUser, allowedPrincipals } of loginMappings) {
+            const sshHostLoginUser = await sshHostLoginUserDAL.create(
+              {
+                sshHostId: host.id,
+                loginUser
+              },
+              tx
+            );
+
+            if (allowedPrincipals.usernames.length === 0) {
+              continue; // or maybe insert no mappings and just skip validation
+            }
+
+            const users = await userDAL.find(
+              {
+                $in: {
+                  username: allowedPrincipals.usernames
+                }
+              },
+              { tx }
+            );
+
+            const foundUsernames = new Set(users.map((u) => u.username));
+
+            for (const uname of allowedPrincipals.usernames) {
+              if (!foundUsernames.has(uname)) {
+                throw new BadRequestError({
+                  message: `Invalid username: ${uname}`
+                });
+              }
+            }
+
+            for await (const user of users) {
+              await permissionService.getUserProjectPermission({
+                userId: user.id,
+                projectId: host.projectId,
+                authMethod: actorAuthMethod,
+                userOrgId: actorOrgId,
+                actionProjectType: ActionProjectType.SSH
+              });
+            }
+
+            await sshHostLoginUserMappingDAL.insertMany(
+              users.map((user) => ({
+                sshHostLoginUserId: sshHostLoginUser.id,
+                userId: user.id
+              })),
+              tx
+            );
+          }
         }
       }
 
@@ -314,10 +392,7 @@ export const sshHostServiceFactory = ({
       })
     );
 
-    await sshHostDAL.transaction(async (tx) => {
-      await sshHostLoginMappingDAL.delete({ sshHostId }, tx);
-      await sshHostDAL.deleteById(sshHostId, tx);
-    });
+    await sshHostDAL.deleteById(sshHostId);
 
     return host;
   };
@@ -379,7 +454,9 @@ export const sshHostServiceFactory = ({
     });
 
     const mapping = host.loginMappings.find(
-      (m) => m.loginUser === loginUser && m.allowedPrincipals.some((allowed) => internalPrincipals.includes(allowed))
+      (m) =>
+        m.loginUser === loginUser &&
+        m.allowedPrincipals.usernames.some((allowed) => internalPrincipals.includes(allowed))
     );
 
     if (!mapping) {

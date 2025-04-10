@@ -6,7 +6,9 @@ export type TSshHost = {
   hostCertTtl: string;
   loginMappings: {
     loginUser: string;
-    allowedPrincipals: string[];
+    allowedPrincipals: {
+      usernames: string[];
+    };
   }[];
 };
 
@@ -17,7 +19,9 @@ export type TCreateSshHostDTO = {
   hostCertTtl?: string;
   loginMappings: {
     loginUser: string;
-    allowedPrincipals: string[];
+    allowedPrincipals: {
+      usernames: string[];
+    };
   }[];
 };
 
@@ -28,7 +32,9 @@ export type TUpdateSshHostDTO = {
   hostCertTtl?: string;
   loginMappings?: {
     loginUser: string;
-    allowedPrincipals: string[];
+    allowedPrincipals: {
+      usernames: string[];
+    };
   }[];
 };
 
