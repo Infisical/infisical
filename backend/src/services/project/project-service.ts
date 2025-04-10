@@ -25,6 +25,7 @@ import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-
 import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
 import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -59,6 +60,7 @@ import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secr
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
 import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
+import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
 import { assignWorkspaceKeysToMembers, bootstrapSshProject, createProjectKey } from "./project-fns";
@@ -80,6 +82,8 @@ import {
   TListProjectSshCertificateTemplatesDTO,
   TListProjectSshHostsDTO,
   TLoadProjectKmsBackupDTO,
+  TProjectAccessRequestDTO,
+  TSearchProjectsDTO,
   TToggleProjectAutoCapitalizationDTO,
   TUpdateAuditLogsRetentionDTO,
   TUpdateProjectDTO,
@@ -110,7 +114,10 @@ type TProjectServiceFactoryDep = {
   identityProjectDAL: TIdentityProjectDALFactory;
   identityProjectMembershipRoleDAL: Pick<TIdentityProjectMembershipRoleDALFactory, "create">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "create" | "findLatestProjectKey" | "delete" | "find" | "insertMany">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser" | "findOne" | "delete">;
+  projectMembershipDAL: Pick<
+    TProjectMembershipDALFactory,
+    "create" | "findProjectGhostUser" | "findOne" | "delete" | "findAllProjectMembers"
+  >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "delete">;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "findOne" | "transaction" | "updateById" | "create">;
   slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findById" | "findByIdWithWorkflowIntegrationDetails">;
@@ -129,6 +136,7 @@ type TProjectServiceFactoryDep = {
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   queueService: Pick<TQueueServiceFactory, "stopRepeatableJob">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
@@ -187,7 +195,8 @@ export const projectServiceFactory = ({
   projectSlackConfigDAL,
   slackIntegrationDAL,
   projectTemplateService,
-  groupProjectDAL
+  groupProjectDAL,
+  smtpService
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -527,7 +536,7 @@ export const projectServiceFactory = ({
     actorOrgId,
     type = ProjectType.SecretManager
   }: TListProjectsDTO) => {
-    const workspaces = await projectDAL.findAllProjects(actorId, actorOrgId, type);
+    const workspaces = await projectDAL.findUserProjects(actorId, actorOrgId, type);
 
     if (includeRoles) {
       const { permission } = await permissionService.getUserOrgPermission(
@@ -1383,6 +1392,85 @@ export const projectServiceFactory = ({
     });
   };
 
+  const searchProjects = async ({
+    name,
+    offset,
+    permission,
+    limit,
+    type,
+    orderBy,
+    orderDirection
+  }: TSearchProjectsDTO) => {
+    // check user belong to org
+    await permissionService.getOrgPermission(
+      permission.type,
+      permission.id,
+      permission.orgId,
+      permission.authMethod,
+      permission.orgId
+    );
+
+    return projectDAL.searchProjects({
+      limit,
+      offset,
+      name,
+      type,
+      orgId: permission.orgId,
+      actor: permission.type,
+      actorId: permission.id,
+      sortBy: orderBy,
+      sortDir: orderDirection
+    });
+  };
+
+  const requestProjectAccess = async ({ permission, comment, projectId }: TProjectAccessRequestDTO) => {
+    // check user belong to org
+    await permissionService.getOrgPermission(
+      permission.type,
+      permission.id,
+      permission.orgId,
+      permission.authMethod,
+      permission.orgId
+    );
+
+    const projectMember = await permissionService
+      .getProjectPermission({
+        actor: permission.type,
+        actorId: permission.id,
+        projectId,
+        actionProjectType: ActionProjectType.Any,
+        actorAuthMethod: permission.authMethod,
+        actorOrgId: permission.orgId
+      })
+      .catch(() => {
+        return null;
+      });
+    if (projectMember) throw new BadRequestError({ message: "User already has access to the project" });
+
+    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
+    const filteredProjectMembers = projectMembers
+      .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
+      .map((el) => el.user.email!);
+    const org = await orgDAL.findOne({ id: permission.orgId });
+    const project = await projectDAL.findById(projectId);
+    const userDetails = await userDAL.findById(permission.id);
+    const appCfg = getConfig();
+
+    await smtpService.sendMail({
+      template: SmtpTemplates.ProjectAccessRequest,
+      recipients: filteredProjectMembers,
+      subjectLine: "Project Access Request",
+      substitutions: {
+        requesterName: `${userDetails.firstName} ${userDetails.lastName}`,
+        requesterEmail: userDetails.email,
+        projectName: project?.name,
+        orgName: org?.name,
+        note: comment,
+        callback_url: `${appCfg.SITE_URL}/${project.type}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`
+      }
+    });
+  };
+
   return {
     createProject,
     deleteProject,
@@ -1409,6 +1497,8 @@ export const projectServiceFactory = ({
     loadProjectKmsBackup,
     getProjectKmsKeys,
     getProjectSlackConfig,
-    updateProjectSlackConfig
+    updateProjectSlackConfig,
+    requestProjectAccess,
+    searchProjects
   };
 };

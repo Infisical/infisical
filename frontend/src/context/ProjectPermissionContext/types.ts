@@ -82,6 +82,15 @@ export enum ProjectPermissionSshHostActions {
   IssueHostCert = "issue-host-cert"
 }
 
+export enum ProjectPermissionSecretRotationActions {
+  Read = "read",
+  ReadGeneratedCredentials = "read-generated-credentials",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  RotateSecrets = "rotate-secrets"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -177,6 +186,11 @@ export type SecretImportSubjectFields = {
   secretPath: string;
 };
 
+export type SecretRotationSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
 export type ProjectPermissionSet =
   | [
       ProjectPermissionSecretActions,
@@ -206,6 +220,13 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.SecretImports> & SecretImportSubjectFields)
       )
     ]
+  | [
+      ProjectPermissionSecretRotationActions,
+      (
+        | ProjectPermissionSub.SecretRotation
+        | (ForcedSubject<ProjectPermissionSub.SecretRotation> & SecretRotationSubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
   | [ProjectPermissionActions, ProjectPermissionSub.Member]
@@ -218,7 +239,6 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.Settings]
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
-  | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
   | [
       ProjectPermissionActions,
       (

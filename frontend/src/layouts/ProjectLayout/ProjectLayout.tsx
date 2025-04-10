@@ -11,8 +11,12 @@ import {
   MenuItem,
   TBreadcrumbFormat
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
-import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
+import { useSubscription, useWorkspace } from "@app/context";
+import {
+  useGetAccessRequestsCount,
+  useGetSecretApprovalRequestCount,
+  useGetSecretRotations
+} from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { ProjectSelect } from "./components/ProjectSelect";
@@ -40,6 +44,16 @@ export const ProjectLayout = () => {
   const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({
     projectSlug,
     options: { enabled: isSecretManager }
+  });
+
+  // we only show the secret rotations v1 tab if they have existing rotations
+  const { subscription } = useSubscription();
+  const { data: secretRotations } = useGetSecretRotations({
+    workspaceId,
+    options: {
+      enabled: isSecretManager && Boolean(subscription.secretRotation),
+      refetchOnMount: false
+    }
   });
 
   const pendingRequestsCount =
@@ -177,7 +191,7 @@ export const ProjectLayout = () => {
                           )}
                         </Link>
                       )}
-                      {isSecretManager && (
+                      {isSecretManager && Boolean(secretRotations?.length) && (
                         <Link
                           to={`/${ProjectType.SecretManager}/$projectId/secret-rotation` as const}
                           params={{

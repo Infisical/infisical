@@ -17,6 +17,9 @@ import {
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
+  TAppConnections,
+  TAppConnectionsInsert,
+  TAppConnectionsUpdate,
   TAuditLogs,
   TAuditLogsInsert,
   TAuditLogStreams,
@@ -65,6 +68,9 @@ import {
   TDynamicSecrets,
   TDynamicSecretsInsert,
   TDynamicSecretsUpdate,
+  TExternalGroupOrgRoleMappings,
+  TExternalGroupOrgRoleMappingsInsert,
+  TExternalGroupOrgRoleMappingsUpdate,
   TExternalKms,
   TExternalKmsInsert,
   TExternalKmsUpdate,
@@ -302,6 +308,12 @@ import {
   TSecretRotations,
   TSecretRotationsInsert,
   TSecretRotationsUpdate,
+  TSecretRotationsV2,
+  TSecretRotationsV2Insert,
+  TSecretRotationsV2Update,
+  TSecretRotationV2SecretMappings,
+  TSecretRotationV2SecretMappingsInsert,
+  TSecretRotationV2SecretMappingsUpdate,
   TSecrets,
   TSecretScanningGitRisks,
   TSecretScanningGitRisksInsert,
@@ -323,15 +335,27 @@ import {
   TSecretSnapshotsInsert,
   TSecretSnapshotsUpdate,
   TSecretsUpdate,
+  TSecretsV2,
+  TSecretsV2Insert,
+  TSecretsV2Update,
+  TSecretSyncs,
+  TSecretSyncsInsert,
+  TSecretSyncsUpdate,
   TSecretTagJunction,
   TSecretTagJunctionInsert,
   TSecretTagJunctionUpdate,
   TSecretTags,
   TSecretTagsInsert,
   TSecretTagsUpdate,
+  TSecretV2TagJunction,
+  TSecretV2TagJunctionInsert,
+  TSecretV2TagJunctionUpdate,
   TSecretVersions,
   TSecretVersionsInsert,
   TSecretVersionsUpdate,
+  TSecretVersionsV2,
+  TSecretVersionsV2Insert,
+  TSecretVersionsV2Update,
   TSecretVersionTagJunction,
   TSecretVersionTagJunctionInsert,
   TSecretVersionTagJunctionUpdate,
@@ -399,24 +423,6 @@ import {
   TWorkflowIntegrationsInsert,
   TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
-import { TAppConnections, TAppConnectionsInsert, TAppConnectionsUpdate } from "@app/db/schemas/app-connections";
-import {
-  TExternalGroupOrgRoleMappings,
-  TExternalGroupOrgRoleMappingsInsert,
-  TExternalGroupOrgRoleMappingsUpdate
-} from "@app/db/schemas/external-group-org-role-mappings";
-import { TSecretSyncs, TSecretSyncsInsert, TSecretSyncsUpdate } from "@app/db/schemas/secret-syncs";
-import {
-  TSecretV2TagJunction,
-  TSecretV2TagJunctionInsert,
-  TSecretV2TagJunctionUpdate
-} from "@app/db/schemas/secret-v2-tag-junction";
-import {
-  TSecretVersionsV2,
-  TSecretVersionsV2Insert,
-  TSecretVersionsV2Update
-} from "@app/db/schemas/secret-versions-v2";
-import { TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas/secrets-v2";
 
 declare module "knex" {
   namespace Knex {
@@ -977,6 +983,16 @@ declare module "knex/types/tables" {
       TOrgGatewayConfig,
       TOrgGatewayConfigInsert,
       TOrgGatewayConfigUpdate
+    >;
+    [TableName.SecretRotationV2]: KnexOriginal.CompositeTableType<
+      TSecretRotationsV2,
+      TSecretRotationsV2Insert,
+      TSecretRotationsV2Update
+    >;
+    [TableName.SecretRotationV2SecretMapping]: KnexOriginal.CompositeTableType<
+      TSecretRotationV2SecretMappings,
+      TSecretRotationV2SecretMappingsInsert,
+      TSecretRotationV2SecretMappingsUpdate
     >;
   }
 }

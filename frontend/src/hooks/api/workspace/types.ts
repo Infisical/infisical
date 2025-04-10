@@ -173,3 +173,12 @@ export type TListProjectIdentitiesDTO = {
 export enum ProjectIdentityOrderBy {
   Name = "name"
 }
+export type TSearchProjectsDTO = {
+  type?: ProjectType;
+  name?: string;
+  limit?: number;
+  offset?: number;
+  options?: { enabled?: boolean };
+  orderBy?: ProjectIdentityOrderBy;
+  orderDirection?: OrderByDirection;
+};

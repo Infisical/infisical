@@ -1,0 +1,16 @@
+nodejs_conf = nodejs_init
+
+.include /usr/local/ssl/fipsmodule.cnf
+
+[nodejs_init]
+providers = provider_sect
+
+[provider_sect]
+default = default_sect
+fips = fips_sect
+
+[default_sect]
+activate = 1
+
+[algorithm_sect]
+default_properties = fips=yes 

@@ -3,6 +3,7 @@ import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
+import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { SecretV3Raw, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 export type DashboardProjectSecretsOverviewResponse = {
@@ -14,11 +15,16 @@ export type DashboardProjectSecretsOverviewResponse = {
   totalFolderCount?: number;
   totalDynamicSecretCount?: number;
   totalImportCount?: number;
+  secretRotations?: (TSecretRotationV2 & {
+    secrets: (SecretV3Raw | null)[];
+  })[];
+  totalSecretRotationCount?: number;
   totalCount: number;
   totalUniqueSecretsInPage: number;
   totalUniqueDynamicSecretsInPage: number;
   totalUniqueFoldersInPage: number;
   totalUniqueSecretImportsInPage: number;
+  totalUniqueSecretRotationsInPage: number;
 };
 
 export type DashboardProjectSecretsDetailsResponse = {
@@ -26,10 +32,14 @@ export type DashboardProjectSecretsDetailsResponse = {
   folders?: TSecretFolder[];
   dynamicSecrets?: TDynamicSecret[];
   secrets?: SecretV3Raw[];
+  secretRotations?: (TSecretRotationV2 & {
+    secrets: (SecretV3Raw | null)[];
+  })[];
   totalImportCount?: number;
   totalFolderCount?: number;
   totalDynamicSecretCount?: number;
   totalSecretCount?: number;
+  totalSecretRotationCount?: number;
   totalCount: number;
 };
 
@@ -39,9 +49,12 @@ export type DashboardProjectSecretsByKeys = {
 
 export type DashboardProjectSecretsOverview = Omit<
   DashboardProjectSecretsOverviewResponse,
-  "secrets"
+  "secrets" | "secretRotations"
 > & {
   secrets?: SecretV3RawSanitized[];
+  secretRotations?: (TSecretRotationV2 & {
+    secrets: (SecretV3RawSanitized | null)[];
+  })[];
 };
 
 export type DashboardProjectSecretsDetails = Omit<
@@ -49,6 +62,9 @@ export type DashboardProjectSecretsDetails = Omit<
   "secrets"
 > & {
   secrets?: SecretV3RawSanitized[];
+  secretRotations?: (TSecretRotationV2 & {
+    secrets: (SecretV3RawSanitized | null)[];
+  })[];
 };
 
 export enum DashboardSecretsOrderBy {
@@ -67,6 +83,7 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
   includeFolders?: boolean;
   includeDynamicSecrets?: boolean;
   includeImports?: boolean;
+  includeSecretRotations?: boolean;
   environments: string[];
 };
 
@@ -83,6 +100,7 @@ export type TGetDashboardProjectSecretsDetailsDTO = Omit<
 export type TDashboardProjectSecretsQuickSearchResponse = {
   folders: (TSecretFolder & { envId: string; path: string })[];
   dynamicSecrets: (TDynamicSecret & { environment: string; path: string })[];
+  secretRotations: TSecretRotationV2[];
   secrets: SecretV3Raw[];
 };
 
@@ -90,6 +108,7 @@ export type TDashboardProjectSecretsQuickSearch = {
   folders: Record<string, TDashboardProjectSecretsQuickSearchResponse["folders"]>;
   secrets: Record<string, SecretV3RawSanitized[]>;
   dynamicSecrets: Record<string, TDashboardProjectSecretsQuickSearchResponse["dynamicSecrets"]>;
+  secretRotations: Record<string, TDashboardProjectSecretsQuickSearchResponse["secretRotations"]>;
 };
 
 export type TGetDashboardProjectSecretsQuickSearchDTO = {
@@ -111,6 +130,7 @@ export type TGetAccessibleSecretsDTO = {
   projectId: string;
   secretPath: string;
   environment: string;
+  recursive?: boolean;
   filterByAction:
     | ProjectPermissionSecretActions.DescribeSecret
     | ProjectPermissionSecretActions.ReadValue;

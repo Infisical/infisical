@@ -6,20 +6,23 @@ import {
   ProjectType,
   ProjectUpgradeStatus,
   ProjectVersion,
+  SortDirection,
   TableName,
+  TProjects,
   TProjectsUpdate
 } from "@app/db/schemas";
 import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
-import { Filter, ProjectFilterType } from "./project-types";
+import { ActorType } from "../auth/auth-type";
+import { Filter, ProjectFilterType, SearchProjectSortBy } from "./project-types";
 
 export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
 
 export const projectDALFactory = (db: TDbClient) => {
   const projectOrm = ormify(db, TableName.Project);
 
-  const findAllProjects = async (userId: string, orgId: string, projectType: ProjectType | "all") => {
+  const findUserProjects = async (userId: string, orgId: string, projectType: ProjectType | "all") => {
     try {
       const workspaces = await db
         .replicaNode()(TableName.ProjectMembership)
@@ -352,9 +355,79 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  const searchProjects = async (dto: {
+    orgId: string;
+    actor: ActorType;
+    actorId: string;
+    type?: ProjectType;
+    limit?: number;
+    offset?: number;
+    name?: string;
+    sortBy?: SearchProjectSortBy;
+    sortDir?: SortDirection;
+  }) => {
+    const { limit = 20, offset = 0, sortBy = SearchProjectSortBy.NAME, sortDir = SortDirection.ASC } = dto;
+
+    const userMembershipSubquery = db(TableName.ProjectMembership).where({ userId: dto.actorId }).select("projectId");
+    const groups = db(TableName.UserGroupMembership).where({ userId: dto.actorId }).select("groupId");
+    const groupMembershipSubquery = db(TableName.GroupProjectMembership).whereIn("groupId", groups).select("projectId");
+
+    const identityMembershipSubQuery = db(TableName.IdentityProjectMembership)
+      .where({ identityId: dto.actorId })
+      .select("projectId");
+
+    // Get the SQL strings for the subqueries
+    const userMembershipSql = userMembershipSubquery.toQuery();
+    const groupMembershipSql = groupMembershipSubquery.toQuery();
+    const identityMembershipSql = identityMembershipSubQuery.toQuery();
+
+    const query = db
+      .replicaNode()(TableName.Project)
+      .where(`${TableName.Project}.orgId`, dto.orgId)
+      .select(selectAllTableCols(TableName.Project))
+      .select(db.raw("COUNT(*) OVER() AS count"))
+      .select<(TProjects & { isMember: boolean; count: number })[]>(
+        dto.actor === ActorType.USER
+          ? db.raw(
+              `
+          CASE
+            WHEN ${TableName.Project}.id IN (?) THEN TRUE
+            WHEN ${TableName.Project}.id IN (?) THEN TRUE
+            ELSE FALSE
+          END as "isMember"
+        `,
+              [db.raw(userMembershipSql), db.raw(groupMembershipSql)]
+            )
+          : db.raw(
+              `
+          CASE
+            WHEN ${TableName.Project}.id IN (?) THEN TRUE
+            ELSE FALSE
+          END as "isMember"
+        `,
+              [db.raw(identityMembershipSql)]
+            )
+      )
+      .limit(limit)
+      .offset(offset);
+    if (sortBy === SearchProjectSortBy.NAME) {
+      void query.orderBy([{ column: `${TableName.Project}.name`, order: sortDir }]);
+    }
+
+    if (dto.type) {
+      void query.where(`${TableName.Project}.type`, dto.type);
+    }
+    if (dto.name) {
+      void query.whereILike(`${TableName.Project}.name`, `%${dto.name}%`);
+    }
+    const docs = await query;
+
+    return { docs, totalCount: Number(docs?.[0]?.count ?? 0) };
+  };
+
   return {
     ...projectOrm,
-    findAllProjects,
+    findUserProjects,
     setProjectUpgradeStatus,
     findAllProjectsByIdentity,
     findProjectGhostUser,
@@ -363,6 +436,7 @@ export const projectDALFactory = (db: TDbClient) => {
     findProjectBySlug,
     findProjectWithOrg,
     checkProjectUpgradeStatus,
-    getProjectFromSplitId
+    getProjectFromSplitId,
+    searchProjects
   };
 };

@@ -1321,7 +1321,8 @@ export const secretServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     environment,
-    filterByAction
+    filterByAction,
+    recursive
   }: TGetAccessibleSecretsDTO) => {
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
@@ -1340,7 +1341,8 @@ export const secretServiceFactory = ({
       actor,
       actorId,
       actorOrgId,
-      actorAuthMethod
+      actorAuthMethod,
+      recursive
     });
 
     return secrets;
@@ -1556,6 +1558,7 @@ export const secretServiceFactory = ({
         actorOrgId,
         actor,
         actorId,
+        version,
         expandSecretReferences,
         type,
         secretName

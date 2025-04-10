@@ -76,6 +76,9 @@ import { secretReplicationServiceFactory } from "@app/ee/services/secret-replica
 import { secretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { secretRotationQueueFactory } from "@app/ee/services/secret-rotation/secret-rotation-queue";
 import { secretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
+import { secretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
+import { secretRotationV2QueueServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-queue";
+import { secretRotationV2ServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-service";
 import { gitAppDALFactory } from "@app/ee/services/secret-scanning/git-app-dal";
 import { gitAppInstallSessionDALFactory } from "@app/ee/services/secret-scanning/git-app-install-session-dal";
 import { secretScanningDALFactory } from "@app/ee/services/secret-scanning/secret-scanning-dal";
@@ -415,6 +418,8 @@ export const registerRoutes = async (
   const gatewayDAL = gatewayDALFactory(db);
   const projectGatewayDAL = projectGatewayDALFactory(db);
 
+  const secretRotationV2DAL = secretRotationV2DALFactory(db, folderDAL);
+
   const permissionService = permissionServiceFactory({
     permissionDAL,
     orgRoleDAL,
@@ -671,6 +676,7 @@ export const registerRoutes = async (
   });
 
   const orgAdminService = orgAdminServiceFactory({
+    smtpService,
     projectDAL,
     permissionService,
     projectUserMembershipRoleDAL,
@@ -991,7 +997,8 @@ export const registerRoutes = async (
     projectSlackConfigDAL,
     slackIntegrationDAL,
     projectTemplateService,
-    groupProjectDAL
+    groupProjectDAL,
+    smtpService
   });
 
   const projectEnvService = projectEnvServiceFactory({
@@ -1524,6 +1531,35 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const secretRotationV2Service = secretRotationV2ServiceFactory({
+    secretRotationV2DAL,
+    permissionService,
+    appConnectionService,
+    folderDAL,
+    projectBotService,
+    licenseService,
+    kmsService,
+    auditLogService,
+    secretV2BridgeDAL,
+    secretTagDAL,
+    secretVersionTagV2BridgeDAL,
+    secretVersionV2BridgeDAL,
+    keyStore,
+    resourceMetadataDAL,
+    snapshotService,
+    secretQueueService,
+    queueService
+  });
+
+  await secretRotationV2QueueServiceFactory({
+    secretRotationV2Service,
+    secretRotationV2DAL,
+    queueService,
+    projectDAL,
+    projectMembershipDAL,
+    smtpService
+  });
+
   await superAdminService.initServerCfg();
 
   // setup the communication with license key server
@@ -1626,7 +1662,8 @@ export const registerRoutes = async (
     secretSync: secretSyncService,
     kmip: kmipService,
     kmipOperation: kmipOperationService,
-    gateway: gatewayService
+    gateway: gatewayService,
+    secretRotationV2: secretRotationV2Service
   });
 
   const cronJobs: CronJob[] = [];
@@ -1634,6 +1671,10 @@ export const registerRoutes = async (
     const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
     if (rateLimitSyncJob) {
       cronJobs.push(rateLimitSyncJob);
+    }
+    const licenseSyncJob = await licenseService.initializeBackgroundSync();
+    if (licenseSyncJob) {
+      cronJobs.push(licenseSyncJob);
     }
   }
 

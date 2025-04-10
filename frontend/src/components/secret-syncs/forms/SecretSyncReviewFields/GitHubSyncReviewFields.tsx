@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { GitHubSyncScope, TGitHubSync } from "@app/hooks/api/secretSyncs/types/github-sync";
@@ -16,30 +16,30 @@ export const GitHubSyncReviewFields = () => {
   switch (config.scope) {
     case GitHubSyncScope.Repository:
       ScopeComponents = (
-        <SecretSyncLabel label="Repository">
+        <GenericFieldLabel label="Repository">
           {config.owner}/{config.repo}
-        </SecretSyncLabel>
+        </GenericFieldLabel>
       );
       break;
     case GitHubSyncScope.Organization:
       ScopeComponents = (
         <>
-          <SecretSyncLabel label="Organization">{config.org}</SecretSyncLabel>
-          <SecretSyncLabel className="capitalize" label="Visibility">
+          <GenericFieldLabel label="Organization">{config.org}</GenericFieldLabel>
+          <GenericFieldLabel className="capitalize" label="Visibility">
             {config.visibility}
-          </SecretSyncLabel>
+          </GenericFieldLabel>
         </>
       );
       break;
     case GitHubSyncScope.RepositoryEnvironment:
       ScopeComponents = (
         <>
-          <SecretSyncLabel label="Repository">
+          <GenericFieldLabel label="Repository">
             {config.owner}/{config.repo}
-          </SecretSyncLabel>
-          <SecretSyncLabel className="capitalize" label="Environment">
+          </GenericFieldLabel>
+          <GenericFieldLabel className="capitalize" label="Environment">
             {config.env}
-          </SecretSyncLabel>
+          </GenericFieldLabel>
         </>
       );
 
@@ -52,9 +52,9 @@ export const GitHubSyncReviewFields = () => {
 
   return (
     <>
-      <SecretSyncLabel className="capitalize" label="Scope">
+      <GenericFieldLabel className="capitalize" label="Scope">
         {config.scope.replace("-", " ")}
-      </SecretSyncLabel>
+      </GenericFieldLabel>
       {ScopeComponents}
     </>
   );

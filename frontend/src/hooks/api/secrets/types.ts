@@ -54,6 +54,8 @@ export type SecretV3RawSanitized = {
   skipMultilineEncoding?: boolean;
   secretMetadata?: { key: string; value: string }[];
   isReminderEvent?: boolean;
+  isRotatedSecret?: boolean;
+  rotationId?: string;
 };
 
 export type SecretV3Raw = {
@@ -76,6 +78,8 @@ export type SecretV3Raw = {
   tags?: WsTag[];
   createdAt: string;
   updatedAt: string;
+  isRotatedSecret?: boolean;
+  rotationId?: string;
 };
 
 export type SecretV3RawResponse = {
@@ -121,6 +125,7 @@ export type TGetProjectSecretsKey = {
   includeImports?: boolean;
   viewSecretValue?: boolean;
   expandSecretReferences?: boolean;
+  recursive?: boolean;
 };
 
 export type TGetProjectSecretsDTO = TGetProjectSecretsKey;
@@ -166,7 +171,7 @@ export type TUpdateSecretsV3DTO = {
   skipMultilineEncoding?: boolean;
   newSecretName?: string;
   secretKey: string;
-  secretValue: string;
+  secretValue?: string;
   secretComment?: string;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;

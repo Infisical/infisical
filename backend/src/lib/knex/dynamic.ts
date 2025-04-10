@@ -2,11 +2,17 @@ import { Knex } from "knex";
 
 import { UnauthorizedError } from "../errors";
 
-type TKnexDynamicPrimitiveOperator<T extends object> = {
-  operator: "eq" | "ne" | "startsWith" | "endsWith";
-  value: string;
-  field: Extract<keyof T, string>;
-};
+type TKnexDynamicPrimitiveOperator<T extends object> =
+  | {
+      operator: "eq" | "ne" | "startsWith" | "endsWith";
+      value: string;
+      field: Extract<keyof T, string>;
+    }
+  | {
+      operator: "notIn";
+      value: string[];
+      field: Extract<keyof T, string>;
+    };
 
 type TKnexDynamicInOperator<T extends object> = {
   operator: "in";
@@ -46,6 +52,10 @@ export const buildDynamicKnexQuery = <T extends object>(
       }
       case "endsWith": {
         void queryBuilder.whereILike(filterAst.field, `%${filterAst.value}`);
+        break;
+      }
+      case "notIn": {
+        void queryBuilder.whereNotIn(filterAst.field, filterAst.value);
         break;
       }
       case "and": {

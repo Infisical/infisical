@@ -3,6 +3,7 @@ export {
   useDeleteGroupFromWorkspace,
   useLeaveProject,
   useMigrateProjectToV3,
+  useRequestProjectAccess,
   useUpdateGroupWorkspaceRole
 } from "./mutations";
 export {
@@ -37,6 +38,7 @@ export {
   useListWorkspaceSshCertificateTemplates,
   useListWorkspaceSshHosts,
   useNameWorkspaceSecrets,
+  useSearchProjects,
   useToggleAutoCapitalization,
   useUpdateIdentityWorkspaceRole,
   useUpdateProject,

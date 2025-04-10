@@ -25,6 +25,7 @@ import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-app
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { diff, groupBy } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
@@ -44,10 +45,12 @@ import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import {
+  buildHierarchy,
   expandSecretReferencesFactory,
   fnSecretBulkDelete,
   fnSecretBulkInsert,
   fnSecretBulkUpdate,
+  generatePaths,
   getAllSecretReferences,
   recursivelyGetSecretPaths,
   reshapeBridgeSecret
@@ -414,6 +417,8 @@ export const secretV2BridgeServiceFactory = ({
       });
       if (!sharedSecretToModify)
         throw new NotFoundError({ message: `Secret with name ${inputSecret.secretName} not found` });
+      if (sharedSecretToModify.isRotatedSecret && (inputSecret.newSecretName || inputSecret.secretValue))
+        throw new BadRequestError({ message: "Cannot update rotated secret name or value" });
       secretId = sharedSecretToModify.id;
       secret = sharedSecretToModify;
     }
@@ -624,66 +629,79 @@ export const secretV2BridgeServiceFactory = ({
       })
     );
 
-    const deletedSecret = await secretDAL.transaction(async (tx) =>
-      fnSecretBulkDelete({
-        projectId,
-        folderId,
-        actorId,
-        secretDAL,
-        secretQueueService,
-        inputSecrets: [
-          {
-            type: inputSecret.type as SecretType,
-            secretKey: inputSecret.secretName
-          }
-        ],
-        tx
-      })
-    );
+    try {
+      const deletedSecret = await secretDAL.transaction(async (tx) =>
+        fnSecretBulkDelete({
+          projectId,
+          folderId,
+          actorId,
+          secretDAL,
+          secretQueueService,
+          inputSecrets: [
+            {
+              type: inputSecret.type as SecretType,
+              secretKey: inputSecret.secretName
+            }
+          ],
+          tx
+        })
+      );
 
-    if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
-      await secretQueueService.syncSecrets({
-        secretPath,
-        actorId,
-        actor,
-        projectId,
-        orgId: actorOrgId,
-        environmentSlug: folder.environment.slug
+      if (inputSecret.type === SecretType.Shared) {
+        await snapshotService.performSnapshot(folderId);
+        await secretQueueService.syncSecrets({
+          secretPath,
+          actorId,
+          actor,
+          projectId,
+          orgId: actorOrgId,
+          environmentSlug: folder.environment.slug
+        });
+      }
+
+      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
       });
-    }
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+      const secretValueHidden = !hasSecretReadValueOrDescribePermission(
+        permission,
+        ProjectPermissionSecretActions.ReadValue,
+        {
+          environment,
+          secretPath,
+          secretName: secretToDelete.key,
+          secretTags: secretToDelete.tags?.map((el) => el.slug)
+        }
+      );
 
-    const secretValueHidden = !hasSecretReadValueOrDescribePermission(
-      permission,
-      ProjectPermissionSecretActions.ReadValue,
-      {
+      return reshapeBridgeSecret(
+        projectId,
         environment,
         secretPath,
-        secretName: secretToDelete.key,
-        secretTags: secretToDelete.tags?.map((el) => el.slug)
+        {
+          ...deletedSecret[0],
+          value: deletedSecret[0].encryptedValue
+            ? secretManagerDecryptor({ cipherTextBlob: deletedSecret[0].encryptedValue }).toString()
+            : "",
+          comment: deletedSecret[0].encryptedComment
+            ? secretManagerDecryptor({ cipherTextBlob: deletedSecret[0].encryptedComment }).toString()
+            : ""
+        },
+        secretValueHidden
+      );
+    } catch (err) {
+      // deferred errors aren't return as DatabaseError
+      const error = err as { code: string; table: string };
+      if (
+        error?.code === DatabaseErrorCode.ForeignKeyViolation &&
+        error?.table === TableName.SecretRotationV2SecretMapping
+      ) {
+        throw new BadRequestError({ message: "Cannot delete rotated secrets" });
       }
-    );
 
-    return reshapeBridgeSecret(
-      projectId,
-      environment,
-      secretPath,
-      {
-        ...deletedSecret[0],
-        value: deletedSecret[0].encryptedValue
-          ? secretManagerDecryptor({ cipherTextBlob: deletedSecret[0].encryptedValue }).toString()
-          : "",
-        comment: deletedSecret[0].encryptedComment
-          ? secretManagerDecryptor({ cipherTextBlob: deletedSecret[0].encryptedComment }).toString()
-          : ""
-      },
-      secretValueHidden
-    );
+      throw err;
+    }
   };
 
   // get unique secrets count for multiple envs
@@ -946,6 +964,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId
     });
 
+    // scott: if any of this changes it also needs to be mirrored in secret rotation for getting dashboard secrets
     const decryptedSecrets = secrets
       .filter((el) => {
         const canDescribeSecret = hasSecretReadValueOrDescribePermission(
@@ -1233,21 +1252,24 @@ export const secretV2BridgeServiceFactory = ({
       : secretVersionDAL
           .findOne({
             folderId,
+            version,
             type: secretType,
             userId: secretType === SecretType.Personal ? actorId : null,
             key: secretName
           })
           .then((el) =>
-            SecretsV2Schema.extend({
-              tags: z
-                .object({ slug: z.string(), name: z.string(), id: z.string(), color: z.string() })
-                .array()
-                .default([])
-                .optional()
-            }).parse({
-              ...el,
-              id: el.secretId
-            })
+            el
+              ? SecretsV2Schema.extend({
+                  tags: z
+                    .object({ slug: z.string(), name: z.string(), id: z.string(), color: z.string() })
+                    .array()
+                    .default([])
+                    .optional()
+                }).parse({
+                  ...el,
+                  id: el.secretId
+                })
+              : undefined
           ));
 
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
@@ -1667,6 +1689,13 @@ export const secretV2BridgeServiceFactory = ({
               secretTags: el.tags.map((i) => i.slug)
             })
           );
+
+          if (el.isRotatedSecret) {
+            const input = secretsToUpdateGroupByPath[secretPath].find((i) => i.secretKey === el.key);
+
+            if (input && (input.newSecretName || input.secretValue))
+              throw new BadRequestError({ message: `Cannot update rotated secret name or value: ${el.key}` });
+          }
         });
 
         // get all tags
@@ -1969,61 +1998,76 @@ export const secretV2BridgeServiceFactory = ({
       );
     });
 
-    const secretsDeleted = await secretDAL.transaction(async (tx) =>
-      fnSecretBulkDelete({
-        secretDAL,
-        secretQueueService,
-        inputSecrets: inputSecrets.map(({ type, secretKey }) => ({
-          secretKey,
-          type: type || SecretType.Shared
-        })),
-        projectId,
-        folderId,
-        actorId,
-        tx
-      })
-    );
-
-    // await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({
-      actor,
-      actorId,
-      secretPath,
-      projectId,
-      orgId: actorOrgId,
-      environmentSlug: folder.environment.slug
-    });
-
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-    return secretsDeleted.map((el) => {
-      const secretToDeleteMatch = secretsToDelete.find(
-        (i) => i.key === el.key && (i.type || SecretType.Shared) === el.type
+    try {
+      const secretsDeleted = await secretDAL.transaction(async (tx) =>
+        fnSecretBulkDelete({
+          secretDAL,
+          secretQueueService,
+          inputSecrets: inputSecrets.map(({ type, secretKey }) => ({
+            secretKey,
+            type: type || SecretType.Shared
+          })),
+          projectId,
+          folderId,
+          actorId,
+          tx
+        })
       );
 
-      const secretValueHidden =
-        !secretToDeleteMatch ||
-        !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+      await snapshotService.performSnapshot(folderId);
+      await secretQueueService.syncSecrets({
+        actor,
+        actorId,
+        secretPath,
+        projectId,
+        orgId: actorOrgId,
+        environmentSlug: folder.environment.slug
+      });
+
+      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      return secretsDeleted.map((el) => {
+        const secretToDeleteMatch = secretsToDelete.find(
+          (i) => i.key === el.key && (i.type || SecretType.Shared) === el.type
+        );
+
+        const secretValueHidden =
+          !secretToDeleteMatch ||
+          !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+            environment,
+            secretPath,
+            secretName: el.key,
+            secretTags: secretToDeleteMatch.tags?.map((i) => i.slug)
+          });
+
+        return reshapeBridgeSecret(
+          projectId,
           environment,
           secretPath,
-          secretName: el.key,
-          secretTags: secretToDeleteMatch.tags?.map((i) => i.slug)
-        });
+          {
+            ...el,
+            value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
+            comment: el.encryptedComment
+              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
+              : ""
+          },
+          secretValueHidden
+        );
+      });
+    } catch (err) {
+      // deferred errors aren't return as DatabaseError
+      const error = err as { code: string; table: string };
+      if (
+        error?.code === DatabaseErrorCode.ForeignKeyViolation &&
+        error?.table === TableName.SecretRotationV2SecretMapping
+      ) {
+        throw new BadRequestError({ message: "Cannot delete rotated secrets" });
+      }
 
-      return reshapeBridgeSecret(
-        projectId,
-        environment,
-        secretPath,
-        {
-          ...el,
-          value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
-          comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
-        },
-        secretValueHidden
-      );
-    });
+      throw err;
+    }
   };
 
   const getSecretVersions = async ({
@@ -2195,6 +2239,10 @@ export const secretV2BridgeServiceFactory = ({
     const destinationActions = [ProjectPermissionSecretActions.Create, ProjectPermissionSecretActions.Edit] as const;
 
     sourceSecrets.forEach((secret) => {
+      if (secret.isRotatedSecret) {
+        throw new BadRequestError({ message: `Cannot move rotated secret: ${secret.key}` });
+      }
+
       for (const sourceAction of sourceActions) {
         if (
           sourceAction === ProjectPermissionSecretActions.DescribeSecret ||
@@ -2620,7 +2668,8 @@ export const secretV2BridgeServiceFactory = ({
     actorId,
     actor,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    recursive
   }: TGetAccessibleSecretsDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -2635,10 +2684,38 @@ export const secretV2BridgeServiceFactory = ({
       secretPath
     });
 
+    const folders = [];
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) return { secrets: [] };
+    folders.push({ ...folder, parentId: null });
 
-    const secrets = await secretDAL.findByFolderIds([folder.id]);
+    const env = await projectEnvDAL.findOne({
+      projectId,
+      slug: environment
+    });
+
+    if (!env) {
+      throw new NotFoundError({
+        message: `Environment with slug '${environment}' in project with ID ${projectId} not found`
+      });
+    }
+
+    if (recursive) {
+      const subFolders = await folderDAL.find({
+        envId: env.id,
+        isReserved: false
+      });
+      folders.push(...subFolders);
+    }
+
+    if (folders.length === 0) return { secrets: [] };
+
+    const folderMap = buildHierarchy(folders);
+    const paths = Object.fromEntries(
+      generatePaths(folderMap).map(({ folderId, path }) => [folderId, path === "/" ? path : path.substring(1)])
+    );
+
+    const secrets = await secretDAL.findByFolderIds(folders.map((f) => f.id));
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -2650,7 +2727,7 @@ export const secretV2BridgeServiceFactory = ({
         if (
           !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
             environment,
-            secretPath,
+            secretPath: paths[el.folderId],
             secretName: el.key,
             secretTags: el.tags.map((i) => i.slug)
           })
@@ -2661,7 +2738,7 @@ export const secretV2BridgeServiceFactory = ({
         if (filterByAction === ProjectPermissionSecretActions.ReadValue) {
           return hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
             environment,
-            secretPath,
+            secretPath: paths[el.folderId],
             secretName: el.key,
             secretTags: el.tags.map((i) => i.slug)
           });
@@ -2674,7 +2751,7 @@ export const secretV2BridgeServiceFactory = ({
           filterByAction === ProjectPermissionSecretActions.DescribeSecret &&
           !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
             environment,
-            secretPath,
+            secretPath: paths[secret.folderId],
             secretName: secret.key,
             secretTags: secret.tags.map((i) => i.slug)
           });
@@ -2682,7 +2759,7 @@ export const secretV2BridgeServiceFactory = ({
         return reshapeBridgeSecret(
           projectId,
           environment,
-          secretPath,
+          paths[secret.folderId],
           {
             ...secret,
             value: secret.encryptedValue

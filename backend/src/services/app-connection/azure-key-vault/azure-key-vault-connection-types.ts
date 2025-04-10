@@ -16,7 +16,7 @@ export type TAzureKeyVaultConnectionInput = z.infer<typeof CreateAzureKeyVaultCo
   app: AppConnection.AzureKeyVault;
 };
 
-export type TValidateAzureKeyVaultConnectionCredentials = typeof ValidateAzureKeyVaultConnectionCredentialsSchema;
+export type TValidateAzureKeyVaultConnectionCredentialsSchema = typeof ValidateAzureKeyVaultConnectionCredentialsSchema;
 
 export type TAzureKeyVaultConnectionConfig = DiscriminativePick<
   TAzureKeyVaultConnectionInput,

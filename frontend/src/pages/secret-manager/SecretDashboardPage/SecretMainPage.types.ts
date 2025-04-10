@@ -10,5 +10,6 @@ export enum RowType {
   Folder = "folder",
   Import = "import",
   DynamicSecret = "dynamic",
-  Secret = "secret"
+  Secret = "secret",
+  SecretRotation = "rotation"
 }

@@ -8,7 +8,7 @@ type Props = {
   labelClassName?: string;
 };
 
-export const SecretSyncLabel = ({ label, children, className, labelClassName }: Props) => {
+export const GenericFieldLabel = ({ label, children, className, labelClassName }: Props) => {
   return (
     <div className={className}>
       <p className={twMerge("text-xs font-medium text-mineshaft-400", labelClassName)}>{label}</p>

@@ -25,7 +25,7 @@ import {
 
 type Props = {
   appConnection?: TDatabricksConnection;
-  onSubmit: (formData: FormData) => void;
+  onSubmit: (formData: FormData) => Promise<void>;
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({

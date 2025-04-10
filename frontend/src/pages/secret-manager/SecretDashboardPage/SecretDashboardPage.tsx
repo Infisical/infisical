@@ -25,7 +25,10 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSecretRotationActions
+} from "@app/context/ProjectPermissionContext/types";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   useGetImportedSecretsSingleEnv,
@@ -39,6 +42,7 @@ import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import { SecretRotationListView } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretRotationListView";
 
 import { SecretTableResourceCount } from "../OverviewPage/components/SecretTableResourceCount";
 import { SecretV2MigrationSection } from "../OverviewPage/components/SecretV2MigrationSection";
@@ -137,6 +141,11 @@ const Page = () => {
     subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })
   );
 
+  const canReadSecretRotations = permission.can(
+    ProjectPermissionSecretRotationActions.Read,
+    subject(ProjectPermissionSub.SecretRotation, { environment, secretPath })
+  );
+
   const canDoReadRollback = permission.can(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretRollback
@@ -150,7 +159,8 @@ const Page = () => {
       [RowType.Folder]: true,
       [RowType.Import]: true,
       [RowType.DynamicSecret]: true,
-      [RowType.Secret]: true
+      [RowType.Secret]: true,
+      [RowType.SecretRotation]: true
     }
   };
 
@@ -194,6 +204,7 @@ const Page = () => {
     viewSecretValue: canReadSecretValue,
     includeDynamicSecrets: canReadDynamicSecret && filter.include.dynamic,
     includeSecrets: canReadSecret && filter.include.secret,
+    includeSecretRotations: canReadSecretRotations && filter.include.rotation,
     tags: filter.tags
   });
 
@@ -201,12 +212,14 @@ const Page = () => {
     imports,
     folders,
     dynamicSecrets,
+    secretRotations,
     secrets,
     totalImportCount = 0,
     totalFolderCount = 0,
     totalDynamicSecretCount = 0,
     totalSecretCount = 0,
-    totalCount = 0
+    totalCount = 0,
+    totalSecretRotationCount = 0
   } = data ?? {};
 
   useResetPageHelper({
@@ -266,7 +279,8 @@ const Page = () => {
       (imports?.length || 0) -
       (folders?.length || 0) -
       (secrets?.length || 0) -
-      (dynamicSecrets?.length || 0),
+      (dynamicSecrets?.length || 0) -
+      (secretRotations?.length || 0),
     0
   );
   const isNotEmpty = Boolean(
@@ -274,6 +288,7 @@ const Page = () => {
       folders?.length ||
       imports?.length ||
       dynamicSecrets?.length ||
+      secretRotations?.length ||
       noAccessSecretCount
   );
 
@@ -363,6 +378,8 @@ const Page = () => {
   const selectedSecretActions = useSelectedSecretActions();
 
   const allRowsSelectedOnPage = useMemo(() => {
+    if (!secrets?.length) return { isChecked: false, isIndeterminate: false };
+
     if (secrets?.every((secret) => selectedSecrets[secret.id]))
       return { isChecked: true, isIndeterminate: false };
 
@@ -498,6 +515,9 @@ const Page = () => {
                   dynamicSecrets={dynamicSecrets}
                 />
               )}
+              {canReadSecretRotations && Boolean(secretRotations?.length) && (
+                <SecretRotationListView secretRotations={secretRotations} />
+              )}
               {canReadSecret && Boolean(secrets?.length) && (
                 <SecretListView
                   secrets={secrets}
@@ -524,6 +544,7 @@ const Page = () => {
                   importCount={totalImportCount}
                   secretCount={totalSecretCount}
                   folderCount={totalFolderCount}
+                  secretRotationCount={totalSecretRotationCount}
                 />
               }
               className="rounded-b-md border-t border-solid border-t-mineshaft-600"

@@ -37,7 +37,7 @@ export const ValidateGcpConnectionCredentialsSchema = z.discriminatedUnion("meth
   z.object({
     method: z
       .literal(GcpConnectionMethod.ServiceAccountImpersonation)
-      .describe(AppConnections?.CREATE(AppConnection.GCP).method),
+      .describe(AppConnections.CREATE(AppConnection.GCP).method),
     credentials: GcpConnectionServiceAccountImpersonationCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.GCP).credentials
     )

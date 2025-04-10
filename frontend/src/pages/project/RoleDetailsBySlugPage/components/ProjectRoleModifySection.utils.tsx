@@ -17,6 +17,7 @@ import {
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSshHostActions,
   TPermissionCondition,
@@ -65,6 +66,15 @@ const SecretSyncPolicyActionSchema = z.object({
   [ProjectPermissionSecretSyncActions.SyncSecrets]: z.boolean().optional(),
   [ProjectPermissionSecretSyncActions.ImportSecrets]: z.boolean().optional(),
   [ProjectPermissionSecretSyncActions.RemoveSecrets]: z.boolean().optional()
+});
+
+const SecretRotationPolicyActionSchema = z.object({
+  [ProjectPermissionSecretRotationActions.Read]: z.boolean().optional(),
+  [ProjectPermissionSecretRotationActions.ReadGeneratedCredentials]: z.boolean().optional(),
+  [ProjectPermissionSecretRotationActions.Create]: z.boolean().optional(),
+  [ProjectPermissionSecretRotationActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionSecretRotationActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionSecretRotationActions.RotateSecrets]: z.boolean().optional()
 });
 
 const KmipPolicyActionSchema = z.object({
@@ -223,7 +233,12 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.SecretRollback]: SecretRollbackPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Project]: WorkspacePolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Tags]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.SecretRotation]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SecretRotation]: SecretRotationPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.Kms]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Cmek]: CmekPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretSyncs]: SecretSyncPolicyActionSchema.array().default([]),
@@ -241,7 +256,9 @@ type TConditionalFields =
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.DynamicSecrets
   | ProjectPermissionSub.Identity
-  | ProjectPermissionSub.SshHosts;
+  | ProjectPermissionSub.SshHosts
+  | ProjectPermissionSub.SecretRotation
+  | ProjectPermissionSub.Identity;
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -251,7 +268,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.SecretImports ||
   subject === ProjectPermissionSub.SecretFolders ||
   subject === ProjectPermissionSub.Identity ||
-  subject === ProjectPermissionSub.SshHosts;
+  subject === ProjectPermissionSub.SshHosts ||
+  subject === ProjectPermissionSub.SecretRotation;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -316,6 +334,30 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       // from above statement we are sure it won't be undefined
       if (isConditionalSubjects(subject)) {
         if (!formVal[subject]) formVal[subject] = [];
+
+        if (subject === ProjectPermissionSub.SecretRotation) {
+          const canRead = action.includes(ProjectPermissionSecretRotationActions.Read);
+          const canReadCredentials = action.includes(
+            ProjectPermissionSecretRotationActions.ReadGeneratedCredentials
+          );
+          const canEdit = action.includes(ProjectPermissionSecretRotationActions.Edit);
+          const canDelete = action.includes(ProjectPermissionSecretRotationActions.Delete);
+          const canCreate = action.includes(ProjectPermissionSecretRotationActions.Create);
+          const canRotate = action.includes(ProjectPermissionSecretRotationActions.RotateSecrets);
+
+          // from above statement we are sure it won't be undefined
+          formVal[subject]!.push({
+            [ProjectPermissionSecretRotationActions.Read]: canRead,
+            [ProjectPermissionSecretRotationActions.ReadGeneratedCredentials]: canReadCredentials,
+            [ProjectPermissionSecretRotationActions.Create]: canCreate,
+            [ProjectPermissionSecretRotationActions.Edit]: canEdit,
+            [ProjectPermissionSecretRotationActions.Delete]: canDelete,
+            [ProjectPermissionSecretRotationActions.RotateSecrets]: canRotate,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+          return;
+        }
 
         if (subject === ProjectPermissionSub.DynamicSecrets) {
           const canRead = action.includes(ProjectPermissionDynamicSecretActions.ReadRootCredential);
@@ -940,10 +982,15 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.SecretRotation]: {
     title: "Secret Rotation",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read Config", value: ProjectPermissionSecretRotationActions.Read },
+      {
+        label: "Read Generated Credentials",
+        value: ProjectPermissionSecretRotationActions.ReadGeneratedCredentials
+      },
+      { label: "Create Config", value: ProjectPermissionSecretRotationActions.Create },
+      { label: "Modify Config", value: ProjectPermissionSecretRotationActions.Edit },
+      { label: "Remove Config", value: ProjectPermissionSecretRotationActions.Delete },
+      { label: "Rotate Secrets", value: ProjectPermissionSecretRotationActions.RotateSecrets }
     ]
   },
   [ProjectPermissionSub.SecretRollback]: {

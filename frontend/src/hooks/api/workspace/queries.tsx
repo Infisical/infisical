@@ -33,6 +33,7 @@ import {
   TGetUpgradeProjectStatusDTO,
   TListProjectIdentitiesDTO,
   ToggleAutoCapitalizationDTO,
+  TSearchProjectsDTO,
   TUpdateWorkspaceIdentityRoleDTO,
   TUpdateWorkspaceUserRoleDTO,
   UpdateAuditLogsRetentionDTO,
@@ -146,14 +147,31 @@ export const useGetWorkspaceById = (
 
 export const useGetUserWorkspaces = ({
   includeRoles,
-  type = "all"
+  type = "all",
+  options = {}
 }: {
   includeRoles?: boolean;
   type?: ProjectType | "all";
+  options?: { enabled?: boolean };
 } = {}) =>
   useQuery({
     queryKey: workspaceKeys.getAllUserWorkspace(type),
-    queryFn: () => fetchUserWorkspaces(includeRoles, type)
+    queryFn: () => fetchUserWorkspaces(includeRoles, type),
+    ...options
+  });
+
+export const useSearchProjects = ({ options, ...dto }: TSearchProjectsDTO) =>
+  useQuery({
+    queryKey: workspaceKeys.searchWorkspace(dto),
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{
+        projects: (Workspace & { isMember: boolean })[];
+        totalCount: number;
+      }>("/api/v1/workspace/search", dto);
+
+      return data;
+    },
+    ...options
   });
 
 const fetchUserWorkspaceMemberships = async (orgId: string) => {

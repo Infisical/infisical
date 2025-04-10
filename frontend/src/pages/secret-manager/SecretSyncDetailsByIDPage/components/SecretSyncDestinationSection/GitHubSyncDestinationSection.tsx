@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { GitHubSyncSelectedRepositoriesTooltipContent } from "@app/components/secret-syncs/github";
 import { Tooltip } from "@app/components/v2";
 import {
@@ -23,12 +23,12 @@ export const GitHubSyncDestinationSection = ({ secretSync }: Props) => {
     case GitHubSyncScope.Organization:
       Components = (
         <>
-          <SecretSyncLabel label="Organization">{destinationConfig.org}</SecretSyncLabel>
-          <SecretSyncLabel label="Visibility" className="capitalize">
+          <GenericFieldLabel label="Organization">{destinationConfig.org}</GenericFieldLabel>
+          <GenericFieldLabel label="Visibility" className="capitalize">
             {destinationConfig.visibility} Repositories
-          </SecretSyncLabel>
+          </GenericFieldLabel>
           {destinationConfig.visibility === GitHubSyncVisibility.Selected && (
-            <SecretSyncLabel label="Selected Repositories">
+            <GenericFieldLabel label="Selected Repositories">
               {destinationConfig.selectedRepositoryIds?.length ?? 0} Repositories
               <Tooltip
                 side="bottom"
@@ -36,25 +36,25 @@ export const GitHubSyncDestinationSection = ({ secretSync }: Props) => {
               >
                 <FontAwesomeIcon size="xs" className="ml-1 text-bunker-300" icon={faInfoCircle} />
               </Tooltip>
-            </SecretSyncLabel>
+            </GenericFieldLabel>
           )}
         </>
       );
       break;
     case GitHubSyncScope.Repository:
       Components = (
-        <SecretSyncLabel label="Repository">
+        <GenericFieldLabel label="Repository">
           {destinationConfig.owner}/{destinationConfig.repo}
-        </SecretSyncLabel>
+        </GenericFieldLabel>
       );
       break;
     case GitHubSyncScope.RepositoryEnvironment:
       Components = (
         <>
-          <SecretSyncLabel label="Repository">
+          <GenericFieldLabel label="Repository">
             {destinationConfig.owner}/{destinationConfig.repo}
-          </SecretSyncLabel>
-          <SecretSyncLabel label="Environment">{destinationConfig.env}</SecretSyncLabel>
+          </GenericFieldLabel>
+          <GenericFieldLabel label="Environment">{destinationConfig.env}</GenericFieldLabel>
         </>
       );
       break;
@@ -66,9 +66,9 @@ export const GitHubSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <SecretSyncLabel className="capitalize" label="Scope">
+      <GenericFieldLabel className="capitalize" label="Scope">
         {destinationConfig.scope.replace("-", " ")}
-      </SecretSyncLabel>
+      </GenericFieldLabel>
       {Components}
     </>
   );

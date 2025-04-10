@@ -9,6 +9,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8Errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -56,5 +59,34 @@ func GetInfisicalUniversalAuthFromKubeSecret(ctx context.Context, reconcilerClie
 	clientSecretFromSecret := universalAuthCredsFromKubeSecret.Data[INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET]
 
 	return model.MachineIdentityDetails{ClientId: string(clientIdFromSecret), ClientSecret: string(clientSecretFromSecret)}, nil
+
+}
+
+func getKubeClusterConfig() (*rest.Config, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+
+		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+		configOverrides := &clientcmd.ConfigOverrides{}
+		kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+		return kubeConfig.ClientConfig()
+	}
+
+	return config, nil
+}
+
+func GetRestClientFromClient() (rest.Interface, error) {
+
+	config, err := getKubeClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientset.CoreV1().RESTClient(), nil
 
 }

@@ -132,7 +132,7 @@ export type TUpdateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
   secrets: {
     secretKey: string;
     newSecretName?: string;
-    secretValue: string;
+    secretValue?: string;
     secretComment?: string;
     skipMultilineEncoding?: boolean;
     tagIds?: string[];
@@ -356,5 +356,6 @@ export type TGetAccessibleSecretsDTO = {
   environment: string;
   projectId: string;
   secretPath: string;
+  recursive?: boolean;
   filterByAction: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
 } & TProjectPermission;

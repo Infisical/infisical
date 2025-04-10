@@ -33,7 +33,8 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
               .extend({
                 secretValueHidden: z.boolean(),
                 secretId: z.string(),
-                tags: SanitizedTagSchema.array()
+                tags: SanitizedTagSchema.array(),
+                isRotatedSecret: z.boolean().optional()
               })
               .array(),
             folderVersion: z.object({ id: z.string(), name: z.string() }).array(),
