@@ -29,7 +29,10 @@ type Props = {
   tags?: WsTag[];
   isVisible?: boolean;
   isProtectedBranch?: boolean;
-  importedBy?: { envName: string; folders: { folderName: string; secrets?: string[] }[] }[];
+  importedBy?: {
+    envName: string;
+    folders: { folderName: string; secrets?: string[]; folderImported: boolean }[];
+  }[];
 };
 
 export const SecretListView = ({

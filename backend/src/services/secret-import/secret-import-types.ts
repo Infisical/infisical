@@ -65,6 +65,7 @@ export type FolderInfo = {
   folderName: string;
   secrets?: string[];
   folderId: string;
+  folderImported: boolean;
   envSlug?: string;
 };
 

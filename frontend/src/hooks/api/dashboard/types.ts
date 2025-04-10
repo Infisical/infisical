@@ -41,7 +41,10 @@ export type DashboardProjectSecretsDetailsResponse = {
   totalSecretCount?: number;
   totalSecretRotationCount?: number;
   totalCount: number;
-  importedBy?: { envName: string; folders: { folderName: string; secrets?: string[] }[] }[];
+  importedBy?: {
+    envName: string;
+    folders: { folderName: string; secrets?: string[]; folderImported: boolean }[];
+  }[];
 };
 
 export type DashboardProjectSecretsByKeys = {

@@ -231,6 +231,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
             [folderName: string]: {
               secrets: string[];
               folderId: string;
+              folderImported: boolean;
             };
           };
         };
@@ -251,11 +252,13 @@ export const secretImportDALFactory = (db: TDbClient) => {
         }
 
         if (!updatedAcc[env].folders[folder]) {
-          updatedAcc[env].folders[folder] = { secrets: [], folderId: item.folderId };
+          updatedAcc[env].folders[folder] = { secrets: [], folderId: item.folderId, folderImported: false };
         }
 
         if ("secretId" in item && item.secretId) {
           updatedAcc[env].folders[folder].secrets = [...updatedAcc[env].folders[folder].secrets, item.secretId];
+        } else {
+          updatedAcc[env].folders[folder].folderImported = true;
         }
 
         return updatedAcc;
@@ -271,6 +274,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
           return {
             folderName,
             folderId: folderData.folderId,
+            folderImported: folderData.folderImported,
             ...(hasSecrets && { secrets: folderData.secrets })
           };
         });

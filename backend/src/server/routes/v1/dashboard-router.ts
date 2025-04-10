@@ -581,6 +581,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               folders: z
                 .object({
                   folderName: z.string(),
+                  folderImported: z.boolean(),
                   secrets: z.array(z.string()).optional()
                 })
                 .array()
@@ -856,6 +857,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
       if (secrets?.length || secretRotations?.length) {
         const secretCount =
           (secrets?.length ?? 0) +

@@ -843,6 +843,7 @@ export const secretImportServiceFactory = ({
       ...el,
       folders: el.folders.map((folderItem) => ({
         folderId: folderItem.folderId,
+        folderImported: folderItem.folderImported,
         secrets: folderItem.secrets,
         folderName: deepPaths.find((p) => p.folderId === folderItem.folderId)?.path || `...${folderItem.folderName}`
       }))
