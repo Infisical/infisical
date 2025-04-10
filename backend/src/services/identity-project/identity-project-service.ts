@@ -380,6 +380,12 @@ export const identityProjectServiceFactory = ({
   }: TGetProjectIdentityByMembershipIdDTO) => {
     const membership = await identityProjectDAL.findOne({ id: identityMembershipId });
 
+    if (!membership) {
+      throw new NotFoundError({
+        message: `Project membership with ID '${identityMembershipId}' not found`
+      });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -388,12 +394,6 @@ export const identityProjectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-
-    if (!membership) {
-      throw new NotFoundError({
-        message: `Project membership with ID '${identityMembershipId}' not found`
-      });
-    }
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Read,
