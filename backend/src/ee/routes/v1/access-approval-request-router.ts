@@ -22,7 +22,8 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       body: z.object({
         permissions: z.any().array(),
         isTemporary: z.boolean(),
-        temporaryRange: z.string().optional()
+        temporaryRange: z.string().optional(),
+        note: z.string().optional()
       }),
       querystring: z.object({
         projectSlug: z.string().trim()
@@ -43,7 +44,8 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         actorOrgId: req.permission.orgId,
         projectSlug: req.query.projectSlug,
         temporaryRange: req.body.temporaryRange,
-        isTemporary: req.body.isTemporary
+        isTemporary: req.body.isTemporary,
+        note: req.body.note
       });
       return { approval: request };
     }
