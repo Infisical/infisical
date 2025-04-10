@@ -50,7 +50,7 @@ const getIntegrationSecretsV2 = async (
   }
 
   // process secrets in current folder
-  const secrets = await secretV2BridgeDAL.findByFolderId(dto.folderId);
+  const secrets = await secretV2BridgeDAL.findByFolderId({ folderId: dto.folderId, projectId: dto.projectId });
 
   secrets.forEach((secret) => {
     const secretKey = secret.key;
@@ -63,6 +63,7 @@ const getIntegrationSecretsV2 = async (
   // if no imports then return secrets in the current folder
   if (!secretImports.length) return content;
   const importedSecrets = await fnSecretsV2FromImports({
+    projectId: dto.projectId,
     decryptor: dto.decryptor,
     folderDAL,
     secretDAL: secretV2BridgeDAL,
