@@ -31,6 +31,7 @@ type Props = {
   isProtectedBranch?: boolean;
   importedBy?: {
     envName: string;
+    envSlug: string;
     folders: { folderName: string; secrets?: string[]; folderImported: boolean }[];
   }[];
 };
@@ -363,11 +364,20 @@ export const SecretListView = ({
         onChange={(isOpen) => handlePopUpToggle("deleteSecret", isOpen)}
         onDeleteApproved={handleSecretDelete}
         buttonText="Delete Secret"
-      >
-        {importedBy && importedBy.length > 0 && (
-          <CollapsibleSecretImports importedBy={importedBy} />
-        )}
-      </DeleteActionModal>
+        formContent={
+          importedBy &&
+          importedBy.length > 0 && <CollapsibleSecretImports importedBy={importedBy} />
+        }
+        deletionMessage={
+          <>
+            Type the secret key{" "}
+            <span className="font-bold">
+              &quot;{(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key}&quot;
+            </span>{" "}
+            below to perform this action
+          </>
+        }
+      />
       <SecretDetailSidebar
         environment={environment}
         secretPath={secretPath}

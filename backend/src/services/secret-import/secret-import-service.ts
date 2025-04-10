@@ -823,7 +823,7 @@ export const secretImportServiceFactory = ({
       });
 
     const importedBy = await secretImportDAL.getFolderIsImportedBy(secretPath, folder.envId, environment, projectId);
-
+    console.log({ importedBy });
     const deepPaths: { path: string; folderId: string }[] = [];
 
     await Promise.all(

@@ -43,6 +43,7 @@ export type DashboardProjectSecretsDetailsResponse = {
   totalCount: number;
   importedBy?: {
     envName: string;
+    envSlug: string;
     folders: { folderName: string; secrets?: string[]; folderImported: boolean }[];
   }[];
 };
