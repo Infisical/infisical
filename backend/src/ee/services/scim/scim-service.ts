@@ -583,8 +583,6 @@ export const scimServiceFactory = ({
 
     const serverCfg = await getServerCfg();
     await userDAL.transaction(async (tx) => {
-      const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole);
-
       await userAliasDAL.update(
         {
           orgId,
@@ -600,11 +598,7 @@ export const scimServiceFactory = ({
       await orgMembershipDAL.updateById(
         membership.id,
         {
-          isActive: active,
-          ...(active && {
-            role,
-            roleId
-          })
+          isActive: active
         },
         tx
       );
