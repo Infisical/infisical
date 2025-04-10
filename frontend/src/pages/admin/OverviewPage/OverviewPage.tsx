@@ -259,7 +259,6 @@ export const OverviewPage = () => {
                               <SelectClear
                                 selectValue={defaultAuthOrgId}
                                 onClear={() => {
-                                  console.log("clearing");
                                   onChange("");
                                 }}
                               >
