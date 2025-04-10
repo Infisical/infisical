@@ -11,7 +11,7 @@ export type TSshHostDALFactory = ReturnType<typeof sshHostDALFactory>;
 export const sshHostDALFactory = (db: TDbClient) => {
   const sshHostOrm = ormify(db, TableName.SshHost);
 
-  const findSshHostsWithPrincipalsAcrossProjects = async (projectIds: string[], userId: string, tx?: Knex) => {
+  const findUserAccessibleSshHosts = async (projectIds: string[], userId: string, tx?: Knex) => {
     try {
       const user = await (tx || db.replicaNode())(TableName.Users).where({ id: userId }).select("username").first();
 
@@ -26,6 +26,7 @@ export const sshHostDALFactory = (db: TDbClient) => {
           `${TableName.SshHostLoginUser}.id`,
           `${TableName.SshHostLoginUserMapping}.sshHostLoginUserId`
         )
+        .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.SshHostLoginUserMapping}.userId`)
         .whereIn(`${TableName.SshHost}.projectId`, projectIds)
         .andWhere(`${TableName.SshHostLoginUserMapping}.userId`, userId)
         .select(
@@ -186,7 +187,7 @@ export const sshHostDALFactory = (db: TDbClient) => {
   return {
     ...sshHostOrm,
     findSshHostsWithLoginMappings,
-    findSshHostsWithPrincipalsAcrossProjects,
+    findUserAccessibleSshHosts,
     findSshHostByIdWithLoginMappings
   };
 };

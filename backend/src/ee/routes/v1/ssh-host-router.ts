@@ -269,7 +269,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       description: "Issue SSH certificate for user",
       params: z.object({

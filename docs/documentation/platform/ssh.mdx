@@ -103,10 +103,9 @@ we will register a remote host with Infisical through a [machine identity](/docu
     4.2. On the registered host in the **Hosts** tab, click **Edit SSH Host** and add a login mapping for the user(s) you added in step 4.1.
 
     The login mapping dictates what user(s) will be allowed access to the remote host and under a specific login user; in the allowed principals,
-    you should input a comma-separated list of usernames of users part of the Infisical SSH project that will be allowed to login to the remote host as the login user.
+    you should select user(s) part of the Infisical SSH project that will be allowed to login to the remote host as the login user.
 
-    For instance, if you add a mapping with the login user `ec2-user` with allowed principals of `bob@acme.com` and `alice@acme.com`
-    then both users with the username `bob@acme.com` and `alice@acme.com` will be allowed to login to the remote host as `ec2-user` which is a system user that
+    For instance, if you add a mapping with the login user `ec2-user` to some users John and Alice in Infisical, then they will be allowed to login to the remote host as `ec2-user` which is a system user that
     exists on the remote host.
 
     ![ssh host mappings](/images/platform/ssh/v2/ssh-host-login-mappings.png)

@@ -10,7 +10,7 @@ export const SshHostsPage = () => {
   return (
     <>
       <Helmet>
-        <title>{t("common.head-title", { title: "Certificates" })}</title>
+        <title>{t("common.head-title", { title: "SSH" })}</title>
       </Helmet>
       <div className="h-full bg-bunker-800">
         <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
