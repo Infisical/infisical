@@ -20,7 +20,7 @@ export const TerraformCloudSyncDestinationSection = ({ secretSync }: Props) => {
         <>
           <GenericFieldLabel label="Organization">{destinationConfig.org}</GenericFieldLabel>
           <GenericFieldLabel label="Variable Set">
-            {destinationConfig.destinationName}
+            {destinationConfig.variableSetName}
           </GenericFieldLabel>
         </>
       );
@@ -29,9 +29,7 @@ export const TerraformCloudSyncDestinationSection = ({ secretSync }: Props) => {
       Components = (
         <>
           <GenericFieldLabel label="Organization">{destinationConfig.org}</GenericFieldLabel>
-          <GenericFieldLabel label="Workspace">
-            {destinationConfig.destinationName}
-          </GenericFieldLabel>
+          <GenericFieldLabel label="Workspace">{destinationConfig.workspaceName}</GenericFieldLabel>
         </>
       );
       break;

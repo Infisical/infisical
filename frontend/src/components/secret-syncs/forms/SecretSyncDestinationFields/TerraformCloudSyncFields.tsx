@@ -39,8 +39,10 @@ export const TerraformCloudSyncFields = () => {
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.org", "");
-          setValue("destinationConfig.destinationId", "");
-          setValue("destinationConfig.destinationName", "");
+          setValue("destinationConfig.variableSetId", "");
+          setValue("destinationConfig.workspaceId", "");
+          setValue("destinationConfig.variableSetName", "");
+          setValue("destinationConfig.workspaceName", "");
         }}
       />
       <Controller
@@ -60,8 +62,10 @@ export const TerraformCloudSyncFields = () => {
                 onChange(
                   (option as SingleValue<TTerraformCloudConnectionOrganization>)?.id ?? null
                 );
-                setValue("destinationConfig.destinationId", "");
-                setValue("destinationConfig.destinationName", "");
+                setValue("destinationConfig.variableSetId", "");
+                setValue("destinationConfig.workspaceId", "");
+                setValue("destinationConfig.variableSetName", "");
+                setValue("destinationConfig.workspaceName", "");
               }}
               options={organizations}
               placeholder="Select an organization..."
@@ -155,8 +159,10 @@ export const TerraformCloudSyncFields = () => {
               value={value}
               onValueChange={(val) => {
                 onChange(val);
-                setValue("destinationConfig.destinationId", "");
-                setValue("destinationConfig.destinationName", "");
+                setValue("destinationConfig.variableSetId", "");
+                setValue("destinationConfig.workspaceId", "");
+                setValue("destinationConfig.variableSetName", "");
+                setValue("destinationConfig.workspaceName", "");
               }}
               className="w-full border border-mineshaft-500 capitalize"
               position="popper"
@@ -174,7 +180,7 @@ export const TerraformCloudSyncFields = () => {
       />
       {currentScope === TerraformCloudSyncScope.VariableSet && (
         <Controller
-          name="destinationConfig.destinationId"
+          name="destinationConfig.variableSetId"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl isError={Boolean(error)} errorText={error?.message} label="Variable Set">
@@ -189,9 +195,9 @@ export const TerraformCloudSyncFields = () => {
                   onChange(selectedOption?.id ?? null);
 
                   if (selectedOption) {
-                    setValue("destinationConfig.destinationName", selectedOption.name);
+                    setValue("destinationConfig.variableSetName", selectedOption.name);
                   } else {
-                    setValue("destinationConfig.destinationName", "");
+                    setValue("destinationConfig.variableSetName", "");
                   }
                 }}
                 options={variableSets}
@@ -205,7 +211,7 @@ export const TerraformCloudSyncFields = () => {
       )}
       {currentScope === TerraformCloudSyncScope.Workspace && (
         <Controller
-          name="destinationConfig.destinationId"
+          name="destinationConfig.workspaceId"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl isError={Boolean(error)} errorText={error?.message} label="Workspace">
@@ -219,9 +225,9 @@ export const TerraformCloudSyncFields = () => {
                   onChange(selectedOption?.id ?? null);
 
                   if (selectedOption) {
-                    setValue("destinationConfig.destinationName", selectedOption.name);
+                    setValue("destinationConfig.workspaceName", selectedOption.name);
                   } else {
-                    setValue("destinationConfig.destinationName", "");
+                    setValue("destinationConfig.workspaceName", "");
                   }
                 }}
                 options={workspaces}

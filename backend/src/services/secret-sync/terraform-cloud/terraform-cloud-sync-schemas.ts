@@ -20,27 +20,27 @@ const TerraformCloudSyncDestinationConfigSchema = z.discriminatedUnion("scope", 
       .literal(TerraformCloudSyncScope.VariableSet)
       .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.scope),
     org: z.string().min(1, "Org ID is required").describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.org),
-    destinationName: z
+    variableSetName: z
       .string()
       .min(1, "Variable set name is required")
-      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.destinationName),
-    destinationId: z
+      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.variableSetName),
+    variableSetId: z
       .string()
       .min(1, "Variable set ID is required")
-      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.destinationId),
+      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.variableSetId),
     category: z.nativeEnum(TerraformCloudSyncCategory).describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.category)
   }),
   z.object({
     scope: z.literal(TerraformCloudSyncScope.Workspace).describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.scope),
     org: z.string().min(1, "Org ID is required").describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.org),
-    destinationName: z
+    workspaceName: z
       .string()
       .min(1, "Workspace name is required")
-      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.destinationName),
-    destinationId: z
+      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.workspaceName),
+    workspaceId: z
       .string()
       .min(1, "Workspace ID is required")
-      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.destinationId),
+      .describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.workspaceId),
     category: z.nativeEnum(TerraformCloudSyncCategory).describe(SecretSyncs.DESTINATION_CONFIG.TERRAFORM_CLOUD.category)
   })
 ]);

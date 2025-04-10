@@ -8,7 +8,8 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 export const TerraformCloudSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.TerraformCloud }>();
   const orgId = watch("destinationConfig.org");
-  const destinationName = watch("destinationConfig.destinationName");
+  const variableSetName = watch("destinationConfig.variableSetName");
+  const workspaceName = watch("destinationConfig.workspaceName");
   const scope = watch("destinationConfig.scope");
   const category = watch("destinationConfig.category");
 
@@ -16,10 +17,10 @@ export const TerraformCloudSyncReviewFields = () => {
     <>
       <GenericFieldLabel label="Organization">{orgId}</GenericFieldLabel>
       {scope === TerraformCloudSyncScope.VariableSet && (
-        <GenericFieldLabel label="Variable Set">{destinationName}</GenericFieldLabel>
+        <GenericFieldLabel label="Variable Set">{variableSetName}</GenericFieldLabel>
       )}
       {scope === TerraformCloudSyncScope.Workspace && (
-        <GenericFieldLabel label="Workspace">{destinationName}</GenericFieldLabel>
+        <GenericFieldLabel label="Workspace">{workspaceName}</GenericFieldLabel>
       )}
       <GenericFieldLabel label="Category">{category}</GenericFieldLabel>
     </>

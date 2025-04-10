@@ -11,15 +11,15 @@ export type TTerraformCloudSync = TRootSecretSync & {
         scope: TerraformCloudSyncScope.VariableSet;
         org: string;
         category: TerraformCloudSyncCategory;
-        destinationId: string;
-        destinationName: string;
+        variableSetId: string;
+        variableSetName: string;
       }
     | {
         scope: TerraformCloudSyncScope.Workspace;
         org: string;
         category: TerraformCloudSyncCategory;
-        destinationId: string;
-        destinationName: string;
+        workspaceId: string;
+        workspaceName: string;
       };
   connection: {
     app: AppConnection.TerraformCloud;

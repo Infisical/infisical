@@ -14,15 +14,15 @@ export const TerraformCloudSyncDestinationSchema = BaseSecretSyncSchema().merge(
       z.object({
         scope: z.literal(TerraformCloudSyncScope.VariableSet),
         org: z.string().trim().min(1, "Organization required"),
-        destinationId: z.string().trim().min(1, "Variable Set required"),
-        destinationName: z.string().trim().min(1, "Variable set name required"),
+        variableSetId: z.string().trim().min(1, "Variable Set required"),
+        variableSetName: z.string().trim().min(1, "Variable set name required"),
         category: z.nativeEnum(TerraformCloudSyncCategory)
       }),
       z.object({
         scope: z.literal(TerraformCloudSyncScope.Workspace),
         org: z.string().trim().min(1, "Organization required"),
-        destinationId: z.string().trim().min(1, "Workspace required"),
-        destinationName: z.string().trim().min(1, "Workspace name required"),
+        workspaceId: z.string().trim().min(1, "Workspace required"),
+        workspaceName: z.string().trim().min(1, "Workspace name required"),
         category: z.nativeEnum(TerraformCloudSyncCategory)
       })
     ])

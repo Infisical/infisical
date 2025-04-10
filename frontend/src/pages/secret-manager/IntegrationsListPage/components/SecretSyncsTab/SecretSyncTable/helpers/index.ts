@@ -1,3 +1,4 @@
+import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform-cloud";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 import {
   GitHubSyncScope,
@@ -75,7 +76,11 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.TerraformCloud:
       primaryText = destinationConfig.org;
-      secondaryText = destinationConfig.destinationName;
+      if (destinationConfig.scope === TerraformCloudSyncScope.VariableSet) {
+        secondaryText = destinationConfig.variableSetName;
+      } else {
+        secondaryText = destinationConfig.workspaceName;
+      }
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

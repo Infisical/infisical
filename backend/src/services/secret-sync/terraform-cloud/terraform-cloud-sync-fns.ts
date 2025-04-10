@@ -29,10 +29,10 @@ const getTerraformCloudVariables = async (
   let source: TerraformCloudVariable["source"];
 
   if (destinationConfig.scope === TerraformCloudSyncScope.VariableSet) {
-    url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/varsets/${destinationConfig.destinationId}/relationships/vars`;
+    url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/varsets/${destinationConfig.variableSetId}/relationships/vars`;
     source = "varset";
   } else {
-    url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${destinationConfig.destinationId}/vars`;
+    url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${destinationConfig.workspaceId}/vars`;
     source = "workspace";
   }
 
@@ -92,9 +92,9 @@ const deleteVariable = async (
     let url;
 
     if (destinationConfig.scope === TerraformCloudSyncScope.VariableSet) {
-      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/varsets/${destinationConfig.destinationId}/relationships/vars/${variable.id}`;
+      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/varsets/${destinationConfig.variableSetId}/relationships/vars/${variable.id}`;
     } else {
-      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${destinationConfig.destinationId}/vars/${variable.id}`;
+      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${destinationConfig.workspaceId}/vars/${variable.id}`;
     }
 
     await request.delete(url, {
@@ -127,9 +127,9 @@ const createVariable = async (
     let url;
 
     if (destinationConfig.scope === TerraformCloudSyncScope.VariableSet) {
-      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/varsets/${destinationConfig.destinationId}/relationships/vars`;
+      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/varsets/${destinationConfig.variableSetId}/relationships/vars`;
     } else {
-      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${destinationConfig.destinationId}/vars`;
+      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${destinationConfig.workspaceId}/vars`;
     }
 
     await request.post(
@@ -177,9 +177,9 @@ const updateVariable = async (
     let url;
 
     if (destinationConfig.scope === TerraformCloudSyncScope.VariableSet) {
-      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/varsets/${destinationConfig.destinationId}/relationships/vars/${variable.id}`;
+      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/varsets/${destinationConfig.variableSetId}/relationships/vars/${variable.id}`;
     } else {
-      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${destinationConfig.destinationId}/vars/${variable.id}`;
+      url = `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${destinationConfig.workspaceId}/vars/${variable.id}`;
     }
 
     await request.patch(
