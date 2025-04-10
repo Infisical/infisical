@@ -71,7 +71,6 @@ export enum ProjectPermissionSshHostActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  IssueUserCert = "issue-user-cert",
   IssueHostCert = "issue-host-cert"
 }
 

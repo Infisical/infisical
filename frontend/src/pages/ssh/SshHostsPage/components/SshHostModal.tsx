@@ -152,7 +152,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
     } catch (err) {
       console.error(err);
       createNotification({
-        text: "Failed to add SSH host",
+        text: `Failed to ${sshHost ? "update" : "add"} SSH host`,
         type: "error"
       });
     }
@@ -206,7 +206,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                 errorText={error?.message}
                 isRequired
               >
-                <Input {...field} placeholder="host.example.com" />
+                <Input {...field} placeholder="8h" />
               </FormControl>
             )}
           />
@@ -328,7 +328,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                             {(value.length === 0 ? [""] : value).map(
                               (principal: string, principalIndex: number) => (
                                 <div
-                                  key={`${metadataFieldId}-principal-${principal}`}
+                                  key={`${metadataFieldId}-principal-${principal || principalIndex}`}
                                   className="flex items-center space-x-2"
                                 >
                                   <div className="flex-1">

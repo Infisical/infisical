@@ -543,7 +543,7 @@ export const createSshCaHelper = async ({
       // use external SSH CA key pair
       if (!externalPk || !externalSk) {
         throw new BadRequestError({
-          message: "Public and private keys are required if generateSigningKey is false"
+          message: "Public and private keys are required when key source is external"
         });
       }
       publicKey = externalPk;

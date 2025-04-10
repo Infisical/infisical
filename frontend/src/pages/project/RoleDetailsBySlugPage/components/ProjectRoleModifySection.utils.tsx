@@ -255,7 +255,6 @@ type TConditionalFields =
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.DynamicSecrets
-  | ProjectPermissionSub.Identity
   | ProjectPermissionSub.SshHosts
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.Identity;

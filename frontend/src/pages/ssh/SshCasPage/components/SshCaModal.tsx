@@ -144,7 +144,7 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     } catch (err) {
       console.error(err);
       createNotification({
-        text: "Failed to create SSH CA",
+        text: `Failed to ${ca ? "update" : "create"} SSH CA`,
         type: "error"
       });
     }

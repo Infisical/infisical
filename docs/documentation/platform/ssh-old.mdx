@@ -282,13 +282,13 @@ If the remote host does not have an existing SSH key pair, you can generate a ne
 
     2.2. Create a file containing the certificate in the SSH folder of the remote host; we'll call it `ssh_host_key-cert.pub`.
 
-    2.2. Set permissions on the certificate to be `0640`:
+    2.3. Set permissions on the certificate to be `0640`:
 
     ```bash
     sudo chmod 0640 /etc/ssh/ssh_host_key-cert.pub
     ```
 
-    2.3. Next, add the following lines to the `/etc/ssh/sshd_config` file on the remote host.
+    2.4. Next, add the following lines to the `/etc/ssh/sshd_config` file on the remote host.
 
     ```bash
     HostKey /etc/ssh/ssh_host_rsa_key
@@ -299,7 +299,7 @@ If the remote host does not have an existing SSH key pair, you can generate a ne
       You should adjust the `HostKey` directive to match the path to the host's SSH private key as used in step 1.
     </Note>
 
-    2.4. Finally, reload the SSH daemon on the remote host to apply the changes.
+    2.5. Finally, reload the SSH daemon on the remote host to apply the changes.
 
     ```bash
     sudo systemctl reload sshd

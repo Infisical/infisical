@@ -345,7 +345,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Issue SSH certificate for host",
       params: z.object({
-        sshHostId: z.string().describe(SSH_HOSTS.DELETE.sshHostId)
+        sshHostId: z.string().describe(SSH_HOSTS.ISSUE_HOST_CERT.sshHostId)
       }),
       body: z.object({
         publicKey: z.string().describe(SSH_HOSTS.ISSUE_HOST_CERT.publicKey)
@@ -430,7 +430,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Get public key of the host SSH CA linked to the host",
       params: z.object({
-        sshHostId: z.string().trim().describe(SSH_HOSTS.GET_USER_CA_PUBLIC_KEY.sshHostId)
+        sshHostId: z.string().trim().describe(SSH_HOSTS.GET_HOST_CA_PUBLIC_KEY.sshHostId)
       }),
       response: {
         200: z.string()

@@ -214,14 +214,6 @@ export const sshHostServiceFactory = ({
         tx
       );
 
-      await sshHostLoginUserDAL.insertMany(
-        loginMappings.map(({ loginUser }) => ({
-          sshHostId: host.id,
-          loginUser
-        })),
-        tx
-      );
-
       // (dangtony98): room to optimize
       for await (const { loginUser, allowedPrincipals } of loginMappings) {
         const sshHostLoginUser = await sshHostLoginUserDAL.create(
@@ -524,7 +516,7 @@ export const sshHostServiceFactory = ({
     await sshCertificateDAL.transaction(async (tx) => {
       const cert = await sshCertificateDAL.create(
         {
-          sshCaId: host.hostSshCaId,
+          sshCaId: host.userSshCaId,
           sshHostId: host.id,
           serialNumber,
           certType: SshCertType.USER,

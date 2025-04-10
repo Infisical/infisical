@@ -827,7 +827,7 @@ func sshAddHost(cmd *cobra.Command, args []string) {
 			util.PrintErrorMessageAndExit("No supported SSH host public key found at /etc/ssh")
 		}
 
-		if _, err := os.Stat(certOutPath); err == nil && !forceOverwrite && writeHostCertToFile {
+		if _, err := os.Stat(certOutPath); err == nil && !forceOverwrite {
 			util.PrintErrorMessageAndExit("File already exists at " + certOutPath + ". Use --force to overwrite.")
 		}
 	}

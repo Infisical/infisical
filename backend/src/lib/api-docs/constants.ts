@@ -1375,6 +1375,7 @@ export const SSH_HOSTS = {
     publicKey: "The public key of the issued SSH certificate."
   },
   ISSUE_HOST_CERT: {
+    sshHostId: "The ID of the SSH host to issue the SSH certificate for.",
     publicKey: "The SSH public key to issue the SSH certificate for.",
     serialNumber: "The serial number of the issued SSH certificate.",
     signedKey: "The SSH certificate or signed SSH public key."
