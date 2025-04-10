@@ -52,6 +52,10 @@ export type TGetProjectIdentityByIdentityIdDTO = {
   identityId: string;
 } & TProjectPermission;
 
+export type TGetProjectIdentityByMembershipIdDTO = {
+  identityMembershipId: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export enum ProjectIdentityOrderBy {
   Name = "name"
 }

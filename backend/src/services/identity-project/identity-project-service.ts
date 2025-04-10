@@ -21,6 +21,7 @@ import {
   TCreateProjectIdentityDTO,
   TDeleteProjectIdentityDTO,
   TGetProjectIdentityByIdentityIdDTO,
+  TGetProjectIdentityByMembershipIdDTO,
   TListProjectIdentityDTO,
   TUpdateProjectIdentityDTO
 } from "./identity-project-types";
@@ -370,11 +371,48 @@ export const identityProjectServiceFactory = ({
     return identityMembership;
   };
 
+  const getProjectIdentityByMembershipId = async ({
+    identityMembershipId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetProjectIdentityByMembershipIdDTO) => {
+    const membership = await identityProjectDAL.findOne({ id: identityMembershipId });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: membership.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+
+    if (!membership) {
+      throw new NotFoundError({
+        message: `Project membership with ID '${identityMembershipId}' not found`
+      });
+    }
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Read,
+      subject(ProjectPermissionSub.Identity, { identityId: membership.identityId })
+    );
+
+    const [identityMembership] = await identityProjectDAL.findByProjectId(membership.projectId, {
+      identityId: membership.identityId
+    });
+
+    return identityMembership;
+  };
+
   return {
     createProjectIdentity,
     updateProjectIdentity,
     deleteProjectIdentity,
     listProjectIdentities,
-    getProjectIdentityByIdentityId
+    getProjectIdentityByIdentityId,
+    getProjectIdentityByMembershipId
   };
 };
