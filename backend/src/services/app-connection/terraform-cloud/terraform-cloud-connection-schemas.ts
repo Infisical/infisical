@@ -11,7 +11,7 @@ import {
 import { TerraformCloudConnectionMethod } from "./terraform-cloud-connection-enums";
 
 export const TerraformCloudConnectionAccessTokenCredentialsSchema = z.object({
-  apiToken: z.string().trim().min(1, "API Token required")
+  apiToken: z.string().trim().min(1, "API Token required").describe(AppConnections.CREDENTIALS.TERRAFORM_CLOUD.apiToken)
 });
 
 const BaseTerraformCloudConnectionSchema = BaseAppConnectionSchema.extend({
