@@ -15,8 +15,7 @@ export const TerraformCloudConnectionAccessTokenCredentialsSchema = z.object({
 });
 
 const BaseTerraformCloudConnectionSchema = BaseAppConnectionSchema.extend({
-  app: z.literal(AppConnection.TerraformCloud),
-  isPlatformManagedCredentials: z.boolean().optional()
+  app: z.literal(AppConnection.TerraformCloud)
 });
 
 export const TerraformCloudConnectionSchema = BaseTerraformCloudConnectionSchema.extend({
