@@ -103,7 +103,7 @@ export const CamundaConnectionForm = ({ appConnection, onSubmit }: Props) => {
               isError={Boolean(error?.message)}
               label="Client ID"
             >
-              <Input {...field} placeholder="05810c8f-c44d-4bd0-a327-aab6dd77719b" />
+              <Input {...field} placeholder="YrBDnQYLevSe40PJ" />
             </FormControl>
           )}
         />

@@ -84,6 +84,11 @@ export const camundaSyncFactory = ({ kmsService, appConnectionDAL }: TCamundaSec
     for await (const entry of Object.entries(secretMap)) {
       const [key, { value }] = entry;
 
+      if (!value) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
       try {
         if (camundaSecrets[key] === undefined) {
           await createCamundaSecret({
@@ -111,12 +116,19 @@ export const camundaSyncFactory = ({ kmsService, appConnectionDAL }: TCamundaSec
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for await (const secret of Object.keys(camundaSecrets)) {
-      if (!(secret in secretMap)) {
-        await deleteCamundaSecret({
-          key: secret,
-          clusterUUID,
-          accessToken
-        });
+      if (!(secret in secretMap) || !secretMap[secret].value) {
+        try {
+          await deleteCamundaSecret({
+            key: secret,
+            clusterUUID,
+            accessToken
+          });
+        } catch (error) {
+          throw new SecretSyncError({
+            error,
+            secretKey: secret
+          });
+        }
       }
     }
   };
