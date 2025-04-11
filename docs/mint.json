@@ -417,6 +417,7 @@
             "integrations/app-connections/aws",
             "integrations/app-connections/azure-app-configuration",
             "integrations/app-connections/azure-key-vault",
+            "integrations/app-connections/camunda",
             "integrations/app-connections/databricks",
             "integrations/app-connections/gcp",
             "integrations/app-connections/github",
@@ -439,6 +440,7 @@
             "integrations/secret-syncs/aws-secrets-manager",
             "integrations/secret-syncs/azure-app-configuration",
             "integrations/secret-syncs/azure-key-vault",
+            "integrations/secret-syncs/camunda",
             "integrations/secret-syncs/databricks",
             "integrations/secret-syncs/gcp-secret-manager",
             "integrations/secret-syncs/github",
@@ -915,6 +917,18 @@
               ]
             },
             {
+              "group": "Camunda",
+              "pages": [
+                "api-reference/endpoints/app-connections/camunda/list",
+                "api-reference/endpoints/app-connections/camunda/available",
+                "api-reference/endpoints/app-connections/camunda/get-by-id",
+                "api-reference/endpoints/app-connections/camunda/get-by-name",
+                "api-reference/endpoints/app-connections/camunda/create",
+                "api-reference/endpoints/app-connections/camunda/update",
+                "api-reference/endpoints/app-connections/camunda/delete"
+              ]
+            },
+            {
               "group": "Databricks",
               "pages": [
                 "api-reference/endpoints/app-connections/databricks/list",
@@ -1059,6 +1073,19 @@
                 "api-reference/endpoints/secret-syncs/azure-key-vault/sync-secrets",
                 "api-reference/endpoints/secret-syncs/azure-key-vault/import-secrets",
                 "api-reference/endpoints/secret-syncs/azure-key-vault/remove-secrets"
+              ]
+            },
+            {
+              "group": "Camunda",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/camunda/list",
+                "api-reference/endpoints/secret-syncs/camunda/get-by-id",
+                "api-reference/endpoints/secret-syncs/camunda/get-by-name",
+                "api-reference/endpoints/secret-syncs/camunda/create",
+                "api-reference/endpoints/secret-syncs/camunda/update",
+                "api-reference/endpoints/secret-syncs/camunda/delete",
+                "api-reference/endpoints/secret-syncs/camunda/sync-secrets",
+                "api-reference/endpoints/secret-syncs/camunda/remove-secrets"
               ]
             },
             {

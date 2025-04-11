@@ -63,6 +63,7 @@ export enum IntegrationUrls {
   GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token",
   GITLAB_TOKEN_URL = "https://gitlab.com/oauth/token",
   BITBUCKET_TOKEN_URL = "https://bitbucket.org/site/oauth2/access_token",
+  CAMUNDA_TOKEN_URL = "https://login.cloud.camunda.io/oauth/token",
 
   // integration apps endpoints
   GCP_API_URL = "https://cloudresourcemanager.googleapis.com",
@@ -94,6 +95,7 @@ export enum IntegrationUrls {
   HASURA_CLOUD_API_URL = "https://data.pro.hasura.io/v1/graphql",
   AZURE_DEVOPS_API_URL = "https://dev.azure.com",
   HUMANITEC_API_URL = "https://api.humanitec.io",
+  CAMUNDA_API_URL = "https://api.cloud.camunda.io",
 
   GCP_SECRET_MANAGER_SERVICE_NAME = "secretmanager.googleapis.com",
   GCP_SECRET_MANAGER_URL = `https://${GCP_SECRET_MANAGER_SERVICE_NAME}`,

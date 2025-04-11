@@ -22,6 +22,7 @@ import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFactory } from "./azure-app-configuration";
 import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./azure-key-vault";
+import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
@@ -37,6 +38,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AzureAppConfiguration]: AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION,
   [SecretSync.Databricks]: DATABRICKS_SYNC_LIST_OPTION,
   [SecretSync.Humanitec]: HUMANITEC_SYNC_LIST_OPTION,
+  [SecretSync.Camunda]: CAMUNDA_SYNC_LIST_OPTION,
   [SecretSync.Vercel]: VERCEL_SYNC_LIST_OPTION
 };
 
@@ -123,6 +125,11 @@ export const SecretSyncFns = {
         }).syncSecrets(secretSync, secretMap);
       case SecretSync.Humanitec:
         return HumanitecSyncFns.syncSecrets(secretSync, secretMap);
+      case SecretSync.Camunda:
+        return camundaSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).syncSecrets(secretSync, secretMap);
       case SecretSync.Vercel:
         return VercelSyncFns.syncSecrets(secretSync, secretMap);
       default:
@@ -169,6 +176,12 @@ export const SecretSyncFns = {
       case SecretSync.Humanitec:
         secretMap = await HumanitecSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Camunda:
+        secretMap = await camundaSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).getSecrets(secretSync);
+        break;
       case SecretSync.Vercel:
         secretMap = await VercelSyncFns.getSecrets(secretSync);
         break;
@@ -214,6 +227,11 @@ export const SecretSyncFns = {
         }).removeSecrets(secretSync, secretMap);
       case SecretSync.Humanitec:
         return HumanitecSyncFns.removeSecrets(secretSync, secretMap);
+      case SecretSync.Camunda:
+        return camundaSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).removeSecrets(secretSync, secretMap);
       case SecretSync.Vercel:
         return VercelSyncFns.removeSecrets(secretSync, secretMap);
       default:

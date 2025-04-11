@@ -10,6 +10,12 @@ import {
   TAwsSecretsManagerSyncWithCredentials
 } from "@app/services/secret-sync/aws-secrets-manager";
 import {
+  TCamundaSync,
+  TCamundaSyncInput,
+  TCamundaSyncListItem,
+  TCamundaSyncWithCredentials
+} from "@app/services/secret-sync/camunda";
+import {
   TDatabricksSync,
   TDatabricksSyncInput,
   TDatabricksSyncListItem,
@@ -60,6 +66,7 @@ export type TSecretSync =
   | TAzureAppConfigurationSync
   | TDatabricksSync
   | THumanitecSync
+  | TCamundaSync
   | TVercelSync;
 
 export type TSecretSyncWithCredentials =
@@ -71,6 +78,7 @@ export type TSecretSyncWithCredentials =
   | TAzureAppConfigurationSyncWithCredentials
   | TDatabricksSyncWithCredentials
   | THumanitecSyncWithCredentials
+  | TCamundaSyncWithCredentials
   | TVercelSyncWithCredentials;
 
 export type TSecretSyncInput =
@@ -82,6 +90,7 @@ export type TSecretSyncInput =
   | TAzureAppConfigurationSyncInput
   | TDatabricksSyncInput
   | THumanitecSyncInput
+  | TCamundaSyncInput
   | TVercelSyncInput;
 
 export type TSecretSyncListItem =
@@ -93,6 +102,7 @@ export type TSecretSyncListItem =
   | TAzureAppConfigurationSyncListItem
   | TDatabricksSyncListItem
   | THumanitecSyncListItem
+  | TCamundaSyncListItem
   | TVercelSyncListItem;
 
 export type TSyncOptionsConfig = {

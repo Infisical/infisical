@@ -17,6 +17,7 @@ import {
 } from "./AwsSecretsManagerSyncReviewFields";
 import { AzureAppConfigurationSyncReviewFields } from "./AzureAppConfigurationSyncReviewFields";
 import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
+import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
@@ -72,6 +73,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Humanitec:
       DestinationFieldsComponent = <HumanitecSyncReviewFields />;
+      break;
+    case SecretSync.Camunda:
+      DestinationFieldsComponent = <CamundaSyncReviewFields />;
       break;
     case SecretSync.Vercel:
       DestinationFieldsComponent = <VercelSyncReviewFields />;

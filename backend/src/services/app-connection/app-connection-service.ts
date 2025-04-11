@@ -31,6 +31,8 @@ import { ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
+import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
+import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
@@ -62,7 +64,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Humanitec]: ValidateHumanitecConnectionCredentialsSchema,
   [AppConnection.Vercel]: ValidateVercelConnectionCredentialsSchema,
   [AppConnection.Postgres]: ValidatePostgresConnectionCredentialsSchema,
-  [AppConnection.MsSql]: ValidateMsSqlConnectionCredentialsSchema
+  [AppConnection.MsSql]: ValidateMsSqlConnectionCredentialsSchema,
+  [AppConnection.Camunda]: ValidateCamundaConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -434,6 +437,7 @@ export const appConnectionServiceFactory = ({
     databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     aws: awsConnectionService(connectAppConnectionById),
     humanitec: humanitecConnectionService(connectAppConnectionById),
+    camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     vercel: vercelConnectionService(connectAppConnectionById)
   };
 };

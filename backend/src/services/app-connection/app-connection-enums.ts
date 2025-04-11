@@ -8,7 +8,8 @@ export enum AppConnection {
   Humanitec = "humanitec",
   Vercel = "vercel",
   Postgres = "postgres",
-  MsSql = "mssql"
+  MsSql = "mssql",
+  Camunda = "camunda"
 }
 
 export enum AWSRegion {

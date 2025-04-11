@@ -13,6 +13,10 @@ import {
   SanitizedAzureKeyVaultConnectionSchema
 } from "@app/services/app-connection/azure-key-vault";
 import {
+  CamundaConnectionListItemSchema,
+  SanitizedCamundaConnectionSchema
+} from "@app/services/app-connection/camunda";
+import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
@@ -41,7 +45,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedHumanitecConnectionSchema.options,
   ...SanitizedVercelConnectionSchema.options,
   ...SanitizedPostgresConnectionSchema.options,
-  ...SanitizedMsSqlConnectionSchema.options
+  ...SanitizedMsSqlConnectionSchema.options,
+  ...SanitizedCamundaConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -54,7 +59,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   HumanitecConnectionListItemSchema,
   VercelConnectionListItemSchema,
   PostgresConnectionListItemSchema,
-  MsSqlConnectionListItemSchema
+  MsSqlConnectionListItemSchema,
+  CamundaConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {
