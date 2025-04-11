@@ -373,6 +373,9 @@ secret, err := client.Secrets().Retrieve(infisical.RetrieveSecretOptions{
       The type of the secret. Valid options are "shared" or "personal". If not
       specified, the default value is "shared".
     </ParamField>
+    <ParamField query="Version" type="number" optional>
+      The version of the secret to retrieve.
+    </ParamField>
   </Expandable>
 </ParamField>
 
