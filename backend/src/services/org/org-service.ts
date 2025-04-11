@@ -110,8 +110,8 @@ type TOrgServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "insertMany" | "findLatestProjectKey" | "create">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOne" | "findById">;
   incidentContactDAL: TIncidentContactsDALFactory;
-  samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne" | "findEnforceableSamlCfg">;
-  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "findEnforceableOidcCfg">;
+  samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
@@ -402,13 +402,33 @@ export const orgServiceFactory = ({
     }
 
     if (authEnforced) {
-      const samlCfg = await samlConfigDAL.findEnforceableSamlCfg(orgId);
-      const oidcCfg = await oidcConfigDAL.findEnforceableOidcCfg(orgId);
+      const samlCfg = await samlConfigDAL.findOne({
+        orgId,
+        isActive: true
+      });
+      const oidcCfg = await oidcConfigDAL.findOne({
+        orgId,
+        isActive: true
+      });
 
       if (!samlCfg && !oidcCfg)
         throw new NotFoundError({
           message: `SAML or OIDC configuration for organization with ID '${orgId}' not found`
         });
+
+      if (samlCfg && !samlCfg.lastUsed) {
+        throw new BadRequestError({
+          message:
+            "To apply the new SAML auth enforcement, please log in via SAML again. This step is required to enforce SAML-based authentication."
+        });
+      }
+
+      if (oidcCfg && !oidcCfg.lastUsed) {
+        throw new BadRequestError({
+          message:
+            "To apply the new SAML auth enforcement, please log in via SAML again. This step is required to enforce SAML-based authentication."
+        });
+      }
     }
 
     let defaultMembershipRole: string | undefined;
