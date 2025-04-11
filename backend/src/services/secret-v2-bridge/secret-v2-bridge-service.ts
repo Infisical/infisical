@@ -331,7 +331,7 @@ export const secretV2BridgeServiceFactory = ({
       return createdSecret;
     });
 
-    await secretDAL.cacheInvalidateSecretByProjectId(projectId);
+    await secretDAL.invalidateSecretCacheByProjectId(projectId);
     if (inputSecret.type === SecretType.Shared) {
       await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
@@ -540,7 +540,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId
     });
 
-    await secretDAL.cacheInvalidateSecretByProjectId(projectId);
+    await secretDAL.invalidateSecretCacheByProjectId(projectId);
     if (inputSecret.type === SecretType.Shared) {
       await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
@@ -649,7 +649,7 @@ export const secretV2BridgeServiceFactory = ({
         })
       );
 
-      await secretDAL.cacheInvalidateSecretByProjectId(projectId);
+      await secretDAL.invalidateSecretCacheByProjectId(projectId);
       if (inputSecret.type === SecretType.Shared) {
         await snapshotService.performSnapshot(folderId);
         await secretQueueService.syncSecrets({
@@ -1552,7 +1552,7 @@ export const secretV2BridgeServiceFactory = ({
         tx
       })
     );
-    await secretDAL.cacheInvalidateSecretByProjectId(projectId);
+    await secretDAL.invalidateSecretCacheByProjectId(projectId);
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       actor,
@@ -1892,7 +1892,7 @@ export const secretV2BridgeServiceFactory = ({
       }
     });
 
-    await secretDAL.cacheInvalidateSecretByProjectId(projectId);
+    await secretDAL.invalidateSecretCacheByProjectId(projectId);
     await Promise.allSettled(folders.map((el) => (el?.id ? snapshotService.performSnapshot(el.id) : undefined)));
     await Promise.allSettled(
       folders.map((el) =>
@@ -2024,7 +2024,7 @@ export const secretV2BridgeServiceFactory = ({
         })
       );
 
-      await secretDAL.cacheInvalidateSecretByProjectId(projectId);
+      await secretDAL.invalidateSecretCacheByProjectId(projectId);
       await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         actor,
@@ -2549,7 +2549,7 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     if (isDestinationUpdated || isSourceUpdated) {
-      await secretDAL.cacheInvalidateSecretByProjectId(projectId);
+      await secretDAL.invalidateSecretCacheByProjectId(projectId);
     }
     if (isDestinationUpdated) {
       await snapshotService.performSnapshot(destinationFolder.id);
@@ -2729,7 +2729,7 @@ export const secretV2BridgeServiceFactory = ({
       generatePaths(folderMap).map(({ folderId, path }) => [folderId, path === "/" ? path : path.substring(1)])
     );
 
-    const secrets = await secretDAL.findByFolderIds({ folderIds: folders.map((f) => f.id), projectId });
+    const secrets = await secretDAL.findByFolderIds({ folderIds: folders.map((f) => f.id), projectId, useCache: true });
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,

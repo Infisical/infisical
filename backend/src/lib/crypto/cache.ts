@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-export const getCacheKey = (data: unknown) =>
+export const generateCacheKeyFromData = (data: unknown) =>
   crypto
     .createHash("md5")
     .update(JSON.stringify(data))

@@ -5,7 +5,7 @@ import { TDbClient } from "@app/db";
 import { ProjectType, SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecretsV2Update } from "@app/db/schemas";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { getCacheKey } from "@app/lib/crypto/cache";
+import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import {
   buildFindFilter,
@@ -34,7 +34,7 @@ export const SecretDalCacheKeys = {
   ) => {
     return `${SecretDalCacheKeys.productKey}:${projectId}:${
       TableName.SecretV2
-    }-dal:v${version}:find-by-folder-ids:${getCacheKey(cacheKey)}`;
+    }-dal:v${version}:find-by-folder-ids:${generateCacheKeyFromData(cacheKey)}`;
   },
   findByFolderId: (
     projectId: string,
@@ -43,13 +43,15 @@ export const SecretDalCacheKeys = {
   ) => {
     return `${SecretDalCacheKeys.productKey}:${projectId}:${
       TableName.SecretV2
-    }-dal:v${version}:find-by-folder-id:${getCacheKey(cacheKey)}`;
+    }-dal:v${version}:find-by-folder-id:${generateCacheKeyFromData(cacheKey)}`;
   },
   find: (projectId: string, version: number, ...args: Parameters<TSecretV2BridgeDALFactory["find"]>) => {
     const [filter, opts] = args;
     delete opts?.tx;
     delete opts?.useCache;
-    return `${SecretDalCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal:v${version}:find:${getCacheKey({
+    return `${SecretDalCacheKeys.productKey}:${projectId}:${
+      TableName.SecretV2
+    }-dal:v${version}:find:${generateCacheKeyFromData({
       filter,
       opts
     })}`;
@@ -64,10 +66,11 @@ interface TSecretV2DalArg {
 
 const SECRET_DAL_TTL = 5 * 60;
 const SECRET_DAL_VERSION_TTL = 15 * 60;
+const MAX_SECRET_CACHE_BYTES = 25 * 1024 * 1024;
 export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const secretOrm = ormify(db, TableName.SecretV2);
 
-  const cacheInvalidateSecretByProjectId = async (projectId: string) => {
+  const invalidateSecretCacheByProjectId = async (projectId: string) => {
     const secretDalVersionKey = SecretDalCacheKeys.getSecretDalVersion(projectId);
     await keyStore.incrementBy(secretDalVersionKey, 1);
     await keyStore.setExpiry(secretDalVersionKey, SECRET_DAL_VERSION_TTL);
@@ -228,11 +231,14 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           const encryptedComment = el.encryptedComment ? el.encryptedComment.toString("base64") : null;
           return { ...el, encryptedValue, encryptedComment };
         });
-        await keyStore.setItemWithExpiry(
-          SecretDalCacheKeys.find(useCache.projectId, secretDalVersion, filter, opts),
-          SECRET_DAL_TTL,
-          JSON.stringify(cachedSecrets)
-        );
+        const cache = JSON.stringify(cachedSecrets);
+        if (Buffer.byteLength(cache, "utf8") < MAX_SECRET_CACHE_BYTES) {
+          await keyStore.setItemWithExpiry(
+            SecretDalCacheKeys.find(useCache.projectId, secretDalVersion, filter, opts),
+            SECRET_DAL_TTL,
+            cache
+          );
+        }
       }
 
       return data;
@@ -437,11 +443,15 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           const encryptedComment = el.encryptedComment ? el.encryptedComment.toString("base64") : null;
           return { ...el, encryptedValue, encryptedComment };
         });
-        await keyStore.setItemWithExpiry(
-          SecretDalCacheKeys.findByFolderId(projectId, secretDalVersion, dto),
-          SECRET_DAL_TTL,
-          JSON.stringify(newCachedSecrets)
-        );
+        const cache = JSON.stringify(newCachedSecrets);
+
+        if (Buffer.byteLength(cache, "utf8") < MAX_SECRET_CACHE_BYTES) {
+          await keyStore.setItemWithExpiry(
+            SecretDalCacheKeys.findByFolderId(projectId, secretDalVersion, dto),
+            SECRET_DAL_TTL,
+            cache
+          );
+        }
       }
       return data;
     } catch (error) {
@@ -696,11 +706,15 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           const encryptedComment = el.encryptedComment ? el.encryptedComment.toString("base64") : null;
           return { ...el, encryptedValue, encryptedComment };
         });
-        await keyStore.setItemWithExpiry(
-          SecretDalCacheKeys.findByFolderIds(projectId, secretDalVersion, dto),
-          SECRET_DAL_TTL,
-          JSON.stringify(cachedSecrets)
-        );
+        const cache = JSON.stringify(cachedSecrets);
+
+        if (Buffer.byteLength(cache, "utf8") < MAX_SECRET_CACHE_BYTES) {
+          await keyStore.setItemWithExpiry(
+            SecretDalCacheKeys.findByFolderIds(projectId, secretDalVersion, dto),
+            SECRET_DAL_TTL,
+            cache
+          );
+        }
       }
 
       return data;
@@ -895,6 +909,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     countByFolderIds,
     findOne,
     find,
-    cacheInvalidateSecretByProjectId
+    invalidateSecretCacheByProjectId
   };
 };

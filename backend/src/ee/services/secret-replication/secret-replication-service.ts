@@ -52,7 +52,7 @@ type TSecretReplicationServiceFactoryDep = {
     | "delete"
     | "upsertSecretReferences"
     | "transaction"
-    | "cacheInvalidateSecretByProjectId"
+    | "invalidateSecretCacheByProjectId"
   >;
   secretVersionV2BridgeDAL: Pick<
     TSecretVersionV2DALFactory,
@@ -505,7 +505,7 @@ export const secretReplicationServiceFactory = ({
                 }
               });
 
-              await secretV2BridgeDAL.cacheInvalidateSecretByProjectId(projectId);
+              await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
               await secretQueueService.syncSecrets({
                 projectId,
                 orgId,

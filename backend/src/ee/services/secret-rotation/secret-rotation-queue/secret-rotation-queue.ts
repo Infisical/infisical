@@ -48,7 +48,7 @@ type TSecretRotationQueueFactoryDep = {
   secretRotationDAL: TSecretRotationDALFactory;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretDAL: Pick<TSecretDALFactory, "bulkUpdate" | "find">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "find" | "cacheInvalidateSecretByProjectId">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "find" | "invalidateSecretCacheByProjectId">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -340,7 +340,7 @@ export const secretRotationQueueFactory = ({
           );
         });
 
-        await secretV2BridgeDAL.cacheInvalidateSecretByProjectId(secretRotation.projectId);
+        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(secretRotation.projectId);
       } else {
         if (!botKey)
           throw new NotFoundError({

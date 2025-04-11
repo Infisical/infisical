@@ -119,7 +119,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "bulkUpdate"
     | "deleteMany"
     | "find"
-    | "cacheInvalidateSecretByProjectId"
+    | "invalidateSecretCacheByProjectId"
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -870,7 +870,7 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    await secretV2BridgeDAL.cacheInvalidateSecretByProjectId(projectId);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     await snapshotService.performSnapshot(folderId);
     const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
     if (!folder) {
