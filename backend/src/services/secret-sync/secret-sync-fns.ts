@@ -181,6 +181,7 @@ export const SecretSyncFns = {
           appConnectionDAL,
           kmsService
         }).getSecrets(secretSync);
+        break;
       case SecretSync.Vercel:
         secretMap = await VercelSyncFns.getSecrets(secretSync);
         break;
