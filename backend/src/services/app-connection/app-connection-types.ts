@@ -57,6 +57,12 @@ import {
   TTerraformCloudConnectionInput,
   TValidateTerraformCloudConnectionCredentialsSchema
 } from "./terraform-cloud";
+import {
+  TValidateVercelConnectionCredentialsSchema,
+  TVercelConnection,
+  TVercelConnectionConfig,
+  TVercelConnectionInput
+} from "./vercel";
 
 export type TAppConnection = { id: string } & (
   | TAwsConnection
@@ -67,6 +73,7 @@ export type TAppConnection = { id: string } & (
   | TDatabricksConnection
   | THumanitecConnection
   | TTerraformCloudConnection
+  | TVercelConnection
   | TPostgresConnection
   | TMsSqlConnection
 );
@@ -84,6 +91,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDatabricksConnectionInput
   | THumanitecConnectionInput
   | TTerraformCloudConnectionInput
+  | TVercelConnectionInput
   | TPostgresConnectionInput
   | TMsSqlConnectionInput
 );
@@ -108,6 +116,7 @@ export type TAppConnectionConfig =
   | TDatabricksConnectionConfig
   | THumanitecConnectionConfig
   | TTerraformCloudConnectionConfig
+  | TVercelConnectionConfig
   | TSqlConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -120,7 +129,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateHumanitecConnectionCredentialsSchema
   | TValidatePostgresConnectionCredentialsSchema
   | TValidateMsSqlConnectionCredentialsSchema
-  | TValidateTerraformCloudConnectionCredentialsSchema;
+  | TValidateTerraformCloudConnectionCredentialsSchema
+  | TValidateVercelConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

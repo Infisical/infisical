@@ -10,6 +10,7 @@ import { registerHumanitecConnectionRouter } from "./humanitec-connection-router
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
+import { registerVercelConnectionRouter } from "./vercel-connection-router";
 
 export * from "./app-connection-router";
 
@@ -23,6 +24,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Databricks]: registerDatabricksConnectionRouter,
     [AppConnection.Humanitec]: registerHumanitecConnectionRouter,
     [AppConnection.TerraformCloud]: registerTerraformCloudConnectionRouter,
+    [AppConnection.Vercel]: registerVercelConnectionRouter,
     [AppConnection.Postgres]: registerPostgresConnectionRouter,
     [AppConnection.MsSql]: registerMsSqlConnectionRouter
   };

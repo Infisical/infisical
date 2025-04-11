@@ -1,4 +1,5 @@
 import { IPType } from "@app/lib/ip";
+import { TSearchResourceOperator } from "@app/lib/search-resource/search";
 import { OrderByDirection, TOrgPermission } from "@app/lib/types";
 
 export type TCreateIdentityDTO = {
@@ -46,3 +47,17 @@ export enum OrgIdentityOrderBy {
   Name = "name"
   // Role = "role"
 }
+
+export type TSearchOrgIdentitiesByOrgIdDAL = {
+  limit?: number;
+  offset?: number;
+  orderBy?: OrgIdentityOrderBy;
+  orderDirection?: OrderByDirection;
+  orgId: string;
+  searchFilter?: Partial<{
+    name: Omit<TSearchResourceOperator, "number">;
+    role: Omit<TSearchResourceOperator, "number">;
+  }>;
+};
+
+export type TSearchOrgIdentitiesByOrgIdDTO = TSearchOrgIdentitiesByOrgIdDAL & TOrgPermission;

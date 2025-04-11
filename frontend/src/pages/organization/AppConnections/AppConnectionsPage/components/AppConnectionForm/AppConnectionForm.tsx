@@ -19,6 +19,7 @@ import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
+import { VercelConnectionForm } from "./VercelConnectionForm";
 
 type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;
@@ -73,6 +74,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <HumanitecConnectionForm onSubmit={onSubmit} />;
     case AppConnection.TerraformCloud:
       return <TerraformCloudConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Vercel:
+      return <VercelConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Postgres:
       return <PostgresConnectionForm onSubmit={onSubmit} />;
     case AppConnection.MsSql:
@@ -129,6 +132,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <HumanitecConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.TerraformCloud:
       return <TerraformCloudConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Vercel:
+      return <VercelConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Postgres:
       return <PostgresConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.MsSql:

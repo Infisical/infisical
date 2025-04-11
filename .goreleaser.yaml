@@ -162,6 +162,24 @@ scoop:
   description: "The official Infisical CLI"
   license: MIT
 
+winget:
+  - name: infisical
+    publisher: infisical
+    license: MIT
+    homepage: https://infisical.com
+    short_description: "The official Infisical CLI"
+    repository:
+      owner: infisical
+      name: winget-pkgs
+      branch: "infisical-{{.Version}}"
+      pull_request:
+        enabled: true
+        draft: false
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
+
 aurs:
   - name: infisical-bin
     homepage: "https://infisical.com"

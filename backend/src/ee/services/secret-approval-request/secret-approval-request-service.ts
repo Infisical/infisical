@@ -262,13 +262,14 @@ export const secretApprovalRequestServiceFactory = ({
         id: el.id,
         version: el.version,
         secretMetadata: el.secretMetadata as ResourceMetadataDTO,
-        isRotatedSecret: el.secret.isRotatedSecret,
-        // eslint-disable-next-line no-nested-ternary
-        secretValue: el.secret.isRotatedSecret
-          ? undefined
-          : el.encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-            : "",
+        isRotatedSecret: el.secret?.isRotatedSecret ?? false,
+        secretValue:
+          // eslint-disable-next-line no-nested-ternary
+          el.secret && el.secret.isRotatedSecret
+            ? undefined
+            : el.encryptedValue
+              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+              : "",
         secretComment: el.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
           : "",
@@ -615,7 +616,7 @@ export const secretApprovalRequestServiceFactory = ({
               tx,
               inputSecrets: secretUpdationCommits.map((el) => {
                 const encryptedValue =
-                  !el.secret.isRotatedSecret && typeof el.encryptedValue !== "undefined"
+                  !el.secret?.isRotatedSecret && typeof el.encryptedValue !== "undefined"
                     ? {
                         encryptedValue: el.encryptedValue as Buffer,
                         references: el.encryptedValue

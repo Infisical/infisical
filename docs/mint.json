@@ -422,6 +422,7 @@
             "integrations/app-connections/github",
             "integrations/app-connections/humanitec",
             "integrations/app-connections/terraform-cloud",
+            "integrations/app-connections/vercel",
             "integrations/app-connections/mssql",
             "integrations/app-connections/postgres"
           ]
@@ -443,7 +444,8 @@
             "integrations/secret-syncs/gcp-secret-manager",
             "integrations/secret-syncs/github",
             "integrations/secret-syncs/humanitec",
-            "integrations/secret-syncs/terraform-cloud"
+            "integrations/secret-syncs/terraform-cloud",
+            "integrations/secret-syncs/vercel"
           ]
         }
       ]
@@ -584,7 +586,8 @@
             "api-reference/endpoints/identities/update",
             "api-reference/endpoints/identities/delete",
             "api-reference/endpoints/identities/get-by-id",
-            "api-reference/endpoints/identities/list"
+            "api-reference/endpoints/identities/list",
+            "api-reference/endpoints/identities/search"
           ]
         },
         {
@@ -974,6 +977,18 @@
               ]
             },
             {
+              "group": "Vercel",
+              "pages": [
+                "api-reference/endpoints/app-connections/vercel/list",
+                "api-reference/endpoints/app-connections/vercel/available",
+                "api-reference/endpoints/app-connections/vercel/get-by-id",
+                "api-reference/endpoints/app-connections/vercel/get-by-name",
+                "api-reference/endpoints/app-connections/vercel/create",
+                "api-reference/endpoints/app-connections/vercel/update",
+                "api-reference/endpoints/app-connections/vercel/delete"
+              ]
+            },
+            {
               "group": "Microsoft SQL Server",
               "pages": [
                 "api-reference/endpoints/app-connections/mssql/list",
@@ -1124,6 +1139,20 @@
                 "api-reference/endpoints/secret-syncs/terraform-cloud/delete",
                 "api-reference/endpoints/secret-syncs/terraform-cloud/sync-secrets",
                 "api-reference/endpoints/secret-syncs/terraform-cloud/remove-secrets"
+              ]
+            },
+            {
+              "group": "Vercel",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/vercel/list",
+                "api-reference/endpoints/secret-syncs/vercel/get-by-id",
+                "api-reference/endpoints/secret-syncs/vercel/get-by-name",
+                "api-reference/endpoints/secret-syncs/vercel/create",
+                "api-reference/endpoints/secret-syncs/vercel/update",
+                "api-reference/endpoints/secret-syncs/vercel/delete",
+                "api-reference/endpoints/secret-syncs/vercel/sync-secrets",
+                "api-reference/endpoints/secret-syncs/vercel/remove-secrets",
+                "api-reference/endpoints/secret-syncs/vercel/import-secrets"
               ]
             }
           ]

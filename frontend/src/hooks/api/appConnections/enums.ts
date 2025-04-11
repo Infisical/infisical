@@ -7,6 +7,7 @@ export enum AppConnection {
   Databricks = "databricks",
   Humanitec = "humanitec",
   TerraformCloud = "terraform-cloud",
+  Vercel = "vercel",
   Postgres = "postgres",
   MsSql = "mssql"
 }

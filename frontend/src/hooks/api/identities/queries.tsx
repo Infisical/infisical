@@ -15,11 +15,13 @@ import {
   IdentityMembershipOrg,
   IdentityOidcAuth,
   IdentityTokenAuth,
-  IdentityUniversalAuth
+  IdentityUniversalAuth,
+  TSearchIdentitiesDTO
 } from "./types";
 
 export const identitiesKeys = {
   getIdentityById: (identityId: string) => [{ identityId }, "identity"] as const,
+  searchIdentities: (dto: TSearchIdentitiesDTO) => ["identity", "search", dto] as const,
   getIdentityUniversalAuth: (identityId: string) =>
     [{ identityId }, "identity-universal-auth"] as const,
   getIdentityUniversalAuthClientSecrets: (identityId: string) =>
@@ -49,6 +51,26 @@ export const useGetIdentityById = (identityId: string) => {
         `/api/v1/identities/${identityId}`
       );
       return identity;
+    }
+  });
+};
+
+export const useSearchIdentities = (dto: TSearchIdentitiesDTO) => {
+  const { limit, search, offset, orderBy, orderDirection } = dto;
+  return useQuery({
+    queryKey: identitiesKeys.searchIdentities(dto),
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{
+        identities: IdentityMembershipOrg[];
+        totalCount: number;
+      }>("/api/v1/identities/search", {
+        limit,
+        offset,
+        orderBy,
+        orderDirection,
+        search
+      });
+      return data;
     }
   });
 };

@@ -31,6 +31,7 @@ import {
   SanitizedTerraformCloudConnectionSchema,
   TerraformCloudConnectionListItemSchema
 } from "@app/services/app-connection/terraform-cloud";
+import { SanitizedVercelConnectionSchema, VercelConnectionListItemSchema } from "@app/services/app-connection/vercel";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps
@@ -43,6 +44,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedDatabricksConnectionSchema.options,
   ...SanitizedHumanitecConnectionSchema.options,
   ...SanitizedTerraformCloudConnectionSchema.options,
+  ...SanitizedVercelConnectionSchema.options,
   ...SanitizedPostgresConnectionSchema.options,
   ...SanitizedMsSqlConnectionSchema.options
 ]);
@@ -56,6 +58,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DatabricksConnectionListItemSchema,
   HumanitecConnectionListItemSchema,
   TerraformCloudConnectionListItemSchema,
+  VercelConnectionListItemSchema,
   PostgresConnectionListItemSchema,
   MsSqlConnectionListItemSchema
 ]);

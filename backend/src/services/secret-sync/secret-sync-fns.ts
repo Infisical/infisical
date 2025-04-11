@@ -27,6 +27,7 @@ import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
+import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 
 const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AWSParameterStore]: AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
@@ -37,7 +38,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AzureAppConfiguration]: AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION,
   [SecretSync.Databricks]: DATABRICKS_SYNC_LIST_OPTION,
   [SecretSync.Humanitec]: HUMANITEC_SYNC_LIST_OPTION,
-  [SecretSync.TerraformCloud]: TERRAFORM_CLOUD_SYNC_LIST_OPTION
+  [SecretSync.TerraformCloud]: TERRAFORM_CLOUD_SYNC_LIST_OPTION,
+  [SecretSync.Vercel]: VERCEL_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -125,6 +127,8 @@ export const SecretSyncFns = {
         return HumanitecSyncFns.syncSecrets(secretSync, secretMap);
       case SecretSync.TerraformCloud:
         return TerraformCloudSyncFns.syncSecrets(secretSync, secretMap);
+      case SecretSync.Vercel:
+        return VercelSyncFns.syncSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -172,6 +176,9 @@ export const SecretSyncFns = {
       case SecretSync.TerraformCloud:
         secretMap = await TerraformCloudSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Vercel:
+        secretMap = await VercelSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -216,6 +223,8 @@ export const SecretSyncFns = {
         return HumanitecSyncFns.removeSecrets(secretSync, secretMap);
       case SecretSync.TerraformCloud:
         return TerraformCloudSyncFns.removeSecrets(secretSync, secretMap);
+      case SecretSync.Vercel:
+        return VercelSyncFns.removeSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

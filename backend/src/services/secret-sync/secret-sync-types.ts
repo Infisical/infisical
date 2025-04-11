@@ -55,6 +55,7 @@ import {
   TTerraformCloudSyncListItem,
   TTerraformCloudSyncWithCredentials
 } from "./terraform-cloud";
+import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
 
 export type TSecretSync =
   | TAwsParameterStoreSync
@@ -65,7 +66,8 @@ export type TSecretSync =
   | TAzureAppConfigurationSync
   | TDatabricksSync
   | THumanitecSync
-  | TTerraformCloudSync;
+  | TTerraformCloudSync
+  | TVercelSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -76,7 +78,8 @@ export type TSecretSyncWithCredentials =
   | TAzureAppConfigurationSyncWithCredentials
   | TDatabricksSyncWithCredentials
   | THumanitecSyncWithCredentials
-  | TTerraformCloudSyncWithCredentials;
+  | TTerraformCloudSyncWithCredentials
+  | TVercelSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -87,7 +90,8 @@ export type TSecretSyncInput =
   | TAzureAppConfigurationSyncInput
   | TDatabricksSyncInput
   | THumanitecSyncInput
-  | TTerraformCloudSyncInput;
+  | TTerraformCloudSyncInput
+  | TVercelSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -98,7 +102,8 @@ export type TSecretSyncListItem =
   | TAzureAppConfigurationSyncListItem
   | TDatabricksSyncListItem
   | THumanitecSyncListItem
-  | TTerraformCloudSyncListItem;
+  | TTerraformCloudSyncListItem
+  | TVercelSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

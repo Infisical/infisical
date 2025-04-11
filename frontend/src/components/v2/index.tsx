@@ -11,6 +11,7 @@ export * from "./DatePicker";
 export * from "./DeleteActionModal";
 export * from "./Drawer";
 export * from "./Dropdown";
+export * from "./Editor";
 export * from "./EmailServiceSetupModal";
 export * from "./EmptyState";
 export * from "./FilterableSelect";

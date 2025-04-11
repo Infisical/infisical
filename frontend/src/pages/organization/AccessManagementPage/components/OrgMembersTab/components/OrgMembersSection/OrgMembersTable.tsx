@@ -258,7 +258,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
               </Th>
               <Th className="w-1/3">
                 <div className="flex items-center">
-                  Email
+                  Username
                   <IconButton
                     variant="plain"
                     className={`ml-2 ${orderBy === OrgMembersOrderBy.Email ? "" : "opacity-30"}`}
@@ -478,7 +478,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                                       onClick={(e) => {
                                         e.stopPropagation();
 
-                                        if (currentOrg?.scimEnabled) {
+                                        if (currentOrg?.scimEnabled && isActive) {
                                           createNotification({
                                             text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
                                             type: "error"
