@@ -1,12 +1,15 @@
 import crypto from "crypto";
 
 import { ProjectVersion, TProjects } from "@app/db/schemas";
+import { createSshCaHelper } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
+import { SshCaKeySource } from "@app/ee/services/ssh/ssh-certificate-authority-types";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
 import { NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { AddUserToWsDTO } from "./project-types";
+import { AddUserToWsDTO, TBootstrapSshProjectDTO } from "./project-types";
 
 export const assignWorkspaceKeysToMembers = ({ members, decryptKey, userPrivateKey }: AddUserToWsDTO) => {
   const plaintextProjectKey = decryptAsymmetric({
@@ -101,4 +104,49 @@ export const getProjectKmsCertificateKeyId = async ({
   });
 
   return keyId;
+};
+
+/**
+ * Bootstraps an SSH project.
+ * - Creates a user and host SSH CA
+ * - Creates a project SSH config with the user and host SSH CA as defaults
+ */
+export const bootstrapSshProject = async ({
+  projectId,
+  sshCertificateAuthorityDAL,
+  sshCertificateAuthoritySecretDAL,
+  kmsService,
+  projectSshConfigDAL,
+  tx
+}: TBootstrapSshProjectDTO) => {
+  const userSshCa = await createSshCaHelper({
+    projectId,
+    friendlyName: "User CA",
+    keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+    keySource: SshCaKeySource.INTERNAL,
+    sshCertificateAuthorityDAL,
+    sshCertificateAuthoritySecretDAL,
+    kmsService,
+    tx
+  });
+
+  const hostSshCa = await createSshCaHelper({
+    projectId,
+    friendlyName: "Host CA",
+    keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+    keySource: SshCaKeySource.INTERNAL,
+    sshCertificateAuthorityDAL,
+    sshCertificateAuthoritySecretDAL,
+    kmsService,
+    tx
+  });
+
+  await projectSshConfigDAL.create(
+    {
+      projectId,
+      defaultHostSshCaId: hostSshCa.id,
+      defaultUserSshCaId: userSshCa.id
+    },
+    tx
+  );
 };

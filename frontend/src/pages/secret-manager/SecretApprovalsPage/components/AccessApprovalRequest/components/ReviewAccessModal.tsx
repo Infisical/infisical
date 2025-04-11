@@ -136,6 +136,13 @@ export const ReviewAccessRequestModal = ({
               <span className="font-bold">Access Type: </span>
               <span>{getAccessLabel()}</span>
             </div>
+
+            {request.note && (
+              <div className="mt-1">
+                <span className="font-bold">User Note: </span>
+                <span>{request.note}</span>
+              </div>
+            )}
           </div>
 
           <div className="space-x-2">

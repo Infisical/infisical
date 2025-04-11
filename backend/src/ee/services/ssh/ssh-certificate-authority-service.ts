@@ -13,7 +13,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { SshCertTemplateStatus } from "../ssh-certificate-template/ssh-certificate-template-types";
-import { createSshCert, createSshKeyPair, getSshPublicKey } from "./ssh-certificate-authority-fns";
+import { createSshCaHelper, createSshCert, createSshKeyPair, getSshPublicKey } from "./ssh-certificate-authority-fns";
 import {
   SshCaStatus,
   TCreateSshCaDTO,
@@ -59,7 +59,10 @@ export const sshCertificateAuthorityServiceFactory = ({
   const createSshCa = async ({
     projectId,
     friendlyName,
-    keyAlgorithm,
+    keyAlgorithm: requestedKeyAlgorithm,
+    publicKey: externalPk,
+    privateKey: externalSk,
+    keySource,
     actorId,
     actorAuthMethod,
     actor,
@@ -79,33 +82,16 @@ export const sshCertificateAuthorityServiceFactory = ({
       ProjectPermissionSub.SshCertificateAuthorities
     );
 
-    const newCa = await sshCertificateAuthorityDAL.transaction(async (tx) => {
-      const ca = await sshCertificateAuthorityDAL.create(
-        {
-          projectId,
-          friendlyName,
-          status: SshCaStatus.ACTIVE,
-          keyAlgorithm
-        },
-        tx
-      );
-
-      const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
-
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-
-      await sshCertificateAuthoritySecretDAL.create(
-        {
-          sshCaId: ca.id,
-          encryptedPrivateKey: secretManagerEncryptor({ plainText: Buffer.from(privateKey, "utf8") }).cipherTextBlob
-        },
-        tx
-      );
-
-      return { ...ca, publicKey };
+    const newCa = await createSshCaHelper({
+      projectId,
+      friendlyName,
+      keyAlgorithm: requestedKeyAlgorithm,
+      keySource,
+      externalPk,
+      externalSk,
+      sshCertificateAuthorityDAL,
+      sshCertificateAuthoritySecretDAL,
+      kmsService
     });
 
     return newCa;

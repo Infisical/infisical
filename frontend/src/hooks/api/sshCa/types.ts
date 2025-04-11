@@ -1,5 +1,4 @@
-import { CertKeyAlgorithm } from "../certificates/enums";
-import { SshCaStatus, SshCertType } from "./constants";
+import { SshCaKeySource, SshCaStatus, SshCertKeyAlgorithm, SshCertType } from "./constants";
 
 export type TSshCertificate = {
   id: string;
@@ -18,17 +17,28 @@ export type TSshCertificateAuthority = {
   projectId: string;
   status: SshCaStatus;
   friendlyName: string;
-  keyAlgorithm: CertKeyAlgorithm;
+  keyAlgorithm: SshCertKeyAlgorithm;
+  keySource: SshCaKeySource;
   createdAt: string;
   updatedAt: string;
   publicKey: string;
 };
 
-export type TCreateSshCaDTO = {
-  projectId: string;
-  friendlyName?: string;
-  keyAlgorithm: CertKeyAlgorithm;
-};
+export type TCreateSshCaDTO =
+  | {
+      projectId: string;
+      friendlyName?: string;
+      keySource: SshCaKeySource.INTERNAL;
+      keyAlgorithm: SshCertKeyAlgorithm;
+    }
+  | {
+      projectId: string;
+      friendlyName?: string;
+      keySource: SshCaKeySource.EXTERNAL;
+      keyAlgorithm: SshCertKeyAlgorithm;
+      publicKey: string;
+      privateKey: string;
+    };
 
 export type TUpdateSshCaDTO = {
   caId: string;
@@ -58,7 +68,7 @@ export type TSignSshKeyResponse = {
 export type TIssueSshCredsDTO = {
   projectId: string;
   certificateTemplateId: string;
-  keyAlgorithm: CertKeyAlgorithm;
+  keyAlgorithm: SshCertKeyAlgorithm;
   certType: SshCertType;
   principals: string[];
   ttl?: string;
@@ -70,5 +80,5 @@ export type TIssueSshCredsResponse = {
   signedKey: string;
   privateKey: string;
   publicKey: string;
-  keyAlgorithm: CertKeyAlgorithm;
+  keyAlgorithm: SshCertKeyAlgorithm;
 };

@@ -17,7 +17,8 @@ export const AccessApprovalRequestsSchema = z.object({
   permissions: z.unknown(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  requestedByUserId: z.string().uuid()
+  requestedByUserId: z.string().uuid(),
+  note: z.string().nullable().optional()
 });
 
 export type TAccessApprovalRequests = z.infer<typeof AccessApprovalRequestsSchema>;

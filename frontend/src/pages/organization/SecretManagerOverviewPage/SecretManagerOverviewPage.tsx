@@ -24,7 +24,7 @@ const formatDescription = (type: ProjectType) => {
     return "Manage your PKI infrastructure and issue digital certificates for services, applications, and devices.";
   if (type === ProjectType.KMS)
     return "Centralize the management of keys for cryptographic operations, such as encryption and decryption.";
-  return "Generate SSH credentials to provide secure and centralized SSH access control for your infrastructure.";
+  return "Infisical SSH lets you issue SSH credentials to users for short-lived, secure SSH access to infrastructure.";
 };
 
 type Props = {

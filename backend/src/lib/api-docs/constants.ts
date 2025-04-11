@@ -519,6 +519,9 @@ export const PROJECTS = {
   LIST_SSH_CAS: {
     projectId: "The ID of the project to list SSH CAs for."
   },
+  LIST_SSH_HOSTS: {
+    projectId: "The ID of the project to list SSH hosts for."
+  },
   LIST_SSH_CERTIFICATES: {
     projectId: "The ID of the project to list SSH certificates for.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th SSH certificate.",
@@ -1253,7 +1256,11 @@ export const SSH_CERTIFICATE_AUTHORITIES = {
   CREATE: {
     projectId: "The ID of the project to create the SSH CA in.",
     friendlyName: "A friendly name for the SSH CA.",
-    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA."
+    keyAlgorithm:
+      "The type of public key algorithm and size, in bits, of the key pair for the SSH CA; required if keySource is internal.",
+    publicKey: "The public key for the SSH CA key pair; required if keySource is external.",
+    privateKey: "The private key for the SSH CA key pair; required if keySource is external.",
+    keySource: "The source of the SSH CA key pair. This can be one of internal or external."
   },
   GET: {
     sshCaId: "The ID of the SSH CA to get."
@@ -1324,6 +1331,62 @@ export const SSH_CERTIFICATE_TEMPLATES = {
   },
   DELETE: {
     certificateTemplateId: "The ID of the SSH certificate template to delete."
+  }
+};
+
+export const SSH_HOSTS = {
+  GET: {
+    sshHostId: "The ID of the SSH host to get."
+  },
+  CREATE: {
+    projectId: "The ID of the project to create the SSH host in.",
+    hostname: "The hostname of the SSH host.",
+    userCertTtl: "The time to live for user certificates issued under this host.",
+    hostCertTtl: "The time to live for host certificates issued under this host.",
+    loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
+    allowedPrincipals: "A list of allowed principals that can log in as the login user.",
+    loginMappings:
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project.",
+    userSshCaId:
+      "The ID of the SSH CA to use for user certificates. If not specified, the default user SSH CA will be used if it exists.",
+    hostSshCaId:
+      "The ID of the SSH CA to use for host certificates. If not specified, the default host SSH CA will be used if it exists."
+  },
+  UPDATE: {
+    sshHostId: "The ID of the SSH host to update.",
+    hostname: "The hostname of the SSH host to update to.",
+    userCertTtl: "The time to live for user certificates issued under this host to update to.",
+    hostCertTtl: "The time to live for host certificates issued under this host to update to.",
+    loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
+    allowedPrincipals: "A list of allowed principals that can log in as the login user.",
+    loginMappings:
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project."
+  },
+  DELETE: {
+    sshHostId: "The ID of the SSH host to delete."
+  },
+  ISSUE_SSH_CREDENTIALS: {
+    sshHostId: "The ID of the SSH host to issue the SSH credentials for.",
+    loginUser: "The login user to issue the SSH credentials for.",
+    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH host.",
+    serialNumber: "The serial number of the issued SSH certificate.",
+    signedKey: "The SSH certificate or signed SSH public key.",
+    privateKey: "The private key corresponding to the issued SSH certificate.",
+    publicKey: "The public key of the issued SSH certificate."
+  },
+  ISSUE_HOST_CERT: {
+    sshHostId: "The ID of the SSH host to issue the SSH certificate for.",
+    publicKey: "The SSH public key to issue the SSH certificate for.",
+    serialNumber: "The serial number of the issued SSH certificate.",
+    signedKey: "The SSH certificate or signed SSH public key."
+  },
+  GET_USER_CA_PUBLIC_KEY: {
+    sshHostId: "The ID of the SSH host to get the user SSH CA public key for.",
+    publicKey: "The public key of the user SSH CA linked to the SSH host."
+  },
+  GET_HOST_CA_PUBLIC_KEY: {
+    sshHostId: "The ID of the SSH host to get the host SSH CA public key for.",
+    publicKey: "The public key of the host SSH CA linked to the SSH host."
   }
 };
 

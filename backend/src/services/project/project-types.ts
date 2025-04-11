@@ -1,6 +1,10 @@
 import { Knex } from "knex";
 
-import { ProjectType, SortDirection, TProjectKeys } from "@app/db/schemas";
+import { ProjectType, TProjectKeys, SortDirection } from "@app/db/schemas";
+import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
+import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TProjectSshConfigDALFactory } from "@app/services/project/project-ssh-config-dal";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -143,6 +147,7 @@ export type TGetProjectKmsKey = TProjectPermission;
 export type TListProjectCertificateTemplatesDTO = TProjectPermission;
 
 export type TListProjectSshCasDTO = TProjectPermission;
+export type TListProjectSshHostsDTO = TProjectPermission;
 export type TListProjectSshCertificateTemplatesDTO = TProjectPermission;
 export type TListProjectSshCertificatesDTO = {
   offset: number;
@@ -158,6 +163,15 @@ export type TUpdateProjectSlackConfig = {
   isSecretRequestNotificationEnabled: boolean;
   secretRequestChannels: string;
 } & TProjectPermission;
+
+export type TBootstrapSshProjectDTO = {
+  projectId: string;
+  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "transaction" | "create">;
+  sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "create">;
+  projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "create">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  tx?: Knex;
+};
 
 export enum SearchProjectSortBy {
   NAME = "name"

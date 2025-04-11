@@ -14,3 +14,11 @@ docs/self-hosting/guides/automated-bootstrapping.mdx:jwt:74
 frontend/src/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretDetailSidebar.tsx:generic-api-key:72
 k8-operator/config/samples/crd/pushsecret/source-secret-with-templating.yaml:private-key:11
 k8-operator/config/samples/crd/pushsecret/push-secret-with-template.yaml:private-key:52
+backend/src/ee/services/secret-rotation-v2/secret-rotation-v2-types.ts:generic-api-key:125
+frontend/src/components/permissions/AccessTree/nodes/RoleNode.tsx:generic-api-key:67
+frontend/src/components/secret-rotations-v2/RotateSecretRotationV2Modal.tsx:generic-api-key:14
+frontend/src/components/secret-rotations-v2/SecretRotationV2StatusBadge.tsx:generic-api-key:11
+frontend/src/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewSecretRotationV2GeneratedCredentials.tsx:generic-api-key:23
+frontend/src/hooks/api/secretRotationsV2/types/index.ts:generic-api-key:28
+frontend/src/hooks/api/secretRotationsV2/types/index.ts:generic-api-key:65
+frontend/src/pages/secret-manager/SecretDashboardPage/components/SecretRotationListView/SecretRotationItem.tsx:generic-api-key:26

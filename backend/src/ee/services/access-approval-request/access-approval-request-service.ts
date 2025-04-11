@@ -94,7 +94,8 @@ export const accessApprovalRequestServiceFactory = ({
     actor,
     actorOrgId,
     actorAuthMethod,
-    projectSlug
+    projectSlug,
+    note
   }: TCreateAccessApprovalRequestDTO) => {
     const cfg = getConfig();
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
@@ -209,7 +210,8 @@ export const accessApprovalRequestServiceFactory = ({
           requestedByUserId: actorId,
           temporaryRange: temporaryRange || null,
           permissions: JSON.stringify(requestedPermissions),
-          isTemporary
+          isTemporary,
+          note: note || null
         },
         tx
       );
@@ -232,7 +234,8 @@ export const accessApprovalRequestServiceFactory = ({
             secretPath,
             environment: envSlug,
             permissions: accessTypes,
-            approvalUrl
+            approvalUrl,
+            note
           }
         }
       });
@@ -252,7 +255,8 @@ export const accessApprovalRequestServiceFactory = ({
           secretPath,
           environment: envSlug,
           permissions: accessTypes,
-          approvalUrl
+          approvalUrl,
+          note
         },
         template: SmtpTemplates.AccessApprovalRequest
       });

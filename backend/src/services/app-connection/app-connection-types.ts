@@ -138,8 +138,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateHumanitecConnectionCredentialsSchema
   | TValidatePostgresConnectionCredentialsSchema
   | TValidateMsSqlConnectionCredentialsSchema
-  | TValidateTerraformCloudConnectionCredentialsSchema
   | TValidateCamundaConnectionCredentialsSchema
+  | TValidateTerraformCloudConnectionCredentialsSchema
   | TValidateVercelConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
