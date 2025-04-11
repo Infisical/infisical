@@ -10,6 +10,7 @@ import { TGitHubConnection } from "./github-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TPostgresConnection } from "./postgres-connection";
+import { TVercelConnection } from "./vercel-connection";
 
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
@@ -21,6 +22,7 @@ export * from "./github-connection";
 export * from "./humanitec-connection";
 export * from "./mssql-connection";
 export * from "./postgres-connection";
+export * from "./vercel-connection";
 
 export type TAppConnection =
   | TAwsConnection
@@ -30,6 +32,7 @@ export type TAppConnection =
   | TAzureAppConfigurationConnection
   | TDatabricksConnection
   | THumanitecConnection
+  | TVercelConnection
   | TPostgresConnection
   | TMsSqlConnection
   | TCamundaConnection;
@@ -67,6 +70,7 @@ export type TAppConnectionMap = {
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
   [AppConnection.Databricks]: TDatabricksConnection;
   [AppConnection.Humanitec]: THumanitecConnection;
+  [AppConnection.Vercel]: TVercelConnection;
   [AppConnection.Postgres]: TPostgresConnection;
   [AppConnection.MsSql]: TMsSqlConnection;
   [AppConnection.Camunda]: TCamundaConnection;

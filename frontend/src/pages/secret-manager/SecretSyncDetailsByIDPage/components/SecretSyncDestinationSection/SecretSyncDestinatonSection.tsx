@@ -19,6 +19,7 @@ import { AzureKeyVaultSyncDestinationSection } from "./AzureKeyVaultSyncDestinat
 import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
+import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
 
 type Props = {
   secretSync: TSecretSync;
@@ -60,6 +61,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.Camunda:
       DestinationComponents = <CamundaSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Vercel:
+      DestinationComponents = <VercelSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

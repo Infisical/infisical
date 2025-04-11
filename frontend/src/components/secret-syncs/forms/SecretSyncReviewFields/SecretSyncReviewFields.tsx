@@ -22,6 +22,7 @@ import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -75,6 +76,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Camunda:
       DestinationFieldsComponent = <CamundaSyncReviewFields />;
+      break;
+    case SecretSync.Vercel:
+      DestinationFieldsComponent = <VercelSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

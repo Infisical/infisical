@@ -33,14 +33,12 @@ import { IdentityPanel } from "@app/pages/admin/OverviewPage/components/Identity
 import { AuthPanel } from "./components/AuthPanel";
 import { EncryptionPanel } from "./components/EncryptionPanel";
 import { IntegrationPanel } from "./components/IntegrationPanel";
-import { RateLimitPanel } from "./components/RateLimitPanel";
 import { UserPanel } from "./components/UserPanel";
 
 enum TabSections {
   Settings = "settings",
   Encryption = "encryption",
   Auth = "auth",
-  RateLimit = "rate-limit",
   Integrations = "integrations",
   Users = "users",
   Identities = "identities",
@@ -163,7 +161,6 @@ export const OverviewPage = () => {
                     <Tab value={TabSections.Settings}>General</Tab>
                     <Tab value={TabSections.Encryption}>Encryption</Tab>
                     <Tab value={TabSections.Auth}>Authentication</Tab>
-                    <Tab value={TabSections.RateLimit}>Rate Limit</Tab>
                     <Tab value={TabSections.Integrations}>Integrations</Tab>
                     <Tab value={TabSections.Users}>User Identities</Tab>
                     <Tab value={TabSections.Identities}>Machine Identities</Tab>
@@ -262,7 +259,6 @@ export const OverviewPage = () => {
                               <SelectClear
                                 selectValue={defaultAuthOrgId}
                                 onClear={() => {
-                                  console.log("clearing");
                                   onChange("");
                                 }}
                               >
@@ -402,9 +398,6 @@ export const OverviewPage = () => {
                 </TabPanel>
                 <TabPanel value={TabSections.Auth}>
                   <AuthPanel />
-                </TabPanel>
-                <TabPanel value={TabSections.RateLimit}>
-                  <RateLimitPanel />
                 </TabPanel>
                 <TabPanel value={TabSections.Integrations}>
                   <IntegrationPanel />

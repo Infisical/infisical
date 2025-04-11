@@ -49,6 +49,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Databricks:
     case SecretSync.Humanitec:
     case SecretSync.Camunda:
+    case SecretSync.Vercel:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

@@ -7,7 +7,8 @@ export enum SecretSync {
   AzureAppConfiguration = "azure-app-configuration",
   Databricks = "databricks",
   Humanitec = "humanitec",
-  Camunda = "camunda"
+  Camunda = "camunda",
+  Vercel = "vercel"
 }
 
 export enum SecretSyncInitialSyncBehavior {

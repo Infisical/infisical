@@ -66,6 +66,17 @@ export const IDENTITIES = {
   },
   LIST: {
     orgId: "The ID of the organization to list identities."
+  },
+  SEARCH: {
+    search: {
+      desc: "The filters to apply to the search.",
+      name: "The name of the identity to filter by.",
+      role: "The organizational role of the identity to filter by."
+    },
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identities to return.",
+    orderBy: "The column to order identities by.",
+    orderDirection: "The direction to order identities in."
   }
 } as const;
 
@@ -1694,6 +1705,9 @@ export const AppConnections = {
       sslEnabled: "Whether or not to use SSL when connecting to the database.",
       sslRejectUnauthorized: "Whether or not to reject unauthorized SSL certificates.",
       sslCertificate: "The SSL certificate to use for connection."
+    },
+    VERCEL: {
+      apiToken: "The API token used to authenticate with Vercel."
     }
   }
 };
@@ -1813,6 +1827,13 @@ export const SecretSyncs = {
       org: "The ID of the Humanitec org to sync secrets to.",
       env: "The ID of the Humanitec environment to sync secrets to.",
       scope: "The Humanitec scope that secrets should be synced to."
+    },
+    VERCEL: {
+      app: "The ID of the Vercel app to sync secrets to.",
+      appName: "The name of the Vercel app to sync secrets to.",
+      env: "The ID of the Vercel environment to sync secrets to.",
+      branch: "The branch to sync preview secrets to.",
+      teamId: "The ID of the Vercel team to sync secrets to."
     }
   }
 };

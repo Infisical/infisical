@@ -8,6 +8,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.AzureAppConfiguration]: "Azure App Configuration",
   [AppConnection.Databricks]: "Databricks",
   [AppConnection.Humanitec]: "Humanitec",
+  [AppConnection.Vercel]: "Vercel",
   [AppConnection.Postgres]: "PostgreSQL",
   [AppConnection.MsSql]: "Microsoft SQL Server",
   [AppConnection.Camunda]: "Camunda"

@@ -55,6 +55,7 @@ import {
   THumanitecSyncListItem,
   THumanitecSyncWithCredentials
 } from "./humanitec";
+import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
 
 export type TSecretSync =
   | TAwsParameterStoreSync
@@ -65,7 +66,8 @@ export type TSecretSync =
   | TAzureAppConfigurationSync
   | TDatabricksSync
   | THumanitecSync
-  | TCamundaSync;
+  | TCamundaSync
+  | TVercelSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -76,7 +78,8 @@ export type TSecretSyncWithCredentials =
   | TAzureAppConfigurationSyncWithCredentials
   | TDatabricksSyncWithCredentials
   | THumanitecSyncWithCredentials
-  | TCamundaSyncWithCredentials;
+  | TCamundaSyncWithCredentials
+  | TVercelSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -87,7 +90,8 @@ export type TSecretSyncInput =
   | TAzureAppConfigurationSyncInput
   | TDatabricksSyncInput
   | THumanitecSyncInput
-  | TCamundaSyncInput;
+  | TCamundaSyncInput
+  | TVercelSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -98,7 +102,8 @@ export type TSecretSyncListItem =
   | TAzureAppConfigurationSyncListItem
   | TDatabricksSyncListItem
   | THumanitecSyncListItem
-  | TCamundaSyncListItem;
+  | TCamundaSyncListItem
+  | TVercelSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

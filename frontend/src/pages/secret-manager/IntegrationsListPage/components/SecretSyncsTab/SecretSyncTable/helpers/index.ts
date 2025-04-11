@@ -77,6 +77,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.clusterUUID;
       secondaryText = "Cluster";
       break;
+    case SecretSync.Vercel:
+      primaryText = destinationConfig.appName || destinationConfig.app;
+      secondaryText = destinationConfig.env;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

@@ -45,6 +45,9 @@ func (r *InfisicalDynamicSecretReconciler) GetLogger(req ctrl.Request) logr.Logg
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=list;watch;get;update
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=pods,verbs=get;list
+//+kubebuilder:rbac:groups="authentication.k8s.io",resources=tokenreviews,verbs=create
+//+kubebuilder:rbac:groups="",resources=serviceaccounts/token,verbs=create
 
 func (r *InfisicalDynamicSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
