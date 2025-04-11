@@ -8,7 +8,7 @@ type Props = {
   secretSync: TCamundaSync;
 };
 
-export const CamundaDestinationSyncCol = ({ secretSync }: Props) => {
+export const CamundaSyncDestinationCol = ({ secretSync }: Props) => {
   const { data: clusters, isPending } = useCamundaConnectionListClusters(secretSync.connectionId);
 
   const { primaryText, secondaryText } = getSecretSyncDestinationColValues({
