@@ -77,6 +77,8 @@ export const keyStoreFactory = (redisUrl: string) => {
 
   const incrementBy = async (key: string, value: number) => redis.incrby(key, value);
 
+  const setExpiry = async (key: string, expiryInSeconds: number) => redis.expire(key, expiryInSeconds);
+
   const waitTillReady = async ({
     key,
     waitingCb,
@@ -103,6 +105,7 @@ export const keyStoreFactory = (redisUrl: string) => {
   return {
     setItem,
     getItem,
+    setExpiry,
     setItemWithExpiry,
     deleteItem,
     incrementBy,

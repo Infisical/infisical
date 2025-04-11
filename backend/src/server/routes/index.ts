@@ -315,7 +315,7 @@ export const registerRoutes = async (
   const secretVersionTagDAL = secretVersionTagDALFactory(db);
   const secretBlindIndexDAL = secretBlindIndexDALFactory(db);
 
-  const secretV2BridgeDAL = secretV2BridgeDALFactory(db);
+  const secretV2BridgeDAL = secretV2BridgeDALFactory({ db, keyStore });
   const secretVersionV2BridgeDAL = secretVersionV2BridgeDALFactory(db);
   const secretVersionTagV2BridgeDAL = secretVersionV2TagBridgeDALFactory(db);
 

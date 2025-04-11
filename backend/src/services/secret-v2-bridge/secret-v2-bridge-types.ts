@@ -279,6 +279,13 @@ export type TUpdateManySecretsFnFactory = {
   folderDAL: TSecretFolderDALFactory;
 };
 
+export type TFindByFolderIdDALDTO = {
+  folderId: string;
+  userId?: string;
+  tx?: Knex;
+  projectId: string;
+};
+
 export type TUpdateManySecretsFn = {
   projectId: string;
   environment: string;

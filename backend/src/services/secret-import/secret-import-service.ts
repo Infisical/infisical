@@ -43,7 +43,7 @@ type TSecretImportServiceFactoryDep = {
   secretImportDAL: TSecretImportDALFactory;
   folderDAL: TSecretFolderDALFactory;
   secretDAL: Pick<TSecretDALFactory, "find">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "invalidateSecretCacheByProjectId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   projectEnvDAL: TProjectEnvDALFactory;
@@ -184,6 +184,7 @@ export const secretImportServiceFactory = ({
       });
     }
 
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return { ...secImport, importEnv };
   };
 
@@ -281,6 +282,8 @@ export const secretImportServiceFactory = ({
       );
       return doc;
     });
+
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return { ...updatedSecImport, importEnv: importedEnv };
   };
 
@@ -355,6 +358,7 @@ export const secretImportServiceFactory = ({
       actorId
     });
 
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return secImport;
   };
 
@@ -693,6 +697,7 @@ export const secretImportServiceFactory = ({
         projectId
       });
       const importedSecrets = await fnSecretsV2FromImports({
+        projectId,
         secretImports,
         folderDAL,
         viewSecretValue: true,
