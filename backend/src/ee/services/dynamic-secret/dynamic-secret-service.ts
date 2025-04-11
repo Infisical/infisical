@@ -264,14 +264,19 @@ export const dynamicSecretServiceFactory = ({
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
     const updatedDynamicCfg = await dynamicSecretDAL.transaction(async (tx) => {
-      const cfg = await dynamicSecretDAL.updateById(dynamicSecretCfg.id, {
-        encryptedInput: secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(updatedInput)) }).cipherTextBlob,
-        maxTTL,
-        defaultTTL,
-        name: newName ?? name,
-        status: null,
-        projectGatewayId: selectedGatewayId
-      });
+      const cfg = await dynamicSecretDAL.updateById(
+        dynamicSecretCfg.id,
+        {
+          encryptedInput: secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(updatedInput)) })
+            .cipherTextBlob,
+          maxTTL,
+          defaultTTL,
+          name: newName ?? name,
+          status: null,
+          projectGatewayId: selectedGatewayId
+        },
+        tx
+      );
 
       if (metadata) {
         await resourceMetadataDAL.delete(

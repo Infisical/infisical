@@ -193,6 +193,11 @@ export const dynamicSecretLeaseServiceFactory = ({
       folderId: folder.id
     });
 
+    if (!dynamicSecretCfg)
+      throw new NotFoundError({
+        message: `Dynamic secret with ID '${dynamicSecretLease.dynamicSecretId}' not found`
+      });
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.Lease,
       subject(ProjectPermissionSub.DynamicSecrets, {
@@ -273,6 +278,11 @@ export const dynamicSecretLeaseServiceFactory = ({
       id: dynamicSecretLease.dynamicSecretId,
       folderId: folder.id
     });
+
+    if (!dynamicSecretCfg)
+      throw new NotFoundError({
+        message: `Dynamic secret with ID '${dynamicSecretLease.dynamicSecretId}' not found`
+      });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.Lease,
@@ -392,6 +402,11 @@ export const dynamicSecretLeaseServiceFactory = ({
       id: dynamicSecretLease.dynamicSecretId,
       folderId: folder.id
     });
+
+    if (!dynamicSecretCfg)
+      throw new NotFoundError({
+        message: `Dynamic secret with ID '${dynamicSecretLease.dynamicSecretId}' not found`
+      });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.Lease,
