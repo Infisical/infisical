@@ -54,22 +54,19 @@ export type FolderResult = {
 };
 
 export type SecretResult = {
-  envName: string;
   secretId: string;
-  folderName: string;
-  folderId: string;
-  envSlug: string;
-};
+  referencedSecretKey: string;
+} & FolderResult;
 
 export type FolderInfo = {
   folderName: string;
-  secrets?: string[];
+  secrets?: { secretId: string; referencedSecretKey: string }[];
   folderId: string;
   folderImported: boolean;
   envSlug?: string;
 };
 
-export type EnvInfo = {
+export type EnvironmentInfo = {
   envName: string;
   envSlug: string;
   folders: FolderInfo[];

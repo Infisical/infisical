@@ -42,9 +42,12 @@ export type DashboardProjectSecretsDetailsResponse = {
   totalSecretRotationCount?: number;
   totalCount: number;
   importedBy?: {
-    envName: string;
-    envSlug: string;
-    folders: { folderName: string; secrets?: string[]; folderImported: boolean }[];
+    environment: { name: string; slug: string };
+    folders: {
+      name: string;
+      secrets?: { secretId: string; referencedSecretKey: string }[];
+      isImported: boolean;
+    }[];
   }[];
 };
 

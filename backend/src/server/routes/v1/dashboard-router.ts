@@ -577,13 +577,21 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           totalSecretCount: z.number().optional(),
           importedBy: z
             .object({
-              envName: z.string(),
-              envSlug: z.string(),
+              environment: z.object({
+                name: z.string(),
+                slug: z.string()
+              }),
               folders: z
                 .object({
-                  folderName: z.string(),
-                  folderImported: z.boolean(),
-                  secrets: z.array(z.string()).optional()
+                  name: z.string(),
+                  isImported: z.boolean(),
+                  secrets: z
+                    .object({
+                      secretId: z.string(),
+                      referencedSecretKey: z.string()
+                    })
+                    .array()
+                    .optional()
                 })
                 .array()
             })
@@ -856,7 +864,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        secrets
       });
 
       if (secrets?.length || secretRotations?.length) {

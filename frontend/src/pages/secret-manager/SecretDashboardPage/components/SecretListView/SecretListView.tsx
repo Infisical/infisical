@@ -30,9 +30,12 @@ type Props = {
   isVisible?: boolean;
   isProtectedBranch?: boolean;
   importedBy?: {
-    envName: string;
-    envSlug: string;
-    folders: { folderName: string; secrets?: string[]; folderImported: boolean }[];
+    environment: { name: string; slug: string };
+    folders: {
+      name: string;
+      secrets?: { secretId: string; referencedSecretKey: string }[];
+      isImported: boolean;
+    }[];
   }[];
 };
 
@@ -366,7 +369,12 @@ export const SecretListView = ({
         buttonText="Delete Secret"
         formContent={
           importedBy &&
-          importedBy.length > 0 && <CollapsibleSecretImports importedBy={importedBy} />
+          importedBy.length > 0 && (
+            <CollapsibleSecretImports
+              importedBy={importedBy}
+              secretToDelete={(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key}
+            />
+          )
         }
         deletionMessage={
           <>
@@ -374,7 +382,7 @@ export const SecretListView = ({
             <span className="font-bold">
               &quot;{(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key}&quot;
             </span>{" "}
-            below to perform this action
+            to perform this action
           </>
         }
       />

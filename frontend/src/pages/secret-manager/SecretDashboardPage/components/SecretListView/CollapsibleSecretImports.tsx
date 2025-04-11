@@ -5,26 +5,35 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Table, TBody, Td, Th, THead, Tr } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 
+enum ItemType {
+  Folder = "Folder",
+  Secret = "Secret"
+}
+
 interface FlatItem {
-  type: "folder" | "secret";
+  type: ItemType;
   path: string;
   secretKey?: string;
   reference: string;
   id: string;
-  envName: string;
-  envSlug: string;
+  environment: { name: string; slug: string };
 }
 
 interface CollapsibleSecretImportsProps {
   importedBy?: {
-    envName: string;
-    envSlug: string;
-    folders: { folderName: string; secrets?: string[]; folderImported: boolean }[];
+    environment: { name: string; slug: string };
+    folders: {
+      name: string;
+      secrets?: { secretId: string; referencedSecretKey: string }[];
+      isImported: boolean;
+    }[];
   }[];
+  secretToDelete: string;
 }
 
 export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> = ({
-  importedBy = []
+  importedBy = [],
+  secretToDelete
 }) => {
   const { currentWorkspace } = useWorkspace();
 
@@ -43,7 +52,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
 
   const handlePathClick = (item: FlatItem) => {
     let pathToNavigate;
-    if (item.type === "folder") {
+    if (item.type === ItemType.Folder) {
       pathToNavigate = item.path;
     } else {
       const lastSlashIndex = item.path.lastIndexOf("/");
@@ -51,7 +60,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
     }
     const encodedPath = encodeURIComponent(pathToNavigate);
     window.open(
-      `/secret-manager/${currentWorkspace.id}/secrets/${item.envSlug}?secretPath=${encodedPath}`,
+      `/secret-manager/${currentWorkspace.id}/secrets/${item.environment.slug}?secretPath=${encodedPath}`,
       "_blank"
     );
   };
@@ -61,38 +70,36 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
 
     importedBy.forEach((env) => {
       env.folders.forEach((folder) => {
-        if (folder.folderImported) {
+        if (folder.isImported) {
           items.push({
-            type: "folder",
-            path: folder.folderName,
-            id: `folder-${env.envName}-${folder.folderName}`,
+            type: ItemType.Folder,
+            path: folder.name,
+            id: `folder-${env.environment.name}-${folder.name}`,
             reference: "Imported",
-            envName: env.envName,
-            envSlug: env.envSlug
+            environment: env.environment
           });
         }
 
         if (folder.secrets?.length) {
-          folder.secrets.forEach((secret) => {
-            const secretPath =
-              folder.folderName === "/" ? `/${secret}` : `${folder.folderName}/${secret}`;
-
-            items.push({
-              type: "secret",
-              path: secretPath,
-              secretKey: secret,
-              id: `secret-${env.envName}-${secretPath}`,
-              reference: "Referenced",
-              envName: env.envName,
-              envSlug: env.envSlug
-            });
+          folder.secrets.forEach(({ secretId: secret, referencedSecretKey }) => {
+            const secretPath = folder.name === "/" ? `/${secret}` : `${folder.name}/${secret}`;
+            if (referencedSecretKey === secretToDelete) {
+              items.push({
+                type: ItemType.Secret,
+                path: secretPath,
+                secretKey: referencedSecretKey,
+                id: `secret-${env.environment.name}-${secretPath}`,
+                reference: "Referenced",
+                environment: env.environment
+              });
+            }
           });
         }
       });
     });
 
     return items.sort((a, b) => {
-      const envCompare = a.envName.localeCompare(b.envName);
+      const envCompare = a.environment.name.localeCompare(b.environment.name);
       if (envCompare !== 0) return envCompare;
 
       const aPath = a.path.startsWith("/") ? a.path : `/${a.path}`;
@@ -142,12 +149,12 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
               >
                 <Td>
                   <FontAwesomeIcon
-                    icon={item.type === "secret" ? faKey : faFileImport}
-                    className={`h-4 w-4 ${item.type === "secret" ? "text-gray-400" : "text-green-700"}`}
+                    icon={item.type === ItemType.Secret ? faKey : faFileImport}
+                    className={`h-4 w-4 ${item.type === ItemType.Secret ? "text-gray-400" : "text-green-700"}`}
                     aria-hidden="true"
                   />
                 </Td>
-                <Td className="px-4">{item.envName}</Td>
+                <Td className="px-4">{item.environment.name}</Td>
                 <Td className="truncate px-4">{truncatePath(item.path)}</Td>
                 <Td className="px-4">{item.reference}</Td>
               </Tr>
