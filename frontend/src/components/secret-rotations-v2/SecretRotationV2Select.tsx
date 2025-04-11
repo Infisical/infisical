@@ -24,17 +24,7 @@ export const SecretRotationV2Select = ({ onSelect }: Props) => {
   return (
     <div className="grid grid-cols-3 gap-2">
       {secretRotationOptions?.map(({ type }) => {
-        const { image, name } = SECRET_ROTATION_MAP[type];
-
-        let size: number;
-
-        switch (type) {
-          case SecretRotation.MsSqlCredentials:
-            size = 50;
-            break;
-          default:
-            size = 45;
-        }
+        const { image, name, size } = SECRET_ROTATION_MAP[type];
 
         return (
           <button

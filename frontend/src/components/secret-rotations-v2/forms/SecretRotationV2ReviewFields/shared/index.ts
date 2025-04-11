@@ -1,1 +1,2 @@
-export * from "./SqlRotationReviewFields";
+export * from "./SecretRotationReviewSection";
+export * from "./SqlCredentialsRotationReviewFields";

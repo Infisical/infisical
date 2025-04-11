@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { getConfig } from "@app/lib/config/env";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./auth0-client-secret";
 import { MSSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mssql-credentials";
 import { POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-credentials";
 import { SecretRotation, SecretRotationStatus } from "./secret-rotation-v2-enums";
@@ -16,7 +17,8 @@ import {
 
 const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2ListItem> = {
   [SecretRotation.PostgresCredentials]: POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION,
-  [SecretRotation.MsSqlCredentials]: MSSQL_CREDENTIALS_ROTATION_LIST_OPTION
+  [SecretRotation.MsSqlCredentials]: MSSQL_CREDENTIALS_ROTATION_LIST_OPTION,
+  [SecretRotation.Auth0ClientSecret]: AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {

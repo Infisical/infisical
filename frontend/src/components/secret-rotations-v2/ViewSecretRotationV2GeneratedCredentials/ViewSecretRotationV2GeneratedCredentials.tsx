@@ -3,6 +3,7 @@ import { faRotate } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
+import { ViewAuth0ClientSecretRotationGeneratedCredentials } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewAuth0ClientSecretRotationGeneratedCredentials";
 import { Modal, ModalContent, Spinner } from "@app/components/v2";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import {
@@ -11,7 +12,7 @@ import {
   useViewSecretRotationV2GeneratedCredentials
 } from "@app/hooks/api/secretRotationsV2";
 
-import { ViewSqlRotationGeneratedCredentials } from "./shared";
+import { ViewSqlCredentialsRotationGeneratedCredentials } from "./shared";
 
 type Props = {
   secretRotation?: TSecretRotationV2;
@@ -54,7 +55,14 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.PostgresCredentials:
     case SecretRotation.MsSqlCredentials:
       Component = (
-        <ViewSqlRotationGeneratedCredentials
+        <ViewSqlCredentialsRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.Auth0ClientSecret:
+      Component = (
+        <ViewAuth0ClientSecretRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );

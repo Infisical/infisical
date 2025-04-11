@@ -92,7 +92,7 @@ export const SecretRotationV2Form = ({
           },
           environment: currentWorkspace?.environments.find((env) => env.slug === envSlug),
           secretPath,
-          ...rotationOption!.template
+          ...(rotationOption!.template as object) // can't infer type since we don't know which specific type it is
         },
     reValidateMode: "onChange"
   });
@@ -142,7 +142,11 @@ export const SecretRotationV2Form = ({
     setSelectedTabIndex((prev) => prev - 1);
   };
 
-  const { handleSubmit, trigger } = formMethods;
+  const {
+    handleSubmit,
+    trigger,
+    formState: { isSubmitting }
+  } = formMethods;
 
   const isStepValid = async (index: number) => trigger(FORM_TABS[index].fields);
 
@@ -219,7 +223,12 @@ export const SecretRotationV2Form = ({
         </Tab.Group>
       </FormProvider>
       <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
-        <Button onClick={handleNext} colorSchema="secondary">
+        <Button
+          onClick={handleNext}
+          isLoading={isSubmitting}
+          isDisabled={isSubmitting}
+          colorSchema="secondary"
+        >
           {isFinalStep ? `${secretRotation ? "Update" : "Create"} Secret Rotation` : "Next"}
         </Button>
         <Button onClick={handlePrev} colorSchema="secondary">

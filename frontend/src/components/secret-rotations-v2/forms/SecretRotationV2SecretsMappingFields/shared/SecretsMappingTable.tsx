@@ -1,49 +1,14 @@
-import { Controller, useFormContext } from "react-hook-form";
+import { ReactNode } from "react";
 import { faArrowRight, faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { Badge, FormControl, FormLabel, Input } from "@app/components/v2";
-import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { Badge, FormLabel } from "@app/components/v2";
 
-export const SqlRotationSecretsMappingFields = () => {
-  const { control } = useFormContext<
-    TSecretRotationV2Form & {
-      type: SecretRotation.PostgresCredentials; // all sql rotations share these fields
-    }
-  >();
+type Props = {
+  items: { name: string; input: ReactNode }[];
+};
 
-  const items = [
-    {
-      name: "Username",
-      input: (
-        <Controller
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Input value={value} onChange={onChange} placeholder="DB_USERNAME" />
-            </FormControl>
-          )}
-          control={control}
-          name="secretsMapping.username"
-        />
-      )
-    },
-    {
-      name: "Password",
-      input: (
-        <Controller
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Input value={value} onChange={onChange} placeholder="DB_PASSWORD" />
-            </FormControl>
-          )}
-          control={control}
-          name="secretsMapping.password"
-        />
-      )
-    }
-  ];
-
+export const SecretsMappingTable = ({ items }: Props) => {
   return (
     <div className="w-full overflow-hidden">
       <table className="w-full table-auto">

@@ -59,7 +59,7 @@ export const useGetAppConnectionOption = <T extends AppConnection>(app: T) => {
       option: (options.find((opt) => opt.app === app) as TAppConnectionOptionMap[T]) ?? {},
       isLoading: isPending
     }),
-    [options, app]
+    [options, app, isPending]
   );
 };
 

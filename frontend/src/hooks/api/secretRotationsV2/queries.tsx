@@ -1,9 +1,12 @@
+import { useMemo } from "react";
 import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
 import {
   TListSecretRotationV2Options,
+  TSecretRotationGeneratedCredentialsResponseMap,
+  TSecretRotationOptionMap,
   TSecretRotationV2Option,
   TViewSecretRotationGeneratedCredentialsResponse,
   TViewSecretRotationV2GeneratedCredentialsDTO
@@ -40,15 +43,21 @@ export const useSecretRotationV2Options = (
   });
 };
 
-export const useSecretRotationV2Option = (type: SecretRotation) => {
+export const useSecretRotationV2Option = <T extends SecretRotation>(type: T) => {
   const { data: rotationOptions, isPending } = useSecretRotationV2Options();
-  const rotationOption = rotationOptions?.find((option) => option.type === type);
-
-  return { rotationOption, isPending };
+  return useMemo(
+    () => ({
+      rotationOption:
+        (rotationOptions?.find((opt) => opt.type === type) as TSecretRotationOptionMap[T]) ??
+        undefined,
+      isLoading: isPending
+    }),
+    [rotationOptions, type, isPending]
+  );
 };
 
-export const useViewSecretRotationV2GeneratedCredentials = (
-  { rotationId, type }: TViewSecretRotationV2GeneratedCredentialsDTO,
+export const useViewSecretRotationV2GeneratedCredentials = <T extends SecretRotation>(
+  { rotationId, type }: { rotationId: string; type: T },
   options?: Omit<
     UseQueryOptions<
       TViewSecretRotationGeneratedCredentialsResponse,
@@ -66,7 +75,7 @@ export const useViewSecretRotationV2GeneratedCredentials = (
         `/api/v2/secret-rotations/${type}/${rotationId}/generated-credentials`
       );
 
-      return data;
+      return data as TSecretRotationGeneratedCredentialsResponseMap[T];
     },
     ...options
   });

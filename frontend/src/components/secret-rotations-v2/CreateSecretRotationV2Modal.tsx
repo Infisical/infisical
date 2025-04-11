@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { SecretRotationV2Form } from "@app/components/secret-rotations-v2/forms";
 import { SecretRotationV2ModalHeader } from "@app/components/secret-rotations-v2/SecretRotationV2ModalHeader";
@@ -54,7 +56,24 @@ export const CreateSecretRotationV2Modal = ({ onOpenChange, isOpen, ...props }: 
           selectedRotation ? (
             <SecretRotationV2ModalHeader isConfigured={false} type={selectedRotation} />
           ) : (
-            "Add Secret Rotation"
+            <div className="flex items-center text-mineshaft-300">
+              Add Secret Rotation
+              <a
+                target="_blank"
+                href="https://infisical.com/docs/documentation/platform/secret-rotation/overview"
+                className="mb-1 ml-1"
+                rel="noopener noreferrer"
+              >
+                <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mb-[0.03rem] mr-1 text-[12px]" />
+                  <span>Docs</span>
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="mb-[0.07rem] ml-1 text-[10px]"
+                  />
+                </div>
+              </a>
+            </div>
           )
         }
         onPointerDownOutside={(e) => e.preventDefault()}
