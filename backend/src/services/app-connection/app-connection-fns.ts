@@ -41,6 +41,8 @@ import {
 } from "./humanitec";
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
+import { VercelConnectionMethod } from "./vercel";
+import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
 
 export const listAppConnectionOptions = () => {
   return [
@@ -51,6 +53,7 @@ export const listAppConnectionOptions = () => {
     getAzureAppConfigurationConnectionListItem(),
     getDatabricksConnectionListItem(),
     getHumanitecConnectionListItem(),
+    getVercelConnectionListItem(),
     getPostgresConnectionListItem(),
     getMsSqlConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
@@ -108,7 +111,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TAppConnect
     validateAzureAppConfigurationConnectionCredentials as TAppConnectionCredentialsValidator,
   [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
   [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator
+  [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
+  [AppConnection.Vercel]: validateVercelConnectionCredentials as TAppConnectionCredentialsValidator
 };
 
 export const validateAppConnectionCredentials = async (
@@ -132,6 +136,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DatabricksConnectionMethod.ServicePrincipal:
       return "Service Principal";
     case HumanitecConnectionMethod.ApiToken:
+    case VercelConnectionMethod.ApiToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -175,5 +180,6 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.AzureAppConfiguration]: platformManagedCredentialsNotSupported,
   [AppConnection.Humanitec]: platformManagedCredentialsNotSupported,
   [AppConnection.Postgres]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
-  [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform
+  [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
+  [AppConnection.Vercel]: platformManagedCredentialsNotSupported
 };

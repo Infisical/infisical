@@ -27,6 +27,7 @@ import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
+import { SanitizedVercelConnectionSchema, VercelConnectionListItemSchema } from "@app/services/app-connection/vercel";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps
@@ -38,6 +39,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAzureAppConfigurationConnectionSchema.options,
   ...SanitizedDatabricksConnectionSchema.options,
   ...SanitizedHumanitecConnectionSchema.options,
+  ...SanitizedVercelConnectionSchema.options,
   ...SanitizedPostgresConnectionSchema.options,
   ...SanitizedMsSqlConnectionSchema.options
 ]);
@@ -50,6 +52,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AzureAppConfigurationConnectionListItemSchema,
   DatabricksConnectionListItemSchema,
   HumanitecConnectionListItemSchema,
+  VercelConnectionListItemSchema,
   PostgresConnectionListItemSchema,
   MsSqlConnectionListItemSchema
 ]);

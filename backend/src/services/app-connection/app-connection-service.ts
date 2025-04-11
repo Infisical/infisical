@@ -41,6 +41,8 @@ import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
+import { ValidateVercelConnectionCredentialsSchema } from "./vercel";
+import { vercelConnectionService } from "./vercel/vercel-connection-service";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -58,6 +60,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.AzureAppConfiguration]: ValidateAzureAppConfigurationConnectionCredentialsSchema,
   [AppConnection.Databricks]: ValidateDatabricksConnectionCredentialsSchema,
   [AppConnection.Humanitec]: ValidateHumanitecConnectionCredentialsSchema,
+  [AppConnection.Vercel]: ValidateVercelConnectionCredentialsSchema,
   [AppConnection.Postgres]: ValidatePostgresConnectionCredentialsSchema,
   [AppConnection.MsSql]: ValidateMsSqlConnectionCredentialsSchema
 };
@@ -430,6 +433,7 @@ export const appConnectionServiceFactory = ({
     gcp: gcpConnectionService(connectAppConnectionById),
     databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     aws: awsConnectionService(connectAppConnectionById),
-    humanitec: humanitecConnectionService(connectAppConnectionById)
+    humanitec: humanitecConnectionService(connectAppConnectionById),
+    vercel: vercelConnectionService(connectAppConnectionById)
   };
 };

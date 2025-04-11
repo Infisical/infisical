@@ -51,6 +51,12 @@ import {
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
 } from "./postgres";
+import {
+  TValidateVercelConnectionCredentialsSchema,
+  TVercelConnection,
+  TVercelConnectionConfig,
+  TVercelConnectionInput
+} from "./vercel";
 
 export type TAppConnection = { id: string } & (
   | TAwsConnection
@@ -60,6 +66,7 @@ export type TAppConnection = { id: string } & (
   | TAzureAppConfigurationConnection
   | TDatabricksConnection
   | THumanitecConnection
+  | TVercelConnection
   | TPostgresConnection
   | TMsSqlConnection
 );
@@ -76,6 +83,7 @@ export type TAppConnectionInput = { id: string } & (
   | TAzureAppConfigurationConnectionInput
   | TDatabricksConnectionInput
   | THumanitecConnectionInput
+  | TVercelConnectionInput
   | TPostgresConnectionInput
   | TMsSqlConnectionInput
 );
@@ -99,6 +107,7 @@ export type TAppConnectionConfig =
   | TAzureAppConfigurationConnectionConfig
   | TDatabricksConnectionConfig
   | THumanitecConnectionConfig
+  | TVercelConnectionConfig
   | TSqlConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -110,7 +119,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDatabricksConnectionCredentialsSchema
   | TValidateHumanitecConnectionCredentialsSchema
   | TValidatePostgresConnectionCredentialsSchema
-  | TValidateMsSqlConnectionCredentialsSchema;
+  | TValidateMsSqlConnectionCredentialsSchema
+  | TValidateVercelConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

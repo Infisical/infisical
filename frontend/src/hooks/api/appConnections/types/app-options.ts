@@ -39,6 +39,10 @@ export type THumanitecConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Humanitec;
 };
 
+export type TVercelConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Vercel;
+};
+
 export type TPostgresConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Postgres;
 };
@@ -55,6 +59,7 @@ export type TAppConnectionOption =
   | TAzureKeyVaultConnectionOption
   | TDatabricksConnectionOption
   | THumanitecConnectionOption
+  | TVercelConnectionOption
   | TPostgresConnectionOption
   | TMsSqlConnectionOption;
 
@@ -66,6 +71,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnectionOption;
   [AppConnection.Databricks]: TDatabricksConnectionOption;
   [AppConnection.Humanitec]: THumanitecConnectionOption;
+  [AppConnection.Vercel]: TVercelConnectionOption;
   [AppConnection.Postgres]: TPostgresConnectionOption;
   [AppConnection.MsSql]: TMsSqlConnectionOption;
 };
