@@ -40,8 +40,9 @@ export const DynamicSecretPermissionConditions = ({ position = 0, isDisabled }: 
   });
 
   const conditionErrorMessage =
-    errors?.permissions?.["dynamic-secrets"]?.[position]?.conditions?.message ||
-    errors?.permissions?.["dynamic-secrets"]?.[position]?.conditions?.root?.message;
+    errors?.permissions?.[ProjectPermissionSub.DynamicSecrets]?.[position]?.conditions?.message ||
+    errors?.permissions?.[ProjectPermissionSub.DynamicSecrets]?.[position]?.conditions?.root
+      ?.message;
 
   return (
     <div className="mt-6 border-t border-t-mineshaft-600 bg-mineshaft-800 pt-2">
@@ -55,7 +56,7 @@ export const DynamicSecretPermissionConditions = ({ position = 0, isDisabled }: 
       <div className="mt-2 flex flex-col space-y-2">
         {items.fields.map((el, index) => {
           const condition = watch(
-            `permissions.dynamic-secrets.${position}.conditions.${index}`
+            `permissions.${ProjectPermissionSub.DynamicSecrets}.${position}.conditions.${index}`
           ) as {
             lhs: string;
             rhs: string;
@@ -69,7 +70,7 @@ export const DynamicSecretPermissionConditions = ({ position = 0, isDisabled }: 
               <div className="w-1/4">
                 <Controller
                   control={control}
-                  name={`permissions.dynamic-secrets.${position}.conditions.${index}.lhs`}
+                  name={`permissions.${ProjectPermissionSub.DynamicSecrets}.${position}.conditions.${index}.lhs`}
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       isError={Boolean(error?.message)}
@@ -81,7 +82,7 @@ export const DynamicSecretPermissionConditions = ({ position = 0, isDisabled }: 
                         {...field}
                         onValueChange={(e) => {
                           setValue(
-                            `permissions.dynamic-secrets.${position}.conditions.${index}.operator`,
+                            `permissions.${ProjectPermissionSub.DynamicSecrets}.${position}.conditions.${index}.operator`,
                             PermissionConditionOperators.$IN as never
                           );
                           field.onChange(e);
@@ -100,7 +101,7 @@ export const DynamicSecretPermissionConditions = ({ position = 0, isDisabled }: 
               <div className="flex w-36 items-center space-x-2">
                 <Controller
                   control={control}
-                  name={`permissions.dynamic-secrets.${position}.conditions.${index}.operator`}
+                  name={`permissions.${ProjectPermissionSub.DynamicSecrets}.${position}.conditions.${index}.operator`}
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       isError={Boolean(error?.message)}
@@ -133,7 +134,7 @@ export const DynamicSecretPermissionConditions = ({ position = 0, isDisabled }: 
               <div className="flex-grow">
                 <Controller
                   control={control}
-                  name={`permissions.dynamic-secrets.${position}.conditions.${index}.rhs`}
+                  name={`permissions.${ProjectPermissionSub.DynamicSecrets}.${position}.conditions.${index}.rhs`}
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       isError={Boolean(error?.message)}
