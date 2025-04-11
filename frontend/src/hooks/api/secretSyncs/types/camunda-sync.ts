@@ -11,6 +11,7 @@ export type TCamundaSync = TRootSecretSync & {
   destinationConfig: {
     scope: string;
     clusterUUID: string;
+    clusterName?: string;
   };
   connection: {
     app: AppConnection.Camunda;

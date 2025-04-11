@@ -1,3 +1,4 @@
+import { useCamundaConnectionListClusters } from "@app/hooks/api/appConnections/camunda";
 import { TCamundaSync } from "@app/hooks/api/secretSyncs/types/camunda-sync";
 
 import { getSecretSyncDestinationColValues } from "../helpers";
@@ -8,7 +9,17 @@ type Props = {
 };
 
 export const CamundaDestinationSyncCol = ({ secretSync }: Props) => {
-  const { primaryText, secondaryText } = getSecretSyncDestinationColValues(secretSync);
+  const { data: clusters } = useCamundaConnectionListClusters(secretSync.connectionId);
+
+  const { primaryText, secondaryText } = getSecretSyncDestinationColValues({
+    ...secretSync,
+    destinationConfig: {
+      ...secretSync.destinationConfig,
+      clusterName: clusters?.find(
+        (cluster) => cluster.uuid === secretSync.destinationConfig.clusterUUID
+      )?.name
+    }
+  });
 
   return <SecretSyncTableCell primaryText={primaryText} secondaryText={secondaryText} />;
 };
