@@ -5,11 +5,11 @@ import path from "path";
 
 import { logger } from "@app/lib/logger";
 
-const baseDir = path.join(os.tmpdir(), "temporary-signing");
-const randomPath = () => `${crypto.randomBytes(32).toString("hex")}-`;
+const baseDir = path.join(os.tmpdir(), "infisical");
+const randomPath = () => `${crypto.randomBytes(64).toString("hex")}`;
 
 export const createTemporaryDirectory = async (name: string) => {
-  const tempDirPath = path.join(baseDir, `${name}-${randomPath()}-${randomPath()}`);
+  const tempDirPath = path.join(baseDir, `${name}-${randomPath()}`);
   await fs.mkdir(tempDirPath, { recursive: true });
 
   return tempDirPath;
