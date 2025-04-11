@@ -55,6 +55,10 @@ export type TCamundaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Camunda;
 };
 
+export type TAuth0ConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Auth0;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -66,7 +70,8 @@ export type TAppConnectionOption =
   | TVercelConnectionOption
   | TPostgresConnectionOption
   | TMsSqlConnectionOption
-  | TCamundaConnectionOption;
+  | TCamundaConnectionOption
+  | TAuth0ConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -80,4 +85,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Postgres]: TPostgresConnectionOption;
   [AppConnection.MsSql]: TMsSqlConnectionOption;
   [AppConnection.Camunda]: TCamundaConnectionOption;
+  [AppConnection.Auth0]: TAuth0ConnectionOption;
 };

@@ -2,14 +2,17 @@ import { useFormContext } from "react-hook-form";
 import { format } from "date-fns";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { SqlRotationReviewFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2ReviewFields/shared";
 import { GenericFieldLabel } from "@app/components/v2";
 import { getRotateAtLocal } from "@app/helpers/secretRotationsV2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
+import { Auth0ClientSecretRotationReviewFields } from "./Auth0ClientSecretRotationReviewFields";
+import { SqlCredentialsRotationReviewFields } from "./shared";
+
 const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
-  [SecretRotation.PostgresCredentials]: SqlRotationReviewFields,
-  [SecretRotation.MsSqlCredentials]: SqlRotationReviewFields
+  [SecretRotation.PostgresCredentials]: SqlCredentialsRotationReviewFields,
+  [SecretRotation.MsSqlCredentials]: SqlCredentialsRotationReviewFields,
+  [SecretRotation.Auth0ClientSecret]: Auth0ClientSecretRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {

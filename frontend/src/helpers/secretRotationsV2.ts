@@ -1,17 +1,31 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretRotation, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 
-export const SECRET_ROTATION_MAP: Record<SecretRotation, { name: string; image: string }> = {
-  [SecretRotation.PostgresCredentials]: { name: "PostgreSQL Credentials", image: "Postgres.png" },
+export const SECRET_ROTATION_MAP: Record<
+  SecretRotation,
+  { name: string; image: string; size: number }
+> = {
+  [SecretRotation.PostgresCredentials]: {
+    name: "PostgreSQL Credentials",
+    image: "Postgres.png",
+    size: 45
+  },
   [SecretRotation.MsSqlCredentials]: {
     name: "Microsoft SQL Server Credentials",
-    image: "MsSql.png"
+    image: "MsSql.png",
+    size: 50
+  },
+  [SecretRotation.Auth0ClientSecret]: {
+    name: "Auth0 Client Secret",
+    image: "Auth0.png",
+    size: 35
   }
 };
 
 export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnection> = {
   [SecretRotation.PostgresCredentials]: AppConnection.Postgres,
-  [SecretRotation.MsSqlCredentials]: AppConnection.MsSql
+  [SecretRotation.MsSqlCredentials]: AppConnection.MsSql,
+  [SecretRotation.Auth0ClientSecret]: AppConnection.Auth0
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

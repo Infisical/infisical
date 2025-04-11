@@ -16,7 +16,7 @@ export const DatabricksConnectionServicePrincipalInputCredentialsSchema = z.obje
   workspaceUrl: z.string().trim().url().min(1, "Workspace URL required")
 });
 
-export const DatabricksConnectionServicePrincipalOutputCredentialsSchema = z
+const DatabricksConnectionServicePrincipalOutputCredentialsSchema = z
   .object({
     accessToken: z.string(),
     expiresAt: z.number()

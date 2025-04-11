@@ -24,7 +24,7 @@ export const SecretRotationV2ModalHeader = ({ type, isConfigured }: Props) => {
           {destinationDetails.name} Rotation
           <a
             target="_blank"
-            href={`https://infisical.com/docs/platform/secret-rotations/${type}`}
+            href={`https://infisical.com/docs/documentation/platform/secret-rotation/${type}`}
             className="mb-1 ml-1"
             rel="noopener noreferrer"
           >

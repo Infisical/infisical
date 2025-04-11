@@ -75,7 +75,7 @@ export const AppConnectionRow = ({
           <img
             alt={`${APP_CONNECTION_MAP[app].name} integration`}
             src={`/images/integrations/${APP_CONNECTION_MAP[app].image}`}
-            className="mr-0.5 h-5 w-5"
+            className="mr-0.5 w-5"
           />
           <span className="hidden lg:inline">{APP_CONNECTION_MAP[app].name}</span>
         </div>

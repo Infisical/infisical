@@ -1,8 +1,17 @@
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TSqlCredentialsRotationGeneratedCredentials } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials/sql-credentials-rotation-types";
 import { OrderByDirection } from "@app/lib/types";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
+import {
+  TAuth0ClientSecretRotation,
+  TAuth0ClientSecretRotationGeneratedCredentials,
+  TAuth0ClientSecretRotationInput,
+  TAuth0ClientSecretRotationListItem,
+  TAuth0ClientSecretRotationWithConnection
+} from "./auth0-client-secret";
 import {
   TMsSqlCredentialsRotation,
   TMsSqlCredentialsRotationInput,
@@ -18,17 +27,26 @@ import {
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { SecretRotation } from "./secret-rotation-v2-enums";
 
-export type TSecretRotationV2 = TPostgresCredentialsRotation | TMsSqlCredentialsRotation;
+export type TSecretRotationV2 = TPostgresCredentialsRotation | TMsSqlCredentialsRotation | TAuth0ClientSecretRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
-  | TMsSqlCredentialsRotationWithConnection;
+  | TMsSqlCredentialsRotationWithConnection
+  | TAuth0ClientSecretRotationWithConnection;
 
-export type TSecretRotationV2GeneratedCredentials = TSqlCredentialsRotationGeneratedCredentials;
+export type TSecretRotationV2GeneratedCredentials =
+  | TSqlCredentialsRotationGeneratedCredentials
+  | TAuth0ClientSecretRotationGeneratedCredentials;
 
-export type TSecretRotationV2Input = TPostgresCredentialsRotationInput | TMsSqlCredentialsRotationInput;
+export type TSecretRotationV2Input =
+  | TPostgresCredentialsRotationInput
+  | TMsSqlCredentialsRotationInput
+  | TAuth0ClientSecretRotationInput;
 
-export type TSecretRotationV2ListItem = TPostgresCredentialsRotationListItem | TMsSqlCredentialsRotationListItem;
+export type TSecretRotationV2ListItem =
+  | TPostgresCredentialsRotationListItem
+  | TMsSqlCredentialsRotationListItem
+  | TAuth0ClientSecretRotationListItem;
 
 export type TSecretRotationV2Raw = NonNullable<Awaited<ReturnType<TSecretRotationV2DALFactory["findById"]>>>;
 
@@ -129,27 +147,34 @@ export type TSecretRotationSendNotificationJobPayload = {
 // transactional behavior. By passing in the rotation mutation, if this mutation fails we can roll back the
 // third party credential changes (when supported), preventing credentials getting out of sync
 
-export type TRotationFactoryIssueCredentials = (
-  callback: (newCredentials: TSecretRotationV2GeneratedCredentials[number]) => Promise<TSecretRotationV2Raw>
+export type TRotationFactoryIssueCredentials<T extends TSecretRotationV2GeneratedCredentials> = (
+  callback: (newCredentials: T[number]) => Promise<TSecretRotationV2Raw>
 ) => Promise<TSecretRotationV2Raw>;
 
-export type TRotationFactoryRevokeCredentials = (
-  generatedCredentials: TSecretRotationV2GeneratedCredentials,
+export type TRotationFactoryRevokeCredentials<T extends TSecretRotationV2GeneratedCredentials> = (
+  generatedCredentials: T,
   callback: () => Promise<TSecretRotationV2Raw>
 ) => Promise<TSecretRotationV2Raw>;
 
-export type TRotationFactoryRotateCredentials = (
-  credentialsToRevoke: TSecretRotationV2GeneratedCredentials[number] | undefined,
-  callback: (newCredentials: TSecretRotationV2GeneratedCredentials[number]) => Promise<TSecretRotationV2Raw>
+export type TRotationFactoryRotateCredentials<T extends TSecretRotationV2GeneratedCredentials> = (
+  credentialsToRevoke: T[number] | undefined,
+  callback: (newCredentials: T[number]) => Promise<TSecretRotationV2Raw>
 ) => Promise<TSecretRotationV2Raw>;
 
-export type TRotationFactoryGetSecretsPayload = (
-  generatedCredentials: TSecretRotationV2GeneratedCredentials[number]
+export type TRotationFactoryGetSecretsPayload<T extends TSecretRotationV2GeneratedCredentials> = (
+  generatedCredentials: T[number]
 ) => { key: string; value: string }[];
 
-export type TRotationFactory = (secretRotation: TSecretRotationV2WithConnection) => {
-  issueCredentials: TRotationFactoryIssueCredentials;
-  revokeCredentials: TRotationFactoryRevokeCredentials;
-  rotateCredentials: TRotationFactoryRotateCredentials;
-  getSecretsPayload: TRotationFactoryGetSecretsPayload;
+export type TRotationFactory<
+  T extends TSecretRotationV2WithConnection,
+  C extends TSecretRotationV2GeneratedCredentials
+> = (
+  secretRotation: T,
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+) => {
+  issueCredentials: TRotationFactoryIssueCredentials<C>;
+  revokeCredentials: TRotationFactoryRevokeCredentials<C>;
+  rotateCredentials: TRotationFactoryRotateCredentials<C>;
+  getSecretsPayload: TRotationFactoryGetSecretsPayload<C>;
 };

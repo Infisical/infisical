@@ -1548,7 +1548,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     snapshotService,
     secretQueueService,
-    queueService
+    queueService,
+    appConnectionDAL
   });
 
   await secretRotationV2QueueServiceFactory({
