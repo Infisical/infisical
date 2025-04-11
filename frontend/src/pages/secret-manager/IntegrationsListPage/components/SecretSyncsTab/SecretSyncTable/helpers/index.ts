@@ -82,6 +82,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
         secondaryText = destinationConfig.workspaceName;
       }
       break;
+    case SecretSync.Camunda:
+      primaryText = destinationConfig.clusterName ?? destinationConfig.clusterUUID;
+      secondaryText = "Cluster";
+      break;
     case SecretSync.Vercel:
       primaryText = destinationConfig.appName || destinationConfig.app;
       secondaryText = destinationConfig.env;

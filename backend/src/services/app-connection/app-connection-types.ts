@@ -22,6 +22,12 @@ import {
   TValidateAzureKeyVaultConnectionCredentialsSchema
 } from "./azure-key-vault";
 import {
+  TCamundaConnection,
+  TCamundaConnectionConfig,
+  TCamundaConnectionInput,
+  TValidateCamundaConnectionCredentialsSchema
+} from "./camunda";
+import {
   TDatabricksConnection,
   TDatabricksConnectionConfig,
   TDatabricksConnectionInput,
@@ -76,6 +82,7 @@ export type TAppConnection = { id: string } & (
   | TVercelConnection
   | TPostgresConnection
   | TMsSqlConnection
+  | TCamundaConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -94,6 +101,7 @@ export type TAppConnectionInput = { id: string } & (
   | TVercelConnectionInput
   | TPostgresConnectionInput
   | TMsSqlConnectionInput
+  | TCamundaConnectionInput
 );
 
 export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput;
@@ -117,7 +125,8 @@ export type TAppConnectionConfig =
   | THumanitecConnectionConfig
   | TTerraformCloudConnectionConfig
   | TVercelConnectionConfig
-  | TSqlConnectionConfig;
+  | TSqlConnectionConfig
+  | TCamundaConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -130,6 +139,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidatePostgresConnectionCredentialsSchema
   | TValidateMsSqlConnectionCredentialsSchema
   | TValidateTerraformCloudConnectionCredentialsSchema
+  | TValidateCamundaConnectionCredentialsSchema
   | TValidateVercelConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

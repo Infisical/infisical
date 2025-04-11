@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 
 import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { TerraformCloudSyncCategory } from "@app/hooks/api/appConnections/terraform-cloud";
 import {
   TerraformCloudSyncScope,
   TTerraformCloudSync
@@ -22,6 +23,13 @@ export const TerraformCloudSyncDestinationSection = ({ secretSync }: Props) => {
           <GenericFieldLabel label="Variable Set">
             {destinationConfig.variableSetName}
           </GenericFieldLabel>
+          <GenericFieldLabel label="Category">
+            {Object.keys(TerraformCloudSyncCategory).find(
+              (key) =>
+                TerraformCloudSyncCategory[key as keyof typeof TerraformCloudSyncCategory] ===
+                destinationConfig.category
+            )}
+          </GenericFieldLabel>
         </>
       );
       break;
@@ -30,6 +38,13 @@ export const TerraformCloudSyncDestinationSection = ({ secretSync }: Props) => {
         <>
           <GenericFieldLabel label="Organization">{destinationConfig.org}</GenericFieldLabel>
           <GenericFieldLabel label="Workspace">{destinationConfig.workspaceName}</GenericFieldLabel>
+          <GenericFieldLabel label="Category">
+            {Object.keys(TerraformCloudSyncCategory).find(
+              (key) =>
+                TerraformCloudSyncCategory[key as keyof typeof TerraformCloudSyncCategory] ===
+                destinationConfig.category
+            )}
+          </GenericFieldLabel>
         </>
       );
       break;

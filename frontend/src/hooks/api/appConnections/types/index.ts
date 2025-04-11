@@ -3,6 +3,7 @@ import { TAppConnectionOption } from "./app-options";
 import { TAwsConnection } from "./aws-connection";
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
+import { TCamundaConnection } from "./camunda-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
@@ -15,6 +16,7 @@ import { TVercelConnection } from "./vercel-connection";
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
 export * from "./azure-key-vault-connection";
+export * from "./camunda-connection";
 export * from "./databricks-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
@@ -35,7 +37,8 @@ export type TAppConnection =
   | TTerraformCloudConnection
   | TVercelConnection
   | TPostgresConnection
-  | TMsSqlConnection;
+  | TMsSqlConnection
+  | TCamundaConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -74,4 +77,5 @@ export type TAppConnectionMap = {
   [AppConnection.Vercel]: TVercelConnection;
   [AppConnection.Postgres]: TPostgresConnection;
   [AppConnection.MsSql]: TMsSqlConnection;
+  [AppConnection.Camunda]: TCamundaConnection;
 };

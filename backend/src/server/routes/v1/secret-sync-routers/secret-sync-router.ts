@@ -18,6 +18,7 @@ import {
   AzureAppConfigurationSyncSchema
 } from "@app/services/secret-sync/azure-app-configuration";
 import { AzureKeyVaultSyncListItemSchema, AzureKeyVaultSyncSchema } from "@app/services/secret-sync/azure-key-vault";
+import { CamundaSyncListItemSchema, CamundaSyncSchema } from "@app/services/secret-sync/camunda";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
@@ -35,6 +36,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   DatabricksSyncSchema,
   HumanitecSyncSchema,
   TerraformCloudSyncSchema,
+  CamundaSyncSchema,
   VercelSyncSchema
 ]);
 
@@ -48,6 +50,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   DatabricksSyncListItemSchema,
   HumanitecSyncListItemSchema,
   TerraformCloudSyncListItemSchema,
+  CamundaSyncListItemSchema,
   VercelSyncListItemSchema
 ]);
 

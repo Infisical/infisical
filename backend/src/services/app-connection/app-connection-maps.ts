@@ -11,5 +11,6 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.TerraformCloud]: "Terraform Cloud",
   [AppConnection.Vercel]: "Vercel",
   [AppConnection.Postgres]: "PostgreSQL",
-  [AppConnection.MsSql]: "Microsoft SQL Server"
+  [AppConnection.MsSql]: "Microsoft SQL Server",
+  [AppConnection.Camunda]: "Camunda"
 };

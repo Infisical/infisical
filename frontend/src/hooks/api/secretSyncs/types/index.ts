@@ -7,6 +7,7 @@ import { DiscriminativePick } from "@app/types";
 import { TAwsSecretsManagerSync } from "./aws-secrets-manager-sync";
 import { TAzureAppConfigurationSync } from "./azure-app-configuration-sync";
 import { TAzureKeyVaultSync } from "./azure-key-vault-sync";
+import { TCamundaSync } from "./camunda-sync";
 import { TGcpSync } from "./gcp-sync";
 import { THumanitecSync } from "./humanitec-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
@@ -28,6 +29,7 @@ export type TSecretSync =
   | TDatabricksSync
   | THumanitecSync
   | TTerraformCloudSync
+  | TCamundaSync
   | TVercelSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };

@@ -1711,6 +1711,10 @@ export const AppConnections = {
     },
     VERCEL: {
       apiToken: "The API token used to authenticate with Vercel."
+    },
+    CAMUNDA: {
+      clientId: "The client ID used to authenticate with Camunda.",
+      clientSecret: "The client secret used to authenticate with Camunda."
     }
   }
 };
@@ -1820,6 +1824,10 @@ export const SecretSyncs = {
     },
     DATABRICKS: {
       scope: "The Databricks secret scope that secrets should be synced to."
+    },
+    CAMUNDA: {
+      scope: "The Camunda scope that secrets should be synced to.",
+      clusterUUID: "The UUID of the Camunda cluster that secrets should be synced to."
     },
     HUMANITEC: {
       app: "The ID of the Humanitec app to sync secrets to.",

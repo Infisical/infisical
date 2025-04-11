@@ -9,5 +9,6 @@ export enum AppConnection {
   TerraformCloud = "terraform-cloud",
   Vercel = "vercel",
   Postgres = "postgres",
-  MsSql = "mssql"
+  MsSql = "mssql",
+  Camunda = "camunda"
 }

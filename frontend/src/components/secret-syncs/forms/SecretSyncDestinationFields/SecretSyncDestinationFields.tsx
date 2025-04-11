@@ -7,6 +7,7 @@ import { AwsParameterStoreSyncFields } from "./AwsParameterStoreSyncFields";
 import { AwsSecretsManagerSyncFields } from "./AwsSecretsManagerSyncFields";
 import { AzureAppConfigurationSyncFields } from "./AzureAppConfigurationSyncFields";
 import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
+import { CamundaSyncFields } from "./CamundaSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
@@ -38,6 +39,8 @@ export const SecretSyncDestinationFields = () => {
       return <HumanitecSyncFields />;
     case SecretSync.TerraformCloud:
       return <TerraformCloudSyncFields />;
+    case SecretSync.Camunda:
+      return <CamundaSyncFields />;
     case SecretSync.Vercel:
       return <VercelSyncFields />;
     default:

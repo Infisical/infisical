@@ -4,6 +4,7 @@ import { AwsParameterStoreSyncDestinationCol } from "./AwsParameterStoreSyncDest
 import { AwsSecretsManagerSyncDestinationCol } from "./AwsSecretsManagerSyncDestinationCol";
 import { AzureAppConfigurationDestinationSyncCol } from "./AzureAppConfigurationDestinationSyncCol";
 import { AzureKeyVaultDestinationSyncCol } from "./AzureKeyVaultDestinationSyncCol";
+import { CamundaSyncDestinationCol } from "./CamundaSyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
@@ -35,6 +36,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <HumanitecSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.TerraformCloud:
       return <TerraformCloudSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Camunda:
+      return <CamundaSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Vercel:
       return <VercelSyncDestinationCol secretSync={secretSync} />;
     default:

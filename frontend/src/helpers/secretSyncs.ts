@@ -28,6 +28,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
     name: "Terraform Cloud",
     image: "Terraform Cloud.png"
   },
+  [SecretSync.Camunda]: {
+    name: "Camunda",
+    image: "Camunda.png"
+  },
   [SecretSync.Vercel]: {
     name: "Vercel",
     image: "Vercel.png"
@@ -44,6 +48,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Databricks]: AppConnection.Databricks,
   [SecretSync.Humanitec]: AppConnection.Humanitec,
   [SecretSync.TerraformCloud]: AppConnection.TerraformCloud,
+  [SecretSync.Camunda]: AppConnection.Camunda,
   [SecretSync.Vercel]: AppConnection.Vercel
 };
 

@@ -8,6 +8,7 @@ export enum SecretSync {
   Databricks = "databricks",
   Humanitec = "humanitec",
   TerraformCloud = "terraform-cloud",
+  Camunda = "camunda",
   Vercel = "vercel"
 }
 
