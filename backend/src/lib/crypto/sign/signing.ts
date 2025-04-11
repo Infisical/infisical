@@ -1,13 +1,13 @@
 import { execFile } from "child_process";
 import crypto from "crypto";
 import fs from "fs/promises";
-import os from "os";
 import path from "path";
 import { promisify } from "util";
 
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import { cleanTemporaryDirectory, createTemporaryDirectory, writeToTemporaryFile } from "./signing-fns";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm, TAsymmetricSignVerifyFns } from "./types";
 
 const execFileAsync = promisify(execFile);
@@ -29,11 +29,6 @@ const COMMAND_TIMEOUT = 15_000;
 const SHA256_DIGEST_LENGTH = 32;
 const SHA384_DIGEST_LENGTH = 48;
 const SHA512_DIGEST_LENGTH = 64;
-
-const makeTempDir = async (name: string) => {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), `${name}-${crypto.randomBytes(16).toString("hex")}-`));
-  return tempDir;
-};
 
 /**
  * Service for cryptographic signing and verification operations using asymmetric keys
@@ -124,14 +119,14 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
   };
 
   const $signRsaDigest = async (digest: Buffer, privateKey: Buffer, hashAlgorithm: SupportedHashAlgorithm) => {
-    const tempDir = await makeTempDir("kms-rsa-sign");
+    const tempDir = await createTemporaryDirectory("kms-rsa-sign");
     const digestPath = path.join(tempDir, "digest.bin");
-    const keyPath = path.join(tempDir, "private_key.pem");
     const sigPath = path.join(tempDir, "signature.bin");
+    const keyPath = path.join(tempDir, "key.pem");
 
     try {
-      await fs.writeFile(digestPath, digest, { mode: 0o600 });
-      await fs.writeFile(keyPath, privateKey, { mode: 0o600 });
+      await writeToTemporaryFile(digestPath, digest);
+      await writeToTemporaryFile(keyPath, privateKey);
 
       const { stderr } = await execFileAsync(
         "openssl",
@@ -170,19 +165,19 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
 
       return signature;
     } finally {
-      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      await cleanTemporaryDirectory(tempDir);
     }
   };
 
   const $signEccDigest = async (digest: Buffer, privateKey: Buffer, hashAlgorithm: SupportedHashAlgorithm) => {
-    const tempDir = await makeTempDir("ecc-sign");
+    const tempDir = await createTemporaryDirectory("ecc-sign");
     const digestPath = path.join(tempDir, "digest.bin");
-    const keyPath = path.join(tempDir, "private_key.pem");
+    const keyPath = path.join(tempDir, "key.pem");
     const sigPath = path.join(tempDir, "signature.bin");
 
     try {
-      await fs.writeFile(digestPath, digest);
-      await fs.writeFile(keyPath, privateKey);
+      await writeToTemporaryFile(digestPath, digest);
+      await writeToTemporaryFile(keyPath, privateKey);
 
       const { stderr } = await execFileAsync(
         "openssl",
@@ -222,7 +217,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
 
       return signature;
     } finally {
-      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      await cleanTemporaryDirectory(tempDir);
     }
   };
 
@@ -232,15 +227,15 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     publicKey: Buffer,
     hashAlgorithm: SupportedHashAlgorithm
   ) => {
-    const tempDir = await makeTempDir("ecc-signature-verification");
-    const pubKeyFile = path.join(tempDir, "public-key.pem");
+    const tempDir = await createTemporaryDirectory("ecc-signature-verification");
+    const publicKeyFile = path.join(tempDir, "public-key.pem");
     const sigFile = path.join(tempDir, "signature.sig");
     const digestFile = path.join(tempDir, "digest.bin");
 
     try {
-      await fs.writeFile(pubKeyFile, publicKey, { mode: 0o600 });
-      await fs.writeFile(sigFile, signature, { mode: 0o600 });
-      await fs.writeFile(digestFile, digest, { mode: 0o600 });
+      await writeToTemporaryFile(publicKeyFile, publicKey);
+      await writeToTemporaryFile(sigFile, signature);
+      await writeToTemporaryFile(digestFile, digest);
 
       await execFileAsync(
         "openssl",
@@ -250,7 +245,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
           "-in",
           digestFile,
           "-inkey",
-          pubKeyFile,
+          publicKeyFile,
           "-pubin", // Important for EC public keys
           "-sigfile",
           sigFile,
@@ -272,7 +267,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       }
       return false;
     } finally {
-      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      await cleanTemporaryDirectory(tempDir);
     }
   };
 
@@ -282,15 +277,15 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     publicKey: Buffer,
     hashAlgorithm: SupportedHashAlgorithm
   ) => {
-    const tempDir = await makeTempDir("kms-signature-verification");
+    const tempDir = await createTemporaryDirectory("kms-signature-verification");
     const publicKeyFile = path.join(tempDir, "public-key.pub");
     const signatureFile = path.join(tempDir, "signature.sig");
     const digestFile = path.join(tempDir, "digest.bin");
 
     try {
-      await fs.writeFile(publicKeyFile, publicKey, { mode: 0o600 });
-      await fs.writeFile(signatureFile, signature, { mode: 0o600 });
-      await fs.writeFile(digestFile, digest, { mode: 0o600 });
+      await writeToTemporaryFile(publicKeyFile, publicKey);
+      await writeToTemporaryFile(signatureFile, signature);
+      await writeToTemporaryFile(digestFile, digest);
 
       await execFileAsync(
         "openssl",
@@ -320,7 +315,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       }
       return false;
     } finally {
-      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      await cleanTemporaryDirectory(tempDir);
     }
   };
 
