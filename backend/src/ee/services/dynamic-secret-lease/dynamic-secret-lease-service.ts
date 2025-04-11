@@ -31,7 +31,7 @@ import {
 
 type TDynamicSecretLeaseServiceFactoryDep = {
   dynamicSecretLeaseDAL: TDynamicSecretLeaseDALFactory;
-  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne">;
+  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "findOneWithMetadata">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: TDynamicSecretLeaseQueueServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -78,10 +78,6 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
-    );
 
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan?.dynamicSecret) {
@@ -96,11 +92,20 @@ export const dynamicSecretLeaseServiceFactory = ({
         message: `Folder with path '${path}' in environment with slug '${environmentSlug}' not found`
       });
 
-    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
+    const dynamicSecretCfg = await dynamicSecretDAL.findOneWithMetadata({ name, folderId: folder.id });
     if (!dynamicSecretCfg)
       throw new NotFoundError({
         message: `Dynamic secret with name '${name}' in folder with path '${path}' not found`
       });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionDynamicSecretActions.Lease,
+      subject(ProjectPermissionSub.DynamicSecrets, {
+        environment: environmentSlug,
+        secretPath: path,
+        metadata: dynamicSecretCfg.metadata
+      })
+    );
 
     const totalLeasesTaken = await dynamicSecretLeaseDAL.countLeasesForDynamicSecret(dynamicSecretCfg.id);
     if (totalLeasesTaken >= appCfg.MAX_LEASE_LIMIT)
@@ -159,10 +164,6 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
-    );
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -187,7 +188,20 @@ export const dynamicSecretLeaseServiceFactory = ({
       throw new NotFoundError({ message: `Dynamic secret lease with ID '${leaseId}' not found` });
     }
 
-    const dynamicSecretCfg = dynamicSecretLease.dynamicSecret;
+    const dynamicSecretCfg = await dynamicSecretDAL.findOneWithMetadata({
+      id: dynamicSecretLease.dynamicSecretId,
+      folderId: folder.id
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionDynamicSecretActions.Lease,
+      subject(ProjectPermissionSub.DynamicSecrets, {
+        environment: environmentSlug,
+        secretPath: path,
+        metadata: dynamicSecretCfg.metadata
+      })
+    );
+
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
     const decryptedStoredInput = JSON.parse(
       secretManagerDecryptor({ cipherTextBlob: Buffer.from(dynamicSecretCfg.encryptedInput) }).toString()
@@ -239,10 +253,6 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
-    );
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -259,7 +269,20 @@ export const dynamicSecretLeaseServiceFactory = ({
     if (!dynamicSecretLease || dynamicSecretLease.dynamicSecret.folderId !== folder.id)
       throw new NotFoundError({ message: `Dynamic secret lease with ID '${leaseId}' not found` });
 
-    const dynamicSecretCfg = dynamicSecretLease.dynamicSecret;
+    const dynamicSecretCfg = await dynamicSecretDAL.findOneWithMetadata({
+      id: dynamicSecretLease.dynamicSecretId,
+      folderId: folder.id
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionDynamicSecretActions.Lease,
+      subject(ProjectPermissionSub.DynamicSecrets, {
+        environment: environmentSlug,
+        secretPath: path,
+        metadata: dynamicSecretCfg.metadata
+      })
+    );
+
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
     const decryptedStoredInput = JSON.parse(
       secretManagerDecryptor({ cipherTextBlob: Buffer.from(dynamicSecretCfg.encryptedInput) }).toString()
@@ -309,10 +332,6 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
-    );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
     if (!folder)
@@ -320,11 +339,20 @@ export const dynamicSecretLeaseServiceFactory = ({
         message: `Folder with path '${path}' in environment with slug '${environmentSlug}' not found`
       });
 
-    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
+    const dynamicSecretCfg = await dynamicSecretDAL.findOneWithMetadata({ name, folderId: folder.id });
     if (!dynamicSecretCfg)
       throw new NotFoundError({
         message: `Dynamic secret with name '${name}' in folder with path '${path}' not found`
       });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionDynamicSecretActions.Lease,
+      subject(ProjectPermissionSub.DynamicSecrets, {
+        environment: environmentSlug,
+        secretPath: path,
+        metadata: dynamicSecretCfg.metadata
+      })
+    );
 
     const dynamicSecretLeases = await dynamicSecretLeaseDAL.find({ dynamicSecretId: dynamicSecretCfg.id });
     return dynamicSecretLeases;
@@ -352,10 +380,6 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
-    );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
     if (!folder) throw new NotFoundError({ message: `Folder with path '${path}' not found` });
@@ -363,6 +387,20 @@ export const dynamicSecretLeaseServiceFactory = ({
     const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);
     if (!dynamicSecretLease)
       throw new NotFoundError({ message: `Dynamic secret lease with ID '${leaseId}' not found` });
+
+    const dynamicSecretCfg = await dynamicSecretDAL.findOneWithMetadata({
+      id: dynamicSecretLease.dynamicSecretId,
+      folderId: folder.id
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionDynamicSecretActions.Lease,
+      subject(ProjectPermissionSub.DynamicSecrets, {
+        environment: environmentSlug,
+        secretPath: path,
+        metadata: dynamicSecretCfg.metadata
+      })
+    );
 
     return dynamicSecretLease;
   };

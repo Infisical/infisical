@@ -207,7 +207,8 @@ export const OverviewPage = () => {
       ProjectPermissionDynamicSecretActions.CreateRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, {
         environment: env.slug,
-        secretPath
+        secretPath,
+        metadata: ["*"]
       })
     )
   );

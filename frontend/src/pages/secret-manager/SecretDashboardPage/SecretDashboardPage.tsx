@@ -138,7 +138,7 @@ const Page = () => {
 
   const canReadDynamicSecret = permission.can(
     ProjectPermissionDynamicSecretActions.ReadRootCredential,
-    subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })
+    subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath, metadata: ["*"] })
   );
 
   const canReadSecretRotations = permission.can(
