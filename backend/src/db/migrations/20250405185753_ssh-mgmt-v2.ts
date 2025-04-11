@@ -29,6 +29,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("sshHostId").notNullable();
       t.foreign("sshHostId").references("id").inTable(TableName.SshHost).onDelete("CASCADE");
       t.string("loginUser").notNullable(); // e.g. ubuntu, root, ec2-user, ...
+      t.unique(["sshHostId", "loginUser"]);
     });
     await createOnUpdateTrigger(knex, TableName.SshHostLoginUser);
   }
@@ -41,6 +42,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("sshHostLoginUserId").references("id").inTable(TableName.SshHostLoginUser).onDelete("CASCADE");
       t.uuid("userId").nullable();
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      t.unique(["sshHostLoginUserId", "userId"]);
     });
     await createOnUpdateTrigger(knex, TableName.SshHostLoginUserMapping);
   }

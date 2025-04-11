@@ -188,20 +188,6 @@ export const sshHostServiceFactory = ({
     });
 
     const newSshHost = await sshHostDAL.transaction(async (tx) => {
-      const existingHost = await sshHostDAL.findOne(
-        {
-          projectId,
-          hostname
-        },
-        tx
-      );
-
-      if (existingHost) {
-        throw new BadRequestError({
-          message: `SSH host with hostname ${hostname} already exists`
-        });
-      }
-
       const host = await sshHostDAL.create(
         {
           projectId,
