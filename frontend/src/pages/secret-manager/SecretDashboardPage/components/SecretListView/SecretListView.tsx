@@ -16,6 +16,7 @@ import { WsTag } from "@app/hooks/api/types";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 
 import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
+import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 import { SecretDetailSidebar } from "./SecretDetailSidebar";
 import { SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
@@ -28,6 +29,14 @@ type Props = {
   tags?: WsTag[];
   isVisible?: boolean;
   isProtectedBranch?: boolean;
+  importedBy?: {
+    environment: { name: string; slug: string };
+    folders: {
+      name: string;
+      secrets?: { secretId: string; referencedSecretKey: string }[];
+      isImported: boolean;
+    }[];
+  }[];
 };
 
 export const SecretListView = ({
@@ -37,7 +46,8 @@ export const SecretListView = ({
   secretPath = "/",
   tags: wsTags = [],
   isVisible,
-  isProtectedBranch = false
+  isProtectedBranch = false,
+  importedBy
 }: Props) => {
   const queryClient = useQueryClient();
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -357,6 +367,24 @@ export const SecretListView = ({
         onChange={(isOpen) => handlePopUpToggle("deleteSecret", isOpen)}
         onDeleteApproved={handleSecretDelete}
         buttonText="Delete Secret"
+        formContent={
+          importedBy &&
+          importedBy.length > 0 && (
+            <CollapsibleSecretImports
+              importedBy={importedBy}
+              secretsToDelete={[(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key || ""]}
+            />
+          )
+        }
+        deletionMessage={
+          <>
+            Type the secret key{" "}
+            <span className="font-bold">
+              &quot;{(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key}&quot;
+            </span>{" "}
+            to perform this action
+          </>
+        }
       />
       <SecretDetailSidebar
         environment={environment}

@@ -142,6 +142,34 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             })
             .array()
             .optional(),
+          importedByEnvs: z
+            .object({
+              environment: z.string(),
+              importedBy: z
+                .object({
+                  environment: z.object({
+                    name: z.string(),
+                    slug: z.string()
+                  }),
+                  folders: z
+                    .object({
+                      name: z.string(),
+                      isImported: z.boolean(),
+                      secrets: z
+                        .object({
+                          secretId: z.string(),
+                          referencedSecretKey: z.string()
+                        })
+                        .array()
+                        .optional()
+                    })
+                    .array()
+                })
+                .array()
+                .optional()
+            })
+            .array()
+            .optional(),
           totalFolderCount: z.number().optional(),
           totalDynamicSecretCount: z.number().optional(),
           totalSecretCount: z.number().optional(),
@@ -471,6 +499,28 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
+      const importedByEnvs = [];
+
+      for await (const environment of environments) {
+        const importedBy = await server.services.secretImport.getFolderIsImportedBy({
+          path: secretPath,
+          environment,
+          projectId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          secrets: secrets?.filter((s) => s.environment === environment)
+        });
+
+        if (importedBy) {
+          importedByEnvs.push({
+            environment,
+            importedBy
+          });
+        }
+      }
+
       return {
         folders,
         dynamicSecrets,
@@ -482,6 +532,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         totalImportCount,
         totalSecretCount,
         totalSecretRotationCount,
+        importedByEnvs,
         totalCount:
           (totalFolderCount ?? 0) +
           (totalDynamicSecretCount ?? 0) +
@@ -575,6 +626,28 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           totalFolderCount: z.number().optional(),
           totalDynamicSecretCount: z.number().optional(),
           totalSecretCount: z.number().optional(),
+          importedBy: z
+            .object({
+              environment: z.object({
+                name: z.string(),
+                slug: z.string()
+              }),
+              folders: z
+                .object({
+                  name: z.string(),
+                  isImported: z.boolean(),
+                  secrets: z
+                    .object({
+                      secretId: z.string(),
+                      referencedSecretKey: z.string()
+                    })
+                    .array()
+                    .optional()
+                })
+                .array()
+            })
+            .array()
+            .optional(),
           totalSecretRotationCount: z.number().optional(),
           totalCount: z.number()
         })
@@ -835,6 +908,17 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
+      const importedBy = await server.services.secretImport.getFolderIsImportedBy({
+        path: secretPath,
+        environment,
+        projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        secrets
+      });
+
       if (secrets?.length || secretRotations?.length) {
         const secretCount =
           (secrets?.length ?? 0) +
@@ -880,6 +964,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         totalDynamicSecretCount,
         totalSecretCount,
         totalSecretRotationCount,
+        importedBy,
         totalCount:
           (totalImportCount ?? 0) +
           (totalFolderCount ?? 0) +
