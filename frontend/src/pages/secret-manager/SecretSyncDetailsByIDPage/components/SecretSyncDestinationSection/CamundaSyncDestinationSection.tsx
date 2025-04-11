@@ -7,10 +7,14 @@ type Props = {
 };
 
 export const CamundaSyncDestinationSection = ({ secretSync }: Props) => {
-  const { data: clusters } = useCamundaConnectionListClusters(secretSync.connectionId);
+  const { data: clusters, isPending } = useCamundaConnectionListClusters(secretSync.connectionId);
   const {
     destinationConfig: { clusterUUID }
   } = secretSync;
+
+  if (isPending) {
+    return <GenericFieldLabel label="Cluster">Loading...</GenericFieldLabel>;
+  }
 
   const clusterName = clusters?.find((cluster) => cluster.uuid === clusterUUID)?.name;
   return <GenericFieldLabel label="Cluster">{clusterName ?? clusterUUID}</GenericFieldLabel>;

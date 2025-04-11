@@ -9,7 +9,7 @@ type Props = {
 };
 
 export const CamundaDestinationSyncCol = ({ secretSync }: Props) => {
-  const { data: clusters } = useCamundaConnectionListClusters(secretSync.connectionId);
+  const { data: clusters, isPending } = useCamundaConnectionListClusters(secretSync.connectionId);
 
   const { primaryText, secondaryText } = getSecretSyncDestinationColValues({
     ...secretSync,
@@ -20,6 +20,10 @@ export const CamundaDestinationSyncCol = ({ secretSync }: Props) => {
       )?.name
     }
   });
+
+  if (isPending) {
+    return <SecretSyncTableCell primaryText="Loading cluster info..." secondaryText="Cluster" />;
+  }
 
   return <SecretSyncTableCell primaryText={primaryText} secondaryText={secondaryText} />;
 };
