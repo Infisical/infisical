@@ -32,7 +32,9 @@ export enum ProjectPermissionCmekActions {
   Edit = "edit",
   Delete = "delete",
   Encrypt = "encrypt",
-  Decrypt = "decrypt"
+  Decrypt = "decrypt",
+  Sign = "sign",
+  Verify = "verify"
 }
 
 export enum ProjectPermissionDynamicSecretActions {
@@ -732,7 +734,9 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCmekActions.Delete,
       ProjectPermissionCmekActions.Read,
       ProjectPermissionCmekActions.Encrypt,
-      ProjectPermissionCmekActions.Decrypt
+      ProjectPermissionCmekActions.Decrypt,
+      ProjectPermissionCmekActions.Sign,
+      ProjectPermissionCmekActions.Verify
     ],
     ProjectPermissionSub.Cmek
   );
@@ -935,7 +939,9 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionCmekActions.Delete,
       ProjectPermissionCmekActions.Read,
       ProjectPermissionCmekActions.Encrypt,
-      ProjectPermissionCmekActions.Decrypt
+      ProjectPermissionCmekActions.Decrypt,
+      ProjectPermissionCmekActions.Sign,
+      ProjectPermissionCmekActions.Verify
     ],
     ProjectPermissionSub.Cmek
   );

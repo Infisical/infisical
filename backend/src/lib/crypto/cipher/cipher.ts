@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-import { SymmetricEncryption, TSymmetricEncryptionFns } from "./types";
+import { SymmetricKeyAlgorithm, TSymmetricEncryptionFns } from "./types";
 
 const getIvLength = () => {
   return 12;
@@ -10,7 +10,9 @@ const getTagLength = () => {
   return 16;
 };
 
-export const symmetricCipherService = (type: SymmetricEncryption): TSymmetricEncryptionFns => {
+export const symmetricCipherService = (
+  type: SymmetricKeyAlgorithm.AES_GCM_128 | SymmetricKeyAlgorithm.AES_GCM_256
+): TSymmetricEncryptionFns => {
   const IV_LENGTH = getIvLength();
   const TAG_LENGTH = getTagLength();
 

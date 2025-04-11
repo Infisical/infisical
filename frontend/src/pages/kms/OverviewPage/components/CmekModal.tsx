@@ -15,13 +15,23 @@ import {
   TextArea
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { EncryptionAlgorithm, TCmek, useCreateCmek, useUpdateCmek } from "@app/hooks/api/cmeks";
+import { keyUsageDefaultOption, kmsKeyUsageOptions } from "@app/helpers/kms";
+import {
+  AllowedEncryptionKeyAlgorithms,
+  AsymmetricKeyAlgorithm,
+  KmsKeyUsage,
+  SymmetricKeyAlgorithm,
+  TCmek,
+  useCreateCmek,
+  useUpdateCmek
+} from "@app/hooks/api/cmeks";
 import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
   name: slugSchema({ min: 1, max: 32, field: "Name" }),
   description: z.string().max(500).optional(),
-  encryptionAlgorithm: z.nativeEnum(EncryptionAlgorithm)
+  encryptionAlgorithm: z.enum(AllowedEncryptionKeyAlgorithms),
+  keyUsage: z.nativeEnum(KmsKeyUsage)
 });
 
 export type FormData = z.infer<typeof formSchema>;
@@ -47,24 +57,33 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
     control,
     handleSubmit,
     register,
+    setValue,
+    watch,
     formState: { isSubmitting, errors }
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: cmek?.name,
       description: cmek?.description,
-      encryptionAlgorithm: EncryptionAlgorithm.AES_GCM_256
+      encryptionAlgorithm: SymmetricKeyAlgorithm.AES_GCM_256,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     }
   });
 
-  const handleCreateCmek = async ({ encryptionAlgorithm, name, description }: FormData) => {
+  const handleCreateCmek = async ({
+    encryptionAlgorithm,
+    name,
+    description,
+    keyUsage
+  }: FormData) => {
     const mutation = isUpdate
       ? updateCmek.mutateAsync({ keyId: cmek.id, projectId, name, description })
       : createCmek.mutateAsync({
           projectId,
-          encryptionAlgorithm,
           name,
-          description
+          description,
+          keyUsage,
+          encryptionAlgorithm: encryptionAlgorithm as AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm
         });
 
     try {
@@ -83,6 +102,8 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
     }
   };
 
+  const selectedKeyUsage = watch("keyUsage");
+
   return (
     <form onSubmit={handleSubmit(handleCreateCmek)}>
       <FormControl
@@ -93,23 +114,97 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
       >
         <Input autoFocus placeholder="my-secret-key" {...register("name")} />
       </FormControl>
-      {!isUpdate && (
-        <Controller
-          control={control}
-          name="encryptionAlgorithm"
-          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-            <FormControl label="Algorithm" errorText={error?.message} isError={Boolean(error)}>
-              <Select defaultValue={field.value} onValueChange={onChange} className="w-full">
-                {Object.entries(EncryptionAlgorithm)?.map(([key, value]) => (
-                  <SelectItem value={value} key={`source-environment-${key}`}>
-                    {key.replaceAll("_", "-")}
-                  </SelectItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
-        />
-      )}
+      <div className="flex w-full items-center gap-2">
+        {!isUpdate && (
+          <>
+            <Controller
+              control={control}
+              name="keyUsage"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  className="w-full"
+                  tooltipText={
+                    <div className="space-y-4">
+                      {Object.entries(KmsKeyUsage).map(([key, value]) => (
+                        <div key={`key-usage-${key}`}>
+                          <p className="font-bold">{kmsKeyUsageOptions[value].label}</p>
+                          <p>{kmsKeyUsageOptions[value].tooltip}</p>
+                        </div>
+                      ))}
+                    </div>
+                  }
+                  label="Key Usage"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                >
+                  <Select
+                    defaultValue={field.value}
+                    onValueChange={(e) => {
+                      if (keyUsageDefaultOption[e as KmsKeyUsage]) {
+                        setValue("encryptionAlgorithm", keyUsageDefaultOption[e as KmsKeyUsage], {
+                          shouldDirty: true,
+                          shouldValidate: true
+                        });
+                      }
+
+                      onChange(e);
+                    }}
+                    className="w-full"
+                  >
+                    {Object.entries(KmsKeyUsage)?.map(([key, value]) => (
+                      <SelectItem value={value} key={`key-usage-${key}`}>
+                        {kmsKeyUsageOptions[value].label}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="encryptionAlgorithm"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  className="w-full"
+                  label="Algorithm"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                >
+                  <Select
+                    defaultValue={field.value}
+                    value={field.value}
+                    onValueChange={onChange}
+                    className="w-full"
+                  >
+                    {Object.entries(AllowedEncryptionKeyAlgorithms)
+                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                      ?.filter(([_, value]) => {
+                        if (selectedKeyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
+                          return Object.values(SymmetricKeyAlgorithm).includes(
+                            value as unknown as SymmetricKeyAlgorithm
+                          );
+                        }
+                        if (selectedKeyUsage === KmsKeyUsage.SIGN_VERIFY) {
+                          return Object.values(AsymmetricKeyAlgorithm).includes(
+                            value as unknown as AsymmetricKeyAlgorithm
+                          );
+                        }
+
+                        return false;
+                      })
+                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                      .map(([_, value]) => (
+                        <SelectItem value={value} key={`encryption-algorithm-${value}`}>
+                          <span className="uppercase">{value.replaceAll("-", " ")}</span>
+                        </SelectItem>
+                      ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+          </>
+        )}
+      </div>
       <FormControl
         label="Description (optional)"
         errorText={errors.description?.message}

@@ -7,7 +7,7 @@ import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/er
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
+import { KmsDataKey, KmsKeyUsage } from "@app/services/kms/kms-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -115,6 +115,7 @@ export const externalKmsServiceFactory = ({
         {
           isReserved: false,
           description,
+          keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
           name: kmsName,
           orgId: actorOrgId
         },

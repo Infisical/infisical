@@ -92,7 +92,7 @@ export const GcpKmsProviderFactory = async ({ inputs }: GcpKmsProviderArgs): Pro
       plaintext: data
     });
     if (!encryptedText[0].ciphertext) throw new Error("encryption failed");
-    return { encryptedBlob: Buffer.from(encryptedText[0].ciphertext) };
+    return { encryptedBlob: Buffer.from(encryptedText[0].ciphertext as Uint8Array) };
   };
 
   const decrypt = async (encryptedBlob: Buffer) => {
@@ -101,7 +101,7 @@ export const GcpKmsProviderFactory = async ({ inputs }: GcpKmsProviderArgs): Pro
       ciphertext: encryptedBlob
     });
     if (!decryptedText[0].plaintext) throw new Error("decryption failed");
-    return { data: Buffer.from(decryptedText[0].plaintext) };
+    return { data: Buffer.from(decryptedText[0].plaintext as Uint8Array) };
   };
 
   return {

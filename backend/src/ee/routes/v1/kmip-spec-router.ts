@@ -2,7 +2,7 @@ import z from "zod";
 
 import { KmsKeysSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { SymmetricEncryption } from "@app/lib/crypto/cipher";
+import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -74,7 +74,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "KMIP endpoint for creating managed objects",
       body: z.object({
-        algorithm: z.nativeEnum(SymmetricEncryption)
+        algorithm: z.nativeEnum(SymmetricKeyAlgorithm)
       }),
       response: {
         200: KmsKeysSchema
@@ -433,7 +433,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         key: z.string(),
         name: z.string(),
-        algorithm: z.nativeEnum(SymmetricEncryption)
+        algorithm: z.nativeEnum(SymmetricKeyAlgorithm)
       }),
       response: {
         200: z.object({
