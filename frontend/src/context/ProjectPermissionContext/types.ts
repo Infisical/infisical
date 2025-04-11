@@ -185,7 +185,7 @@ export type SecretFolderSubjectFields = {
 export type DynamicSecretSubjectFields = {
   environment: string;
   secretPath: string;
-  metadata: (string | { key: string; value: string })[];
+  metadata?: (string | { key: string; value: string })[];
 };
 
 export type SecretImportSubjectFields = {
