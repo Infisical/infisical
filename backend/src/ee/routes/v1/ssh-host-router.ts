@@ -182,7 +182,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
           .optional()
           .describe(SSH_HOSTS.UPDATE.hostCertTtl),
-        loginMappings: z.array(loginMappingSchema).optional().describe(SSH_HOSTS.CREATE.loginMappings)
+        loginMappings: z.array(loginMappingSchema).optional().describe(SSH_HOSTS.UPDATE.loginMappings)
       }),
       response: {
         200: sanitizedSshHost.extend({
