@@ -2,13 +2,13 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { SSH_CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSshCertRouter = async (server: FastifyZodProvider) => {
@@ -108,8 +108,8 @@ export const registerSshCertRouter = async (server: FastifyZodProvider) => {
           .min(1)
           .describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.certificateTemplateId),
         keyAlgorithm: z
-          .nativeEnum(CertKeyAlgorithm)
-          .default(CertKeyAlgorithm.RSA_2048)
+          .nativeEnum(SshCertKeyAlgorithm)
+          .default(SshCertKeyAlgorithm.ED25519)
           .describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.keyAlgorithm),
         certType: z
           .nativeEnum(SshCertType)
@@ -133,7 +133,7 @@ export const registerSshCertRouter = async (server: FastifyZodProvider) => {
           privateKey: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.privateKey),
           publicKey: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.publicKey),
           keyAlgorithm: z
-            .nativeEnum(CertKeyAlgorithm)
+            .nativeEnum(SshCertKeyAlgorithm)
             .describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.keyAlgorithm)
         })
       }

@@ -232,6 +232,9 @@ import {
   TProjectSplitBackfillIds,
   TProjectSplitBackfillIdsInsert,
   TProjectSplitBackfillIdsUpdate,
+  TProjectSshConfigs,
+  TProjectSshConfigsInsert,
+  TProjectSshConfigsUpdate,
   TProjectsUpdate,
   TProjectTemplates,
   TProjectTemplatesInsert,
@@ -380,6 +383,15 @@ import {
   TSshCertificateTemplates,
   TSshCertificateTemplatesInsert,
   TSshCertificateTemplatesUpdate,
+  TSshHostLoginUserMappings,
+  TSshHostLoginUserMappingsInsert,
+  TSshHostLoginUserMappingsUpdate,
+  TSshHostLoginUsers,
+  TSshHostLoginUsersInsert,
+  TSshHostLoginUsersUpdate,
+  TSshHosts,
+  TSshHostsInsert,
+  TSshHostsUpdate,
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
@@ -425,6 +437,7 @@ declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: KnexOriginal.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
     [TableName.Groups]: KnexOriginal.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
+    [TableName.SshHost]: KnexOriginal.CompositeTableType<TSshHosts, TSshHostsInsert, TSshHostsUpdate>;
     [TableName.SshCertificateAuthority]: KnexOriginal.CompositeTableType<
       TSshCertificateAuthorities,
       TSshCertificateAuthoritiesInsert,
@@ -449,6 +462,16 @@ declare module "knex/types/tables" {
       TSshCertificateBodies,
       TSshCertificateBodiesInsert,
       TSshCertificateBodiesUpdate
+    >;
+    [TableName.SshHostLoginUser]: KnexOriginal.CompositeTableType<
+      TSshHostLoginUsers,
+      TSshHostLoginUsersInsert,
+      TSshHostLoginUsersUpdate
+    >;
+    [TableName.SshHostLoginUserMapping]: KnexOriginal.CompositeTableType<
+      TSshHostLoginUserMappings,
+      TSshHostLoginUserMappingsInsert,
+      TSshHostLoginUserMappingsUpdate
     >;
     [TableName.CertificateAuthority]: KnexOriginal.CompositeTableType<
       TCertificateAuthorities,
@@ -554,6 +577,11 @@ declare module "knex/types/tables" {
     [TableName.SuperAdmin]: KnexOriginal.CompositeTableType<TSuperAdmin, TSuperAdminInsert, TSuperAdminUpdate>;
     [TableName.ApiKey]: KnexOriginal.CompositeTableType<TApiKeys, TApiKeysInsert, TApiKeysUpdate>;
     [TableName.Project]: KnexOriginal.CompositeTableType<TProjects, TProjectsInsert, TProjectsUpdate>;
+    [TableName.ProjectSshConfig]: KnexOriginal.CompositeTableType<
+      TProjectSshConfigs,
+      TProjectSshConfigsInsert,
+      TProjectSshConfigsUpdate
+    >;
     [TableName.ProjectMembership]: KnexOriginal.CompositeTableType<
       TProjectMemberships,
       TProjectMembershipsInsert,

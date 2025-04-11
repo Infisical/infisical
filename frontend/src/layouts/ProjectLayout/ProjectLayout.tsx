@@ -134,18 +134,48 @@ export const ProjectLayout = () => {
                         </Link>
                       )}
                       {isSSH && (
-                        <Link
-                          to={`/${ProjectType.SSH}/$projectId/overview` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="lock-closed">
-                              Overview
-                            </MenuItem>
-                          )}
-                        </Link>
+                        <>
+                          <Link
+                            to={`/${ProjectType.SSH}/$projectId/overview` as const}
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="server">
+                                Hosts
+                              </MenuItem>
+                            )}
+                          </Link>
+                          {/* <Link
+                            to={`/${ProjectType.SSH}/$projectId/certificates` as const}
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="certificate" iconMode="reverse">
+                                Certificates
+                              </MenuItem>
+                            )}
+                          </Link> */}
+                          {/* <Link
+                            to={`/${ProjectType.SSH}/$projectId/cas` as const}
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem
+                                isSelected={isActive}
+                                icon="certificate-authority"
+                                iconMode="reverse"
+                              >
+                                Certificate Authorities
+                              </MenuItem>
+                            )}
+                          </Link> */}
+                        </>
                       )}
                       {isSecretManager && (
                         <Link

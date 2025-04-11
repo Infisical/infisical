@@ -20,7 +20,7 @@ import { useDeleteSshCa, useGetSshCaById } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { SshCaModal } from "../OverviewPage/components/SshCaModal";
+import { SshCaModal } from "../SshCasPage/components/SshCaModal";
 import { SshCaDetailsSection, SshCertificateTemplatesSection } from "./components";
 
 const Page = () => {

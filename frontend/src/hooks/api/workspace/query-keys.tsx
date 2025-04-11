@@ -58,6 +58,7 @@ export const workspaceKeys = {
   getWorkspaceSshCas: (projectId: string) => [{ projectId }, "workspace-ssh-cas"] as const,
   allWorkspaceSshCertificates: (projectId: string) =>
     [{ projectId }, "workspace-ssh-certificates"] as const,
+  getWorkspaceSshHosts: (projectId: string) => [{ projectId }, "workspace-ssh-hosts"] as const,
   specificWorkspaceSshCertificates: ({
     offset,
     limit,

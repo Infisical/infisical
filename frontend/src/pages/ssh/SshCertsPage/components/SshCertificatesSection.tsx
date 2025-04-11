@@ -10,7 +10,7 @@ import { SshCertificateModal } from "../../SshCaByIDPage/components/SshCertifica
 import { SshCertificatesTable } from "./SshCertificatesTable";
 
 export const SshCertificatesSection = () => {
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["sshCertificate"] as const);
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["sshCertificate"] as const);
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">

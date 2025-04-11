@@ -19,6 +19,7 @@ import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
 import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
@@ -33,6 +34,7 @@ import {
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
 import { SecretPermissionConditions } from "./SecretPermissionConditions";
+import { SshHostPermissionConditions } from "./SshHostPermissionConditions";
 
 type Props = {
   roleSlug: string;
@@ -49,6 +51,10 @@ export const renderConditionalComponents = (
   if (isConditionalSubjects(subject)) {
     if (subject === ProjectPermissionSub.Identity) {
       return <IdentityManagementPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.SshHosts) {
+      return <SshHostPermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
@@ -134,7 +140,9 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
 
   return (
     <div className="w-full">
-      <AccessTree permissions={formattedPermissions} />
+      {currentWorkspace.type === ProjectType.SecretManager && (
+        <AccessTree permissions={formattedPermissions} />
+      )}
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"

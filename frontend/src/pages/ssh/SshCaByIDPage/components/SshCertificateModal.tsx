@@ -22,9 +22,11 @@ import {
   useListWorkspaceSshCertificateTemplates,
   useSignSshKey
 } from "@app/hooks/api";
-import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
-import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
-import { SshCertType } from "@app/hooks/api/sshCa/constants";
+import {
+  SshCertKeyAlgorithm,
+  sshCertKeyAlgorithms,
+  SshCertType
+} from "@app/hooks/api/sshCa/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { SshCertificateContent } from "./SshCertificateContent";
@@ -33,10 +35,11 @@ const schema = z.object({
   templateId: z.string(),
   publicKey: z.string().optional(),
   keyAlgorithm: z.enum([
-    CertKeyAlgorithm.RSA_2048,
-    CertKeyAlgorithm.RSA_4096,
-    CertKeyAlgorithm.ECDSA_P256,
-    CertKeyAlgorithm.ECDSA_P384
+    SshCertKeyAlgorithm.RSA_2048,
+    SshCertKeyAlgorithm.RSA_4096,
+    SshCertKeyAlgorithm.ECDSA_P256,
+    SshCertKeyAlgorithm.ECDSA_P384,
+    SshCertKeyAlgorithm.ED25519
   ]),
   certType: z.nativeEnum(SshCertType),
   principals: z.string(),
@@ -95,7 +98,7 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+      keyAlgorithm: SshCertKeyAlgorithm.ED25519,
       certType: SshCertType.USER
     }
   });
@@ -282,7 +285,7 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
               <Controller
                 control={control}
                 name="keyAlgorithm"
-                defaultValue={CertKeyAlgorithm.RSA_2048}
+                defaultValue={SshCertKeyAlgorithm.ED25519}
                 render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                   <FormControl
                     label="Key Algorithm"
@@ -295,7 +298,7 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                       onValueChange={(e) => onChange(e)}
                       className="w-full"
                     >
-                      {certKeyAlgorithms.map(({ label, value }) => (
+                      {sshCertKeyAlgorithms.map(({ label, value }) => (
                         <SelectItem value={String(value || "")} key={label}>
                           {label}
                         </SelectItem>

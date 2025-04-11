@@ -19,6 +19,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretSyncActions,
+  ProjectPermissionSshHostActions,
   TPermissionCondition,
   TPermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
@@ -106,6 +107,14 @@ const GroupPolicyActionSchema = z.object({
   [ProjectPermissionGroupActions.Edit]: z.boolean().optional(),
   [ProjectPermissionGroupActions.Delete]: z.boolean().optional(),
   [ProjectPermissionGroupActions.GrantPrivileges]: z.boolean().optional()
+});
+
+const SshHostPolicyActionSchema = z.object({
+  [ProjectPermissionSshHostActions.Read]: z.boolean().optional(),
+  [ProjectPermissionSshHostActions.Create]: z.boolean().optional(),
+  [ProjectPermissionSshHostActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionSshHostActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionSshHostActions.IssueHostCert]: z.boolean().optional()
 });
 
 const SecretRollbackPolicyActionSchema = z.object({
@@ -215,6 +224,12 @@ export const projectRoleFormSchema = z.object({
       ),
       [ProjectPermissionSub.SshCertificates]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SshCertificateTemplates]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SshHosts]: SshHostPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.SecretApproval]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretRollback]: SecretRollbackPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Project]: WorkspacePolicyActionSchema.array().default([]),
@@ -241,6 +256,7 @@ type TConditionalFields =
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.DynamicSecrets
+  | ProjectPermissionSub.SshHosts
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.Identity;
 
@@ -251,8 +267,9 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.DynamicSecrets ||
   subject === ProjectPermissionSub.SecretImports ||
   subject === ProjectPermissionSub.SecretFolders ||
-  subject === ProjectPermissionSub.SecretRotation ||
-  subject === ProjectPermissionSub.Identity;
+  subject === ProjectPermissionSub.Identity ||
+  subject === ProjectPermissionSub.SshHosts ||
+  subject === ProjectPermissionSub.SecretRotation;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -308,7 +325,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.SecretApproval,
         ProjectPermissionSub.Tags,
         ProjectPermissionSub.SecretRotation,
-        ProjectPermissionSub.Kms
+        ProjectPermissionSub.Kms,
+        ProjectPermissionSub.SshCertificateTemplates,
+        ProjectPermissionSub.SshCertificateAuthorities,
+        ProjectPermissionSub.SshCertificates
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -577,7 +597,32 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canRemoveSecrets)
         formVal[subject]![0][ProjectPermissionSecretSyncActions.RemoveSecrets] = true;
     }
+
+    if (subject === ProjectPermissionSub.SshHosts) {
+      if (!formVal[subject]) formVal[subject] = [];
+
+      formVal[subject]!.push({
+        [ProjectPermissionSshHostActions.Edit]: action.includes(
+          ProjectPermissionSshHostActions.Edit
+        ),
+        [ProjectPermissionSshHostActions.Delete]: action.includes(
+          ProjectPermissionSshHostActions.Delete
+        ),
+        [ProjectPermissionSshHostActions.Create]: action.includes(
+          ProjectPermissionSshHostActions.Create
+        ),
+        [ProjectPermissionSshHostActions.Read]: action.includes(
+          ProjectPermissionSshHostActions.Read
+        ),
+        [ProjectPermissionSshHostActions.IssueHostCert]: action.includes(
+          ProjectPermissionSshHostActions.IssueHostCert
+        ),
+        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+        inverted
+      });
+    }
   });
+
   return formVal;
 };
 
@@ -899,6 +944,16 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Create", value: "create" },
       { label: "Modify", value: "edit" },
       { label: "Remove", value: "delete" }
+    ]
+  },
+  [ProjectPermissionSub.SshHosts]: {
+    title: "SSH Hosts",
+    actions: [
+      { label: "Read", value: ProjectPermissionSshHostActions.Read },
+      { label: "Create", value: ProjectPermissionSshHostActions.Create },
+      { label: "Modify", value: ProjectPermissionSshHostActions.Edit },
+      { label: "Remove", value: ProjectPermissionSshHostActions.Delete },
+      { label: "Issue Host Certificate", value: ProjectPermissionSshHostActions.IssueHostCert }
     ]
   },
   [ProjectPermissionSub.PkiCollections]: {

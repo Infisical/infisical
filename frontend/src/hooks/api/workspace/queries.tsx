@@ -17,6 +17,7 @@ import { TPkiCollection } from "../pkiCollections/types";
 import { EncryptedSecret } from "../secrets/types";
 import { TSshCertificate, TSshCertificateAuthority } from "../sshCa/types";
 import { TSshCertificateTemplate } from "../sshCertificateTemplates/types";
+import { TSshHost } from "../sshHost/types";
 import { userKeys } from "../users/query-keys";
 import { TWorkspaceUser } from "../users/types";
 import { ProjectSlackConfig } from "../workflowIntegrations/types";
@@ -822,6 +823,19 @@ export const useListWorkspaceSshCas = (projectId: string) => {
         `/api/v2/workspace/${projectId}/ssh-cas`
       );
       return cas;
+    },
+    enabled: Boolean(projectId)
+  });
+};
+
+export const useListWorkspaceSshHosts = (projectId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceSshHosts(projectId),
+    queryFn: async () => {
+      const {
+        data: { hosts }
+      } = await apiRequest.get<{ hosts: TSshHost[] }>(`/api/v2/workspace/${projectId}/ssh-hosts`);
+      return hosts;
     },
     enabled: Boolean(projectId)
   });
