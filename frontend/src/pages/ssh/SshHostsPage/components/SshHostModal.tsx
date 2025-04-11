@@ -42,7 +42,7 @@ const schema = z
         (val) => ms(val) > 0,
         "TTL must be a valid time string such as 2 days, 1d, 2h 1y, ..."
       )
-      .default("8h, 1d, 30m"),
+      .default("8h"),
     loginMappings: z
       .object({
         loginUser: z.string().trim().min(1),

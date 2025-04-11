@@ -361,7 +361,6 @@ export const getKeyAlgorithmFromFingerprintOutput = (output: string): SshCertKey
   }
 
   if (keyTypeRaw === "ED25519") {
-    // TODO: test
     return SshCertKeyAlgorithm.ED25519;
   }
 
