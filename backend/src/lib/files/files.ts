@@ -6,7 +6,7 @@ import path from "path";
 import { logger } from "@app/lib/logger";
 
 const baseDir = path.join(os.tmpdir(), "infisical");
-const randomPath = () => `${crypto.randomBytes(64).toString("hex")}`;
+const randomPath = () => `${crypto.randomBytes(32).toString("hex")}`;
 
 export const createTemporaryDirectory = async (name: string) => {
   const tempDirPath = path.join(baseDir, `${name}-${randomPath()}`);
