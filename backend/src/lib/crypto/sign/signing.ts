@@ -5,9 +5,9 @@ import path from "path";
 import { promisify } from "util";
 
 import { BadRequestError } from "@app/lib/errors";
+import { cleanTemporaryDirectory, createTemporaryDirectory, writeToTemporaryFile } from "@app/lib/files";
 import { logger } from "@app/lib/logger";
 
-import { cleanTemporaryDirectory, createTemporaryDirectory, writeToTemporaryFile } from "./signing-fns";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm, TAsymmetricSignVerifyFns } from "./types";
 
 const execFileAsync = promisify(execFile);
