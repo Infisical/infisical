@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
 import { DynamicSecretProviderSchema } from "./providers/models";
@@ -20,6 +21,7 @@ export type TCreateDynamicSecretDTO = {
   environmentSlug: string;
   name: string;
   projectSlug: string;
+  metadata?: ResourceMetadataDTO;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateDynamicSecretDTO = {
@@ -31,6 +33,7 @@ export type TUpdateDynamicSecretDTO = {
   environmentSlug: string;
   inputs?: TProvider["inputs"];
   projectSlug: string;
+  metadata?: ResourceMetadataDTO;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteDynamicSecretDTO = {

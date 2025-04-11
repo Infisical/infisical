@@ -23,6 +23,8 @@ import { useWorkspace } from "@app/context";
 import { gatewaysQueryKeys, useUpdateDynamicSecret } from "@app/hooks/api";
 import { SqlProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
+import { MetadataForm } from "../MetadataForm";
+
 const passwordRequirementsSchema = z
   .object({
     length: z.number().min(1).max(250),
@@ -85,6 +87,13 @@ const formSchema = z.object({
   newName: z
     .string()
     .refine((val) => val.toLowerCase() === val, "Must be lowercase")
+    .optional(),
+  metadata: z
+    .object({
+      key: z.string().trim().min(1),
+      value: z.string().trim().default("")
+    })
+    .array()
     .optional()
 });
 type TForm = z.infer<typeof formSchema>;
@@ -126,6 +135,7 @@ export const EditDynamicSecretSqlProviderForm = ({
       defaultTTL: dynamicSecret.defaultTTL,
       maxTTL: dynamicSecret.maxTTL,
       newName: dynamicSecret.name,
+      metadata: dynamicSecret.metadata,
       inputs: {
         ...(dynamicSecret.inputs as TForm["inputs"]),
         passwordRequirements:
@@ -147,7 +157,13 @@ export const EditDynamicSecretSqlProviderForm = ({
   const isGatewayInActive =
     projectGateways?.findIndex((el) => el.projectGatewayId === selectedProjectGatewayId) === -1;
 
-  const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
+  const handleUpdateDynamicSecret = async ({
+    inputs,
+    maxTTL,
+    defaultTTL,
+    newName,
+    metadata
+  }: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isPending) return;
     try {
@@ -163,7 +179,8 @@ export const EditDynamicSecretSqlProviderForm = ({
             ...inputs,
             projectGatewayId: isGatewayInActive ? null : inputs.projectGatewayId
           },
-          newName: newName === dynamicSecret.name ? undefined : newName
+          newName: newName === dynamicSecret.name ? undefined : newName,
+          metadata
         }
       });
       onClose();
@@ -229,46 +246,50 @@ export const EditDynamicSecretSqlProviderForm = ({
             />
           </div>
         </div>
-        <div>
-          <Controller
-            control={control}
-            name="inputs.projectGatewayId"
-            defaultValue=""
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                isError={Boolean(error?.message) || isGatewayInActive}
-                errorText={
-                  isGatewayInActive && selectedProjectGatewayId
-                    ? `Project Gateway ${selectedProjectGatewayId} is removed`
-                    : error?.message
-                }
-                label="Gateway"
-                helperText=""
-              >
-                <Select
-                  value={value || undefined}
-                  onValueChange={onChange}
-                  className="w-full border border-mineshaft-500"
-                  dropdownContainerClassName="max-w-none"
-                  isLoading={isProjectGatewaysLoading}
-                  placeholder="Internet Gateway"
-                  position="popper"
-                >
-                  <SelectItem value={null as unknown as string} onClick={() => onChange(undefined)}>
-                    Internet Gateway
-                  </SelectItem>
-                  {projectGateways?.map((el) => (
-                    <SelectItem value={el.projectGatewayId} key={el.id}>
-                      {el.name}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
-        </div>
+        <MetadataForm control={control} />
         <div>
           <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
+          <div>
+            <Controller
+              control={control}
+              name="inputs.projectGatewayId"
+              defaultValue=""
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  isError={Boolean(error?.message) || isGatewayInActive}
+                  errorText={
+                    isGatewayInActive && selectedProjectGatewayId
+                      ? `Project Gateway ${selectedProjectGatewayId} is removed`
+                      : error?.message
+                  }
+                  label="Gateway"
+                  helperText=""
+                >
+                  <Select
+                    value={value || undefined}
+                    onValueChange={onChange}
+                    className="w-full border border-mineshaft-500"
+                    dropdownContainerClassName="max-w-none"
+                    isLoading={isProjectGatewaysLoading}
+                    placeholder="Internet Gateway"
+                    position="popper"
+                  >
+                    <SelectItem
+                      value={null as unknown as string}
+                      onClick={() => onChange(undefined)}
+                    >
+                      Internet Gateway
+                    </SelectItem>
+                    {projectGateways?.map((el) => (
+                      <SelectItem value={el.projectGatewayId} key={el.id}>
+                        {el.name}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+          </div>
           <div className="flex flex-col">
             <Controller
               control={control}

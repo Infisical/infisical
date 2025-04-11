@@ -11,6 +11,7 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { UnpackedPermissionSchema } from "./sanitizedSchema/permission";
 
@@ -232,7 +233,11 @@ export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
   inputIV: true,
   inputTag: true,
   algorithm: true
-});
+}).merge(
+  z.object({
+    metadata: ResourceMetadataSchema.optional()
+  })
+);
 
 export const SanitizedAuditLogStreamSchema = z.object({
   id: z.string(),

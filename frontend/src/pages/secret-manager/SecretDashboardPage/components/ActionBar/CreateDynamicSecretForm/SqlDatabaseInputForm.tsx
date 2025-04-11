@@ -25,6 +25,8 @@ import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 
+import { MetadataForm } from "../../DynamicSecretListView/MetadataForm";
+
 const passwordRequirementsSchema = z
   .object({
     length: z.number().min(1).max(250),
@@ -82,8 +84,16 @@ const formSchema = z.object({
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
   name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
-  environment: z.object({ name: z.string(), slug: z.string() })
+  environment: z.object({ name: z.string(), slug: z.string() }),
+  metadata: z
+    .object({
+      key: z.string().trim().min(1),
+      value: z.string().trim().default("")
+    })
+    .array()
+    .optional()
 });
+
 type TForm = z.infer<typeof formSchema>;
 
 type Props = {
@@ -192,7 +202,8 @@ export const SqlDatabaseInputForm = ({
     maxTTL,
     provider,
     defaultTTL,
-    environment
+    environment,
+    metadata
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
@@ -205,7 +216,8 @@ export const SqlDatabaseInputForm = ({
         path: secretPath,
         defaultTTL,
         projectSlug,
-        environmentSlug: environment.slug
+        environmentSlug: environment.slug,
+        metadata
       });
       onCompleted();
     } catch {
@@ -283,45 +295,46 @@ export const SqlDatabaseInputForm = ({
               />
             </div>
           </div>
-          <div>
-            <Controller
-              control={control}
-              name="provider.projectGatewayId"
-              defaultValue=""
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error?.message)}
-                  errorText={error?.message}
-                  label="Gateway"
-                >
-                  <Select
-                    value={value}
-                    onValueChange={onChange}
-                    className="w-full border border-mineshaft-500"
-                    dropdownContainerClassName="max-w-none"
-                    isLoading={isProjectGatewaysLoading}
-                    placeholder="Internet gateway"
-                    position="popper"
-                  >
-                    <SelectItem
-                      value={null as unknown as string}
-                      onClick={() => onChange(undefined)}
-                    >
-                      Internet Gateway
-                    </SelectItem>
-                    {projectGateways?.map((el) => (
-                      <SelectItem value={el.projectGatewayId} key={el.projectGatewayId}>
-                        {el.name}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-            />
-          </div>
+          <MetadataForm control={control} />
           <div>
             <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
+            </div>
+            <div>
+              <Controller
+                control={control}
+                name="provider.projectGatewayId"
+                defaultValue=""
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                    label="Gateway"
+                  >
+                    <Select
+                      value={value}
+                      onValueChange={onChange}
+                      className="w-full border border-mineshaft-500"
+                      dropdownContainerClassName="max-w-none"
+                      isLoading={isProjectGatewaysLoading}
+                      placeholder="Internet gateway"
+                      position="popper"
+                    >
+                      <SelectItem
+                        value={null as unknown as string}
+                        onClick={() => onChange(undefined)}
+                      >
+                        Internet Gateway
+                      </SelectItem>
+                      {projectGateways?.map((el) => (
+                        <SelectItem value={el.projectGatewayId} key={el.projectGatewayId}>
+                          {el.name}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
             </div>
             <div className="flex flex-col">
               <div className="pb-0.5 pl-1 text-sm text-mineshaft-400">Service</div>

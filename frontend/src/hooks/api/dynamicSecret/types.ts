@@ -13,6 +13,7 @@ export type TDynamicSecret = {
   status?: DynamicSecretStatus;
   statusDetails?: string;
   maxTTL: string;
+  metadata?: { key: string; value: string }[];
 };
 
 export enum DynamicSecretProviders {
@@ -261,6 +262,7 @@ export type TDynamicSecretProvider =
             digits?: number;
           };
     };
+
 export type TCreateDynamicSecretDTO = {
   projectSlug: string;
   provider: TDynamicSecretProvider;
@@ -269,6 +271,7 @@ export type TCreateDynamicSecretDTO = {
   path: string;
   environmentSlug: string;
   name: string;
+  metadata?: { key: string; value: string }[];
 };
 
 export type TUpdateDynamicSecretDTO = {
@@ -278,6 +281,7 @@ export type TUpdateDynamicSecretDTO = {
   environmentSlug: string;
   data: {
     newName?: string;
+    metadata?: { key: string; value: string }[];
     defaultTTL?: string;
     maxTTL?: string | null;
     inputs?: unknown;

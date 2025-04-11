@@ -21,6 +21,7 @@ import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
+import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
 import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
@@ -47,6 +48,9 @@ export const renderConditionalComponents = (
 ) => {
   if (subject === ProjectPermissionSub.Secrets)
     return <SecretPermissionConditions isDisabled={isDisabled} />;
+
+  if (subject === ProjectPermissionSub.DynamicSecrets)
+    return <DynamicSecretPermissionConditions isDisabled={isDisabled} />;
 
   if (isConditionalSubjects(subject)) {
     if (subject === ProjectPermissionSub.Identity) {

@@ -1,13 +1,9 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { ActionProjectType, SecretFoldersSchema, SecretImportsSchema } from "@app/db/schemas";
+import { SecretFoldersSchema, SecretImportsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import {
-  ProjectPermissionDynamicSecretActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
 import { DASHBOARD } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
@@ -289,24 +285,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           totalCount: totalFolderCount ?? 0
         };
 
-      const { permission } = await server.services.permission.getProjectPermission({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        projectId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        actionProjectType: ActionProjectType.SecretManager
-      });
-
-      const allowedDynamicSecretEnvironments = // filter envs user has access to
-        environments.filter((environment) =>
-          permission.can(
-            ProjectPermissionDynamicSecretActions.Lease,
-            subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })
-          )
-        );
-
-      if (includeDynamicSecrets && allowedDynamicSecretEnvironments.length) {
+      if (includeDynamicSecrets) {
         // this is the unique count, ie duplicate secrets across envs only count as 1
         totalDynamicSecretCount = await server.services.dynamicSecret.getCountMultiEnv({
           actor: req.permission.type,
@@ -315,7 +294,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           actorOrgId: req.permission.orgId,
           projectId,
           search,
-          environmentSlugs: allowedDynamicSecretEnvironments,
+          environmentSlugs: environments,
           path: secretPath,
           isInternal: true
         });
@@ -330,7 +309,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             search,
             orderBy,
             orderDirection,
-            environmentSlugs: allowedDynamicSecretEnvironments,
+            environmentSlugs: environments,
             path: secretPath,
             limit: remainingLimit,
             offset: adjustedOffset,

@@ -11,6 +11,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 export const registerDynamicSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -48,7 +49,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
           .nullable(),
         path: z.string().describe(DYNAMIC_SECRETS.CREATE.path).trim().default("/").transform(removeTrailingSlash),
         environmentSlug: z.string().describe(DYNAMIC_SECRETS.CREATE.environmentSlug).min(1),
-        name: slugSchema({ min: 1, max: 64, field: "Name" }).describe(DYNAMIC_SECRETS.CREATE.name)
+        name: slugSchema({ min: 1, max: 64, field: "Name" }).describe(DYNAMIC_SECRETS.CREATE.name),
+        metadata: ResourceMetadataSchema.optional()
       }),
       response: {
         200: z.object({
@@ -143,7 +145,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
                 ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
             })
             .nullable(),
-          newName: z.string().describe(DYNAMIC_SECRETS.UPDATE.newName).optional()
+          newName: z.string().describe(DYNAMIC_SECRETS.UPDATE.newName).optional(),
+          metadata: ResourceMetadataSchema.optional()
         })
       }),
       response: {
@@ -238,6 +241,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         name: req.params.name,
         ...req.query
       });
+
       return { dynamicSecret: dynamicSecretCfg };
     }
   });
