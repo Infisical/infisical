@@ -81,12 +81,12 @@ import {
   useSelectedSecrets
 } from "../../SecretMainPage.store";
 import { Filter, RowType } from "../../SecretMainPage.types";
+import { CollapsibleSecretImports } from "../SecretListView/CollapsibleSecretImports";
 import { ReplicateFolderFromBoard } from "./ReplicateFolderFromBoard/ReplicateFolderFromBoard";
 import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
 import { MoveSecretsModal } from "./MoveSecretsModal";
-import { CollapsibleSecretImports } from "../SecretListView/CollapsibleSecretImports";
 
 type TParsedEnv = Record<string, { value: string; comments: string[]; secretPath?: string }>;
 type TParsedFolderEnv = Record<

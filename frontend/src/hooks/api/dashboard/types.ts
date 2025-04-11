@@ -24,6 +24,7 @@ export type DashboardProjectSecretsOverviewResponse = {
   totalUniqueDynamicSecretsInPage: number;
   totalUniqueFoldersInPage: number;
   totalUniqueSecretImportsInPage: number;
+  importedByEnvs?: { environment: string; importedBy: ProjectSecretsImportedBy[] }[];
   totalUniqueSecretRotationsInPage: number;
 };
 
@@ -41,13 +42,15 @@ export type DashboardProjectSecretsDetailsResponse = {
   totalSecretCount?: number;
   totalSecretRotationCount?: number;
   totalCount: number;
-  importedBy?: {
-    environment: { name: string; slug: string };
-    folders: {
-      name: string;
-      secrets?: { secretId: string; referencedSecretKey: string }[];
-      isImported: boolean;
-    }[];
+  importedBy?: ProjectSecretsImportedBy[];
+};
+
+export type ProjectSecretsImportedBy = {
+  environment: { name: string; slug: string };
+  folders: {
+    name: string;
+    secrets?: { secretId: string; referencedSecretKey: string }[];
+    isImported: boolean;
   }[];
 };
 
