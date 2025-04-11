@@ -610,28 +610,23 @@ func signKey(cmd *cobra.Command, args []string) {
 }
 
 func sshConnect(cmd *cobra.Command, args []string) {
-	token, err := util.GetInfisicalToken(cmd)
+	util.RequireLogin()
+	util.RequireLocalWorkspaceFile()
+
+	loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 	if err != nil {
-		util.HandleError(err, "Unable to parse token")
+		util.HandleError(err, "Unable to authenticate")
 	}
 
-	var infisicalToken string
-	if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
-		infisicalToken = token.Token
-	} else {
-		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
+	if loggedInUserDetails.LoginExpired {
+		util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+	}
 
-		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
-		if err != nil {
-			util.HandleError(err, "Unable to authenticate")
-		}
+	infisicalToken := loggedInUserDetails.UserCredentials.JTWToken
 
-		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
-		}
-
-		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
+	writeHostCaToFile, err := cmd.Flags().GetBool("writeHostCaToFile")
+	if err != nil {
+		util.HandleError(err, "Unable to parse --writeHostCaToFile flag")
 	}
 
 	customHeaders, err := util.GetInfisicalCustomHeadersMap()
@@ -700,6 +695,44 @@ func sshConnect(cmd *cobra.Command, args []string) {
 	})
 	if err != nil {
 		util.HandleError(err, "Failed to issue SSH credentials")
+	}
+
+	// Write Host CA public key to known_hosts if enabled
+	if writeHostCaToFile {
+		hostCaPublicKey, err := infisicalClient.Ssh().GetSshHostHostCaPublicKey(selectedHost.ID)
+		if err != nil {
+			util.HandleError(err, "Failed to fetch Host CA public key")
+		}
+
+		// Build @cert-authority line
+		caLine := fmt.Sprintf("@cert-authority %s %s\n", selectedHost.Hostname, strings.TrimSpace(hostCaPublicKey))
+
+		// Determine known_hosts path
+		sshDir := filepath.Join(os.Getenv("HOME"), ".ssh")
+		knownHostsPath := filepath.Join(sshDir, "known_hosts")
+
+		// Ensure ~/.ssh exists
+		if _, err := os.Stat(sshDir); os.IsNotExist(err) {
+			if err := os.MkdirAll(sshDir, 0700); err != nil {
+				util.HandleError(err, "Failed to create ~/.ssh directory")
+			}
+		}
+
+		// Check if CA line already exists
+		knownHostsBytes, _ := os.ReadFile(knownHostsPath)
+		if !strings.Contains(string(knownHostsBytes), caLine) {
+			f, err := os.OpenFile(knownHostsPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+			if err != nil {
+				util.HandleError(err, "Failed to open known_hosts file")
+			}
+			defer f.Close()
+
+			if _, err := f.WriteString(caLine); err != nil {
+				util.HandleError(err, "Failed to write Host CA to known_hosts")
+			}
+
+			fmt.Printf("📁 Wrote Host CA entry to %s\n", knownHostsPath)
+		}
 	}
 
 	// Load credentials into SSH agent
@@ -973,7 +1006,7 @@ func init() {
 	sshIssueCredentialsCmd.Flags().Bool("addToAgent", false, "Whether to add issued SSH credentials to the SSH agent")
 	sshCmd.AddCommand(sshIssueCredentialsCmd)
 
-	sshConnectCmd.Flags().String("token", "", "Use a machine identity access token")
+	sshConnectCmd.Flags().Bool("writeHostCaToFile", true, "Write Host CA public key to ~/.ssh/known_hosts as a separate entry if doesn't already exist")
 	sshCmd.AddCommand(sshConnectCmd)
 
 	sshAddHostCmd.Flags().String("token", "", "Use a machine identity access token")
