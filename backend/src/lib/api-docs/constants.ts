@@ -1708,6 +1708,10 @@ export const AppConnections = {
     },
     VERCEL: {
       apiToken: "The API token used to authenticate with Vercel."
+    },
+    CAMUNDA: {
+      clientId: "The client ID used to authenticate with Camunda.",
+      clientSecret: "The client secret used to authenticate with Camunda."
     }
   }
 };

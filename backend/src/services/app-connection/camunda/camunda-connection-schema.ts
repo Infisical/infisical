@@ -13,8 +13,12 @@ import { CamundaConnectionMethod } from "./camunda-connection-enums";
 const BaseCamundaConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.Camunda) });
 
 export const CamundaConnectionClientCredentialsInputCredentialsSchema = z.object({
-  clientId: z.string().trim().min(1, "Client ID required"),
-  clientSecret: z.string().trim().min(1, "Client Secret required")
+  clientId: z.string().trim().min(1, "Client ID required").describe(AppConnections.CREDENTIALS.CAMUNDA.clientId),
+  clientSecret: z
+    .string()
+    .trim()
+    .min(1, "Client Secret required")
+    .describe(AppConnections.CREDENTIALS.CAMUNDA.clientSecret)
 });
 
 export const CamundaConnectionClientCredentialsOutputCredentialsSchema = z
