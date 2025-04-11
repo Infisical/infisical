@@ -23,7 +23,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         permissions: z.any().array(),
         isTemporary: z.boolean(),
         temporaryRange: z.string().optional(),
-        note: z.string().optional()
+        note: z.string().max(255).optional()
       }),
       querystring: z.object({
         projectSlug: z.string().trim()
