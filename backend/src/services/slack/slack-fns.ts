@@ -87,7 +87,12 @@ View the complete details <${appCfg.SITE_URL}/secret-manager/${payload.projectId
       
 The following permissions are requested: ${payload.permissions.join(", ")}
 
-View the request and approve or deny it <${payload.approvalUrl}|here>.`;
+View the request and approve or deny it <${payload.approvalUrl}|here>.${
+        payload.note
+          ? `
+User Note: ${payload.note}`
+          : ""
+      }`;
 
       const payloadBlocks = [
         {

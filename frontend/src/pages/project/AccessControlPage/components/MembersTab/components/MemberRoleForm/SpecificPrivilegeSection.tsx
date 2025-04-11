@@ -67,7 +67,8 @@ const secretPermissionSchema = z.object({
     z.object({
       isTemporary: z.literal(false)
     })
-  ])
+  ]),
+  note: z.string().optional()
 });
 type TSecretPermissionForm = z.infer<typeof secretPermissionSchema>;
 export const SpecificPrivilegeSecretForm = ({
@@ -231,7 +232,8 @@ export const SpecificPrivilegeSecretForm = ({
           action,
           subject: [ProjectPermissionSub.Secrets],
           conditions
-        }))
+        })),
+      note: data.note
     });
 
     createNotification({
@@ -540,6 +542,18 @@ export const SpecificPrivilegeSecretForm = ({
               <div />
             )}
           </div>
+        </div>
+        <div className="mb-4 flex w-full">
+          <Controller
+            control={privilegeForm.control}
+            name="note"
+            render={({ field }) => (
+              <div className="w-full">
+                <FormLabel label="Note" className="mb-2" />
+                <Input {...field} isDisabled={isMemberEditDisabled} maxLength={255} />
+              </div>
+            )}
+          />
         </div>
         {!!policies && (
           <Button

@@ -79,6 +79,8 @@ export type TAccessApprovalRequest = {
     member: string;
     status: string;
   }[];
+
+  note?: string;
 };
 
 export type TAccessApproval = {
@@ -119,6 +121,7 @@ export type TProjectUserPrivilege = {
 
 export type TCreateAccessRequestDTO = {
   projectSlug: string;
+  note?: string;
 } & Omit<TProjectUserPrivilege, "id" | "createdAt" | "updatedAt" | "slug" | "projectMembershipId">;
 
 export type TGetAccessApprovalRequestsDTO = {

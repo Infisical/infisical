@@ -64,7 +64,7 @@ export const SecretApprovalsPage = () => {
         <Tabs defaultValue={defaultTab}>
           <TabList>
             <Tab value={TabSection.SecretApprovalRequests}>
-              Secret Requests
+              Change Requests
               {Boolean(secretApprovalReqCount?.open) && (
                 <Badge className="ml-2">{secretApprovalReqCount?.open}</Badge>
               )}

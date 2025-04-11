@@ -24,6 +24,7 @@ export type TCreateAccessApprovalRequestDTO = {
   permissions: unknown;
   isTemporary: boolean;
   temporaryRange?: string;
+  note?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TListApprovalRequestsDTO = {

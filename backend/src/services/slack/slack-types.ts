@@ -76,5 +76,6 @@ export type TSlackNotification =
         projectName: string;
         permissions: string[];
         approvalUrl: string;
+        note?: string;
       };
     };
