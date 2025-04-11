@@ -440,6 +440,7 @@ const Page = () => {
             onToggleRowType={handleToggleRowType}
             onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
             protectedBranchPolicyName={boardPolicy?.name}
+            importedBy={importedBy}
           />
           <div className="thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md rounded-b-none bg-mineshaft-800 text-left text-sm text-bunker-300">
             <div className="flex flex-col" id="dashboard">

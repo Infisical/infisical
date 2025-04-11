@@ -372,7 +372,7 @@ export const SecretListView = ({
           importedBy.length > 0 && (
             <CollapsibleSecretImports
               importedBy={importedBy}
-              secretToDelete={(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key}
+              secretsToDelete={[(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key || ""]}
             />
           )
         }

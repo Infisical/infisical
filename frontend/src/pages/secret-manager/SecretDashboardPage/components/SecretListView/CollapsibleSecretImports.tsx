@@ -28,12 +28,12 @@ interface CollapsibleSecretImportsProps {
       isImported: boolean;
     }[];
   }[];
-  secretToDelete: string;
+  secretsToDelete: string[];
 }
 
 export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> = ({
   importedBy = [],
-  secretToDelete
+  secretsToDelete
 }) => {
   const { currentWorkspace } = useWorkspace();
 
@@ -83,7 +83,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
         if (folder.secrets?.length) {
           folder.secrets.forEach(({ secretId: secret, referencedSecretKey }) => {
             const secretPath = folder.name === "/" ? `/${secret}` : `${folder.name}/${secret}`;
-            if (referencedSecretKey === secretToDelete) {
+            if (secretsToDelete.includes(referencedSecretKey)) {
               items.push({
                 type: ItemType.Secret,
                 path: secretPath,
