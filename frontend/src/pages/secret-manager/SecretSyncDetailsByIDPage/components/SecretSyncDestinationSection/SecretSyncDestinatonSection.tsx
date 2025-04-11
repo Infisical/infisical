@@ -18,7 +18,7 @@ import { AzureAppConfigurationSyncDestinationSection } from "./AzureAppConfigura
 import { AzureKeyVaultSyncDestinationSection } from "./AzureKeyVaultSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
-import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationCol";
+import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
 
 type Props = {
