@@ -42,7 +42,7 @@ const schema = z
         (val) => ms(val) > 0,
         "TTL must be a valid time string such as 2 days, 1d, 2h 1y, ..."
       )
-      .default("8h"),
+      .default("8h, 1d, 30m"),
     loginMappings: z
       .object({
         loginUser: z.string().trim().min(1),
@@ -206,7 +206,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                 errorText={error?.message}
                 isRequired
               >
-                <Input {...field} placeholder="8h" />
+                <Input {...field} placeholder="8h, 1d, 30m" />
               </FormControl>
             )}
           />
@@ -328,7 +328,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                             {(value.length === 0 ? [""] : value).map(
                               (principal: string, principalIndex: number) => (
                                 <div
-                                  key={`${metadataFieldId}-principal-${principal || principalIndex}`}
+                                  key={`${metadataFieldId}-principal-${principal}`}
                                   className="flex items-center space-x-2"
                                 >
                                   <div className="flex-1">

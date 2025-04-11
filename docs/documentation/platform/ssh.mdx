@@ -6,8 +6,8 @@ description: "Learn how to securely provision user SSH access to your infrastruc
 
 ## Concept
 
-Infisical SSH can be used to provide users short-lived, secure SSH access to infrastructure; the underlying technology is powered by SSH certificates
-and improves on the limitations of traditional SSH key-based authentication via mitigation of private key compromise, static key management,
+Infisical SSH can be configured to provide users on your team short-lived, secure SSH access to infrastructure. Under the hood, it uses SSH certificates
+and improves upon traditional SSH key-based authentication by mitigating private key compromise, static key management,
 unauthorized access, and SSH key sprawl.
 
 The following entities and concepts are important to understand when using Infisical SSH:
@@ -89,6 +89,17 @@ we will register a remote host with Infisical through a [machine identity](/docu
     📁 Wrote host certificate to: /etc/ssh/ssh_host_ed25519_key-cert.pub
     📄 Updated sshd_config entries
     ```
+
+    Finally, use the following command to reload the SSH daemon on the remote host to apply the changes:
+
+    ```bash
+    sudo systemctl reload sshd
+    ```
+
+    <Note>
+      The command may differ depending on the host. For older versions of Ubuntu/Debian/CentOS, you may need to use `sudo service ssh reload` instead;
+      for Alpine or minimal systems, `/etc/init.d/sshd reload`.
+    </Note>
 
     Back in Infisical, you should now see the remote host you just registered in the Infisical SSH project you created in step 1 under the **Hosts** tab.
 

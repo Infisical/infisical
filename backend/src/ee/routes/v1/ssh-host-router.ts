@@ -412,7 +412,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
         sshHostId: z.string().trim().describe(SSH_HOSTS.GET_USER_CA_PUBLIC_KEY.sshHostId)
       }),
       response: {
-        200: z.string()
+        200: z.string().describe(SSH_HOSTS.GET_USER_CA_PUBLIC_KEY.publicKey)
       }
     },
     handler: async (req) => {
@@ -433,7 +433,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
         sshHostId: z.string().trim().describe(SSH_HOSTS.GET_HOST_CA_PUBLIC_KEY.sshHostId)
       }),
       response: {
-        200: z.string()
+        200: z.string().describe(SSH_HOSTS.GET_HOST_CA_PUBLIC_KEY.publicKey)
       }
     },
     handler: async (req) => {

@@ -1381,10 +1381,12 @@ export const SSH_HOSTS = {
     signedKey: "The SSH certificate or signed SSH public key."
   },
   GET_USER_CA_PUBLIC_KEY: {
-    sshHostId: "The ID of the SSH host to get the user SSH CA public key for."
+    sshHostId: "The ID of the SSH host to get the user SSH CA public key for.",
+    publicKey: "The public key of the user SSH CA linked to the SSH host."
   },
   GET_HOST_CA_PUBLIC_KEY: {
-    sshHostId: "The ID of the SSH host to get the host SSH CA public key for."
+    sshHostId: "The ID of the SSH host to get the host SSH CA public key for.",
+    publicKey: "The public key of the host SSH CA linked to the SSH host."
   }
 };
 

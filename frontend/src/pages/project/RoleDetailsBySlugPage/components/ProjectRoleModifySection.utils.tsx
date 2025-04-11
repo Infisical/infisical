@@ -110,6 +110,7 @@ const GroupPolicyActionSchema = z.object({
 });
 
 const SshHostPolicyActionSchema = z.object({
+  [ProjectPermissionSshHostActions.Read]: z.boolean().optional(),
   [ProjectPermissionSshHostActions.Create]: z.boolean().optional(),
   [ProjectPermissionSshHostActions.Edit]: z.boolean().optional(),
   [ProjectPermissionSshHostActions.Delete]: z.boolean().optional(),
@@ -610,6 +611,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         [ProjectPermissionSshHostActions.Create]: action.includes(
           ProjectPermissionSshHostActions.Create
         ),
+        [ProjectPermissionSshHostActions.Read]: action.includes(
+          ProjectPermissionSshHostActions.Read
+        ),
         [ProjectPermissionSshHostActions.IssueHostCert]: action.includes(
           ProjectPermissionSshHostActions.IssueHostCert
         ),
@@ -945,6 +949,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.SshHosts]: {
     title: "SSH Hosts",
     actions: [
+      { label: "Read", value: ProjectPermissionSshHostActions.Read },
       { label: "Create", value: ProjectPermissionSshHostActions.Create },
       { label: "Modify", value: ProjectPermissionSshHostActions.Edit },
       { label: "Remove", value: ProjectPermissionSshHostActions.Delete },

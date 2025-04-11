@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import {
@@ -15,6 +15,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
@@ -1077,7 +1078,7 @@ export const projectServiceFactory = ({
     actor,
     projectId
   }: TListProjectSshHostsDTO) => {
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -1086,8 +1087,27 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.SSH
     });
 
+    const allowedHosts = [];
+
+    // (dangtony98): room to optimize
     const hosts = await sshHostDAL.findSshHostsWithLoginMappings(projectId);
-    return hosts;
+
+    for (const host of hosts) {
+      try {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionSshHostActions.Read,
+          subject(ProjectPermissionSub.SshHosts, {
+            hostname: host.hostname
+          })
+        );
+
+        allowedHosts.push(host);
+      } catch {
+        // intentionally ignore projects where user lacks access
+      }
+    }
+
+    return allowedHosts;
   };
 
   /**

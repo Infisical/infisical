@@ -430,7 +430,8 @@ export const validateExternalSshCaKeyPair = async (publicKey: string, privateKey
 
   if (publicKey.trim() !== derivedPublicKey.trim()) {
     throw new BadRequestError({
-      message: "Failed to validate matching SSH key pair."
+      message:
+        "Failed to validate matching SSH key pair: The provided public key does not match the public key derived from the private key."
     });
   }
 
