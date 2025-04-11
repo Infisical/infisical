@@ -47,7 +47,7 @@ const SignForm = ({ cmek }: FormProps) => {
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      signingAlgorithm: cmek?.encryptionAlgorithm?.startsWith("rsa")
+      signingAlgorithm: cmek?.encryptionAlgorithm?.startsWith("RSA")
         ? SigningAlgorithm.RSASSA_PSS_SHA_512
         : SigningAlgorithm.ECDSA_SHA_256,
       isBase64Encoded: false
@@ -83,7 +83,7 @@ const SignForm = ({ cmek }: FormProps) => {
   };
 
   const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) =>
-    cmek?.encryptionAlgorithm?.startsWith("rsa")
+    cmek?.encryptionAlgorithm?.startsWith("RSA")
       ? a.toLowerCase().startsWith("rsa")
       : a.toLowerCase().startsWith("ecdsa")
   );
