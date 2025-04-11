@@ -27,6 +27,7 @@ import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
+import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 
 const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
@@ -38,6 +39,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AzureAppConfiguration]: AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION,
   [SecretSync.Databricks]: DATABRICKS_SYNC_LIST_OPTION,
   [SecretSync.Humanitec]: HUMANITEC_SYNC_LIST_OPTION,
+  [SecretSync.TerraformCloud]: TERRAFORM_CLOUD_SYNC_LIST_OPTION,
   [SecretSync.Camunda]: CAMUNDA_SYNC_LIST_OPTION,
   [SecretSync.Vercel]: VERCEL_SYNC_LIST_OPTION
 };
@@ -125,6 +127,8 @@ export const SecretSyncFns = {
         }).syncSecrets(secretSync, secretMap);
       case SecretSync.Humanitec:
         return HumanitecSyncFns.syncSecrets(secretSync, secretMap);
+      case SecretSync.TerraformCloud:
+        return TerraformCloudSyncFns.syncSecrets(secretSync, secretMap);
       case SecretSync.Camunda:
         return camundaSyncFactory({
           appConnectionDAL,
@@ -175,6 +179,9 @@ export const SecretSyncFns = {
         }).getSecrets(secretSync);
       case SecretSync.Humanitec:
         secretMap = await HumanitecSyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.TerraformCloud:
+        secretMap = await TerraformCloudSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.Camunda:
         secretMap = await camundaSyncFactory({
@@ -227,6 +234,8 @@ export const SecretSyncFns = {
         }).removeSecrets(secretSync, secretMap);
       case SecretSync.Humanitec:
         return HumanitecSyncFns.removeSecrets(secretSync, secretMap);
+      case SecretSync.TerraformCloud:
+        return TerraformCloudSyncFns.removeSecrets(secretSync, secretMap);
       case SecretSync.Camunda:
         return camundaSyncFactory({
           appConnectionDAL,

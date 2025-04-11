@@ -22,6 +22,7 @@ import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {
@@ -73,6 +74,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Humanitec:
       DestinationFieldsComponent = <HumanitecSyncReviewFields />;
+      break;
+    case SecretSync.TerraformCloud:
+      DestinationFieldsComponent = <TerraformCloudSyncReviewFields />;
       break;
     case SecretSync.Camunda:
       DestinationFieldsComponent = <CamundaSyncReviewFields />;

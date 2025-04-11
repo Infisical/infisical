@@ -58,6 +58,12 @@ import {
   TValidatePostgresConnectionCredentialsSchema
 } from "./postgres";
 import {
+  TTerraformCloudConnection,
+  TTerraformCloudConnectionConfig,
+  TTerraformCloudConnectionInput,
+  TValidateTerraformCloudConnectionCredentialsSchema
+} from "./terraform-cloud";
+import {
   TValidateVercelConnectionCredentialsSchema,
   TVercelConnection,
   TVercelConnectionConfig,
@@ -72,6 +78,7 @@ export type TAppConnection = { id: string } & (
   | TAzureAppConfigurationConnection
   | TDatabricksConnection
   | THumanitecConnection
+  | TTerraformCloudConnection
   | TVercelConnection
   | TPostgresConnection
   | TMsSqlConnection
@@ -90,6 +97,7 @@ export type TAppConnectionInput = { id: string } & (
   | TAzureAppConfigurationConnectionInput
   | TDatabricksConnectionInput
   | THumanitecConnectionInput
+  | TTerraformCloudConnectionInput
   | TVercelConnectionInput
   | TPostgresConnectionInput
   | TMsSqlConnectionInput
@@ -115,9 +123,10 @@ export type TAppConnectionConfig =
   | TAzureAppConfigurationConnectionConfig
   | TDatabricksConnectionConfig
   | THumanitecConnectionConfig
+  | TTerraformCloudConnectionConfig
+  | TVercelConnectionConfig
   | TSqlConnectionConfig
-  | TCamundaConnectionConfig
-  | TVercelConnectionConfig;
+  | TCamundaConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -130,6 +139,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidatePostgresConnectionCredentialsSchema
   | TValidateMsSqlConnectionCredentialsSchema
   | TValidateCamundaConnectionCredentialsSchema
+  | TValidateTerraformCloudConnectionCredentialsSchema
   | TValidateVercelConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

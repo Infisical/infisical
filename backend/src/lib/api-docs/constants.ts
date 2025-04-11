@@ -1769,6 +1769,9 @@ export const AppConnections = {
       sslRejectUnauthorized: "Whether or not to reject unauthorized SSL certificates.",
       sslCertificate: "The SSL certificate to use for connection."
     },
+    TERRAFORM_CLOUD: {
+      apiToken: "The API token to use to connect with Terraform Cloud."
+    },
     VERCEL: {
       apiToken: "The API token used to authenticate with Vercel."
     },
@@ -1894,6 +1897,15 @@ export const SecretSyncs = {
       org: "The ID of the Humanitec org to sync secrets to.",
       env: "The ID of the Humanitec environment to sync secrets to.",
       scope: "The Humanitec scope that secrets should be synced to."
+    },
+    TERRAFORM_CLOUD: {
+      org: "The ID of the Terraform Cloud org to sync secrets to.",
+      variableSetName: "The name of the Terraform Cloud Variable Set to sync secrets to.",
+      variableSetId: "The ID of the Terraform Cloud Variable Set to sync secrets to.",
+      workspaceName: "The name of the Terraform Cloud workspace to sync secrets to.",
+      workspaceId: "The ID of the Terraform Cloud workspace to sync secrets to.",
+      scope: "The Terraform Cloud scope that secrets should be synced to.",
+      category: "The Terraform Cloud category that secrets should be synced to."
     },
     VERCEL: {
       app: "The ID of the Vercel app to sync secrets to.",

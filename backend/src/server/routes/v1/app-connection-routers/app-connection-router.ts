@@ -31,6 +31,10 @@ import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
+import {
+  SanitizedTerraformCloudConnectionSchema,
+  TerraformCloudConnectionListItemSchema
+} from "@app/services/app-connection/terraform-cloud";
 import { SanitizedVercelConnectionSchema, VercelConnectionListItemSchema } from "@app/services/app-connection/vercel";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -43,6 +47,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAzureAppConfigurationConnectionSchema.options,
   ...SanitizedDatabricksConnectionSchema.options,
   ...SanitizedHumanitecConnectionSchema.options,
+  ...SanitizedTerraformCloudConnectionSchema.options,
   ...SanitizedVercelConnectionSchema.options,
   ...SanitizedPostgresConnectionSchema.options,
   ...SanitizedMsSqlConnectionSchema.options,
@@ -57,6 +62,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AzureAppConfigurationConnectionListItemSchema,
   DatabricksConnectionListItemSchema,
   HumanitecConnectionListItemSchema,
+  TerraformCloudConnectionListItemSchema,
   VercelConnectionListItemSchema,
   PostgresConnectionListItemSchema,
   MsSqlConnectionListItemSchema,

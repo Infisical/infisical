@@ -1,0 +1,161 @@
+---
+title: "Terraform Cloud Sync"
+description: "Learn how to configure a Terraform Cloud Sync for Infisical."
+---
+
+**Prerequisites:**
+
+        - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
+        - Create a [Terraform Cloud Connection](/integrations/app-connections/terraform-cloud)
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+        ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+
+        2. Select the **Terraform Cloud** option.
+        ![Select Terraform Cloud](/images/secret-syncs/terraform-cloud/terraform-cloud-option.png)
+
+        3. Configure the **Source** from where secrets should be retrieved, then click **Next**.
+        ![Configure Source](/images/secret-syncs/terraform-cloud/terraform-cloud-source.png)
+
+            - **Environment**: The project environment to retrieve secrets from.
+            - **Secret Path**: The folder path to retrieve secrets from.
+
+        <Tip>
+            If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+        </Tip>
+
+        4. Configure the **Destination** to where secrets should be deployed, then click **Next**.
+        ![Configure Destination](/images/secret-syncs/terraform-cloud/terraform-cloud-destination.png)
+
+            - **Terraform Cloud Connection**: The Terraform Cloud Connection to authenticate with.
+            - **Organization**: The Terraform Cloud organization to deploy secrets to.
+            - **Category**: The Terraform Cloud variable category to use on secrets syncs. Choose from:
+                - **Environment**: Sync secrets as environment variables.
+                - **Terraform**: Sync secrets as Terraform variables.
+            - **Scope**: The Terraform Cloud secret scope to sync secrets to.
+                - **Variable Set**: Sync secrets to a specific variable set.
+                - **Workspace**: Sync secrets to a specific workspace.
+            <p class="height:1px"  />
+            The remaining fields are determined by the selected **Scope**:
+            <AccordionGroup>
+                <Accordion title="Variable Set">
+                    - **Variable Set**: The variable set to deploy secrets to.
+                </Accordion>
+                <Accordion title="Workspace">
+                    - **Workspace**: The workspace to deploy secrets to.
+                </Accordion>
+            </AccordionGroup>
+
+        5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
+        ![Configure Options](/images/secret-syncs/terraform-cloud/terraform-cloud-options.png)
+
+            - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
+                - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
+                <Note>
+                    Terraform Cloud does not support importing secrets.
+                </Note>
+            - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+            - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
+
+        6. Configure the **Details** of your Terraform Cloud Sync, then click **Next**.
+        ![Configure Details](/images/secret-syncs/terraform-cloud/terraform-cloud-details.png)
+
+            - **Name**: The name of your sync. Must be slug-friendly.
+            - **Description**: An optional description for your sync.
+
+        7. Review your Terraform Cloud Sync configuration, then click **Create Sync**.
+        ![Confirm Configuration](/images/secret-syncs/terraform-cloud/terraform-cloud-review.png)
+
+        8. If enabled, your Terraform Cloud Sync will begin syncing your secrets to the destination endpoint.
+        ![Sync Secrets](/images/secret-syncs/terraform-cloud/terraform-cloud-created.png)
+
+    </Tab>
+    <Tab title="API">
+        To create an **Terraform Cloud Sync**, make an API request to the [Create Terraform Cloud Sync](/api-reference/endpoints/secret-syncs/terraform-cloud/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+        --url https://app.infisical.com/api/v1/secret-syncs/terraform-cloud \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-terraform-cloud-sync",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "an example sync",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "environment": "dev",
+            "secretPath": "/my-secrets",
+            "isEnabled": true,
+            "syncOptions": {
+                "initialSyncBehavior": "overwrite-destination"
+            },
+            "destinationConfig": {
+                "scope": "variable-set",
+                "variableSetId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "variableSetName": "my-variable-set",
+                "org": "my-organization-id",
+                "category": "env"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-terraform-cloud-sync",
+                "description": "an example sync",
+                "isEnabled": true,
+                "version": 1,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "syncStatus": "succeeded",
+                "lastSyncJobId": "123",
+                "lastSyncMessage": null,
+                "lastSyncedAt": "2023-11-07T05:31:56Z",
+                "importStatus": null,
+                "lastImportJobId": null,
+                "lastImportMessage": null,
+                "lastImportedAt": null,
+                "removeStatus": null,
+                "lastRemoveJobId": null,
+                "lastRemoveMessage": null,
+                "lastRemovedAt": null,
+                "syncOptions": {
+                    "initialSyncBehavior": "overwrite-destination"
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connection": {
+                    "app": "terraform-cloud",
+                    "name": "my-terraform-cloud-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/my-secrets"
+                },
+                "destination": "terraform-cloud",
+                "destinationConfig": {
+                    "scope": "workspace",
+                    "workspaceId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "workspaceName": "my-workspace",
+                    "org": "my-organization-id",
+                    "category": "terraform"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

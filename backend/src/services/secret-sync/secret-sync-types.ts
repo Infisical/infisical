@@ -55,6 +55,12 @@ import {
   THumanitecSyncListItem,
   THumanitecSyncWithCredentials
 } from "./humanitec";
+import {
+  TTerraformCloudSync,
+  TTerraformCloudSyncInput,
+  TTerraformCloudSyncListItem,
+  TTerraformCloudSyncWithCredentials
+} from "./terraform-cloud";
 import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
 
 export type TSecretSync =
@@ -66,6 +72,7 @@ export type TSecretSync =
   | TAzureAppConfigurationSync
   | TDatabricksSync
   | THumanitecSync
+  | TTerraformCloudSync
   | TCamundaSync
   | TVercelSync;
 
@@ -78,6 +85,7 @@ export type TSecretSyncWithCredentials =
   | TAzureAppConfigurationSyncWithCredentials
   | TDatabricksSyncWithCredentials
   | THumanitecSyncWithCredentials
+  | TTerraformCloudSyncWithCredentials
   | TCamundaSyncWithCredentials
   | TVercelSyncWithCredentials;
 
@@ -90,6 +98,7 @@ export type TSecretSyncInput =
   | TAzureAppConfigurationSyncInput
   | TDatabricksSyncInput
   | THumanitecSyncInput
+  | TTerraformCloudSyncInput
   | TCamundaSyncInput
   | TVercelSyncInput;
 
@@ -102,6 +111,7 @@ export type TSecretSyncListItem =
   | TAzureAppConfigurationSyncListItem
   | TDatabricksSyncListItem
   | THumanitecSyncListItem
+  | TTerraformCloudSyncListItem
   | TCamundaSyncListItem
   | TVercelSyncListItem;
 
