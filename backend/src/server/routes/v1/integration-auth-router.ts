@@ -31,6 +31,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
             .object({
               name: z.string(),
               slug: z.string(),
+              syncSlug: z.string().optional(),
               clientSlug: z.string().optional(),
               image: z.string(),
               isAvailable: z.boolean().optional(),

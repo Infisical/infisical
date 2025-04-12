@@ -6,6 +6,7 @@ import { workspaceKeys } from "@app/hooks/api";
 import { TIntegration } from "@app/hooks/api/integrations/types";
 import {
   fetchSecretSyncsByProjectId,
+  SecretSync,
   secretSyncKeys,
   TSecretSync
 } from "@app/hooks/api/secretSyncs";
@@ -15,7 +16,8 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 import { IntegrationsListPage } from "./IntegrationsListPage";
 
 const IntegrationsListPageQuerySchema = z.object({
-  selectedTab: z.nativeEnum(IntegrationsListPageTabs).optional()
+  selectedTab: z.nativeEnum(IntegrationsListPageTabs).optional(),
+  addSync: z.nativeEnum(SecretSync).optional()
 });
 
 export const Route = createFileRoute(

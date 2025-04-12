@@ -1,6 +1,7 @@
 export type TCloudIntegration = {
   name: string;
   slug: string;
+  syncSlug?: string;
   image: string;
   isAvailable: boolean;
   type: string;
