@@ -45,7 +45,6 @@ type Props = {
 type TRevokeIntegrationPopUp = { provider: string };
 
 const SECRET_SYNCS = Object.values(SecretSync) as string[];
-// this assumes sync and integration will have same name which looks like it will be the case
 const isSecretSyncAvailable = (type: string) => SECRET_SYNCS.includes(type);
 
 export const CloudIntegrationSection = ({
