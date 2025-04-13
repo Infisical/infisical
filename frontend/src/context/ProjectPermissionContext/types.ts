@@ -30,7 +30,9 @@ export enum ProjectPermissionCmekActions {
   Edit = "edit",
   Delete = "delete",
   Encrypt = "encrypt",
-  Decrypt = "decrypt"
+  Decrypt = "decrypt",
+  Sign = "sign",
+  Verify = "verify"
 }
 
 export enum ProjectPermissionKmipActions {

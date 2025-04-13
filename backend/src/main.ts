@@ -9,6 +9,7 @@ import { runMigrations } from "./auto-start-migrations";
 import { initAuditLogDbConnection, initDbConnection } from "./db";
 import { keyStoreFactory } from "./keystore/keystore";
 import { formatSmtpConfig, initEnvConfig } from "./lib/config/env";
+import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
 import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
@@ -20,6 +21,8 @@ dotenv.config();
 const run = async () => {
   const logger = initLogger();
   const envConfig = initEnvConfig(logger);
+
+  await removeTemporaryBaseDirectory();
 
   const db = initDbConnection({
     dbConnectionUri: envConfig.DB_CONNECTION_URI,
@@ -71,6 +74,7 @@ const run = async () => {
   process.on("SIGINT", async () => {
     await server.close();
     await db.destroy();
+    await removeTemporaryBaseDirectory();
     hsmModule.finalize();
     process.exit(0);
   });
@@ -79,6 +83,7 @@ const run = async () => {
   process.on("SIGTERM", async () => {
     await server.close();
     await db.destroy();
+    await removeTemporaryBaseDirectory();
     hsmModule.finalize();
     process.exit(0);
   });
