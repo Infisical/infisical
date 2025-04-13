@@ -118,7 +118,12 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     }
   };
 
-  const $signRsaDigest = async (digest: Buffer, privateKey: Buffer, hashAlgorithm: SupportedHashAlgorithm) => {
+  const $signRsaDigest = async (
+    digest: Buffer,
+    privateKey: Buffer,
+    hashAlgorithm: SupportedHashAlgorithm,
+    signingAlgorithm: SigningAlgorithm
+  ) => {
     const tempDir = await createTemporaryDirectory("kms-rsa-sign");
     const digestPath = path.join(tempDir, "digest.bin");
     const sigPath = path.join(tempDir, "signature.bin");
@@ -164,12 +169,22 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       }
 
       return signature;
+    } catch (err) {
+      logger.error(err, "KMS: Failed to sign RSA digest");
+      throw new BadRequestError({
+        message: `Failed to sign RSA digest with ${signingAlgorithm} due to signing error. Ensure that your digest is hashed with ${hashAlgorithm.toUpperCase()}.`
+      });
     } finally {
       await cleanTemporaryDirectory(tempDir);
     }
   };
 
-  const $signEccDigest = async (digest: Buffer, privateKey: Buffer, hashAlgorithm: SupportedHashAlgorithm) => {
+  const $signEccDigest = async (
+    digest: Buffer,
+    privateKey: Buffer,
+    hashAlgorithm: SupportedHashAlgorithm,
+    signingAlgorithm: SigningAlgorithm
+  ) => {
     const tempDir = await createTemporaryDirectory("ecc-sign");
     const digestPath = path.join(tempDir, "digest.bin");
     const keyPath = path.join(tempDir, "key.pem");
@@ -216,6 +231,11 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       }
 
       return signature;
+    } catch (err) {
+      logger.error(err, "KMS: Failed to sign ECC digest");
+      throw new BadRequestError({
+        message: `Failed to sign ECC digest with ${signingAlgorithm} due to signing error. Ensure that your digest is hashed with ${hashAlgorithm.toUpperCase()}.`
+      });
     } finally {
       await cleanTemporaryDirectory(tempDir);
     }
@@ -329,7 +349,12 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
 
   const signDigestFunctionsMap: Record<
     AsymmetricKeyAlgorithm,
-    (data: Buffer, privateKey: Buffer, hashAlgorithm: SupportedHashAlgorithm) => Promise<Buffer>
+    (
+      data: Buffer,
+      privateKey: Buffer,
+      hashAlgorithm: SupportedHashAlgorithm,
+      signingAlgorithm: SigningAlgorithm
+    ) => Promise<Buffer>
   > = {
     [AsymmetricKeyAlgorithm.ECC_NIST_P256]: $signEccDigest,
     [AsymmetricKeyAlgorithm.RSA_4096]: $signRsaDigest
@@ -360,7 +385,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
         });
       }
 
-      const signature = await signFunction(data, privateKey, hashAlgorithm);
+      const signature = await signFunction(data, privateKey, hashAlgorithm, signingAlgorithm);
       return signature;
     }
 
