@@ -265,11 +265,11 @@ In the following steps, we explore how to generate a key and use it to sign data
 
                 ```bash Request
                 curl --request POST \
-                --url /api/v1/kms/keys/<kms-key-id>/sign \
+                --url https://app.infisical.com/api/v1/kms/keys/<key-id>/sign \
                 --header 'Content-Type: application/json' \
                 --data '{
                     "data": "SGVsbG8sIFdvcmxkIQ==", // base64 encoded data
-                    "signingAlgorithm": "RSASSA_PSS_SHA_512",
+                    "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA_512",
                 }'
                 ```
 
@@ -279,13 +279,13 @@ In the following steps, we explore how to generate a key and use it to sign data
                 {
                     "signature": "JYuiBt1Ta9pbqFIW9Ou6qzBsFhjYbMJp9k4dP87ILrO+F2MPnp85g3nOlXK1ttZmRoGWsWnLNDRn9W3rf5VtkeaixPqUW/KvY/fM3CxdMyIV3BuxlGgDksjL8X34Eqkrz4CCPo9hjB5uT+rBCOxCgZqRbOdATPipAneUapI9npseNquEeh3jPklwviBix83PJHV9PW2t03AGGUXuMY55ZaFEIMv+IrI1WYdnPVIXDyIitYsS3y+/6KRfhVeTcPNJ5Rw+FE9y1eZzDEZtTNpxOfUT3QIoXmpZlYL4HbhRuJBZ+Yx54C7uPiUIN9U69XbyXt+Kkynykw2HPaagwuCZxiqCU5sFfLnrVbc3dmZxQcX2yRrs2gmFamzBx+uVbi648H4mb7WuE5UPTBjjA11jRsBjCY0YS2T4Vgfe1RlzlPQkZgjP/bnCCGDqXa3/VZAlZX1nTI51X995bPHBQI0rq2sNDlIXenwiAy1wJSITbSI8DbUx09Cr83xCEaYAE6R6PUfog/tbIUXi0VbrYsCVkAGCK446Wb1vW6q7HR8jrjXNwmXlqN9eLbSVWqdWj7N7fieeTYSrECtUaAjxtUYTIVsH2bfT6FOEM9gMWKffOpFowVzzr3B9bNQLIhnEEwebxBw947i4OcxyVIcEUuumWxoKvcbSPxzJ8v1M3SoBBh4=", // base64 encoded signature
                     "keyId": "62b2c14e-58af-4199-9842-02995c63edf9",
-                    "signingAlgorithm": "RSASSA_PSS_SHA_512",
+                    "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA_512",
                 }
                 ```
 
                 <Note>
                   To sign predigested data, you can pass `"isDigest": true` in the request body. This requires the data to be a base64 encoded digest of the data you wish to sign.
-                  It's important that the digest is created using the same hashing algorithm as the signing algorithm. As an example, you would create the digest with `SHA512` if you are using the `RSASSA_PSS_SHA_512` signing algorithm.
+                  It's important that the digest is created using the same hashing algorithm as the signing algorithm. As an example, you would create the digest with `SHA512` if you are using the `RSASSA_PKCS1_V1_5_SHA_512` signing algorithm.
                 </Note>
             </Step>
         </Steps>
@@ -327,12 +327,12 @@ In the following steps, we explore how to verify data using an existing key in I
 
                 ```bash Request
                 curl --request POST \
-                --url /api/v1/kms/keys/<kms-key-id>/verify \
+                --url https://app.infisical.com/api/v1/kms/keys/<key-id>/verify \
                 --header 'Content-Type: application/json' \
                 --data '{
                     "data": "SGVsbG8sIFdvcmxkIQ==", // base64 encoded data
                     "signature": "JYuiBt1Ta9pbqFIW9Ou6qzBsFhjYbMJp9k4dP87ILrO+F2MPnp85g3nOlXK1ttZmRoGWsWnLNDRn9W3rf5VtkeaixPqUW/KvY/fM3CxdMyIV3BuxlGgDksjL8X34Eqkrz4CCPo9hjB5uT+rBCOxCgZqRbOdATPipAneUapI9npseNquEeh3jPklwviBix83PJHV9PW2t03AGGUXuMY55ZaFEIMv+IrI1WYdnPVIXDyIitYsS3y+/6KRfhVeTcPNJ5Rw+FE9y1eZzDEZtTNpxOfUT3QIoXmpZlYL4HbhRuJBZ+Yx54C7uPiUIN9U69XbyXt+Kkynykw2HPaagwuCZxiqCU5sFfLnrVbc3dmZxQcX2yRrs2gmFamzBx+uVbi648H4mb7WuE5UPTBjjA11jRsBjCY0YS2T4Vgfe1RlzlPQkZgjP/bnCCGDqXa3/VZAlZX1nTI51X995bPHBQI0rq2sNDlIXenwiAy1wJSITbSI8DbUx09Cr83xCEaYAE6R6PUfog/tbIUXi0VbrYsCVkAGCK446Wb1vW6q7HR8jrjXNwmXlqN9eLbSVWqdWj7N7fieeTYSrECtUaAjxtUYTIVsH2bfT6FOEM9gMWKffOpFowVzzr3B9bNQLIhnEEwebxBw947i4OcxyVIcEUuumWxoKvcbSPxzJ8v1M3SoBBh4=", // base64 encoded signature
-                    "signingAlgorithm": "RSASSA_PSS_SHA_512"
+                    "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA_512"
                 }'
                 ```
 
@@ -342,12 +342,12 @@ In the following steps, we explore how to verify data using an existing key in I
                 {
                     "signatureValid": true,
                     "keyId": "62b2c14e-58af-4199-9842-02995c63edf9",
-                    "signingAlgorithm": "RSASSA_PSS_SHA_512"
+                    "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA_512"
                 }
                 ```
                 <Note>
                   To verify predigested data, you can pass `"isDigest": true` in the request body. This requires the data to be a base64 encoded digest of the data you wish to verify.
-                  It's important that the digest is created using the same hashing algorithm as the signing algorithm. As an example, you would create the digest with `SHA512` if you are using the `RSASSA_PSS_SHA_512` signing algorithm.
+                  It's important that the digest is created using the same hashing algorithm as the signing algorithm. As an example, you would create the digest with `SHA512` if you are using the `RSASSA_PKCS1_V1_5_SHA_512` signing algorithm.
                 </Note>
             </Step>
         </Steps>
@@ -380,7 +380,7 @@ In the following steps, we explore how to verify data using an existing key in I
     To sign and verify a digest using the Infisical KMS, you can use the `Sign` and `Verify` endpoints respectively.
     You will need to pass `"isDigest": true` in the request body to indicate that you are signing or verifying a digest.
     The data you are signing or verifying will need to be a base64 encoded digest of the data you wish to sign or verify.
-    It's important that the digest is created using the same hashing algorithm as the signing algorithm. As an example, you would create the digest with `SHA512` if you are using the `RSASSA_PSS_SHA_512` signing algorithm.
+    It's important that the digest is created using the same hashing algorithm as the signing algorithm. As an example, you would create the digest with `SHA512` if you are using the `RSASSA_PKCS1_V1_5_SHA_512` signing algorithm.
 
     To create a SHA512 digest of your data, you can use the following command with OpenSSL:
     ```bash
@@ -391,7 +391,7 @@ In the following steps, we explore how to verify data using an existing key in I
 
     ```bash Request
     curl --request POST \
-    --url /api/v1/kms/keys/<kms-key-id>/sign \
+    --url https://app.infisical.com/api/v1/kms/keys/<key-id>/sign \
     --header 'Content-Type: application/json' \
     --data '{
     "data": <digest-output-of-openssl-command>,
@@ -414,7 +414,7 @@ In the following steps, we explore how to verify data using an existing key in I
 
     ```bash Request
     curl --request POST \
-    --url /api/v1/kms/keys/<kms-key-id>/verify \
+    --url https://app.infisical.com/api/v1/kms/keys/<key-id>/verify \
     --header 'Content-Type: application/json' \
     --data '{
     "data": <digest-output-of-openssl-command>,
