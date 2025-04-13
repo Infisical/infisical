@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
-    openssh-client
+    openssh-client \
+    openssl 
 
 # Install dependencies for TDS driver (required for SAP ASE dynamic secrets)
 RUN apt-get install -y \

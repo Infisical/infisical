@@ -12,7 +12,8 @@ import {
 import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
-import { SymmetricEncryption } from "@app/lib/crypto/cipher";
+import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
@@ -255,6 +256,11 @@ export enum EventType {
   GET_CMEK = "get-cmek",
   CMEK_ENCRYPT = "cmek-encrypt",
   CMEK_DECRYPT = "cmek-decrypt",
+  CMEK_SIGN = "cmek-sign",
+  CMEK_VERIFY = "cmek-verify",
+  CMEK_LIST_SIGNING_ALGORITHMS = "cmek-list-signing-algorithms",
+  CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
+
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
   GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
   GET_PROJECT_TEMPLATES = "get-project-templates",
@@ -1997,7 +2003,7 @@ interface CreateCmekEvent {
     keyId: string;
     name: string;
     description?: string;
-    encryptionAlgorithm: SymmetricEncryption;
+    encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
   };
 }
 
@@ -2040,6 +2046,39 @@ interface CmekEncryptEvent {
 
 interface CmekDecryptEvent {
   type: EventType.CMEK_DECRYPT;
+  metadata: {
+    keyId: string;
+  };
+}
+
+interface CmekSignEvent {
+  type: EventType.CMEK_SIGN;
+  metadata: {
+    keyId: string;
+    signingAlgorithm: SigningAlgorithm;
+    signature: string;
+  };
+}
+
+interface CmekVerifyEvent {
+  type: EventType.CMEK_VERIFY;
+  metadata: {
+    keyId: string;
+    signingAlgorithm: SigningAlgorithm;
+    signature: string;
+    signatureValid: boolean;
+  };
+}
+
+interface CmekListSigningAlgorithmsEvent {
+  type: EventType.CMEK_LIST_SIGNING_ALGORITHMS;
+  metadata: {
+    keyId: string;
+  };
+}
+
+interface CmekGetPublicKeyEvent {
+  type: EventType.CMEK_GET_PUBLIC_KEY;
   metadata: {
     keyId: string;
   };
@@ -2639,6 +2678,10 @@ export type Event =
   | GetCmeksEvent
   | CmekEncryptEvent
   | CmekDecryptEvent
+  | CmekSignEvent
+  | CmekVerifyEvent
+  | CmekListSigningAlgorithmsEvent
+  | CmekGetPublicKeyEvent
   | GetExternalGroupOrgRoleMappingsEvent
   | UpdateExternalGroupOrgRoleMappingsEvent
   | GetProjectTemplatesEvent

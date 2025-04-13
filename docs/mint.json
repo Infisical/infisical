@@ -1319,9 +1319,23 @@
             "api-reference/endpoints/kms/keys/get-by-name",
             "api-reference/endpoints/kms/keys/create",
             "api-reference/endpoints/kms/keys/update",
-            "api-reference/endpoints/kms/keys/delete",
-            "api-reference/endpoints/kms/keys/encrypt",
-            "api-reference/endpoints/kms/keys/decrypt"
+            "api-reference/endpoints/kms/keys/delete"
+          ]
+        },
+        {
+          "group": "Encryption",
+          "pages": [
+            "api-reference/endpoints/kms/encryption/encrypt",
+            "api-reference/endpoints/kms/encryption/decrypt"
+          ]
+        },
+        {
+          "group": "Signing",
+          "pages": [
+            "api-reference/endpoints/kms/signing/sign",
+            "api-reference/endpoints/kms/signing/verify",
+            "api-reference/endpoints/kms/signing/public-key",
+            "api-reference/endpoints/kms/signing/signing-algorithms"
           ]
         }
       ]
