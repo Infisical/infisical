@@ -1,4 +1,5 @@
 import { ButtonHTMLAttributes, forwardRef, ReactNode } from "react";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { cva, VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
@@ -189,11 +190,16 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {isLoading && (
-          <img
-            src="/images/loading/loading.gif"
-            width={36}
-            alt="loading animation"
-            className="absolute rounded-xl opacity-80"
+          <DotLottieReact
+            src={
+              variant === "solid" && colorSchema === "primary"
+                ? "/lotties/infisical_loading_bw.json"
+                : "/lotties/infisical_loading.json"
+            }
+            loop
+            mode="forward"
+            autoplay
+            className="absolute w-8 rounded-xl opacity-80 shadow-sm"
           />
         )}
         {leftIcon && (

@@ -18,6 +18,7 @@ import "react-day-picker/dist/style.css";
 import "./index.css";
 
 import "./translation";
+
 // don't want to use this?
 // have a look at the Quick start guide
 // for passing in lng and translations on init/
@@ -57,7 +58,7 @@ const router = createRouter({
   routeTree,
   context: { serverConfig: null, queryClient },
   defaultPendingComponent: () => (
-    <div className="bg-bunker-800">
+    <div className="h-screen bg-bunker-800">
       <ContentLoader />
     </div>
   ),

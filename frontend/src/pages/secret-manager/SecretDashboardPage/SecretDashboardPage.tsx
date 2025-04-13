@@ -404,7 +404,7 @@ const Page = () => {
   };
 
   if (isDetailsLoading) {
-    return <ContentLoader text={LOADER_TEXT} />;
+    return <ContentLoader text={LOADER_TEXT} className="relative top-1/4 h-auto" />;
   }
 
   const handleResetFilter = () => {
@@ -621,7 +621,7 @@ export const SecretDashboardPage = () => {
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
-      <div className="h-full">
+      <div style={{ height: "calc(100% - 60px)" }}>
         <StoreProvider>
           <Page />
         </StoreProvider>
