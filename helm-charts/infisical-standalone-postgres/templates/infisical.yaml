@@ -64,7 +64,25 @@ spec:
         ports: 
         - containerPort: 8080
         env:
-        {{- if .Values.postgresql.useExistingPostgresSecret.enabled }}
+        {{- if and .Values.postgresql.useExistingPostgresSecret.enabled .Values.postgresql.useExistingPostgresSecret.customURIParameters.enabled }}
+        {{- $pgParams := .Values.postgresql.useExistingPostgresSecret.customURIParameters }}
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ $pgParams.usernameSecret.name }}
+              key: {{ $pgParams.usernameSecret.key }}
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ $pgParams.passwordSecret.name }}
+              key: {{ $pgParams.passwordSecret.key }}
+        - name: DB_CONNECTION_URI
+          {{- $sslParams := "" }}
+          {{- if and $pgParams.ssl.enabled $pgParams.ssl.mode }}
+          {{- $sslParams = printf "?sslmode=%s&sslrootcert=%s" $pgParams.ssl.mode $pgParams.ssl.rootCertPath }}
+          {{- end }}
+          value: "postgresql://$(DB_USER):$(DB_PASSWORD)@{{ $pgParams.host }}:{{ $pgParams.port }}/{{ $pgParams.database }}{{ $sslParams }}"
+        {{- else if .Values.postgresql.useExistingPostgresSecret.enabled }}
         - name: DB_CONNECTION_URI
           valueFrom:
             secretKeyRef:
@@ -74,6 +92,20 @@ spec:
         {{- if .Values.postgresql.enabled }}
         - name: DB_CONNECTION_URI
           value: {{ include "infisical.postgresDBConnectionString" . }}
+        {{- end }}
+        {{- if .Values.redis.useExistingRedisSecret.enabled }}
+        {{- $redisParams := .Values.redis.useExistingRedisSecret.customURIParameters }}
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ $redisParams.passwordSecret.name }}
+              key: {{ $redisParams.passwordSecret.key }}
+        - name: REDIS_URL
+          {{- $usernameSegment := "default" }}
+          {{- if $redisParams.username }}
+          {{- $usernameSegment = printf "%s" $redisParams.username }}
+          {{- end }}
+          value: "redis://{{ $usernameSegment }}:$(REDIS_PASSWORD)@{{ $redisParams.host }}:{{ $redisParams.port }}"
         {{- end }}
         {{- if .Values.redis.enabled }}
         - name: REDIS_URL

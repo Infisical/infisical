@@ -22,12 +22,38 @@ spec:
         {{- toYaml $infisicalValues.image.imagePullSecrets | nindent 6 }}
     {{- end }}
       restartPolicy: OnFailure
+      {{- with $infisicalValues.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: infisical-schema-migration
           image: "{{ $infisicalValues.image.repository }}:{{ $infisicalValues.image.tag }}"
           command: ["npm", "run", "migration:latest"]
+          {{- with $infisicalValues.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
-          {{- if .Values.postgresql.useExistingPostgresSecret.enabled }}
+          {{- if and .Values.postgresql.useExistingPostgresSecret.enabled .Values.postgresql.useExistingPostgresSecret.customURIParameters.enabled }}
+          {{- $pgParams := .Values.postgresql.useExistingPostgresSecret.customURIParameters }}
+          - name: DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: {{ $pgParams.usernameSecret.name }}
+                key: {{ $pgParams.usernameSecret.key }}
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ $pgParams.passwordSecret.name }}
+                key: {{ $pgParams.passwordSecret.key }}
+          - name: DB_CONNECTION_URI
+            {{- $sslParams := "" }}
+            {{- if and $pgParams.ssl.enabled $pgParams.ssl.mode }}
+            {{- $sslParams = printf "?sslmode=%s&sslrootcert=%s" $pgParams.ssl.mode $pgParams.ssl.rootCertPath }}
+            {{- end }}
+            value: "postgresql://$(DB_USER):$(DB_PASSWORD)@{{ $pgParams.host }}:{{ $pgParams.port }}/{{ $pgParams.database }}{{ $sslParams }}"
+          {{- else if .Values.postgresql.useExistingPostgresSecret.enabled }}
           - name: DB_CONNECTION_URI
             valueFrom:
               secretKeyRef:
