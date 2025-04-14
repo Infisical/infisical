@@ -553,7 +553,7 @@
       "pages": ["integrations/build-tools/gradle"]
     },
     {
-      "group": "External Integrations",
+      "group": "Others",
       "pages": [
         "integrations/external/backstage"
       ]
