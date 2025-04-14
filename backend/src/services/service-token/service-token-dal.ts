@@ -28,5 +28,29 @@ export const serviceTokenDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...stOrm, findById };
+  const findExpiredTokens = async (tx?: Knex) => {
+    try {
+      const docs: { name: string; projectName: string; createdByEmail: string; id: string; projectId: string }[] =
+        await (tx || db.replicaNode())(TableName.ServiceToken)
+          .leftJoin<TUsers>(
+            TableName.Users,
+            `${TableName.Users}.id`,
+            db.raw(`${TableName.ServiceToken}."createdBy"::uuid`)
+          )
+          .join(TableName.Project, `${TableName.Project}.id`, `${TableName.ServiceToken}.projectId`)
+          .whereRaw(
+            `${TableName.ServiceToken}."expiresAt" < NOW() AND ${TableName.ServiceToken}."notificationSent" = false`
+          )
+          .select(`${TableName.ServiceToken}.name`)
+          .select(`${TableName.ServiceToken}.id`)
+          .select(`${TableName.Project}.name as projectName`)
+          .select(`${TableName.ServiceToken}.projectId`)
+          .select(`${TableName.Users}.email as createdByEmail`);
+
+      return docs;
+    } catch (err) {
+      throw new DatabaseError({ error: err, name: "FindById" });
+    }
+  };
+  return { ...stOrm, findById, findExpiredTokens };
 };

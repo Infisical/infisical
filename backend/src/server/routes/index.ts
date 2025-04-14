@@ -1255,7 +1255,8 @@ export const registerRoutes = async (
     userDAL,
     permissionService,
     projectDAL,
-    accessTokenQueue
+    accessTokenQueue,
+    smtpService
   });
 
   const identityService = identityServiceFactory({
@@ -1415,7 +1416,8 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     secretSharingDAL,
     secretVersionV2DAL: secretVersionV2BridgeDAL,
-    identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL
+    identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL,
+    serviceTokenService
   });
 
   const dailyExpiringPkiItemAlert = dailyExpiringPkiItemAlertQueueServiceFactory({

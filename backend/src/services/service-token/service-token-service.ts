@@ -17,6 +17,7 @@ import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-to
 import { ActorType } from "../auth/auth-type";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TServiceTokenDALFactory } from "./service-token-dal";
 import {
@@ -33,6 +34,7 @@ type TServiceTokenServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findBySlugs">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   accessTokenQueue: Pick<TAccessTokenQueueServiceFactory, "updateServiceTokenStatus">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type TServiceTokenServiceFactory = ReturnType<typeof serviceTokenServiceFactory>;
@@ -43,7 +45,8 @@ export const serviceTokenServiceFactory = ({
   permissionService,
   projectEnvDAL,
   projectDAL,
-  accessTokenQueue
+  accessTokenQueue,
+  smtpService
 }: TServiceTokenServiceFactoryDep) => {
   const createServiceToken = async ({
     iv,
@@ -185,11 +188,38 @@ export const serviceTokenServiceFactory = ({
     return { ...serviceToken, lastUsed: new Date(), orgId: project.orgId };
   };
 
+  const notifyExpiredTokens = async () => {
+    const appCfg = getConfig();
+
+    const expiredTokens = await serviceTokenDAL.findExpiredTokens();
+    if (expiredTokens.length === 0) return;
+
+    await Promise.all(
+      expiredTokens.map(async (token) => {
+        await smtpService
+          .sendMail({
+            recipients: [token.createdByEmail],
+            subjectLine: "Service Token Expired",
+            template: SmtpTemplates.ServiceTokenExpired,
+            substitutions: {
+              tokenName: token.name,
+              projectName: token.projectName,
+              url: `${appCfg.SITE_URL}/secret-manager/${token.projectId}/access-management?selectedTab=service-tokens`
+            }
+          })
+          .then(async () => {
+            await serviceTokenDAL.update({ id: token.id }, { notificationSent: true });
+          });
+      })
+    );
+  };
+
   return {
     createServiceToken,
     deleteServiceToken,
     getServiceToken,
     getProjectServiceTokens,
-    fnValidateServiceToken
+    fnValidateServiceToken,
+    notifyExpiredTokens
   };
 };
