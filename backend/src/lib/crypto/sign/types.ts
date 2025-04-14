@@ -1,13 +1,13 @@
 import { z } from "zod";
 
 export type TAsymmetricSignVerifyFns = {
-  sign: (data: Buffer, key: Buffer, signingAlgorithm: SigningAlgorithm, isDigest: boolean) => Promise<Buffer>;
+  sign: (data: Buffer, key: Buffer, signingAlgorithm: SigningAlgorithm, preDigested: boolean) => Promise<Buffer>;
   verify: (
     data: Buffer,
     signature: Buffer,
     key: Buffer,
     signingAlgorithm: SigningAlgorithm,
-    isDigest: boolean
+    preDigested: boolean
   ) => Promise<boolean>;
   generateAsymmetricPrivateKey: () => Promise<Buffer>;
   getPublicKeyFromPrivateKey: (privateKey: Buffer) => Buffer;

@@ -501,7 +501,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         signingAlgorithm: z.nativeEnum(SigningAlgorithm),
-        isDigest: z.boolean().optional().default(false).describe(KMS.SIGN.isDigest),
+        preDigested: z.boolean().optional().default(false).describe(KMS.SIGN.preDigested),
         data: base64Schema.describe(KMS.SIGN.data)
       }),
       response: {
@@ -516,12 +516,12 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         params: { keyId: inputKeyId },
-        body: { data, signingAlgorithm, isDigest },
+        body: { data, signingAlgorithm, preDigested },
         permission
       } = req;
 
       const { projectId, ...result } = await server.services.cmek.cmekSign(
-        { keyId: inputKeyId, data, signingAlgorithm, isDigest },
+        { keyId: inputKeyId, data, signingAlgorithm, preDigested },
         permission
       );
 
@@ -553,7 +553,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         keyId: z.string().uuid().describe(KMS.VERIFY.keyId)
       }),
       body: z.object({
-        isDigest: z.boolean().optional().default(false).describe(KMS.VERIFY.isDigest),
+        preDigested: z.boolean().optional().default(false).describe(KMS.VERIFY.preDigested),
         data: base64Schema.describe(KMS.VERIFY.data),
         signature: base64Schema.describe(KMS.VERIFY.signature),
         signingAlgorithm: z.nativeEnum(SigningAlgorithm)
@@ -570,12 +570,12 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         params: { keyId },
-        body: { data, signature, signingAlgorithm, isDigest },
+        body: { data, signature, signingAlgorithm, preDigested },
         permission
       } = req;
 
       const { projectId, ...result } = await server.services.cmek.cmekVerify(
-        { keyId, data, signature, signingAlgorithm, isDigest },
+        { keyId, data, signature, signingAlgorithm, preDigested },
         permission
       );
 

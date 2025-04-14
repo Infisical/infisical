@@ -469,10 +469,10 @@ export const kmsServiceFactory = ({
     return async ({
       data,
       signingAlgorithm,
-      isDigest
-    }: Pick<TSignWithKmsDTO, "data" | "signingAlgorithm" | "isDigest">) => {
+      preDigested
+    }: Pick<TSignWithKmsDTO, "data" | "signingAlgorithm" | "preDigested">) => {
       const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
-      const signature = await sign(data, kmsKey, signingAlgorithm, isDigest);
+      const signature = await sign(data, kmsKey, signingAlgorithm, preDigested);
 
       return Promise.resolve({ signature, algorithm: signingAlgorithm });
     };
@@ -494,11 +494,11 @@ export const kmsServiceFactory = ({
 
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const { verify, getPublicKeyFromPrivateKey } = signingService(encryptionAlgorithm);
-    return async ({ data, signature, isDigest }: Pick<TVerifyWithKmsDTO, "data" | "signature" | "isDigest">) => {
+    return async ({ data, signature, preDigested }: Pick<TVerifyWithKmsDTO, "data" | "signature" | "preDigested">) => {
       const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
       const publicKey = getPublicKeyFromPrivateKey(kmsKey);
-      const signatureValid = await verify(data, signature, publicKey, signingAlgorithm, isDigest);
+      const signatureValid = await verify(data, signature, publicKey, signingAlgorithm, preDigested);
       return Promise.resolve({ signatureValid, algorithm: signingAlgorithm });
     };
   };

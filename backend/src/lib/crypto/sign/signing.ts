@@ -339,13 +339,13 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     data: Buffer,
     privateKey: Buffer,
     signingAlgorithm: SigningAlgorithm,
-    isDigest: boolean
+    preDigested: boolean
   ): Promise<Buffer> => {
     $validateAlgorithmWithKeyType(signingAlgorithm);
 
     const { hashAlgorithm, padding, saltLength } = $getSigningParams(signingAlgorithm);
 
-    if (isDigest) {
+    if (preDigested) {
       if (signingAlgorithm.startsWith("RSASSA_PSS")) {
         throw new BadRequestError({
           message: "RSA PSS does not support digested input"
@@ -400,14 +400,14 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     signature: Buffer,
     publicKey: Buffer,
     signingAlgorithm: SigningAlgorithm,
-    isDigest: boolean
+    preDigested: boolean
   ): Promise<boolean> => {
     try {
       $validateAlgorithmWithKeyType(signingAlgorithm);
 
       const { hashAlgorithm, padding, saltLength } = $getSigningParams(signingAlgorithm);
 
-      if (isDigest) {
+      if (preDigested) {
         if (signingAlgorithm.startsWith("RSASSA_PSS")) {
           throw new BadRequestError({
             message: "RSA PSS does not support digested input"

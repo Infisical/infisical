@@ -304,7 +304,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
     return { publicKey: publicKey.toString("base64"), projectId: key.projectId };
   };
 
-  const cmekSign = async ({ keyId, data, signingAlgorithm, isDigest }: TCmekSignDTO, actor: OrgServiceActor) => {
+  const cmekSign = async ({ keyId, data, signingAlgorithm, preDigested }: TCmekSignDTO, actor: OrgServiceActor) => {
     const key = await kmsDAL.findCmekById(keyId);
 
     if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
@@ -326,7 +326,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     const sign = await kmsService.signWithKmsKey({ kmsId: keyId });
 
-    const { signature, algorithm } = await sign({ data: Buffer.from(data, "base64"), signingAlgorithm, isDigest });
+    const { signature, algorithm } = await sign({ data: Buffer.from(data, "base64"), signingAlgorithm, preDigested });
 
     return {
       signature: signature.toString("base64"),
@@ -337,7 +337,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
   };
 
   const cmekVerify = async (
-    { keyId, data, signature, signingAlgorithm, isDigest }: TCmekVerifyDTO,
+    { keyId, data, signature, signingAlgorithm, preDigested }: TCmekVerifyDTO,
     actor: OrgServiceActor
   ) => {
     const key = await kmsDAL.findCmekById(keyId);
@@ -362,7 +362,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
     const verify = await kmsService.verifyWithKmsKey({ kmsId: keyId, signingAlgorithm });
 
     const { signatureValid, algorithm } = await verify({
-      isDigest,
+      preDigested,
       data: Buffer.from(data, "base64"),
       signature: Buffer.from(signature, "base64")
     });

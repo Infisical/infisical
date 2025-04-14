@@ -52,7 +52,7 @@ export type TSignWithKmsDTO = {
   kmsId: string;
   data: Buffer;
   signingAlgorithm: SigningAlgorithm;
-  isDigest: boolean;
+  preDigested: boolean;
 };
 
 export type TVerifyWithKmsDTO = {
@@ -60,7 +60,7 @@ export type TVerifyWithKmsDTO = {
   data: Buffer;
   signature: Buffer;
   signingAlgorithm: SigningAlgorithm;
-  isDigest: boolean;
+  preDigested: boolean;
 };
 
 export type TEncryptionWithKeyDTO = {
