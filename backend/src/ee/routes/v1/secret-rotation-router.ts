@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { SecretRotationOutputsSchema, SecretRotationsSchema } from "@app/db/schemas";
-import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -41,10 +40,16 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async () => {
-      throw new BadRequestError({
-        message: `This version of Secret Rotations has been deprecated. Please see docs for new version.`
+    handler: async (req) => {
+      const secretRotation = await server.services.secretRotation.createRotation({
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        ...req.body,
+        projectId: req.body.workspaceId
       });
+      return { secretRotation };
     }
   });
 

@@ -127,6 +127,13 @@ export const secretRotationServiceFactory = ({
       });
       if (selectedSecrets.length !== Object.values(outputs).length)
         throw new NotFoundError({ message: `Secrets not found in folder with ID '${folder.id}'` });
+      const rotatedSecrets = selectedSecrets.filter(({ isRotatedSecret }) => isRotatedSecret);
+      if (rotatedSecrets.length)
+        throw new BadRequestError({
+          message: `Selected secrets are already used for rotation: ${rotatedSecrets
+            .map((secret) => secret.key)
+            .join(", ")}`
+        });
     } else {
       const selectedSecrets = await secretDAL.find({
         folderId: folder.id,
