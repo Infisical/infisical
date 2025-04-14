@@ -83,7 +83,12 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
         if (folder.secrets?.length) {
           folder.secrets.forEach(({ secretId: secret, referencedSecretKey }) => {
             const secretPath = folder.name === "/" ? `/${secret}` : `${folder.name}/${secret}`;
-            if (secretsToDelete.includes(referencedSecretKey)) {
+            if (
+              secretsToDelete.includes(referencedSecretKey) &&
+              !items.some(
+                (item) => item.environment.name === env.environment.name && item.path === secretPath
+              )
+            ) {
               items.push({
                 type: ItemType.Secret,
                 path: secretPath,
@@ -115,6 +120,24 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
       return aPath.localeCompare(bPath);
     });
   }, [importedBy]);
+
+  const hasImportedItems = importedBy.some((element) => {
+    if (element.folders && element.folders.length > 0) {
+      return element.folders.some(
+        (folder) =>
+          folder.isImported ||
+          (folder.secrets &&
+            folder.secrets.length > 0 &&
+            folder.secrets.some((secret) => secretsToDelete.includes(secret.referencedSecretKey)))
+      );
+    }
+
+    return false;
+  });
+
+  if (!hasImportedItems) {
+    return null;
+  }
 
   return (
     <div className="mb-4 w-full">
