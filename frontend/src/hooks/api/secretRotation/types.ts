@@ -45,6 +45,7 @@ export type TSecretRotationProviderTemplate = {
   image?: string;
   description?: string;
   template: THttpProviderTemplate | TDbProviderTemplate;
+  isDeprecated?: boolean;
 };
 
 export type THttpProviderTemplate = {
