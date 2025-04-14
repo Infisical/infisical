@@ -906,7 +906,7 @@ res, err := client.Kms().Signing().SignData(infisical.KmsSignDataOptions{
     <ParamField query="Data" type="string" required>
       The data to sign. Must be a base64 encoded string.
     </ParamField>
-    <ParamField query="IsDigest" type="boolean" optional>
+    <ParamField query="IsPreDigested" type="boolean" optional>
       Whether the data is already digested or not.
     </ParamField>
     <ParamField query="SigningAlgorithm" type="string" required>
@@ -960,7 +960,7 @@ res, err := client.Kms().Signing().Verify(infisical.KmsVerifyDataOptions{
     <ParamField query="Data" type="string" required>
       The data to verify. Must be a base64 encoded string.
     </ParamField>
-    <ParamField query="IsDigest" type="boolean" optional>
+    <ParamField query="IsPreDigested" type="boolean" optional>
       Whether the data is already digested or not.
     </ParamField>
     <ParamField query="SigningAlgorithm" type="string" required>
