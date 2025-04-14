@@ -87,8 +87,8 @@ export const IntegrationsListPage = () => {
                   Native Integrations Transitioning to Legacy Status
                 </div>
                 <p className="mb-2 mt-1 text-sm text-bunker-300">
-                  Native integrations are now a legacy feature and will begin deprecation in 2026.
-                  We recommend migrating to our new{" "}
+                  Native integrations are now a legacy feature and we will begin a phased
+                  deprecation in 2026. We recommend migrating to our new{" "}
                   <a
                     className="text-bunker-200 underline decoration-primary-700 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
                     href="https://infisical.com/docs/integrations/secret-syncs/overview"
