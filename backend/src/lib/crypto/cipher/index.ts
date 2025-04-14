@@ -1,2 +1,2 @@
 export { symmetricCipherService } from "./cipher";
-export { SymmetricEncryption } from "./types";
+export { AllowedEncryptionKeyAlgorithms, SymmetricKeyAlgorithm } from "./types";

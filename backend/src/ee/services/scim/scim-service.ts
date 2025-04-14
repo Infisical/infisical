@@ -594,6 +594,7 @@ export const scimServiceFactory = ({
         },
         tx
       );
+
       await orgMembershipDAL.updateById(
         membership.id,
         {

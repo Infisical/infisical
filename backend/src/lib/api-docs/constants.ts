@@ -66,6 +66,17 @@ export const IDENTITIES = {
   },
   LIST: {
     orgId: "The ID of the organization to list identities."
+  },
+  SEARCH: {
+    search: {
+      desc: "The filters to apply to the search.",
+      name: "The name of the identity to filter by.",
+      role: "The organizational role of the identity to filter by."
+    },
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identities to return.",
+    orderBy: "The column to order identities by.",
+    orderDirection: "The direction to order identities in."
   }
 } as const;
 
@@ -507,6 +518,9 @@ export const PROJECTS = {
   },
   LIST_SSH_CAS: {
     projectId: "The ID of the project to list SSH CAs for."
+  },
+  LIST_SSH_HOSTS: {
+    projectId: "The ID of the project to list SSH hosts for."
   },
   LIST_SSH_CERTIFICATES: {
     projectId: "The ID of the project to list SSH certificates for.",
@@ -1242,7 +1256,11 @@ export const SSH_CERTIFICATE_AUTHORITIES = {
   CREATE: {
     projectId: "The ID of the project to create the SSH CA in.",
     friendlyName: "A friendly name for the SSH CA.",
-    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA."
+    keyAlgorithm:
+      "The type of public key algorithm and size, in bits, of the key pair for the SSH CA; required if keySource is internal.",
+    publicKey: "The public key for the SSH CA key pair; required if keySource is external.",
+    privateKey: "The private key for the SSH CA key pair; required if keySource is external.",
+    keySource: "The source of the SSH CA key pair. This can be one of internal or external."
   },
   GET: {
     sshCaId: "The ID of the SSH CA to get."
@@ -1313,6 +1331,62 @@ export const SSH_CERTIFICATE_TEMPLATES = {
   },
   DELETE: {
     certificateTemplateId: "The ID of the SSH certificate template to delete."
+  }
+};
+
+export const SSH_HOSTS = {
+  GET: {
+    sshHostId: "The ID of the SSH host to get."
+  },
+  CREATE: {
+    projectId: "The ID of the project to create the SSH host in.",
+    hostname: "The hostname of the SSH host.",
+    userCertTtl: "The time to live for user certificates issued under this host.",
+    hostCertTtl: "The time to live for host certificates issued under this host.",
+    loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
+    allowedPrincipals: "A list of allowed principals that can log in as the login user.",
+    loginMappings:
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project.",
+    userSshCaId:
+      "The ID of the SSH CA to use for user certificates. If not specified, the default user SSH CA will be used if it exists.",
+    hostSshCaId:
+      "The ID of the SSH CA to use for host certificates. If not specified, the default host SSH CA will be used if it exists."
+  },
+  UPDATE: {
+    sshHostId: "The ID of the SSH host to update.",
+    hostname: "The hostname of the SSH host to update to.",
+    userCertTtl: "The time to live for user certificates issued under this host to update to.",
+    hostCertTtl: "The time to live for host certificates issued under this host to update to.",
+    loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
+    allowedPrincipals: "A list of allowed principals that can log in as the login user.",
+    loginMappings:
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project."
+  },
+  DELETE: {
+    sshHostId: "The ID of the SSH host to delete."
+  },
+  ISSUE_SSH_CREDENTIALS: {
+    sshHostId: "The ID of the SSH host to issue the SSH credentials for.",
+    loginUser: "The login user to issue the SSH credentials for.",
+    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH host.",
+    serialNumber: "The serial number of the issued SSH certificate.",
+    signedKey: "The SSH certificate or signed SSH public key.",
+    privateKey: "The private key corresponding to the issued SSH certificate.",
+    publicKey: "The public key of the issued SSH certificate."
+  },
+  ISSUE_HOST_CERT: {
+    sshHostId: "The ID of the SSH host to issue the SSH certificate for.",
+    publicKey: "The SSH public key to issue the SSH certificate for.",
+    serialNumber: "The serial number of the issued SSH certificate.",
+    signedKey: "The SSH certificate or signed SSH public key."
+  },
+  GET_USER_CA_PUBLIC_KEY: {
+    sshHostId: "The ID of the SSH host to get the user SSH CA public key for.",
+    publicKey: "The public key of the user SSH CA linked to the SSH host."
+  },
+  GET_HOST_CA_PUBLIC_KEY: {
+    sshHostId: "The ID of the SSH host to get the host SSH CA public key for.",
+    publicKey: "The public key of the host SSH CA linked to the SSH host."
   }
 };
 
@@ -1598,7 +1672,8 @@ export const KMS = {
     projectId: "The ID of the project to create the key in.",
     name: "The name of the key to be created. Must be slug-friendly.",
     description: "An optional description of the key.",
-    encryptionAlgorithm: "The algorithm to use when performing cryptographic operations with the key."
+    encryptionAlgorithm: "The algorithm to use when performing cryptographic operations with the key.",
+    type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key."
   },
   UPDATE_KEY: {
     keyId: "The ID of the key to be updated.",
@@ -1631,6 +1706,28 @@ export const KMS = {
   DECRYPT: {
     keyId: "The ID of the key to decrypt the data with.",
     ciphertext: "The ciphertext to be decrypted (base64 encoded)."
+  },
+
+  LIST_SIGNING_ALGORITHMS: {
+    keyId: "The ID of the key to list the signing algorithms for. The key must be for signing and verifying."
+  },
+
+  GET_PUBLIC_KEY: {
+    keyId: "The ID of the key to get the public key for. The key must be for signing and verifying."
+  },
+
+  SIGN: {
+    keyId: "The ID of the key to sign the data with.",
+    data: "The data in string format to be signed (base64 encoded).",
+    isDigest:
+      "Whether the data is already digested or not. Please be aware that if you are passing a digest the algorithm used to create the digest must match the signing algorithm used to sign the digest.",
+    signingAlgorithm: "The algorithm to use when performing cryptographic operations with the key."
+  },
+  VERIFY: {
+    keyId: "The ID of the key to verify the data with.",
+    data: "The data in string format to be verified (base64 encoded). For data larger than 4096 bytes you must first create a digest of the data and then pass the digest in the data parameter.",
+    signature: "The signature to be verified (base64 encoded).",
+    isDigest: "Whether the data is already digested or not."
   }
 };
 
@@ -1694,6 +1791,16 @@ export const AppConnections = {
       sslEnabled: "Whether or not to use SSL when connecting to the database.",
       sslRejectUnauthorized: "Whether or not to reject unauthorized SSL certificates.",
       sslCertificate: "The SSL certificate to use for connection."
+    },
+    TERRAFORM_CLOUD: {
+      apiToken: "The API token to use to connect with Terraform Cloud."
+    },
+    VERCEL: {
+      apiToken: "The API token used to authenticate with Vercel."
+    },
+    CAMUNDA: {
+      clientId: "The client ID used to authenticate with Camunda.",
+      clientSecret: "The client secret used to authenticate with Camunda."
     }
   }
 };
@@ -1804,11 +1911,31 @@ export const SecretSyncs = {
     DATABRICKS: {
       scope: "The Databricks secret scope that secrets should be synced to."
     },
+    CAMUNDA: {
+      scope: "The Camunda scope that secrets should be synced to.",
+      clusterUUID: "The UUID of the Camunda cluster that secrets should be synced to."
+    },
     HUMANITEC: {
       app: "The ID of the Humanitec app to sync secrets to.",
       org: "The ID of the Humanitec org to sync secrets to.",
       env: "The ID of the Humanitec environment to sync secrets to.",
       scope: "The Humanitec scope that secrets should be synced to."
+    },
+    TERRAFORM_CLOUD: {
+      org: "The ID of the Terraform Cloud org to sync secrets to.",
+      variableSetName: "The name of the Terraform Cloud Variable Set to sync secrets to.",
+      variableSetId: "The ID of the Terraform Cloud Variable Set to sync secrets to.",
+      workspaceName: "The name of the Terraform Cloud workspace to sync secrets to.",
+      workspaceId: "The ID of the Terraform Cloud workspace to sync secrets to.",
+      scope: "The Terraform Cloud scope that secrets should be synced to.",
+      category: "The Terraform Cloud category that secrets should be synced to."
+    },
+    VERCEL: {
+      app: "The ID of the Vercel app to sync secrets to.",
+      appName: "The name of the Vercel app to sync secrets to.",
+      env: "The ID of the Vercel environment to sync secrets to.",
+      branch: "The branch to sync preview secrets to.",
+      teamId: "The ID of the Vercel team to sync secrets to."
     }
   }
 };

@@ -3,22 +3,28 @@ import { TAppConnectionOption } from "./app-options";
 import { TAwsConnection } from "./aws-connection";
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
+import { TCamundaConnection } from "./camunda-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TPostgresConnection } from "./postgres-connection";
+import { TTerraformCloudConnection } from "./terraform-cloud-connection";
+import { TVercelConnection } from "./vercel-connection";
 
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
 export * from "./azure-key-vault-connection";
+export * from "./camunda-connection";
 export * from "./databricks-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
 export * from "./humanitec-connection";
 export * from "./mssql-connection";
 export * from "./postgres-connection";
+export * from "./terraform-cloud-connection";
+export * from "./vercel-connection";
 
 export type TAppConnection =
   | TAwsConnection
@@ -28,8 +34,11 @@ export type TAppConnection =
   | TAzureAppConfigurationConnection
   | TDatabricksConnection
   | THumanitecConnection
+  | TTerraformCloudConnection
+  | TVercelConnection
   | TPostgresConnection
-  | TMsSqlConnection;
+  | TMsSqlConnection
+  | TCamundaConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -64,6 +73,9 @@ export type TAppConnectionMap = {
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
   [AppConnection.Databricks]: TDatabricksConnection;
   [AppConnection.Humanitec]: THumanitecConnection;
+  [AppConnection.TerraformCloud]: TTerraformCloudConnection;
+  [AppConnection.Vercel]: TVercelConnection;
   [AppConnection.Postgres]: TPostgresConnection;
   [AppConnection.MsSql]: TMsSqlConnection;
+  [AppConnection.Camunda]: TCamundaConnection;
 };

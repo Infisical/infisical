@@ -32,7 +32,9 @@ export enum ProjectPermissionCmekActions {
   Edit = "edit",
   Delete = "delete",
   Encrypt = "encrypt",
-  Decrypt = "decrypt"
+  Decrypt = "decrypt",
+  Sign = "sign",
+  Verify = "verify"
 }
 
 export enum ProjectPermissionDynamicSecretActions {
@@ -65,6 +67,14 @@ export enum ProjectPermissionGroupActions {
   Edit = "edit",
   Delete = "delete",
   GrantPrivileges = "grant-privileges"
+}
+
+export enum ProjectPermissionSshHostActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueHostCert = "issue-host-cert"
 }
 
 export enum ProjectPermissionSecretSyncActions {
@@ -121,6 +131,7 @@ export enum ProjectPermissionSub {
   SshCertificateAuthorities = "ssh-certificate-authorities",
   SshCertificates = "ssh-certificates",
   SshCertificateTemplates = "ssh-certificate-templates",
+  SshHosts = "ssh-hosts",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
   Kms = "kms",
@@ -158,6 +169,10 @@ export type SecretRotationsSubjectFields = {
 
 export type IdentityManagementSubjectFields = {
   identityId: string;
+};
+
+export type SshHostSubjectFields = {
+  hostname: string;
 };
 
 export type ProjectPermissionSet =
@@ -215,6 +230,10 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
+  | [
+      ProjectPermissionSshHostActions,
+      ProjectPermissionSub.SshHosts | (ForcedSubject<ProjectPermissionSub.SshHosts> & SshHostSubjectFields)
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
@@ -306,6 +325,21 @@ const IdentityManagementConditionSchema = z
         .object({
           [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
           [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
+  })
+  .partial();
+
+const SshHostConditionSchema = z
+  .object({
+    hostname: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB],
           [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
         })
         .partial()
@@ -562,6 +596,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
     ).optional()
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.SshHosts).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSshHostActions).describe(
+      "Describe what action an entity can take."
+    ),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    conditions: SshHostConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.SecretRotation).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretRotationActions).describe(
@@ -612,6 +656,17 @@ const buildAdminPermissionRules = () => {
       el
     );
   });
+
+  can(
+    [
+      ProjectPermissionSshHostActions.Edit,
+      ProjectPermissionSshHostActions.Read,
+      ProjectPermissionSshHostActions.Create,
+      ProjectPermissionSshHostActions.Delete,
+      ProjectPermissionSshHostActions.IssueHostCert
+    ],
+    ProjectPermissionSub.SshHosts
+  );
 
   can(
     [
@@ -679,7 +734,9 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCmekActions.Delete,
       ProjectPermissionCmekActions.Read,
       ProjectPermissionCmekActions.Encrypt,
-      ProjectPermissionCmekActions.Decrypt
+      ProjectPermissionCmekActions.Decrypt,
+      ProjectPermissionCmekActions.Sign,
+      ProjectPermissionCmekActions.Verify
     ],
     ProjectPermissionSub.Cmek
   );
@@ -873,6 +930,8 @@ const buildMemberPermissionRules = () => {
   can([ProjectPermissionActions.Create], ProjectPermissionSub.SshCertificates);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificateTemplates);
 
+  can([ProjectPermissionSshHostActions.Read], ProjectPermissionSub.SshHosts);
+
   can(
     [
       ProjectPermissionCmekActions.Create,
@@ -880,7 +939,9 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionCmekActions.Delete,
       ProjectPermissionCmekActions.Read,
       ProjectPermissionCmekActions.Encrypt,
-      ProjectPermissionCmekActions.Decrypt
+      ProjectPermissionCmekActions.Decrypt,
+      ProjectPermissionCmekActions.Sign,
+      ProjectPermissionCmekActions.Verify
     ],
     ProjectPermissionSub.Cmek
   );

@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export enum TableName {
   Users = "users",
+  SshHost = "ssh_hosts",
+  SshHostLoginUser = "ssh_host_login_users",
+  SshHostLoginUserMapping = "ssh_host_login_user_mappings",
   SshCertificateAuthority = "ssh_certificate_authorities",
   SshCertificateAuthoritySecret = "ssh_certificate_authority_secrets",
   SshCertificateTemplate = "ssh_certificate_templates",
@@ -38,6 +41,7 @@ export enum TableName {
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
   ApiKey = "api_keys",
+  ProjectSshConfig = "project_ssh_configs",
   Project = "projects",
   ProjectBot = "project_bots",
   Environment = "project_environments",

@@ -11,14 +11,15 @@ export const SshCertificatesSchema = z.object({
   id: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  sshCaId: z.string().uuid(),
+  sshCaId: z.string().uuid().nullable().optional(),
   sshCertificateTemplateId: z.string().uuid().nullable().optional(),
   serialNumber: z.string(),
   certType: z.string(),
   principals: z.string().array(),
   keyId: z.string(),
   notBefore: z.date(),
-  notAfter: z.date()
+  notAfter: z.date(),
+  sshHostId: z.string().uuid().nullable().optional()
 });
 
 export type TSshCertificates = z.infer<typeof SshCertificatesSchema>;

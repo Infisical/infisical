@@ -1,10 +1,22 @@
+import { Knex } from "knex";
+
 import { TSshCertificateTemplates } from "@app/db/schemas";
+import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
+import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { TProjectPermission } from "@app/lib/types";
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { ActorType } from "@app/services/auth/auth-type";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 export enum SshCaStatus {
   ACTIVE = "active",
   DISABLED = "disabled"
+}
+
+export enum SshCaKeySource {
+  INTERNAL = "internal",
+  EXTERNAL = "external"
 }
 
 export enum SshCertType {
@@ -14,8 +26,24 @@ export enum SshCertType {
 
 export type TCreateSshCaDTO = {
   friendlyName: string;
-  keyAlgorithm: CertKeyAlgorithm;
+  keyAlgorithm: SshCertKeyAlgorithm;
+  publicKey?: string;
+  privateKey?: string;
+  keySource: SshCaKeySource;
 } & TProjectPermission;
+
+export type TCreateSshCaHelperDTO = {
+  projectId: string;
+  friendlyName: string;
+  keyAlgorithm: SshCertKeyAlgorithm;
+  keySource: SshCaKeySource;
+  externalPk?: string;
+  externalSk?: string;
+  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "transaction" | "create">;
+  sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "create">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  tx?: Knex;
+};
 
 export type TGetSshCaDTO = {
   caId: string;
@@ -37,7 +65,7 @@ export type TDeleteSshCaDTO = {
 
 export type TIssueSshCredsDTO = {
   certificateTemplateId: string;
-  keyAlgorithm: CertKeyAlgorithm;
+  keyAlgorithm: SshCertKeyAlgorithm;
   certType: SshCertType;
   principals: string[];
   ttl?: string;
@@ -58,11 +86,17 @@ export type TGetSshCaCertificateTemplatesDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSshCertDTO = {
-  template: TSshCertificateTemplates;
+  template?: TSshCertificateTemplates;
   caPrivateKey: string;
   clientPublicKey: string;
   keyId: string;
   principals: string[];
   requestedTtl?: string;
   certType: SshCertType;
+};
+
+export type TConvertActorToPrincipalsDTO = {
+  actor: ActorType;
+  actorId: string;
+  userDAL: Pick<TUserDALFactory, "findById">;
 };

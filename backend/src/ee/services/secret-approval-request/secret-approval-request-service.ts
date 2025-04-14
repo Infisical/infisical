@@ -113,7 +113,13 @@ type TSecretApprovalRequestServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
-    "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany" | "find"
+    | "insertMany"
+    | "upsertSecretReferences"
+    | "findBySecretKeys"
+    | "bulkUpdate"
+    | "deleteMany"
+    | "find"
+    | "invalidateSecretCacheByProjectId"
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -262,13 +268,14 @@ export const secretApprovalRequestServiceFactory = ({
         id: el.id,
         version: el.version,
         secretMetadata: el.secretMetadata as ResourceMetadataDTO,
-        isRotatedSecret: el.secret.isRotatedSecret,
-        // eslint-disable-next-line no-nested-ternary
-        secretValue: el.secret.isRotatedSecret
-          ? undefined
-          : el.encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-            : "",
+        isRotatedSecret: el.secret?.isRotatedSecret ?? false,
+        secretValue:
+          // eslint-disable-next-line no-nested-ternary
+          el.secret && el.secret.isRotatedSecret
+            ? undefined
+            : el.encryptedValue
+              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+              : "",
         secretComment: el.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
           : "",
@@ -615,7 +622,7 @@ export const secretApprovalRequestServiceFactory = ({
               tx,
               inputSecrets: secretUpdationCommits.map((el) => {
                 const encryptedValue =
-                  !el.secret.isRotatedSecret && typeof el.encryptedValue !== "undefined"
+                  !el.secret?.isRotatedSecret && typeof el.encryptedValue !== "undefined"
                     ? {
                         encryptedValue: el.encryptedValue as Buffer,
                         references: el.encryptedValue
@@ -863,6 +870,7 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     await snapshotService.performSnapshot(folderId);
     const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
     if (!folder) {

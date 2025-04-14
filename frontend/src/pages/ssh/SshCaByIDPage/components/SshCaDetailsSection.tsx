@@ -8,7 +8,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { useGetSshCaById } from "@app/hooks/api";
 import { caStatusToNameMap } from "@app/hooks/api/ca/constants";
-import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
+import { sshCertKeyAlgorithmToNameMap } from "@app/hooks/api/sshCa/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -93,7 +93,9 @@ export const SshCaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Key Algorithm</p>
-          <p className="text-sm text-mineshaft-300">{certKeyAlgorithmToNameMap[ca.keyAlgorithm]}</p>
+          <p className="text-sm text-mineshaft-300">
+            {sshCertKeyAlgorithmToNameMap[ca.keyAlgorithm]}
+          </p>
         </div>
         <div>
           <p className="text-sm font-semibold text-mineshaft-300">Public Key</p>

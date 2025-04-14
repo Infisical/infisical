@@ -7,8 +7,11 @@ import { GitHubSyncDestinationSchema } from "@app/components/secret-syncs/forms/
 import { AwsParameterStoreSyncDestinationSchema } from "./aws-parameter-store-sync-destination-schema";
 import { AzureAppConfigurationSyncDestinationSchema } from "./azure-app-configuration-sync-destination-schema";
 import { AzureKeyVaultSyncDestinationSchema } from "./azure-key-vault-sync-destination-schema";
+import { CamundaSyncDestinationSchema } from "./camunda-sync-destination-schema";
 import { GcpSyncDestinationSchema } from "./gcp-sync-destination-schema";
 import { HumanitecSyncDestinationSchema } from "./humanitec-sync-destination-schema";
+import { TerraformCloudSyncDestinationSchema } from "./terraform-cloud-destination-schema";
+import { VercelSyncDestinationSchema } from "./vercel-sync-destination-schema";
 
 const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   AwsParameterStoreSyncDestinationSchema,
@@ -18,7 +21,10 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   AzureKeyVaultSyncDestinationSchema,
   AzureAppConfigurationSyncDestinationSchema,
   DatabricksSyncDestinationSchema,
-  HumanitecSyncDestinationSchema
+  HumanitecSyncDestinationSchema,
+  TerraformCloudSyncDestinationSchema,
+  CamundaSyncDestinationSchema,
+  VercelSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

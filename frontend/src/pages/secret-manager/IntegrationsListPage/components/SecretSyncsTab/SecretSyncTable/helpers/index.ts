@@ -1,3 +1,4 @@
+import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform-cloud";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 import {
   GitHubSyncScope,
@@ -72,6 +73,22 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
           throw new Error(`Unhandled Humanitec Scope Destination Col Values ${destination}`);
       }
       secondaryText = `Organization - ${destinationConfig.org}`;
+      break;
+    case SecretSync.TerraformCloud:
+      primaryText = destinationConfig.org;
+      if (destinationConfig.scope === TerraformCloudSyncScope.VariableSet) {
+        secondaryText = destinationConfig.variableSetName;
+      } else {
+        secondaryText = destinationConfig.workspaceName;
+      }
+      break;
+    case SecretSync.Camunda:
+      primaryText = destinationConfig.clusterName ?? destinationConfig.clusterUUID;
+      secondaryText = "Cluster";
+      break;
+    case SecretSync.Vercel:
+      primaryText = destinationConfig.appName || destinationConfig.app;
+      secondaryText = destinationConfig.env;
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

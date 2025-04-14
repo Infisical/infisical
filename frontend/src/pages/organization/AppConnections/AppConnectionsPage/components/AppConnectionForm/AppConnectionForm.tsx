@@ -12,12 +12,15 @@ import { AppConnectionHeader } from "../AppConnectionHeader";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
+import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
+import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
+import { VercelConnectionForm } from "./VercelConnectionForm";
 
 type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;
@@ -70,10 +73,16 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <DatabricksConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Humanitec:
       return <HumanitecConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.TerraformCloud:
+      return <TerraformCloudConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Vercel:
+      return <VercelConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Postgres:
       return <PostgresConnectionForm onSubmit={onSubmit} />;
     case AppConnection.MsSql:
       return <MsSqlConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Camunda:
+      return <CamundaConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -124,10 +133,16 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <DatabricksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Humanitec:
       return <HumanitecConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.TerraformCloud:
+      return <TerraformCloudConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Vercel:
+      return <VercelConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Postgres:
       return <PostgresConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.MsSql:
       return <MsSqlConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Camunda:
+      return <CamundaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

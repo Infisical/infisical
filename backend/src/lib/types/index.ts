@@ -41,6 +41,18 @@ export type RequiredKeys<T> = {
   [K in keyof T]-?: undefined extends T[K] ? never : K;
 }[keyof T];
 
+export type BufferKeysToString<T> = {
+  [K in keyof T]: T[K] extends Buffer
+    ? string
+    : T[K] extends Buffer | null
+      ? string | null
+      : T[K] extends Buffer | undefined
+        ? string | undefined
+        : T[K] extends Buffer | null | undefined
+          ? string | null | undefined
+          : T[K];
+};
+
 export type PickRequired<T> = Pick<T, RequiredKeys<T>>;
 
 export type DiscriminativePick<T, K extends keyof T> = T extends unknown ? Pick<T, K> : never;

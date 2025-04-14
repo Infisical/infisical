@@ -96,6 +96,10 @@ import { sshCertificateBodyDALFactory } from "@app/ee/services/ssh-certificate/s
 import { sshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
 import { sshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
 import { sshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-service";
+import { sshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
+import { sshHostLoginUserMappingDALFactory } from "@app/ee/services/ssh-host/ssh-host-login-user-mapping-dal";
+import { sshHostServiceFactory } from "@app/ee/services/ssh-host/ssh-host-service";
+import { sshHostLoginUserDALFactory } from "@app/ee/services/ssh-host/ssh-login-user-dal";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -184,6 +188,7 @@ import { pkiCollectionServiceFactory } from "@app/services/pki-collection/pki-co
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
+import { projectSshConfigDALFactory } from "@app/services/project/project-ssh-config-dal";
 import { projectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { projectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { projectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -292,6 +297,7 @@ export const registerRoutes = async (
   const apiKeyDAL = apiKeyDALFactory(db);
 
   const projectDAL = projectDALFactory(db);
+  const projectSshConfigDAL = projectSshConfigDALFactory(db);
   const projectMembershipDAL = projectMembershipDALFactory(db);
   const projectUserAdditionalPrivilegeDAL = projectUserAdditionalPrivilegeDALFactory(db);
   const projectUserMembershipRoleDAL = projectUserMembershipRoleDALFactory(db);
@@ -309,7 +315,7 @@ export const registerRoutes = async (
   const secretVersionTagDAL = secretVersionTagDALFactory(db);
   const secretBlindIndexDAL = secretBlindIndexDALFactory(db);
 
-  const secretV2BridgeDAL = secretV2BridgeDALFactory(db);
+  const secretV2BridgeDAL = secretV2BridgeDALFactory({ db, keyStore });
   const secretVersionV2BridgeDAL = secretVersionV2BridgeDALFactory(db);
   const secretVersionTagV2BridgeDAL = secretVersionV2TagBridgeDALFactory(db);
 
@@ -385,6 +391,9 @@ export const registerRoutes = async (
   const sshCertificateAuthorityDAL = sshCertificateAuthorityDALFactory(db);
   const sshCertificateAuthoritySecretDAL = sshCertificateAuthoritySecretDALFactory(db);
   const sshCertificateTemplateDAL = sshCertificateTemplateDALFactory(db);
+  const sshHostDAL = sshHostDALFactory(db);
+  const sshHostLoginUserDAL = sshHostLoginUserDALFactory(db);
+  const sshHostLoginUserMappingDAL = sshHostLoginUserMappingDALFactory(db);
 
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
@@ -796,6 +805,21 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const sshHostService = sshHostServiceFactory({
+    userDAL,
+    projectDAL,
+    projectSshConfigDAL,
+    sshCertificateAuthorityDAL,
+    sshCertificateAuthoritySecretDAL,
+    sshCertificateDAL,
+    sshCertificateBodyDAL,
+    sshHostDAL,
+    sshHostLoginUserDAL,
+    sshHostLoginUserMappingDAL,
+    permissionService,
+    kmsService
+  });
+
   const certificateAuthorityService = certificateAuthorityServiceFactory({
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
@@ -938,6 +962,7 @@ export const registerRoutes = async (
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
+    projectSshConfigDAL,
     secretDAL,
     secretV2BridgeDAL,
     queueService,
@@ -959,8 +984,10 @@ export const registerRoutes = async (
     pkiAlertDAL,
     pkiCollectionDAL,
     sshCertificateAuthorityDAL,
+    sshCertificateAuthoritySecretDAL,
     sshCertificateDAL,
     sshCertificateTemplateDAL,
+    sshHostDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore,
@@ -1603,6 +1630,7 @@ export const registerRoutes = async (
     certificate: certificateService,
     sshCertificateAuthority: sshCertificateAuthorityService,
     sshCertificateTemplate: sshCertificateTemplateService,
+    sshHost: sshHostService,
     certificateAuthority: certificateAuthorityService,
     certificateTemplate: certificateTemplateService,
     certificateAuthorityCrl: certificateAuthorityCrlService,

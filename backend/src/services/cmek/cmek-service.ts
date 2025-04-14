@@ -3,12 +3,18 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { SigningAlgorithm } from "@app/lib/crypto/sign";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import {
   TCmekDecryptDTO,
   TCmekEncryptDTO,
+  TCmekGetPublicKeyDTO,
+  TCmekKeyEncryptionAlgorithm,
+  TCmekListSigningAlgorithmsDTO,
+  TCmekSignDTO,
+  TCmekVerifyDTO,
   TCreateCmekDTO,
   TListCmeksByProjectIdDTO,
   TUpdabteCmekByIdDTO
@@ -16,6 +22,7 @@ import {
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { KmsKeyUsage } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 
 type TCmekServiceFactoryDep = {
@@ -221,7 +228,151 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     const { cipherTextBlob } = await encrypt({ plainText: Buffer.from(plaintext, "base64") });
 
-    return cipherTextBlob.toString("base64");
+    return {
+      ciphertext: cipherTextBlob.toString("base64"),
+      projectId: key.projectId
+    };
+  };
+
+  const listSigningAlgorithms = async ({ keyId }: TCmekListSigningAlgorithmsDTO, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+    if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
+
+    if (key.keyUsage !== KmsKeyUsage.SIGN_VERIFY) {
+      throw new BadRequestError({ message: `Key with ID '${keyId}' is not intended for signing` });
+    }
+
+    const encryptionAlgorithm = key.encryptionAlgorithm as TCmekKeyEncryptionAlgorithm;
+
+    const algos = [
+      {
+        keyAlgorithm: "rsa",
+        signingAlgorithms: Object.values(SigningAlgorithm).filter((algorithm) =>
+          algorithm.toLowerCase().startsWith("rsa")
+        )
+      },
+      {
+        keyAlgorithm: "ecc",
+        signingAlgorithms: Object.values(SigningAlgorithm).filter((algorithm) =>
+          algorithm.toLowerCase().startsWith("ecdsa")
+        )
+      }
+    ];
+
+    const selectedAlgorithm = algos.find((algo) => encryptionAlgorithm.toLowerCase().startsWith(algo.keyAlgorithm));
+
+    if (!selectedAlgorithm) {
+      throw new BadRequestError({ message: `Unsupported encryption algorithm: ${encryptionAlgorithm}` });
+    }
+
+    return { signingAlgorithms: selectedAlgorithm.signingAlgorithms, projectId: key.projectId };
+  };
+
+  const getPublicKey = async ({ keyId }: TCmekGetPublicKeyDTO, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+    if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
+
+    const publicKey = await kmsService.getPublicKey({ kmsId: keyId });
+    return { publicKey: publicKey.toString("base64"), projectId: key.projectId };
+  };
+
+  const cmekSign = async ({ keyId, data, signingAlgorithm, isDigest }: TCmekSignDTO, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Sign, ProjectPermissionSub.Cmek);
+
+    const sign = await kmsService.signWithKmsKey({ kmsId: keyId });
+
+    const { signature, algorithm } = await sign({ data: Buffer.from(data, "base64"), signingAlgorithm, isDigest });
+
+    return {
+      signature: signature.toString("base64"),
+      keyId: key.id,
+      projectId: key.projectId,
+      signingAlgorithm: algorithm
+    };
+  };
+
+  const cmekVerify = async (
+    { keyId, data, signature, signingAlgorithm, isDigest }: TCmekVerifyDTO,
+    actor: OrgServiceActor
+  ) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Verify, ProjectPermissionSub.Cmek);
+
+    const verify = await kmsService.verifyWithKmsKey({ kmsId: keyId, signingAlgorithm });
+
+    const { signatureValid, algorithm } = await verify({
+      isDigest,
+      data: Buffer.from(data, "base64"),
+      signature: Buffer.from(signature, "base64")
+    });
+
+    return {
+      signatureValid,
+      keyId: key.id,
+      projectId: key.projectId,
+      signingAlgorithm: algorithm
+    };
   };
 
   const cmekDecrypt = async ({ keyId, ciphertext }: TCmekDecryptDTO, actor: OrgServiceActor) => {
@@ -248,7 +399,10 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     const plaintextBlob = await decrypt({ cipherTextBlob: Buffer.from(ciphertext, "base64") });
 
-    return plaintextBlob.toString("base64");
+    return {
+      plaintext: plaintextBlob.toString("base64"),
+      projectId: key.projectId
+    };
   };
 
   return {
@@ -259,6 +413,10 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
     cmekEncrypt,
     cmekDecrypt,
     findCmekById,
-    findCmekByName
+    findCmekByName,
+    cmekSign,
+    cmekVerify,
+    listSigningAlgorithms,
+    getPublicKey
   };
 };

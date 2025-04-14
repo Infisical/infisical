@@ -39,12 +39,24 @@ export type THumanitecConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Humanitec;
 };
 
+export type TTerraformCloudConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.TerraformCloud;
+};
+
+export type TVercelConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Vercel;
+};
+
 export type TPostgresConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Postgres;
 };
 
 export type TMsSqlConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.MsSql;
+};
+
+export type TCamundaConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Camunda;
 };
 
 export type TAppConnectionOption =
@@ -55,8 +67,11 @@ export type TAppConnectionOption =
   | TAzureKeyVaultConnectionOption
   | TDatabricksConnectionOption
   | THumanitecConnectionOption
+  | TTerraformCloudConnectionOption
+  | TVercelConnectionOption
   | TPostgresConnectionOption
-  | TMsSqlConnectionOption;
+  | TMsSqlConnectionOption
+  | TCamundaConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -66,6 +81,9 @@ export type TAppConnectionOptionMap = {
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnectionOption;
   [AppConnection.Databricks]: TDatabricksConnectionOption;
   [AppConnection.Humanitec]: THumanitecConnectionOption;
+  [AppConnection.TerraformCloud]: TTerraformCloudConnectionOption;
+  [AppConnection.Vercel]: TVercelConnectionOption;
   [AppConnection.Postgres]: TPostgresConnectionOption;
   [AppConnection.MsSql]: TMsSqlConnectionOption;
+  [AppConnection.Camunda]: TCamundaConnectionOption;
 };

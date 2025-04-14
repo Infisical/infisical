@@ -6,7 +6,10 @@ export enum SecretSync {
   AzureKeyVault = "azure-key-vault",
   AzureAppConfiguration = "azure-app-configuration",
   Databricks = "databricks",
-  Humanitec = "humanitec"
+  Humanitec = "humanitec",
+  TerraformCloud = "terraform-cloud",
+  Camunda = "camunda",
+  Vercel = "vercel"
 }
 
 export enum SecretSyncInitialSyncBehavior {

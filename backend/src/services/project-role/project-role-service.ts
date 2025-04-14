@@ -141,6 +141,7 @@ export const projectRoleServiceFactory = ({
     validateHandlebarTemplate("Project Role Update", JSON.stringify(data.permissions || []), {
       allowedExpressions: (val) => val.includes("identity.")
     });
+
     const updatedRole = await projectRoleDAL.updateById(projectRole.id, {
       ...data,
       permissions: data.permissions ? data.permissions : undefined

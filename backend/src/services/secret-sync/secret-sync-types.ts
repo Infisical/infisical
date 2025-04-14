@@ -10,6 +10,12 @@ import {
   TAwsSecretsManagerSyncWithCredentials
 } from "@app/services/secret-sync/aws-secrets-manager";
 import {
+  TCamundaSync,
+  TCamundaSyncInput,
+  TCamundaSyncListItem,
+  TCamundaSyncWithCredentials
+} from "@app/services/secret-sync/camunda";
+import {
   TDatabricksSync,
   TDatabricksSyncInput,
   TDatabricksSyncListItem,
@@ -49,6 +55,13 @@ import {
   THumanitecSyncListItem,
   THumanitecSyncWithCredentials
 } from "./humanitec";
+import {
+  TTerraformCloudSync,
+  TTerraformCloudSyncInput,
+  TTerraformCloudSyncListItem,
+  TTerraformCloudSyncWithCredentials
+} from "./terraform-cloud";
+import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
 
 export type TSecretSync =
   | TAwsParameterStoreSync
@@ -58,7 +71,10 @@ export type TSecretSync =
   | TAzureKeyVaultSync
   | TAzureAppConfigurationSync
   | TDatabricksSync
-  | THumanitecSync;
+  | THumanitecSync
+  | TTerraformCloudSync
+  | TCamundaSync
+  | TVercelSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -68,7 +84,10 @@ export type TSecretSyncWithCredentials =
   | TAzureKeyVaultSyncWithCredentials
   | TAzureAppConfigurationSyncWithCredentials
   | TDatabricksSyncWithCredentials
-  | THumanitecSyncWithCredentials;
+  | THumanitecSyncWithCredentials
+  | TTerraformCloudSyncWithCredentials
+  | TCamundaSyncWithCredentials
+  | TVercelSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -78,7 +97,10 @@ export type TSecretSyncInput =
   | TAzureKeyVaultSyncInput
   | TAzureAppConfigurationSyncInput
   | TDatabricksSyncInput
-  | THumanitecSyncInput;
+  | THumanitecSyncInput
+  | TTerraformCloudSyncInput
+  | TCamundaSyncInput
+  | TVercelSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -88,7 +110,10 @@ export type TSecretSyncListItem =
   | TAzureKeyVaultSyncListItem
   | TAzureAppConfigurationSyncListItem
   | TDatabricksSyncListItem
-  | THumanitecSyncListItem;
+  | THumanitecSyncListItem
+  | TTerraformCloudSyncListItem
+  | TCamundaSyncListItem
+  | TVercelSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

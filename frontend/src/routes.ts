@@ -306,7 +306,9 @@ const kmsRoutes = route("/kms/$projectId", [
 
 const sshRoutes = route("/ssh/$projectId", [
   layout("ssh-layout", "ssh/layout.tsx", [
-    route("/overview", "ssh/OverviewPage/route.tsx"),
+    route("/overview", "ssh/SshHostsPage/route.tsx"),
+    route("/certificates", "ssh/SshCertsPage/route.tsx"),
+    route("/cas", "ssh/SshCasPage/route.tsx"),
     route("/ca/$caId", "ssh/SshCaByIDPage/route.tsx"),
     route("/settings", "ssh/SettingsPage/route.tsx"),
     route("/access-management", "project/AccessControlPage/route-ssh.tsx"),

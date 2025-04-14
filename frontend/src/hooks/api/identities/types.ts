@@ -1,3 +1,5 @@
+import { OrderByDirection } from "../generic/types";
+import { OrgIdentityOrderBy } from "../organization/types";
 import { TOrgRole } from "../roles/types";
 import { ProjectUserMembershipTemporaryMode, Workspace } from "../workspace/types";
 import { IdentityAuthMethod, IdentityJwtConfigurationType } from "./enums";
@@ -539,4 +541,15 @@ export type RevokeTokenRes = {
 export type TProjectIdentitiesList = {
   identityMemberships: IdentityMembership[];
   totalCount: number;
+};
+
+export type TSearchIdentitiesDTO = {
+  limit?: number;
+  offset?: number;
+  orderBy?: OrgIdentityOrderBy;
+  orderDirection?: OrderByDirection;
+  search: {
+    name?: { $contains: string };
+    role?: { $in: string[] };
+  };
 };

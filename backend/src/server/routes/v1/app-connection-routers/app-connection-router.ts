@@ -13,6 +13,10 @@ import {
   SanitizedAzureKeyVaultConnectionSchema
 } from "@app/services/app-connection/azure-key-vault";
 import {
+  CamundaConnectionListItemSchema,
+  SanitizedCamundaConnectionSchema
+} from "@app/services/app-connection/camunda";
+import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
@@ -27,6 +31,11 @@ import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
+import {
+  SanitizedTerraformCloudConnectionSchema,
+  TerraformCloudConnectionListItemSchema
+} from "@app/services/app-connection/terraform-cloud";
+import { SanitizedVercelConnectionSchema, VercelConnectionListItemSchema } from "@app/services/app-connection/vercel";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps
@@ -38,8 +47,11 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAzureAppConfigurationConnectionSchema.options,
   ...SanitizedDatabricksConnectionSchema.options,
   ...SanitizedHumanitecConnectionSchema.options,
+  ...SanitizedTerraformCloudConnectionSchema.options,
+  ...SanitizedVercelConnectionSchema.options,
   ...SanitizedPostgresConnectionSchema.options,
-  ...SanitizedMsSqlConnectionSchema.options
+  ...SanitizedMsSqlConnectionSchema.options,
+  ...SanitizedCamundaConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -50,8 +62,11 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AzureAppConfigurationConnectionListItemSchema,
   DatabricksConnectionListItemSchema,
   HumanitecConnectionListItemSchema,
+  TerraformCloudConnectionListItemSchema,
+  VercelConnectionListItemSchema,
   PostgresConnectionListItemSchema,
-  MsSqlConnectionListItemSchema
+  MsSqlConnectionListItemSchema,
+  CamundaConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

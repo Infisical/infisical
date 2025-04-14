@@ -18,10 +18,13 @@ import {
   AzureAppConfigurationSyncSchema
 } from "@app/services/secret-sync/azure-app-configuration";
 import { AzureKeyVaultSyncListItemSchema, AzureKeyVaultSyncSchema } from "@app/services/secret-sync/azure-key-vault";
+import { CamundaSyncListItemSchema, CamundaSyncSchema } from "@app/services/secret-sync/camunda";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
 import { HumanitecSyncListItemSchema, HumanitecSyncSchema } from "@app/services/secret-sync/humanitec";
+import { TerraformCloudSyncListItemSchema, TerraformCloudSyncSchema } from "@app/services/secret-sync/terraform-cloud";
+import { VercelSyncListItemSchema, VercelSyncSchema } from "@app/services/secret-sync/vercel";
 
 const SecretSyncSchema = z.discriminatedUnion("destination", [
   AwsParameterStoreSyncSchema,
@@ -31,7 +34,10 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   AzureKeyVaultSyncSchema,
   AzureAppConfigurationSyncSchema,
   DatabricksSyncSchema,
-  HumanitecSyncSchema
+  HumanitecSyncSchema,
+  TerraformCloudSyncSchema,
+  CamundaSyncSchema,
+  VercelSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -42,7 +48,10 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   AzureKeyVaultSyncListItemSchema,
   AzureAppConfigurationSyncListItemSchema,
   DatabricksSyncListItemSchema,
-  HumanitecSyncListItemSchema
+  HumanitecSyncListItemSchema,
+  TerraformCloudSyncListItemSchema,
+  CamundaSyncListItemSchema,
+  VercelSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

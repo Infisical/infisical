@@ -86,7 +86,20 @@ const Page = () => {
             title={identityMembershipDetails?.identity?.name}
             description={`Identity joined on ${identityMembershipDetails?.createdAt && formatRelative(new Date(identityMembershipDetails?.createdAt || ""), new Date())}`}
           >
-            <div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline_bg"
+                size="xs"
+                onClick={() => {
+                  navigator.clipboard.writeText(identityMembershipDetails.id);
+                  createNotification({
+                    text: "Membership ID copied to clipboard",
+                    type: "success"
+                  });
+                }}
+              >
+                Copy Membership ID
+              </Button>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Delete}
                 a={subject(ProjectPermissionSub.Identity, {

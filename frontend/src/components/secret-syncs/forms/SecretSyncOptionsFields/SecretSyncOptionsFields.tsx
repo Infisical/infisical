@@ -39,6 +39,9 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.AzureAppConfiguration:
     case SecretSync.Databricks:
     case SecretSync.Humanitec:
+    case SecretSync.TerraformCloud:
+    case SecretSync.Camunda:
+    case SecretSync.Vercel:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:

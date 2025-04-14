@@ -10,8 +10,10 @@ import {
   TUpdateSecretRotationV2DTO
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
-import { SymmetricEncryption } from "@app/lib/crypto/cipher";
+import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
@@ -189,6 +191,12 @@ export enum EventType {
   UPDATE_SSH_CERTIFICATE_TEMPLATE = "update-ssh-certificate-template",
   DELETE_SSH_CERTIFICATE_TEMPLATE = "delete-ssh-certificate-template",
   GET_SSH_CERTIFICATE_TEMPLATE = "get-ssh-certificate-template",
+  CREATE_SSH_HOST = "create-ssh-host",
+  UPDATE_SSH_HOST = "update-ssh-host",
+  DELETE_SSH_HOST = "delete-ssh-host",
+  GET_SSH_HOST = "get-ssh-host",
+  ISSUE_SSH_HOST_USER_CERT = "issue-ssh-host-user-cert",
+  ISSUE_SSH_HOST_HOST_CERT = "issue-ssh-host-host-cert",
   CREATE_CA = "create-certificate-authority",
   GET_CA = "get-certificate-authority",
   UPDATE_CA = "update-certificate-authority",
@@ -248,6 +256,11 @@ export enum EventType {
   GET_CMEK = "get-cmek",
   CMEK_ENCRYPT = "cmek-encrypt",
   CMEK_DECRYPT = "cmek-decrypt",
+  CMEK_SIGN = "cmek-sign",
+  CMEK_VERIFY = "cmek-verify",
+  CMEK_LIST_SIGNING_ALGORITHMS = "cmek-list-signing-algorithms",
+  CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
+
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
   GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
   GET_PROJECT_TEMPLATES = "get-project-templates",
@@ -1377,7 +1390,7 @@ interface IssueSshCreds {
   type: EventType.ISSUE_SSH_CREDS;
   metadata: {
     certificateTemplateId: string;
-    keyAlgorithm: CertKeyAlgorithm;
+    keyAlgorithm: SshCertKeyAlgorithm;
     certType: SshCertType;
     principals: string[];
     ttl: string;
@@ -1470,6 +1483,80 @@ interface DeleteSshCertificateTemplate {
   type: EventType.DELETE_SSH_CERTIFICATE_TEMPLATE;
   metadata: {
     certificateTemplateId: string;
+  };
+}
+
+interface CreateSshHost {
+  type: EventType.CREATE_SSH_HOST;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+    userCertTtl: string;
+    hostCertTtl: string;
+    loginMappings: {
+      loginUser: string;
+      allowedPrincipals: {
+        usernames: string[];
+      };
+    }[];
+    userSshCaId: string;
+    hostSshCaId: string;
+  };
+}
+
+interface UpdateSshHost {
+  type: EventType.UPDATE_SSH_HOST;
+  metadata: {
+    sshHostId: string;
+    hostname?: string;
+    userCertTtl?: string;
+    hostCertTtl?: string;
+    loginMappings?: {
+      loginUser: string;
+      allowedPrincipals: {
+        usernames: string[];
+      };
+    }[];
+    userSshCaId?: string;
+    hostSshCaId?: string;
+  };
+}
+
+interface DeleteSshHost {
+  type: EventType.DELETE_SSH_HOST;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+  };
+}
+
+interface GetSshHost {
+  type: EventType.GET_SSH_HOST;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+  };
+}
+
+interface IssueSshHostUserCert {
+  type: EventType.ISSUE_SSH_HOST_USER_CERT;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+    loginUser: string;
+    principals: string[];
+    ttl: string;
+  };
+}
+
+interface IssueSshHostHostCert {
+  type: EventType.ISSUE_SSH_HOST_HOST_CERT;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+    serialNumber: string;
+    principals: string[];
+    ttl: string;
   };
 }
 
@@ -1916,7 +2003,7 @@ interface CreateCmekEvent {
     keyId: string;
     name: string;
     description?: string;
-    encryptionAlgorithm: SymmetricEncryption;
+    encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
   };
 }
 
@@ -1959,6 +2046,39 @@ interface CmekEncryptEvent {
 
 interface CmekDecryptEvent {
   type: EventType.CMEK_DECRYPT;
+  metadata: {
+    keyId: string;
+  };
+}
+
+interface CmekSignEvent {
+  type: EventType.CMEK_SIGN;
+  metadata: {
+    keyId: string;
+    signingAlgorithm: SigningAlgorithm;
+    signature: string;
+  };
+}
+
+interface CmekVerifyEvent {
+  type: EventType.CMEK_VERIFY;
+  metadata: {
+    keyId: string;
+    signingAlgorithm: SigningAlgorithm;
+    signature: string;
+    signatureValid: boolean;
+  };
+}
+
+interface CmekListSigningAlgorithmsEvent {
+  type: EventType.CMEK_LIST_SIGNING_ALGORITHMS;
+  metadata: {
+    keyId: string;
+  };
+}
+
+interface CmekGetPublicKeyEvent {
+  type: EventType.CMEK_GET_PUBLIC_KEY;
   metadata: {
     keyId: string;
   };
@@ -2493,6 +2613,12 @@ export type Event =
   | UpdateSshCertificateTemplate
   | GetSshCertificateTemplate
   | DeleteSshCertificateTemplate
+  | CreateSshHost
+  | UpdateSshHost
+  | DeleteSshHost
+  | GetSshHost
+  | IssueSshHostUserCert
+  | IssueSshHostHostCert
   | CreateCa
   | GetCa
   | UpdateCa
@@ -2552,6 +2678,10 @@ export type Event =
   | GetCmeksEvent
   | CmekEncryptEvent
   | CmekDecryptEvent
+  | CmekSignEvent
+  | CmekVerifyEvent
+  | CmekListSigningAlgorithmsEvent
+  | CmekGetPublicKeyEvent
   | GetExternalGroupOrgRoleMappingsEvent
   | UpdateExternalGroupOrgRoleMappingsEvent
   | GetProjectTemplatesEvent

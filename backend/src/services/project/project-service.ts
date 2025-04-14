@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import {
@@ -15,13 +15,16 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
+import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
 import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
 import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
+import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
@@ -61,8 +64,9 @@ import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
-import { assignWorkspaceKeysToMembers, createProjectKey } from "./project-fns";
+import { assignWorkspaceKeysToMembers, bootstrapSshProject, createProjectKey } from "./project-fns";
 import { TProjectQueueFactory } from "./project-queue";
+import { TProjectSshConfigDALFactory } from "./project-ssh-config-dal";
 import {
   TCreateProjectDTO,
   TDeleteProjectDTO,
@@ -77,6 +81,7 @@ import {
   TListProjectSshCasDTO,
   TListProjectSshCertificatesDTO,
   TListProjectSshCertificateTemplatesDTO,
+  TListProjectSshHostsDTO,
   TLoadProjectKmsBackupDTO,
   TProjectAccessRequestDTO,
   TSearchProjectsDTO,
@@ -97,8 +102,8 @@ export const DEFAULT_PROJECT_ENVS = [
 ];
 
 type TProjectServiceFactoryDep = {
-  // TODO: Pick
   projectDAL: TProjectDALFactory;
+  projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "create">;
   projectQueue: TProjectQueueFactory;
   userDAL: TUserDALFactory;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
@@ -123,9 +128,11 @@ type TProjectServiceFactoryDep = {
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
-  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "find">;
+  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "find" | "create" | "transaction">;
+  sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "create">;
   sshCertificateDAL: Pick<TSshCertificateDALFactory, "find" | "countSshCertificatesInProject">;
   sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find">;
+  sshHostDAL: Pick<TSshHostDALFactory, "find" | "findSshHostsWithLoginMappings">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -144,6 +151,7 @@ type TProjectServiceFactoryDep = {
     | "getKmsById"
     | "getProjectSecretManagerKmsKeyId"
     | "deleteInternalKms"
+    | "createCipherPairWithDataKey"
   >;
   projectTemplateService: TProjectTemplateServiceFactory;
 };
@@ -152,6 +160,7 @@ export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 
 export const projectServiceFactory = ({
   projectDAL,
+  projectSshConfigDAL,
   secretDAL,
   secretV2BridgeDAL,
   projectQueue,
@@ -177,8 +186,10 @@ export const projectServiceFactory = ({
   pkiCollectionDAL,
   pkiAlertDAL,
   sshCertificateAuthorityDAL,
+  sshCertificateAuthoritySecretDAL,
   sshCertificateDAL,
   sshCertificateTemplateDAL,
+  sshHostDAL,
   keyStore,
   kmsService,
   projectBotDAL,
@@ -265,6 +276,17 @@ export const projectServiceFactory = ({
         },
         tx
       );
+
+      if (type === ProjectType.SSH) {
+        await bootstrapSshProject({
+          projectId: project.id,
+          sshCertificateAuthorityDAL,
+          sshCertificateAuthoritySecretDAL,
+          kmsService,
+          projectSshConfigDAL,
+          tx
+        });
+      }
 
       // set ghost user as admin of project
       const projectMembership = await projectMembershipDAL.create(
@@ -1047,6 +1069,48 @@ export const projectServiceFactory = ({
   };
 
   /**
+   * Return list of SSH hosts for project
+   */
+  const listProjectSshHosts = async ({
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    actor,
+    projectId
+  }: TListProjectSshHostsDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
+    });
+
+    const allowedHosts = [];
+
+    // (dangtony98): room to optimize
+    const hosts = await sshHostDAL.findSshHostsWithLoginMappings(projectId);
+
+    for (const host of hosts) {
+      try {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionSshHostActions.Read,
+          subject(ProjectPermissionSub.SshHosts, {
+            hostname: host.hostname
+          })
+        );
+
+        allowedHosts.push(host);
+      } catch {
+        // intentionally ignore projects where user lacks access
+      }
+    }
+
+    return allowedHosts;
+  };
+
+  /**
    * Return list of SSH certificates for project
    */
   const listProjectSshCertificates = async ({
@@ -1443,6 +1507,7 @@ export const projectServiceFactory = ({
     listProjectPkiCollections,
     listProjectCertificateTemplates,
     listProjectSshCas,
+    listProjectSshHosts,
     listProjectSshCertificates,
     listProjectSshCertificateTemplates,
     updateVersionLimit,
