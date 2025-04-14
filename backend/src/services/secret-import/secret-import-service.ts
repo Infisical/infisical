@@ -27,6 +27,7 @@ import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { recursivelyGetSecretPaths } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretImportDALFactory } from "./secret-import-dal";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fns";
 import {
@@ -798,6 +799,139 @@ export const secretImportServiceFactory = ({
     return secImportsArrays.flat();
   };
 
+  const getFolderIsImportedBy = async ({
+    path: secretPath,
+    environment,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    secrets
+  }: TGetSecretImportsDTO & {
+    secrets: { secretKey: string; secretValue: string }[] | undefined;
+  }) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+    );
+
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    if (!folder)
+      throw new NotFoundError({
+        message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
+      });
+
+    const importedBy = await secretImportDAL.getFolderIsImportedBy(secretPath, folder.envId, environment, projectId);
+    const deepPaths: { path: string; folderId: string }[] = [];
+
+    await Promise.all(
+      importedBy.map(async (el) => {
+        const envDeepPaths = await recursivelyGetSecretPaths({
+          folderDAL,
+          projectEnvDAL,
+          projectId,
+          environment: el.envSlug,
+          currentPath: "/"
+        });
+        deepPaths.push(...envDeepPaths);
+      })
+    );
+
+    const result = importedBy.map((el) => ({
+      environment: {
+        name: el.envName,
+        slug: el.envSlug
+      },
+      folders: el.folders.map((folderItem) => ({
+        folderId: folderItem.folderId,
+        isImported: folderItem.folderImported,
+        secrets: folderItem.secrets,
+        name: deepPaths.find((p) => p.folderId === folderItem.folderId)?.path || `...${folderItem.folderName}`
+      }))
+    }));
+
+    // Special case for same folder references as these do not have an entry on the references table
+    const locallyReferenced =
+      secrets
+        ?.filter((secret) => {
+          return secrets.some(
+            (otherSecret) =>
+              otherSecret.secretKey !== secret.secretKey && secret.secretValue.includes(`\${${otherSecret.secretKey}}`)
+          );
+        })
+        .flatMap((secret) => {
+          return secrets
+            .filter(
+              (otherSecret) =>
+                otherSecret.secretKey !== secret.secretKey &&
+                secret.secretValue.includes(`\${${otherSecret.secretKey}}`)
+            )
+            .map((otherSecret) => ({
+              secretId: secret.secretKey,
+              referencedSecretKey: otherSecret.secretKey
+            }));
+        }) || [];
+    if (locallyReferenced.length > 0) {
+      const existingEnvIndex = result.findIndex((item) => item.environment.slug === environment);
+
+      if (existingEnvIndex >= 0) {
+        const existingFolderIndex = result[existingEnvIndex].folders.findIndex(
+          (folderItem) => folderItem.name === secretPath
+        );
+
+        if (existingFolderIndex >= 0) {
+          if (!result[existingEnvIndex].folders[existingFolderIndex].secrets) {
+            result[existingEnvIndex].folders[existingFolderIndex].secrets = [];
+          }
+
+          const existingSecrets = result[existingEnvIndex].folders[existingFolderIndex].secrets || [];
+          locallyReferenced.forEach((ref) => {
+            if (
+              !existingSecrets.some(
+                (s) => s.secretId === ref.secretId && s.referencedSecretKey === ref.referencedSecretKey
+              )
+            ) {
+              existingSecrets.push(ref);
+            }
+          });
+        } else {
+          result[existingEnvIndex].folders.push({
+            folderId: folder.id,
+            isImported: false,
+            secrets: locallyReferenced,
+            name: secretPath
+          });
+        }
+      } else {
+        result.push({
+          environment: {
+            slug: environment,
+            name: environment
+          },
+          folders: [
+            {
+              folderId: folder.id,
+              isImported: false,
+              secrets: locallyReferenced,
+              name: secretPath
+            }
+          ]
+        });
+      }
+    }
+
+    return result;
+  };
+
   return {
     createImport,
     updateImport,
@@ -810,6 +944,7 @@ export const secretImportServiceFactory = ({
     getProjectImportCount,
     fnSecretsFromImports,
     getProjectImportMultiEnvCount,
-    getImportsMultiEnv
+    getImportsMultiEnv,
+    getFolderIsImportedBy
   };
 };

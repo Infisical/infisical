@@ -16,7 +16,9 @@ type Props = {
   subTitle?: string;
   onDeleteApproved: () => Promise<void>;
   buttonText?: string;
+  formContent?: ReactNode;
   children?: ReactNode;
+  deletionMessage?: ReactNode;
 };
 
 export const DeleteActionModal = ({
@@ -28,6 +30,8 @@ export const DeleteActionModal = ({
   title,
   subTitle = "This action is irreversible.",
   buttonText = "Delete",
+  formContent,
+  deletionMessage,
   children
 }: Props): JSX.Element => {
   const [inputData, setInputData] = useState("");
@@ -79,6 +83,7 @@ export const DeleteActionModal = ({
         }
         onClose={onClose}
       >
+        {formContent}
         <form
           onSubmit={(evt) => {
             evt.preventDefault();
@@ -88,7 +93,11 @@ export const DeleteActionModal = ({
           <FormControl
             label={
               <div className="break-words pb-2 text-sm">
-                Type <span className="font-bold">{deleteKey}</span> to perform this action
+                {deletionMessage || (
+                  <>
+                    Type <span className="font-bold">{deleteKey}</span> to perform this action
+                  </>
+                )}
               </div>
             }
             className="mb-0"
