@@ -5,15 +5,19 @@ import { KmsKeyUsage } from "@app/services/kms/kms-types";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasTypeColumn = await knex.schema.hasColumn(TableName.KmsKey, "type");
+  const hasKeyUsageColumn = await knex.schema.hasColumn(TableName.KmsKey, "keyUsage");
 
   await knex.schema.alterTable(TableName.KmsKey, (t) => {
-    if (!hasTypeColumn) t.string("keyUsage").notNullable().defaultTo(KmsKeyUsage.ENCRYPT_DECRYPT);
+    if (!hasKeyUsageColumn) t.string("keyUsage").notNullable().defaultTo(KmsKeyUsage.ENCRYPT_DECRYPT);
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
+  const hasKeyUsageColumn = await knex.schema.hasColumn(TableName.KmsKey, "keyUsage");
+
   await knex.schema.alterTable(TableName.KmsKey, (t) => {
-    t.dropColumn("keyUsage");
+    if (hasKeyUsageColumn) {
+      t.dropColumn("keyUsage");
+    }
   });
 }
