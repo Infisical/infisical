@@ -553,6 +553,12 @@
       "pages": ["integrations/build-tools/gradle"]
     },
     {
+      "group": "Others",
+      "pages": [
+        "integrations/external/backstage"
+      ]
+    },
+    {
       "group": "",
       "pages": ["sdks/overview"]
     },

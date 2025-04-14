@@ -1,0 +1,123 @@
+---
+title: Backstage Infisical Plugin
+description: A powerful plugin that integrates Infisical secrets management into your Backstage developer portal.
+---
+
+Integrate secrets management into your developer portal with the Backstage Infisical plugin suite. This plugin provides a seamless interface to manage your [Infisical](https://infisical.com) secrets directly within Backstage, including full support for environments and folder structure.
+
+## Features
+
+- **Secrets Management**: View, create, update, and delete secrets from Infisical
+- **Folder Navigation**: Explore the full folder structure of your Infisical projects
+- **Multi-Environment Support**: Easily switch between and manage different environments
+- **Entity Linking**: Map Backstage entities to specific Infisical projects via annotations
+
+---
+## Installation
+
+### Frontend Plugin
+
+```bash
+# From your Backstage root directory
+yarn --cwd packages/app add @infisical/backstage-plugin-infisical
+```
+
+### Backend Plugin
+
+```bash
+# From your Backstage root directory
+yarn --cwd packages/backend add @infisical/backstage-backend-plugin-infisical
+```
+
+## Configuration
+
+### Backend
+
+Update your `app-config.yaml`:
+
+```yaml
+infisical:
+  baseUrl: https://app.infisical.com
+
+  authentication:
+    # Option 1: API Token Authentication
+    auth_token:
+      token: ${INFISICAL_API_TOKEN}
+
+    # Option 2: Client Credentials Authentication
+    universalAuth:
+      clientId: ${INFISICAL_CLIENT_ID}
+      clientSecret: ${INFISICAL_CLIENT_SECRET}
+```
+
+<Tip>
+    If you have not created a machine identity yet, you can do so in [Identities](/documentation/platform/identities/machine-identities)
+</Tip>
+
+Register the plugin in `packages/backend/src/index.ts`:
+
+```ts
+import { createBackend } from '@backstage/backend-defaults';
+
+const backend = createBackend();
+
+backend.add(import('@infisical/backstage-backend-plugin-infisical'));
+
+backend.start();
+```
+
+### Frontend
+
+Update `packages/app/src/App.tsx` to include the plugin:
+
+```tsx
+import { infisicalPlugin } from '@infisical/backstage-plugin-infisical';
+
+const app = createApp({
+  plugins: [
+    infisicalPlugin,
+    // ...other plugins
+  ],
+});
+```
+
+Modify `packages/app/src/components/catalog/EntityPage.tsx`:
+
+```tsx
+import { EntityInfisicalContent } from '@infisical/backstage-plugin-infisical';
+
+const serviceEntityPage = (
+  <EntityLayout>
+    {/* ...other tabs */}
+    <EntityLayout.Route path="/infisical" title="Secrets">
+      <EntityInfisicalContent />
+    </EntityLayout.Route>
+  </EntityLayout>
+);
+```
+
+### Entity Annotation
+
+Add the Infisical project ID to your entity yaml settings:
+
+```yaml
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: example-service
+  annotations:
+    infisical/projectId: <your-infisical-project-id>
+```
+
+> Replace `<your-infisical-project-id>` with the actual project ID from Infisical.
+
+## Usage
+
+Once installed and configured, you can:
+
+1. **View and manage secrets** in Infisical from within Backstage
+2. **Create, update, and delete** secrets using the Infisical tab in entity pages
+3. **Navigate environments and folders**
+4. **Search and filter** secrets by key, value, or comments
+
+![Backstage Plugin Table](/images/integrations/external/backstage/backstage-plugin-infisical.png)
