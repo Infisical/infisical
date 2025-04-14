@@ -288,11 +288,6 @@ export const kmsServiceFactory = ({
       throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
     }
 
-    const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as SymmetricKeyAlgorithm;
-    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
-      forceType: KmsKeyUsage.ENCRYPT_DECRYPT
-    });
-
     if (kmsDoc.externalKms) {
       let externalKms: TExternalKmsProviderFns;
 
@@ -352,6 +347,11 @@ export const kmsServiceFactory = ({
         return data;
       };
     }
+
+    const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as SymmetricKeyAlgorithm;
+    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
+      forceType: KmsKeyUsage.ENCRYPT_DECRYPT
+    });
 
     // internal KMS
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
@@ -509,11 +509,6 @@ export const kmsServiceFactory = ({
       throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
     }
 
-    const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as SymmetricKeyAlgorithm;
-    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
-      forceType: KmsKeyUsage.ENCRYPT_DECRYPT
-    });
-
     if (kmsDoc.externalKms) {
       let externalKms: TExternalKmsProviderFns;
       if (!kmsDoc.orgKms.id || !kmsDoc.orgKms.encryptedDataKey) {
@@ -567,6 +562,11 @@ export const kmsServiceFactory = ({
         return { cipherTextBlob: encryptedBlob };
       };
     }
+
+    const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as SymmetricKeyAlgorithm;
+    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
+      forceType: KmsKeyUsage.ENCRYPT_DECRYPT
+    });
 
     // internal KMS
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
