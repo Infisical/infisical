@@ -34,6 +34,10 @@ Create a user with the required permission in your SQL instance. This user will 
 		Maximum time-to-live for a generated secret
 	</ParamField>
 
+	<ParamField path="Metadata" type="list" required>
+		List of key/value metadata pairs
+	</ParamField>
+
 	<ParamField path="Service" type="string" required>
 		Choose the service you want to generate dynamic secrets for. This must be selected as **MySQL**.
 	</ParamField>

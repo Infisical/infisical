@@ -1391,7 +1391,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     kmsService,
-    projectGatewayDAL
+    projectGatewayDAL,
+    resourceMetadataDAL
   });
 
   const dynamicSecretLeaseService = dynamicSecretLeaseServiceFactory({

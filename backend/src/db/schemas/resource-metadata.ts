@@ -16,7 +16,8 @@ export const ResourceMetadataSchema = z.object({
   identityId: z.string().uuid().nullable().optional(),
   secretId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  dynamicSecretId: z.string().uuid().nullable().optional()
 });
 
 export type TResourceMetadata = z.infer<typeof ResourceMetadataSchema>;

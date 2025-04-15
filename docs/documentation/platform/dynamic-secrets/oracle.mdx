@@ -34,6 +34,10 @@ Create a user with the required permission in your SQL instance. This user will 
 		Maximum time-to-live for a generated secret
 	</ParamField>
 
+	<ParamField path="Metadata" type="list" required>
+		List of key/value metadata pairs
+	</ParamField>
+
 	<ParamField path="Service" type="string" required>
 		Choose the service you want to generate dynamic secrets for. This must be selected as **Oracle**.
 	</ParamField>
@@ -62,7 +66,7 @@ Create a user with the required permission in your SQL instance. This user will 
 		A CA may be required if your DB requires it for incoming connections. AWS RDS instances with default settings will requires a CA which can be downloaded [here](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html#UsingWithRDS.SSL.CertificatesAllRegions).
 	</ParamField>
 
-	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-oracle.png)
+	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-oracle.png)
 
   </Step>
   <Step title="(Optional) Modify SQL Statements">
