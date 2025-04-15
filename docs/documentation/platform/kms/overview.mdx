@@ -284,7 +284,7 @@ In the following steps, we explore how to generate a key and use it to sign data
                 ```
 
                 <Note>
-                  To sign predigested data, you can pass `"preDigested": true` in the request body. This requires the data to be a base64 encoded digest of the data you wish to sign.
+                  To sign predigested data, you can pass `"isDigest": true` in the request body. This requires the data to be a base64 encoded digest of the data you wish to sign.
                   It's important that the digest is created using the same hashing algorithm as the signing algorithm. As an example, you would create the digest with `SHA512` if you are using the `RSASSA_PKCS1_V1_5_SHA_512` signing algorithm.
                 </Note>
             </Step>
@@ -346,7 +346,7 @@ In the following steps, we explore how to verify data using an existing key in I
                 }
                 ```
                 <Note>
-                  To verify predigested data, you can pass `"preDigested": true` in the request body. This requires the data to be a base64 encoded digest of the data you wish to verify.
+                  To verify predigested data, you can pass `"isDigest": true` in the request body. This requires the data to be a base64 encoded digest of the data you wish to verify.
                   It's important that the digest is created using the same hashing algorithm as the signing algorithm. As an example, you would create the digest with `SHA512` if you are using the `RSASSA_PKCS1_V1_5_SHA_512` signing algorithm.
                 </Note>
             </Step>
@@ -378,7 +378,7 @@ In the following steps, we explore how to verify data using an existing key in I
   </Accordion>
   <Accordion title="How do I sign and verify a digest using the Infisical KMS?">
     To sign and verify a digest using the Infisical KMS, you can use the `Sign` and `Verify` endpoints respectively.
-    You will need to pass `"preDigested": true` in the request body to indicate that you are signing or verifying a digest.
+    You will need to pass `"isDigest": true` in the request body to indicate that you are signing or verifying a digest.
     The data you are signing or verifying will need to be a base64 encoded digest of the data you wish to sign or verify.
     It's important that the digest is created using the same hashing algorithm as the signing algorithm. As an example, you would create the digest with `SHA512` if you are using the `RSASSA_PKCS1_V1_5_SHA_512` signing algorithm.
 
@@ -396,7 +396,7 @@ In the following steps, we explore how to verify data using an existing key in I
     --data '{
     "data": <digest-output-of-openssl-command>,
     "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA_512",
-    "preDigested": true
+    "isDigest": true
     }'
     ```
 
@@ -420,7 +420,7 @@ In the following steps, we explore how to verify data using an existing key in I
     "data": <digest-output-of-openssl-command>,
     "signature": <base64-encoded-signature>,
     "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA_512",
-    "preDigested": true
+    "isDigest": true
     }'
     ```
 
