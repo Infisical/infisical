@@ -43,6 +43,11 @@ import {
 } from "./humanitec";
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
+import {
+  getTerraformCloudConnectionListItem,
+  TerraformCloudConnectionMethod,
+  validateTerraformCloudConnectionCredentials
+} from "./terraform-cloud";
 import { VercelConnectionMethod } from "./vercel";
 import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
 
@@ -55,6 +60,7 @@ export const listAppConnectionOptions = () => {
     getAzureAppConfigurationConnectionListItem(),
     getDatabricksConnectionListItem(),
     getHumanitecConnectionListItem(),
+    getTerraformCloudConnectionListItem(),
     getVercelConnectionListItem(),
     getPostgresConnectionListItem(),
     getMsSqlConnectionListItem(),
@@ -121,6 +127,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Camunda]: validateCamundaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Vercel]: validateVercelConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.TerraformCloud]: validateTerraformCloudConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Auth0]: validateAuth0ConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
@@ -146,6 +153,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case CamundaConnectionMethod.ClientCredentials:
       return "Client Credentials";
     case HumanitecConnectionMethod.ApiToken:
+    case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
@@ -193,6 +201,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Humanitec]: platformManagedCredentialsNotSupported,
   [AppConnection.Postgres]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
+  [AppConnection.TerraformCloud]: platformManagedCredentialsNotSupported,
   [AppConnection.Camunda]: platformManagedCredentialsNotSupported,
   [AppConnection.Vercel]: platformManagedCredentialsNotSupported,
   [AppConnection.Auth0]: platformManagedCredentialsNotSupported

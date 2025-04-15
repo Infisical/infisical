@@ -23,7 +23,8 @@ export const registerSecretRotationProviderRouter = async (server: FastifyZodPro
               title: z.string(),
               image: z.string().optional(),
               description: z.string().optional(),
-              template: z.any()
+              template: z.any(),
+              isDeprecated: z.boolean().optional()
             })
             .array()
         })

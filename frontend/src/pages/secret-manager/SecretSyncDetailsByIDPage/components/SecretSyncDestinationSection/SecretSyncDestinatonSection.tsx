@@ -19,6 +19,7 @@ import { AzureKeyVaultSyncDestinationSection } from "./AzureKeyVaultSyncDestinat
 import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
+import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
 
 type Props = {
@@ -58,6 +59,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.Humanitec:
       DestinationComponents = <HumanitecSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.TerraformCloud:
+      DestinationComponents = <TerraformCloudSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.Camunda:
       DestinationComponents = <CamundaSyncDestinationSection secretSync={secretSync} />;

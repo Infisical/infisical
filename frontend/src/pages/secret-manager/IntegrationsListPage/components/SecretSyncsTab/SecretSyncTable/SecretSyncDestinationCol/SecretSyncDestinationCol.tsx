@@ -9,6 +9,7 @@ import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
+import { TerraformCloudSyncDestinationCol } from "./TerraformCloudSyncDestinationCol";
 import { VercelSyncDestinationCol } from "./VercelSyncDestinationCol";
 
 type Props = {
@@ -33,6 +34,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <DatabricksSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Humanitec:
       return <HumanitecSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.TerraformCloud:
+      return <TerraformCloudSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Camunda:
       return <CamundaSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Vercel:

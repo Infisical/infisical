@@ -207,7 +207,8 @@ export const OverviewPage = () => {
       ProjectPermissionDynamicSecretActions.CreateRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, {
         environment: env.slug,
-        secretPath
+        secretPath,
+        metadata: ["*"]
       })
     )
   );
@@ -272,7 +273,8 @@ export const OverviewPage = () => {
     totalUniqueSecretsInPage,
     totalUniqueSecretImportsInPage,
     totalUniqueDynamicSecretsInPage,
-    totalUniqueSecretRotationsInPage
+    totalUniqueSecretRotationsInPage,
+    importedByEnvs
   } = overview ?? {};
 
   const secretImportsShaped = secretImports
@@ -1042,6 +1044,7 @@ export const OverviewPage = () => {
           secretPath={secretPath}
           selectedEntries={selectedEntries}
           resetSelectedEntries={resetSelectedEntries}
+          importedByEnvs={importedByEnvs}
         />
         <div className="thin-scrollbar mt-4">
           <TableContainer

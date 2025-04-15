@@ -136,11 +136,12 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     url: "/login/error",
     method: "GET",
     handler: async (req, res) => {
+      const failureMessage = req.session.get<any>("messages");
       await req.session.destroy();
 
       return res.status(500).send({
         error: "Authentication error",
-        details: req.query
+        details: failureMessage ?? req.query
       });
     }
   });

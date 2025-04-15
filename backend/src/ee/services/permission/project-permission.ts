@@ -32,7 +32,9 @@ export enum ProjectPermissionCmekActions {
   Edit = "edit",
   Delete = "delete",
   Encrypt = "encrypt",
-  Decrypt = "decrypt"
+  Decrypt = "decrypt",
+  Sign = "sign",
+  Verify = "verify"
 }
 
 export enum ProjectPermissionDynamicSecretActions {
@@ -153,6 +155,10 @@ export type SecretFolderSubjectFields = {
 export type DynamicSecretSubjectFields = {
   environment: string;
   secretPath: string;
+  metadata?: {
+    key: string;
+    value: string;
+  }[];
 };
 
 export type SecretImportSubjectFields = {
@@ -279,6 +285,42 @@ const SecretConditionV1Schema = z
         .partial()
     ]),
     secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
+  })
+  .partial();
+
+const DynamicSecretConditionV2Schema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA,
+    metadata: z.object({
+      [PermissionConditionOperators.$ELEMENTMATCH]: z
+        .object({
+          key: z
+            .object({
+              [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+              [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+            })
+            .partial(),
+          value: z
+            .object({
+              [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+              [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+            })
+            .partial()
+        })
+        .partial()
+    })
   })
   .partial();
 
@@ -579,7 +621,7 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionDynamicSecretActions).describe(
       "Describe what action an entity can take."
     ),
-    conditions: SecretConditionV1Schema.describe(
+    conditions: DynamicSecretConditionV2Schema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
@@ -732,7 +774,9 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCmekActions.Delete,
       ProjectPermissionCmekActions.Read,
       ProjectPermissionCmekActions.Encrypt,
-      ProjectPermissionCmekActions.Decrypt
+      ProjectPermissionCmekActions.Decrypt,
+      ProjectPermissionCmekActions.Sign,
+      ProjectPermissionCmekActions.Verify
     ],
     ProjectPermissionSub.Cmek
   );
@@ -935,7 +979,9 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionCmekActions.Delete,
       ProjectPermissionCmekActions.Read,
       ProjectPermissionCmekActions.Encrypt,
-      ProjectPermissionCmekActions.Decrypt
+      ProjectPermissionCmekActions.Decrypt,
+      ProjectPermissionCmekActions.Sign,
+      ProjectPermissionCmekActions.Verify
     ],
     ProjectPermissionSub.Cmek
   );

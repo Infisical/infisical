@@ -47,7 +47,9 @@ const CmekPolicyActionSchema = z.object({
   delete: z.boolean().optional(),
   create: z.boolean().optional(),
   encrypt: z.boolean().optional(),
-  decrypt: z.boolean().optional()
+  decrypt: z.boolean().optional(),
+  sign: z.boolean().optional(),
+  verify: z.boolean().optional()
 });
 
 const DynamicSecretPolicyActionSchema = z.object({
@@ -283,11 +285,59 @@ const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition
     } else {
       Object.keys(condition).forEach((conditionOperator) => {
         const rhs = condition[conditionOperator as PermissionConditionOperators];
-        formConditions.push({
-          operator: conditionOperator,
-          lhs: type,
-          rhs: typeof rhs === "string" ? rhs : rhs.join(",")
-        });
+        if (Array.isArray(rhs) || typeof rhs === "string") {
+          formConditions.push({
+            operator: conditionOperator,
+            lhs: type,
+            rhs: typeof rhs === "string" ? rhs : rhs.join(",")
+          });
+        } else if (
+          conditionOperator === PermissionConditionOperators.$ELEMENTMATCH &&
+          type === "metadata"
+        ) {
+          const deepKeyCondition = rhs.key;
+          if (deepKeyCondition) {
+            if (typeof deepKeyCondition === "string") {
+              formConditions.push({
+                operator: PermissionConditionOperators.$EQ,
+                lhs: "metadataKey",
+                rhs: deepKeyCondition
+              });
+            } else {
+              Object.keys(deepKeyCondition).forEach((keyOperator) => {
+                const deepRhs = deepKeyCondition?.[keyOperator as PermissionConditionOperators];
+                if (deepRhs && (Array.isArray(deepRhs) || typeof deepRhs === "string")) {
+                  formConditions.push({
+                    operator: keyOperator,
+                    lhs: "metadataKey",
+                    rhs: typeof deepRhs === "string" ? deepRhs : deepRhs.join(",")
+                  });
+                }
+              });
+            }
+          }
+          const deepValueCondition = rhs.value;
+          if (deepValueCondition) {
+            if (typeof deepValueCondition === "string") {
+              formConditions.push({
+                operator: PermissionConditionOperators.$EQ,
+                lhs: "metadataValue",
+                rhs: deepValueCondition
+              });
+            } else {
+              Object.keys(deepValueCondition).forEach((keyOperator) => {
+                const deepRhs = deepValueCondition?.[keyOperator as PermissionConditionOperators];
+                if (deepRhs && (Array.isArray(deepRhs) || typeof deepRhs === "string")) {
+                  formConditions.push({
+                    operator: keyOperator,
+                    lhs: "metadataValue",
+                    rhs: typeof deepRhs === "string" ? deepRhs : deepRhs.join(",")
+                  });
+                }
+              });
+            }
+          }
+        }
       });
     }
   });
@@ -482,6 +532,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canCreate = action.includes(ProjectPermissionCmekActions.Create);
       const canEncrypt = action.includes(ProjectPermissionCmekActions.Encrypt);
       const canDecrypt = action.includes(ProjectPermissionCmekActions.Decrypt);
+      const canSign = action.includes(ProjectPermissionCmekActions.Sign);
+      const canVerify = action.includes(ProjectPermissionCmekActions.Verify);
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
@@ -492,6 +544,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canDelete) formVal[subject]![0].delete = true;
       if (canEncrypt) formVal[subject]![0].encrypt = true;
       if (canDecrypt) formVal[subject]![0].decrypt = true;
+      if (canSign) formVal[subject]![0].sign = true;
+      if (canVerify) formVal[subject]![0].verify = true;
       return;
     }
 
@@ -630,7 +684,45 @@ const convertFormOperatorToCaslCondition = (
   conditions: { lhs: string; rhs: string; operator: string }[]
 ) => {
   const caslCondition: Record<string, Partial<TPermissionConditionOperators>> = {};
+
+  const metadataKeyCondition = conditions.find((condition) => condition.lhs === "metadataKey");
+  const metadataValueCondition = conditions.find((condition) => condition.lhs === "metadataValue");
+
+  if (metadataKeyCondition || metadataValueCondition) {
+    caslCondition.metadata = {
+      [PermissionConditionOperators.$ELEMENTMATCH]: {}
+    };
+
+    if (metadataKeyCondition) {
+      const operator = metadataKeyCondition.operator as PermissionConditionOperators;
+      caslCondition.metadata[PermissionConditionOperators.$ELEMENTMATCH]!.key = {
+        [metadataKeyCondition.operator]: [
+          PermissionConditionOperators.$IN,
+          PermissionConditionOperators.$ALL
+        ].includes(operator)
+          ? metadataKeyCondition.rhs.split(",")
+          : metadataKeyCondition.rhs
+      };
+    }
+
+    if (metadataValueCondition) {
+      const operator = metadataValueCondition.operator as PermissionConditionOperators;
+      caslCondition.metadata[PermissionConditionOperators.$ELEMENTMATCH]!.value = {
+        [metadataValueCondition.operator]: [
+          PermissionConditionOperators.$IN,
+          PermissionConditionOperators.$ALL
+        ].includes(operator)
+          ? metadataValueCondition.rhs.split(",")
+          : metadataValueCondition.rhs
+      };
+    }
+  }
+
   conditions.forEach((el) => {
+    // these are special fields and handled above
+    if (el.lhs === "metadataKey" || el.lhs === "metadataValue") {
+      return;
+    }
     if (!caslCondition[el.lhs]) caslCondition[el.lhs] = {};
     if (
       el.operator === PermissionConditionOperators.$IN ||
@@ -641,7 +733,9 @@ const convertFormOperatorToCaslCondition = (
       caslCondition[el.lhs][
         el.operator as Exclude<
           PermissionConditionOperators,
-          PermissionConditionOperators.$ALL | PermissionConditionOperators.$IN
+          | PermissionConditionOperators.$ALL
+          | PermissionConditionOperators.$IN
+          | PermissionConditionOperators.$ELEMENTMATCH
         >
       ] = el.rhs;
     }
@@ -769,7 +863,9 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Modify", value: "edit" },
       { label: "Remove", value: "delete" },
       { label: "Encrypt", value: "encrypt" },
-      { label: "Decrypt", value: "decrypt" }
+      { label: "Decrypt", value: "decrypt" },
+      { label: "Sign", value: "sign" },
+      { label: "Verify", value: "verify" }
     ]
   },
   [ProjectPermissionSub.Kms]: {

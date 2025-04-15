@@ -2,7 +2,10 @@ import { Knex } from "knex";
 import { validate as uuidValidate } from "uuid";
 
 import { TDbClient } from "@app/db";
-import { SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecretsV2Update } from "@app/db/schemas";
+import { ProjectType, SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecretsV2Update } from "@app/db/schemas";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
+import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import {
   buildFindFilter,
@@ -12,14 +15,66 @@ import {
   TFindFilter,
   TFindOpt
 } from "@app/lib/knex";
-import { OrderByDirection } from "@app/lib/types";
+import { BufferKeysToString, OrderByDirection } from "@app/lib/types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
-import { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import type { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+
+export const SecretDalCacheKeys = {
+  get productKey() {
+    const { INFISICAL_PLATFORM_VERSION } = getConfig();
+    return `${ProjectType.SecretManager}:${INFISICAL_PLATFORM_VERSION || 0}`;
+  },
+  getSecretDalVersion: (projectId: string) => {
+    return `${SecretDalCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal-version`;
+  },
+  findByFolderIds: (
+    projectId: string,
+    version: number,
+    { useCache, tx, ...cacheKey }: Parameters<TSecretV2BridgeDALFactory["findByFolderIds"]>[0]
+  ) => {
+    return `${SecretDalCacheKeys.productKey}:${projectId}:${
+      TableName.SecretV2
+    }-dal:v${version}:find-by-folder-ids:${generateCacheKeyFromData(cacheKey)}`;
+  },
+  findByFolderId: (
+    projectId: string,
+    version: number,
+    { useCache, tx, ...cacheKey }: Parameters<TSecretV2BridgeDALFactory["findByFolderId"]>[0]
+  ) => {
+    return `${SecretDalCacheKeys.productKey}:${projectId}:${
+      TableName.SecretV2
+    }-dal:v${version}:find-by-folder-id:${generateCacheKeyFromData(cacheKey)}`;
+  },
+  find: (projectId: string, version: number, ...args: Parameters<TSecretV2BridgeDALFactory["find"]>) => {
+    const [filter, opts] = args;
+    delete opts?.tx;
+    delete opts?.useCache;
+    return `${SecretDalCacheKeys.productKey}:${projectId}:${
+      TableName.SecretV2
+    }-dal:v${version}:find:${generateCacheKeyFromData({
+      filter,
+      opts
+    })}`;
+  }
+};
 
 export type TSecretV2BridgeDALFactory = ReturnType<typeof secretV2BridgeDALFactory>;
+interface TSecretV2DalArg {
+  db: TDbClient;
+  keyStore: TKeyStoreFactory;
+}
 
-export const secretV2BridgeDALFactory = (db: TDbClient) => {
+const SECRET_DAL_TTL = 5 * 60;
+const SECRET_DAL_VERSION_TTL = 15 * 60;
+const MAX_SECRET_CACHE_BYTES = 25 * 1024 * 1024;
+export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const secretOrm = ormify(db, TableName.SecretV2);
+
+  const invalidateSecretCacheByProjectId = async (projectId: string) => {
+    const secretDalVersionKey = SecretDalCacheKeys.getSecretDalVersion(projectId);
+    await keyStore.incrementBy(secretDalVersionKey, 1);
+    await keyStore.setExpiry(secretDalVersionKey, SECRET_DAL_VERSION_TTL);
+  };
 
   const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
     try {
@@ -73,8 +128,35 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     }
   };
 
-  const find = async (filter: TFindFilter<TSecretsV2>, { offset, limit, sort, tx }: TFindOpt<TSecretsV2> = {}) => {
+  const find = async (
+    filter: TFindFilter<TSecretsV2>,
+    opts: TFindOpt<TSecretsV2> & { useCache?: { projectId: string } } = {}
+  ) => {
+    const { offset, limit, sort, tx, useCache } = opts;
     try {
+      let secretDalVersion = 0;
+      if (useCache) {
+        const cachedSecretDalVersion = await keyStore.getItem(
+          SecretDalCacheKeys.getSecretDalVersion(useCache.projectId)
+        );
+        secretDalVersion = Number(cachedSecretDalVersion || 0);
+        const cacheKey = SecretDalCacheKeys.find(useCache.projectId, secretDalVersion, filter, opts);
+        const cachedSecrets = await keyStore.getItem(cacheKey);
+        if (cachedSecrets) {
+          await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL);
+
+          const unsanitizedSecrets = JSON.parse(cachedSecrets) as BufferKeysToString<(typeof data)[number]>[];
+          const sanitizedSecrets = unsanitizedSecrets.map((el) => {
+            const encryptedValue = el.encryptedValue ? Buffer.from(el.encryptedValue, "base64") : null;
+            const encryptedComment = el.encryptedComment ? Buffer.from(el.encryptedComment, "base64") : null;
+            const createdAt = new Date(el.createdAt);
+            const updatedAt = new Date(el.updatedAt);
+            return { ...el, encryptedComment, encryptedValue, createdAt, updatedAt };
+          });
+          return sanitizedSecrets;
+        }
+      }
+
       const query = (tx || db)(TableName.SecretV2)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter(filter))
@@ -142,6 +224,23 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           }
         ]
       });
+
+      if (useCache) {
+        const cachedSecrets = data.map((el) => {
+          const encryptedValue = el.encryptedValue ? el.encryptedValue.toString("base64") : null;
+          const encryptedComment = el.encryptedComment ? el.encryptedComment.toString("base64") : null;
+          return { ...el, encryptedValue, encryptedComment };
+        });
+        const cache = JSON.stringify(cachedSecrets);
+        if (Buffer.byteLength(cache, "utf8") < MAX_SECRET_CACHE_BYTES) {
+          await keyStore.setItemWithExpiry(
+            SecretDalCacheKeys.find(useCache.projectId, secretDalVersion, filter, opts),
+            SECRET_DAL_TTL,
+            cache
+          );
+        }
+      }
+
       return data;
     } catch (error) {
       throw new DatabaseError({ error, name: `${TableName.SecretV2}: Find` });
@@ -246,12 +345,41 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByFolderId = async (folderId: string, userId?: string, tx?: Knex) => {
+  const findByFolderId = async (dto: {
+    folderId: string;
+    userId?: string;
+    tx?: Knex;
+    projectId: string;
+    useCache?: boolean;
+  }) => {
     try {
-      // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo)
+      const { folderId, tx, projectId } = dto;
+      let { userId } = dto;
+      // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo
       if (userId && !uuidValidate(userId)) {
         // eslint-disable-next-line
         userId = undefined;
+      }
+
+      const cachedSecretDalVersion = await keyStore.getItem(SecretDalCacheKeys.getSecretDalVersion(projectId));
+      const secretDalVersion = Number(cachedSecretDalVersion || 0);
+
+      if (dto.useCache) {
+        const cacheKey = SecretDalCacheKeys.findByFolderId(projectId, secretDalVersion, dto);
+        const cachedSecrets = await keyStore.getItem(cacheKey);
+        if (cachedSecrets) {
+          await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL);
+
+          const unsanitizedSecrets = JSON.parse(cachedSecrets) as BufferKeysToString<(typeof data)[number]>[];
+          const sanitizedSecrets = unsanitizedSecrets.map((el) => {
+            const encryptedValue = el.encryptedValue ? Buffer.from(el.encryptedValue, "base64") : null;
+            const encryptedComment = el.encryptedComment ? Buffer.from(el.encryptedComment, "base64") : null;
+            const createdAt = new Date(el.createdAt);
+            const updatedAt = new Date(el.updatedAt);
+            return { ...el, encryptedComment, encryptedValue, createdAt, updatedAt };
+          });
+          return sanitizedSecrets;
+        }
       }
 
       const secs = await (tx || db.replicaNode())(TableName.SecretV2)
@@ -309,6 +437,22 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           }
         ]
       });
+      if (dto.useCache) {
+        const newCachedSecrets = data.map((el) => {
+          const encryptedValue = el.encryptedValue ? el.encryptedValue.toString("base64") : null;
+          const encryptedComment = el.encryptedComment ? el.encryptedComment.toString("base64") : null;
+          return { ...el, encryptedValue, encryptedComment };
+        });
+        const cache = JSON.stringify(newCachedSecrets);
+
+        if (Buffer.byteLength(cache, "utf8") < MAX_SECRET_CACHE_BYTES) {
+          await keyStore.setItemWithExpiry(
+            SecretDalCacheKeys.findByFolderId(projectId, secretDalVersion, dto),
+            SECRET_DAL_TTL,
+            cache
+          );
+        }
+      }
       return data;
     } catch (error) {
       throw new DatabaseError({ error, name: "get all secret" });
@@ -394,17 +538,41 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByFolderIds = async (
-    folderIds: string[],
-    userId?: string,
-    tx?: Knex,
-    filters?: TFindSecretsByFolderIdsFilter
-  ) => {
+  const findByFolderIds = async (dto: {
+    folderIds: string[];
+    userId?: string;
+    tx?: Knex;
+    projectId: string;
+    filters?: TFindSecretsByFolderIdsFilter;
+    useCache?: boolean;
+  }) => {
+    const { folderIds, tx, filters, useCache, projectId } = dto;
+    let { userId } = dto;
     try {
       // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo)
       if (userId && !uuidValidate(userId)) {
         // eslint-disable-next-line no-param-reassign
         userId = undefined;
+      }
+
+      const cachedSecretDalVersion = await keyStore.getItem(SecretDalCacheKeys.getSecretDalVersion(projectId));
+      const secretDalVersion = Number(cachedSecretDalVersion || 0);
+      if (useCache) {
+        const cacheKey = SecretDalCacheKeys.findByFolderIds(projectId, secretDalVersion, dto);
+        const cachedSecrets = await keyStore.getItem(cacheKey);
+        if (cachedSecrets) {
+          await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL);
+
+          const unsanitizedSecrets = JSON.parse(cachedSecrets) as BufferKeysToString<(typeof data)[number]>[];
+          const sanitizedSecrets = unsanitizedSecrets.map((el) => {
+            const encryptedValue = el.encryptedValue ? Buffer.from(el.encryptedValue, "base64") : null;
+            const encryptedComment = el.encryptedComment ? Buffer.from(el.encryptedComment, "base64") : null;
+            const createdAt = new Date(el.createdAt);
+            const updatedAt = new Date(el.updatedAt);
+            return { ...el, encryptedComment, encryptedValue, createdAt, updatedAt };
+          });
+          return sanitizedSecrets;
+        }
       }
 
       const query = (tx || db.replicaNode())(TableName.SecretV2)
@@ -532,6 +700,22 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           }
         ]
       });
+      if (useCache) {
+        const cachedSecrets = data.map((el) => {
+          const encryptedValue = el.encryptedValue ? el.encryptedValue.toString("base64") : null;
+          const encryptedComment = el.encryptedComment ? el.encryptedComment.toString("base64") : null;
+          return { ...el, encryptedValue, encryptedComment };
+        });
+        const cache = JSON.stringify(cachedSecrets);
+
+        if (Buffer.byteLength(cache, "utf8") < MAX_SECRET_CACHE_BYTES) {
+          await keyStore.setItemWithExpiry(
+            SecretDalCacheKeys.findByFolderIds(projectId, secretDalVersion, dto),
+            SECRET_DAL_TTL,
+            cache
+          );
+        }
+      }
 
       return data;
     } catch (error) {
@@ -724,6 +908,7 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     findAllProjectSecretValues,
     countByFolderIds,
     findOne,
-    find
+    find,
+    invalidateSecretCacheByProjectId
   };
 };

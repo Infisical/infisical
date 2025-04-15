@@ -3,35 +3,6 @@ title: "Databricks"
 description: "Learn how to sync secrets from Infisical to Databricks."
 ---
 
-Prerequisites:
-
-- Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
-
 <Note>
-    When integrating with Databricks, Infisical is intended to be the source of truth for the secrets in the configured Databricks scope.
-
-    Any secrets not present in Infisical will be removed from the specified scope. To prevent removal of secrets not managed by Infisical, Infisical recommends creating a designated secret scope for your integration.
+    The Databricks Native Integration will be deprecated in 2026. Please migrate to our new [Databricks Sync](../secret-syncs/databricks).
 </Note>
-
-<Steps>
-  <Step title="Authorize Infisical for Databricks">
-    Obtain a Personal Access Token in **User Settings** > **Developer** > **Access Tokens**.
-
-    ![integrations databricks token](../../images/integrations/databricks/pat-token.png)
-
-    Navigate to your project's integrations tab in Infisical.
-
-    ![integrations](../../images/integrations.png)
-
-    Press on the Databricks tile and enter your Databricks instance URL in the following format: `https://xxx.cloud.databricks.com`. Then, input your Databricks Access Token to grant Infisical the necessary permissions in your Databricks account. 
-
-    ![integrations databricks authorization](../../images/integrations/databricks/integrations-databricks-auth.png)
-
-  </Step>
-  <Step title="Start integration">
-    Select which Infisical environment and secret path you want to sync to which Databricks scope. Then, press create integration to start syncing secrets to Databricks.
-
-    ![create integration Databricks](../../images/integrations/databricks/integrations-databricks-create.png)
-    ![integrations Databricks](../../images/integrations/databricks/integrations-databricks.png)
-  </Step>
-</Steps>

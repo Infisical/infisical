@@ -15,6 +15,7 @@ import {
   MsSqlConnectionMethod,
   PostgresConnectionMethod,
   TAppConnection,
+  TerraformCloudConnectionMethod,
   VercelConnectionMethod
 } from "@app/hooks/api/appConnections/types";
 
@@ -35,6 +36,7 @@ export const APP_CONNECTION_MAP: Record<
   },
   [AppConnection.Databricks]: { name: "Databricks", image: "Databricks.png" },
   [AppConnection.Humanitec]: { name: "Humanitec", image: "Humanitec.png" },
+  [AppConnection.TerraformCloud]: { name: "Terraform Cloud", image: "Terraform Cloud.png" },
   [AppConnection.Vercel]: { name: "Vercel", image: "Vercel.png" },
   [AppConnection.Postgres]: { name: "PostgreSQL", image: "Postgres.png" },
   [AppConnection.MsSql]: { name: "Microsoft SQL Server", image: "MsSql.png" },
@@ -61,6 +63,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case CamundaConnectionMethod.ClientCredentials:
       return { name: "Client Credentials", icon: faKey };
     case HumanitecConnectionMethod.ApiToken:
+    case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:

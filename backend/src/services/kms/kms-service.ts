@@ -15,12 +15,17 @@ import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
 import { randomSecureBytes } from "@app/lib/crypto";
-import { symmetricCipherService, SymmetricEncryption } from "@app/lib/crypto/cipher";
+import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { generateHash } from "@app/lib/crypto/encryption";
+import { AsymmetricKeyAlgorithm, signingService } from "@app/lib/crypto/sign";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { getByteLengthForAlgorithm, KMS_ROOT_CONFIG_UUID } from "@app/services/kms/kms-fns";
+import {
+  getByteLengthForSymmetricEncryptionAlgorithm,
+  KMS_ROOT_CONFIG_UUID,
+  verifyKeyTypeAndAlgorithm
+} from "@app/services/kms/kms-fns";
 
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -29,6 +34,7 @@ import { TKmsKeyDALFactory } from "./kms-key-dal";
 import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
 import {
   KmsDataKey,
+  KmsKeyUsage,
   KmsType,
   RootKeyEncryptionStrategy,
   TDecryptWithKeyDTO,
@@ -38,8 +44,11 @@ import {
   TEncryptWithKmsDTO,
   TGenerateKMSDTO,
   TGetKeyMaterialDTO,
+  TGetPublicKeyDTO,
   TImportKeyMaterialDTO,
-  TUpdateProjectSecretManagerKmsKeyDTO
+  TSignWithKmsDTO,
+  TUpdateProjectSecretManagerKmsKeyDTO,
+  TVerifyWithKmsDTO
 } from "./kms-types";
 
 type TKmsServiceFactoryDep = {
@@ -83,19 +92,42 @@ export const kmsServiceFactory = ({
     tx,
     name,
     projectId,
-    encryptionAlgorithm = SymmetricEncryption.AES_GCM_256,
+    encryptionAlgorithm = SymmetricKeyAlgorithm.AES_GCM_256,
+    keyUsage = KmsKeyUsage.ENCRYPT_DECRYPT,
     description
   }: TGenerateKMSDTO) => {
-    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    // daniel: ensure that the key type (sign/encrypt) and the encryption algorithm are compatible.
+    verifyKeyTypeAndAlgorithm(keyUsage, encryptionAlgorithm);
 
-    const kmsKeyMaterial = randomSecureBytes(getByteLengthForAlgorithm(encryptionAlgorithm));
+    let kmsKeyMaterial: Buffer | null = null;
+    if (keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
+      kmsKeyMaterial = randomSecureBytes(
+        getByteLengthForSymmetricEncryptionAlgorithm(encryptionAlgorithm as SymmetricKeyAlgorithm)
+      );
+    } else if (keyUsage === KmsKeyUsage.SIGN_VERIFY) {
+      const { generateAsymmetricPrivateKey, getPublicKeyFromPrivateKey } = signingService(
+        encryptionAlgorithm as AsymmetricKeyAlgorithm
+      );
+      kmsKeyMaterial = await generateAsymmetricPrivateKey();
 
+      // daniel: safety check to ensure we're able to extract the public key from the private key before we proceed to key creation
+      getPublicKeyFromPrivateKey(kmsKeyMaterial);
+    }
+
+    if (!kmsKeyMaterial) {
+      throw new BadRequestError({
+        message: `Invalid KMS key type. No key material was created for key usage '${keyUsage}' using algorithm '${encryptionAlgorithm}'`
+      });
+    }
+
+    const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const encryptedKeyMaterial = cipher.encrypt(kmsKeyMaterial, ROOT_ENCRYPTION_KEY);
     const sanitizedName = name ? slugify(name) : slugify(alphaNumericNanoId(8).toLowerCase());
     const dbQuery = async (db: Knex) => {
       const kmsDoc = await kmsDAL.create(
         {
           name: sanitizedName,
+          keyUsage,
           orgId,
           isReserved,
           projectId,
@@ -115,6 +147,7 @@ export const kmsServiceFactory = ({
       );
       return kmsDoc;
     };
+
     if (tx) return dbQuery(tx);
     const doc = await kmsDAL.transaction(async (tx2) => dbQuery(tx2));
     return doc;
@@ -134,7 +167,7 @@ export const kmsServiceFactory = ({
    */
   const encryptWithInputKey = async ({ key }: Omit<TEncryptionWithKeyDTO, "plainText">) => {
     // akhilmhdh: as more encryption are added do a check here on kmsDoc.encryptionAlgorithm
-    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
       const encryptedPlainTextBlob = cipher.encrypt(plainText, key);
       // Buffer#1 encrypted text + Buffer#2 version number
@@ -149,7 +182,7 @@ export const kmsServiceFactory = ({
    * This can be even later exposed directly as api for encryption as function
    */
   const decryptWithInputKey = async ({ key }: Omit<TDecryptWithKeyDTO, "cipherTextBlob">) => {
-    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
 
     return ({ cipherTextBlob: versionedCipherTextBlob }: Pick<TDecryptWithKeyDTO, "cipherTextBlob">) => {
       const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
@@ -227,7 +260,7 @@ export const kmsServiceFactory = ({
   };
 
   const encryptWithRootKey = () => {
-    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
 
     return (plainTextBuffer: Buffer) => {
       const encryptedBuffer = cipher.encrypt(plainTextBuffer, ROOT_ENCRYPTION_KEY);
@@ -236,7 +269,7 @@ export const kmsServiceFactory = ({
   };
 
   const decryptWithRootKey = () => {
-    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
 
     return (cipherTextBuffer: Buffer) => {
       return cipher.decrypt(cipherTextBuffer, ROOT_ENCRYPTION_KEY);
@@ -315,9 +348,14 @@ export const kmsServiceFactory = ({
       };
     }
 
+    const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as SymmetricKeyAlgorithm;
+    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
+      forceType: KmsKeyUsage.ENCRYPT_DECRYPT
+    });
+
     // internal KMS
-    const keyCipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
-    const dataCipher = symmetricCipherService(kmsDoc.internalKms?.encryptionAlgorithm as SymmetricEncryption);
+    const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    const dataCipher = symmetricCipherService(encryptionAlgorithm);
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
     return ({ cipherTextBlob: versionedCipherTextBlob }: Pick<TDecryptWithKmsDTO, "cipherTextBlob">) => {
@@ -345,19 +383,22 @@ export const kmsServiceFactory = ({
       });
     }
 
-    const keyCipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
     return kmsKey;
   };
 
   const importKeyMaterial = async (
-    { key, algorithm, name, isReserved, projectId, orgId }: TImportKeyMaterialDTO,
+    { key, algorithm, name, isReserved, projectId, orgId, keyUsage }: TImportKeyMaterialDTO,
     tx?: Knex
   ) => {
-    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    // daniel: currently we only support imports for encrypt/decrypt keys
+    verifyKeyTypeAndAlgorithm(keyUsage, algorithm, { forceType: KmsKeyUsage.ENCRYPT_DECRYPT });
 
-    const expectedByteLength = getByteLengthForAlgorithm(algorithm);
+    const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+
+    const expectedByteLength = getByteLengthForSymmetricEncryptionAlgorithm(algorithm as SymmetricKeyAlgorithm);
     if (key.byteLength !== expectedByteLength) {
       throw new BadRequestError({
         message: `Invalid key length for ${algorithm}. Expected ${expectedByteLength} bytes but got ${key.byteLength} bytes`
@@ -370,6 +411,7 @@ export const kmsServiceFactory = ({
       const kmsDoc = await kmsDAL.create(
         {
           name: sanitizedName,
+          keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
           orgId,
           isReserved,
           projectId
@@ -391,6 +433,74 @@ export const kmsServiceFactory = ({
     if (tx) return dbQuery(tx);
     const doc = await kmsDAL.transaction(async (tx2) => dbQuery(tx2));
     return doc;
+  };
+
+  const getPublicKey = async ({ kmsId }: TGetPublicKeyDTO) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    }
+
+    const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as AsymmetricKeyAlgorithm;
+
+    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
+      forceType: KmsKeyUsage.SIGN_VERIFY
+    });
+
+    const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+
+    return signingService(encryptionAlgorithm).getPublicKeyFromPrivateKey(kmsKey);
+  };
+
+  const signWithKmsKey = async ({ kmsId }: Pick<TSignWithKmsDTO, "kmsId">) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    }
+
+    const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as AsymmetricKeyAlgorithm;
+    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
+      forceType: KmsKeyUsage.SIGN_VERIFY
+    });
+
+    const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    const { sign } = signingService(encryptionAlgorithm);
+    return async ({
+      data,
+      signingAlgorithm,
+      isDigest
+    }: Pick<TSignWithKmsDTO, "data" | "signingAlgorithm" | "isDigest">) => {
+      const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+      const signature = await sign(data, kmsKey, signingAlgorithm, isDigest);
+
+      return Promise.resolve({ signature, algorithm: signingAlgorithm });
+    };
+  };
+
+  const verifyWithKmsKey = async ({
+    kmsId,
+    signingAlgorithm
+  }: Pick<TVerifyWithKmsDTO, "kmsId" | "signingAlgorithm">) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    }
+
+    const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as AsymmetricKeyAlgorithm;
+    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
+      forceType: KmsKeyUsage.SIGN_VERIFY
+    });
+
+    const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    const { verify, getPublicKeyFromPrivateKey } = signingService(encryptionAlgorithm);
+    return async ({ data, signature, isDigest }: Pick<TVerifyWithKmsDTO, "data" | "signature" | "isDigest">) => {
+      const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+
+      const publicKey = getPublicKeyFromPrivateKey(kmsKey);
+      const signatureValid = await verify(data, signature, publicKey, signingAlgorithm, isDigest);
+      return Promise.resolve({ signatureValid, algorithm: signingAlgorithm });
+    };
   };
 
   const encryptWithKmsKey = async ({ kmsId }: Omit<TEncryptWithKmsDTO, "plainText">, tx?: Knex) => {
@@ -453,9 +563,14 @@ export const kmsServiceFactory = ({
       };
     }
 
+    const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as SymmetricKeyAlgorithm;
+    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
+      forceType: KmsKeyUsage.ENCRYPT_DECRYPT
+    });
+
     // internal KMS
-    const keyCipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
-    const dataCipher = symmetricCipherService(kmsDoc.internalKms?.encryptionAlgorithm as SymmetricEncryption);
+    const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    const dataCipher = symmetricCipherService(encryptionAlgorithm);
     return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
       const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
       const encryptedPlainTextBlob = dataCipher.encrypt(plainText, kmsKey);
@@ -729,7 +844,7 @@ export const kmsServiceFactory = ({
 
     // case 2: root key is encrypted with software encryption
     if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.Software) {
-      const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+      const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
       const encryptionKeyBuffer = $getBasicEncryptionKey();
 
       return cipher.decrypt(kmsRootConfig.encryptedRootKey, encryptionKeyBuffer);
@@ -749,7 +864,7 @@ export const kmsServiceFactory = ({
     }
 
     if (strategy === RootKeyEncryptionStrategy.Software) {
-      const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+      const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
       const encryptionKeyBuffer = $getBasicEncryptionKey();
 
       return cipher.encrypt(plainKeyBuffer, encryptionKeyBuffer);
@@ -765,7 +880,7 @@ export const kmsServiceFactory = ({
   const createCipherPairWithDataKey = async (encryptionContext: TEncryptWithKmsDataKeyDTO, trx?: Knex) => {
     const dataKey = await $getDataKey(encryptionContext, trx);
 
-    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
 
     return {
       encryptor: ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
@@ -966,6 +1081,7 @@ export const kmsServiceFactory = ({
     const decryptedRootKey = await $decryptRootKey(kmsRootConfig);
 
     logger.info("KMS: Loading ROOT Key into Memory.");
+
     ROOT_ENCRYPTION_KEY = decryptedRootKey;
   };
 
@@ -1014,6 +1130,9 @@ export const kmsServiceFactory = ({
     getKmsById,
     createCipherPairWithDataKey,
     getKeyMaterial,
-    importKeyMaterial
+    importKeyMaterial,
+    signWithKmsKey,
+    verifyWithKmsKey,
+    getPublicKey
   };
 };

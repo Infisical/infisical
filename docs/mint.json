@@ -424,9 +424,10 @@
             "integrations/app-connections/gcp",
             "integrations/app-connections/github",
             "integrations/app-connections/humanitec",
-            "integrations/app-connections/vercel",
             "integrations/app-connections/mssql",
-            "integrations/app-connections/postgres"
+            "integrations/app-connections/postgres",
+            "integrations/app-connections/terraform-cloud",
+            "integrations/app-connections/vercel"
           ]
         }
       ]
@@ -447,6 +448,7 @@
             "integrations/secret-syncs/gcp-secret-manager",
             "integrations/secret-syncs/github",
             "integrations/secret-syncs/humanitec",
+            "integrations/secret-syncs/terraform-cloud",
             "integrations/secret-syncs/vercel"
           ]
         }
@@ -551,6 +553,12 @@
     {
       "group": "Build Tool Integrations",
       "pages": ["integrations/build-tools/gradle"]
+    },
+    {
+      "group": "Others",
+      "pages": [
+        "integrations/external/backstage"
+      ]
     },
     {
       "group": "",
@@ -1004,18 +1012,6 @@
               ]
             },
             {
-              "group": "Vercel",
-              "pages": [
-                "api-reference/endpoints/app-connections/vercel/list",
-                "api-reference/endpoints/app-connections/vercel/available",
-                "api-reference/endpoints/app-connections/vercel/get-by-id",
-                "api-reference/endpoints/app-connections/vercel/get-by-name",
-                "api-reference/endpoints/app-connections/vercel/create",
-                "api-reference/endpoints/app-connections/vercel/update",
-                "api-reference/endpoints/app-connections/vercel/delete"
-              ]
-            },
-            {
               "group": "Microsoft SQL Server",
               "pages": [
                 "api-reference/endpoints/app-connections/mssql/list",
@@ -1037,6 +1033,30 @@
                 "api-reference/endpoints/app-connections/postgres/create",
                 "api-reference/endpoints/app-connections/postgres/update",
                 "api-reference/endpoints/app-connections/postgres/delete"
+              ]
+            },
+            {
+              "group": "Terraform Cloud",
+              "pages": [
+                "api-reference/endpoints/app-connections/terraform-cloud/list",
+                "api-reference/endpoints/app-connections/terraform-cloud/available",
+                "api-reference/endpoints/app-connections/terraform-cloud/get-by-id",
+                "api-reference/endpoints/app-connections/terraform-cloud/get-by-name",
+                "api-reference/endpoints/app-connections/terraform-cloud/create",
+                "api-reference/endpoints/app-connections/terraform-cloud/update",
+                "api-reference/endpoints/app-connections/terraform-cloud/delete"
+              ]
+            },
+            {
+              "group": "Vercel",
+              "pages": [
+                "api-reference/endpoints/app-connections/vercel/list",
+                "api-reference/endpoints/app-connections/vercel/available",
+                "api-reference/endpoints/app-connections/vercel/get-by-id",
+                "api-reference/endpoints/app-connections/vercel/get-by-name",
+                "api-reference/endpoints/app-connections/vercel/create",
+                "api-reference/endpoints/app-connections/vercel/update",
+                "api-reference/endpoints/app-connections/vercel/delete"
               ]
             }
           ]
@@ -1166,6 +1186,19 @@
                 "api-reference/endpoints/secret-syncs/humanitec/delete",
                 "api-reference/endpoints/secret-syncs/humanitec/sync-secrets",
                 "api-reference/endpoints/secret-syncs/humanitec/remove-secrets"
+              ]
+            },
+            {
+              "group": "Terraform Cloud",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/terraform-cloud/list",
+                "api-reference/endpoints/secret-syncs/terraform-cloud/get-by-id",
+                "api-reference/endpoints/secret-syncs/terraform-cloud/get-by-name",
+                "api-reference/endpoints/secret-syncs/terraform-cloud/create",
+                "api-reference/endpoints/secret-syncs/terraform-cloud/update",
+                "api-reference/endpoints/secret-syncs/terraform-cloud/delete",
+                "api-reference/endpoints/secret-syncs/terraform-cloud/sync-secrets",
+                "api-reference/endpoints/secret-syncs/terraform-cloud/remove-secrets"
               ]
             },
             {
@@ -1319,9 +1352,23 @@
             "api-reference/endpoints/kms/keys/get-by-name",
             "api-reference/endpoints/kms/keys/create",
             "api-reference/endpoints/kms/keys/update",
-            "api-reference/endpoints/kms/keys/delete",
-            "api-reference/endpoints/kms/keys/encrypt",
-            "api-reference/endpoints/kms/keys/decrypt"
+            "api-reference/endpoints/kms/keys/delete"
+          ]
+        },
+        {
+          "group": "Encryption",
+          "pages": [
+            "api-reference/endpoints/kms/encryption/encrypt",
+            "api-reference/endpoints/kms/encryption/decrypt"
+          ]
+        },
+        {
+          "group": "Signing",
+          "pages": [
+            "api-reference/endpoints/kms/signing/sign",
+            "api-reference/endpoints/kms/signing/verify",
+            "api-reference/endpoints/kms/signing/public-key",
+            "api-reference/endpoints/kms/signing/signing-algorithms"
           ]
         }
       ]

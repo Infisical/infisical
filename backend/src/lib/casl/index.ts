@@ -24,5 +24,6 @@ export enum PermissionConditionOperators {
   $IN = "$in",
   $EQ = "$eq",
   $NEQ = "$ne",
-  $GLOB = "$glob"
+  $GLOB = "$glob",
+  $ELEMENTMATCH = "$elemMatch"
 }

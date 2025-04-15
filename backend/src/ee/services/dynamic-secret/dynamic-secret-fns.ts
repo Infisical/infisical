@@ -42,7 +42,7 @@ export const verifyHostInputValidity = async (host: string, isGateway = false) =
     inputHostIps.push(...resolvedIps);
   }
 
-  if (!isGateway && !appCfg.DYNAMIC_SECRET_ALLOW_INTERNAL_IP) {
+  if (!isGateway && !(appCfg.DYNAMIC_SECRET_ALLOW_INTERNAL_IP || appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)) {
     const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));
     if (isInternalIp) throw new BadRequestError({ message: "Invalid db host" });
   }

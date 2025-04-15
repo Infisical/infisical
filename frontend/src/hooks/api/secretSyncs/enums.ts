@@ -7,6 +7,7 @@ export enum SecretSync {
   AzureAppConfiguration = "azure-app-configuration",
   Databricks = "databricks",
   Humanitec = "humanitec",
+  TerraformCloud = "terraform-cloud",
   Camunda = "camunda",
   Vercel = "vercel"
 }

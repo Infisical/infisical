@@ -195,6 +195,7 @@ export const getIntegrationOptions = async () => {
     {
       name: "AWS Secrets Manager",
       slug: "aws-secret-manager",
+      syncSlug: "aws-secrets-manager",
       image: "Amazon Web Services.png",
       isAvailable: true,
       type: "custom",

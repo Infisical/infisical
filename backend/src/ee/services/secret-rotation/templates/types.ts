@@ -50,6 +50,7 @@ export type TSecretRotationProviderTemplate = {
   image?: string;
   description?: string;
   template: THttpProviderTemplate | TDbProviderTemplate | TAwsProviderTemplate;
+  isDeprecated?: boolean;
 };
 
 export type THttpProviderTemplate = {

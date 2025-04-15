@@ -22,3 +22,5 @@ frontend/src/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredent
 frontend/src/hooks/api/secretRotationsV2/types/index.ts:generic-api-key:28
 frontend/src/hooks/api/secretRotationsV2/types/index.ts:generic-api-key:65
 frontend/src/pages/secret-manager/SecretDashboardPage/components/SecretRotationListView/SecretRotationItem.tsx:generic-api-key:26
+docs/documentation/platform/kms/overview.mdx:generic-api-key:281
+docs/documentation/platform/kms/overview.mdx:generic-api-key:344

@@ -138,7 +138,7 @@ const Page = () => {
 
   const canReadDynamicSecret = permission.can(
     ProjectPermissionDynamicSecretActions.ReadRootCredential,
-    subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })
+    subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath, metadata: ["*"] })
   );
 
   const canReadSecretRotations = permission.can(
@@ -219,6 +219,7 @@ const Page = () => {
     totalDynamicSecretCount = 0,
     totalSecretCount = 0,
     totalCount = 0,
+    importedBy,
     totalSecretRotationCount = 0
   } = data ?? {};
 
@@ -439,6 +440,7 @@ const Page = () => {
             onToggleRowType={handleToggleRowType}
             onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
             protectedBranchPolicyName={boardPolicy?.name}
+            importedBy={importedBy}
           />
           <div className="thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md rounded-b-none bg-mineshaft-800 text-left text-sm text-bunker-300">
             <div className="flex flex-col" id="dashboard">
@@ -527,9 +529,10 @@ const Page = () => {
                   workspaceId={workspaceId}
                   secretPath={secretPath}
                   isProtectedBranch={isProtectedBranch}
+                  importedBy={importedBy}
                 />
               )}
-              {canReadSecret && <SecretNoAccessListView count={noAccessSecretCount} />}
+              {noAccessSecretCount > 0 && <SecretNoAccessListView count={noAccessSecretCount} />}
               {!canReadSecret &&
                 !canReadDynamicSecret &&
                 !canReadSecretImports &&

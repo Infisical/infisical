@@ -11,6 +11,7 @@ import { TGitHubConnection } from "./github-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TPostgresConnection } from "./postgres-connection";
+import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVercelConnection } from "./vercel-connection";
 
 export * from "./auth0-connection";
@@ -24,6 +25,7 @@ export * from "./github-connection";
 export * from "./humanitec-connection";
 export * from "./mssql-connection";
 export * from "./postgres-connection";
+export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
 
 export type TAppConnection =
@@ -34,6 +36,7 @@ export type TAppConnection =
   | TAzureAppConfigurationConnection
   | TDatabricksConnection
   | THumanitecConnection
+  | TTerraformCloudConnection
   | TVercelConnection
   | TPostgresConnection
   | TMsSqlConnection
@@ -73,6 +76,7 @@ export type TAppConnectionMap = {
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
   [AppConnection.Databricks]: TDatabricksConnection;
   [AppConnection.Humanitec]: THumanitecConnection;
+  [AppConnection.TerraformCloud]: TTerraformCloudConnection;
   [AppConnection.Vercel]: TVercelConnection;
   [AppConnection.Postgres]: TPostgresConnection;
   [AppConnection.MsSql]: TMsSqlConnection;

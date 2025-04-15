@@ -367,7 +367,7 @@ export const secretQueueFactory = ({
       canExpandValue: () => true
     });
     // process secrets in current folder
-    const secrets = await secretV2BridgeDAL.findByFolderId(dto.folderId);
+    const secrets = await secretV2BridgeDAL.findByFolderId({ folderId: dto.folderId, projectId: dto.projectId });
 
     await Promise.allSettled(
       secrets.map(async (secret) => {
@@ -397,6 +397,7 @@ export const secretQueueFactory = ({
     // if no imports then return secrets in the current folder
     if (!secretImports.length) return content;
     const importedSecrets = await fnSecretsV2FromImports({
+      projectId: dto.projectId,
       decryptor: dto.decryptor,
       folderDAL,
       secretDAL: secretV2BridgeDAL,

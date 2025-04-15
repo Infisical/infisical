@@ -108,7 +108,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             const { email } = ghEmails.filter((gitHubEmail) => gitHubEmail.primary)[0];
             const { isUserCompleted, providerAuthToken } = await server.services.login.oauth2Login({
               email,
-              firstName: profile.displayName,
+              firstName: profile.displayName || profile.username || "",
               lastName: "",
               authMethod: AuthMethod.GITHUB,
               callbackPort
@@ -145,7 +145,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             const email = profile.emails[0].value;
             const { isUserCompleted, providerAuthToken } = await server.services.login.oauth2Login({
               email,
-              firstName: profile.displayName,
+              firstName: profile.displayName || profile.username || "",
               lastName: "",
               authMethod: AuthMethod.GITLAB,
               callbackPort

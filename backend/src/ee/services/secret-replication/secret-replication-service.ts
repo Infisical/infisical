@@ -45,7 +45,14 @@ type TSecretReplicationServiceFactoryDep = {
   secretVersionDAL: Pick<TSecretVersionDALFactory, "find" | "insertMany" | "update" | "findLatestVersionMany">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
-    "find" | "findBySecretKeys" | "insertMany" | "bulkUpdate" | "delete" | "upsertSecretReferences" | "transaction"
+    | "find"
+    | "findBySecretKeys"
+    | "insertMany"
+    | "bulkUpdate"
+    | "delete"
+    | "upsertSecretReferences"
+    | "transaction"
+    | "invalidateSecretCacheByProjectId"
   >;
   secretVersionV2BridgeDAL: Pick<
     TSecretVersionV2DALFactory,
@@ -260,6 +267,7 @@ export const secretReplicationServiceFactory = ({
       const sourceLocalSecrets = await secretV2BridgeDAL.find({ folderId: folder.id, type: SecretType.Shared });
       const sourceSecretImports = await secretImportDAL.find({ folderId: folder.id });
       const sourceImportedSecrets = await fnSecretsV2FromImports({
+        projectId,
         secretImports: sourceSecretImports,
         secretDAL: secretV2BridgeDAL,
         folderDAL,
@@ -497,6 +505,7 @@ export const secretReplicationServiceFactory = ({
                 }
               });
 
+              await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
               await secretQueueService.syncSecrets({
                 projectId,
                 orgId,

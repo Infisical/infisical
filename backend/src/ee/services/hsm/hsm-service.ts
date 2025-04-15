@@ -258,7 +258,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
   const decrypt: {
     (encryptedBlob: Buffer, providedSession: pkcs11js.Handle): Promise<Buffer>;
     (encryptedBlob: Buffer): Promise<Buffer>;
-  } = async (encryptedBlob: Buffer, providedSession?: pkcs11js.Handle) => {
+  } = async (encryptedBlob: Buffer, providedSession?: pkcs11js.Handle): Promise<Buffer> => {
     if (!pkcs11 || !isInitialized) {
       throw new Error("PKCS#11 module is not initialized");
     }
@@ -309,10 +309,10 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
 
         pkcs11.C_DecryptInit(sessionHandle, decryptMechanism, aesKey);
 
-        const tempBuffer = Buffer.alloc(encryptedData.length);
+        const tempBuffer: Buffer = Buffer.alloc(encryptedData.length);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const decryptedData = pkcs11.C_Decrypt(sessionHandle, encryptedData, tempBuffer);
 
-        // Create a new buffer from the decrypted data
         return Buffer.from(decryptedData);
       } catch (error) {
         logger.error(error, "HSM: Failed to perform decryption");

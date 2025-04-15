@@ -91,7 +91,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findBySecretPathMultiEnv">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
-    "bulkUpdate" | "insertMany" | "deleteMany" | "upsertSecretReferences" | "find"
+    "bulkUpdate" | "insertMany" | "deleteMany" | "upsertSecretReferences" | "find" | "invalidateSecretCacheByProjectId"
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -529,6 +529,7 @@ export const secretRotationV2ServiceFactory = ({
         });
       });
 
+      await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
       await snapshotService.performSnapshot(folder.id);
       await secretQueueService.syncSecrets({
         orgId: connection.orgId,
@@ -665,6 +666,7 @@ export const secretRotationV2ServiceFactory = ({
       });
 
       if (secretsMappingUpdated) {
+        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
         await snapshotService.performSnapshot(folder.id);
         await secretQueueService.syncSecrets({
           orgId: connection.orgId,
@@ -796,6 +798,7 @@ export const secretRotationV2ServiceFactory = ({
     }
 
     if (deleteSecrets) {
+      await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
       await snapshotService.performSnapshot(folder.id);
       await secretQueueService.syncSecrets({
         orgId: connection.orgId,
@@ -958,6 +961,7 @@ export const secretRotationV2ServiceFactory = ({
         }
       });
 
+      await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
       await snapshotService.performSnapshot(folder.id);
       await secretQueueService.syncSecrets({
         orgId: connection.orgId,

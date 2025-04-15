@@ -8,6 +8,7 @@ import {
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate } from "@tanstack/react-router";
 
 import { NoEnvironmentsBanner } from "@app/components/integrations/NoEnvironmentsBanner";
 import { createNotification } from "@app/components/notifications";
@@ -19,6 +20,7 @@ import {
   Skeleton,
   Tooltip
 } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -26,7 +28,9 @@ import {
   useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
+import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { IntegrationAuth, TCloudIntegration } from "@app/hooks/api/types";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 type Props = {
   isLoading?: boolean;
@@ -39,6 +43,9 @@ type Props = {
 };
 
 type TRevokeIntegrationPopUp = { provider: string };
+
+const SECRET_SYNCS = Object.values(SecretSync) as string[];
+const isSecretSyncAvailable = (type: string) => SECRET_SYNCS.includes(type);
 
 export const CloudIntegrationSection = ({
   isLoading,
@@ -54,6 +61,7 @@ export const CloudIntegrationSection = ({
   ] as const);
   const { permission } = useProjectPermission();
   const { currentWorkspace } = useWorkspace();
+  const navigate = useNavigate();
 
   const isEmpty = !isLoading && !cloudIntegrations?.length;
 
@@ -111,73 +119,104 @@ export const CloudIntegrationSection = ({
           ))}
 
         {!isLoading && filteredIntegrations.length ? (
-          filteredIntegrations.map((cloudIntegration) => (
-            <div
-              onKeyDown={() => null}
-              role="button"
-              tabIndex={0}
-              className={`group relative ${
-                cloudIntegration.isAvailable
-                  ? "cursor-pointer duration-200 hover:bg-mineshaft-700"
-                  : "opacity-50"
-              } flex h-32 flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4`}
-              onClick={() => {
-                if (!cloudIntegration.isAvailable) return;
-                if (
-                  permission.cannot(
-                    ProjectPermissionActions.Create,
-                    ProjectPermissionSub.Integrations
-                  )
-                ) {
-                  createNotification({
-                    type: "error",
-                    text: "You do not have permission to create an integration"
-                  });
-                  return;
-                }
-                onIntegrationStart(cloudIntegration.slug);
-              }}
-              key={cloudIntegration.slug}
-            >
-              <img
-                src={`/images/integrations/${cloudIntegration.image}`}
-                height={60}
-                width={60}
-                className="mt-auto"
-                alt="integration logo"
-              />
-              <div className="mt-auto max-w-xs text-center text-sm font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
-                {cloudIntegration.name}
-              </div>
-              {cloudIntegration.isAvailable &&
-                Boolean(integrationAuths?.[cloudIntegration.slug]) && (
-                  <div className="absolute right-0 top-0 z-30 h-full">
-                    <div className="relative h-full">
-                      <div className="absolute right-0 top-0 w-24 flex-row items-center overflow-hidden whitespace-nowrap rounded-bl-md rounded-tr-md bg-primary px-2 py-0.5 text-xs text-black opacity-80 transition-all duration-300 group-hover:w-0 group-hover:p-0">
-                        <FontAwesomeIcon icon={faCheck} className="mr-2 text-xs" />
-                        Authorized
-                      </div>
-                      <Tooltip content="Revoke Access">
-                        <div
-                          onKeyDown={() => null}
-                          role="button"
-                          tabIndex={0}
-                          onClick={async (event) => {
-                            event.stopPropagation();
-                            handlePopUpOpen("deleteConfirmation", {
-                              provider: cloudIntegration.slug
-                            });
-                          }}
-                          className="absolute right-0 top-0 flex h-0 w-12 cursor-pointer items-center justify-center overflow-hidden rounded-r-md bg-red text-xs opacity-50 transition-all duration-300 hover:opacity-100 group-hover:h-full"
-                        >
-                          <FontAwesomeIcon icon={faXmark} size="xl" />
+          filteredIntegrations.map((cloudIntegration) => {
+            const syncSlug = cloudIntegration.syncSlug ?? cloudIntegration.slug;
+            const isSyncAvailable = isSecretSyncAvailable(syncSlug);
+
+            return (
+              <div
+                onKeyDown={() => null}
+                role="button"
+                tabIndex={0}
+                className={`group relative ${
+                  cloudIntegration.isAvailable
+                    ? "cursor-pointer duration-200 hover:bg-mineshaft-700"
+                    : "opacity-50"
+                } flex h-36 flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3`}
+                onClick={() => {
+                  if (isSyncAvailable) {
+                    navigate({
+                      to: ROUTE_PATHS.SecretManager.IntegrationsListPage.path,
+                      params: {
+                        projectId: currentWorkspace.id
+                      },
+                      search: {
+                        selectedTab: IntegrationsListPageTabs.SecretSyncs,
+                        addSync: syncSlug as SecretSync
+                      }
+                    });
+                    return;
+                  }
+                  if (!cloudIntegration.isAvailable) return;
+                  if (
+                    permission.cannot(
+                      ProjectPermissionActions.Create,
+                      ProjectPermissionSub.Integrations
+                    )
+                  ) {
+                    createNotification({
+                      type: "error",
+                      text: "You do not have permission to create an integration"
+                    });
+                    return;
+                  }
+                  onIntegrationStart(cloudIntegration.slug);
+                }}
+                key={cloudIntegration.slug}
+              >
+                <div className="m-auto flex flex-col items-center">
+                  <img
+                    src={`/images/integrations/${cloudIntegration.image}`}
+                    height={60}
+                    width={60}
+                    className="mt-auto"
+                    alt="integration logo"
+                  />
+                  <div
+                    className={`mt-2 max-w-xs text-center text-sm font-semibold text-gray-300 duration-200 group-hover:text-gray-200 ${isSyncAvailable ? "mb-4" : ""}`}
+                  >
+                    {cloudIntegration.name}
+                  </div>
+                </div>
+                {cloudIntegration.isAvailable &&
+                  Boolean(integrationAuths?.[cloudIntegration.slug]) && (
+                    <div className="absolute right-0 top-0 z-30 h-full">
+                      <div className="relative h-full">
+                        <div className="absolute right-0 top-0 w-24 flex-row items-center overflow-hidden whitespace-nowrap rounded-bl-md rounded-tr-md bg-primary px-2 py-0.5 text-xs text-black opacity-80 transition-all duration-300 group-hover:w-0 group-hover:p-0">
+                          <FontAwesomeIcon icon={faCheck} className="mr-2 text-xs" />
+                          Authorized
                         </div>
-                      </Tooltip>
+                        <Tooltip content="Revoke Access">
+                          <div
+                            onKeyDown={() => null}
+                            role="button"
+                            tabIndex={0}
+                            onClick={async (event) => {
+                              event.stopPropagation();
+                              handlePopUpOpen("deleteConfirmation", {
+                                provider: cloudIntegration.slug
+                              });
+                            }}
+                            className="absolute right-0 top-0 flex h-0 w-12 cursor-pointer items-center justify-center overflow-hidden rounded-r-md bg-red text-xs opacity-50 transition-all duration-300 hover:opacity-100 group-hover:h-full"
+                          >
+                            <FontAwesomeIcon icon={faXmark} size="xl" />
+                          </div>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  )}
+                {isSyncAvailable && (
+                  <div className="absolute bottom-0 left-0 z-30 h-full w-full">
+                    <div className="relative h-full">
+                      <div className="absolute bottom-0 left-0 w-full flex-row overflow-hidden whitespace-nowrap rounded-bl-md rounded-br-md bg-yellow/20 px-2 py-0.5 text-center text-xs text-yellow">
+                        Secret Sync Available
+                      </div>
                     </div>
                   </div>
                 )}
-            </div>
-          ))
+              </div>
+            );
+          })
         ) : (
           <EmptyState
             className="col-span-full h-32 w-full rounded-md bg-transparent pt-14"

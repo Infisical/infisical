@@ -1,0 +1,83 @@
+---
+title: "Terraform Cloud Connection"
+description: "Learn how to configure a Terraform Cloud Connection for Infisical."
+---
+
+Infisical supports connecting to Terraform Cloud using a service user.
+
+## Setup Terraform Cloud Connection in Infisical
+
+<Steps>
+    <Step title="Move to Account Settings on Terraform Cloud">
+        Navigate to the Terraform Cloud **Account Settings** tab.
+        ![Terraform Cloud Account Settings](/images/app-connections/terraform-cloud/terraform-cloud-account-settings.png)
+    </Step>
+    <Step title="Move to Tokens Tab">
+        Move to the **Tokens** tab.
+        ![Terraform Cloud Tokens Tab](/images/app-connections/terraform-cloud/terraform-cloud-tokens-tab.png)
+    </Step>
+    <Step title="Create the API Token">
+        Create the API token to be used by Infisical.
+        <Note>
+            If you configure an expiry date for your API token you will need to manually rotate to a new token prior to expiration to avoid integration downtime.
+        </Note>
+        ![Terraform Cloud Create API Token](/images/app-connections/terraform-cloud/terraform-cloud-create-api-token.png)
+    </Step>
+    <Step title="Copy the API Token">
+        The API token will be displayed after creating it. Save the token in a secure location for later use in the following steps.
+        ![Terraform Cloud Copy API Token](/images/app-connections/terraform-cloud/terraform-cloud-copy-api-token.png)
+    </Step>
+    <Step title="Add Terraform Cloud Connection in Infisical">
+        <Tabs>
+            <Tab title="Infisical UI">
+                1. Navigate to the **App Connections** tab on the **Organization Settings** page.
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+                2. Select the **Terraform Cloud Connection** option from the connection options modal.
+                    ![Select Terraform Cloud Connection](/images/app-connections/terraform-cloud/terraform-cloud-app-connection-option.png)
+                3. Fill out the Terraform Cloud Connection modal, here you will need to provide the API Token generated in the previous step.
+                    ![Terraform Cloud Connection Modal](/images/app-connections/terraform-cloud/terraform-cloud-app-connection-modal.png)
+                4. Your **Terraform Cloud Connection** is now available for use.
+                    ![Terraform Cloud Connection Created](/images/app-connections/terraform-cloud/terraform-cloud-app-connection-created.png)
+            </Tab>
+            <Tab title="API">
+                To create an Terraform Cloud Connection, make an API request to the [Create Terraform Cloud
+                Connection](/api-reference/endpoints/app-connections/terraform-cloud/create) API endpoint.
+
+                ### Sample request
+
+                ```bash Request
+                curl    --request POST \
+                        --url https://app.infisical.com/api/v1/app-connections/terraform-cloud \
+                        --header 'Content-Type: application/json' \
+                        --data '{
+                            "name": "my-terraform-cloud-connection",
+                            "method": "api-token",
+                            "credentials": {
+                                "apiToken": "...",
+                            }
+                        }'
+                ```
+
+                ### Sample response
+
+                ```bash Response
+                {
+                    "appConnection": {
+                        "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                        "name": "my-terraform-cloud-connection",
+                        "version": 123,
+                        "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                        "createdAt": "2023-11-07T05:31:56Z",
+                        "updatedAt": "2023-11-07T05:31:56Z",
+                        "app": "terraform-cloud",
+                        "method": "api-token",
+                        "credentials": {
+                            "apiToken": "..."
+                        }
+                    }
+                }
+                ```
+            </Tab>
+        </Tabs>
+    </Step>
+</Steps>

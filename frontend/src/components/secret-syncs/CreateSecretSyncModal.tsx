@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Modal, ModalContent } from "@app/components/v2";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
@@ -10,6 +10,7 @@ import { SecretSyncSelect } from "./SecretSyncSelect";
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  selectSync?: SecretSync | null;
 };
 
 type ContentProps = {
@@ -32,8 +33,12 @@ const Content = ({ onComplete, setSelectedSync, selectedSync }: ContentProps) =>
   return <SecretSyncSelect onSelect={setSelectedSync} />;
 };
 
-export const CreateSecretSyncModal = ({ onOpenChange, ...props }: Props) => {
-  const [selectedSync, setSelectedSync] = useState<SecretSync | null>(null);
+export const CreateSecretSyncModal = ({ onOpenChange, selectSync = null, ...props }: Props) => {
+  const [selectedSync, setSelectedSync] = useState<SecretSync | null>(selectSync);
+
+  useEffect(() => {
+    setSelectedSync(selectSync);
+  }, [selectSync]);
 
   return (
     <Modal

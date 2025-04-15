@@ -10,6 +10,7 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       store[key] = value;
       return "OK";
     },
+    setExpiry: async () => 0,
     setItemWithExpiry: async (key, value) => {
       store[key] = value;
       return "OK";

@@ -81,6 +81,7 @@ import {
   useSelectedSecrets
 } from "../../SecretMainPage.store";
 import { Filter, RowType } from "../../SecretMainPage.types";
+import { CollapsibleSecretImports } from "../SecretListView/CollapsibleSecretImports";
 import { ReplicateFolderFromBoard } from "./ReplicateFolderFromBoard/ReplicateFolderFromBoard";
 import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
@@ -112,6 +113,14 @@ type Props = {
   onVisibilityToggle: () => void;
   onToggleRowType: (rowType: RowType) => void;
   onClickRollbackMode: () => void;
+  importedBy?: {
+    environment: { name: string; slug: string };
+    folders: {
+      name: string;
+      secrets?: { secretId: string; referencedSecretKey: string }[];
+      isImported: boolean;
+    }[];
+  }[];
 };
 
 export const ActionBar = ({
@@ -129,7 +138,8 @@ export const ActionBar = ({
   onVisibilityToggle,
   onClickRollbackMode,
   onToggleRowType,
-  protectedBranchPolicyName
+  protectedBranchPolicyName,
+  importedBy
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addFolder",
@@ -854,7 +864,8 @@ export const ActionBar = ({
                     environment,
                     secretPath,
                     secretName: "*",
-                    secretTags: ["*"]
+                    secretTags: ["*"],
+                    metadata: ["*"]
                   })}
                 >
                   {(isAllowed) => (
@@ -1059,6 +1070,15 @@ export const ActionBar = ({
         title="Do you want to delete these secrets?"
         onChange={(isOpen) => handlePopUpToggle("bulkDeleteSecrets", isOpen)}
         onDeleteApproved={handleSecretBulkDelete}
+        formContent={
+          importedBy &&
+          importedBy.length > 0 && (
+            <CollapsibleSecretImports
+              importedBy={importedBy}
+              secretsToDelete={Object.values(selectedSecrets).map((s) => s.key)}
+            />
+          )
+        }
       />
       <MoveSecretsModal
         popUp={popUp}
