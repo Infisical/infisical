@@ -825,10 +825,7 @@ export const secretImportServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder)
-      throw new NotFoundError({
-        message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
-      });
+    if (!folder) return [];
 
     const importedBy = await secretImportDAL.getFolderIsImportedBy(secretPath, folder.envId, environment, projectId);
     const deepPaths: { path: string; folderId: string }[] = [];
