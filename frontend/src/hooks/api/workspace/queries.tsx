@@ -336,8 +336,8 @@ export const useUpdateWorkspaceVersionLimit = () => {
       });
       return data.workspace;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
+    onSuccess: (dto) => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace(dto.type) });
     }
   });
 };
