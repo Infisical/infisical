@@ -197,6 +197,7 @@ const envSchema = z
     /* ----------------------------------------------------------------------------- */
 
     /* App Connections ----------------------------------------------------------------------------- */
+    ALLOW_INTERNAL_IP_CONNECTIONS: zodStrBool.default("false"),
 
     // aws
     INF_APP_CONNECTION_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),

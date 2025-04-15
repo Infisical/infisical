@@ -2,10 +2,16 @@ import dns from "node:dns/promises";
 
 import { isIPv4 } from "net";
 
+import { getConfig } from "@app/lib/config/env";
+
 import { BadRequestError } from "../errors";
 import { isPrivateIp } from "../ip/ipRange";
 
 export const blockLocalAndPrivateIpAddresses = async (url: string) => {
+  const appCfg = getConfig();
+
+  if (appCfg.isDevelopmentMode) return;
+
   const validUrl = new URL(url);
   const inputHostIps: string[] = [];
   if (isIPv4(validUrl.host)) {
@@ -18,7 +24,8 @@ export const blockLocalAndPrivateIpAddresses = async (url: string) => {
     inputHostIps.push(...resolvedIps);
   }
   const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));
-  if (isInternalIp) throw new BadRequestError({ message: "Local IPs not allowed as URL" });
+  if (isInternalIp && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)
+    throw new BadRequestError({ message: "Local IPs not allowed as URL" });
 };
 
 type FQDNOptions = {
