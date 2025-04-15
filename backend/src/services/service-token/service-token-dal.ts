@@ -49,7 +49,7 @@ export const serviceTokenDALFactory = (db: TDbClient) => {
 
       return docs;
     } catch (err) {
-      throw new DatabaseError({ error: err, name: "FindById" });
+      throw new DatabaseError({ error: err, name: "FindExpiredTokens" });
     }
   };
   return { ...stOrm, findById, findExpiredTokens };
