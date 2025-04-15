@@ -328,6 +328,7 @@ export const routes = rootRoute("root.tsx", [
     route("/admin/signup", "admin/SignUpPage/route.tsx"),
     route("/login", [
       index("auth/LoginPage/route.tsx"),
+      route("/admin", "auth/AdminLoginPage/route.tsx"),
       route("/select-organization", "auth/SelectOrgPage/route.tsx"),
       route("/sso", "auth/LoginSsoPage/route.tsx"),
       route("/ldap", "auth/LoginLdapPage/route.tsx"),

@@ -158,7 +158,38 @@ export const OrgOIDCSection = (): JSX.Element => {
       )}
       <div className="py-4">
         <div className="mb-2 flex justify-between">
-          <h3 className="text-md text-mineshaft-100">Enforce OIDC SSO</h3>
+          <div className="flex items-center gap-1">
+            <span className="text-md text-mineshaft-100">Enforce OIDC SSO</span>
+            <Tooltip
+              className="max-w-lg"
+              content={
+                <div>
+                  <span>
+                    Login enforcement is only applied to non-admin users in order to prevent total
+                    lockout from the organization when the OIDC provider is unavailable.
+                  </span>
+
+                  <p className="mt-4">
+                    In case of a lockout, use the admin login portal{" "}
+                    <a
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2 hover:text-mineshaft-300"
+                      href={`${window.location.origin}/admin/login`}
+                    >
+                      here.
+                    </a>
+                  </p>
+                </div>
+              }
+            >
+              <FontAwesomeIcon
+                icon={faInfoCircle}
+                size="sm"
+                className="mt-0.5 inline-block text-mineshaft-400"
+              />
+            </Tooltip>
+          </div>
           <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
             {(isAllowed) => (
               <Switch
@@ -171,7 +202,7 @@ export const OrgOIDCSection = (): JSX.Element => {
           </OrgPermissionCan>
         </div>
         <p className="text-sm text-mineshaft-300">
-          Enforce non-admin users to authenticate via OIDC to access this organization.
+          <span>Enforce non-admin users to authenticate via OIDC to access this organization.</span>
         </p>
       </div>
       <div className="py-4">

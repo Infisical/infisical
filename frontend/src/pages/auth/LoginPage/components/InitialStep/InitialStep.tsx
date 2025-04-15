@@ -26,15 +26,22 @@ type Props = {
   setEmail: (email: string) => void;
   password: string;
   setPassword: (email: string) => void;
+  isAdmin?: boolean;
 };
 
-export const InitialStep = ({ setStep, email, setEmail, password, setPassword }: Props) => {
+export const InitialStep = ({
+  setStep,
+  email,
+  setEmail,
+  password,
+  setPassword,
+  isAdmin
+}: Props) => {
   const navigate = useNavigate();
 
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState(false);
-  const [isOtherLoginMethodsSelected, setIsOtherLoginMethodsSelected] = useState(false);
   const { config } = useServerConfig();
   const queryParams = new URLSearchParams(window.location.search);
   const [captchaToken, setCaptchaToken] = useState("");
@@ -63,7 +70,9 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
   };
 
   useEffect(() => {
-    if (serverDetails?.samlDefaultOrgSlug) redirectToSaml(serverDetails.samlDefaultOrgSlug);
+    if (serverDetails?.samlDefaultOrgSlug && !isAdmin) {
+      redirectToSaml(serverDetails.samlDefaultOrgSlug);
+    }
   }, [serverDetails?.samlDefaultOrgSlug]);
 
   const handleSaml = () => {
@@ -83,7 +92,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
   };
 
   const shouldDisplayLoginMethod = (method: LoginMethod) =>
-    !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
+    isAdmin || !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -161,11 +170,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
     setIsLoading(false);
   };
 
-  if (
-    config.defaultAuthOrgAuthEnforced &&
-    config.defaultAuthOrgAuthMethod &&
-    !isOtherLoginMethodsSelected
-  ) {
+  if (config.defaultAuthOrgAuthEnforced && config.defaultAuthOrgAuthMethod && !isAdmin) {
     return (
       <form
         onSubmit={handleLogin}
@@ -201,14 +206,6 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             </Button>
           </div>
         )}
-        <Button
-          colorSchema="gray"
-          variant="link"
-          className="mt-6 font-normal text-mineshaft-400 transition-all duration-75 hover:text-mineshaft-300"
-          onClick={() => setIsOtherLoginMethodsSelected(true)}
-        >
-          Continue with other login methods
-        </Button>
       </form>
     );
   }

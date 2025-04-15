@@ -1,7 +1,10 @@
+import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Switch } from "@app/components/v2";
+import { Switch, Tooltip } from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -72,7 +75,38 @@ export const OrgGeneralAuthSection = () => {
             </div> */}
       <div className="py-4">
         <div className="mb-2 flex justify-between">
-          <h3 className="text-md text-mineshaft-100">Enforce SAML SSO</h3>
+          <div className="flex items-center gap-1">
+            <span className="text-md text-mineshaft-100">Enforce SAML SSO</span>
+            <Tooltip
+              className="max-w-lg"
+              content={
+                <div>
+                  <span>
+                    Login enforcement is only applied to non-admin users in order to prevent total
+                    lockout from the organization when the SAML provider is unavailable.
+                  </span>
+
+                  <p className="mt-4">
+                    In case of a lockout, use the admin login portal{" "}
+                    <a
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2 hover:text-mineshaft-300"
+                      href={`${window.location.origin}/admin/login`}
+                    >
+                      here.
+                    </a>
+                  </p>
+                </div>
+              }
+            >
+              <FontAwesomeIcon
+                icon={faInfoCircle}
+                size="sm"
+                className="mt-0.5 inline-block text-mineshaft-400"
+              />
+            </Tooltip>
+          </div>
           <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
             {(isAllowed) => (
               <Switch

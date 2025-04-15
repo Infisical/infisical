@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
-import { TUsers, UserDeviceSchema } from "@app/db/schemas";
+import { OrgMembershipRole, TUsers, UserDeviceSchema } from "@app/db/schemas";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -174,20 +174,25 @@ export const authLoginServiceFactory = ({
     const userEnc = await userDAL.findUserEncKeyByUsername({
       username: email
     });
+
     const serverCfg = await getServerCfg();
+
+    if (!userEnc || (userEnc && !userEnc.isAccepted)) {
+      throw new Error("Failed to find user");
+    }
 
     if (
       serverCfg.enabledLoginMethods &&
       !serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL) &&
       !providerAuthToken
     ) {
-      throw new BadRequestError({
-        message: "Login with email is disabled by administrator."
-      });
-    }
-
-    if (!userEnc || (userEnc && !userEnc.isAccepted)) {
-      throw new Error("Failed to find user");
+      // bypass server configuration when user is an organization admin - this is to prevent lockout
+      const userOrgs = await orgDAL.findAllOrgsByUserId(userEnc.userId);
+      if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
+        throw new BadRequestError({
+          message: "Login with email is disabled by administrator."
+        });
+      }
     }
 
     if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
@@ -573,28 +578,40 @@ export const authLoginServiceFactory = ({
       switch (authMethod) {
         case AuthMethod.GITHUB: {
           if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITHUB)) {
-            throw new BadRequestError({
-              message: "Login with Github is disabled by administrator.",
-              name: "Oauth 2 login"
-            });
+            // bypass server configuration when user is an organization admin - this is to prevent lockout
+            const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
+            if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
+              throw new BadRequestError({
+                message: "Login with Github is disabled by administrator.",
+                name: "Oauth 2 login"
+              });
+            }
           }
           break;
         }
         case AuthMethod.GOOGLE: {
           if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GOOGLE)) {
-            throw new BadRequestError({
-              message: "Login with Google is disabled by administrator.",
-              name: "Oauth 2 login"
-            });
+            // bypass server configuration when user is an organization admin - this is to prevent lockout
+            const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
+            if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
+              throw new BadRequestError({
+                message: "Login with Google is disabled by administrator.",
+                name: "Oauth 2 login"
+              });
+            }
           }
           break;
         }
         case AuthMethod.GITLAB: {
           if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITLAB)) {
-            throw new BadRequestError({
-              message: "Login with Gitlab is disabled by administrator.",
-              name: "Oauth 2 login"
-            });
+            // bypass server configuration when user is an organization admin - this is to prevent lockout
+            const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
+            if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
+              throw new BadRequestError({
+                message: "Login with Gitlab is disabled by administrator.",
+                name: "Oauth 2 login"
+              });
+            }
           }
           break;
         }
