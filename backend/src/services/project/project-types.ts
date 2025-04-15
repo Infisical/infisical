@@ -66,6 +66,10 @@ export type TToggleProjectAutoCapitalizationDTO = {
   autoCapitalization: boolean;
 } & TProjectPermission;
 
+export type TToggleProjectDeleteProtectionDTO = {
+  hasDeleteProtection: boolean;
+} & TProjectPermission;
+
 export type TUpdateProjectVersionLimitDTO = {
   pitVersionLimit: number;
   workspaceSlug: string;

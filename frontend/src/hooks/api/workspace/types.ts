@@ -36,6 +36,7 @@ export type Workspace = {
   slug: string;
   createdAt: string;
   roles?: TProjectRole[];
+  hasDeleteProtection: boolean;
 };
 
 export type WorkspaceEnv = {
@@ -80,6 +81,7 @@ export type UpdateProjectDTO = {
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };
 export type UpdateAuditLogsRetentionDTO = { projectSlug: string; auditLogsRetentionDays: number };
 export type ToggleAutoCapitalizationDTO = { workspaceID: string; state: boolean };
+export type ToggleDeleteProjectProtectionDTO = { workspaceID: string; state: boolean };
 
 export type DeleteWorkspaceDTO = { workspaceID: string };
 

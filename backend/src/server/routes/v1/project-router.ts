@@ -391,6 +391,43 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/:workspaceId/delete-protection",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        hasDeleteProtection: z.boolean()
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          workspace: SanitizedProjectSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const workspace = await server.services.project.toggleDeleteProtection({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        hasDeleteProtection: req.body.hasDeleteProtection
+      });
+      return {
+        message: "Successfully changed workspace settings",
+        workspace
+      };
+    }
+  });
+
+  server.route({
     method: "PUT",
     url: "/:workspaceSlug/version-limit",
     config: {

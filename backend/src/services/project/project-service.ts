@@ -86,6 +86,7 @@ import {
   TProjectAccessRequestDTO,
   TSearchProjectsDTO,
   TToggleProjectAutoCapitalizationDTO,
+  TToggleProjectDeleteProtectionDTO,
   TUpdateAuditLogsRetentionDTO,
   TUpdateProjectDTO,
   TUpdateProjectKmsDTO,
@@ -482,6 +483,12 @@ export const projectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
 
+    if (project.hasDeleteProtection) {
+      throw new ForbiddenRequestError({
+        message: "Project delete protection is enabled"
+      });
+    }
+
     const deletedProject = await projectDAL.transaction(async (tx) => {
       // delete these so that project custom roles can be deleted in cascade effect
       // direct deletion of project without these will cause fk error
@@ -644,6 +651,29 @@ export const projectServiceFactory = ({
       autoCapitalization,
       enforceCapitalization: autoCapitalization
     });
+
+    return updatedProject;
+  };
+
+  const toggleDeleteProtection = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    hasDeleteProtection
+  }: TToggleProjectDeleteProtectionDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    const updatedProject = await projectDAL.updateById(projectId, { hasDeleteProtection });
 
     return updatedProject;
   };
@@ -1499,6 +1529,7 @@ export const projectServiceFactory = ({
     getProjectUpgradeStatus,
     getAProject,
     toggleAutoCapitalization,
+    toggleDeleteProtection,
     updateName,
     upgradeProject,
     listProjectCas,
