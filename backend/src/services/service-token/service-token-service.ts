@@ -26,6 +26,7 @@ import {
   TGetServiceTokenInfoDTO,
   TProjectServiceTokensDTO
 } from "./service-token-types";
+import { logger } from "@app/lib/logger";
 
 type TServiceTokenServiceFactoryDep = {
   serviceTokenDAL: TServiceTokenDALFactory;
@@ -196,8 +197,8 @@ export const serviceTokenServiceFactory = ({
 
     await Promise.all(
       expiredTokens.map(async (token) => {
-        await smtpService
-          .sendMail({
+        try {
+          await smtpService.sendMail({
             recipients: [token.createdByEmail],
             subjectLine: "Service Token Expired",
             template: SmtpTemplates.ServiceTokenExpired,
@@ -206,10 +207,11 @@ export const serviceTokenServiceFactory = ({
               projectName: token.projectName,
               url: `${appCfg.SITE_URL}/secret-manager/${token.projectId}/access-management?selectedTab=service-tokens`
             }
-          })
-          .then(async () => {
-            await serviceTokenDAL.update({ id: token.id }, { notificationSent: true });
           });
+          await serviceTokenDAL.update({ id: token.id }, { notificationSent: true });
+        } catch (error) {
+          logger.error(error, `Failed to send expiration notification for token ${token.id}:`);
+        }
       })
     );
   };

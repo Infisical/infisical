@@ -41,6 +41,7 @@ export const serviceTokenDALFactory = (db: TDbClient) => {
           .whereRaw(
             `${TableName.ServiceToken}."expiresAt" < NOW() AND ${TableName.ServiceToken}."notificationSent" = false`
           )
+          .whereNotNull(`${TableName.Users}.email`)
           .select(`${TableName.ServiceToken}.name`)
           .select(`${TableName.ServiceToken}.id`)
           .select(`${TableName.Project}.name as projectName`)
