@@ -61,9 +61,9 @@ Infisical supports two methods for connecting to AWS.
                 <Warning type="warning" title="Security Best Practice: Use External ID to Prevent Confused Deputy Attacks">
                     When configuring an IAM Role that Infisical will assume, it’s highly recommended to enable the **"Require external ID"** option and specify your **Organization ID**.
 
-                    This precaution helps protect your AWS account against the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html), a potential security vulnerability where a third party could be tricked into performing actions on your behalf by an unauthorized actor.
+                    This precaution helps protect your AWS account against the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html), a potential security vulnerability where Infisical could be tricked into performing actions on your behalf by an unauthorized actor.
 
-                    <strong>Always enable "Require external ID" and use a unique value such as your Organization ID when setting up the IAM Role.</strong>
+                    <strong>Always enable "Require external ID" and use your Organization ID when setting up the IAM Role.</strong>
                 </Warning>
             </Step>
 
