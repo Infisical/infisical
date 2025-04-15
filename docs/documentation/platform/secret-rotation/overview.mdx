@@ -47,6 +47,11 @@ Each set of credentials transitions through three distinct states:
 
 - **Active**: The primary credentials that will be used for new connections
 - **Inactive**: These credentials are still valid but are no longer issued for new connections
+    <Note>
+        Some rotation providers utilize a single credential set due to technical constraints. As a result, inactive credentials for these providers will immediately become invalid once rotated.
+
+        To avoid service interruptions, Infisical recommends manually rotating these credentials to prevent downtime.
+    </Note>
 - **Revoked**: Permanently invalidated and deleted from the system
 
 ### Rotation Cycle Example (30-Day Interval)
@@ -95,3 +100,16 @@ Using a __30-Day__ rotation interval as an example, here's how the process unfol
 
 - [PostgreSQL Credentials](./postgres)
 - [Microsoft SQL Server Credentials](./mssql)
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Why do certain rotations only use a single credential set?">
+        Some credential providers have limitations that affect rotation patterns:
+
+        - The third-party provider's API only supports managing one active credential set at a time
+        - The specific use-case (such as personal login accounts) is inherently limited to a single active credential
+
+        In either scenario, when service continuity is critical, Infisical recommends disabling auto-rotation and performing manual credential rotation during scheduled maintenance windows.
+    </Accordion>
+</AccordionGroup>

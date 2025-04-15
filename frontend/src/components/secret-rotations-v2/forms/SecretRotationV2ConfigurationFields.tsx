@@ -126,11 +126,20 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
         }}
       />
       {!IS_ROTATION_DUAL_CREDENTIALS[type] && isAutoRotationEnabled && (
-        <div className="rounded border border-yellow bg-yellow/10 p-2 px-3 text-sm text-yellow">
+        <div className="rounded border border-yellow bg-yellow/10 p-2 px-3 text-xs text-yellow">
           <FontAwesomeIcon icon={faWarning} className="mr-1" /> Due to{" "}
           {SECRET_ROTATION_MAP[type].name} Rotations rotating a single credential set, auto-rotation
           may result in service interruptions. If you need to ensure service continuity, we
-          recommend disabling this option.
+          recommend disabling this option. <br />
+          <a
+            href="https://infisical.com/docs/documentation/platform/secret-rotation/overview#how-rotation-works"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline decoration-yellow underline-offset-2 hover:text-mineshaft-200"
+          >
+            Read more
+          </a>
+          .
         </div>
       )}
     </>
