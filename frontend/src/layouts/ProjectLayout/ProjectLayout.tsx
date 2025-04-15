@@ -41,9 +41,9 @@ export const ProjectLayout = () => {
   const shouldUpgrade = Boolean(hasUserLimitCrossed || hasIdentityLimitCrossed);
   let upgradeText = "";
   if (hasUserLimitCrossed) {
-    upgradeText = `You've reached the maximum number of organisation users(${subscription.membersUsed}/${subscription?.memberLimit}).`;
+    upgradeText = `You've reached the maximum number of organisation users(${subscription?.memberLimit}).`;
   } else if (hasIdentityLimitCrossed) {
-    upgradeText = `You've reached the maximum number of organisation identities(${subscription.identitiesUsed}/${subscription?.identityLimit}).`;
+    upgradeText = `You've reached the maximum number of organisation identities(${subscription?.identityLimit}).`;
   }
 
   const isSecretManager = currentWorkspace?.type === ProjectType.SecretManager;
