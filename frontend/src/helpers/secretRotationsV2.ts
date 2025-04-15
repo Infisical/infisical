@@ -28,6 +28,13 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.Auth0ClientSecret]: AppConnection.Auth0
 };
 
+// if a rotation can potentially have downtime due to rotating a single credential set this to false
+export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
+  [SecretRotation.PostgresCredentials]: true,
+  [SecretRotation.MsSqlCredentials]: true,
+  [SecretRotation.Auth0ClientSecret]: false
+};
+
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {
   const now = new Date();
 

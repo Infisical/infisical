@@ -12,7 +12,7 @@ import { SecretRotationV2ReviewFields } from "@app/components/secret-rotations-v
 import { SecretRotationV2SecretsMappingFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2SecretsMappingFields";
 import { Button } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
+import { IS_ROTATION_DUAL_CREDENTIALS, SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import {
   SecretRotation,
   TSecretRotationV2,
@@ -84,7 +84,7 @@ export const SecretRotationV2Form = ({
         }
       : {
           type,
-          isAutoRotationEnabled: true,
+          isAutoRotationEnabled: IS_ROTATION_DUAL_CREDENTIALS[type],
           rotationInterval: DEFAULT_ROTATION_INTERVAL,
           rotateAtUtc: {
             hours: 0,

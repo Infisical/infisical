@@ -1,8 +1,14 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { faWarning } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, setHours, setMinutes } from "date-fns";
 
 import { FilterableSelect, FormControl, Input, Switch } from "@app/components/v2";
-import { getRotateAtLocal } from "@app/helpers/secretRotationsV2";
+import {
+  getRotateAtLocal,
+  IS_ROTATION_DUAL_CREDENTIALS,
+  SECRET_ROTATION_MAP
+} from "@app/helpers/secretRotationsV2";
 import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
 
 import { TSecretRotationV2Form } from "./schemas";
@@ -14,7 +20,9 @@ type Props = {
 };
 
 export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: Props) => {
-  const { control } = useFormContext<TSecretRotationV2Form>();
+  const { control, watch } = useFormContext<TSecretRotationV2Form>();
+
+  const [type, isAutoRotationEnabled] = watch(["type", "isAutoRotationEnabled"]);
 
   return (
     <>
@@ -117,6 +125,14 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
           );
         }}
       />
+      {!IS_ROTATION_DUAL_CREDENTIALS[type] && isAutoRotationEnabled && (
+        <div className="rounded border border-yellow bg-yellow/10 p-2 px-3 text-sm text-yellow">
+          <FontAwesomeIcon icon={faWarning} className="mr-1" /> Due to{" "}
+          {SECRET_ROTATION_MAP[type].name} Rotations rotating a single credential set, auto-rotation
+          may result in service interruptions. If you need to ensure service continuity, we
+          recommend disabling this option.
+        </div>
+      )}
     </>
   );
 };

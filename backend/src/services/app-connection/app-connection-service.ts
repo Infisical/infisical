@@ -14,6 +14,7 @@ import {
   TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM,
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
+import { auth0ConnectionService } from "@app/services/app-connection/auth0/auth0-connection-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "./app-connection-dal";
@@ -440,6 +441,7 @@ export const appConnectionServiceFactory = ({
     aws: awsConnectionService(connectAppConnectionById),
     humanitec: humanitecConnectionService(connectAppConnectionById),
     camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
-    vercel: vercelConnectionService(connectAppConnectionById)
+    vercel: vercelConnectionService(connectAppConnectionById),
+    auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
   };
 };

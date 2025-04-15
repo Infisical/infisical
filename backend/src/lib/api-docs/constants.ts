@@ -1979,7 +1979,7 @@ export const SecretRotations = {
       password: "The name of the secret that the generated password will be mapped to."
     },
     AUTH0_CLIENT_SECRET: {
-      clientID: "The name of the secret that the client ID will be mapped to.",
+      clientId: "The name of the secret that the client ID will be mapped to.",
       clientSecret: "The name of the secret that the rotated client secret will be mapped to."
     }
   }

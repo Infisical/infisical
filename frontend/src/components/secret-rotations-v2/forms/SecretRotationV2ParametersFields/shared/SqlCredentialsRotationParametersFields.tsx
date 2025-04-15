@@ -8,7 +8,7 @@ import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secret
 export const SqlCredentialsRotationParametersFields = () => {
   const { control, watch } = useFormContext<
     TSecretRotationV2Form & {
-      type: SecretRotation.PostgresCredentials; // all sql rotations share these fields
+      type: SecretRotation.PostgresCredentials | SecretRotation.MsSqlCredentials;
     }
   >();
 

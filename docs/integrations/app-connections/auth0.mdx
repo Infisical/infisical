@@ -1,6 +1,6 @@
 ---
 title: "Auth0 Connection"
-description: "Learn how to configure a Auth0 Connection for Infisical."
+description: "Learn how to configure an Auth0 Connection for Infisical."
 ---
 
 Infisical supports the use of [Client Credentials](https://auth0.com/docs/get-started/authentication-and-authorization-flow/client-credentials-flow) to connect with your Auth0 applications.
@@ -22,7 +22,7 @@ Infisical supports the use of [Client Credentials](https://auth0.com/docs/get-st
 
         <Tabs>
             <Tab title="Secret Rotation">
-                Select the **Auth0 Management API** option from the dropdown and grant the `update:client_keys` permission.
+                Select the **Auth0 Management API** option from the dropdown and grant the `update:client_keys` and `read:clients` permission.
                 ![Secret Rotation Authorization](/images/app-connections/auth0/auth0-secret-rotation-api-selection.png)
             </Tab>
         </Tabs>
@@ -72,7 +72,7 @@ Infisical supports the use of [Client Credentials](https://auth0.com/docs/get-st
                 "clientId": "...",
                 "clientSecret": "...",
                 "audience": "https://xxx-xxxxxxxxx.us.auth0.com/api/v2/"
-            },
+            }
         }'
         ```
 

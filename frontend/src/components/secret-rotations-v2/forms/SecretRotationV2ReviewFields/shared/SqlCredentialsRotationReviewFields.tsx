@@ -9,7 +9,7 @@ import { SecretRotationReviewSection } from "./SecretRotationReviewSection";
 export const SqlCredentialsRotationReviewFields = () => {
   const { watch } = useFormContext<
     TSecretRotationV2Form & {
-      type: SecretRotation.PostgresCredentials; // all sql rotations share these fields
+      type: SecretRotation.PostgresCredentials | SecretRotation.MsSqlCredentials;
     }
   >();
 

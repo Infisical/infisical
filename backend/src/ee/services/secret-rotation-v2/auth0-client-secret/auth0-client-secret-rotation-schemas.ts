@@ -28,7 +28,7 @@ const Auth0ClientSecretRotationParametersSchema = z.object({
 });
 
 const Auth0ClientSecretRotationSecretsMappingSchema = z.object({
-  clientId: SecretNameSchema.describe(SecretRotations.SECRETS_MAPPING.AUTH0_CLIENT_SECRET.clientID),
+  clientId: SecretNameSchema.describe(SecretRotations.SECRETS_MAPPING.AUTH0_CLIENT_SECRET.clientId),
   clientSecret: SecretNameSchema.describe(SecretRotations.SECRETS_MAPPING.AUTH0_CLIENT_SECRET.clientSecret)
 });
 

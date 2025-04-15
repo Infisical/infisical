@@ -1,5 +1,3 @@
-import { AxiosError } from "axios";
-
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -45,7 +43,11 @@ const authorizeAuth0Connection = async ({
     throw new Error(`Unhandled token type: ${data.token_type}`);
   }
 
-  return { accessToken: data.access_token, expiresAt: data.expires_in * 1000 + Date.now() };
+  return {
+    accessToken: data.access_token,
+    // cap token lifespan to 10 minutes
+    expiresAt: Math.min(data.expires_in * 1000, 600000) + Date.now()
+  };
 };
 
 export const getAuth0ConnectionAccessToken = async (
@@ -53,7 +55,12 @@ export const getAuth0ConnectionAccessToken = async (
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
-  // just getting a new auth token every time because if permissions change the previous token doesn't have the changes
+  const { expiresAt, accessToken } = credentials;
+
+  // get new token if expired or less than 5 minutes until expiry
+  if (Date.now() < expiresAt - 300000) {
+    return accessToken;
+  }
 
   const authData = await authorizeAuth0Connection(credentials);
 
@@ -84,7 +91,7 @@ export const validateAuth0ConnectionCredentials = async ({ credentials }: TAuth0
     };
   } catch (e: unknown) {
     throw new BadRequestError({
-      message: (e as AxiosError).message ?? `Unable to validate connection: verify credentials`
+      message: (e as Error).message ?? `Unable to validate connection: verify credentials`
     });
   }
 };

@@ -9,7 +9,7 @@ import { SecretsMappingTable } from "./SecretsMappingTable";
 export const SqlCredentialsRotationSecretsMappingFields = () => {
   const { control, watch } = useFormContext<
     TSecretRotationV2Form & {
-      type: SecretRotation.PostgresCredentials; // all sql rotations share these fields
+      type: SecretRotation.PostgresCredentials | SecretRotation.MsSqlCredentials;
     }
   >();
 

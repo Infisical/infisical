@@ -70,7 +70,7 @@ export const Auth0ConnectionForm = ({ appConnection, onSubmit }: Props) => {
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
               tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.Databricks].name
+                APP_CONNECTION_MAP[AppConnection.Auth0].name
               }. This field cannot be changed after creation.`}
               errorText={error?.message}
               isError={Boolean(error?.message)}
