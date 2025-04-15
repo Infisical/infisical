@@ -284,7 +284,7 @@ if err != nil {
 }
 ```
 
-## Working With Secrets
+## Secrets
 
 ### List Secrets
 
@@ -591,7 +591,7 @@ Create multiple secrets in Infisical.
   </Expandable>
 </ParamField>
 
-## Working With Folders
+## Folders
 
 ###
 
@@ -747,4 +747,354 @@ deletedFolder, err := client.Folders().Delete(infisical.DeleteFolderOptions{
         </ParamField>
     </Expandable>
 
+</ParamField>
+
+## KMS
+
+### Create Key
+
+`client.Kms().Keys().Create(options)`
+
+Create a new key in Infisical.
+
+```go
+	newKey, err := client.Kms().Keys().Create(infisical.KmsCreateKeyOptions{
+		KeyUsage:            "<sign-verify>|<encrypt-decrypt>",
+		Description:         "<key-description>",
+		Name:                "<key-name>",
+		EncryptionAlgorithm: "<rsa-4096>|<ecc-nist-p256>|<aes-256-gcm>|<aes-128-gcm>",
+		ProjectId:           "<project-id>",
+	})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="KeyUsage" type="string" required>
+      The usage of the key. Valid options are `sign-verify` or `encrypt-decrypt`.
+      The usage dictates what the key can be used for.
+    </ParamField>
+    <ParamField query="Description" type="string" optional>
+      The description of the key.
+    </ParamField>
+    <ParamField query="Name" type="string" required>
+      The name of the key.
+    </ParamField>
+    <ParamField query="EncryptionAlgorithm" type="string" required>
+      The encryption algorithm of the key.
+
+      Valid options for Signing/Verifying keys are:
+      - `rsa-4096`
+      - `ecc-nist-p256`
+
+      Valid options for Encryption/Decryption keys are:
+      - `aes-256-gcm`
+      - `aes-128-gcm`
+    </ParamField>
+    <ParamField query="ProjectId" type="string" required>
+      The ID of the project where the key will be created.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Return (object)
+<ParamField query="Return" type="object">
+  <Expandable title="properties">
+  <ParamField query="KeyId" type="string" required>
+    The ID of the key that was created.
+  </ParamField>
+  <ParamField query="Name" type="string" required>
+    The name of the key that was created.
+  </ParamField>
+  <ParamField query="Description" type="string" required>
+    The description of the key that was created.
+  </ParamField>
+  <ParamField query="IsDisabled" type="boolean" required>
+    Whether or not the key is disabled.
+  </ParamField>
+  <ParamField query="OrgId" type="string" required>
+    The ID of the organization that the key belongs to.
+  </ParamField>
+  <ParamField query="ProjectId" type="string" required>
+    The ID of the project that the key belongs to.
+  </ParamField>
+  <ParamField query="KeyUsage" type="string" required>
+    The intended usage of the key that was created.
+  </ParamField>
+  <ParamField query="EncryptionAlgorithm" type="string" required>
+    The encryption algorithm of the key that was created.
+  </ParamField>
+  <ParamField query="Version" type="string" required>
+    The version of the key that was created.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Delete Key
+
+`client.Kms().Keys().Delete(options)`
+
+Delete a key in Infisical.
+
+```go
+deletedKey, err = client.Kms().Keys().Delete(infisical.KmsDeleteKeyOptions{
+		KeyId: "<key-id>",
+	})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="KeyId" type="string" required>
+      The ID of the key to delete.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Return (object)
+<ParamField query="Return" type="object">
+  <Expandable title="properties">
+    <ParamField query="KeyId" type="string" required>
+      The ID of the key that was deleted
+    </ParamField>
+    <ParamField query="Name" type="string" required>
+      The name of the key that was deleted.
+    </ParamField>
+    <ParamField query="Description" type="string" required>
+      The description of the key that was deleted.
+    </ParamField>
+    <ParamField query="IsDisabled" type="boolean" required>
+      Whether or not the key is disabled.
+    </ParamField>
+    <ParamField query="OrgId" type="string" required>
+      The ID of the organization that the key belonged to.
+    </ParamField>
+    <ParamField query="ProjectId" type="string" required>
+      The ID of the project that the key belonged to.
+    </ParamField>
+    <ParamField query="KeyUsage" type="string" required>
+      The intended usage of the key that was deleted.
+    </ParamField>
+    <ParamField query="EncryptionAlgorithm" type="string" required>
+      The encryption algorithm of the key that was deleted.
+    </ParamField>
+    <ParamField query="Version" type="string" required>
+      The version of the key that was deleted.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Signing Data
+
+`client.Kms().Signing().Sign(options)`
+Sign data in Infisical.
+
+```go
+res, err := client.Kms().Signing().SignData(infisical.KmsSignDataOptions{
+  KeyId:            "<key-id>",
+  Data:             "<data-to-sign>", // Must be a base64 encoded string.
+  SigningAlgorithm: "<signing-algorithm>", // The signing algorithm that will be used to sign the data.
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="KeyId" type="string" required>
+      The ID of the key to sign the data with.
+    </ParamField>
+    <ParamField query="Data" type="string" required>
+      The data to sign. Must be a base64 encoded string.
+    </ParamField>
+    <ParamField query="IsDigest" type="boolean" optional>
+      Whether the data is already digested or not.
+    </ParamField>
+    <ParamField query="SigningAlgorithm" type="string" required>
+      The signing algorithm to use. You must use a signing algorithm that matches the key usage.
+
+      <Note>
+        If you are unsure about which signing algorithms are available for your key, you can use the `client.Kms().Signing().ListSigningAlgorithms()` method. It will return an array of signing algorithms that are available for your key.
+      </Note>
+
+      Valid options for `RSA 4096` keys are:
+      - `RSASSA_PSS_SHA_512`
+      - `RSASSA_PSS_SHA_384`
+      - `RSASSA_PSS_SHA_256`
+      - `RSASSA_PKCS1_V1_5_SHA_512`
+      - `RSASSA_PKCS1_V1_5_SHA_384`
+      - `RSASSA_PKCS1_V1_5_SHA_256`
+
+      Valid options for `ECC NIST P256` keys are:
+      - `ECDSA_SHA_512`
+      - `ECDSA_SHA_384`
+      - `ECDSA_SHA_256`
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Return ([]byte)
+<ParamField query="Return" type="[]byte">
+  The signature of the data that was signed.
+</ParamField>
+
+### Verifying Data
+
+`client.Kms().Signing().Verify(options)`
+Verify data in Infisical.
+
+```go
+res, err := client.Kms().Signing().Verify(infisical.KmsVerifyDataOptions{
+  KeyId:            "<key-id>",
+  Data:             "<data-to-verify>", // Must be a base64 encoded string.
+  SigningAlgorithm: "<signing-algorithm>", // The signing algorithm that was used to sign the data.
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="KeyId" type="string" required>
+      The ID of the key to verify the data with.
+    </ParamField>
+    <ParamField query="Data" type="string" required>
+      The data to verify. Must be a base64 encoded string.
+    </ParamField>
+    <ParamField query="IsDigest" type="boolean" optional>
+      Whether the data is already digested or not.
+    </ParamField>
+    <ParamField query="SigningAlgorithm" type="string" required>
+      The signing algorithm that was used to sign the data.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Return (object)
+<ParamField query="Return" type="object">
+  <Expandable title="properties">
+    <ParamField query="SignatureValid" type="boolean" required>
+      Whether or not the data is valid.
+    </ParamField>
+    <ParamField query="KeyId" type="string" required>
+      The ID of the key that was used to verify the data.
+    </ParamField>
+    <ParamField query="SigningAlgorithm" type="string" required>
+      The signing algorithm that was used to verify the data.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### List Signing Algorithms
+
+`client.Kms().Signing().ListSigningAlgorithms(options)`
+List signing algorithms in Infisical.
+
+```go
+res, err := client.Kms().Signing().ListSigningAlgorithms(infisical.KmsListSigningAlgorithmsOptions{
+  KeyId: "<key-id>",
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="KeyId" type="string" required>
+      The ID of the key to list signing algorithms for.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Return ([]string)
+<ParamField query="Return" type="[]string">
+  The signing algorithms that are available for the key.
+</ParamField>
+
+### Get Public Key
+<Note>
+  This method is only available for keys with key usage `sign-verify`. If you attempt to use this method on a key that is intended for encryption/decryption, it will return an error.
+</Note>
+
+`client.Kms().Signing().GetPublicKey(options)`
+Get the public key in Infisical.
+
+```go
+publicKey, err := client.Kms().Signing().GetPublicKey(infisical.KmsGetPublicKeyOptions{
+  KeyId: "<key-id>",
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="KeyId" type="string" required>
+      The ID of the key to get the public key for.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Return (string)
+<ParamField query="Return" type="string">
+  The public key for the key.
+</ParamField>
+
+### Encrypt Data
+
+`client.Kms().Encryption().Encrypt(options)`
+Encrypt data with a key in Infisical KMS.
+
+```go
+res, err := client.Kms().EncryptData(infisical.KmsEncryptDataOptions{
+  KeyId: "<key-id>",
+  Plaintext: "<data-to-encrypt>",
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="KeyId" type="string" required>
+      The ID of the key to encrypt the data with.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Return (string)
+<ParamField query="Return" type="string">
+  The encrypted data.
+</ParamField>
+
+### Decrypt Data
+
+`client.Kms().DecryptData(options)`
+Decrypt data with a key in Infisical KMS.
+
+```go
+res, err := client.Kms().DecryptData(infisical.KmsDecryptDataOptions{
+  KeyId: "<key-id>",
+  Ciphertext: "<encrypted-data>",
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="KeyId" type="string" required>
+      The ID of the key to decrypt the data with.
+    </ParamField>
+    <ParamField query="Ciphertext" type="string" required>
+      The encrypted data to decrypt.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Return (string)
+<ParamField query="Return" type="string">
+  The decrypted data.
 </ParamField>
