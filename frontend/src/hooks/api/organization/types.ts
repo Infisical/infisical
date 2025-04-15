@@ -17,6 +17,7 @@ export type Organization = {
   selectedMfaMethod?: MfaMethod;
   shouldUseNewPrivilegeSystem: boolean;
   allowSecretSharingOutsideOrganization?: boolean;
+  userRole: string;
 };
 
 export type UpdateOrgDTO = {

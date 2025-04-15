@@ -34,6 +34,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState(false);
+  const [isOtherLoginMethodsSelected, setIsOtherLoginMethodsSelected] = useState(false);
   const { config } = useServerConfig();
   const queryParams = new URLSearchParams(window.location.search);
   const [captchaToken, setCaptchaToken] = useState("");
@@ -160,7 +161,11 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
     setIsLoading(false);
   };
 
-  if (config.defaultAuthOrgAuthEnforced && config.defaultAuthOrgAuthMethod) {
+  if (
+    config.defaultAuthOrgAuthEnforced &&
+    config.defaultAuthOrgAuthMethod &&
+    !isOtherLoginMethodsSelected
+  ) {
     return (
       <form
         onSubmit={handleLogin}
@@ -196,6 +201,14 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             </Button>
           </div>
         )}
+        <Button
+          colorSchema="gray"
+          variant="link"
+          className="mt-6 font-normal text-mineshaft-400 transition-all duration-75 hover:text-mineshaft-300"
+          onClick={() => setIsOtherLoginMethodsSelected(true)}
+        >
+          Continue with other login methods
+        </Button>
       </form>
     );
   }

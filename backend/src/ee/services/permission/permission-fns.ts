@@ -2,7 +2,7 @@
 import { ForbiddenError, MongoAbility, PureAbility, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { TOrganizations } from "@app/db/schemas";
+import { OrgMembershipRole, TOrganizations } from "@app/db/schemas";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
@@ -118,12 +118,17 @@ function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
   ].includes(actorAuthMethod);
 }
 
-function validateOrgSSO(actorAuthMethod: ActorAuthMethod, isOrgSsoEnforced: TOrganizations["authEnforced"]) {
+function validateOrgSSO(
+  actorAuthMethod: ActorAuthMethod,
+  isOrgSsoEnforced: TOrganizations["authEnforced"],
+  orgRole: OrgMembershipRole
+) {
   if (actorAuthMethod === undefined) {
     throw new UnauthorizedError({ name: "No auth method defined" });
   }
 
   if (
+    orgRole !== OrgMembershipRole.Admin &&
     isOrgSsoEnforced &&
     actorAuthMethod !== null &&
     !isAuthMethodSaml(actorAuthMethod) &&

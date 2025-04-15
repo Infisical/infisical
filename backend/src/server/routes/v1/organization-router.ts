@@ -31,7 +31,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           organizations: sanitizedOrganizationSchema
             .extend({
-              orgAuthMethod: z.string()
+              orgAuthMethod: z.string(),
+              userRole: z.string()
             })
             .array()
         })

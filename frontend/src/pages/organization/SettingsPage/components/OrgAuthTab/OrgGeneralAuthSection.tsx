@@ -85,7 +85,7 @@ export const OrgGeneralAuthSection = () => {
           </OrgPermissionCan>
         </div>
         <p className="text-sm text-mineshaft-300">
-          Enforce members to authenticate via SAML to access this organization
+          Enforce non-admin users to authenticate via SAML to access this organization
         </p>
       </div>
       <UpgradePlanModal

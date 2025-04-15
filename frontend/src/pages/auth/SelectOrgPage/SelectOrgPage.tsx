@@ -14,6 +14,7 @@ import { IsCliLoginSuccessful } from "@app/components/utilities/attemptCliLogin"
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Spinner } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import { useToggle } from "@app/hooks";
 import {
   useGetOrganizations,
@@ -68,7 +69,7 @@ export const SelectOrganizationPage = () => {
 
   const handleSelectOrganization = useCallback(
     async (organization: Organization) => {
-      if (organization.authEnforced) {
+      if (organization.authEnforced && organization.userRole !== OrgMembershipRole.Admin) {
         // org has an org-level auth method enabled (e.g. SAML)
         // -> logout + redirect to SAML SSO
         await logout.mutateAsync();
