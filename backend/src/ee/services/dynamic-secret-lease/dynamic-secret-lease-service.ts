@@ -31,7 +31,7 @@ import {
 
 type TDynamicSecretLeaseServiceFactoryDep = {
   dynamicSecretLeaseDAL: TDynamicSecretLeaseDALFactory;
-  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "findOneWithMetadata">;
+  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: TDynamicSecretLeaseQueueServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -92,7 +92,7 @@ export const dynamicSecretLeaseServiceFactory = ({
         message: `Folder with path '${path}' in environment with slug '${environmentSlug}' not found`
       });
 
-    const dynamicSecretCfg = await dynamicSecretDAL.findOneWithMetadata({ name, folderId: folder.id });
+    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
     if (!dynamicSecretCfg)
       throw new NotFoundError({
         message: `Dynamic secret with name '${name}' in folder with path '${path}' not found`
@@ -188,7 +188,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       throw new NotFoundError({ message: `Dynamic secret lease with ID '${leaseId}' not found` });
     }
 
-    const dynamicSecretCfg = await dynamicSecretDAL.findOneWithMetadata({
+    const dynamicSecretCfg = await dynamicSecretDAL.findOne({
       id: dynamicSecretLease.dynamicSecretId,
       folderId: folder.id
     });
@@ -274,7 +274,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     if (!dynamicSecretLease || dynamicSecretLease.dynamicSecret.folderId !== folder.id)
       throw new NotFoundError({ message: `Dynamic secret lease with ID '${leaseId}' not found` });
 
-    const dynamicSecretCfg = await dynamicSecretDAL.findOneWithMetadata({
+    const dynamicSecretCfg = await dynamicSecretDAL.findOne({
       id: dynamicSecretLease.dynamicSecretId,
       folderId: folder.id
     });
@@ -349,7 +349,7 @@ export const dynamicSecretLeaseServiceFactory = ({
         message: `Folder with path '${path}' in environment with slug '${environmentSlug}' not found`
       });
 
-    const dynamicSecretCfg = await dynamicSecretDAL.findOneWithMetadata({ name, folderId: folder.id });
+    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
     if (!dynamicSecretCfg)
       throw new NotFoundError({
         message: `Dynamic secret with name '${name}' in folder with path '${path}' not found`
@@ -398,7 +398,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     if (!dynamicSecretLease)
       throw new NotFoundError({ message: `Dynamic secret lease with ID '${leaseId}' not found` });
 
-    const dynamicSecretCfg = await dynamicSecretDAL.findOneWithMetadata({
+    const dynamicSecretCfg = await dynamicSecretDAL.findOne({
       id: dynamicSecretLease.dynamicSecretId,
       folderId: folder.id
     });

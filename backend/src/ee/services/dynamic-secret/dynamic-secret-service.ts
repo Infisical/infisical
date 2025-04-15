@@ -209,7 +209,7 @@ export const dynamicSecretServiceFactory = ({
     if (!folder)
       throw new NotFoundError({ message: `Folder with path '${path}' in environment '${environmentSlug}' not found` });
 
-    const dynamicSecretCfg = await dynamicSecretDAL.findOneWithMetadata({ name, folderId: folder.id });
+    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
     if (!dynamicSecretCfg) {
       throw new NotFoundError({
         message: `Dynamic secret with name '${name}' in folder '${folder.path}' not found`
@@ -224,6 +224,17 @@ export const dynamicSecretServiceFactory = ({
         metadata: dynamicSecretCfg.metadata
       })
     );
+
+    if (metadata) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionDynamicSecretActions.EditRootCredential,
+        subject(ProjectPermissionSub.DynamicSecrets, {
+          environment: environmentSlug,
+          secretPath: path,
+          metadata
+        })
+      );
+    }
 
     if (newName) {
       const existingDynamicSecret = await dynamicSecretDAL.findOne({ name: newName, folderId: folder.id });
@@ -332,7 +343,7 @@ export const dynamicSecretServiceFactory = ({
     if (!folder)
       throw new NotFoundError({ message: `Folder with path '${path}' in environment '${environmentSlug}' not found` });
 
-    const dynamicSecretCfg = await dynamicSecretDAL.findOneWithMetadata({ name, folderId: folder.id });
+    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
     if (!dynamicSecretCfg) {
       throw new NotFoundError({ message: `Dynamic secret with name '${name}' in folder '${folder.path}' not found` });
     }
@@ -398,7 +409,7 @@ export const dynamicSecretServiceFactory = ({
     if (!folder)
       throw new NotFoundError({ message: `Folder with path '${path}' in environment '${environmentSlug}' not found` });
 
-    const dynamicSecretCfg = await dynamicSecretDAL.findOneWithMetadata({ name, folderId: folder.id });
+    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
     if (!dynamicSecretCfg) {
       throw new NotFoundError({ message: `Dynamic secret with name '${name} in folder '${path}' not found` });
     }

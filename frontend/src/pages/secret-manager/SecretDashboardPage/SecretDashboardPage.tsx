@@ -529,7 +529,7 @@ const Page = () => {
                   isProtectedBranch={isProtectedBranch}
                 />
               )}
-              {canReadSecret && <SecretNoAccessListView count={noAccessSecretCount} />}
+              {noAccessSecretCount > 0 && <SecretNoAccessListView count={noAccessSecretCount} />}
               {!canReadSecret &&
                 !canReadDynamicSecret &&
                 !canReadSecretImports &&

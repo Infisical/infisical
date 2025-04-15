@@ -20,7 +20,7 @@ export type TDynamicSecretDALFactory = ReturnType<typeof dynamicSecretDALFactory
 export const dynamicSecretDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.DynamicSecret);
 
-  const findOneWithMetadata = async (filter: TFindFilter<TDynamicSecrets>, tx?: Knex) => {
+  const findOne = async (filter: TFindFilter<TDynamicSecrets>, tx?: Knex) => {
     const query = (tx || db.replicaNode())(TableName.DynamicSecret)
       .leftJoin(
         TableName.ResourceMetadata,
@@ -178,5 +178,5 @@ export const dynamicSecretDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, listDynamicSecretsByFolderIds, findOneWithMetadata, findWithMetadata };
+  return { ...orm, listDynamicSecretsByFolderIds, findOne, findWithMetadata };
 };
