@@ -12,6 +12,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { ActorType } from "../auth/auth-type";
@@ -26,7 +27,6 @@ import {
   TGetServiceTokenInfoDTO,
   TProjectServiceTokensDTO
 } from "./service-token-types";
-import { logger } from "@app/lib/logger";
 
 type TServiceTokenServiceFactoryDep = {
   serviceTokenDAL: TServiceTokenDALFactory;
@@ -200,7 +200,7 @@ export const serviceTokenServiceFactory = ({
         try {
           await smtpService.sendMail({
             recipients: [token.createdByEmail],
-            subjectLine: "Service Token Expired",
+            subjectLine: "Your Service Token is about to expire",
             template: SmtpTemplates.ServiceTokenExpired,
             substitutions: {
               tokenName: token.name,
@@ -208,7 +208,7 @@ export const serviceTokenServiceFactory = ({
               url: `${appCfg.SITE_URL}/secret-manager/${token.projectId}/access-management?selectedTab=service-tokens`
             }
           });
-          await serviceTokenDAL.update({ id: token.id }, { notificationSent: true });
+          await serviceTokenDAL.update({ id: token.id }, { expiryNotificationSent: true });
         } catch (error) {
           logger.error(error, `Failed to send expiration notification for token ${token.id}:`);
         }
