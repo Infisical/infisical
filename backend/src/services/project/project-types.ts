@@ -90,6 +90,7 @@ export type TUpdateProjectDTO = {
     name?: string;
     description?: string;
     autoCapitalization?: boolean;
+    hasDeleteProtection?: boolean;
     slug?: string;
   };
 } & Omit<TProjectPermission, "projectId">;

@@ -303,7 +303,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         name: z.string().trim().optional().describe(PROJECTS.UPDATE.name),
         description: z.string().trim().optional().describe(PROJECTS.UPDATE.projectDescription),
-        autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization)
+        autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization),
+        hasDeleteProtection: z.boolean().optional().describe(PROJECTS.UPDATE.hasDeleteProtection)
       }),
       response: {
         200: SanitizedProjectSchema
@@ -321,7 +322,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         update: {
           name: req.body.name,
           description: req.body.description,
-          autoCapitalization: req.body.autoCapitalization
+          autoCapitalization: req.body.autoCapitalization,
+          hasDeleteProtection: req.body.hasDeleteProtection
         },
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

@@ -312,6 +312,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe(PROJECTS.UPDATE.projectDescription),
         autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization),
+        hasDeleteProtection: z.boolean().optional().describe(PROJECTS.UPDATE.hasDeleteProtection),
         slug: z
           .string()
           .trim()
@@ -340,6 +341,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           name: req.body.name,
           description: req.body.description,
           autoCapitalization: req.body.autoCapitalization,
+          hasDeleteProtection: req.body.hasDeleteProtection,
           slug: req.body.slug
         },
         actorAuthMethod: req.permission.authMethod,

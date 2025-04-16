@@ -623,6 +623,7 @@ export const projectServiceFactory = ({
       description: update.description,
       autoCapitalization: update.autoCapitalization,
       enforceCapitalization: update.autoCapitalization,
+      hasDeleteProtection: update.hasDeleteProtection,
       slug: update.slug
     });
 
