@@ -130,7 +130,7 @@ export const InitialStep = ({
 
         if (isLoginSuccessful && isLoginSuccessful.success) {
           // case: login was successful
-          navigateToSelectOrganization();
+          navigateToSelectOrganization(undefined, isAdmin);
           createNotification({
             text: "Successfully logged in",
             type: "success"
