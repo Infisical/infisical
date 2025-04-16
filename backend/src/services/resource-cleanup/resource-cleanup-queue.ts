@@ -22,7 +22,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   secretFolderVersionDAL: Pick<TSecretFolderVersionDALFactory, "pruneExcessVersions">;
   snapshotDAL: Pick<TSnapshotDALFactory, "pruneExcessSnapshots">;
   secretSharingDAL: Pick<TSecretSharingDALFactory, "pruneExpiredSharedSecrets" | "pruneExpiredSecretRequests">;
-  serviceTokenService: Pick<TServiceTokenServiceFactory, "notifyExpiredTokens">;
+  serviceTokenService: Pick<TServiceTokenServiceFactory, "notifyExpiringTokens">;
   queueService: TQueueServiceFactory;
 };
 
@@ -53,7 +53,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     await secretVersionDAL.pruneExcessVersions();
     await secretVersionV2DAL.pruneExcessVersions();
     await secretFolderVersionDAL.pruneExcessVersions();
-    await serviceTokenService.notifyExpiredTokens();
+    await serviceTokenService.notifyExpiringTokens();
     logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
   });
 

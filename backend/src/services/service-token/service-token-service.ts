@@ -189,31 +189,48 @@ export const serviceTokenServiceFactory = ({
     return { ...serviceToken, lastUsed: new Date(), orgId: project.orgId };
   };
 
-  const notifyExpiredTokens = async () => {
+  const notifyExpiringTokens = async () => {
     const appCfg = getConfig();
+    let processedCount = 0;
+    let hasMoreRecords = true;
+    let offset = 0;
+    const batchSize = 500;
 
-    const expiredTokens = await serviceTokenDAL.findExpiredTokens();
-    if (expiredTokens.length === 0) return;
+    while (hasMoreRecords) {
+      // eslint-disable-next-line no-await-in-loop
+      const expiringTokens = await serviceTokenDAL.findExpiringTokens(undefined, batchSize, offset);
 
-    await Promise.all(
-      expiredTokens.map(async (token) => {
-        try {
-          await smtpService.sendMail({
-            recipients: [token.createdByEmail],
-            subjectLine: "Your Service Token is about to expire",
-            template: SmtpTemplates.ServiceTokenExpired,
-            substitutions: {
-              tokenName: token.name,
-              projectName: token.projectName,
-              url: `${appCfg.SITE_URL}/secret-manager/${token.projectId}/access-management?selectedTab=service-tokens`
-            }
-          });
-          await serviceTokenDAL.update({ id: token.id }, { expiryNotificationSent: true });
-        } catch (error) {
-          logger.error(error, `Failed to send expiration notification for token ${token.id}:`);
-        }
-      })
-    );
+      if (expiringTokens.length === 0) {
+        hasMoreRecords = false;
+        break;
+      }
+
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.all(
+        expiringTokens.map(async (token) => {
+          try {
+            await smtpService.sendMail({
+              recipients: [token.createdByEmail],
+              subjectLine: "Service Token Expiry Notice",
+              template: SmtpTemplates.ServiceTokenExpired,
+              substitutions: {
+                tokenName: token.name,
+                projectName: token.projectName,
+                url: `${appCfg.SITE_URL}/secret-manager/${token.projectId}/access-management?selectedTab=service-tokens`
+              }
+            });
+            await serviceTokenDAL.update({ id: token.id }, { expiryNotificationSent: true });
+          } catch (error) {
+            logger.error(error, `Failed to send expiration notification for token ${token.id}:`);
+          }
+        })
+      );
+
+      processedCount += expiringTokens.length;
+      offset += batchSize;
+    }
+
+    return processedCount;
   };
 
   return {
@@ -222,6 +239,6 @@ export const serviceTokenServiceFactory = ({
     getServiceToken,
     getProjectServiceTokens,
     fnValidateServiceToken,
-    notifyExpiredTokens
+    notifyExpiringTokens
   };
 };
