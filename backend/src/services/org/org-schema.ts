@@ -17,5 +17,5 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   shouldUseNewPrivilegeSystem: true,
   privilegeUpgradeInitiatedByUsername: true,
   privilegeUpgradeInitiatedAt: true,
-  enableBypassOrgAuth: true
+  bypassOrgAuthEnabled: true
 });

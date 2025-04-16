@@ -261,7 +261,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         enforceMfa: z.boolean().optional(),
         selectedMfaMethod: z.nativeEnum(MfaMethod).optional(),
         allowSecretSharingOutsideOrganization: z.boolean().optional(),
-        enableBypassOrgAuth: z.boolean().optional()
+        bypassOrgAuthEnabled: z.boolean().optional()
       }),
       response: {
         200: z.object({

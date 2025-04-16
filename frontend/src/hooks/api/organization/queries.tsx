@@ -111,7 +111,7 @@ export const useUpdateOrg = () => {
       enforceMfa,
       selectedMfaMethod,
       allowSecretSharingOutsideOrganization,
-      enableBypassOrgAuth
+      bypassOrgAuthEnabled
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
         name,
@@ -122,7 +122,7 @@ export const useUpdateOrg = () => {
         enforceMfa,
         selectedMfaMethod,
         allowSecretSharingOutsideOrganization,
-        enableBypassOrgAuth
+        bypassOrgAuthEnabled
       });
     },
     onSuccess: () => {

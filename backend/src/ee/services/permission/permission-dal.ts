@@ -54,7 +54,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           db.ref("slug").withSchema(TableName.OrgRoles).withSchema(TableName.OrgRoles).as("customRoleSlug"),
           db.ref("permissions").withSchema(TableName.OrgRoles),
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
-          db.ref("enableBypassOrgAuth").withSchema(TableName.Organization).as("enableBypassOrgAuth"),
+          db.ref("bypassOrgAuthEnabled").withSchema(TableName.Organization).as("bypassOrgAuthEnabled"),
           db.ref("groupId").withSchema("userGroups"),
           db.ref("groupOrgId").withSchema("userGroups"),
           db.ref("groupName").withSchema("userGroups"),
@@ -73,7 +73,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           OrgMembershipsSchema.extend({
             permissions: z.unknown(),
             orgAuthEnforced: z.boolean().optional().nullable(),
-            enableBypassOrgAuth: z.boolean(),
+            bypassOrgAuthEnabled: z.boolean(),
             customRoleSlug: z.string().optional().nullable(),
             shouldUseNewPrivilegeSystem: z.boolean()
           }).parse(el),
@@ -678,7 +678,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
           db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue"),
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
-          db.ref("enableBypassOrgAuth").withSchema(TableName.Organization).as("enableBypassOrgAuth"),
+          db.ref("bypassOrgAuthEnabled").withSchema(TableName.Organization).as("bypassOrgAuthEnabled"),
           db.ref("role").withSchema(TableName.OrgMembership).as("orgRole"),
           db.ref("orgId").withSchema(TableName.Project),
           db.ref("type").withSchema(TableName.Project).as("projectType"),
@@ -702,7 +702,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           membershipUpdatedAt,
           projectType,
           shouldUseNewPrivilegeSystem,
-          enableBypassOrgAuth
+          bypassOrgAuthEnabled
         }) => ({
           orgId,
           orgAuthEnforced,
@@ -715,7 +715,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           createdAt: membershipCreatedAt || groupMembershipCreatedAt,
           updatedAt: membershipUpdatedAt || groupMembershipUpdatedAt,
           shouldUseNewPrivilegeSystem,
-          enableBypassOrgAuth
+          bypassOrgAuthEnabled
         }),
         childrenMapper: [
           {

@@ -65,7 +65,7 @@ export const OrgGeneralAuthSection = () => {
 
       await mutateAsync({
         orgId: currentOrg?.id,
-        enableBypassOrgAuth: value
+        bypassOrgAuthEnabled: value
       });
 
       createNotification({
@@ -129,7 +129,7 @@ export const OrgGeneralAuthSection = () => {
                       level.
                     </span>
                     <p className="mt-4">
-                      In case of a lockout, admins can use the admin login portal in{" "}
+                      In case of a lockout, admins can use the admin login portal at{" "}
                       <a
                         target="_blank"
                         rel="noopener noreferrer"
@@ -153,7 +153,7 @@ export const OrgGeneralAuthSection = () => {
               {(isAllowed) => (
                 <Switch
                   id="allow-admin-bypass"
-                  isChecked={currentOrg?.enableBypassOrgAuth ?? false}
+                  isChecked={currentOrg?.bypassOrgAuthEnabled ?? false}
                   onCheckedChange={(value) => handleEnableBypassOrgAuthToggle(value)}
                   isDisabled={!isAllowed}
                 />

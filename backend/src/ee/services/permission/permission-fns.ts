@@ -121,7 +121,7 @@ function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
 function validateOrgSSO(
   actorAuthMethod: ActorAuthMethod,
   isOrgSsoEnforced: TOrganizations["authEnforced"],
-  isOrgSsoBypassEnabled: TOrganizations["enableBypassOrgAuth"],
+  isOrgSsoBypassEnabled: TOrganizations["bypassOrgAuthEnabled"],
   orgRole: OrgMembershipRole
 ) {
   if (actorAuthMethod === undefined) {

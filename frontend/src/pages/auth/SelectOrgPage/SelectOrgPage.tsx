@@ -71,7 +71,7 @@ export const SelectOrganizationPage = () => {
   const handleSelectOrganization = useCallback(
     async (organization: Organization) => {
       const canBypassOrgAuth =
-        organization.enableBypassOrgAuth &&
+        organization.bypassOrgAuthEnabled &&
         organization.userRole === OrgMembershipRole.Admin &&
         isAdminLogin;
 

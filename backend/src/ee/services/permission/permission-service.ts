@@ -142,7 +142,7 @@ export const permissionServiceFactory = ({
     validateOrgSSO(
       authMethod,
       membership.orgAuthEnforced,
-      membership.enableBypassOrgAuth,
+      membership.bypassOrgAuthEnabled,
       membership.role as OrgMembershipRole
     );
 
@@ -234,7 +234,7 @@ export const permissionServiceFactory = ({
     validateOrgSSO(
       authMethod,
       userProjectPermission.orgAuthEnforced,
-      userProjectPermission.enableBypassOrgAuth,
+      userProjectPermission.bypassOrgAuthEnabled,
       userProjectPermission.orgRole
     );
 
