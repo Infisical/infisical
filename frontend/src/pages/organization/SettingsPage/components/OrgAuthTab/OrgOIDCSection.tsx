@@ -212,14 +212,14 @@ export const OrgOIDCSection = (): JSX.Element => {
                       level.
                     </span>
                     <p className="mt-4">
-                      In case of a lockout, admins can use the admin login portal{" "}
+                      In case of a lockout, admins can use the admin login portal in{" "}
                       <a
                         target="_blank"
                         rel="noopener noreferrer"
                         className="underline underline-offset-2 hover:text-mineshaft-300"
                         href={`${window.location.origin}/login/admin`}
                       >
-                        here.
+                        {window.location.origin}/login/admin
                       </a>
                     </p>
                   </div>
