@@ -4,6 +4,7 @@ export enum AppConnection {
   GCP = "gcp",
   AzureKeyVault = "azure-key-vault",
   AzureAppConfiguration = "azure-app-configuration",
+  AzureClientSecrets = "azure-client-secrets",
   Databricks = "databricks",
   Humanitec = "humanitec",
   TerraformCloud = "terraform-cloud",

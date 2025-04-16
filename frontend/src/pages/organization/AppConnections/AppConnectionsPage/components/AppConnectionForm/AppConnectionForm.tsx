@@ -11,6 +11,7 @@ import { DiscriminativePick } from "@app/types";
 import { AppConnectionHeader } from "../AppConnectionHeader";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConnectionForm";
+import { AzureClientSecretsConnectionForm } from "./AzureClientSecretsConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
@@ -83,6 +84,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <MsSqlConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.AzureClientSecrets:
+      return <AzureClientSecretsConnectionForm />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -143,6 +146,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <MsSqlConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.AzureClientSecrets:
+      return <AzureClientSecretsConnectionForm appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

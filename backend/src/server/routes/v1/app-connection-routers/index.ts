@@ -2,6 +2,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 
 import { registerAwsConnectionRouter } from "./aws-connection-router";
 import { registerAzureAppConfigurationConnectionRouter } from "./azure-app-configuration-connection-router";
+import { registerAzureClientSecretsConnectionRouter } from "./azure-client-secrets-connection-router";
 import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connection-router";
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
@@ -28,5 +29,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Vercel]: registerVercelConnectionRouter,
     [AppConnection.Postgres]: registerPostgresConnectionRouter,
     [AppConnection.MsSql]: registerMsSqlConnectionRouter,
-    [AppConnection.Camunda]: registerCamundaConnectionRouter
+    [AppConnection.Camunda]: registerCamundaConnectionRouter,
+    [AppConnection.AzureClientSecrets]: registerAzureClientSecretsConnectionRouter
   };

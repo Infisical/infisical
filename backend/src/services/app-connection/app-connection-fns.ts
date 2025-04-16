@@ -23,6 +23,11 @@ import {
   validateAzureAppConfigurationConnectionCredentials
 } from "./azure-app-configuration";
 import {
+  AzureClientSecretsConnectionMethod,
+  getAzureClientSecretsConnectionListItem,
+  validateAzureClientSecretsConnectionCredentials
+} from "./azure-client-secrets";
+import {
   AzureKeyVaultConnectionMethod,
   getAzureKeyVaultConnectionListItem,
   validateAzureKeyVaultConnectionCredentials
@@ -63,7 +68,8 @@ export const listAppConnectionOptions = () => {
     getVercelConnectionListItem(),
     getPostgresConnectionListItem(),
     getMsSqlConnectionListItem(),
-    getCamundaConnectionListItem()
+    getCamundaConnectionListItem(),
+    getAzureClientSecretsConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -122,7 +128,9 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TAppConnect
   [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
   [AppConnection.TerraformCloud]: validateTerraformCloudConnectionCredentials as TAppConnectionCredentialsValidator,
   [AppConnection.Camunda]: validateCamundaConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.Vercel]: validateVercelConnectionCredentials as TAppConnectionCredentialsValidator
+  [AppConnection.Vercel]: validateVercelConnectionCredentials as TAppConnectionCredentialsValidator,
+  [AppConnection.AzureClientSecrets]:
+    validateAzureClientSecretsConnectionCredentials as TAppConnectionCredentialsValidator
 };
 
 export const validateAppConnectionCredentials = async (
@@ -135,6 +143,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "GitHub App";
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
+    case AzureClientSecretsConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
       return "OAuth";
     case AwsConnectionMethod.AccessKey:
@@ -196,5 +205,6 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.TerraformCloud]: platformManagedCredentialsNotSupported,
   [AppConnection.Camunda]: platformManagedCredentialsNotSupported,
-  [AppConnection.Vercel]: platformManagedCredentialsNotSupported
+  [AppConnection.Vercel]: platformManagedCredentialsNotSupported,
+  [AppConnection.AzureClientSecrets]: platformManagedCredentialsNotSupported
 };

@@ -16,6 +16,12 @@ import {
   TValidateAzureAppConfigurationConnectionCredentialsSchema
 } from "./azure-app-configuration";
 import {
+  TAzureClientSecretsConnection,
+  TAzureClientSecretsConnectionConfig,
+  TAzureClientSecretsConnectionInput,
+  TValidateAzureClientSecretsConnectionCredentialsSchema
+} from "./azure-client-secrets";
+import {
   TAzureKeyVaultConnection,
   TAzureKeyVaultConnectionConfig,
   TAzureKeyVaultConnectionInput,
@@ -83,6 +89,7 @@ export type TAppConnection = { id: string } & (
   | TPostgresConnection
   | TMsSqlConnection
   | TCamundaConnection
+  | TAzureClientSecretsConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -102,6 +109,7 @@ export type TAppConnectionInput = { id: string } & (
   | TPostgresConnectionInput
   | TMsSqlConnectionInput
   | TCamundaConnectionInput
+  | TAzureClientSecretsConnectionInput
 );
 
 export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput;
@@ -126,7 +134,8 @@ export type TAppConnectionConfig =
   | TTerraformCloudConnectionConfig
   | TVercelConnectionConfig
   | TSqlConnectionConfig
-  | TCamundaConnectionConfig;
+  | TCamundaConnectionConfig
+  | TAzureClientSecretsConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -140,7 +149,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateMsSqlConnectionCredentialsSchema
   | TValidateCamundaConnectionCredentialsSchema
   | TValidateTerraformCloudConnectionCredentialsSchema
-  | TValidateVercelConnectionCredentialsSchema;
+  | TValidateVercelConnectionCredentialsSchema
+  | TValidateAzureClientSecretsConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

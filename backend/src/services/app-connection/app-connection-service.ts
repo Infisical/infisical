@@ -30,6 +30,7 @@ import {
 import { ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
+import { ValidateAzureClientSecretsConnectionCredentialsSchema } from "./azure-client-secrets";
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
@@ -68,7 +69,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Vercel]: ValidateVercelConnectionCredentialsSchema,
   [AppConnection.Postgres]: ValidatePostgresConnectionCredentialsSchema,
   [AppConnection.MsSql]: ValidateMsSqlConnectionCredentialsSchema,
-  [AppConnection.Camunda]: ValidateCamundaConnectionCredentialsSchema
+  [AppConnection.Camunda]: ValidateCamundaConnectionCredentialsSchema,
+  [AppConnection.AzureClientSecrets]: ValidateAzureClientSecretsConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
