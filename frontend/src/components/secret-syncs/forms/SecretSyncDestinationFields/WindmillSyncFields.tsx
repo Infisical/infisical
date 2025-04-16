@@ -72,6 +72,8 @@ export const WindmillSyncFields = () => {
         )}
       />
       <Controller
+        name="destinationConfig.path"
+        control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
             tooltipClassName="max-w-sm"
@@ -97,8 +99,6 @@ export const WindmillSyncFields = () => {
             <Input value={value} onChange={onChange} placeholder="f/folder-name/" />
           </FormControl>
         )}
-        control={control}
-        name="destinationConfig.path"
       />
     </>
   );

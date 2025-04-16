@@ -44,7 +44,7 @@ export const ValidateWindmillConnectionCredentialsSchema = z.discriminatedUnion(
   z.object({
     method: z
       .literal(WindmillConnectionMethod.AccessToken)
-      .describe(AppConnections?.CREATE(AppConnection.Windmill).method),
+      .describe(AppConnections.CREATE(AppConnection.Windmill).method),
     credentials: WindmillConnectionAccessTokenCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.Windmill).credentials
     )

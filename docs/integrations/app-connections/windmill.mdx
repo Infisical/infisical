@@ -7,8 +7,18 @@ Infisical supports connecting to Windmill using an **Access Token** to securely 
 
 ## Get a Windmill Access Token
 
+Ensure the user generating the access token has the required role and permissions based on your use-case:
+<Tabs>
+    <Tab title="Secret Sync">
+        <Note>
+            The user generating the access token should be at least a `Developer` in the configured workspace and have `write` permissions for the workspace path secrets will be synced to.
+        </Note>
+    </Tab>
+</Tabs>
+
+
 <Steps>
-    <Step title="Navigate to Account Setting">
+    <Step title="Navigate to Account Settings">
         In Windmill, click on your user in the sidebar and select **Account Settings**.
         ![Windmill Account Settings](/images/app-connections/windmill/windmill-account-settings.png)
     </Step>
@@ -25,7 +35,7 @@ Infisical supports connecting to Windmill using an **Access Token** to securely 
     </Step>
     <Step title="Copy Access Token">
         Copy your new access token and save it for the steps below.
-        ![Windmill Create Token](/images/app-connections/windmill/windmill-copy-token.png)
+        ![Windmill Copy Token](/images/app-connections/windmill/windmill-copy-token.png)
     </Step>
 </Steps>
 

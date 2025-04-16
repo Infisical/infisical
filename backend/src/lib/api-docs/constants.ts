@@ -1803,7 +1803,7 @@ export const AppConnections = {
       clientSecret: "The client secret used to authenticate with Camunda."
     },
     WINDMILL: {
-      instanceUrl: "The Windmill instance URL to connect with (defaults to https://dev.windmill.app).",
+      instanceUrl: "The Windmill instance URL to connect with (defaults to https://app.windmill.dev).",
       accessToken: "The access token to use to connect with Windmill."
     }
   }

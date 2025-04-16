@@ -30,9 +30,9 @@ const WindmillSyncDestinationConfigSchema = z.object({
         val.split("/").length >= 3 &&
         val
           .split("/")
-          .filter(Boolean)
-          .every((segment) => pathCharacterValidator(segment)),
-      'Invalid path - must follow Windmill path format. ex: "/f/folder/path/"'
+          .slice(0, -1) // Remove last empty segment from trailing slash
+          .every((segment) => segment && pathCharacterValidator(segment)),
+      'Invalid path - must follow Windmill path format. ex: "f/folder/path/"'
     )
     .describe(SecretSyncs.DESTINATION_CONFIG.WINDMILL.path)
 });

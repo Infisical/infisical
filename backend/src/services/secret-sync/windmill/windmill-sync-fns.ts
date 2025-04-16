@@ -36,11 +36,11 @@ const listWindmillVariables = async ({ instanceUrl, workspace, accessToken, path
       }
     );
 
-    // eslint-disable-next-line no-await-in-loop
-    for await (const variable of variablesPage) {
+    for (const variable of variablesPage) {
       const variableName = variable.path.replace(path, "");
 
       if (variable.is_secret) {
+        // eslint-disable-next-line no-await-in-loop
         const { data: variableValue } = await request.get<string>(
           `${instanceUrl}/api/w/${workspace}/variables/get_value/${variable.path}`,
           {
