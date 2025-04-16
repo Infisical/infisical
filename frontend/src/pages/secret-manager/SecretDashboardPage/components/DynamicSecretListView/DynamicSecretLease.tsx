@@ -29,11 +29,13 @@ import {
 import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetDynamicSecretLeases, useRevokeDynamicSecretLease } from "@app/hooks/api";
+import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { DynamicSecretLeaseStatus } from "@app/hooks/api/dynamicSecretLease/types";
 
 import { RenewDynamicSecretLease } from "./RenewDynamicSecretLease";
 
 type Props = {
+  dynamicSecret: TDynamicSecret;
   dynamicSecretName: string;
   projectSlug: string;
   environment: string;
@@ -48,7 +50,8 @@ export const DynamicSecretLease = ({
   environment,
   secretPath,
   onClickNewLease,
-  onClose
+  onClose,
+  dynamicSecret
 }: Props) => {
   const { handlePopUpOpen, popUp, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteSecret",
@@ -140,7 +143,11 @@ export const DynamicSecretLease = ({
                   <div className="flex items-center space-x-4">
                     <ProjectPermissionCan
                       I={ProjectPermissionDynamicSecretActions.Lease}
-                      a={subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })}
+                      a={subject(ProjectPermissionSub.DynamicSecrets, {
+                        environment,
+                        secretPath,
+                        metadata: dynamicSecret.metadata
+                      })}
                       renderTooltip
                       allowedLabel="Renew"
                     >
@@ -159,7 +166,11 @@ export const DynamicSecretLease = ({
                     </ProjectPermissionCan>
                     <ProjectPermissionCan
                       I={ProjectPermissionDynamicSecretActions.Lease}
-                      a={subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })}
+                      a={subject(ProjectPermissionSub.DynamicSecrets, {
+                        environment,
+                        secretPath,
+                        metadata: dynamicSecret.metadata
+                      })}
                       renderTooltip
                       allowedLabel="Delete"
                     >
@@ -181,7 +192,8 @@ export const DynamicSecretLease = ({
                         I={ProjectPermissionDynamicSecretActions.Lease}
                         a={subject(ProjectPermissionSub.DynamicSecrets, {
                           environment,
-                          secretPath
+                          secretPath,
+                          metadata: dynamicSecret.metadata
                         })}
                         renderTooltip
                         allowedLabel="Force Delete. This action will remove the secret from internal storage, but it will remain in external systems."
@@ -215,7 +227,8 @@ export const DynamicSecretLease = ({
             I={ProjectPermissionDynamicSecretActions.Lease}
             a={subject(ProjectPermissionSub.DynamicSecrets, {
               environment,
-              secretPath
+              secretPath,
+              metadata: dynamicSecret.metadata
             })}
           >
             {(isAllowed) => (

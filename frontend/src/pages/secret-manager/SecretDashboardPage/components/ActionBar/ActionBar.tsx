@@ -864,7 +864,8 @@ export const ActionBar = ({
                     environment,
                     secretPath,
                     secretName: "*",
-                    secretTags: ["*"]
+                    secretTags: ["*"],
+                    metadata: ["*"]
                   })}
                 >
                   {(isAllowed) => (

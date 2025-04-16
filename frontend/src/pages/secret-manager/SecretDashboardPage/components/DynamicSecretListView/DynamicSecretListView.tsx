@@ -144,7 +144,11 @@ export const DynamicSecretListView = ({
               <div className="flex items-center space-x-2 px-4 py-2">
                 <ProjectPermissionCan
                   I={ProjectPermissionDynamicSecretActions.Lease}
-                  a={subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })}
+                  a={subject(ProjectPermissionSub.DynamicSecrets, {
+                    environment,
+                    secretPath,
+                    metadata: secret.metadata
+                  })}
                   renderTooltip
                   allowedLabel="Edit"
                 >
@@ -186,7 +190,11 @@ export const DynamicSecretListView = ({
               <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
                 <ProjectPermissionCan
                   I={ProjectPermissionDynamicSecretActions.EditRootCredential}
-                  a={subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })}
+                  a={subject(ProjectPermissionSub.DynamicSecrets, {
+                    environment,
+                    secretPath,
+                    metadata: secret.metadata
+                  })}
                   renderTooltip
                   allowedLabel="Edit"
                 >
@@ -208,7 +216,11 @@ export const DynamicSecretListView = ({
                 </ProjectPermissionCan>
                 <ProjectPermissionCan
                   I={ProjectPermissionDynamicSecretActions.DeleteRootCredential}
-                  a={subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })}
+                  a={subject(ProjectPermissionSub.DynamicSecrets, {
+                    environment,
+                    secretPath,
+                    metadata: secret.metadata
+                  })}
                   renderTooltip
                   allowedLabel="Delete"
                 >
@@ -236,6 +248,7 @@ export const DynamicSecretListView = ({
               className="max-w-3xl"
             >
               <DynamicSecretLease
+                dynamicSecret={secret}
                 onClickNewLease={() => handlePopUpOpen("createDynamicSecretLease", secret)}
                 onClose={() => handlePopUpClose("dynamicSecretLeases")}
                 projectSlug={projectSlug}

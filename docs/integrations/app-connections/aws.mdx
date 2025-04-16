@@ -56,7 +56,15 @@ Infisical supports two methods for connecting to AWS.
 
                 2. Select **AWS Account** as the **Trusted Entity Type**.
                 3. Choose **Another AWS Account** and enter **381492033652** (Infisical AWS Account ID). This restricts the role to be assumed only by Infisical. If self-hosting, provide your AWS account number instead.
-                4. Optionally, enable **Require external ID** and enter your **Organization ID** to further enhance security.
+                4. (Recommended) <strong>Enable "Require external ID"</strong> and input your **Organization ID** to strengthen security and mitigate the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html).
+
+                <Warning type="warning" title="Security Best Practice: Use External ID to Prevent Confused Deputy Attacks">
+                    When configuring an IAM Role that Infisical will assume, it’s highly recommended to enable the **"Require external ID"** option and specify your **Organization ID**.
+
+                    This precaution helps protect your AWS account against the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html), a potential security vulnerability where Infisical could be tricked into performing actions on your behalf by an unauthorized actor.
+
+                    <strong>Always enable "Require external ID" and use your Organization ID when setting up the IAM Role.</strong>
+                </Warning>
             </Step>
 
             <Step title="Add Required Permissions to the IAM Role">

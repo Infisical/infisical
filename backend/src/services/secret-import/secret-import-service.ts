@@ -819,16 +819,17 @@ export const secretImportServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
-    );
+    if (
+      permission.cannot(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+      )
+    ) {
+      return [];
+    }
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder)
-      throw new NotFoundError({
-        message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
-      });
+    if (!folder) return [];
 
     const importedBy = await secretImportDAL.getFolderIsImportedBy(secretPath, folder.envId, environment, projectId);
     const deepPaths: { path: string; folderId: string }[] = [];

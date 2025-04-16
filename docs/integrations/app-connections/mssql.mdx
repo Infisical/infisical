@@ -51,6 +51,10 @@ Infisical supports connecting to Microsoft SQL Server using database principals.
         - `username` - The username of the login created in the steps above
         - `password` - The password of the login created in the steps above
         - `sslCertificate` (optional) - The SSL certificate required for connection (if configured)
+
+        <Note>
+            If you are self-hosting Infisical and intend to connect to an internal/private IP address, be sure to set the `ALLOW_INTERNAL_IP_CONNECTIONS` environment variable to `true`.
+        </Note>
     </Step>
 </Steps>
 
