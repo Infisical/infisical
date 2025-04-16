@@ -58,7 +58,7 @@ export const OrgGeneralAuthSection = () => {
   const handleEnableBypassOrgAuthToggle = async (value: boolean) => {
     try {
       if (!currentOrg?.id) return;
-      if (!subscription?.oidcSSO) {
+      if (!subscription?.samlSSO) {
         handlePopUpOpen("upgradePlan");
         return;
       }
@@ -144,7 +144,7 @@ export const OrgGeneralAuthSection = () => {
           </div>
           <p className="text-sm text-mineshaft-300">
             <span>
-              Allow organization admins to bypass OIDC enforcement when SSO is unavailable,
+              Allow organization admins to bypass SAML enforcement when SSO is unavailable,
               misconfigured, or inaccessible.
             </span>
           </p>
