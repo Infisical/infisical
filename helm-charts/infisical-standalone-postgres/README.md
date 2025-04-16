@@ -75,7 +75,6 @@ A helm chart to deploy Infisical
 | redis.name | string | `"redis"` | Redis resource name |
 | redis.usePassword | bool | `true` | Requires a password for Redis authentication |
 | redis.customURIParameters.enabled | bool | `false` | Set to true if using custom URI parameters for Redis connection |
-| redis.customURIParameters.username | string | `""` | Optional username for Redis authentication |
 | redis.customURIParameters.passwordSecret.key | string | `""` | Key name in the Kubernetes secret that holds the Redis password |
 | redis.customURIParameters.passwordSecret.name | string | `""` | Kubernetes secret name containing the Redis password |
 | redis.customURIParameters.host | string | `""` | Redis host |
