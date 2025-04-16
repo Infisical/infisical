@@ -21,6 +21,7 @@ import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
+import { WindmillConnectionForm } from "./WindmillConnectionForm";
 
 type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;
@@ -83,6 +84,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <MsSqlConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Windmill:
+      return <WindmillConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -143,6 +146,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <MsSqlConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Windmill:
+      return <WindmillConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

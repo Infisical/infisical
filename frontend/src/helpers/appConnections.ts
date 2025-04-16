@@ -15,7 +15,8 @@ import {
   PostgresConnectionMethod,
   TAppConnection,
   TerraformCloudConnectionMethod,
-  VercelConnectionMethod
+  VercelConnectionMethod,
+  WindmillConnectionMethod
 } from "@app/hooks/api/appConnections/types";
 
 export const APP_CONNECTION_MAP: Record<AppConnection, { name: string; image: string }> = {
@@ -36,7 +37,8 @@ export const APP_CONNECTION_MAP: Record<AppConnection, { name: string; image: st
   [AppConnection.Vercel]: { name: "Vercel", image: "Vercel.png" },
   [AppConnection.Postgres]: { name: "PostgreSQL", image: "Postgres.png" },
   [AppConnection.MsSql]: { name: "Microsoft SQL Server", image: "MsSql.png" },
-  [AppConnection.Camunda]: { name: "Camunda", image: "Camunda.png" }
+  [AppConnection.Camunda]: { name: "Camunda", image: "Camunda.png" },
+  [AppConnection.Windmill]: { name: "Windmill", image: "Windmill.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -64,6 +66,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
+    case WindmillConnectionMethod.AccessToken:
+      return { name: "Access Token", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

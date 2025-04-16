@@ -1801,6 +1801,10 @@ export const AppConnections = {
     CAMUNDA: {
       clientId: "The client ID used to authenticate with Camunda.",
       clientSecret: "The client secret used to authenticate with Camunda."
+    },
+    WINDMILL: {
+      instanceUrl: "The Windmill instance URL to connect with (defaults to https://dev.windmill.app).",
+      accessToken: "The access token to use to connect with Windmill."
     }
   }
 };
@@ -1936,6 +1940,10 @@ export const SecretSyncs = {
       env: "The ID of the Vercel environment to sync secrets to.",
       branch: "The branch to sync preview secrets to.",
       teamId: "The ID of the Vercel team to sync secrets to."
+    },
+    WINDMILL: {
+      workspace: "The Windmill workspace to sync secrets to.",
+      path: "The Windmill workspace path to sync secrets to."
     }
   }
 };

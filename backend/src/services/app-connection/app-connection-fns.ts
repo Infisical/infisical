@@ -49,6 +49,11 @@ import {
 } from "./terraform-cloud";
 import { VercelConnectionMethod } from "./vercel";
 import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
+import {
+  getWindmillConnectionListItem,
+  validateWindmillConnectionCredentials,
+  WindmillConnectionMethod
+} from "./windmill";
 
 export const listAppConnectionOptions = () => {
   return [
@@ -63,7 +68,8 @@ export const listAppConnectionOptions = () => {
     getVercelConnectionListItem(),
     getPostgresConnectionListItem(),
     getMsSqlConnectionListItem(),
-    getCamundaConnectionListItem()
+    getCamundaConnectionListItem(),
+    getWindmillConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -122,7 +128,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TAppConnect
   [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
   [AppConnection.TerraformCloud]: validateTerraformCloudConnectionCredentials as TAppConnectionCredentialsValidator,
   [AppConnection.Camunda]: validateCamundaConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.Vercel]: validateVercelConnectionCredentials as TAppConnectionCredentialsValidator
+  [AppConnection.Vercel]: validateVercelConnectionCredentials as TAppConnectionCredentialsValidator,
+  [AppConnection.Windmill]: validateWindmillConnectionCredentials as TAppConnectionCredentialsValidator
 };
 
 export const validateAppConnectionCredentials = async (
@@ -154,6 +161,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
       return "Username & Password";
+    case WindmillConnectionMethod.AccessToken:
+      return "Access Token";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -196,5 +205,6 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.TerraformCloud]: platformManagedCredentialsNotSupported,
   [AppConnection.Camunda]: platformManagedCredentialsNotSupported,
-  [AppConnection.Vercel]: platformManagedCredentialsNotSupported
+  [AppConnection.Vercel]: platformManagedCredentialsNotSupported,
+  [AppConnection.Windmill]: platformManagedCredentialsNotSupported
 };

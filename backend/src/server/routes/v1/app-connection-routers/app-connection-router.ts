@@ -36,6 +36,10 @@ import {
   TerraformCloudConnectionListItemSchema
 } from "@app/services/app-connection/terraform-cloud";
 import { SanitizedVercelConnectionSchema, VercelConnectionListItemSchema } from "@app/services/app-connection/vercel";
+import {
+  SanitizedWindmillConnectionSchema,
+  WindmillConnectionListItemSchema
+} from "@app/services/app-connection/windmill";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps
@@ -51,7 +55,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedVercelConnectionSchema.options,
   ...SanitizedPostgresConnectionSchema.options,
   ...SanitizedMsSqlConnectionSchema.options,
-  ...SanitizedCamundaConnectionSchema.options
+  ...SanitizedCamundaConnectionSchema.options,
+  ...SanitizedWindmillConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -66,7 +71,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   VercelConnectionListItemSchema,
   PostgresConnectionListItemSchema,
   MsSqlConnectionListItemSchema,
-  CamundaConnectionListItemSchema
+  CamundaConnectionListItemSchema,
+  WindmillConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

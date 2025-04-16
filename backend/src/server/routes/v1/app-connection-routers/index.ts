@@ -12,6 +12,7 @@ import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
+import { registerWindmillConnectionRouter } from "./windmill-connection-router";
 
 export * from "./app-connection-router";
 
@@ -28,5 +29,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Vercel]: registerVercelConnectionRouter,
     [AppConnection.Postgres]: registerPostgresConnectionRouter,
     [AppConnection.MsSql]: registerMsSqlConnectionRouter,
-    [AppConnection.Camunda]: registerCamundaConnectionRouter
+    [AppConnection.Camunda]: registerCamundaConnectionRouter,
+    [AppConnection.Windmill]: registerWindmillConnectionRouter
   };

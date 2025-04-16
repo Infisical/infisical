@@ -10,7 +10,8 @@ export enum AppConnection {
   Vercel = "vercel",
   Postgres = "postgres",
   MsSql = "mssql",
-  Camunda = "camunda"
+  Camunda = "camunda",
+  Windmill = "windmill"
 }
 
 export enum AWSRegion {

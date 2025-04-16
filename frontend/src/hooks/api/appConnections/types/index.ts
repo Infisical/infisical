@@ -12,6 +12,7 @@ import { TMsSqlConnection } from "./mssql-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVercelConnection } from "./vercel-connection";
+import { TWindmillConnection } from "./windmill-connection";
 
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
@@ -25,6 +26,7 @@ export * from "./mssql-connection";
 export * from "./postgres-connection";
 export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
+export * from "./windmill-connection";
 
 export type TAppConnection =
   | TAwsConnection
@@ -38,7 +40,8 @@ export type TAppConnection =
   | TVercelConnection
   | TPostgresConnection
   | TMsSqlConnection
-  | TCamundaConnection;
+  | TCamundaConnection
+  | TWindmillConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -78,4 +81,5 @@ export type TAppConnectionMap = {
   [AppConnection.Postgres]: TPostgresConnection;
   [AppConnection.MsSql]: TMsSqlConnection;
   [AppConnection.Camunda]: TCamundaConnection;
+  [AppConnection.Windmill]: TWindmillConnection;
 };

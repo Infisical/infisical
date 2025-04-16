@@ -425,7 +425,8 @@
             "integrations/app-connections/mssql",
             "integrations/app-connections/postgres",
             "integrations/app-connections/terraform-cloud",
-            "integrations/app-connections/vercel"
+            "integrations/app-connections/vercel",
+            "integrations/app-connections/windmill"
           ]
         }
       ]
@@ -447,7 +448,8 @@
             "integrations/secret-syncs/github",
             "integrations/secret-syncs/humanitec",
             "integrations/secret-syncs/terraform-cloud",
-            "integrations/secret-syncs/vercel"
+            "integrations/secret-syncs/vercel",
+            "integrations/secret-syncs/windmill"
           ]
         }
       ]
@@ -1031,6 +1033,18 @@
                 "api-reference/endpoints/app-connections/vercel/update",
                 "api-reference/endpoints/app-connections/vercel/delete"
               ]
+            },
+            {
+              "group": "Windmill",
+              "pages": [
+                "api-reference/endpoints/app-connections/windmill/list",
+                "api-reference/endpoints/app-connections/windmill/available",
+                "api-reference/endpoints/app-connections/windmill/get-by-id",
+                "api-reference/endpoints/app-connections/windmill/get-by-name",
+                "api-reference/endpoints/app-connections/windmill/create",
+                "api-reference/endpoints/app-connections/windmill/update",
+                "api-reference/endpoints/app-connections/windmill/delete"
+              ]
             }
           ]
         },
@@ -1184,8 +1198,22 @@
                 "api-reference/endpoints/secret-syncs/vercel/update",
                 "api-reference/endpoints/secret-syncs/vercel/delete",
                 "api-reference/endpoints/secret-syncs/vercel/sync-secrets",
-                "api-reference/endpoints/secret-syncs/vercel/remove-secrets",
-                "api-reference/endpoints/secret-syncs/vercel/import-secrets"
+                "api-reference/endpoints/secret-syncs/vercel/import-secrets",
+                "api-reference/endpoints/secret-syncs/vercel/remove-secrets"
+              ]
+            },
+            {
+              "group": "Windmill",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/windmill/list",
+                "api-reference/endpoints/secret-syncs/windmill/get-by-id",
+                "api-reference/endpoints/secret-syncs/windmill/get-by-name",
+                "api-reference/endpoints/secret-syncs/windmill/create",
+                "api-reference/endpoints/secret-syncs/windmill/update",
+                "api-reference/endpoints/secret-syncs/windmill/delete",
+                "api-reference/endpoints/secret-syncs/windmill/sync-secrets",
+                "api-reference/endpoints/secret-syncs/windmill/import-secrets",
+                "api-reference/endpoints/secret-syncs/windmill/remove-secrets"
               ]
             }
           ]

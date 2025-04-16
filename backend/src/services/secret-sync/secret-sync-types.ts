@@ -29,6 +29,12 @@ import {
 } from "@app/services/secret-sync/github";
 import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
+import {
+  TWindmillSync,
+  TWindmillSyncInput,
+  TWindmillSyncListItem,
+  TWindmillSyncWithCredentials
+} from "@app/services/secret-sync/windmill";
 
 import {
   TAwsParameterStoreSync,
@@ -74,7 +80,8 @@ export type TSecretSync =
   | THumanitecSync
   | TTerraformCloudSync
   | TCamundaSync
-  | TVercelSync;
+  | TVercelSync
+  | TWindmillSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -87,7 +94,8 @@ export type TSecretSyncWithCredentials =
   | THumanitecSyncWithCredentials
   | TTerraformCloudSyncWithCredentials
   | TCamundaSyncWithCredentials
-  | TVercelSyncWithCredentials;
+  | TVercelSyncWithCredentials
+  | TWindmillSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -100,7 +108,8 @@ export type TSecretSyncInput =
   | THumanitecSyncInput
   | TTerraformCloudSyncInput
   | TCamundaSyncInput
-  | TVercelSyncInput;
+  | TVercelSyncInput
+  | TWindmillSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -113,7 +122,8 @@ export type TSecretSyncListItem =
   | THumanitecSyncListItem
   | TTerraformCloudSyncListItem
   | TCamundaSyncListItem
-  | TVercelSyncListItem;
+  | TVercelSyncListItem
+  | TWindmillSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
