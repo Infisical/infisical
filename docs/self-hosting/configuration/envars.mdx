@@ -34,8 +34,14 @@ Used to configure platform-specific security and operational settings
   this to `false`.
 </ParamField>
 
-<ParamField query="ALLOW_INTERNAL_IP_CONNECTIONS" type="bool" default="false" optional>
-    Determines whether App Connections and Dynamic Secrets are permitted to connect with internal/private IP addresses.
+<ParamField
+  query="ALLOW_INTERNAL_IP_CONNECTIONS"
+  type="bool"
+  default="false"
+  optional
+>
+  Determines whether App Connections and Dynamic Secrets are permitted to
+  connect with internal/private IP addresses.
 </ParamField>
 
 ## CORS
@@ -45,23 +51,31 @@ The following environment variables can be used to configure the Infisical Rest 
 
 <ParamField query="CORS_ALLOWED_ORIGINS" type="string" optional>
 
-  Specify a list of origins that are allowed to access the Infisical API.
+Specify a list of origins that are allowed to access the Infisical API.
 
-  An example value would be `CORS_ALLOWED_ORIGINS=["https://example.com"]`.
+An example value would be `CORS_ALLOWED_ORIGINS=["https://example.com"]`.
 
-  Defaults to the same value as your `SITE_URL` environment variable.
+Defaults to the same value as your `SITE_URL` environment variable.
+
 </ParamField>
 
 <ParamField query="CORS_ALLOWED_METHODS" type="string" optional>
   Array of HTTP methods allowed for CORS requests.
 
-  Defaults to reflecting the headers specified in the request's Access-Control-Request-Headers header.
-</ParamField>
+Defaults to reflecting the headers specified in the request's Access-Control-Request-Headers header.
 
+</ParamField>
 
 ## Data Layer
 
 The platform utilizes Postgres to persist all of its data and Redis for caching and backgroud tasks
+
+### PostgresSQL
+
+<Info>
+  The Database user must have **CREATE** privilege to allow database schema
+  creation.
+</Info>
 
 <ParamField query="DB_CONNECTION_URI" type="string" default="" required>
   Postgres database connection string.
@@ -71,10 +85,6 @@ The platform utilizes Postgres to persist all of its data and Redis for caching 
   Configure the SSL certificate for securing a Postgres connection by first encoding it in base64. 
   Use the command below to encode your certificate:
   `echo "<certificate>" | base64`
-</ParamField>
-
-<ParamField query="REDIS_URL" type="string" default="none" required>
-  Redis connection string.
 </ParamField>
 
 <ParamField query="DB_READ_REPLICAS" type="string" default="" optional>
@@ -95,6 +105,12 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
     </ParamField>
 
   </Expandable>
+</ParamField>
+
+### Redis
+
+<ParamField query="REDIS_URL" type="string" default="none" required>
+  Redis connection string.
 </ParamField>
 
 ## Email Service
@@ -455,6 +471,7 @@ You can configure third-party app connections for re-use across Infisical Projec
     <ParamField query="INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY" type="string" default="none" optional>
         The AWS IAM User secret key for assuming roles
     </ParamField>
+
 </Accordion>
 
 <Accordion title="GitHub App Connection">
@@ -477,6 +494,7 @@ You can configure third-party app connections for re-use across Infisical Projec
     <ParamField query="INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY" type="string" default="none" optional>
         The private key for the GitHub App
     </ParamField>
+
 </Accordion>
 
 <Accordion title="GitHub OAuth Connection">
@@ -487,6 +505,7 @@ You can configure third-party app connections for re-use across Infisical Projec
     <ParamField query="INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET" type="string" default="none" optional>
         The OAuth2 client secret for GitHub OAuth Connection
     </ParamField>
+
 </Accordion>
 
 ## Native Secret Integrations
