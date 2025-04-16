@@ -1,1 +1,1 @@
-export * from "./SqlRotationParametersFields";
+export * from "./SqlCredentialsRotationParametersFields";

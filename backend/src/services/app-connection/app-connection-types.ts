@@ -4,6 +4,12 @@ import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 
 import { AWSRegion } from "./app-connection-enums";
 import {
+  TAuth0Connection,
+  TAuth0ConnectionConfig,
+  TAuth0ConnectionInput,
+  TValidateAuth0ConnectionCredentialsSchema
+} from "./auth0";
+import {
   TAwsConnection,
   TAwsConnectionConfig,
   TAwsConnectionInput,
@@ -90,6 +96,7 @@ export type TAppConnection = { id: string } & (
   | TMsSqlConnection
   | TCamundaConnection
   | TAzureClientSecretsConnection
+  | TAuth0Connection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -110,6 +117,7 @@ export type TAppConnectionInput = { id: string } & (
   | TMsSqlConnectionInput
   | TCamundaConnectionInput
   | TAzureClientSecretsConnectionInput
+  | TAuth0ConnectionInput
 );
 
 export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput;
@@ -132,10 +140,11 @@ export type TAppConnectionConfig =
   | TDatabricksConnectionConfig
   | THumanitecConnectionConfig
   | TTerraformCloudConnectionConfig
-  | TVercelConnectionConfig
   | TSqlConnectionConfig
   | TCamundaConnectionConfig
-  | TAzureClientSecretsConnectionConfig;
+  | TAzureClientSecretsConnectionConfig
+  | TVercelConnectionConfig
+  | TAuth0ConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -148,9 +157,10 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidatePostgresConnectionCredentialsSchema
   | TValidateMsSqlConnectionCredentialsSchema
   | TValidateCamundaConnectionCredentialsSchema
-  | TValidateTerraformCloudConnectionCredentialsSchema
   | TValidateVercelConnectionCredentialsSchema
-  | TValidateAzureClientSecretsConnectionCredentialsSchema;
+  | TValidateTerraformCloudConnectionCredentialsSchema
+  | TValidateAzureClientSecretsConnectionCredentialsSchema
+  | TValidateAuth0ConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

@@ -1,3 +1,6 @@
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+
 export type TSqlCredentialsRotationProperties = {
   parameters: {
     username1: string;
@@ -9,9 +12,14 @@ export type TSqlCredentialsRotationProperties = {
   };
 };
 
-export type TSqlOptionTemplate = {
-  secretsMapping: TSqlCredentialsRotationProperties["secretsMapping"];
-  createUserStatement: string;
+export type TSqlCredentialsRotationOption = {
+  name: string;
+  type: SecretRotation.PostgresCredentials | SecretRotation.MsSqlCredentials;
+  connection: AppConnection.Postgres | AppConnection.MsSql;
+  template: {
+    secretsMapping: TSqlCredentialsRotationProperties["secretsMapping"];
+    createUserStatement: string;
+  };
 };
 
 export type TSqlCredentialsRotationGeneratedCredentials = {

@@ -1,1 +1,2 @@
-export * from "./SqlRotationSecretsMappingFields";
+export * from "./SecretsMappingTable";
+export * from "./SqlCredentialsRotationSecretsMappingFields";
