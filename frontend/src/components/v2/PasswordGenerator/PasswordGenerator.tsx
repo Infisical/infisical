@@ -145,18 +145,18 @@ const PasswordGeneratorModal = ({
 
           <div className="mb-6">
             <div className="mb-1 flex items-center justify-between">
-              <label htmlFor="password-length" className="text-sm text-bunker-300">
-                Password length: {passwordOptions.length}
+              <label htmlFor="value-length" className="text-sm text-bunker-300">
+                Length: {passwordOptions.length}
               </label>
             </div>
             <Slider
-              id="password-length"
+              id="value-length"
               min={minLength}
               max={maxLength}
               value={passwordOptions.length}
               onChange={(value) => setPasswordOptions({ ...passwordOptions, length: value })}
               className="mb-1"
-              aria-labelledby="password-length-label"
+              aria-labelledby="value-length-label"
             />
           </div>
 
@@ -250,7 +250,7 @@ export const PasswordGenerator = ({
   return (
     <>
       <IconButton
-        ariaLabel="generate password"
+        ariaLabel="generate value"
         colorSchema="primary"
         variant="outline_bg"
         size="sm"
