@@ -21,7 +21,8 @@ export const ServiceTokensSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   createdBy: z.string(),
-  projectId: z.string()
+  projectId: z.string(),
+  expiryNotificationSent: z.boolean().default(false).nullable().optional()
 });
 
 export type TServiceTokens = z.infer<typeof ServiceTokensSchema>;
