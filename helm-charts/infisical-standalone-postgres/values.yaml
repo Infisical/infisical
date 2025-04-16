@@ -192,8 +192,6 @@ redis:
   customURIParameters:
     # -- Set to true if using custom URI parameters for Redis connection
     enabled: false
-    # -- Optional username for Redis authentication
-    username: ""
     # -- Redis host
     host: ""
     # -- Port for Redis connection. Default is 6379

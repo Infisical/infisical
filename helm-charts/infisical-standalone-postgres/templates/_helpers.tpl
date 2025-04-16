@@ -107,7 +107,7 @@ Create a PostgreSQL connection string from custom URI parameters
 {{- else -}}
 {{- $sslParams = printf "?sslmode=disable" -}}
 {{- end -}}
-{{- printf "postgresql://%s:${DB_PASSWORD}@%s:%v/%s%s" $pgParams.username $pgParams.host $pgParams.port $pgParams.database $sslParams -}}
+{{- printf "postgresql://%s:$(DB_PASSWORD)@%s:%v/%s%s" $pgParams.username $pgParams.host $pgParams.port $pgParams.database $sslParams -}}
 {{- else -}}
 {{- fail "PostgreSQL custom URI parameters missing required fields (username, host, port, database)" -}}
 {{- end -}}
@@ -156,11 +156,7 @@ Create a Redis connection string from custom URI parameters
 {{- if .Values.redis.customURIParameters.enabled -}}
 {{- $redisParams := .Values.redis.customURIParameters -}}
 {{- if and $redisParams.host $redisParams.port -}}
-{{- if $redisParams.username -}}
-{{- printf "redis://%s:${REDIS_PASSWORD}@%s:%v" $redisParams.username $redisParams.host $redisParams.port -}}
-{{- else -}}
-{{- printf "redis://${REDIS_PASSWORD}@%s:%v" $redisParams.host $redisParams.port -}}
-{{- end -}}
+{{- printf "redis://default:$(REDIS_PASSWORD)@%s:%v" $redisParams.host $redisParams.port -}}
 {{- else -}}
 {{- fail "Redis custom URI parameters missing required fields (host, port)" -}}
 {{- end -}}
