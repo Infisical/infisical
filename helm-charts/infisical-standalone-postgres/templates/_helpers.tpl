@@ -100,7 +100,7 @@ Create a PostgreSQL connection string from custom URI parameters
 {{- if $pgParams.ssl.enabled -}}
 {{- $sslParams = printf "?sslmode=%s&sslrootcert=%s" $pgParams.ssl.mode $pgParams.ssl.rootCertPath -}}
 {{- end -}}
-{{- printf "postgresql://%s:${DB_PASSWORD}@%s:%s/%s%s" $pgParams.username $pgParams.host $pgParams.port $pgParams.database $sslParams -}}
+{{- printf "postgresql://%s:${DB_PASSWORD}@%s:%v/%s%s" $pgParams.username $pgParams.host $pgParams.port $pgParams.database $sslParams -}}
 {{- else -}}
 {{- print "" -}}
 {{- end -}}
