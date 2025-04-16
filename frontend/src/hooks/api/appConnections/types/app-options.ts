@@ -63,6 +63,10 @@ export type TWindmillConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Windmill;
 };
 
+export type TAuth0ConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Auth0;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -76,7 +80,8 @@ export type TAppConnectionOption =
   | TPostgresConnectionOption
   | TMsSqlConnectionOption
   | TCamundaConnectionOption
-  | TWindmillConnectionOption;
+  | TWindmillConnectionOption
+  | TAuth0ConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -92,4 +97,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.MsSql]: TMsSqlConnectionOption;
   [AppConnection.Camunda]: TCamundaConnectionOption;
   [AppConnection.Windmill]: TWindmillConnectionOption;
+  [AppConnection.Auth0]: TAuth0ConnectionOption;
 };

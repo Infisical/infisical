@@ -8,7 +8,7 @@ import { isLoggedIn } from "@app/hooks/api/reactQuery";
 import { InitialStep, SSOStep } from "./components";
 import { useNavigateToSelectOrganization } from "./Login.utils";
 
-export const LoginPage = () => {
+export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
   const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [email, setEmail] = useState("");
@@ -44,6 +44,7 @@ export const LoginPage = () => {
       case 0:
         return (
           <InitialStep
+            isAdmin={isAdmin}
             setStep={setStep}
             email={email}
             setEmail={setEmail}

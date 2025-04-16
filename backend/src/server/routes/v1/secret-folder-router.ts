@@ -39,17 +39,19 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .string()
           .trim()
           .default("/")
-          .transform(prefixWithSlash)
+          .transform(prefixWithSlash) // Transformations get skipped if path is undefined
           .transform(removeTrailingSlash)
-          .describe(FOLDERS.CREATE.path),
+          .describe(FOLDERS.CREATE.path)
+          .optional(),
         // backward compatiability with cli
         directory: z
           .string()
           .trim()
           .default("/")
-          .transform(prefixWithSlash)
+          .transform(prefixWithSlash) // Transformations get skipped if directory is undefined
           .transform(removeTrailingSlash)
-          .describe(FOLDERS.CREATE.directory),
+          .describe(FOLDERS.CREATE.directory)
+          .optional(),
         description: z.string().optional().nullable().describe(FOLDERS.CREATE.description)
       }),
       response: {
@@ -60,7 +62,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const path = req.body.path || req.body.directory;
+      const path = req.body.path || req.body.directory || "/";
       const folder = await server.services.folder.createFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -120,17 +122,19 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .string()
           .trim()
           .default("/")
-          .transform(prefixWithSlash)
+          .transform(prefixWithSlash) // Transformations get skipped if path is undefined
           .transform(removeTrailingSlash)
-          .describe(FOLDERS.UPDATE.path),
+          .describe(FOLDERS.UPDATE.path)
+          .optional(),
         // backward compatiability with cli
         directory: z
           .string()
           .trim()
           .default("/")
-          .transform(prefixWithSlash)
+          .transform(prefixWithSlash) // Transformations get skipped if directory is undefined
           .transform(removeTrailingSlash)
-          .describe(FOLDERS.UPDATE.directory),
+          .describe(FOLDERS.UPDATE.directory)
+          .optional(),
         description: z.string().optional().nullable().describe(FOLDERS.UPDATE.description)
       }),
       response: {
@@ -141,7 +145,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const path = req.body.path || req.body.directory;
+      const path = req.body.path || req.body.directory || "/";
       const { folder, old } = await server.services.folder.updateFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -271,17 +275,19 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .string()
           .trim()
           .default("/")
-          .transform(prefixWithSlash)
+          .transform(prefixWithSlash) // Transformations get skipped if path is undefined
           .transform(removeTrailingSlash)
-          .describe(FOLDERS.DELETE.path),
+          .describe(FOLDERS.DELETE.path)
+          .optional(),
         // keep this here as cli need directory
         directory: z
           .string()
           .trim()
           .default("/")
-          .transform(prefixWithSlash)
+          .transform(prefixWithSlash) // Transformations get skipped if directory is undefined
           .transform(removeTrailingSlash)
           .describe(FOLDERS.DELETE.directory)
+          .optional()
       }),
       response: {
         200: z.object({
@@ -291,7 +297,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const path = req.body.path || req.body.directory;
+      const path = req.body.path || req.body.directory || "/";
       const folder = await server.services.folder.deleteFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -339,18 +345,18 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         path: z
           .string()
           .trim()
-          .default("/")
-          .transform(prefixWithSlash)
+          .transform(prefixWithSlash) // Transformations get skipped if path is undefined
           .transform(removeTrailingSlash)
-          .describe(FOLDERS.LIST.path),
+          .describe(FOLDERS.LIST.path)
+          .optional(),
         // backward compatiability with cli
         directory: z
           .string()
           .trim()
-          .default("/")
-          .transform(prefixWithSlash)
+          .transform(prefixWithSlash) // Transformations get skipped if directory is undefined
           .transform(removeTrailingSlash)
-          .describe(FOLDERS.LIST.directory),
+          .describe(FOLDERS.LIST.directory)
+          .optional(),
         recursive: booleanSchema.default(false).describe(FOLDERS.LIST.recursive)
       }),
       response: {
@@ -363,7 +369,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const path = req.query.path || req.query.directory;
+      const path = req.query.path || req.query.directory || "/";
       const folders = await server.services.folder.getFolders({
         actorId: req.permission.id,
         actor: req.permission.type,

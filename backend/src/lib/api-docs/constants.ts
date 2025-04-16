@@ -478,7 +478,8 @@ export const PROJECTS = {
     name: "The new name of the project.",
     projectDescription: "An optional description label for the project.",
     autoCapitalization: "Disable or enable auto-capitalization for the project.",
-    slug: "An optional slug for the project. (must be unique within the organization)"
+    slug: "An optional slug for the project. (must be unique within the organization)",
+    hasDeleteProtection: "Enable or disable delete protection for the project."
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
@@ -1782,6 +1783,12 @@ export const AppConnections = {
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to be deleted.`
   }),
   CREDENTIALS: {
+    AUTH0_CONNECTION: {
+      domain: "The domain of the Auth0 instance to connect to.",
+      clientId: "Your Auth0 application's Client ID.",
+      clientSecret: "Your Auth0 application's Client Secret.",
+      audience: "The unique identifier of the target API you want to access."
+    },
     SQL_CONNECTION: {
       host: "The hostname of the database server.",
       port: "The port number of the database.",
@@ -2005,12 +2012,19 @@ export const SecretRotations = {
         "The username of the first login to rotate passwords for. This user must already exists in your database.",
       username2:
         "The username of the second login to rotate passwords for. This user must already exists in your database."
+    },
+    AUTH0_CLIENT_SECRET: {
+      clientId: "The client ID of the Auth0 Application to rotate the client secret for."
     }
   },
   SECRETS_MAPPING: {
     SQL_CREDENTIALS: {
       username: "The name of the secret that the active username will be mapped to.",
       password: "The name of the secret that the generated password will be mapped to."
+    },
+    AUTH0_CLIENT_SECRET: {
+      clientId: "The name of the secret that the client ID will be mapped to.",
+      clientSecret: "The name of the secret that the rotated client secret will be mapped to."
     }
   }
 };

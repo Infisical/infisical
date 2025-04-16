@@ -165,7 +165,8 @@ export const oidcConfigServiceFactory = ({
       allowedEmailDomains: oidcCfg.allowedEmailDomains,
       clientId,
       clientSecret,
-      manageGroupMemberships: oidcCfg.manageGroupMemberships
+      manageGroupMemberships: oidcCfg.manageGroupMemberships,
+      jwtSignatureAlgorithm: oidcCfg.jwtSignatureAlgorithm
     };
   };
 
@@ -481,7 +482,8 @@ export const oidcConfigServiceFactory = ({
     userinfoEndpoint,
     clientId,
     clientSecret,
-    manageGroupMemberships
+    manageGroupMemberships,
+    jwtSignatureAlgorithm
   }: TUpdateOidcCfgDTO) => {
     const org = await orgDAL.findOne({
       slug: orgSlug
@@ -536,7 +538,8 @@ export const oidcConfigServiceFactory = ({
       jwksUri,
       isActive,
       lastUsed: null,
-      manageGroupMemberships
+      manageGroupMemberships,
+      jwtSignatureAlgorithm
     };
 
     if (clientId !== undefined) {
@@ -569,7 +572,8 @@ export const oidcConfigServiceFactory = ({
     userinfoEndpoint,
     clientId,
     clientSecret,
-    manageGroupMemberships
+    manageGroupMemberships,
+    jwtSignatureAlgorithm
   }: TCreateOidcCfgDTO) => {
     const org = await orgDAL.findOne({
       slug: orgSlug
@@ -613,6 +617,7 @@ export const oidcConfigServiceFactory = ({
       userinfoEndpoint,
       orgId: org.id,
       manageGroupMemberships,
+      jwtSignatureAlgorithm,
       encryptedOidcClientId: encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob,
       encryptedOidcClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob
     });
@@ -676,7 +681,8 @@ export const oidcConfigServiceFactory = ({
     const client = new issuer.Client({
       client_id: oidcCfg.clientId,
       client_secret: oidcCfg.clientSecret,
-      redirect_uris: [`${appCfg.SITE_URL}/api/v1/sso/oidc/callback`]
+      redirect_uris: [`${appCfg.SITE_URL}/api/v1/sso/oidc/callback`],
+      id_token_signed_response_alg: oidcCfg.jwtSignatureAlgorithm
     });
 
     const strategy = new OpenIdStrategy(

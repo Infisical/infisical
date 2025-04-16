@@ -33,6 +33,7 @@ import { Route as authSignUpSsoPageRouteImport } from './pages/auth/SignUpSsoPag
 import { Route as authLoginSsoPageRouteImport } from './pages/auth/LoginSsoPage/route'
 import { Route as authSelectOrgPageRouteImport } from './pages/auth/SelectOrgPage/route'
 import { Route as authLoginLdapPageRouteImport } from './pages/auth/LoginLdapPage/route'
+import { Route as authAdminLoginPageRouteImport } from './pages/auth/AdminLoginPage/route'
 import { Route as adminSignUpPageRouteImport } from './pages/admin/SignUpPage/route'
 import { Route as organizationNoOrgPageRouteImport } from './pages/organization/NoOrgPage/route'
 import { Route as authSignUpPageRouteImport } from './pages/auth/SignUpPage/route'
@@ -390,6 +391,12 @@ const authSelectOrgPageRouteRoute = authSelectOrgPageRouteImport.update({
 const authLoginLdapPageRouteRoute = authLoginLdapPageRouteImport.update({
   id: '/ldap',
   path: '/ldap',
+  getParentRoute: () => RestrictLoginSignupLoginRoute,
+} as any)
+
+const authAdminLoginPageRouteRoute = authAdminLoginPageRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => RestrictLoginSignupLoginRoute,
 } as any)
 
@@ -1774,6 +1781,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/signup'
       preLoaderRoute: typeof adminSignUpPageRouteImport
       parentRoute: typeof middlewaresRestrictLoginSignupImport
+    }
+    '/_restrict-login-signup/login/admin': {
+      id: '/_restrict-login-signup/login/admin'
+      path: '/admin'
+      fullPath: '/login/admin'
+      preLoaderRoute: typeof authAdminLoginPageRouteImport
+      parentRoute: typeof RestrictLoginSignupLoginImport
     }
     '/_restrict-login-signup/login/ldap': {
       id: '/_restrict-login-signup/login/ldap'
@@ -3655,6 +3669,7 @@ const middlewaresAuthenticateRouteWithChildren =
 
 interface RestrictLoginSignupLoginRouteChildren {
   authLoginPageRouteRoute: typeof authLoginPageRouteRoute
+  authAdminLoginPageRouteRoute: typeof authAdminLoginPageRouteRoute
   authLoginLdapPageRouteRoute: typeof authLoginLdapPageRouteRoute
   authSelectOrgPageRouteRoute: typeof authSelectOrgPageRouteRoute
   authLoginSsoPageRouteRoute: typeof authLoginSsoPageRouteRoute
@@ -3665,6 +3680,7 @@ interface RestrictLoginSignupLoginRouteChildren {
 const RestrictLoginSignupLoginRouteChildren: RestrictLoginSignupLoginRouteChildren =
   {
     authLoginPageRouteRoute: authLoginPageRouteRoute,
+    authAdminLoginPageRouteRoute: authAdminLoginPageRouteRoute,
     authLoginLdapPageRouteRoute: authLoginLdapPageRouteRoute,
     authSelectOrgPageRouteRoute: authSelectOrgPageRouteRoute,
     authLoginSsoPageRouteRoute: authLoginSsoPageRouteRoute,
@@ -3739,6 +3755,7 @@ export interface FileRoutesByFullPath {
   '/signup/': typeof authSignUpPageRouteRoute
   '/organization/none': typeof organizationNoOrgPageRouteRoute
   '/admin/signup': typeof adminSignUpPageRouteRoute
+  '/login/admin': typeof authAdminLoginPageRouteRoute
   '/login/ldap': typeof authLoginLdapPageRouteRoute
   '/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/login/sso': typeof authLoginSsoPageRouteRoute
@@ -3918,6 +3935,7 @@ export interface FileRoutesByTo {
   '/signup': typeof authSignUpPageRouteRoute
   '/organization/none': typeof organizationNoOrgPageRouteRoute
   '/admin/signup': typeof adminSignUpPageRouteRoute
+  '/login/admin': typeof authAdminLoginPageRouteRoute
   '/login/ldap': typeof authLoginLdapPageRouteRoute
   '/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/login/sso': typeof authLoginSsoPageRouteRoute
@@ -4096,6 +4114,7 @@ export interface FileRoutesById {
   '/_restrict-login-signup/signup/': typeof authSignUpPageRouteRoute
   '/_authenticate/organization/none': typeof organizationNoOrgPageRouteRoute
   '/_restrict-login-signup/admin/signup': typeof adminSignUpPageRouteRoute
+  '/_restrict-login-signup/login/admin': typeof authAdminLoginPageRouteRoute
   '/_restrict-login-signup/login/ldap': typeof authLoginLdapPageRouteRoute
   '/_restrict-login-signup/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/_restrict-login-signup/login/sso': typeof authLoginSsoPageRouteRoute
@@ -4286,6 +4305,7 @@ export interface FileRouteTypes {
     | '/signup/'
     | '/organization/none'
     | '/admin/signup'
+    | '/login/admin'
     | '/login/ldap'
     | '/login/select-organization'
     | '/login/sso'
@@ -4464,6 +4484,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/organization/none'
     | '/admin/signup'
+    | '/login/admin'
     | '/login/ldap'
     | '/login/select-organization'
     | '/login/sso'
@@ -4640,6 +4661,7 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/signup/'
     | '/_authenticate/organization/none'
     | '/_restrict-login-signup/admin/signup'
+    | '/_restrict-login-signup/login/admin'
     | '/_restrict-login-signup/login/ldap'
     | '/_restrict-login-signup/login/select-organization'
     | '/_restrict-login-signup/login/sso'
@@ -4928,6 +4950,7 @@ export const routeTree = rootRoute
       "parent": "/_restrict-login-signup",
       "children": [
         "/_restrict-login-signup/login/",
+        "/_restrict-login-signup/login/admin",
         "/_restrict-login-signup/login/ldap",
         "/_restrict-login-signup/login/select-organization",
         "/_restrict-login-signup/login/sso",
@@ -4958,6 +4981,10 @@ export const routeTree = rootRoute
     "/_restrict-login-signup/admin/signup": {
       "filePath": "admin/SignUpPage/route.tsx",
       "parent": "/_restrict-login-signup"
+    },
+    "/_restrict-login-signup/login/admin": {
+      "filePath": "auth/AdminLoginPage/route.tsx",
+      "parent": "/_restrict-login-signup/login"
     },
     "/_restrict-login-signup/login/ldap": {
       "filePath": "auth/LoginLdapPage/route.tsx",

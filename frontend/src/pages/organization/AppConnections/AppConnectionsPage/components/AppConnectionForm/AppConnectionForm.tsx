@@ -9,6 +9,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DiscriminativePick } from "@app/types";
 
 import { AppConnectionHeader } from "../AppConnectionHeader";
+import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
@@ -86,6 +87,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <CamundaConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Windmill:
       return <WindmillConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Auth0:
+      return <Auth0ConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -148,6 +151,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <CamundaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Windmill:
       return <WindmillConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Auth0:
+      return <Auth0ConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

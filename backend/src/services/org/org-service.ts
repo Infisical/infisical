@@ -349,7 +349,8 @@ export const orgServiceFactory = ({
       defaultMembershipRoleSlug,
       enforceMfa,
       selectedMfaMethod,
-      allowSecretSharingOutsideOrganization
+      allowSecretSharingOutsideOrganization,
+      bypassOrgAuthEnabled
     }
   }: TUpdateOrgDTO) => {
     const appCfg = getConfig();
@@ -429,7 +430,8 @@ export const orgServiceFactory = ({
       defaultMembershipRole,
       enforceMfa,
       selectedMfaMethod,
-      allowSecretSharingOutsideOrganization
+      allowSecretSharingOutsideOrganization,
+      bypassOrgAuthEnabled
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;

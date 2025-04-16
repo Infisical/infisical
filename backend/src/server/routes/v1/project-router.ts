@@ -312,6 +312,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe(PROJECTS.UPDATE.projectDescription),
         autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization),
+        hasDeleteProtection: z.boolean().optional().describe(PROJECTS.UPDATE.hasDeleteProtection),
         slug: z
           .string()
           .trim()
@@ -340,6 +341,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           name: req.body.name,
           description: req.body.description,
           autoCapitalization: req.body.autoCapitalization,
+          hasDeleteProtection: req.body.hasDeleteProtection,
           slug: req.body.slug
         },
         actorAuthMethod: req.permission.authMethod,
@@ -382,6 +384,43 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         autoCapitalization: req.body.autoCapitalization
+      });
+      return {
+        message: "Successfully changed workspace settings",
+        workspace
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:workspaceId/delete-protection",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        hasDeleteProtection: z.boolean()
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          workspace: SanitizedProjectSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const workspace = await server.services.project.toggleDeleteProtection({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        hasDeleteProtection: req.body.hasDeleteProtection
       });
       return {
         message: "Successfully changed workspace settings",

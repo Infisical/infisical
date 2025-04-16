@@ -16,6 +16,7 @@ import {
   TAppConnectionCredentialsValidator,
   TAppConnectionTransitionCredentialsToPlatform
 } from "./app-connection-types";
+import { Auth0ConnectionMethod, getAuth0ConnectionListItem, validateAuth0ConnectionCredentials } from "./auth0";
 import { AwsConnectionMethod, getAwsConnectionListItem, validateAwsConnectionCredentials } from "./aws";
 import {
   AzureAppConfigurationConnectionMethod,
@@ -69,7 +70,8 @@ export const listAppConnectionOptions = () => {
     getPostgresConnectionListItem(),
     getMsSqlConnectionListItem(),
     getCamundaConnectionListItem(),
-    getWindmillConnectionListItem()
+    getWindmillConnectionListItem(),
+    getAuth0ConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -115,26 +117,29 @@ export const decryptAppConnectionCredentials = async ({
   return JSON.parse(decryptedPlainTextBlob.toString()) as TAppConnection["credentials"];
 };
 
-const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TAppConnectionCredentialsValidator> = {
-  [AppConnection.AWS]: validateAwsConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.Databricks]: validateDatabricksConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.GitHub]: validateGitHubConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.GCP]: validateGcpConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.AzureKeyVault]: validateAzureKeyVaultConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.AzureAppConfiguration]:
-    validateAzureAppConfigurationConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.TerraformCloud]: validateTerraformCloudConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.Camunda]: validateCamundaConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.Vercel]: validateVercelConnectionCredentials as TAppConnectionCredentialsValidator,
-  [AppConnection.Windmill]: validateWindmillConnectionCredentials as TAppConnectionCredentialsValidator
-};
-
 export const validateAppConnectionCredentials = async (
   appConnection: TAppConnectionConfig
-): Promise<TAppConnection["credentials"]> => VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
+): Promise<TAppConnection["credentials"]> => {
+  const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TAppConnectionCredentialsValidator> = {
+    [AppConnection.AWS]: validateAwsConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Databricks]: validateDatabricksConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.GitHub]: validateGitHubConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.GCP]: validateGcpConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureKeyVault]: validateAzureKeyVaultConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureAppConfiguration]:
+      validateAzureAppConfigurationConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Camunda]: validateCamundaConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Vercel]: validateVercelConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.TerraformCloud]: validateTerraformCloudConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Auth0]: validateAuth0ConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Windmill]: validateWindmillConnectionCredentials as TAppConnectionCredentialsValidator
+  };
+
+  return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
+};
 
 export const getAppConnectionMethodName = (method: TAppConnection["method"]) => {
   switch (method) {
@@ -163,6 +168,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Username & Password";
     case WindmillConnectionMethod.AccessToken:
       return "Access Token";
+    case Auth0ConnectionMethod.ClientCredentials:
+      return "Client Credentials";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -206,5 +213,6 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.TerraformCloud]: platformManagedCredentialsNotSupported,
   [AppConnection.Camunda]: platformManagedCredentialsNotSupported,
   [AppConnection.Vercel]: platformManagedCredentialsNotSupported,
-  [AppConnection.Windmill]: platformManagedCredentialsNotSupported
+  [AppConnection.Windmill]: platformManagedCredentialsNotSupported,
+  [AppConnection.Auth0]: platformManagedCredentialsNotSupported
 };

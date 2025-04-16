@@ -10,6 +10,7 @@ import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretSharingDALFactory } from "../secret-sharing/secret-sharing-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { TServiceTokenServiceFactory } from "../service-token/service-token-service";
 
 type TDailyResourceCleanUpQueueServiceFactoryDep = {
   auditLogDAL: Pick<TAuditLogDALFactory, "pruneAuditLog">;
@@ -21,6 +22,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   secretFolderVersionDAL: Pick<TSecretFolderVersionDALFactory, "pruneExcessVersions">;
   snapshotDAL: Pick<TSnapshotDALFactory, "pruneExcessSnapshots">;
   secretSharingDAL: Pick<TSecretSharingDALFactory, "pruneExpiredSharedSecrets" | "pruneExpiredSecretRequests">;
+  serviceTokenService: Pick<TServiceTokenServiceFactory, "notifyExpiringTokens">;
   queueService: TQueueServiceFactory;
 };
 
@@ -36,7 +38,8 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   identityAccessTokenDAL,
   secretSharingDAL,
   secretVersionV2DAL,
-  identityUniversalAuthClientSecretDAL
+  identityUniversalAuthClientSecretDAL,
+  serviceTokenService
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   queueService.start(QueueName.DailyResourceCleanUp, async () => {
     logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
@@ -50,6 +53,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     await secretVersionDAL.pruneExcessVersions();
     await secretVersionV2DAL.pruneExcessVersions();
     await secretFolderVersionDAL.pruneExcessVersions();
+    await serviceTokenService.notifyExpiringTokens();
     logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
   });
 

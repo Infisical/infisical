@@ -20,6 +20,8 @@ import { useToggle } from "@app/hooks";
 import { useCreateSSOConfig, useGetSSOConfig, useUpdateSSOConfig } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { SSOModalHeader } from "./SSOModalHeader";
+
 enum AuthProvider {
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
@@ -30,12 +32,32 @@ enum AuthProvider {
 }
 
 const ssoAuthProviders = [
-  { label: "Okta SAML", value: AuthProvider.OKTA_SAML },
-  { label: "Azure / Entra SAML", value: AuthProvider.AZURE_SAML },
-  { label: "JumpCloud SAML", value: AuthProvider.JUMPCLOUD_SAML },
-  { label: "Keycloak SAML", value: AuthProvider.KEYCLOAK_SAML },
-  { label: "Google SAML", value: AuthProvider.GOOGLE_SAML },
-  { label: "Auth0 SAML", value: AuthProvider.AUTH0_SAML }
+  { label: "Okta SAML", value: AuthProvider.OKTA_SAML, image: "Okta.png", docsUrl: "okta" },
+  {
+    label: "Azure / Entra SAML",
+    value: AuthProvider.AZURE_SAML,
+    image: "Microsoft Azure.png",
+    docsUrl: "azure"
+  },
+  {
+    label: "JumpCloud SAML",
+    value: AuthProvider.JUMPCLOUD_SAML,
+    image: "JumpCloud.png",
+    docsUrl: "jumpcloud"
+  },
+  {
+    label: "Keycloak SAML",
+    value: AuthProvider.KEYCLOAK_SAML,
+    image: "Keycloak.png",
+    docsUrl: "keycloak-saml"
+  },
+  {
+    label: "Google SAML",
+    value: AuthProvider.GOOGLE_SAML,
+    image: "Google.png",
+    docsUrl: "google-saml"
+  },
+  { label: "Auth0 SAML", value: AuthProvider.AUTH0_SAML, image: "Auth0.png", docsUrl: "auth0-saml" }
 ];
 
 const schema = z
@@ -231,6 +253,10 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
         }}
       >
         <ModalContent title="Manage SAML configuration">
+          <SSOModalHeader
+            providerDetails={ssoAuthProviders.find((provider) => provider.value === authProvider)!}
+            isConnected={Boolean(data)}
+          />
           <form onSubmit={handleSubmit(onSSOModalSubmit)}>
             <Controller
               control={control}

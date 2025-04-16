@@ -5,6 +5,12 @@ export enum OIDCConfigurationType {
   DISCOVERY_URL = "discoveryURL"
 }
 
+export enum OIDCJWTSignatureAlgorithm {
+  RS256 = "RS256",
+  HS256 = "HS256",
+  RS512 = "RS512"
+}
+
 export type TOidcLoginDTO = {
   externalId: string;
   email: string;
@@ -40,6 +46,7 @@ export type TCreateOidcCfgDTO = {
   isActive: boolean;
   orgSlug: string;
   manageGroupMemberships: boolean;
+  jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm;
 } & TGenericPermission;
 
 export type TUpdateOidcCfgDTO = Partial<{
@@ -56,5 +63,6 @@ export type TUpdateOidcCfgDTO = Partial<{
   isActive: boolean;
   orgSlug: string;
   manageGroupMemberships: boolean;
+  jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm;
 }> &
   TGenericPermission;

@@ -13,6 +13,7 @@ import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { auth0ClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/auth0-client-secret/auth0-client-secret-rotation-fns";
 import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   calculateNextRotationAt,
@@ -41,6 +42,7 @@ import {
   TRotationFactory,
   TSecretRotationRotateGeneratedCredentials,
   TSecretRotationV2,
+  TSecretRotationV2GeneratedCredentials,
   TSecretRotationV2Raw,
   TSecretRotationV2WithConnection,
   TUpdateSecretRotationV2DTO
@@ -53,6 +55,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { QueueJobs, TQueueServiceFactory } from "@app/queue";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -97,15 +100,21 @@ export type TSecretRotationV2ServiceFactoryDep = {
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   queueService: Pick<TQueueServiceFactory, "queuePg">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
 };
 
 export type TSecretRotationV2ServiceFactory = ReturnType<typeof secretRotationV2ServiceFactory>;
 
 const MAX_GENERATED_CREDENTIALS_LENGTH = 2;
 
-const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactory> = {
-  [SecretRotation.PostgresCredentials]: sqlCredentialsRotationFactory,
-  [SecretRotation.MsSqlCredentials]: sqlCredentialsRotationFactory
+type TRotationFactoryImplementation = TRotationFactory<
+  TSecretRotationV2WithConnection,
+  TSecretRotationV2GeneratedCredentials
+>;
+const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplementation> = {
+  [SecretRotation.PostgresCredentials]: sqlCredentialsRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.MsSqlCredentials]: sqlCredentialsRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.Auth0ClientSecret]: auth0ClientSecretRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -125,7 +134,8 @@ export const secretRotationV2ServiceFactory = ({
   secretQueueService,
   snapshotService,
   keyStore,
-  queueService
+  queueService,
+  appConnectionDAL
 }: TSecretRotationV2ServiceFactoryDep) => {
   const $queueSendSecretRotationStatusNotification = async (secretRotation: TSecretRotationV2Raw) => {
     const appCfg = getConfig();
@@ -429,11 +439,15 @@ export const secretRotationV2ServiceFactory = ({
     // validates permission to connect and app is valid for rotation type
     const connection = await appConnectionService.connectAppConnectionById(typeApp, payload.connectionId, actor);
 
-    const rotationFactory = SECRET_ROTATION_FACTORY_MAP[payload.type]({
-      parameters: payload.parameters,
-      secretsMapping,
-      connection
-    } as TSecretRotationV2WithConnection);
+    const rotationFactory = SECRET_ROTATION_FACTORY_MAP[payload.type](
+      {
+        parameters: payload.parameters,
+        secretsMapping,
+        connection
+      } as TSecretRotationV2WithConnection,
+      appConnectionDAL,
+      kmsService
+    );
 
     try {
       const currentTime = new Date();
@@ -441,7 +455,7 @@ export const secretRotationV2ServiceFactory = ({
       // callback structure to support transactional rollback when possible
       const secretRotation = await rotationFactory.issueCredentials(async (newCredentials) => {
         const encryptedGeneratedCredentials = await encryptSecretRotationCredentials({
-          generatedCredentials: [newCredentials],
+          generatedCredentials: [newCredentials] as TSecretRotationV2GeneratedCredentials,
           projectId,
           kmsService
         });
@@ -740,32 +754,37 @@ export const secretRotationV2ServiceFactory = ({
         message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
       });
 
-    const deleteTransaction = secretRotationV2DAL.transaction(async (tx) => {
-      if (deleteSecrets) {
-        await fnSecretBulkDelete({
-          secretDAL: secretV2BridgeDAL,
-          secretQueueService,
-          inputSecrets: Object.values(secretsMapping as TSecretRotationV2["secretsMapping"]).map((secretKey) => ({
-            secretKey,
-            type: SecretType.Shared
-          })),
-          projectId,
-          folderId,
-          actorId: actor.id, // not actually used since rotated secrets are shared
-          tx
-        });
-      }
+    const deleteTransaction = async () =>
+      secretRotationV2DAL.transaction(async (tx) => {
+        if (deleteSecrets) {
+          await fnSecretBulkDelete({
+            secretDAL: secretV2BridgeDAL,
+            secretQueueService,
+            inputSecrets: Object.values(secretsMapping as TSecretRotationV2["secretsMapping"]).map((secretKey) => ({
+              secretKey,
+              type: SecretType.Shared
+            })),
+            projectId,
+            folderId,
+            actorId: actor.id, // not actually used since rotated secrets are shared
+            tx
+          });
+        }
 
-      return secretRotationV2DAL.deleteById(rotationId, tx);
-    });
+        return secretRotationV2DAL.deleteById(rotationId, tx);
+      });
 
     if (revokeGeneratedCredentials) {
       const appConnection = await decryptAppConnection(connection, kmsService);
 
-      const rotationFactory = SECRET_ROTATION_FACTORY_MAP[type]({
-        ...secretRotation,
-        connection: appConnection
-      } as TSecretRotationV2WithConnection);
+      const rotationFactory = SECRET_ROTATION_FACTORY_MAP[type](
+        {
+          ...secretRotation,
+          connection: appConnection
+        } as TSecretRotationV2WithConnection,
+        appConnectionDAL,
+        kmsService
+      );
 
       const generatedCredentials = await decryptSecretRotationCredentials({
         encryptedGeneratedCredentials,
@@ -773,9 +792,9 @@ export const secretRotationV2ServiceFactory = ({
         kmsService
       });
 
-      await rotationFactory.revokeCredentials(generatedCredentials, async () => deleteTransaction);
+      await rotationFactory.revokeCredentials(generatedCredentials, deleteTransaction);
     } else {
-      await deleteTransaction;
+      await deleteTransaction();
     }
 
     if (deleteSecrets) {
@@ -840,10 +859,14 @@ export const secretRotationV2ServiceFactory = ({
 
       const inactiveCredentials = generatedCredentials[inactiveIndex];
 
-      const rotationFactory = SECRET_ROTATION_FACTORY_MAP[type as SecretRotation]({
-        ...secretRotation,
-        connection: appConnection
-      } as TSecretRotationV2WithConnection);
+      const rotationFactory = SECRET_ROTATION_FACTORY_MAP[type as SecretRotation](
+        {
+          ...secretRotation,
+          connection: appConnection
+        } as TSecretRotationV2WithConnection,
+        appConnectionDAL,
+        kmsService
+      );
 
       const updatedRotation = await rotationFactory.rotateCredentials(inactiveCredentials, async (newCredentials) => {
         const updatedCredentials = [...generatedCredentials];
@@ -851,7 +874,7 @@ export const secretRotationV2ServiceFactory = ({
 
         const encryptedUpdatedCredentials = await encryptSecretRotationCredentials({
           projectId,
-          generatedCredentials: updatedCredentials,
+          generatedCredentials: updatedCredentials as TSecretRotationV2GeneratedCredentials,
           kmsService
         });
 

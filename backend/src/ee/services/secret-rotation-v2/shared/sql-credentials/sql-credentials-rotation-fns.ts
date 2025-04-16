@@ -1,6 +1,5 @@
-import { randomInt } from "crypto";
-
 import {
+  TRotationFactory,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -8,93 +7,11 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { getSqlConnectionClient, SQL_CONNECTION_ALTER_LOGIN_STATEMENT } from "@app/services/app-connection/shared/sql";
 
+import { generatePassword } from "../utils";
 import {
   TSqlCredentialsRotationGeneratedCredentials,
   TSqlCredentialsRotationWithConnection
 } from "./sql-credentials-rotation-types";
-
-const DEFAULT_PASSWORD_REQUIREMENTS = {
-  length: 48,
-  required: {
-    lowercase: 1,
-    uppercase: 1,
-    digits: 1,
-    symbols: 0
-  },
-  allowedSymbols: "-_.~!*"
-};
-
-const generatePassword = () => {
-  try {
-    const { length, required, allowedSymbols } = DEFAULT_PASSWORD_REQUIREMENTS;
-
-    const chars = {
-      lowercase: "abcdefghijklmnopqrstuvwxyz",
-      uppercase: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-      digits: "0123456789",
-      symbols: allowedSymbols || "-_.~!*"
-    };
-
-    const parts: string[] = [];
-
-    if (required.lowercase > 0) {
-      parts.push(
-        ...Array(required.lowercase)
-          .fill(0)
-          .map(() => chars.lowercase[randomInt(chars.lowercase.length)])
-      );
-    }
-
-    if (required.uppercase > 0) {
-      parts.push(
-        ...Array(required.uppercase)
-          .fill(0)
-          .map(() => chars.uppercase[randomInt(chars.uppercase.length)])
-      );
-    }
-
-    if (required.digits > 0) {
-      parts.push(
-        ...Array(required.digits)
-          .fill(0)
-          .map(() => chars.digits[randomInt(chars.digits.length)])
-      );
-    }
-
-    if (required.symbols > 0) {
-      parts.push(
-        ...Array(required.symbols)
-          .fill(0)
-          .map(() => chars.symbols[randomInt(chars.symbols.length)])
-      );
-    }
-
-    const requiredTotal = Object.values(required).reduce<number>((a, b) => a + b, 0);
-    const remainingLength = Math.max(length - requiredTotal, 0);
-
-    const allowedChars = Object.entries(chars)
-      .filter(([key]) => required[key as keyof typeof required] > 0)
-      .map(([, value]) => value)
-      .join("");
-
-    parts.push(
-      ...Array(remainingLength)
-        .fill(0)
-        .map(() => allowedChars[randomInt(allowedChars.length)])
-    );
-
-    // shuffle the array to mix up the characters
-    for (let i = parts.length - 1; i > 0; i -= 1) {
-      const j = randomInt(i + 1);
-      [parts[i], parts[j]] = [parts[j], parts[i]];
-    }
-
-    return parts.join("");
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    throw new Error(`Failed to generate password: ${message}`);
-  }
-};
 
 const redactPasswords = (e: unknown, credentials: TSqlCredentialsRotationGeneratedCredentials) => {
   const error = e as Error;
@@ -110,7 +27,10 @@ const redactPasswords = (e: unknown, credentials: TSqlCredentialsRotationGenerat
   return redactedMessage;
 };
 
-export const sqlCredentialsRotationFactory = (secretRotation: TSqlCredentialsRotationWithConnection) => {
+export const sqlCredentialsRotationFactory: TRotationFactory<
+  TSqlCredentialsRotationWithConnection,
+  TSqlCredentialsRotationGeneratedCredentials
+> = (secretRotation) => {
   const {
     connection,
     parameters: { username1, username2 },
@@ -118,7 +38,7 @@ export const sqlCredentialsRotationFactory = (secretRotation: TSqlCredentialsRot
     secretsMapping
   } = secretRotation;
 
-  const validateCredentials = async (credentials: TSqlCredentialsRotationGeneratedCredentials[number]) => {
+  const $validateCredentials = async (credentials: TSqlCredentialsRotationGeneratedCredentials[number]) => {
     const client = await getSqlConnectionClient({
       ...connection,
       credentials: {
@@ -136,7 +56,9 @@ export const sqlCredentialsRotationFactory = (secretRotation: TSqlCredentialsRot
     }
   };
 
-  const issueCredentials: TRotationFactoryIssueCredentials = async (callback) => {
+  const issueCredentials: TRotationFactoryIssueCredentials<TSqlCredentialsRotationGeneratedCredentials> = async (
+    callback
+  ) => {
     const client = await getSqlConnectionClient(connection);
 
     // For SQL, since we get existing users, we change both their passwords
@@ -159,13 +81,16 @@ export const sqlCredentialsRotationFactory = (secretRotation: TSqlCredentialsRot
     }
 
     for await (const credentials of credentialsSet) {
-      await validateCredentials(credentials);
+      await $validateCredentials(credentials);
     }
 
     return callback(credentialsSet[0]);
   };
 
-  const revokeCredentials: TRotationFactoryRevokeCredentials = async (credentialsToRevoke, callback) => {
+  const revokeCredentials: TRotationFactoryRevokeCredentials<TSqlCredentialsRotationGeneratedCredentials> = async (
+    credentialsToRevoke,
+    callback
+  ) => {
     const client = await getSqlConnectionClient(connection);
 
     const revokedCredentials = credentialsToRevoke.map(({ username }) => ({ username, password: generatePassword() }));
@@ -186,7 +111,10 @@ export const sqlCredentialsRotationFactory = (secretRotation: TSqlCredentialsRot
     return callback();
   };
 
-  const rotateCredentials: TRotationFactoryRotateCredentials = async (_, callback) => {
+  const rotateCredentials: TRotationFactoryRotateCredentials<TSqlCredentialsRotationGeneratedCredentials> = async (
+    _,
+    callback
+  ) => {
     const client = await getSqlConnectionClient(connection);
 
     // generate new password for the next active user
@@ -200,12 +128,14 @@ export const sqlCredentialsRotationFactory = (secretRotation: TSqlCredentialsRot
       await client.destroy();
     }
 
-    await validateCredentials(credentials);
+    await $validateCredentials(credentials);
 
     return callback(credentials);
   };
 
-  const getSecretsPayload: TRotationFactoryGetSecretsPayload = (generatedCredentials) => {
+  const getSecretsPayload: TRotationFactoryGetSecretsPayload<TSqlCredentialsRotationGeneratedCredentials> = (
+    generatedCredentials
+  ) => {
     const { username, password } = secretsMapping;
 
     const secrets = [
@@ -226,7 +156,6 @@ export const sqlCredentialsRotationFactory = (secretRotation: TSqlCredentialsRot
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload,
-    validateCredentials
+    getSecretsPayload
   };
 };
