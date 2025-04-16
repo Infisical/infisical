@@ -26,7 +26,8 @@ export const ProjectsSchema = z.object({
   kmsSecretManagerEncryptedDataKey: zodBuffer.nullable().optional(),
   description: z.string().nullable().optional(),
   type: z.string(),
-  enforceCapitalization: z.boolean().default(false)
+  enforceCapitalization: z.boolean().default(false),
+  hasDeleteProtection: z.boolean().default(true).nullable().optional()
 });
 
 export type TProjects = z.infer<typeof ProjectsSchema>;

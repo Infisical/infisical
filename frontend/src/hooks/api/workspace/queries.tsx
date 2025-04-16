@@ -33,6 +33,7 @@ import {
   TGetUpgradeProjectStatusDTO,
   TListProjectIdentitiesDTO,
   ToggleAutoCapitalizationDTO,
+  ToggleDeleteProjectProtectionDTO,
   TSearchProjectsDTO,
   TUpdateWorkspaceIdentityRoleDTO,
   TUpdateWorkspaceUserRoleDTO,
@@ -306,6 +307,25 @@ export const useToggleAutoCapitalization = () => {
   });
 };
 
+export const useToggleDeleteProjectProtection = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Workspace, object, ToggleDeleteProjectProtectionDTO>({
+    mutationFn: async ({ workspaceID, state }) => {
+      const { data } = await apiRequest.post<{ workspace: Workspace }>(
+        `/api/v1/workspace/${workspaceID}/delete-protection`,
+        {
+          hasDeleteProtection: state
+        }
+      );
+      return data.workspace;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
+    }
+  });
+};
+
 export const useUpdateWorkspaceVersionLimit = () => {
   const queryClient = useQueryClient();
 
@@ -316,8 +336,8 @@ export const useUpdateWorkspaceVersionLimit = () => {
       });
       return data.workspace;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
+    onSuccess: (dto) => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace(dto.type) });
     }
   });
 };

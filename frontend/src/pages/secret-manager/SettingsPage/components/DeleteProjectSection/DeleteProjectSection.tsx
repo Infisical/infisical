@@ -144,7 +144,7 @@ export const DeleteProjectSection = () => {
           {(isAllowed) => (
             <Button
               isLoading={isDeleting}
-              isDisabled={!isAllowed || isDeleting}
+              isDisabled={!isAllowed || isDeleting || currentWorkspace?.hasDeleteProtection}
               colorSchema="danger"
               variant="outline_bg"
               type="submit"
