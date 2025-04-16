@@ -70,11 +70,10 @@ Defaults to reflecting the headers specified in the request's Access-Control-Req
 
 The platform utilizes Postgres to persist all of its data and Redis for caching and backgroud tasks
 
-### PostgresSQL
+### PostgreSQL
 
 <Info>
-  The Database user must have **CREATE** privilege to allow database schema
-  creation.
+  Please note that the database user must have **CREATE** privileges along with ability to create and modify tables. This is needed for Infisical to run schema migrations.
 </Info>
 
 <ParamField query="DB_CONNECTION_URI" type="string" default="" required>
