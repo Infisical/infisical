@@ -35,25 +35,17 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           env:
-          {{- if and .Values.postgresql.useExistingPostgresSecret.enabled .Values.postgresql.useExistingPostgresSecret.customURIParameters.enabled }}
-          {{- $pgParams := .Values.postgresql.useExistingPostgresSecret.customURIParameters }}
-          - name: DB_USER
-            valueFrom:
-              secretKeyRef:
-                name: {{ $pgParams.usernameSecret.name }}
-                key: {{ $pgParams.usernameSecret.key }}
+          {{- if .Values.postgresql.customURIParameters.enabled }}
+          {{- $pgParams := .Values.postgresql.customURIParameters }}
           - name: DB_PASSWORD
             valueFrom:
               secretKeyRef:
                 name: {{ $pgParams.passwordSecret.name }}
                 key: {{ $pgParams.passwordSecret.key }}
           - name: DB_CONNECTION_URI
-            {{- $sslParams := "" }}
-            {{- if and $pgParams.ssl.enabled $pgParams.ssl.mode }}
-            {{- $sslParams = printf "?sslmode=%s&sslrootcert=%s" $pgParams.ssl.mode $pgParams.ssl.rootCertPath }}
-            {{- end }}
-            value: "postgresql://$(DB_USER):$(DB_PASSWORD)@{{ $pgParams.host }}:{{ $pgParams.port }}/{{ $pgParams.database }}{{ $sslParams }}"
-          {{- else if .Values.postgresql.useExistingPostgresSecret.enabled }}
+            value: {{ include "infisical.customPostgresDBConnectionString" . }}
+          {{- end }}
+          {{- if .Values.postgresql.useExistingPostgresSecret.enabled }}
           - name: DB_CONNECTION_URI
             valueFrom:
               secretKeyRef:

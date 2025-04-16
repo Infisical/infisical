@@ -91,6 +91,22 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end -}}
 
 {{/*
+Create a PostgreSQL connection string from custom URI parameters
+*/}}
+{{- define "infisical.customPostgresDBConnectionString" -}}
+{{- if .Values.postgresql.customURIParameters.enabled -}}
+{{- $pgParams := .Values.postgresql.customURIParameters -}}
+{{- $sslParams := "" -}}
+{{- if $pgParams.ssl.enabled -}}
+{{- $sslParams = printf "?sslmode=%s&sslrootcert=%s" $pgParams.ssl.mode $pgParams.ssl.rootCertPath -}}
+{{- end -}}
+{{- printf "postgresql://%s:${DB_PASSWORD}@%s:%s/%s%s" $pgParams.username $pgParams.host $pgParams.port $pgParams.database $sslParams -}}
+{{- else -}}
+{{- print "" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Create a fully qualified redis name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
@@ -121,4 +137,20 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- $password := .Values.redis.auth.password -}}
 {{- $serviceName := include "infisical.redisServiceName" . -}}
 {{- printf "redis://default:%s@%s:6379" $password "redis-master" -}}
+{{- end -}}
+
+{{/*
+Create a Redis connection string from custom URI parameters
+*/}}
+{{- define "infisical.customRedisConnectionString" -}}
+{{- if .Values.redis.customURIParameters.enabled -}}
+{{- $redisParams := .Values.redis.customURIParameters -}}
+{{- $usernameSegment := "" -}}
+{{- if $redisParams.username -}}
+{{- $usernameSegment = printf "%s" $redisParams.username -}}
+{{- end -}}
+{{- printf "redis://%s:${REDIS_PASSWORD}@%s:%v" $usernameSegment $redisParams.host $redisParams.port -}}
+{{- else -}}
+{{- print "" -}}
+{{- end -}}
 {{- end -}}
