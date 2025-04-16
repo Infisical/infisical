@@ -39,7 +39,7 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.PostgresCredentials]: true,
   [SecretRotation.MsSqlCredentials]: true,
   [SecretRotation.Auth0ClientSecret]: false,
-  [SecretRotation.AzureClientSecret]: false
+  [SecretRotation.AzureClientSecret]: true
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

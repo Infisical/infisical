@@ -445,7 +445,8 @@ export const secretRotationV2ServiceFactory = ({
       {
         parameters: payload.parameters,
         secretsMapping,
-        connection
+        connection,
+        rotationInterval: payload.rotationInterval
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService

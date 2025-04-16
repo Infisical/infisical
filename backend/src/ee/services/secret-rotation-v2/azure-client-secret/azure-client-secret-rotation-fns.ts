@@ -37,6 +37,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
     await blockLocalAndPrivateIpAddresses(endpoint);
 
     const endDateTime = new Date();
+    console.log({ rotationInterval })
     endDateTime.setDate(endDateTime.getDate() + rotationInterval);
 
     try {

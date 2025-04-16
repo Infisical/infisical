@@ -179,6 +179,7 @@
           "pages": [
             "documentation/platform/secret-rotation/overview",
             "documentation/platform/secret-rotation/auth0-client-secret",
+            "documentation/platform/secret-rotation/azure-client-secret",
             "documentation/platform/secret-rotation/postgres-credentials",
             "documentation/platform/secret-rotation/mssql-credentials"
           ]
@@ -419,6 +420,7 @@
             "integrations/app-connections/aws",
             "integrations/app-connections/azure-app-configuration",
             "integrations/app-connections/azure-key-vault",
+            "integrations/app-connections/azure-client-secrets",
             "integrations/app-connections/camunda",
             "integrations/app-connections/databricks",
             "integrations/app-connections/gcp",
@@ -860,6 +862,19 @@
               ]
             },
             {
+              "group": "Azure Client Secret",
+              "pages": [
+                "api-reference/endpoints/secret-rotations/azure-client-secret/create",
+                "api-reference/endpoints/secret-rotations/azure-client-secret/delete",
+                "api-reference/endpoints/secret-rotations/azure-client-secret/get-by-id",
+                "api-reference/endpoints/secret-rotations/azure-client-secret/get-by-name",
+                "api-reference/endpoints/secret-rotations/azure-client-secret/get-generated-credentials-by-id",
+                "api-reference/endpoints/secret-rotations/azure-client-secret/list",
+                "api-reference/endpoints/secret-rotations/azure-client-secret/rotate-secrets",
+                "api-reference/endpoints/secret-rotations/azure-client-secret/update"
+              ]
+            },
+            {
               "group": "Microsoft SQL Server Credentials",
               "pages": [
                 "api-reference/endpoints/secret-rotations/mssql-credentials/create",
@@ -937,6 +952,18 @@
                 "api-reference/endpoints/app-connections/azure-app-configuration/create",
                 "api-reference/endpoints/app-connections/azure-app-configuration/update",
                 "api-reference/endpoints/app-connections/azure-app-configuration/delete"
+              ]
+            },
+            {
+              "group": "Azure Client Secret",
+              "pages": [
+                "api-reference/endpoints/app-connections/azure-client-secret/list",
+                "api-reference/endpoints/app-connections/azure-client-secret/available",
+                "api-reference/endpoints/app-connections/azure-client-secret/get-by-id",
+                "api-reference/endpoints/app-connections/azure-client-secret/get-by-name",
+                "api-reference/endpoints/app-connections/azure-client-secret/create",
+                "api-reference/endpoints/app-connections/azure-client-secret/update",
+                "api-reference/endpoints/app-connections/azure-client-secret/delete"
               ]
             },
             {
