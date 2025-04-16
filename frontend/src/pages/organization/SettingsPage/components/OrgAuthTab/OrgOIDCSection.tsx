@@ -205,7 +205,25 @@ export const OrgOIDCSection = (): JSX.Element => {
               <span className="text-md text-mineshaft-100">Enable Admin SSO Bypass</span>
               <Tooltip
                 className="max-w-lg"
-                content="When this is enabled, we strongly recommend enforcing MFA at the organization level."
+                content={
+                  <div>
+                    <span>
+                      When this is enabled, we strongly recommend enforcing MFA at the organization
+                      level.
+                    </span>
+                    <p className="mt-4">
+                      In case of a lockout, admins can use the admin login portal{" "}
+                      <a
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline underline-offset-2 hover:text-mineshaft-300"
+                        href={`${window.location.origin}/login/admin`}
+                      >
+                        here.
+                      </a>
+                    </p>
+                  </div>
+                }
               >
                 <FontAwesomeIcon
                   icon={faInfoCircle}
