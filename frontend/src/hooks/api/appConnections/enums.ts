@@ -10,5 +10,6 @@ export enum AppConnection {
   Vercel = "vercel",
   Postgres = "postgres",
   MsSql = "mssql",
-  Camunda = "camunda"
+  Camunda = "camunda",
+  Auth0 = "auth0"
 }

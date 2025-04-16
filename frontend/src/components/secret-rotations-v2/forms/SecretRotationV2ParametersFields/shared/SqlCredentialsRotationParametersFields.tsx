@@ -5,10 +5,10 @@ import { FormControl, Input } from "@app/components/v2";
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secretRotationsV2";
 
-export const SqlRotationParametersFields = () => {
+export const SqlCredentialsRotationParametersFields = () => {
   const { control, watch } = useFormContext<
     TSecretRotationV2Form & {
-      type: SecretRotation.PostgresCredentials; // all sql rotations share these fields
+      type: SecretRotation.PostgresCredentials | SecretRotation.MsSqlCredentials;
     }
   >();
 

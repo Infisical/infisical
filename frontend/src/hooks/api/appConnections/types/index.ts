@@ -1,5 +1,6 @@
 import { AppConnection } from "../enums";
 import { TAppConnectionOption } from "./app-options";
+import { TAuth0Connection } from "./auth0-connection";
 import { TAwsConnection } from "./aws-connection";
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
@@ -13,6 +14,7 @@ import { TPostgresConnection } from "./postgres-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVercelConnection } from "./vercel-connection";
 
+export * from "./auth0-connection";
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
 export * from "./azure-key-vault-connection";
@@ -38,7 +40,8 @@ export type TAppConnection =
   | TVercelConnection
   | TPostgresConnection
   | TMsSqlConnection
-  | TCamundaConnection;
+  | TCamundaConnection
+  | TAuth0Connection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -78,4 +81,5 @@ export type TAppConnectionMap = {
   [AppConnection.Postgres]: TPostgresConnection;
   [AppConnection.MsSql]: TMsSqlConnection;
   [AppConnection.Camunda]: TCamundaConnection;
+  [AppConnection.Auth0]: TAuth0Connection;
 };

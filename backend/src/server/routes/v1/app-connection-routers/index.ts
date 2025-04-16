@@ -1,3 +1,4 @@
+import { registerAuth0ConnectionRouter } from "@app/server/routes/v1/app-connection-routers/auth0-connection-router";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { registerAwsConnectionRouter } from "./aws-connection-router";
@@ -28,5 +29,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Vercel]: registerVercelConnectionRouter,
     [AppConnection.Postgres]: registerPostgresConnectionRouter,
     [AppConnection.MsSql]: registerMsSqlConnectionRouter,
-    [AppConnection.Camunda]: registerCamundaConnectionRouter
+    [AppConnection.Camunda]: registerCamundaConnectionRouter,
+    [AppConnection.Auth0]: registerAuth0ConnectionRouter
   };

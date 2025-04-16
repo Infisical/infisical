@@ -12,5 +12,6 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Vercel]: "Vercel",
   [AppConnection.Postgres]: "PostgreSQL",
   [AppConnection.MsSql]: "Microsoft SQL Server",
-  [AppConnection.Camunda]: "Camunda"
+  [AppConnection.Camunda]: "Camunda",
+  [AppConnection.Auth0]: "Auth0"
 };

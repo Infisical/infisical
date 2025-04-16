@@ -14,6 +14,7 @@ import {
   TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM,
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
+import { auth0ConnectionService } from "@app/services/app-connection/auth0/auth0-connection-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "./app-connection-dal";
@@ -27,6 +28,7 @@ import {
   TUpdateAppConnectionDTO,
   TValidateAppConnectionCredentialsSchema
 } from "./app-connection-types";
+import { ValidateAuth0ConnectionCredentialsSchema } from "./auth0";
 import { ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
@@ -68,7 +70,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Vercel]: ValidateVercelConnectionCredentialsSchema,
   [AppConnection.Postgres]: ValidatePostgresConnectionCredentialsSchema,
   [AppConnection.MsSql]: ValidateMsSqlConnectionCredentialsSchema,
-  [AppConnection.Camunda]: ValidateCamundaConnectionCredentialsSchema
+  [AppConnection.Camunda]: ValidateCamundaConnectionCredentialsSchema,
+  [AppConnection.Auth0]: ValidateAuth0ConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -442,6 +445,7 @@ export const appConnectionServiceFactory = ({
     humanitec: humanitecConnectionService(connectAppConnectionById),
     terraformCloud: terraformCloudConnectionService(connectAppConnectionById),
     camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
-    vercel: vercelConnectionService(connectAppConnectionById)
+    vercel: vercelConnectionService(connectAppConnectionById),
+    auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
   };
 };
