@@ -127,9 +127,12 @@ export const WindmillSyncFns = {
   syncSecrets: async (secretSync: TWindmillSyncWithCredentials, secretMap: TSecretMap) => {
     const {
       connection,
-      destinationConfig: { workspace, path },
+      destinationConfig: { path },
       syncOptions: { disableSecretDeletion }
     } = secretSync;
+
+    // url needs to be lowercase
+    const workspace = secretSync.destinationConfig.workspace.toLowerCase();
 
     const instanceUrl = await getWindmillInstanceUrl(connection);
 
@@ -186,8 +189,11 @@ export const WindmillSyncFns = {
   removeSecrets: async (secretSync: TWindmillSyncWithCredentials, secretMap: TSecretMap) => {
     const {
       connection,
-      destinationConfig: { workspace, path }
+      destinationConfig: { path }
     } = secretSync;
+
+    // url needs to be lowercase
+    const workspace = secretSync.destinationConfig.workspace.toLowerCase();
 
     const instanceUrl = await getWindmillInstanceUrl(connection);
 
@@ -216,8 +222,11 @@ export const WindmillSyncFns = {
   getSecrets: async (secretSync: TWindmillSyncWithCredentials) => {
     const {
       connection,
-      destinationConfig: { workspace, path }
+      destinationConfig: { path }
     } = secretSync;
+
+    // url needs to be lowercase
+    const workspace = secretSync.destinationConfig.workspace.toLowerCase();
 
     const instanceUrl = await getWindmillInstanceUrl(connection);
 
