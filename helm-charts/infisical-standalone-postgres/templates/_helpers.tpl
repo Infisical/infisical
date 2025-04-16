@@ -96,11 +96,21 @@ Create a PostgreSQL connection string from custom URI parameters
 {{- define "infisical.customPostgresDBConnectionString" -}}
 {{- if .Values.postgresql.customURIParameters.enabled -}}
 {{- $pgParams := .Values.postgresql.customURIParameters -}}
+{{- if and $pgParams.username $pgParams.host $pgParams.port $pgParams.database -}}
 {{- $sslParams := "" -}}
 {{- if $pgParams.ssl.enabled -}}
+{{- if and $pgParams.ssl.mode $pgParams.ssl.rootCertPath -}}
 {{- $sslParams = printf "?sslmode=%s&sslrootcert=%s" $pgParams.ssl.mode $pgParams.ssl.rootCertPath -}}
+{{- else -}}
+{{- $sslParams = printf "?sslmode=disable" -}}
+{{- end -}}
+{{- else -}}
+{{- $sslParams = printf "?sslmode=disable" -}}
 {{- end -}}
 {{- printf "postgresql://%s:${DB_PASSWORD}@%s:%v/%s%s" $pgParams.username $pgParams.host $pgParams.port $pgParams.database $sslParams -}}
+{{- else -}}
+{{- fail "PostgreSQL custom URI parameters missing required fields (username, host, port, database)" -}}
+{{- end -}}
 {{- else -}}
 {{- print "" -}}
 {{- end -}}
@@ -145,11 +155,15 @@ Create a Redis connection string from custom URI parameters
 {{- define "infisical.customRedisConnectionString" -}}
 {{- if .Values.redis.customURIParameters.enabled -}}
 {{- $redisParams := .Values.redis.customURIParameters -}}
-{{- $usernameSegment := "" -}}
+{{- if and $redisParams.host $redisParams.port -}}
 {{- if $redisParams.username -}}
-{{- $usernameSegment = printf "%s" $redisParams.username -}}
+{{- printf "redis://%s:${REDIS_PASSWORD}@%s:%v" $redisParams.username $redisParams.host $redisParams.port -}}
+{{- else -}}
+{{- printf "redis://${REDIS_PASSWORD}@%s:%v" $redisParams.host $redisParams.port -}}
 {{- end -}}
-{{- printf "redis://%s:${REDIS_PASSWORD}@%s:%v" $usernameSegment $redisParams.host $redisParams.port -}}
+{{- else -}}
+{{- fail "Redis custom URI parameters missing required fields (host, port)" -}}
+{{- end -}}
 {{- else -}}
 {{- print "" -}}
 {{- end -}}
