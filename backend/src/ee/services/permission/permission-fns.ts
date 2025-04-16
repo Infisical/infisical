@@ -121,14 +121,18 @@ function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
 function validateOrgSSO(
   actorAuthMethod: ActorAuthMethod,
   isOrgSsoEnforced: TOrganizations["authEnforced"],
+  isOrgSsoBypassEnabled: TOrganizations["enableBypassOrgAuth"],
   orgRole: OrgMembershipRole
 ) {
   if (actorAuthMethod === undefined) {
     throw new UnauthorizedError({ name: "No auth method defined" });
   }
 
+  if (isOrgSsoEnforced && isOrgSsoBypassEnabled && orgRole === OrgMembershipRole.Admin) {
+    return;
+  }
+
   if (
-    orgRole !== OrgMembershipRole.Admin &&
     isOrgSsoEnforced &&
     actorAuthMethod !== null &&
     !isAuthMethodSaml(actorAuthMethod) &&

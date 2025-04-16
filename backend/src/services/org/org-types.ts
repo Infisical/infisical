@@ -73,6 +73,7 @@ export type TUpdateOrgDTO = {
     enforceMfa: boolean;
     selectedMfaMethod: MfaMethod;
     allowSecretSharingOutsideOrganization: boolean;
+    enableBypassOrgAuth: boolean;
   }>;
 } & TOrgPermission;
 

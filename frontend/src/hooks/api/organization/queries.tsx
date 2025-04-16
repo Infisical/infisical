@@ -110,7 +110,8 @@ export const useUpdateOrg = () => {
       defaultMembershipRoleSlug,
       enforceMfa,
       selectedMfaMethod,
-      allowSecretSharingOutsideOrganization
+      allowSecretSharingOutsideOrganization,
+      enableBypassOrgAuth
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
         name,
@@ -120,7 +121,8 @@ export const useUpdateOrg = () => {
         defaultMembershipRoleSlug,
         enforceMfa,
         selectedMfaMethod,
-        allowSecretSharingOutsideOrganization
+        allowSecretSharingOutsideOrganization,
+        enableBypassOrgAuth
       });
     },
     onSuccess: () => {

@@ -139,7 +139,12 @@ export const permissionServiceFactory = ({
       throw new ForbiddenRequestError({ name: "You are not logged into this organization" });
     }
 
-    validateOrgSSO(authMethod, membership.orgAuthEnforced, membership.role as OrgMembershipRole);
+    validateOrgSSO(
+      authMethod,
+      membership.orgAuthEnforced,
+      membership.enableBypassOrgAuth,
+      membership.role as OrgMembershipRole
+    );
 
     const finalPolicyRoles = [{ role: membership.role, permissions: membership.permissions }].concat(
       membership?.groups?.map(({ role, customRolePermission }) => ({
@@ -226,7 +231,12 @@ export const permissionServiceFactory = ({
       throw new ForbiddenRequestError({ name: "You are not logged into this organization" });
     }
 
-    validateOrgSSO(authMethod, userProjectPermission.orgAuthEnforced, userProjectPermission.orgRole);
+    validateOrgSSO(
+      authMethod,
+      userProjectPermission.orgAuthEnforced,
+      userProjectPermission.enableBypassOrgAuth,
+      userProjectPermission.orgRole
+    );
 
     if (actionProjectType !== ActionProjectType.Any && actionProjectType !== userProjectPermission.projectType) {
       throw new BadRequestError({

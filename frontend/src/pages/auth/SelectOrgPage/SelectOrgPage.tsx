@@ -69,7 +69,10 @@ export const SelectOrganizationPage = () => {
 
   const handleSelectOrganization = useCallback(
     async (organization: Organization) => {
-      if (organization.authEnforced && organization.userRole !== OrgMembershipRole.Admin) {
+      const canBypassOrgAuth =
+        organization.enableBypassOrgAuth && organization.userRole === OrgMembershipRole.Admin;
+
+      if (organization.authEnforced && !canBypassOrgAuth) {
         // org has an org-level auth method enabled (e.g. SAML)
         // -> logout + redirect to SAML SSO
         await logout.mutateAsync();

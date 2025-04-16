@@ -82,6 +82,28 @@ export const OrgOIDCSection = (): JSX.Element => {
     }
   };
 
+  const handleEnableBypassOrgAuthToggle = async (value: boolean) => {
+    try {
+      if (!currentOrg?.id) return;
+      if (!subscription?.oidcSSO) {
+        handlePopUpOpen("upgradePlan");
+        return;
+      }
+
+      await updateOrg({
+        orgId: currentOrg?.id,
+        enableBypassOrgAuth: value
+      });
+
+      createNotification({
+        text: `Successfully ${value ? "enabled" : "disabled"} admin bypassing of org-level auth`,
+        type: "success"
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleOIDCGroupManagement = async (value: boolean) => {
     try {
       if (!currentOrg?.id) return;
@@ -160,35 +182,6 @@ export const OrgOIDCSection = (): JSX.Element => {
         <div className="mb-2 flex justify-between">
           <div className="flex items-center gap-1">
             <span className="text-md text-mineshaft-100">Enforce OIDC SSO</span>
-            <Tooltip
-              className="max-w-lg"
-              content={
-                <div>
-                  <span>
-                    Login enforcement is only applied to non-admin users in order to prevent total
-                    lockout from the organization when the OIDC provider is unavailable.
-                  </span>
-
-                  <p className="mt-4">
-                    In case of a lockout, use the admin login portal{" "}
-                    <a
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline underline-offset-2 hover:text-mineshaft-300"
-                      href={`${window.location.origin}/admin/login`}
-                    >
-                      here.
-                    </a>
-                  </p>
-                </div>
-              }
-            >
-              <FontAwesomeIcon
-                icon={faInfoCircle}
-                size="sm"
-                className="mt-0.5 inline-block text-mineshaft-400"
-              />
-            </Tooltip>
           </div>
           <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
             {(isAllowed) => (
@@ -202,9 +195,44 @@ export const OrgOIDCSection = (): JSX.Element => {
           </OrgPermissionCan>
         </div>
         <p className="text-sm text-mineshaft-300">
-          <span>Enforce non-admin users to authenticate via OIDC to access this organization.</span>
+          <span>Enforce users to authenticate via OIDC to access this organization.</span>
         </p>
       </div>
+      {currentOrg?.authEnforced && (
+        <div className="py-4">
+          <div className="mb-2 flex justify-between">
+            <div className="flex items-center gap-1">
+              <span className="text-md text-mineshaft-100">Enable Admin SSO Bypass</span>
+              <Tooltip
+                className="max-w-lg"
+                content="When this is enabled, we strongly recommend enforcing MFA at the organization level."
+              >
+                <FontAwesomeIcon
+                  icon={faInfoCircle}
+                  size="sm"
+                  className="mt-0.5 inline-block text-mineshaft-400"
+                />
+              </Tooltip>
+            </div>
+            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+              {(isAllowed) => (
+                <Switch
+                  id="allow-admin-bypass"
+                  isChecked={currentOrg?.enableBypassOrgAuth ?? false}
+                  onCheckedChange={(value) => handleEnableBypassOrgAuthToggle(value)}
+                  isDisabled={!isAllowed}
+                />
+              )}
+            </OrgPermissionCan>
+          </div>
+          <p className="text-sm text-mineshaft-300">
+            <span>
+              Allow organization admins to bypass OIDC enforcement when SSO is unavailable,
+              misconfigured, or inaccessible.
+            </span>
+          </p>
+        </div>
+      )}
       <div className="py-4">
         <div className="mb-2 flex justify-between">
           <div className="text-md flex items-center text-mineshaft-100">
