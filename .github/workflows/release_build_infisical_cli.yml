@@ -145,3 +145,9 @@ jobs:
           INFISICAL_CLI_REPO_SIGNING_KEY_ID: ${{ secrets.INFISICAL_CLI_REPO_SIGNING_KEY_ID }}
           AWS_ACCESS_KEY_ID: ${{ secrets.INFISICAL_CLI_REPO_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.INFISICAL_CLI_REPO_AWS_SECRET_ACCESS_KEY }}
+      - name: Invalidate Cloudfront cache
+        run: aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths '/deb/dists/stable/*'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.INFISICAL_CLI_REPO_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.INFISICAL_CLI_REPO_AWS_SECRET_ACCESS_KEY }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.INFISICAL_CLI_REPO_CLOUDFRONT_DISTRIBUTION_ID }}
