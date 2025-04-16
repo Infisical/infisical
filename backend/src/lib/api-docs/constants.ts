@@ -2006,6 +2006,10 @@ export const SecretRotations = {
     },
     AUTH0_CLIENT_SECRET: {
       clientId: "The client ID of the Auth0 Application to rotate the client secret for."
+    },
+    AZURE_CLIENT_SECRET: {
+      appId: "The ID of the Azure Application to rotate the client secret for.",
+      appName: "The name of the Azure Application to rotate the client secret for."
     }
   },
   SECRETS_MAPPING: {
@@ -2014,6 +2018,10 @@ export const SecretRotations = {
       password: "The name of the secret that the generated password will be mapped to."
     },
     AUTH0_CLIENT_SECRET: {
+      clientId: "The name of the secret that the client ID will be mapped to.",
+      clientSecret: "The name of the secret that the rotated client secret will be mapped to."
+    },
+    AZURE_CLIENT_SECRET: {
       clientId: "The name of the secret that the client ID will be mapped to.",
       clientSecret: "The name of the secret that the rotated client secret will be mapped to."
     }

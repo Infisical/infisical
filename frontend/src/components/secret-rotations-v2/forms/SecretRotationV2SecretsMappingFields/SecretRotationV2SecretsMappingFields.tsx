@@ -4,12 +4,14 @@ import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { TSecretRotationV2Form } from "../schemas";
 import { Auth0ClientSecretRotationSecretsMappingFields } from "./Auth0ClientSecretRotationSecretsMappingFields";
+import { AzureClientSecretRotationSecretsMappingFields } from "./AzureClientSecretRotationSecretsMappingFields";
 import { SqlCredentialsRotationSecretsMappingFields } from "./shared";
 
 const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.PostgresCredentials]: SqlCredentialsRotationSecretsMappingFields,
   [SecretRotation.MsSqlCredentials]: SqlCredentialsRotationSecretsMappingFields,
-  [SecretRotation.Auth0ClientSecret]: Auth0ClientSecretRotationSecretsMappingFields
+  [SecretRotation.Auth0ClientSecret]: Auth0ClientSecretRotationSecretsMappingFields,
+  [SecretRotation.AzureClientSecret]: AzureClientSecretRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

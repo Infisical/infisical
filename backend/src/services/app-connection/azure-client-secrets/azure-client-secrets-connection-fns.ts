@@ -2,15 +2,22 @@ import { AxiosError, AxiosResponse } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
-import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
+import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import {
+  decryptAppConnectionCredentials,
+  encryptAppConnectionCredentials,
+  getAppConnectionMethodName
+} from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
 import { AzureClientSecretsConnectionMethod } from "./azure-client-secrets-connection-enums";
 import {
   ExchangeCodeAzureResponse,
-  TAzureClientSecretsConnectionConfig
+  TAzureClientSecretsConnectionConfig,
+  TAzureClientSecretsConnectionCredentials
 } from "./azure-client-secrets-connection-types";
 
 export const getAzureClientSecretsConnectionListItem = () => {
@@ -22,6 +29,72 @@ export const getAzureClientSecretsConnectionListItem = () => {
     methods: Object.values(AzureClientSecretsConnectionMethod) as [AzureClientSecretsConnectionMethod.OAuth],
     oauthClientId: INF_APP_CONNECTION_AZURE_CLIENT_ID
   };
+};
+
+export const getAzureConnectionAccessToken = async (
+  connectionId: string,
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+) => {
+  const appCfg = getConfig();
+  if (!appCfg.INF_APP_CONNECTION_AZURE_CLIENT_ID || !appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET) {
+    throw new BadRequestError({
+      message: `Azure environment variables have not been configured`
+    });
+  }
+
+  const appConnection = await appConnectionDAL.findById(connectionId);
+
+  if (!appConnection) {
+    throw new NotFoundError({ message: `Connection with ID '${connectionId}' not found` });
+  }
+
+  if (appConnection.app !== AppConnection.AzureClientSecrets) {
+    throw new BadRequestError({
+      message: `Connection with ID '${connectionId}' is not an Azure Client Secrets connection`
+    });
+  }
+
+  const credentials = (await decryptAppConnectionCredentials({
+    orgId: appConnection.orgId,
+    kmsService,
+    encryptedCredentials: appConnection.encryptedCredentials
+  })) as TAzureClientSecretsConnectionCredentials;
+
+  const { expiresAt, refreshToken } = credentials;
+
+  // get new token if expired or less than 5 minutes until expiry
+  if (Date.now() < expiresAt - 300000) {
+    return credentials.accessToken;
+  }
+
+  const { data } = await request.post<ExchangeCodeAzureResponse>(
+    IntegrationUrls.AZURE_TOKEN_URL.replace("common", credentials.tenantId || "common"),
+    new URLSearchParams({
+      grant_type: "refresh_token",
+      scope: `openid offline_access https://graph.microsoft.com/.default`,
+      client_id: appCfg.INF_APP_CONNECTION_AZURE_CLIENT_ID,
+      client_secret: appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+      refresh_token: refreshToken
+    })
+  );
+
+  const updatedCredentials = {
+    ...credentials,
+    accessToken: data.access_token,
+    expiresAt: Date.now() + data.expires_in * 1000,
+    refreshToken: data.refresh_token
+  };
+
+  const encryptedCredentials = await encryptAppConnectionCredentials({
+    credentials: updatedCredentials,
+    orgId: appConnection.orgId,
+    kmsService
+  });
+
+  await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials });
+
+  return data.access_token;
 };
 
 export const validateAzureClientSecretsConnectionCredentials = async (config: TAzureClientSecretsConnectionConfig) => {
@@ -44,10 +117,10 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
       new URLSearchParams({
         grant_type: "authorization_code",
         code: inputCredentials.code,
-        scope: `openid offline_access https://azconfig.io/.default`,
+        scope: `openid offline_access https://graph.microsoft.com/.default`,
         client_id: INF_APP_CONNECTION_AZURE_CLIENT_ID,
         client_secret: INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
-        redirect_uri: `${SITE_URL}/organization/app-connections/azure/oauth/callback`
+        redirect_uri: `${SITE_URL}/organization/app-connections/azure-client-secrets/oauth/callback`
       })
     );
   } catch (e: unknown) {

@@ -33,6 +33,7 @@ import { ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
 import { ValidateAzureClientSecretsConnectionCredentialsSchema } from "./azure-client-secrets";
+import { azureClientSecretsConnectionService } from "./azure-client-secrets/azure-client-secrets-service";
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
@@ -448,6 +449,7 @@ export const appConnectionServiceFactory = ({
     terraformCloud: terraformCloudConnectionService(connectAppConnectionById),
     camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     vercel: vercelConnectionService(connectAppConnectionById),
-    auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
+    auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    azureClientSecrets: azureClientSecretsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
   };
 };

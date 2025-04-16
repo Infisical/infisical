@@ -26,7 +26,11 @@ export type TAzureClientSecretsConnectionConfig = DiscriminativePick<
   orgId: string;
 };
 
-export type ExchangeCodeAzureResponse = {
+export type TAzureClientSecretsConnectionCredentials = z.infer<
+  typeof AzureClientSecretsConnectionOAuthOutputCredentialsSchema
+>;
+
+export interface ExchangeCodeAzureResponse {
   token_type: string;
   scope: string;
   expires_in: number;
@@ -34,8 +38,29 @@ export type ExchangeCodeAzureResponse = {
   access_token: string;
   refresh_token: string;
   id_token: string;
-};
+}
 
-export type TAzureClientSecretsConnectionCredentials = z.infer<
-  typeof AzureClientSecretsConnectionOAuthOutputCredentialsSchema
->;
+export interface TAzureRegisteredApp {
+  id: string;
+  appId: string;
+  displayName: string;
+  description?: string;
+  createdDateTime: string;
+  identifierUris?: string[];
+  signInAudience?: string;
+}
+
+export interface TAzureListRegisteredAppsResponse {
+  "@odata.context": string;
+  "@odata.nextLink"?: string;
+  value: TAzureRegisteredApp[];
+}
+
+export interface TAzureClientSecret {
+  keyId: string;
+  displayName?: string;
+  startDateTime: string;
+  endDateTime: string;
+  secretText?: string;
+}
+

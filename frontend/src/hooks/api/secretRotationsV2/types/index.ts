@@ -5,6 +5,11 @@ import {
   TAuth0ClientSecretRotationOption
 } from "@app/hooks/api/secretRotationsV2/types/auth0-client-secret-rotation";
 import {
+  TAzureClientSecretRotation,
+  TAzureClientSecretRotationGeneratedCredentialsResponse,
+  TAzureClientSecretRotationOption
+} from "@app/hooks/api/secretRotationsV2/types/azure-client-secret-rotation";
+import {
   TMsSqlCredentialsRotation,
   TMsSqlCredentialsRotationGeneratedCredentialsResponse
 } from "@app/hooks/api/secretRotationsV2/types/mssql-credentials-rotation";
@@ -20,13 +25,15 @@ export type TSecretRotationV2 = (
   | TPostgresCredentialsRotation
   | TMsSqlCredentialsRotation
   | TAuth0ClientSecretRotation
+  | TAzureClientSecretRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
 
 export type TSecretRotationV2Option =
   | TSqlCredentialsRotationOption
-  | TAuth0ClientSecretRotationOption;
+  | TAuth0ClientSecretRotationOption
+  | TAzureClientSecretRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -35,7 +42,8 @@ export type TSecretRotationV2Response = { secretRotation: TSecretRotationV2 };
 export type TViewSecretRotationGeneratedCredentialsResponse =
   | TPostgresCredentialsRotationGeneratedCredentialsResponse
   | TMsSqlCredentialsRotationGeneratedCredentialsResponse
-  | TAuth0ClientSecretRotationGeneratedCredentialsResponse;
+  | TAuth0ClientSecretRotationGeneratedCredentialsResponse
+  | TAzureClientSecretRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -82,10 +90,12 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.PostgresCredentials]: TSqlCredentialsRotationOption;
   [SecretRotation.MsSqlCredentials]: TSqlCredentialsRotationOption;
   [SecretRotation.Auth0ClientSecret]: TAuth0ClientSecretRotationOption;
+  [SecretRotation.AzureClientSecret]: TAzureClientSecretRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.PostgresCredentials]: TPostgresCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.MsSqlCredentials]: TMsSqlCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.Auth0ClientSecret]: TAuth0ClientSecretRotationGeneratedCredentialsResponse;
+  [SecretRotation.AzureClientSecret]: TAzureClientSecretRotationGeneratedCredentialsResponse;
 };
