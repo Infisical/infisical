@@ -12,7 +12,7 @@ import RedisStore from "connect-redis";
 import { z } from "zod";
 
 import { OidcConfigsSchema } from "@app/db/schemas";
-import { OIDCConfigurationType } from "@app/ee/services/oidc/oidc-config-types";
+import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
 import { getConfig } from "@app/lib/config/env";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -30,7 +30,8 @@ const SanitizedOidcConfigSchema = OidcConfigsSchema.pick({
   orgId: true,
   isActive: true,
   allowedEmailDomains: true,
-  manageGroupMemberships: true
+  manageGroupMemberships: true,
+  jwtSignatureAlgorithm: true
 });
 
 export const registerOidcRouter = async (server: FastifyZodProvider) => {
@@ -170,7 +171,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           isActive: true,
           orgId: true,
           allowedEmailDomains: true,
-          manageGroupMemberships: true
+          manageGroupMemberships: true,
+          jwtSignatureAlgorithm: true
         }).extend({
           clientId: z.string(),
           clientSecret: z.string()
@@ -225,7 +227,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           clientId: z.string().trim(),
           clientSecret: z.string().trim(),
           isActive: z.boolean(),
-          manageGroupMemberships: z.boolean().optional()
+          manageGroupMemberships: z.boolean().optional(),
+          jwtSignatureAlgorithm: z.nativeEnum(OIDCJWTSignatureAlgorithm).optional()
         })
         .partial()
         .merge(z.object({ orgSlug: z.string() })),
@@ -292,7 +295,11 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           clientSecret: z.string().trim(),
           isActive: z.boolean(),
           orgSlug: z.string().trim(),
-          manageGroupMemberships: z.boolean().optional().default(false)
+          manageGroupMemberships: z.boolean().optional().default(false),
+          jwtSignatureAlgorithm: z
+            .nativeEnum(OIDCJWTSignatureAlgorithm)
+            .optional()
+            .default(OIDCJWTSignatureAlgorithm.RS256)
         })
         .superRefine((data, ctx) => {
           if (data.configurationType === OIDCConfigurationType.CUSTOM) {

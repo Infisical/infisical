@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import { organizationKeys } from "../organization/queries";
 import { oidcConfigKeys } from "./queries";
+import { OIDCJWTSignatureAlgorithm } from "./types";
 
 export const useUpdateOIDCConfig = () => {
   const queryClient = useQueryClient();
@@ -21,7 +22,8 @@ export const useUpdateOIDCConfig = () => {
       clientSecret,
       isActive,
       orgSlug,
-      manageGroupMemberships
+      manageGroupMemberships,
+      jwtSignatureAlgorithm
     }: {
       allowedEmailDomains?: string;
       issuer?: string;
@@ -36,6 +38,7 @@ export const useUpdateOIDCConfig = () => {
       configurationType?: string;
       orgSlug: string;
       manageGroupMemberships?: boolean;
+      jwtSignatureAlgorithm?: OIDCJWTSignatureAlgorithm;
     }) => {
       const { data } = await apiRequest.patch("/api/v1/sso/oidc/config", {
         issuer,
@@ -50,7 +53,8 @@ export const useUpdateOIDCConfig = () => {
         orgSlug,
         clientSecret,
         isActive,
-        manageGroupMemberships
+        manageGroupMemberships,
+        jwtSignatureAlgorithm
       });
 
       return data;
@@ -78,7 +82,8 @@ export const useCreateOIDCConfig = () => {
       clientSecret,
       isActive,
       orgSlug,
-      manageGroupMemberships
+      manageGroupMemberships,
+      jwtSignatureAlgorithm
     }: {
       issuer?: string;
       configurationType: string;
@@ -93,6 +98,7 @@ export const useCreateOIDCConfig = () => {
       orgSlug: string;
       allowedEmailDomains?: string;
       manageGroupMemberships?: boolean;
+      jwtSignatureAlgorithm?: OIDCJWTSignatureAlgorithm;
     }) => {
       const { data } = await apiRequest.post("/api/v1/sso/oidc/config", {
         issuer,
@@ -107,7 +113,8 @@ export const useCreateOIDCConfig = () => {
         clientSecret,
         isActive,
         orgSlug,
-        manageGroupMemberships
+        manageGroupMemberships,
+        jwtSignatureAlgorithm
       });
 
       return data;
