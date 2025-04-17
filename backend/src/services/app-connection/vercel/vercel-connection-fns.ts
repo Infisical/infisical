@@ -28,7 +28,7 @@ export const validateVercelConnectionCredentials = async (config: TVercelConnect
   const { credentials: inputCredentials } = config;
 
   try {
-    await request.get<VercelApp[]>(`${IntegrationUrls.VERCEL_API_URL}/v2/user`, {
+    await request.get(`${IntegrationUrls.VERCEL_API_URL}/v2/user`, {
       headers: {
         Authorization: `Bearer ${inputCredentials.apiToken}`
       }
