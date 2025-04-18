@@ -317,7 +317,9 @@ export enum EventType {
   DELETE_SECRET_ROTATION = "delete-secret-rotation",
   SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
 
-  PROJECT_ACCESS_REQUEST = "project-access-request"
+  PROJECT_ACCESS_REQUEST = "project-access-request",
+  PROJECT_ASSUME_PRIVILEGE = "project-assume-privileges",
+  PROJECT_ASSUME_PRIVILEGE_EXIT = "project-assume-privileges-exit"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -2425,6 +2427,26 @@ interface ProjectAccessRequestEvent {
   };
 }
 
+interface ProjectAssumePrivilegesEvent {
+  type: EventType.PROJECT_ASSUME_PRIVILEGE;
+  metadata: {
+    projectId: string;
+    requesterId: string;
+    requesterEmail: string;
+    targetActorType: ActorType;
+    targetActorId: string;
+  };
+}
+
+interface ProjectAssumePrivilegesExitEvent {
+  type: EventType.PROJECT_ASSUME_PRIVILEGE_EXIT;
+  metadata: {
+    projectId: string;
+    requesterId: string;
+    requesterEmail: string;
+  };
+}
+
 interface SetupKmipEvent {
   type: EventType.SETUP_KMIP;
   metadata: {
@@ -2727,6 +2749,8 @@ export type Event =
   | KmipOperationLocateEvent
   | KmipOperationRegisterEvent
   | ProjectAccessRequestEvent
+  | ProjectAssumePrivilegesEvent
+  | ProjectAssumePrivilegesExitEvent
   | CreateSecretRequestEvent
   | SecretApprovalRequestReview
   | GetSecretRotationsEvent

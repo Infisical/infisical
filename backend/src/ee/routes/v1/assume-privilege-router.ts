@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { writeLimit } from "@app/server/config/rateLimiter";
@@ -37,6 +38,7 @@ export const registerAssumePrivilegeRouter = async (server: FastifyZodProvider) 
           projectPermission: req.permission,
           tokenVersionId: req.auth.tokenVersionId
         });
+
         const appCfg = getConfig();
         void res.setCookie("infisical-project-assume-privileges", payload.assumePrivilegesToken, {
           httpOnly: true,
@@ -44,6 +46,22 @@ export const registerAssumePrivilegeRouter = async (server: FastifyZodProvider) 
           sameSite: "strict",
           secure: appCfg.HTTPS_ENABLED
         });
+
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          event: {
+            type: EventType.PROJECT_ASSUME_PRIVILEGE,
+            metadata: {
+              projectId: req.params.projectId,
+              requesterEmail: req.auth.user.username,
+              requesterId: req.auth.user.id,
+              targetActorType: req.body.actorType,
+              targetActorId: req.body.actorId
+            }
+          }
+        });
+
         return { message: "Successfully assumed role" };
       }
 
@@ -76,6 +94,19 @@ export const registerAssumePrivilegeRouter = async (server: FastifyZodProvider) 
           path: "/",
           sameSite: "strict",
           secure: appCfg.HTTPS_ENABLED
+        });
+
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          event: {
+            type: EventType.PROJECT_ASSUME_PRIVILEGE_EXIT,
+            metadata: {
+              projectId: req.params.projectId,
+              requesterEmail: req.auth.user.username,
+              requesterId: req.auth.user.id
+            }
+          }
         });
         return { message: "Successfully exited assumed role" };
       }
