@@ -12,7 +12,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Humanitec]: "Humanitec",
   [SecretSync.TerraformCloud]: "Terraform Cloud",
   [SecretSync.Camunda]: "Camunda",
-  [SecretSync.Vercel]: "Vercel"
+  [SecretSync.Vercel]: "Vercel",
+  [SecretSync.Windmill]: "Windmill"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -26,5 +27,6 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Humanitec]: AppConnection.Humanitec,
   [SecretSync.TerraformCloud]: AppConnection.TerraformCloud,
   [SecretSync.Camunda]: AppConnection.Camunda,
-  [SecretSync.Vercel]: AppConnection.Vercel
+  [SecretSync.Vercel]: AppConnection.Vercel,
+  [SecretSync.Windmill]: AppConnection.Windmill
 };

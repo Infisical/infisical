@@ -11,5 +11,6 @@ export enum AppConnection {
   Postgres = "postgres",
   MsSql = "mssql",
   Camunda = "camunda",
+  Windmill = "windmill",
   Auth0 = "auth0"
 }

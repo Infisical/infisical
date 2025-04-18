@@ -59,6 +59,10 @@ export type TCamundaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Camunda;
 };
 
+export type TWindmillConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Windmill;
+};
+
 export type TAuth0ConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Auth0;
 };
@@ -76,6 +80,7 @@ export type TAppConnectionOption =
   | TPostgresConnectionOption
   | TMsSqlConnectionOption
   | TCamundaConnectionOption
+  | TWindmillConnectionOption
   | TAuth0ConnectionOption;
 
 export type TAppConnectionOptionMap = {
@@ -91,5 +96,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Postgres]: TPostgresConnectionOption;
   [AppConnection.MsSql]: TMsSqlConnectionOption;
   [AppConnection.Camunda]: TCamundaConnectionOption;
+  [AppConnection.Windmill]: TWindmillConnectionOption;
   [AppConnection.Auth0]: TAuth0ConnectionOption;
 };

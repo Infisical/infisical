@@ -24,6 +24,7 @@ import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
+import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -83,6 +84,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Vercel:
       DestinationFieldsComponent = <VercelSyncReviewFields />;
+      break;
+    case SecretSync.Windmill:
+      DestinationFieldsComponent = <WindmillSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

@@ -76,6 +76,7 @@ type TSecretSyncQueueFactoryDep = {
     | "findBySecretKeys"
     | "bulkUpdate"
     | "deleteMany"
+    | "invalidateSecretCacheByProjectId"
   >;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
   secretSyncDAL: Pick<TSecretSyncDALFactory, "findById" | "find" | "updateById" | "deleteById">;
@@ -381,6 +382,9 @@ export const secretSyncQueueFactory = ({
         secrets: secretsToUpdate
       });
     }
+
+    if (secretsToUpdate.length || secretsToCreate.length)
+      await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
 
     return importedSecretMap;
   };

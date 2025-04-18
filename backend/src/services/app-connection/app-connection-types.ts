@@ -75,6 +75,12 @@ import {
   TVercelConnectionConfig,
   TVercelConnectionInput
 } from "./vercel";
+import {
+  TValidateWindmillConnectionCredentialsSchema,
+  TWindmillConnection,
+  TWindmillConnectionConfig,
+  TWindmillConnectionInput
+} from "./windmill";
 
 export type TAppConnection = { id: string } & (
   | TAwsConnection
@@ -89,6 +95,7 @@ export type TAppConnection = { id: string } & (
   | TPostgresConnection
   | TMsSqlConnection
   | TCamundaConnection
+  | TWindmillConnection
   | TAuth0Connection
 );
 
@@ -109,6 +116,7 @@ export type TAppConnectionInput = { id: string } & (
   | TPostgresConnectionInput
   | TMsSqlConnectionInput
   | TCamundaConnectionInput
+  | TWindmillConnectionInput
   | TAuth0ConnectionInput
 );
 
@@ -132,9 +140,10 @@ export type TAppConnectionConfig =
   | TDatabricksConnectionConfig
   | THumanitecConnectionConfig
   | TTerraformCloudConnectionConfig
+  | TVercelConnectionConfig
   | TSqlConnectionConfig
   | TCamundaConnectionConfig
-  | TVercelConnectionConfig
+  | TWindmillConnectionConfig
   | TAuth0ConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -148,8 +157,9 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidatePostgresConnectionCredentialsSchema
   | TValidateMsSqlConnectionCredentialsSchema
   | TValidateCamundaConnectionCredentialsSchema
-  | TValidateVercelConnectionCredentialsSchema
   | TValidateTerraformCloudConnectionCredentialsSchema
+  | TValidateVercelConnectionCredentialsSchema
+  | TValidateWindmillConnectionCredentialsSchema
   | TValidateAuth0ConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
