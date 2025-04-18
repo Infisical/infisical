@@ -35,9 +35,9 @@ export const ProjectLayout = () => {
   const { subscription } = useSubscription();
   const navigate = useNavigate();
   const hasIdentityLimitCrossed =
-    subscription?.identityLimit && subscription?.identitiesUsed > subscription?.identityLimit;
+    subscription?.identityLimit && subscription?.identitiesUsed > subscription.identityLimit + 10;
   const hasUserLimitCrossed =
-    subscription?.memberLimit && subscription?.membersUsed > subscription?.memberLimit;
+    subscription?.memberLimit && subscription?.membersUsed > subscription.memberLimit + 10;
   const shouldUpgrade = Boolean(hasUserLimitCrossed || hasIdentityLimitCrossed);
   let upgradeText = "";
   if (hasUserLimitCrossed) {
