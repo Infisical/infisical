@@ -7,25 +7,17 @@ export async function up(knex: Knex): Promise<void> {
   const hasDefaultHostCaCol = await knex.schema.hasColumn(TableName.ProjectSshConfig, "defaultHostSshCaId");
 
   if (hasDefaultUserCaCol && hasDefaultHostCaCol) {
-    await knex.transaction(async (trx) => {
-      await trx.schema.alterTable(TableName.ProjectSshConfig, (t) => {
-        t.dropForeign(["defaultUserSshCaId"]);
-        t.dropForeign(["defaultHostSshCaId"]);
-      });
-      await trx.schema.alterTable(TableName.ProjectSshConfig, (t) => {
-        // allow nullable (does not wipe existing values)
-        t.uuid("defaultUserSshCaId").nullable().alter();
-        t.uuid("defaultHostSshCaId").nullable().alter();
-        // re-add with SET NULL behavior (previously CASCADE)
-        t.foreign("defaultUserSshCaId")
-          .references("id")
-          .inTable(TableName.SshCertificateAuthority)
-          .onDelete("SET NULL");
-        t.foreign("defaultHostSshCaId")
-          .references("id")
-          .inTable(TableName.SshCertificateAuthority)
-          .onDelete("SET NULL");
-      });
+    await knex.schema.alterTable(TableName.ProjectSshConfig, (t) => {
+      t.dropForeign(["defaultUserSshCaId"]);
+      t.dropForeign(["defaultHostSshCaId"]);
+    });
+    await knex.schema.alterTable(TableName.ProjectSshConfig, (t) => {
+      // allow nullable (does not wipe existing values)
+      t.uuid("defaultUserSshCaId").nullable().alter();
+      t.uuid("defaultHostSshCaId").nullable().alter();
+      // re-add with SET NULL behavior (previously CASCADE)
+      t.foreign("defaultUserSshCaId").references("id").inTable(TableName.SshCertificateAuthority).onDelete("SET NULL");
+      t.foreign("defaultHostSshCaId").references("id").inTable(TableName.SshCertificateAuthority).onDelete("SET NULL");
     });
   }
 

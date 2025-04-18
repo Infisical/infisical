@@ -139,60 +139,63 @@ Once Infisical SSH is configured by an administrator, users can SSH to the remot
     <Step title="Connect to the remote host">
         The `infisical ssh connect` command can be used in either interactive or non-interactive mode to connect to a remote host.
 
-        ### Interactive Mode
-        In interactive mode, you'll first need to authenticate with Infisical by running:
+        <Tabs>
+            <Tab title="Interactive Mode">
+                In interactive mode, you'll first need to authenticate with Infisical by running:
 
-        ```bash
-        infisical login
-        ```
+                ```bash
+                infisical login
+                ```
 
-        Then simply run:
+                Then simply run:
 
-        ```bash
-        infisical ssh connect
-        ```
+                ```bash
+                infisical ssh connect
+                ```
 
-        You'll be prompted to select an SSH Host from a list of accessible hosts; this is based on project membership and login mappings configured on hosts by
-        the administrator.
+                You'll be prompted to select an SSH Host from a list of accessible hosts; this is based on project membership and login mappings configured on hosts by
+                the administrator.
 
-        ```bash
-        Use the arrow keys to navigate: ↓ ↑ → ←
-        ? Select an SSH Host:
-        ▸ ec2-12-345-678-910.ap-northeast-1.compute.amazonaws.com
-        ```
+                ```bash
+                Use the arrow keys to navigate: ↓ ↑ → ←
+                ? Select an SSH Host:
+                ▸ ec2-12-345-678-910.ap-northeast-1.compute.amazonaws.com
+                ```
 
-        After selecting a host, you'll be prompted to select a login user from a list of allowed login users:
+                After selecting a host, you'll be prompted to select a login user from a list of allowed login users:
 
-        ```bash
-        ? Select Login User:
-        ▸ ec2-user
-        ```
+                ```bash
+                ? Select Login User:
+                ▸ ec2-user
+                ```
 
-        If successful, you should be able to SSH to the remote host.
+                If successful, you should be able to SSH to the remote host.
 
-        ```bash
-        ✔ ec2-54-199-104-116.ap-northeast-1.compute.amazonaws.com
-        ✔ ec2-user
-        ✔ SSH credentials successfully added to agent
-        Connecting to ec2-user@ec2-12-345-678-910.ap-northeast-1.compute.amazonaws.com...
-        ```
+                ```bash
+                ✔ ec2-54-199-104-116.ap-northeast-1.compute.amazonaws.com
+                ✔ ec2-user
+                ✔ SSH credentials successfully added to agent
+                Connecting to ec2-user@ec2-12-345-678-910.ap-northeast-1.compute.amazonaws.com...
+                ```
+            </Tab>
+            <Tab title="Non-Interactive Mode">
+                For CI/CD pipelines or automation scenarios, you can use the non-interactive mode with an Infisical token:
 
-        ### Non-Interactive Mode
-        For CI/CD pipelines or automation scenarios, you can use the non-interactive mode with an Infisical token:
+                ```bash
+                infisical ssh connect \
+                  --hostname ec2-12-345-678-910.ap-northeast-1.compute.amazonaws.com \
+                  --loginUser ec2-user \
+                  --outFilePath ~/.ssh/id_rsa-cert.pub \
+                  --token <your-infisical-token>
+                ```
 
-        ```bash
-        infisical ssh connect \
-          --hostname ec2-12-345-678-910.ap-northeast-1.compute.amazonaws.com \
-          --loginUser ec2-user \
-          --outFilePath ~/.ssh/id_rsa-cert.pub \
-          --token <your-infisical-token>
-        ```
-
-        This will:
-        - Connect to the specified hostname
-        - Use the specified login user
-        - Write the SSH credentials to the specified path instead of adding them to the SSH agent
-        - Authenticate using the provided Infisical token
+                This will:
+                - Connect to the specified hostname
+                - Use the specified login user
+                - Write the SSH credentials to the specified path instead of adding them to the SSH agent
+                - Authenticate using the provided Infisical token
+            </Tab>
+        </Tabs>
     </Step>
 
 </Steps>
