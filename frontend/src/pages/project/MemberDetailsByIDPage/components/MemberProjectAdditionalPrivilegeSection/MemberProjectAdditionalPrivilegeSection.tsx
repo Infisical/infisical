@@ -23,6 +23,7 @@ import {
 } from "@app/components/v2";
 import {
   ProjectPermissionActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProjectPermission,
   useUser
@@ -90,7 +91,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
               privilegeId={(popUp?.modifyPrivilege?.data as { id: string })?.id}
               isDisabled={
                 isOwnProjectMembershipDetails ||
-                permission.cannot(ProjectPermissionActions.Edit, ProjectPermissionSub.Member)
+                permission.cannot(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member)
               }
             />
           </motion.div>

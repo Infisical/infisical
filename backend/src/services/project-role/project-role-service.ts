@@ -1,5 +1,6 @@
 import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
+import { requestContext } from "@fastify/request-context";
 
 import { ActionProjectType, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -12,10 +13,12 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 
-import { ActorAuthMethod } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
+import { TUserDALFactory } from "../user/user-dal";
 import { TProjectRoleDALFactory } from "./project-role-dal";
 import { getPredefinedRoles } from "./project-role-fns";
 import {
@@ -29,6 +32,8 @@ import {
 
 type TProjectRoleServiceFactoryDep = {
   projectRoleDAL: TProjectRoleDALFactory;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
+  userDAL: Pick<TUserDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getUserProjectPermission">;
   identityProjectMembershipRoleDAL: TIdentityProjectMembershipRoleDALFactory;
@@ -47,7 +52,9 @@ export const projectRoleServiceFactory = ({
   permissionService,
   identityProjectMembershipRoleDAL,
   projectUserMembershipRoleDAL,
-  projectDAL
+  projectDAL,
+  identityDAL,
+  userDAL
 }: TProjectRoleServiceFactoryDep) => {
   const createRole = async ({ data, actor, actorId, actorAuthMethod, actorOrgId, filter }: TCreateRoleDTO) => {
     let projectId = "";
@@ -220,14 +227,36 @@ export const projectRoleServiceFactory = ({
     actorAuthMethod: ActorAuthMethod,
     actorOrgId: string | undefined
   ) => {
-    const { permission, membership } = await permissionService.getUserProjectPermission({
-      userId,
+    const { permission, membership } = await permissionService.getProjectPermission({
+      actor: ActorType.USER,
+      actorId: userId,
       projectId,
-      authMethod: actorAuthMethod,
-      userOrgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    return { permissions: packRules(permission.rules), membership };
+    // just to satisfy ts
+    if (!("roles" in membership)) throw new BadRequestError({ message: "Service token not allowed" });
+
+    const projectAssumeRole = requestContext.get("projectAssumeRole");
+    const isImpersonating = projectAssumeRole?.projectId === projectId;
+    const impersonation = isImpersonating
+      ? {
+          actorId: projectAssumeRole?.actorId,
+          actorType: projectAssumeRole?.actorType,
+          actorName: "",
+          actorEmail: ""
+        }
+      : undefined;
+    if (impersonation?.actorType === ActorType.IDENTITY) {
+      const identityDetails = await identityDAL.findById(impersonation.actorId);
+      impersonation.actorName = identityDetails.name;
+    } else if (impersonation?.actorType === ActorType.USER) {
+      const userDetails = await userDAL.findById(impersonation?.actorId);
+      impersonation.actorName = `${userDetails?.firstName} ${userDetails?.lastName || ""}`;
+      impersonation.actorEmail = userDetails?.email || "";
+    }
+    return { permissions: packRules(permission.rules), membership, impersonation };
   };
 
   return { createRole, updateRole, deleteRole, listRoles, getUserPermission, getRoleBySlug };

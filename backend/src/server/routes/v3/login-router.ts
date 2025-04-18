@@ -77,6 +77,13 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         secure: cfg.HTTPS_ENABLED
       });
 
+      void res.cookie("infisical-project-assume-privileges", "", {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: cfg.HTTPS_ENABLED
+      });
+
       return { token: tokens.access, isMfaEnabled: false };
     }
   });
@@ -125,6 +132,13 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       });
 
       void res.setCookie("jid", data.token.refresh, {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: appCfg.HTTPS_ENABLED
+      });
+
+      void res.cookie("infisical-project-assume-privileges", "", {
         httpOnly: true,
         path: "/",
         sameSite: "strict",

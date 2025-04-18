@@ -18,6 +18,7 @@ import {
   TPermission,
   TProjectRole
 } from "./types";
+import { ActorType } from "../auditLogs/enums";
 
 const $glob: FieldInstruction<string> = {
   type: "field",
@@ -137,6 +138,12 @@ export const fetchUserProjectPermissions = async ({
     data: {
       permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[];
       membership: Omit<TProjectMembership, "roles"> & { roles: { role: string }[] };
+      impersonation?: {
+        actorId: string;
+        actorType: ActorType;
+        actorEmail: string;
+        actorName: string;
+      };
     };
   }>(`/api/v1/workspace/${workspaceId}/permissions`, {});
 

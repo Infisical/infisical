@@ -551,13 +551,26 @@ export const permissionServiceFactory = ({
   };
 
   const getProjectPermission = async <T extends ActorType>({
-    actor,
-    actorId,
+    actor: inputActor,
+    actorId: inputActorId,
     projectId,
     actorAuthMethod,
     actorOrgId,
     actionProjectType
   }: TGetProjectPermissionArg): Promise<TProjectPermissionRT<T>> => {
+    let actor = inputActor;
+    let actorId = inputActorId;
+    const projectAssumeRole = requestContext.get("projectAssumeRole");
+    if (
+      projectAssumeRole &&
+      actor === ActorType.USER &&
+      actorId === projectAssumeRole.userId &&
+      projectId === projectAssumeRole.projectId
+    ) {
+      actor = projectAssumeRole.actorType;
+      actorId = projectAssumeRole.actorId;
+    }
+
     switch (actor) {
       case ActorType.USER:
         return getUserProjectPermission({

@@ -33,6 +33,13 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
         secure: appCfg.HTTPS_ENABLED
       });
 
+      void res.cookie("infisical-project-assume-privileges", "", {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: appCfg.HTTPS_ENABLED
+      });
+
       return { message: "Successfully logged out" };
     }
   });

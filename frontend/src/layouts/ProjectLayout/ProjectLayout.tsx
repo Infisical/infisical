@@ -11,7 +11,7 @@ import {
   MenuItem,
   TBreadcrumbFormat
 } from "@app/components/v2";
-import { useSubscription, useWorkspace } from "@app/context";
+import { useProjectPermission, useSubscription, useWorkspace } from "@app/context";
 import {
   useGetAccessRequestsCount,
   useGetSecretApprovalRequestCount,
@@ -20,6 +20,7 @@ import {
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { ProjectSelect } from "./components/ProjectSelect";
+import { AssumePrivilegeModeBanner } from "./components/AssumePrivilegeModeBanner";
 
 // This is a generic layout shared by all types of projects.
 // If the product layout differs significantly, create a new layout as needed.
@@ -29,6 +30,7 @@ export const ProjectLayout = () => {
   const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
   const { t } = useTranslation();
+  const { impersonation } = useProjectPermission();
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
 
@@ -267,6 +269,7 @@ export const ProjectLayout = () => {
           </div>
         </div>
       </div>
+      {impersonation && <AssumePrivilegeModeBanner />}
       <div className="z-[200] flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">

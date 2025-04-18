@@ -577,6 +577,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canEdit = action.includes(ProjectPermissionMemberActions.Edit);
       const canDelete = action.includes(ProjectPermissionMemberActions.Delete);
       const canGrantPrivileges = action.includes(ProjectPermissionMemberActions.GrantPrivileges);
+      const canAssumePrivileges = action.includes(ProjectPermissionMemberActions.AssumePrivileges);
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
@@ -587,6 +588,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canDelete) formVal[subject]![0][ProjectPermissionMemberActions.Delete] = true;
       if (canGrantPrivileges)
         formVal[subject]![0][ProjectPermissionMemberActions.GrantPrivileges] = true;
+      if (canAssumePrivileges)
+        formVal[subject]![0][ProjectPermissionMemberActions.AssumePrivileges] = true;
       return;
     }
 
@@ -596,6 +599,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canEdit = action.includes(ProjectPermissionIdentityActions.Edit);
       const canDelete = action.includes(ProjectPermissionIdentityActions.Delete);
       const canGrantPrivileges = action.includes(ProjectPermissionIdentityActions.GrantPrivileges);
+      const canAssumePrivileges = action.includes(
+        ProjectPermissionIdentityActions.AssumePrivileges
+      );
 
       if (!formVal[subject]) formVal[subject] = [{ conditions: [] }];
 
@@ -606,6 +612,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canDelete) formVal[subject]![0][ProjectPermissionIdentityActions.Delete] = true;
       if (canGrantPrivileges)
         formVal[subject]![0][ProjectPermissionIdentityActions.GrantPrivileges] = true;
+      if (canAssumePrivileges)
+        formVal[subject]![0][ProjectPermissionIdentityActions.AssumePrivileges] = true;
       return;
     }
 
@@ -904,7 +912,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Add", value: ProjectPermissionMemberActions.Create },
       { label: "Modify", value: ProjectPermissionMemberActions.Edit },
       { label: "Remove", value: ProjectPermissionMemberActions.Delete },
-      { label: "Grant Privileges", value: ProjectPermissionMemberActions.GrantPrivileges }
+      { label: "Grant Privileges", value: ProjectPermissionMemberActions.GrantPrivileges },
+      { label: "Assume Privileges", value: ProjectPermissionMemberActions.AssumePrivileges }
     ]
   },
   [ProjectPermissionSub.Identity]: {
@@ -914,7 +923,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Add", value: ProjectPermissionIdentityActions.Create },
       { label: "Modify", value: ProjectPermissionIdentityActions.Edit },
       { label: "Remove", value: ProjectPermissionIdentityActions.Delete },
-      { label: "Grant Privileges", value: ProjectPermissionIdentityActions.GrantPrivileges }
+      { label: "Grant Privileges", value: ProjectPermissionIdentityActions.GrantPrivileges },
+      { label: "Assume Privileges", value: ProjectPermissionIdentityActions.AssumePrivileges }
     ]
   },
   [ProjectPermissionSub.Groups]: {
