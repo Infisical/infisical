@@ -28,7 +28,7 @@ func main() {
     AutoTokenRefresh: true, // Wether or not to let the SDK handle the access token lifecycle. Defaults to true if not specified.
 	})
 
-	_, err = client.Auth().UniversalAuthLogin("YOUR_CLIENT_ID", "YOUR_CLIENT_SECRET")
+	_, err := client.Auth().UniversalAuthLogin("YOUR_CLIENT_ID", "YOUR_CLIENT_SECRET")
 
 	if err != nil {
 		fmt.Printf("Authentication failed: %v", err)
