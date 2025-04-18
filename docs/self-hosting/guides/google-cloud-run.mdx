@@ -1,6 +1,6 @@
 ---
 title: "Google Cloud Run"
-description: "Learn how to delpoy Infisical to Google Cloud Run."
+description: "Learn how to deploy Infisical to Google Cloud Run."
 ---
 
 This guide will provide step by step instructions on how to self-host Infisical using Cloud Run.
@@ -12,7 +12,7 @@ This guide will provide step by step instructions on how to self-host Infisical 
     Visit [Docker Hub](https://hub.docker.com/r/infisical/infisical/tags) and select a version of Infisical image you would like to deploy.
     Then paste the url of the specific Infisical Docker image you would like to use within the `Container image URL` field.
 
-    ![setting cloud run docker image](/images/self-hosting/guides/google-cloud-run/cloud-run-container-image.png)
+    ![Cloud Run container image settings UI](/images/self-hosting/guides/google-cloud-run/cloud-run-container-image.png)
     
     Remember to replace `<version>` with the docker image tag of your choice.
   </Step>
@@ -24,7 +24,7 @@ This guide will provide step by step instructions on how to self-host Infisical 
     Once you have added the required environment variables to the `Environment Variables` section within Cloud Run, 
     create the container to get Infisical up and running.
 
-    ![setting container environment variables](/images/self-hosting/guides/google-cloud-run/container-env-vars.png)
+    ![Cloud Run container environment variables settings UI](/images/self-hosting/guides/google-cloud-run/container-env-vars.png)
 
     <Warning>
       The above environment variable values are only to be used as an example and should not be used in production 
