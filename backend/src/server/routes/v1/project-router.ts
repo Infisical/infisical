@@ -644,7 +644,17 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId
       });
 
-      // TODO: consider adding audit logs
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: sshConfig.projectId,
+        event: {
+          type: EventType.GET_PROJECT_SSH_CONFIG,
+          metadata: {
+            id: sshConfig.id,
+            projectId: sshConfig.projectId
+          }
+        }
+      });
 
       return sshConfig;
     }
@@ -654,7 +664,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     url: "/:workspaceId/ssh-config",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     schema: {
       params: z.object({
@@ -684,6 +694,20 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: sshConfig.projectId,
+        event: {
+          type: EventType.UPDATE_PROJECT_SSH_CONFIG,
+          metadata: {
+            id: sshConfig.id,
+            projectId: sshConfig.projectId,
+            defaultUserSshCaId: sshConfig.defaultUserSshCaId,
+            defaultHostSshCaId: sshConfig.defaultHostSshCaId
+          }
+        }
       });
 
       return sshConfig;
