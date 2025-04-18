@@ -816,15 +816,15 @@ func sshConnect(cmd *cobra.Command, args []string) {
 	}
 
 	if outFilePath != "" {
-		err = os.WriteFile(privateKeyPath, []byte(creds.PrivateKey), 0600)
+		err = writeToFile(privateKeyPath, creds.PrivateKey, 0600)
 		if err != nil {
 			util.HandleError(err, "Failed to write private key")
 		}
-		err = os.WriteFile(publicKeyPath, []byte(creds.PublicKey), 0644)
+		err = writeToFile(publicKeyPath, creds.PublicKey, 0644)
 		if err != nil {
 			util.HandleError(err, "Failed to write public key")
 		}
-		err = os.WriteFile(signedKeyPath, []byte(creds.SignedKey), 0644)
+		err = writeToFile(signedKeyPath, creds.SignedKey, 0644)
 		if err != nil {
 			util.HandleError(err, "Failed to write signed cert")
 		}
