@@ -15,8 +15,8 @@ import {
 
 const schema = z
   .object({
-    defaultUserSshCaId: z.string().optional(),
-    defaultHostSshCaId: z.string().optional()
+    defaultUserSshCaId: z.string(),
+    defaultHostSshCaId: z.string()
   })
   .required();
 
@@ -40,8 +40,8 @@ export const ProjectSshConfigCasSection = () => {
   useEffect(() => {
     if (sshConfig) {
       reset({
-        defaultUserSshCaId: sshConfig.defaultUserSshCaId || undefined,
-        defaultHostSshCaId: sshConfig.defaultHostSshCaId || undefined
+        defaultUserSshCaId: sshConfig.defaultUserSshCaId || "",
+        defaultHostSshCaId: sshConfig.defaultHostSshCaId || ""
       });
     }
   }, [sshConfig]);
