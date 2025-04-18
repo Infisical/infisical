@@ -29,7 +29,8 @@ import { SanitizedProjectSchema } from "../sanitizedSchemas";
 
 const projectWithEnv = SanitizedProjectSchema.extend({
   _id: z.string(),
-  environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
+  environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array(),
+  kmsSecretManagerKeyId: z.string().nullable().optional()
 });
 
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
