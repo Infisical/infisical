@@ -1,7 +1,5 @@
-import { faAws, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { faEllipsis, faLock, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faLock, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -9,10 +7,6 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   EmptyState,
   Table,
   TableContainer,
@@ -31,9 +25,9 @@ import {
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useGetExternalKmsList, useRemoveExternalKms } from "@app/hooks/api";
-import { ExternalKmsProvider } from "@app/hooks/api/kms/types";
 
 import { AddExternalKmsForm } from "./AddExternalKmsForm";
+import { ExternalKmsItem } from "./ExternalKmsItem";
 import { UpdateExternalKmsForm } from "./UpdateExternalKmsForm";
 
 export const OrgEncryptionTab = withPermission(
@@ -102,6 +96,7 @@ export const OrgEncryptionTab = withPermission(
               <Tr>
                 <Td>Provider</Td>
                 <Td>Alias</Td>
+                <Td>ID</Td>
               </Tr>
             </THead>
             <TBody>
@@ -115,78 +110,12 @@ export const OrgEncryptionTab = withPermission(
               )}
               {!isExternalKmsListLoading &&
                 externalKmsList?.map((kms) => (
-                  <Tr key={kms.id}>
-                    <Td className="flex max-w-xs items-center overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
-                      {kms.externalKms.provider === ExternalKmsProvider.Aws && (
-                        <FontAwesomeIcon icon={faAws} />
-                      )}
-                      {kms.externalKms.provider === ExternalKmsProvider.Gcp && (
-                        <FontAwesomeIcon icon={faGoogle} />
-                      )}
-                      <div className="ml-2">{kms.externalKms.provider.toUpperCase()}</div>
-                    </Td>
-                    <Td>{kms.name}</Td>
-                    <Td>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild className="rounded-lg">
-                          <div className="flex justify-end hover:text-primary-400 data-[state=open]:text-primary-400">
-                            <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                          </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="p-1">
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Edit}
-                            an={OrgPermissionSubjects.Kms}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                disabled={!isAllowed}
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (subscription && !subscription?.externalKms) {
-                                    handlePopUpOpen("upgradePlan");
-                                    return;
-                                  }
-
-                                  handlePopUpOpen("editExternalKms", {
-                                    kmsId: kms.id
-                                  });
-                                }}
-                              >
-                                Edit
-                              </DropdownMenuItem>
-                            )}
-                          </OrgPermissionCan>
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Delete}
-                            an={OrgPermissionSubjects.Kms}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                disabled={!isAllowed}
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("removeExternalKms", {
-                                    name: kms.name,
-                                    kmsId: kms.id,
-                                    provider: kms.externalKms.provider
-                                  });
-                                }}
-                              >
-                                Delete
-                              </DropdownMenuItem>
-                            )}
-                          </OrgPermissionCan>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </Td>
-                  </Tr>
+                  <ExternalKmsItem
+                    key={kms.id}
+                    kms={kms}
+                    handlePopUpOpen={handlePopUpOpen}
+                    subscription={subscription}
+                  />
                 ))}
             </TBody>
           </Table>
