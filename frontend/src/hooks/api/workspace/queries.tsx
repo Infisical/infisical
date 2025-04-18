@@ -34,6 +34,7 @@ import {
   TListProjectIdentitiesDTO,
   ToggleAutoCapitalizationDTO,
   ToggleDeleteProjectProtectionDTO,
+  TProjectSshConfig,
   TSearchProjectsDTO,
   TUpdateWorkspaceIdentityRoleDTO,
   TUpdateWorkspaceUserRoleDTO,
@@ -885,5 +886,19 @@ export const useGetWorkspaceSlackConfig = ({ workspaceId }: { workspaceId: strin
       return data;
     },
     enabled: Boolean(workspaceId)
+  });
+};
+
+export const useGetProjectSshConfig = (projectId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getProjectSshConfig(projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TProjectSshConfig>(
+        `/api/v1/workspace/${projectId}/ssh-config`
+      );
+
+      return data;
+    },
+    enabled: Boolean(projectId)
   });
 };

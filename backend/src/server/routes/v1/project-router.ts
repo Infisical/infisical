@@ -6,6 +6,7 @@ import {
   ProjectMembershipsSchema,
   ProjectRolesSchema,
   ProjectSlackConfigsSchema,
+  ProjectSshConfigsSchema,
   ProjectType,
   SecretFoldersSchema,
   SortDirection,
@@ -609,6 +610,83 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId
       });
       return { serviceTokenData };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:workspaceId/ssh-config",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: ProjectSshConfigsSchema.pick({
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          projectId: true,
+          defaultUserSshCaId: true,
+          defaultHostSshCaId: true
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const sshConfig = await server.services.project.getProjectSshConfig({
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId
+      });
+
+      // TODO: consider adding audit logs
+
+      return sshConfig;
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:workspaceId/ssh-config",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        defaultUserSshCaId: z.string().optional(),
+        defaultHostSshCaId: z.string().optional()
+      }),
+      response: {
+        200: ProjectSshConfigsSchema.pick({
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          projectId: true,
+          defaultUserSshCaId: true,
+          defaultHostSshCaId: true
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const sshConfig = await server.services.project.updateProjectSshConfig({
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        ...req.body
+      });
+
+      return sshConfig;
     }
   });
 
