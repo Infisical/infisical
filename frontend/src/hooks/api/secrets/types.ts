@@ -42,7 +42,7 @@ export type SecretV3RawSanitized = {
   comment?: string;
   reminderRepeatDays?: number | null;
   reminderNote?: string | null;
-  reminderRecipients?: string[] | null;
+  reminderRecipients?: string[];
   tags?: WsTag[];
   createdAt: string;
   updatedAt: string;
