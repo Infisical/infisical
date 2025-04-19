@@ -87,12 +87,13 @@ export const CreateReminderForm = ({
     // On initial load, filter the members to only include the recipients
     if (members.length) {
       const filteredMembers = members.filter((m) => recipients?.includes(m.id));
-      reset({
-        recipients: filteredMembers.map((m) => ({
+      setValue(
+        "recipients",
+        filteredMembers.map((m) => ({
           label: m.user.username || m.user.email,
           value: m.user.id
         }))
-      });
+      );
     }
   }, [members, isOpen]);
 
