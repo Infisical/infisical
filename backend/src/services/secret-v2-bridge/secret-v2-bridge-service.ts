@@ -536,7 +536,11 @@ export const secretV2BridgeServiceFactory = ({
         id: updatedSecret[0].id,
         ...inputSecret
       },
-      oldSecret: secret,
+      oldSecret: {
+        id: secret.id,
+        secretReminderNote: secret.reminderNote,
+        secretReminderRepeatDays: secret.reminderRepeatDays
+      },
       projectId
     });
 

@@ -214,6 +214,7 @@ import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-f
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
+import { secretReminderRecipientsDALFactory } from "@app/services/secret-reminder-recipients/secret-reminder-recipients-dal";
 import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sharing-dal";
 import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { secretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
@@ -417,6 +418,7 @@ export const registerRoutes = async (
   const orgGatewayConfigDAL = orgGatewayConfigDALFactory(db);
   const gatewayDAL = gatewayDALFactory(db);
   const projectGatewayDAL = projectGatewayDALFactory(db);
+  const secretReminderRecipientsDAL = secretReminderRecipientsDALFactory(db);
 
   const secretRotationV2DAL = secretRotationV2DALFactory(db, folderDAL);
 
@@ -721,6 +723,7 @@ export const registerRoutes = async (
     projectKeyDAL,
     projectRoleDAL,
     groupProjectDAL,
+    secretReminderRecipientsDAL,
     licenseService
   });
   const projectUserAdditionalPrivilegeService = projectUserAdditionalPrivilegeServiceFactory({
@@ -954,6 +957,7 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     projectKeyDAL,
     projectUserMembershipRoleDAL,
+    secretReminderRecipientsDAL,
     orgService,
     resourceMetadataDAL,
     secretSyncQueue

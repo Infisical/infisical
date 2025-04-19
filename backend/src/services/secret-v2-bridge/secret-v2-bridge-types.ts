@@ -94,6 +94,7 @@ export type TUpdateSecretDTO = TProjectPermission & {
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
+  secretReminderRecipients?: string[] | null;
   metadata?: {
     source?: string;
   };

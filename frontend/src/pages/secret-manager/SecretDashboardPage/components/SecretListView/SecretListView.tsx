@@ -85,6 +85,7 @@ export const SecretListView = ({
       comment,
       reminderRepeatDays,
       reminderNote,
+      reminderRecipients,
       tags,
       skipMultilineEncoding,
       newKey,
@@ -96,6 +97,7 @@ export const SecretListView = ({
       comment: string;
       reminderRepeatDays: number | null;
       reminderNote: string | null;
+      reminderRecipients?: string[] | null;
       tags: string[];
       skipMultilineEncoding: boolean;
       newKey: string;
@@ -131,6 +133,7 @@ export const SecretListView = ({
         secretComment: comment,
         secretReminderRepeatDays: reminderRepeatDays,
         secretReminderNote: reminderNote,
+        secretReminderRecipients: reminderRecipients,
         skipMultilineEncoding,
         secretMetadata
       });
@@ -172,6 +175,7 @@ export const SecretListView = ({
         comment,
         reminderRepeatDays,
         reminderNote,
+        reminderRecipients,
         secretMetadata,
         isReminderEvent
       } = modSecret;
@@ -189,6 +193,7 @@ export const SecretListView = ({
             "skipMultilineEncoding",
             "reminderRepeatDays",
             "reminderNote",
+            "reminderRecipients",
             "secretMetadata"
           ] as const
         ).every((el) => orgSecret[el] === modSecret[el]) && isSameTags;
@@ -224,6 +229,7 @@ export const SecretListView = ({
             comment,
             reminderRepeatDays,
             reminderNote,
+            reminderRecipients,
             secretId: orgSecret.id,
             newKey: hasKeyChanged ? key : undefined,
             skipMultilineEncoding: modSecret.skipMultilineEncoding,

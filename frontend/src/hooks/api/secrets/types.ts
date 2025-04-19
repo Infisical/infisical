@@ -42,6 +42,7 @@ export type SecretV3RawSanitized = {
   comment?: string;
   reminderRepeatDays?: number | null;
   reminderNote?: string | null;
+  reminderRecipients?: string[] | null;
   tags?: WsTag[];
   createdAt: string;
   updatedAt: string;
@@ -177,6 +178,7 @@ export type TUpdateSecretsV3DTO = {
   secretReminderNote?: string | null;
   tagIds?: string[];
   secretMetadata?: { key: string; value: string }[];
+  secretReminderRecipients?: string[] | null;
 };
 
 export type TDeleteSecretsV3DTO = {

@@ -1786,6 +1786,7 @@ export const secretServiceFactory = ({
     tagIds,
     secretReminderNote,
     secretReminderRepeatDays,
+    secretReminderRecipients,
     metadata,
     secretComment,
     newSecretName,
@@ -1828,6 +1829,7 @@ export const secretServiceFactory = ({
                 tagIds,
                 reminderNote: secretReminderNote,
                 reminderRepeatDays: secretReminderRepeatDays,
+                secretReminderRecipients,
                 secretMetadata
               }
             ]
@@ -1837,8 +1839,9 @@ export const secretServiceFactory = ({
       }
       const secret = await secretV2BridgeService.updateSecret({
         secretReminderRepeatDays,
-        skipMultilineEncoding,
         secretReminderNote,
+        secretReminderRecipients,
+        skipMultilineEncoding,
         tagIds,
         secretComment,
         secretPath,

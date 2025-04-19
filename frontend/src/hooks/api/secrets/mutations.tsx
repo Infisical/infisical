@@ -83,6 +83,7 @@ export const useUpdateSecretV3 = ({
       secretComment,
       secretReminderRepeatDays,
       secretReminderNote,
+      secretReminderRecipients,
       newSecretName,
       skipMultilineEncoding,
       secretMetadata
@@ -93,6 +94,7 @@ export const useUpdateSecretV3 = ({
         type,
         secretReminderNote,
         secretReminderRepeatDays,
+        secretReminderRecipients,
         secretPath,
         skipMultilineEncoding,
         newSecretName,
