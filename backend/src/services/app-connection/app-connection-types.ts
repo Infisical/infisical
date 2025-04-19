@@ -57,6 +57,12 @@ import {
   THumanitecConnectionInput,
   TValidateHumanitecConnectionCredentialsSchema
 } from "./humanitec";
+import {
+  TLdapConnection,
+  TLdapConnectionConfig,
+  TLdapConnectionInput,
+  TValidateLdapConnectionCredentialsSchema
+} from "./ldap";
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import {
   TPostgresConnection,
@@ -97,6 +103,7 @@ export type TAppConnection = { id: string } & (
   | TCamundaConnection
   | TWindmillConnection
   | TAuth0Connection
+  | TLdapConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -118,6 +125,7 @@ export type TAppConnectionInput = { id: string } & (
   | TCamundaConnectionInput
   | TWindmillConnectionInput
   | TAuth0ConnectionInput
+  | TLdapConnectionInput
 );
 
 export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput;
@@ -144,7 +152,8 @@ export type TAppConnectionConfig =
   | TSqlConnectionConfig
   | TCamundaConnectionConfig
   | TWindmillConnectionConfig
-  | TAuth0ConnectionConfig;
+  | TAuth0ConnectionConfig
+  | TLdapConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -160,7 +169,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateTerraformCloudConnectionCredentialsSchema
   | TValidateVercelConnectionCredentialsSchema
   | TValidateWindmillConnectionCredentialsSchema
-  | TValidateAuth0ConnectionCredentialsSchema;
+  | TValidateAuth0ConnectionCredentialsSchema
+  | TValidateLdapConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
