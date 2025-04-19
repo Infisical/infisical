@@ -21,7 +21,7 @@ export async function up(knex: Knex): Promise<void> {
       table.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
 
       table.index("secretId");
-      table.unique(["secretId", "userId", "projectId"]);
+      table.unique(["secretId", "userId"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.SecretReminderRecipients);
