@@ -419,14 +419,14 @@ export const orgServiceFactory = ({
       if (samlCfg && !samlCfg.lastUsed) {
         throw new BadRequestError({
           message:
-            "To apply the new SAML auth enforcement, please log in via SAML again. This step is required to enforce SAML-based authentication."
+            "To apply the new SAML auth enforcement, please log in via SAML at least once. This step is required to enforce SAML-based authentication."
         });
       }
 
       if (oidcCfg && !oidcCfg.lastUsed) {
         throw new BadRequestError({
           message:
-            "To apply the new OIDC auth enforcement, please log in via OIDC again. This step is required to enforce OIDC-based authentication."
+            "To apply the new OIDC auth enforcement, please log in via OIDC at least once. This step is required to enforce OIDC-based authentication."
         });
       }
     }
