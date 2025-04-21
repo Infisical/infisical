@@ -301,6 +301,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                       label={renderLabels(authProvider).entryPoint}
                       errorText={error?.message}
                       isError={Boolean(error)}
+                      isRequired
                     >
                       <Input
                         {...field}
