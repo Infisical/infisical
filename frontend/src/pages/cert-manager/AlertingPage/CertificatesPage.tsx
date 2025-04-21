@@ -5,9 +5,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 
-import { PkiCollectionSection } from "../AlertingPage/components";
-// import { CertificateTemplatesSection } from "./components/CertificateTemplatesSection";
-import { CertificatesSection } from "./components";
+import { PkiAlertsSection } from "./components";
 
 export const CertificatesPage = () => {
   const { t } = useTranslation();
@@ -17,16 +15,14 @@ export const CertificatesPage = () => {
         <title>{t("common.head-title", { title: "Certificates" })}</title>
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-7xl">
-        <PageHeader title="Certificates" />
+        <PageHeader title="Alerting" />
         <ProjectPermissionCan
           renderGuardBanner
           passThrough={false}
           I={ProjectPermissionActions.Read}
-          a={ProjectPermissionSub.Certificates}
+          a={ProjectPermissionSub.PkiAlerts}
         >
-          <PkiCollectionSection />
-          {/* <CertificateTemplatesSection /> */}
-          <CertificatesSection />
+          <PkiAlertsSection />
         </ProjectPermissionCan>
       </div>
     </div>
