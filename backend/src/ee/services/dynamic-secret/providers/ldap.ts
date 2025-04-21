@@ -2,6 +2,7 @@ import handlebars from "handlebars";
 import ldapjs from "ldapjs";
 import ldif from "ldif";
 import { customAlphabet } from "nanoid";
+import RE2 from "re2";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
@@ -194,7 +195,8 @@ export const LdapProvider = (): TDynamicProviderFns => {
     const client = await $getClient(providerInputs);
 
     if (providerInputs.credentialType === LdapCredentialType.Static) {
-      const dnMatch = providerInputs.rotationLdif.match(/^dn:\s*(.+)/m);
+      const dnRegex = new RE2("^dn:\\s*(.+)", "m");
+      const dnMatch = dnRegex.exec(providerInputs.rotationLdif);
 
       if (dnMatch) {
         const username = dnMatch[1];
@@ -238,7 +240,8 @@ export const LdapProvider = (): TDynamicProviderFns => {
     const client = await $getClient(providerInputs);
 
     if (providerInputs.credentialType === LdapCredentialType.Static) {
-      const dnMatch = providerInputs.rotationLdif.match(/^dn:\s*(.+)/m);
+      const dnRegex = new RE2("^dn:\\s*(.+)", "m");
+      const dnMatch = dnRegex.exec(providerInputs.rotationLdif);
 
       if (dnMatch) {
         const username = dnMatch[1];
