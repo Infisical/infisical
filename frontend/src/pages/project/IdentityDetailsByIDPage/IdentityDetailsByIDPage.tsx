@@ -138,7 +138,7 @@ const Page = () => {
                 I={ProjectPermissionIdentityActions.AssumePrivileges}
                 a={ProjectPermissionSub.Identity}
                 renderTooltip
-                allowedLabel="Assume or impersonate privileges of the user"
+                allowedLabel="Assume privileges of the user"
                 passThrough={false}
               >
                 {(isAllowed) => (
@@ -148,7 +148,7 @@ const Page = () => {
                     isDisabled={!isAllowed}
                     onClick={() => handlePopUpOpen("assumePrivileges")}
                   >
-                    Test Privileges
+                    Assume Privileges
                   </Button>
                 )}
               </ProjectPermissionCan>

@@ -129,7 +129,7 @@ export const Page = () => {
               I={ProjectPermissionMemberActions.AssumePrivileges}
               a={ProjectPermissionSub.Member}
               renderTooltip
-              allowedLabel="Assume or impersonate privileges of the user"
+              allowedLabel="Assume privileges of the user"
               passThrough={false}
             >
               {(isAllowed) => (
@@ -142,7 +142,7 @@ export const Page = () => {
                     handlePopUpOpen("assumePrivileges", { userId: membershipDetails?.user?.id })
                   }
                 >
-                  Test Privileges
+                  Assume Privileges
                 </Button>
               )}
             </ProjectPermissionCan>
