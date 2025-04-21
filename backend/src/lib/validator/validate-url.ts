@@ -100,7 +100,7 @@ export const isFQDN = (str: string, options: FQDNOptions = {}): boolean => {
   const partRegex = new RE2(/^[a-z_\u00a1-\uffff0-9-]+$/i);
   const fullWidthRegex = new RE2(/[\uff01-\uff5e]/);
   const hyphenRegex = new RE2(/^-|-$/);
-  const underscoreRegex = new RE2("_");
+  const underscoreRegex = new RE2(/_/);
 
   return parts.every((part) => {
     if (part.length > 63 && !opts.ignore_max_length) {
