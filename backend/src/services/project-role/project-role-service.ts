@@ -248,6 +248,7 @@ export const projectRoleServiceFactory = ({
           actorEmail: ""
         }
       : undefined;
+
     if (impersonation?.actorType === ActorType.IDENTITY) {
       const identityDetails = await identityDAL.findById(impersonation.actorId);
       if (!identityDetails) throw new NotFoundError({ message: `Identity with ID ${impersonation.actorId} not found` });
@@ -258,6 +259,7 @@ export const projectRoleServiceFactory = ({
       impersonation.actorName = `${userDetails?.firstName} ${userDetails?.lastName || ""}`;
       impersonation.actorEmail = userDetails?.email || "";
     }
+
     return { permissions: packRules(permission.rules), membership, impersonation };
   };
 

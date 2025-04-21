@@ -1,3 +1,4 @@
+import { requestContext } from "@fastify/request-context";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -6,7 +7,6 @@ import { BadRequestError } from "@app/lib/errors";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-import { requestContext } from "@fastify/request-context";
 
 export const registerAssumePrivilegeRouter = async (server: FastifyZodProvider) => {
   server.route({
