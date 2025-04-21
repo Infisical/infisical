@@ -63,4 +63,3 @@ export interface TAzureClientSecret {
   endDateTime: string;
   secretText?: string;
 }
-
