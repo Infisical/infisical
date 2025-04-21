@@ -269,6 +269,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretImports],
       description: "Get secret imports",
       security: [
         {

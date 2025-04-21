@@ -216,6 +216,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
       description: "Delete project",
       security: [
         {
