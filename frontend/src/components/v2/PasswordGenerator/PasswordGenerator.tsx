@@ -112,9 +112,8 @@ const PasswordGeneratorModal = ({
         className="w-full max-w-lg rounded-lg border border-mineshaft-600 bg-mineshaft-800 shadow-xl"
       >
         <div className="p-6">
-          <h2 className="mb-1 text-xl font-semibold text-bunker-200">Password Generator</h2>
-          <p className="mb-6 text-sm text-bunker-400">Generate strong unique passwords</p>
-
+          <h2 className="mb-1 text-xl font-semibold text-bunker-200">Generate Random Value</h2>
+          <p className="mb-6 text-sm text-bunker-400">Generate strong unique values</p>
           <div className="relative mb-4 rounded-md bg-mineshaft-900 p-4">
             <div className="flex items-center justify-between">
               <div className="w-4/5 select-all break-all pr-2 font-mono text-lg">{password}</div>
@@ -146,18 +145,18 @@ const PasswordGeneratorModal = ({
 
           <div className="mb-6">
             <div className="mb-1 flex items-center justify-between">
-              <label htmlFor="password-length" className="text-sm text-bunker-300">
-                Password length: {passwordOptions.length}
+              <label htmlFor="value-length" className="text-sm text-bunker-300">
+                Length: {passwordOptions.length}
               </label>
             </div>
             <Slider
-              id="password-length"
+              id="value-length"
               min={minLength}
               max={maxLength}
               value={passwordOptions.length}
               onChange={(value) => setPasswordOptions({ ...passwordOptions, length: value })}
               className="mb-1"
-              aria-labelledby="password-length-label"
+              aria-labelledby="value-length-label"
             />
           </div>
 
@@ -219,7 +218,7 @@ const PasswordGeneratorModal = ({
                 onClick={usePassword}
                 className="ml-2"
               >
-                Use Password
+                Use Value
               </Button>
             )}
           </div>
@@ -251,12 +250,13 @@ export const PasswordGenerator = ({
   return (
     <>
       <IconButton
-        ariaLabel="generate password"
-        colorSchema="secondary"
+        ariaLabel="generate value"
+        colorSchema="primary"
+        variant="outline_bg"
         size="sm"
         onClick={toggleGenerator}
         isDisabled={isDisabled}
-        className="rounded text-bunker-400 transition-colors duration-150 hover:bg-mineshaft-700 hover:text-bunker-200"
+        className="rounded"
       >
         <FontAwesomeIcon icon={faKey} />
       </IconButton>

@@ -55,6 +55,11 @@ import {
 } from "./terraform-cloud";
 import { VercelConnectionMethod } from "./vercel";
 import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
+import {
+  getWindmillConnectionListItem,
+  validateWindmillConnectionCredentials,
+  WindmillConnectionMethod
+} from "./windmill";
 
 export const listAppConnectionOptions = () => {
   return [
@@ -71,6 +76,7 @@ export const listAppConnectionOptions = () => {
     getMsSqlConnectionListItem(),
     getCamundaConnectionListItem(),
     getAzureClientSecretsConnectionListItem(),
+    getWindmillConnectionListItem(),
     getAuth0ConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -136,7 +142,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.TerraformCloud]: validateTerraformCloudConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Auth0]: validateAuth0ConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureClientSecrets]:
-      validateAzureClientSecretsConnectionCredentials as TAppConnectionCredentialsValidator
+      validateAzureClientSecretsConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Windmill]: validateWindmillConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -168,6 +175,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
       return "Username & Password";
+    case WindmillConnectionMethod.AccessToken:
+      return "Access Token";
     case Auth0ConnectionMethod.ClientCredentials:
       return "Client Credentials";
     default:
@@ -214,5 +223,6 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Camunda]: platformManagedCredentialsNotSupported,
   [AppConnection.Vercel]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureClientSecrets]: platformManagedCredentialsNotSupported,
+  [AppConnection.Windmill]: platformManagedCredentialsNotSupported,
   [AppConnection.Auth0]: platformManagedCredentialsNotSupported
 };

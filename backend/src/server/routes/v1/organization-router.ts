@@ -31,7 +31,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           organizations: sanitizedOrganizationSchema
             .extend({
-              orgAuthMethod: z.string()
+              orgAuthMethod: z.string(),
+              userRole: z.string()
             })
             .array()
         })
@@ -259,7 +260,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         defaultMembershipRoleSlug: slugSchema({ max: 64, field: "Default Membership Role" }).optional(),
         enforceMfa: z.boolean().optional(),
         selectedMfaMethod: z.nativeEnum(MfaMethod).optional(),
-        allowSecretSharingOutsideOrganization: z.boolean().optional()
+        allowSecretSharingOutsideOrganization: z.boolean().optional(),
+        bypassOrgAuthEnabled: z.boolean().optional()
       }),
       response: {
         200: z.object({

@@ -12,11 +12,13 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { ActorType } from "../auth/auth-type";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TServiceTokenDALFactory } from "./service-token-dal";
 import {
@@ -33,6 +35,7 @@ type TServiceTokenServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findBySlugs">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   accessTokenQueue: Pick<TAccessTokenQueueServiceFactory, "updateServiceTokenStatus">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type TServiceTokenServiceFactory = ReturnType<typeof serviceTokenServiceFactory>;
@@ -43,7 +46,8 @@ export const serviceTokenServiceFactory = ({
   permissionService,
   projectEnvDAL,
   projectDAL,
-  accessTokenQueue
+  accessTokenQueue,
+  smtpService
 }: TServiceTokenServiceFactoryDep) => {
   const createServiceToken = async ({
     iv,
@@ -185,11 +189,56 @@ export const serviceTokenServiceFactory = ({
     return { ...serviceToken, lastUsed: new Date(), orgId: project.orgId };
   };
 
+  const notifyExpiringTokens = async () => {
+    const appCfg = getConfig();
+    let processedCount = 0;
+    let hasMoreRecords = true;
+    let offset = 0;
+    const batchSize = 500;
+
+    while (hasMoreRecords) {
+      // eslint-disable-next-line no-await-in-loop
+      const expiringTokens = await serviceTokenDAL.findExpiringTokens(undefined, batchSize, offset);
+
+      if (expiringTokens.length === 0) {
+        hasMoreRecords = false;
+        break;
+      }
+
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.all(
+        expiringTokens.map(async (token) => {
+          try {
+            await smtpService.sendMail({
+              recipients: [token.createdByEmail],
+              subjectLine: "Service Token Expiry Notice",
+              template: SmtpTemplates.ServiceTokenExpired,
+              substitutions: {
+                tokenName: token.name,
+                projectName: token.projectName,
+                url: `${appCfg.SITE_URL}/secret-manager/${token.projectId}/access-management?selectedTab=service-tokens`
+              }
+            });
+            await serviceTokenDAL.update({ id: token.id }, { expiryNotificationSent: true });
+          } catch (error) {
+            logger.error(error, `Failed to send expiration notification for token ${token.id}:`);
+          }
+        })
+      );
+
+      processedCount += expiringTokens.length;
+      offset += batchSize;
+    }
+
+    return processedCount;
+  };
+
   return {
     createServiceToken,
     deleteServiceToken,
     getServiceToken,
     getProjectServiceTokens,
-    fnValidateServiceToken
+    fnValidateServiceToken,
+    notifyExpiringTokens
   };
 };

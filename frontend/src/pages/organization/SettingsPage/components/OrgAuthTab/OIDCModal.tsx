@@ -18,6 +18,7 @@ import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useGetOIDCConfig } from "@app/hooks/api";
 import { useCreateOIDCConfig, useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
+import { OIDCJWTSignatureAlgorithm } from "@app/hooks/api/oidcConfig/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 enum ConfigurationType {
@@ -43,7 +44,8 @@ const schema = z
     userinfoEndpoint: z.string().optional(),
     clientId: z.string().min(1),
     clientSecret: z.string().min(1),
-    allowedEmailDomains: z.string().optional()
+    allowedEmailDomains: z.string().optional(),
+    jwtSignatureAlgorithm: z.nativeEnum(OIDCJWTSignatureAlgorithm).optional()
   })
   .superRefine((data, ctx) => {
     if (data.configurationType === ConfigurationType.CUSTOM) {
@@ -159,6 +161,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       setValue("clientSecret", data.clientSecret);
       setValue("allowedEmailDomains", data.allowedEmailDomains);
       setValue("configurationType", data.configurationType);
+      setValue("jwtSignatureAlgorithm", data.jwtSignatureAlgorithm);
     }
   }, [data]);
 
@@ -172,7 +175,8 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     configurationType,
     discoveryURL,
     clientId,
-    clientSecret
+    clientSecret,
+    jwtSignatureAlgorithm
   }: OIDCFormData) => {
     try {
       if (!currentOrg) {
@@ -192,7 +196,8 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
           clientId,
           clientSecret,
           isActive: true,
-          orgSlug: currentOrg.slug
+          orgSlug: currentOrg.slug,
+          jwtSignatureAlgorithm
         });
       } else {
         await updateMutateAsync({
@@ -207,7 +212,8 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
           clientId,
           clientSecret,
           isActive: true,
-          orgSlug: currentOrg.slug
+          orgSlug: currentOrg.slug,
+          jwtSignatureAlgorithm
         });
       }
 
@@ -362,6 +368,29 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                 />
               </>
             )}
+            <Controller
+              control={control}
+              defaultValue={OIDCJWTSignatureAlgorithm.RS256}
+              name="jwtSignatureAlgorithm"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  className="w-full"
+                  label="JWT Signature Algorithm"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                >
+                  <Select
+                    defaultValue={field.value}
+                    onValueChange={(e) => onChange(e)}
+                    className="w-full"
+                  >
+                    <SelectItem value={OIDCJWTSignatureAlgorithm.RS256}>RS256</SelectItem>
+                    <SelectItem value={OIDCJWTSignatureAlgorithm.RS512}>RS512</SelectItem>
+                    <SelectItem value={OIDCJWTSignatureAlgorithm.HS256}>HS256</SelectItem>
+                  </Select>
+                </FormControl>
+              )}
+            />
             <Controller
               control={control}
               name="allowedEmailDomains"

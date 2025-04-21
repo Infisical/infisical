@@ -35,6 +35,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.Vercel]: {
     name: "Vercel",
     image: "Vercel.png"
+  },
+  [SecretSync.Windmill]: {
+    name: "Windmill",
+    image: "Windmill.png"
   }
 };
 
@@ -49,7 +53,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Humanitec]: AppConnection.Humanitec,
   [SecretSync.TerraformCloud]: AppConnection.TerraformCloud,
   [SecretSync.Camunda]: AppConnection.Camunda,
-  [SecretSync.Vercel]: AppConnection.Vercel
+  [SecretSync.Vercel]: AppConnection.Vercel,
+  [SecretSync.Windmill]: AppConnection.Windmill
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

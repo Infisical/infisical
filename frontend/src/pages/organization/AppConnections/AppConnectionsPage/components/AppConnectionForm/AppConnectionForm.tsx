@@ -23,6 +23,7 @@ import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
+import { WindmillConnectionForm } from "./WindmillConnectionForm";
 
 type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;
@@ -87,6 +88,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <CamundaConnectionForm onSubmit={onSubmit} />;
     case AppConnection.AzureClientSecrets:
       return <AzureClientSecretsConnectionForm />;
+    case AppConnection.Windmill:
+      return <WindmillConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Auth0:
       return <Auth0ConnectionForm onSubmit={onSubmit} />;
     default:
@@ -151,6 +154,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <CamundaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.AzureClientSecrets:
       return <AzureClientSecretsConnectionForm appConnection={appConnection} />;
+    case AppConnection.Windmill:
+      return <WindmillConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Auth0:
       return <Auth0ConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:

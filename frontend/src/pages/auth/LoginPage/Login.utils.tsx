@@ -33,14 +33,21 @@ export const useNavigateToSelectOrganization = () => {
   const { config } = useServerConfig();
   const navigate = useNavigate();
 
-  const navigateToSelectOrganization = async (cliCallbackPort?: string) => {
+  const navigateToSelectOrganization = async (
+    cliCallbackPort?: string,
+    isFromAdminLogin?: boolean
+  ) => {
     if (!config.defaultAuthOrgId) {
       queryClient.invalidateQueries({ queryKey: userKeys.getUser });
     }
 
     navigate({
       to: "/login/select-organization",
-      search: { callback_port: cliCallbackPort, org_id: config.defaultAuthOrgId }
+      search: {
+        callback_port: cliCallbackPort,
+        org_id: config.defaultAuthOrgId,
+        is_admin_login: isFromAdminLogin
+      }
     });
   };
 

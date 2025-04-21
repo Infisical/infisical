@@ -819,10 +819,14 @@ export const secretImportServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
-    );
+    if (
+      permission.cannot(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+      )
+    ) {
+      return [];
+    }
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) return [];

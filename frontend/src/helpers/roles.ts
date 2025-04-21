@@ -1,6 +1,6 @@
 import { ProjectMembershipRole, TOrgRole } from "@app/hooks/api/roles/types";
 
-enum OrgMembershipRole {
+export enum OrgMembershipRole {
   Admin = "admin",
   Member = "member",
   NoAccess = "no-access"

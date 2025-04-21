@@ -43,7 +43,8 @@ export enum SmtpTemplates {
   SecretRequestCompleted = "secretRequestCompleted.handlebars",
   SecretRotationFailed = "secretRotationFailed.handlebars",
   ProjectAccessRequest = "projectAccess.handlebars",
-  OrgAdminProjectDirectAccess = "orgAdminProjectGrantAccess.handlebars"
+  OrgAdminProjectDirectAccess = "orgAdminProjectGrantAccess.handlebars",
+  ServiceTokenExpired = "serviceTokenExpired.handlebars"
 }
 
 export enum SmtpHost {

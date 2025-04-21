@@ -96,7 +96,9 @@ export const orgDALFactory = (db: TDbClient) => {
   };
 
   // special query
-  const findAllOrgsByUserId = async (userId: string): Promise<(TOrganizations & { orgAuthMethod: string })[]> => {
+  const findAllOrgsByUserId = async (
+    userId: string
+  ): Promise<(TOrganizations & { orgAuthMethod: string; userRole: string })[]> => {
     try {
       const org = (await db
         .replicaNode()(TableName.OrgMembership)
@@ -117,6 +119,7 @@ export const orgDALFactory = (db: TDbClient) => {
           );
         })
         .select(selectAllTableCols(TableName.Organization))
+        .select(db.ref("role").withSchema(TableName.OrgMembership).as("userRole"))
         .select(
           db.raw(`
             CASE
@@ -125,7 +128,7 @@ export const orgDALFactory = (db: TDbClient) => {
               ELSE ''
             END as "orgAuthMethod"
         `)
-        )) as (TOrganizations & { orgAuthMethod: string })[];
+        )) as (TOrganizations & { orgAuthMethod: string; userRole: string })[];
 
       return org;
     } catch (error) {

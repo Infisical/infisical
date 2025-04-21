@@ -3,6 +3,7 @@ import { z } from "zod";
 import { TDbClient } from "@app/db";
 import {
   IdentityProjectMembershipRoleSchema,
+  OrgMembershipRole,
   OrgMembershipsSchema,
   TableName,
   TProjectRoles,
@@ -53,6 +54,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           db.ref("slug").withSchema(TableName.OrgRoles).withSchema(TableName.OrgRoles).as("customRoleSlug"),
           db.ref("permissions").withSchema(TableName.OrgRoles),
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
+          db.ref("bypassOrgAuthEnabled").withSchema(TableName.Organization).as("bypassOrgAuthEnabled"),
           db.ref("groupId").withSchema("userGroups"),
           db.ref("groupOrgId").withSchema("userGroups"),
           db.ref("groupName").withSchema("userGroups"),
@@ -71,6 +73,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           OrgMembershipsSchema.extend({
             permissions: z.unknown(),
             orgAuthEnforced: z.boolean().optional().nullable(),
+            bypassOrgAuthEnabled: z.boolean(),
             customRoleSlug: z.string().optional().nullable(),
             shouldUseNewPrivilegeSystem: z.boolean()
           }).parse(el),
@@ -571,6 +574,11 @@ export const permissionDALFactory = (db: TDbClient) => {
         })
         .join<TProjects>(TableName.Project, `${TableName.Project}.id`, db.raw("?", [projectId]))
         .join(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
+        .join(TableName.OrgMembership, (qb) => {
+          void qb
+            .on(`${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+            .andOn(`${TableName.OrgMembership}.orgId`, `${TableName.Organization}.id`);
+        })
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
           void queryBuilder
             .on(`${TableName.Users}.id`, `${TableName.IdentityMetadata}.userId`)
@@ -670,6 +678,8 @@ export const permissionDALFactory = (db: TDbClient) => {
           db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
           db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue"),
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
+          db.ref("bypassOrgAuthEnabled").withSchema(TableName.Organization).as("bypassOrgAuthEnabled"),
+          db.ref("role").withSchema(TableName.OrgMembership).as("orgRole"),
           db.ref("orgId").withSchema(TableName.Project),
           db.ref("type").withSchema(TableName.Project).as("projectType"),
           db.ref("id").withSchema(TableName.Project).as("projectId"),
@@ -683,6 +693,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           orgId,
           username,
           orgAuthEnforced,
+          orgRole,
           membershipId,
           groupMembershipId,
           membershipCreatedAt,
@@ -690,10 +701,12 @@ export const permissionDALFactory = (db: TDbClient) => {
           groupMembershipUpdatedAt,
           membershipUpdatedAt,
           projectType,
-          shouldUseNewPrivilegeSystem
+          shouldUseNewPrivilegeSystem,
+          bypassOrgAuthEnabled
         }) => ({
           orgId,
           orgAuthEnforced,
+          orgRole: orgRole as OrgMembershipRole,
           userId,
           projectId,
           username,
@@ -701,7 +714,8 @@ export const permissionDALFactory = (db: TDbClient) => {
           id: membershipId || groupMembershipId,
           createdAt: membershipCreatedAt || groupMembershipCreatedAt,
           updatedAt: membershipUpdatedAt || groupMembershipUpdatedAt,
-          shouldUseNewPrivilegeSystem
+          shouldUseNewPrivilegeSystem,
+          bypassOrgAuthEnabled
         }),
         childrenMapper: [
           {
