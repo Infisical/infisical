@@ -252,8 +252,12 @@ export const SecretDetailSidebar = ({
     switch (userType) {
       case ActorType.PLATFORM:
         return "System-generated";
+      case ActorType.IDENTITY:
+        return userName || "Deleted Identity";
+      case ActorType.USER:
+        return userName || "Deleted User";
       default:
-        return userName;
+        return "Unknown";
     }
   };
 
