@@ -139,6 +139,7 @@ const Page = () => {
                 a={ProjectPermissionSub.Identity}
                 renderTooltip
                 allowedLabel="Assume or impersonate privileges of the user"
+                passThrough={false}
               >
                 {(isAllowed) => (
                   <Button
@@ -147,7 +148,7 @@ const Page = () => {
                     isDisabled={!isAllowed}
                     onClick={() => handlePopUpOpen("assumePrivileges")}
                   >
-                    Impersonate Identity
+                    Test Privileges
                   </Button>
                 )}
               </ProjectPermissionCan>
@@ -191,7 +192,7 @@ const Page = () => {
           <ConfirmActionModal
             isOpen={popUp.assumePrivileges.isOpen}
             confirmKey="assume"
-            title="Do you want to impersonate privileges of this identity?"
+            title="Do you want to assume privileges of this identity?"
             subTitle="This will set your privileges to those of the identity for the next hour."
             onChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
             onConfirmed={handleAssumePrivileges}

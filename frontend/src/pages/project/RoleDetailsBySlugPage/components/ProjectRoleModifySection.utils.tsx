@@ -92,7 +92,8 @@ const MemberPolicyActionSchema = z.object({
   [ProjectPermissionMemberActions.Create]: z.boolean().optional(),
   [ProjectPermissionMemberActions.Edit]: z.boolean().optional(),
   [ProjectPermissionMemberActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionMemberActions.GrantPrivileges]: z.boolean().optional()
+  [ProjectPermissionMemberActions.GrantPrivileges]: z.boolean().optional(),
+  [ProjectPermissionMemberActions.AssumePrivileges]: z.boolean().optional()
 });
 
 const IdentityPolicyActionSchema = z.object({
@@ -100,7 +101,8 @@ const IdentityPolicyActionSchema = z.object({
   [ProjectPermissionIdentityActions.Create]: z.boolean().optional(),
   [ProjectPermissionIdentityActions.Edit]: z.boolean().optional(),
   [ProjectPermissionIdentityActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionIdentityActions.GrantPrivileges]: z.boolean().optional()
+  [ProjectPermissionIdentityActions.GrantPrivileges]: z.boolean().optional(),
+  [ProjectPermissionIdentityActions.AssumePrivileges]: z.boolean().optional()
 });
 
 const GroupPolicyActionSchema = z.object({

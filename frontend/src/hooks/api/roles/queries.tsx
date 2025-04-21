@@ -10,6 +10,7 @@ import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext/type
 import { groupBy } from "@app/lib/fn/array";
 import { omit } from "@app/lib/fn/object";
 
+import { ActorType } from "../auditLogs/enums";
 import { OrgUser, TProjectMembership } from "../users/types";
 import {
   TGetUserOrgPermissionsDTO,
@@ -18,7 +19,6 @@ import {
   TPermission,
   TProjectRole
 } from "./types";
-import { ActorType } from "../auditLogs/enums";
 
 const $glob: FieldInstruction<string> = {
   type: "field",

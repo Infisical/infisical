@@ -1,6 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
-import { TProjectAssumePrivilegesDTO } from "./types";
+
 import { apiRequest } from "@app/config/request";
+
+import { TProjectAssumePrivilegesDTO } from "./types";
 
 export const useAssumeProjectPrivileges = () =>
   useMutation({

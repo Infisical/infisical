@@ -19,8 +19,8 @@ import {
 } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
-import { ProjectSelect } from "./components/ProjectSelect";
 import { AssumePrivilegeModeBanner } from "./components/AssumePrivilegeModeBanner";
+import { ProjectSelect } from "./components/ProjectSelect";
 
 // This is a generic layout shared by all types of projects.
 // If the product layout differs significantly, create a new layout as needed.
@@ -64,6 +64,7 @@ export const ProjectLayout = () => {
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
+        {impersonation && <AssumePrivilegeModeBanner />}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <motion.div
             key="menu-project-items"
@@ -269,7 +270,6 @@ export const ProjectLayout = () => {
           </div>
         </div>
       </div>
-      {impersonation && <AssumePrivilegeModeBanner />}
       <div className="z-[200] flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">
