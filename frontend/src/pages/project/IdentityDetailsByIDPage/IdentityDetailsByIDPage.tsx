@@ -49,7 +49,6 @@ const Page = () => {
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteIdentity",
-    "upgradePlan",
     "assumePrivileges"
   ] as const);
   const assumePrivileges = useAssumeProjectPrivileges();

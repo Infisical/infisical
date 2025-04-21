@@ -238,21 +238,23 @@ export const projectRoleServiceFactory = ({
     // just to satisfy ts
     if (!("roles" in membership)) throw new BadRequestError({ message: "Service token not allowed" });
 
-    const projectAssumeRole = requestContext.get("projectAssumeRole");
-    const isImpersonating = projectAssumeRole?.projectId === projectId;
+    const assumedProjectRole = requestContext.get("assumedProjectRole");
+    const isImpersonating = assumedProjectRole?.projectId === projectId;
     const impersonation = isImpersonating
       ? {
-          actorId: projectAssumeRole?.actorId,
-          actorType: projectAssumeRole?.actorType,
+          actorId: assumedProjectRole?.actorId,
+          actorType: assumedProjectRole?.actorType,
           actorName: "",
           actorEmail: ""
         }
       : undefined;
     if (impersonation?.actorType === ActorType.IDENTITY) {
       const identityDetails = await identityDAL.findById(impersonation.actorId);
+      if (!identityDetails) throw new NotFoundError({ message: `Identity with ID ${impersonation.actorId} not found` });
       impersonation.actorName = identityDetails.name;
     } else if (impersonation?.actorType === ActorType.USER) {
       const userDetails = await userDAL.findById(impersonation?.actorId);
+      if (!userDetails) throw new NotFoundError({ message: `User with ID ${impersonation.actorId} not found` });
       impersonation.actorName = `${userDetails?.firstName} ${userDetails?.lastName || ""}`;
       impersonation.actorEmail = userDetails?.email || "";
     }

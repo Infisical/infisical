@@ -45,8 +45,6 @@ export const ConfirmActionModal = ({
     setIsLoading.on();
     try {
       await onConfirmed();
-    } catch {
-      setIsLoading.off();
     } finally {
       setIsLoading.off();
     }
@@ -77,7 +75,7 @@ export const ConfirmActionModal = ({
               <Button variant="plain" colorSchema="secondary" onClick={onClose}>
                 Cancel
               </Button>
-            </ModalClose>{" "}
+            </ModalClose>
           </div>
         }
         onClose={onClose}

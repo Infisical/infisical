@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { NotFoundError } from "@app/lib/errors";
+import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -24,23 +24,24 @@ export type TAssumePrivilegeServiceFactory = ReturnType<typeof assumePrivilegeSe
 
 export const assumePrivilegeServiceFactory = ({ projectDAL, permissionService }: TAssumePrivilegeServiceFactoryDep) => {
   const assumeProjectPrivileges = async ({
-    actorType,
-    actorId,
+    targetActorType,
+    targetActorId,
     projectId,
-    projectPermission,
+    actorPermissionDetails,
     tokenVersionId
   }: TAssumeProjectPrivilegeDTO) => {
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
     const { permission } = await permissionService.getProjectPermission({
-      actor: projectPermission.type,
-      actorId: projectPermission.id,
+      actor: actorPermissionDetails.type,
+      actorId: actorPermissionDetails.id,
       projectId,
-      actorAuthMethod: projectPermission.authMethod,
-      actorOrgId: projectPermission.orgId,
+      actorAuthMethod: actorPermissionDetails.authMethod,
+      actorOrgId: actorPermissionDetails.orgId,
       actionProjectType: ActionProjectType.Any
     });
-    if (actorType === ActorType.USER) {
+
+    if (targetActorType === ActorType.USER) {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionMemberActions.AssumePrivileges,
         ProjectPermissionSub.Member
@@ -54,11 +55,11 @@ export const assumePrivilegeServiceFactory = ({ projectDAL, permissionService }:
 
     // check entity is  part of project
     await permissionService.getProjectPermission({
-      actor: actorType,
-      actorId,
+      actor: targetActorType,
+      actorId: targetActorId,
       projectId,
-      actorAuthMethod: projectPermission.authMethod,
-      actorOrgId: projectPermission.orgId,
+      actorAuthMethod: actorPermissionDetails.authMethod,
+      actorOrgId: actorPermissionDetails.orgId,
       actionProjectType: ActionProjectType.Any
     });
 
@@ -66,16 +67,16 @@ export const assumePrivilegeServiceFactory = ({ projectDAL, permissionService }:
     const assumePrivilegesToken = jwt.sign(
       {
         tokenVersionId,
-        actorType,
-        actorId,
+        actorType: targetActorType,
+        actorId: targetActorId,
         projectId,
-        userId: projectPermission.id
+        requesterId: actorPermissionDetails.id
       },
       appCfg.AUTH_SECRET,
       { expiresIn: "1hr" }
     );
 
-    return { actorType, actorId, projectId, assumePrivilegesToken };
+    return { actorType: targetActorType, actorId: targetActorId, projectId, assumePrivilegesToken };
   };
 
   const verifyAssumePrivilegeToken = (token: string, tokenVersionId: string) => {
@@ -83,11 +84,13 @@ export const assumePrivilegeServiceFactory = ({ projectDAL, permissionService }:
     const decodedToken = jwt.verify(token, appCfg.AUTH_SECRET) as {
       tokenVersionId: string;
       projectId: string;
-      userId: string;
+      requesterId: string;
       actorType: ActorType;
       actorId: string;
     };
-    if (decodedToken.tokenVersionId !== tokenVersionId) return;
+    if (decodedToken.tokenVersionId !== tokenVersionId) {
+      throw new ForbiddenRequestError({ message: "Invalid token version" });
+    }
     return decodedToken;
   };
 

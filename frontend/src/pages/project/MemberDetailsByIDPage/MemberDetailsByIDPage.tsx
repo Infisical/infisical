@@ -136,7 +136,7 @@ export const Page = () => {
                   variant="outline_bg"
                   size="xs"
                   isDisabled={!isAllowed}
-                  isLoading={isRemovingUserFromWorkspace}
+                  isLoading={assumePrivileges.isPending}
                   onClick={() =>
                     handlePopUpOpen("assumePrivileges", { userId: membershipDetails?.user?.id })
                   }

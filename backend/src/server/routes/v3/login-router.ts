@@ -81,7 +81,8 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         httpOnly: true,
         path: "/",
         sameSite: "strict",
-        secure: cfg.HTTPS_ENABLED
+        secure: cfg.HTTPS_ENABLED,
+        maxAge: 0
       });
 
       return { token: tokens.access, isMfaEnabled: false };
@@ -142,7 +143,8 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         httpOnly: true,
         path: "/",
         sameSite: "strict",
-        secure: appCfg.HTTPS_ENABLED
+        secure: appCfg.HTTPS_ENABLED,
+        maxAge: 0
       });
 
       return {

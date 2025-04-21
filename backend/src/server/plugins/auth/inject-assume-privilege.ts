@@ -4,16 +4,21 @@ import fp from "fastify-plugin";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const injectAssumePrivilege = fp(async (server: FastifyZodProvider) => {
-  server.addHook("onRequest", async (req) => {
+  server.addHook("onRequest", async (req, res) => {
     const assumeRoleCookie = req.cookies["infisical-project-assume-privileges"];
-    if (req?.auth?.authMode === AuthMode.JWT && assumeRoleCookie) {
-      const decodedToken = server.services.assumePrivileges.verifyAssumePrivilegeToken(
-        assumeRoleCookie,
-        req.auth.tokenVersionId
-      );
-      if (decodedToken) {
-        requestContext.set("projectAssumeRole", decodedToken);
+    try {
+      if (req?.auth?.authMode === AuthMode.JWT && assumeRoleCookie) {
+        const decodedToken = server.services.assumePrivileges.verifyAssumePrivilegeToken(
+          assumeRoleCookie,
+          req.auth.tokenVersionId
+        );
+        if (decodedToken) {
+          requestContext.set("assumedProjectRole", decodedToken);
+        }
       }
+    } catch (error) {
+      req.log.error({ error }, "Failed to verify assume privilege token");
+      void res.clearCookie("infisical-project-assume-privileges");
     }
   });
 });

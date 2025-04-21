@@ -318,8 +318,8 @@ export enum EventType {
   SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
 
   PROJECT_ACCESS_REQUEST = "project-access-request",
-  PROJECT_ASSUME_PRIVILEGE = "project-assume-privileges",
-  PROJECT_ASSUME_PRIVILEGE_EXIT = "project-assume-privileges-exit"
+  PROJECT_ASSUME_PRIVILEGE_SESSION_START = "project-assume-privileges-session-start",
+  PROJECT_ASSUME_PRIVILEGE_SESSION_END = "project-assume-privileges-session-end"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -2428,22 +2428,25 @@ interface ProjectAccessRequestEvent {
 }
 
 interface ProjectAssumePrivilegesEvent {
-  type: EventType.PROJECT_ASSUME_PRIVILEGE;
+  type: EventType.PROJECT_ASSUME_PRIVILEGE_SESSION_START;
   metadata: {
     projectId: string;
     requesterId: string;
     requesterEmail: string;
     targetActorType: ActorType;
     targetActorId: string;
+    duration: string;
   };
 }
 
 interface ProjectAssumePrivilegesExitEvent {
-  type: EventType.PROJECT_ASSUME_PRIVILEGE_EXIT;
+  type: EventType.PROJECT_ASSUME_PRIVILEGE_SESSION_END;
   metadata: {
     projectId: string;
     requesterId: string;
     requesterEmail: string;
+    targetActorType: ActorType;
+    targetActorId: string;
   };
 }
 

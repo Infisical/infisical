@@ -37,7 +37,8 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
         httpOnly: true,
         path: "/",
         sameSite: "strict",
-        secure: appCfg.HTTPS_ENABLED
+        secure: appCfg.HTTPS_ENABLED,
+        maxAge: 0
       });
 
       return { message: "Successfully logged out" };
