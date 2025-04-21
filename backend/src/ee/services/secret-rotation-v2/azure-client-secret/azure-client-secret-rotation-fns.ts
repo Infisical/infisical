@@ -37,15 +37,20 @@ export const azureClientSecretRotationFactory: TRotationFactory<
     await blockLocalAndPrivateIpAddresses(endpoint);
 
     const endDateTime = new Date();
-    console.log({ rotationInterval })
     endDateTime.setDate(endDateTime.getDate() + rotationInterval);
+
+    const now = new Date();
+    const formattedDate = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(
+      2,
+      "0"
+    )}-${now.getFullYear()}`;
 
     try {
       const { data } = await request.post<AzureAddPasswordResponse>(
         endpoint,
         {
           passwordCredential: {
-            displayName: "Infisical Auto-Rotated Secret",
+            displayName: `Infisical Rotated Secret (${formattedDate})`,
             endDateTime: endDateTime.toISOString()
           }
         },
