@@ -1,9 +1,10 @@
+import RE2 from "re2";
 import safe from "safe-regex";
 import { z } from "zod";
 
-const twelveDigitRegex = /^\d{12}$/;
+const twelveDigitRegex = new RE2(/^\d{12}$/);
 // akhilmhdh: change this to a normal function later. Checked no redosable at the moment
-const arnRegex = /^arn:aws:iam::\d{12}:(user\/[a-zA-Z0-9_.@+*/-]+|role\/[a-zA-Z0-9_.@+*/-]+|\*)$/;
+const arnRegex = new RE2(/^arn:aws:iam::\d{12}:(user\/[a-zA-Z0-9_.@+*/-]+|role\/[a-zA-Z0-9_.@+*/-]+|\*)$/);
 
 export const validateAccountIds = z
   .string()

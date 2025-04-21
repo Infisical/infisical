@@ -1,4 +1,5 @@
 import { isIP } from "net";
+import RE2 from "re2";
 
 import { isFQDN } from "@app/lib/validator/validate-url";
 
@@ -10,7 +11,7 @@ export const isValidUserPattern = (value: string): boolean => {
   if (value === "*") return true; // Handle wildcard separately
 
   // Simpler, more specific pattern for usernames
-  const userRegex = /^[a-z_][a-z0-9_-]*$/i;
+  const userRegex = new RE2(/^[a-z_][a-z0-9_-]*$/i);
   return userRegex.test(value);
 };
 

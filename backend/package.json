@@ -221,6 +221,7 @@
     "pkijs": "^3.2.4",
     "posthog-node": "^3.6.2",
     "probot": "^13.3.8",
+    "re2": "^1.21.4",
     "safe-regex": "^2.1.1",
     "scim-patch": "^0.8.3",
     "scim2-parse-filter": "^0.2.10",

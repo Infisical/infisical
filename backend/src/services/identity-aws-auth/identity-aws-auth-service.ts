@@ -2,6 +2,7 @@
 import { ForbiddenError } from "@casl/ability";
 import axios from "axios";
 import jwt from "jsonwebtoken";
+import RE2 from "re2";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -125,7 +126,7 @@ export const identityAwsAuthServiceFactory = ({
           // convert wildcard ARN to a regular expression: "arn:aws:iam::123456789012:*" -> "^arn:aws:iam::123456789012:.*$"
           // considers exact matches + wildcard matches
           // heavily validated in router
-          const regex = new RegExp(`^${principalArn.replaceAll("*", ".*")}$`);
+          const regex = new RE2(`^${principalArn.replaceAll("*", ".*")}$`);
           return regex.test(extractPrincipalArn(Arn));
         });
 
