@@ -18,7 +18,6 @@ export const CertificateAuthoritiesPage = () => {
         <PageHeader title="Certificate Authorities" />
         <ProjectPermissionCan
           renderGuardBanner
-          passThrough={false}
           I={ProjectPermissionActions.Read}
           a={ProjectPermissionSub.CertificateAuthorities}
         >

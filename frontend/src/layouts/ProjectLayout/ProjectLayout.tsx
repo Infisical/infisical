@@ -139,7 +139,7 @@ export const ProjectLayout = () => {
                             }}
                           >
                             {({ isActive }) => (
-                              <MenuItem isSelected={isActive} icon="settings-cog">
+                              <MenuItem isSelected={isActive} icon="notification-bell">
                                 Alerting
                               </MenuItem>
                             )}

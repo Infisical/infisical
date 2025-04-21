@@ -3,13 +3,24 @@ import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 
 import { PkiCollectionSection } from "../AlertingPage/components";
 import { CertificatesSection } from "./components";
 
 export const CertificatesPage = () => {
   const { t } = useTranslation();
+  const { permission } = useProjectPermission();
+
+  const canAccessPkiColl = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.PkiCollections
+  );
+  const canAccessCerts = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Certificates
+  );
+
   return (
     <div className="container mx-auto flex h-full flex-col justify-between bg-bunker-800 text-white">
       <Helmet>
@@ -17,17 +28,18 @@ export const CertificatesPage = () => {
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-7xl">
         <PageHeader title="Certificates" />
+        {/* If both are false, the section does not render. This is to prevent duplicate banners. */}
+        {(canAccessCerts || canAccessPkiColl) && (
+          <ProjectPermissionCan
+            renderGuardBanner
+            I={ProjectPermissionActions.Read}
+            a={ProjectPermissionSub.PkiCollections}
+          >
+            <PkiCollectionSection />
+          </ProjectPermissionCan>
+        )}
         <ProjectPermissionCan
           renderGuardBanner
-          passThrough={false}
-          I={ProjectPermissionActions.Read}
-          a={ProjectPermissionSub.PkiCollections}
-        >
-          <PkiCollectionSection />
-        </ProjectPermissionCan>
-        <ProjectPermissionCan
-          renderGuardBanner
-          passThrough={false}
           I={ProjectPermissionActions.Read}
           a={ProjectPermissionSub.Certificates}
         >

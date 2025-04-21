@@ -18,7 +18,6 @@ export const AlertingPage = () => {
         <PageHeader title="Alerting" />
         <ProjectPermissionCan
           renderGuardBanner
-          passThrough={false}
           I={ProjectPermissionActions.Read}
           a={ProjectPermissionSub.PkiAlerts}
         >
