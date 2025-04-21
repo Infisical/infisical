@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { CertificatesPage } from "./CertificatesPage";
+import { CertificateAuthoritiesPage } from "./CertificateAuthoritiesPage";
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificate-authorities"
 )({
-  component: CertificatesPage,
+  component: CertificateAuthoritiesPage,
   beforeLoad: ({ context }) => {
     return {
       breadcrumbs: [
