@@ -1,9 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { faMobile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import {
   BreadcrumbContainer,
   Menu,
@@ -31,6 +32,19 @@ export const ProjectLayout = () => {
   const { t } = useTranslation();
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
+  const { subscription } = useSubscription();
+  const navigate = useNavigate();
+  const hasIdentityLimitCrossed =
+    subscription?.identityLimit && subscription?.identitiesUsed > subscription.identityLimit + 10;
+  const hasUserLimitCrossed =
+    subscription?.memberLimit && subscription?.membersUsed > subscription.memberLimit + 10;
+  const shouldUpgrade = Boolean(hasUserLimitCrossed || hasIdentityLimitCrossed);
+  let upgradeText = "";
+  if (hasUserLimitCrossed) {
+    upgradeText = `You've reached the maximum number of organisation users (${subscription?.memberLimit}).`;
+  } else if (hasIdentityLimitCrossed) {
+    upgradeText = `You've reached the maximum number of organisation identities (${subscription?.identityLimit}).`;
+  }
 
   const isSecretManager = currentWorkspace?.type === ProjectType.SecretManager;
   const isCertManager = currentWorkspace?.type === ProjectType.CertificateManager;
@@ -47,7 +61,6 @@ export const ProjectLayout = () => {
   });
 
   // we only show the secret rotations v1 tab if they have existing rotations
-  const { subscription } = useSubscription();
   const { data: secretRotations } = useGetSecretRotations({
     workspaceId,
     options: {
@@ -297,6 +310,17 @@ export const ProjectLayout = () => {
           </div>
         </div>
       </div>
+      {shouldUpgrade && (
+        <UpgradePlanModal
+          isOpen={shouldUpgrade}
+          text={upgradeText}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              navigate({ to: "/organization/access-management" });
+            }
+          }}
+        />
+      )}
       <div className="z-[200] flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">

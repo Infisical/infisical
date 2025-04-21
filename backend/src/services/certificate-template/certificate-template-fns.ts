@@ -1,3 +1,5 @@
+import RE2 from "re2";
+
 import { TCertificateTemplates } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
@@ -12,7 +14,7 @@ export const validateCertificateDetailsAgainstTemplate = (
   template: TCertificateTemplates
 ) => {
   // these are validated in router using validateTemplateRegexField
-  const commonNameRegex = new RegExp(template.commonName);
+  const commonNameRegex = new RE2(template.commonName);
   if (!commonNameRegex.test(cert.commonName)) {
     throw new BadRequestError({
       message: "Invalid common name based on template policy"
@@ -25,7 +27,7 @@ export const validateCertificateDetailsAgainstTemplate = (
     });
   }
 
-  const subjectAlternativeNameRegex = new RegExp(template.subjectAlternativeName);
+  const subjectAlternativeNameRegex = new RE2(template.subjectAlternativeName);
   cert.altNames.forEach((altName) => {
     if (!subjectAlternativeNameRegex.test(altName)) {
       throw new BadRequestError({

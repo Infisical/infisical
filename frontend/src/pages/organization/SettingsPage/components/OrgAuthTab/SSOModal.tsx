@@ -63,7 +63,7 @@ const ssoAuthProviders = [
 const schema = z
   .object({
     authProvider: z.string().min(1, "SSO Type is required"),
-    entryPoint: z.string().default(""),
+    entryPoint: z.string().min(1, "Entry Point is required").default(""),
     issuer: z.string().default(""),
     cert: z.string().default("")
   })
@@ -301,6 +301,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                       label={renderLabels(authProvider).entryPoint}
                       errorText={error?.message}
                       isError={Boolean(error)}
+                      isRequired
                     >
                       <Input
                         {...field}

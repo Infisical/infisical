@@ -1,5 +1,7 @@
 import path from "node:path";
 
+import RE2 from "re2";
+
 import { TableName, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -13,9 +15,8 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from "./secret-v2-bridge-types";
 
-const INTERPOLATION_SYNTAX_REG = /\${([a-zA-Z0-9-_.]+)}/g;
-// akhilmhdh: JS regex with global save state in .test
-const INTERPOLATION_SYNTAX_REG_NON_GLOBAL = /\${([a-zA-Z0-9-_.]+)}/;
+const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.]+)}`;
+const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
 
 export const shouldUseSecretV2Bridge = (version: number) => version === 3;
 
@@ -36,7 +37,14 @@ export const shouldUseSecretV2Bridge = (version: number) => version === 3;
  * // ]
  */
 export const getAllSecretReferences = (maybeSecretReference: string) => {
-  const references = Array.from(maybeSecretReference.matchAll(INTERPOLATION_SYNTAX_REG), (m) => m[1]);
+  const references = [];
+  let match;
+
+  const regex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
+  // eslint-disable-next-line no-cond-assign
+  while ((match = regex.exec(maybeSecretReference)) !== null) {
+    references.push(match[1]);
+  }
 
   const nestedReferences = references
     .filter((el) => el.includes("."))
@@ -531,9 +539,17 @@ export const expandSecretReferencesFactory = ({
 
       // eslint-disable-next-line no-continue
       if (depth > MAX_SECRET_REFERENCE_DEPTH) continue;
-      const refs = value?.match(INTERPOLATION_SYNTAX_REG);
 
-      if (refs) {
+      const matchRegex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
+      const refs = [];
+      let match;
+
+      // eslint-disable-next-line no-cond-assign
+      while ((match = matchRegex.exec(value || "")) !== null) {
+        refs.push(match[0]);
+      }
+
+      if (refs.length > 0) {
         for (const interpolationSyntax of refs) {
           const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
           const entities = interpolationKey.trim().split(".");
@@ -592,7 +608,7 @@ export const expandSecretReferencesFactory = ({
             trace
           };
 
-          const shouldExpandMore = INTERPOLATION_SYNTAX_REG_NON_GLOBAL.test(referencedSecretValue);
+          const shouldExpandMore = INTERPOLATION_TEST_REGEX.test(referencedSecretValue);
           if (dto.shouldStackTrace) {
             const stackTraceNode = { ...node, children: [], key: referencedSecretKey, trace: null };
             trace?.children.push(stackTraceNode);
@@ -626,7 +642,7 @@ export const expandSecretReferencesFactory = ({
   }) => {
     if (!inputSecret.value) return inputSecret.value;
 
-    const shouldExpand = Boolean(inputSecret.value?.match(INTERPOLATION_SYNTAX_REG));
+    const shouldExpand = INTERPOLATION_TEST_REGEX.test(inputSecret.value);
     if (!shouldExpand) return inputSecret.value;
 
     const { expandedValue } = await recursivelyExpandSecret(inputSecret);
