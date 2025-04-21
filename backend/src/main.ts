@@ -73,6 +73,7 @@ const run = async () => {
   // eslint-disable-next-line
   process.on("SIGINT", async () => {
     await server.close();
+    await queue.shutdown();
     await db.destroy();
     await removeTemporaryBaseDirectory();
     hsmModule.finalize();
@@ -82,19 +83,22 @@ const run = async () => {
   // eslint-disable-next-line
   process.on("SIGTERM", async () => {
     await server.close();
+    await queue.shutdown();
     await db.destroy();
     await removeTemporaryBaseDirectory();
     hsmModule.finalize();
     process.exit(0);
   });
 
-  process.on("uncaughtException", (error) => {
-    logger.error(error, "CRITICAL ERROR: Uncaught Exception");
-  });
+  if (!envConfig.isDevelopmentMode) {
+    process.on("uncaughtException", (error) => {
+      logger.error(error, "CRITICAL ERROR: Uncaught Exception");
+    });
 
-  process.on("unhandledRejection", (error) => {
-    logger.error(error, "CRITICAL ERROR: Unhandled Promise Rejection");
-  });
+    process.on("unhandledRejection", (error) => {
+      logger.error(error, "CRITICAL ERROR: Unhandled Promise Rejection");
+    });
+  }
 
   await server.listen({
     port: envConfig.PORT,

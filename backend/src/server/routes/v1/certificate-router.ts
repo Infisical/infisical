@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { CertificatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
+import { ApiDocsTags, CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -24,6 +24,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.GET.serialNumber)
@@ -70,6 +72,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
       description: "Issue certificate",
       body: z
         .object({
@@ -181,6 +185,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
       description: "Sign certificate",
       body: z
         .object({
@@ -292,6 +298,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
       description: "Revoke",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.REVOKE.serialNumber)
@@ -346,6 +354,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
       description: "Delete certificate",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.DELETE.serialNumber)
@@ -392,6 +402,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate body of certificate",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.GET_CERT.serialNumber)

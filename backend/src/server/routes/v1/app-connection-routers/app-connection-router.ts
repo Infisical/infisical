@@ -42,6 +42,7 @@ import {
   WindmillConnectionListItemSchema
 } from "@app/services/app-connection/windmill";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ApiDocsTags } from "@app/lib/api-docs";
 
 // can't use discriminated due to multiple schemas for certain apps
 const SanitizedAppConnectionSchema = z.union([
@@ -86,6 +87,8 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: "List the available App Connection Options.",
       response: {
         200: z.object({
@@ -107,6 +110,8 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: "List all the App Connections for the current organization.",
       response: {
         200: z.object({ appConnections: SanitizedAppConnectionSchema.array() })

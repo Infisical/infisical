@@ -8,6 +8,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 import { sanitizedServiceTokenUserSchema } from "../sanitizedSchemas";
+import { ApiDocsTags } from "@app/lib/api-docs";
 
 export const sanitizedServiceTokenSchema = ServiceTokensSchema.omit({
   secretHash: true,
@@ -25,6 +26,8 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.SERVICE_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Return Infisical Token data",
       security: [
         {

@@ -14,7 +14,7 @@ import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-s
 import { sanitizedSshCertificate } from "@app/ee/services/ssh-certificate/ssh-certificate-schema";
 import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-schema";
 import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
-import { PROJECTS } from "@app/lib/api-docs";
+import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -150,6 +150,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
       description: "Create a new project",
       security: [
         {
@@ -224,6 +226,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
       description: "Delete project",
       security: [
         {

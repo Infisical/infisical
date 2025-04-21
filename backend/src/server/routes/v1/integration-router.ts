@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { IntegrationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { INTEGRATION } from "@app/lib/api-docs";
+import { ApiDocsTags, INTEGRATION } from "@app/lib/api-docs";
 import { removeTrailingSlash, shake } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -22,6 +22,8 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Create an integration to sync secrets.",
       security: [
         {
@@ -119,6 +121,8 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Update an integration by integration id",
       security: [
         {
@@ -178,6 +182,8 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Get an integration by integration id",
       security: [
         {
@@ -247,6 +253,8 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Remove an integration using the integration object ID",
       security: [
         {
@@ -315,6 +323,8 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Manually trigger sync of an integration by integration id",
       security: [
         {

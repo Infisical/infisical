@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { SecretSyncs } from "@app/lib/api-docs";
+import { ApiDocsTags, SecretSyncs } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -65,6 +65,8 @@ export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretSyncs],
       description: "List the available Secret Sync Options.",
       response: {
         200: z.object({
@@ -86,6 +88,8 @@ export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretSyncs],
       description: "List all the Secret Syncs for the specified project.",
       querystring: z.object({
         projectId: z.string().trim().min(1, "Project ID required").describe(SecretSyncs.LIST().projectId)

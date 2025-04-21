@@ -9,7 +9,7 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
+import { AUDIT_LOGS, ApiDocsTags, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
@@ -109,6 +109,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AuditLogs],
       description: "Get all audit logs for an organization",
       querystring: z.object({
         projectId: z.string().optional().describe(AUDIT_LOGS.EXPORT.projectId),

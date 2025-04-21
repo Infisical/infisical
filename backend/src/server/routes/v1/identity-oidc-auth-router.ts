@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { IdentityOidcAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { OIDC_AUTH } from "@app/lib/api-docs";
+import { ApiDocsTags, OIDC_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -42,6 +42,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OidcAuth],
       description: "Login with OIDC Auth",
       body: z.object({
         identityId: z.string().trim().describe(OIDC_AUTH.LOGIN.identityId),
@@ -96,6 +98,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OidcAuth],
       description: "Attach OIDC Auth configuration onto identity",
       security: [
         {
@@ -195,6 +199,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OidcAuth],
       description: "Update OIDC Auth configuration on identity",
       security: [
         {
@@ -292,6 +298,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OidcAuth],
       description: "Retrieve OIDC Auth configuration on identity",
       security: [
         {
@@ -339,6 +347,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OidcAuth],
       description: "Delete OIDC Auth configuration on identity",
       security: [
         {

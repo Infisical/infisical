@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { CertificateTemplateEstConfigsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { CERTIFICATE_TEMPLATES } from "@app/lib/api-docs";
+import { ApiDocsTags, CERTIFICATE_TEMPLATES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -26,6 +26,8 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateTemplates],
       params: z.object({
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.GET.certificateTemplateId)
       }),
@@ -65,6 +67,8 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateTemplates],
       body: z.object({
         caId: z.string().describe(CERTIFICATE_TEMPLATES.CREATE.caId),
         pkiCollectionId: z.string().optional().describe(CERTIFICATE_TEMPLATES.CREATE.pkiCollectionId),
@@ -132,6 +136,8 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateTemplates],
       body: z.object({
         caId: z.string().optional().describe(CERTIFICATE_TEMPLATES.UPDATE.caId),
         pkiCollectionId: z.string().optional().describe(CERTIFICATE_TEMPLATES.UPDATE.pkiCollectionId),
@@ -198,6 +204,8 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateTemplates],
       params: z.object({
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.DELETE.certificateTemplateId)
       }),
@@ -238,6 +246,8 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateTemplates],
       description: "Create Certificate Template EST configuration",
       params: z.object({
         certificateTemplateId: z.string().trim()
@@ -292,6 +302,8 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateTemplates],
       description: "Update Certificate Template EST configuration",
       params: z.object({
         certificateTemplateId: z.string().trim()
@@ -340,6 +352,8 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateTemplates],
       description: "Get Certificate Template EST configuration",
       params: z.object({
         certificateTemplateId: z.string().trim()

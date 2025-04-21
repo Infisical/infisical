@@ -9,7 +9,7 @@ import {
   TSecretRotationV2GeneratedCredentials,
   TSecretRotationV2Input
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { SecretRotations } from "@app/lib/api-docs";
+import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";
 import { startsWithVowel } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -66,6 +66,8 @@ export const registerSecretRotationEndpoints = <
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretRotations],
       description: `List the ${rotationType} Rotations for the specified project.`,
       querystring: z.object({
         projectId: z.string().trim().min(1, "Project ID required").describe(SecretRotations.LIST(type).projectId)
@@ -109,6 +111,8 @@ export const registerSecretRotationEndpoints = <
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretRotations],
       description: `Get the specified ${rotationType} Rotation by ID.`,
       params: z.object({
         rotationId: z.string().uuid().describe(SecretRotations.GET_BY_ID(type).rotationId)
@@ -151,6 +155,8 @@ export const registerSecretRotationEndpoints = <
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretRotations],
       description: `Get the specified ${rotationType} Rotation by name, secret path, environment and project ID.`,
       params: z.object({
         rotationName: z
@@ -215,6 +221,8 @@ export const registerSecretRotationEndpoints = <
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretRotations],
       description: `Create ${
         startsWithVowel(rotationType) ? "an" : "a"
       } ${rotationType} Rotation for the specified project.`,
@@ -254,6 +262,8 @@ export const registerSecretRotationEndpoints = <
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretRotations],
       description: `Update the specified ${rotationType} Rotation.`,
       params: z.object({
         rotationId: z.string().uuid().describe(SecretRotations.UPDATE(type).rotationId)
@@ -296,6 +306,8 @@ export const registerSecretRotationEndpoints = <
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretRotations],
       description: `Delete the specified ${rotationType} Rotation.`,
       params: z.object({
         rotationId: z.string().uuid().describe(SecretRotations.DELETE(type).rotationId)
@@ -349,6 +361,8 @@ export const registerSecretRotationEndpoints = <
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretRotations],
       description: `Get the generated credentials for the specified ${rotationType} Rotation.`,
       params: z.object({
         rotationId: z.string().uuid().describe(SecretRotations.GET_GENERATED_CREDENTIALS_BY_ID(type).rotationId)
@@ -402,6 +416,8 @@ export const registerSecretRotationEndpoints = <
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretRotations],
       description: `Rotate the generated credentials for the specified ${rotationType} Rotation.`,
       params: z.object({
         rotationId: z.string().uuid().describe(SecretRotations.ROTATE(type).rotationId)
