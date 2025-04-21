@@ -297,17 +297,17 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       hide: false,
       tags: [ApiDocsTags.DynamicSecrets],
       params: z.object({
-        name: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEAES_BY_NAME.name)
+        name: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEASES_BY_NAME.name)
       }),
       querystring: z.object({
-        projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEAES_BY_NAME.projectSlug),
+        projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEASES_BY_NAME.projectSlug),
         path: z
           .string()
           .trim()
           .default("/")
           .transform(removeTrailingSlash)
-          .describe(DYNAMIC_SECRETS.LIST_LEAES_BY_NAME.path),
-        environmentSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEAES_BY_NAME.environmentSlug)
+          .describe(DYNAMIC_SECRETS.LIST_LEASES_BY_NAME.path),
+        environmentSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEASES_BY_NAME.environmentSlug)
       }),
       response: {
         200: z.object({

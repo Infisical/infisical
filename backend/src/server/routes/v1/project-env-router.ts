@@ -13,7 +13,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:workspaceId/environments/:envId",
     config: {
-      rateLimit: writeLimit
+      rateLimit: readLimit
     },
     schema: {
       hide: false,
