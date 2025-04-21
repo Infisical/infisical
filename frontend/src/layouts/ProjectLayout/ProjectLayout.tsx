@@ -105,48 +105,46 @@ export const ProjectLayout = () => {
                         </Link>
                       )}
                       {isCertManager && (
-                        <Link
-                          to={`/${ProjectType.CertificateManager}/$projectId/overview` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="certificate">
-                              Certificates
-                            </MenuItem>
-                          )}
-                        </Link>
-                      )}
-                      {isCertManager && (
-                        <Link
-                          to={
-                            `/${ProjectType.CertificateManager}/$projectId/certificate-authorities` as const
-                          }
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="certificate-authority">
-                              Certificate Authorities
-                            </MenuItem>
-                          )}
-                        </Link>
-                      )}
-                      {isCertManager && (
-                        <Link
-                          to={`/${ProjectType.CertificateManager}/$projectId/alerting` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="settings-cog">
-                              Alerting
-                            </MenuItem>
-                          )}
-                        </Link>
+                        <>
+                          <Link
+                            to={`/${ProjectType.CertificateManager}/$projectId/overview` as const}
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="certificate">
+                                Certificates
+                              </MenuItem>
+                            )}
+                          </Link>
+                          <Link
+                            to={
+                              `/${ProjectType.CertificateManager}/$projectId/certificate-authorities` as const
+                            }
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="certificate-authority">
+                                Certificate Authorities
+                              </MenuItem>
+                            )}
+                          </Link>
+                          <Link
+                            to={`/${ProjectType.CertificateManager}/$projectId/alerting` as const}
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="settings-cog">
+                                Alerting
+                              </MenuItem>
+                            )}
+                          </Link>
+                        </>
                       )}
                       {isCmek && (
                         <Link

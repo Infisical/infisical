@@ -6,7 +6,6 @@ import { PageHeader } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 
 import { PkiCollectionSection } from "../AlertingPage/components";
-// import { CertificateTemplatesSection } from "./components/CertificateTemplatesSection";
 import { CertificatesSection } from "./components";
 
 export const CertificatesPage = () => {
@@ -22,10 +21,16 @@ export const CertificatesPage = () => {
           renderGuardBanner
           passThrough={false}
           I={ProjectPermissionActions.Read}
-          a={ProjectPermissionSub.Certificates}
+          a={ProjectPermissionSub.PkiCollections}
         >
           <PkiCollectionSection />
-          {/* <CertificateTemplatesSection /> */}
+        </ProjectPermissionCan>
+        <ProjectPermissionCan
+          renderGuardBanner
+          passThrough={false}
+          I={ProjectPermissionActions.Read}
+          a={ProjectPermissionSub.Certificates}
+        >
           <CertificatesSection />
         </ProjectPermissionCan>
       </div>
