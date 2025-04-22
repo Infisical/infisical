@@ -596,7 +596,14 @@ export const registerRoutes = async (
     kmsService
   });
 
-  const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL, totpService });
+  const loginService = authLoginServiceFactory({
+    userDAL,
+    smtpService,
+    tokenService,
+    orgDAL,
+    totpService,
+    auditLogService
+  });
   const passwordService = authPaswordServiceFactory({
     tokenService,
     smtpService,

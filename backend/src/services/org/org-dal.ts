@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
+  OrgMembershipRole,
   TableName,
   TOrganizations,
   TOrganizationsInsert,
@@ -251,6 +252,43 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findOrgMembersByRole = async (orgId: string, role: OrgMembershipRole, tx?: Knex) => {
+    try {
+      const conn = tx || db;
+      const members = await conn(TableName.OrgMembership)
+        .where(`${TableName.OrgMembership}.orgId`, orgId)
+        .where(`${TableName.OrgMembership}.role`, role)
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .leftJoin<TUserEncryptionKeys>(
+          TableName.UserEncryptionKey,
+          `${TableName.UserEncryptionKey}.userId`,
+          `${TableName.Users}.id`
+        )
+        .select(
+          conn.ref("id").withSchema(TableName.OrgMembership),
+          conn.ref("inviteEmail").withSchema(TableName.OrgMembership),
+          conn.ref("orgId").withSchema(TableName.OrgMembership),
+          conn.ref("role").withSchema(TableName.OrgMembership),
+          conn.ref("roleId").withSchema(TableName.OrgMembership),
+          conn.ref("status").withSchema(TableName.OrgMembership),
+          conn.ref("username").withSchema(TableName.Users),
+          conn.ref("email").withSchema(TableName.Users),
+          conn.ref("firstName").withSchema(TableName.Users),
+          conn.ref("lastName").withSchema(TableName.Users),
+          conn.ref("id").withSchema(TableName.Users).as("userId"),
+          conn.ref("publicKey").withSchema(TableName.UserEncryptionKey)
+        )
+        .where({ isGhost: false });
+
+      return members.map(({ username, email, firstName, lastName, userId, publicKey, ...data }) => ({
+        ...data,
+        user: { username, email, firstName, lastName, id: userId, publicKey }
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find org members by role" });
+    }
+  };
+
   const findOrgGhostUser = async (orgId: string) => {
     try {
       const member = await db
@@ -472,6 +510,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findAllOrgsByUserId,
     ghostUserExists,
     findOrgMembersByUsername,
+    findOrgMembersByRole,
     findOrgGhostUser,
     create,
     updateById,

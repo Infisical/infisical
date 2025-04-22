@@ -234,6 +234,7 @@ export enum EventType {
   GET_PROJECT_KMS_BACKUP = "get-project-kms-backup",
   LOAD_PROJECT_KMS_BACKUP = "load-project-kms-backup",
   ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project",
+  ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
   CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
@@ -1907,6 +1908,11 @@ interface OrgAdminAccessProjectEvent {
   }; // no metadata yet
 }
 
+interface OrgAdminBypassSSOEvent {
+  type: EventType.ORG_ADMIN_BYPASS_SSO;
+  metadata: Record<string, string>; // no metadata yet
+}
+
 interface CreateCertificateTemplateEstConfig {
   type: EventType.CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG;
   metadata: {
@@ -2656,6 +2662,7 @@ export type Event =
   | GetProjectKmsBackupEvent
   | LoadProjectKmsBackupEvent
   | OrgAdminAccessProjectEvent
+  | OrgAdminBypassSSOEvent
   | CreateCertificateTemplate
   | UpdateCertificateTemplate
   | GetCertificateTemplate
