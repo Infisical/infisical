@@ -75,7 +75,7 @@ export const AzureClientSecretsConnectionForm = ({ appConnection }: Props) => {
     switch (formData.method) {
       case AzureClientSecretsConnectionMethod.OAuth:
         window.location.assign(
-          `https://login.microsoftonline.com/${formData.tenantId || "common"}/oauth2/v2.0/authorize?client_id=${oauthClientId}&response_type=code&redirect_uri=${window.location.origin}/organization/app-connections/azure/oauth/callback&response_mode=query&scope=https://azconfig.io/.default%20openid%20offline_access&state=${state}<:>azure-client-secrets`
+          `https://login.microsoftonline.com/${formData.tenantId || "common"}/oauth2/v2.0/authorize?client_id=${oauthClientId}&response_type=code&redirect_uri=${window.location.origin}/organization/app-connections/azure-client-secrets/oauth/callback&response_mode=query&scope=https://azconfig.io/.default%20openid%20offline_access&state=${state}<:>azure-client-secrets`
         );
         break;
       default:
