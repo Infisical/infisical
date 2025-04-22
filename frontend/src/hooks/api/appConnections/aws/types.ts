@@ -14,3 +14,21 @@ export type TAwsConnectionKmsKey = {
 export type TAwsConnectionListKmsKeysResponse = {
   kmsKeys: TAwsConnectionKmsKey[];
 };
+
+export type TListAwsConnectionIamUsers = {
+  connectionId: string;
+};
+
+export type TAwsConnectionIamUser = {
+  arn: string;
+  UserName: string;
+};
+
+export type TAwsConnectionListIamUsersResponse = {
+  iamUsers: TAwsConnectionIamUser[];
+};
+
+export type TAwsIamUserSecret = {
+  arn: string;
+  UserName: string;
+};

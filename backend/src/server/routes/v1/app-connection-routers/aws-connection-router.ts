@@ -59,4 +59,30 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
       return { kmsKeys };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/users`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        connectionId: z.string().uuid()
+      })
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      const iamUsers = await server.services.appConnection.aws.listIamUsers(
+        {
+          connectionId
+        },
+        req.permission
+      );
+
+      return { iamUsers };
+    }
+  });
 };
