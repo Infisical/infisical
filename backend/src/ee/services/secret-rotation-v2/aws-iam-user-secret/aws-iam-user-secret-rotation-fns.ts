@@ -18,7 +18,7 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
   TAwsIamUserSecretRotationGeneratedCredentials
 > = (secretRotation) => {
   const {
-    parameters: { region, clientName },
+    parameters: { region, userName },
     connection,
     secretsMapping
   } = secretRotation;
@@ -27,26 +27,29 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
     const { credentials } = await getAwsConnectionConfig(connection, region);
     const iam = new AWS.IAM({ credentials });
 
-    const { AccessKeyMetadata } = await iam.listAccessKeys({ UserName: clientName }).promise();
+    const { AccessKeyMetadata } = await iam.listAccessKeys({ UserName: userName }).promise();
 
     if (AccessKeyMetadata && AccessKeyMetadata.length > 0) {
-      for (const key of AccessKeyMetadata) {
-        if (key.Status === "Inactive" && key.AccessKeyId) {
-          // eslint-disable-next-line no-await-in-loop
-          await iam
-            .deleteAccessKey({
-              UserName: clientName,
-              AccessKeyId: key.AccessKeyId
-            })
-            .promise();
-        }
-      }
+      // Delete inactive keys
+      await Promise.all(
+        AccessKeyMetadata.map((key) => {
+          if (key.Status === "Inactive" && key.AccessKeyId) {
+            return iam
+              .deleteAccessKey({
+                UserName: userName,
+                AccessKeyId: key.AccessKeyId
+              })
+              .promise();
+          }
+          return Promise.resolve();
+        })
+      );
 
       const activeKey = AccessKeyMetadata.find((k) => k.Status === "Active");
       if (activeKey && activeKey.AccessKeyId) {
         await iam
           .updateAccessKey({
-            UserName: clientName,
+            UserName: userName,
             AccessKeyId: activeKey.AccessKeyId,
             Status: "Inactive"
           })
@@ -54,7 +57,7 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
       }
     }
 
-    const { AccessKey } = await iam.createAccessKey({ UserName: clientName }).promise();
+    const { AccessKey } = await iam.createAccessKey({ UserName: userName }).promise();
 
     return {
       accessKeyId: AccessKey.AccessKeyId,
@@ -77,15 +80,16 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
     const { credentials } = await getAwsConnectionConfig(connection, region);
     const iam = new AWS.IAM({ credentials });
 
-    for (const generatedCredential of generatedCredentials) {
-      // eslint-disable-next-line no-await-in-loop
-      await iam
-        .deleteAccessKey({
-          UserName: clientName,
-          AccessKeyId: generatedCredential.accessKeyId
-        })
-        .promise();
-    }
+    await Promise.all(
+      generatedCredentials.map((generatedCredential) =>
+        iam
+          .deleteAccessKey({
+            UserName: userName,
+            AccessKeyId: generatedCredential.accessKeyId
+          })
+          .promise()
+      )
+    );
 
     return callback();
   };

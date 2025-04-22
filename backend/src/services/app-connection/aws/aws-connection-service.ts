@@ -78,9 +78,16 @@ const listAwsIamUsers = async (appConnection: TAwsConnection) => {
 
   const iam = new AWS.IAM({ credentials });
 
-  const users = await iam.listUsers().promise();
+  const userEntries: AWS.IAM.User[] = [];
+  let userMarker: string | undefined;
+  do {
+    // eslint-disable-next-line no-await-in-loop
+    const response = await iam.listUsers({ MaxItems: 100, Marker: userMarker }).promise();
+    userEntries.push(...(response.Users || []));
+    userMarker = response.Marker;
+  } while (userMarker);
 
-  return users.Users;
+  return userEntries;
 };
 
 export const awsConnectionService = (getAppConnection: TGetAppConnectionFunc) => {

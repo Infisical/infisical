@@ -35,7 +35,7 @@ export const AwsIamUserSecretRotationSecretsMappingFields = () => {
       )
     },
     {
-      name: "Client Secret",
+      name: "Secret Access Key",
       input: (
         <Controller
           render={({ field: { value, onChange }, fieldState: { error } }) => (

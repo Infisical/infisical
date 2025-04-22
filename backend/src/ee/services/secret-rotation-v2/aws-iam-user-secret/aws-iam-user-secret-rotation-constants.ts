@@ -8,7 +8,7 @@ export const AWS_IAM_USER_SECRET_ROTATION_LIST_OPTION: TSecretRotationV2ListItem
   connection: AppConnection.AWS,
   template: {
     secretsMapping: {
-      accessKeyId: "AWS_ACCESS_KEY",
+      accessKeyId: "AWS_ACCESS_KEY_ID",
       secretAccessKey: "AWS_SECRET_ACCESS_KEY"
     }
   }

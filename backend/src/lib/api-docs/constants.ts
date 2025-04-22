@@ -2017,7 +2017,7 @@ export const SecretRotations = {
       clientId: "The client ID of the Auth0 Application to rotate the client secret for."
     },
     AWS_IAM_USER_SECRET: {
-      clientName: "The name of the client to rotate credentials for.",
+      userName: "The name of the client to rotate credentials for.",
       region: "The AWS region to rotate credentials for."
     }
   },

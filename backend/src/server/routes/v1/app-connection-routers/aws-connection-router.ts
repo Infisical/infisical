@@ -69,7 +69,17 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       params: z.object({
         connectionId: z.string().uuid()
-      })
+      }),
+      response: {
+        200: z.object({
+          iamUsers: z
+            .object({
+              UserName: z.string(),
+              Arn: z.string()
+            })
+            .array()
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {

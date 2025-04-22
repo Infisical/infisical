@@ -8,7 +8,7 @@ import {
   TAwsIamUserSecretRotation,
   TAwsIamUserSecretRotationGeneratedCredentialsResponse,
   TAwsIamUserSecretRotationOption
-} from "@app/hooks/api/secretRotationsV2/types/aws-iam-access-key-rotation";
+} from "@app/hooks/api/secretRotationsV2/types/aws-iam-user-secret-rotation";
 import {
   TMsSqlCredentialsRotation,
   TMsSqlCredentialsRotationGeneratedCredentialsResponse

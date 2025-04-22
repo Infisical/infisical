@@ -28,7 +28,4 @@ export type TAwsConnectionListIamUsersResponse = {
   iamUsers: TAwsConnectionIamUser[];
 };
 
-export type TAwsIamUserSecret = {
-  arn: string;
-  UserName: string;
-};
+export type TAwsIamUserSecret = TAwsConnectionIamUser;

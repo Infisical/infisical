@@ -19,11 +19,11 @@ export const AwsIamUserSecretRotationReviewFields = () => {
     <>
       <SecretRotationReviewSection label="Parameters">
         <GenericFieldLabel label="Region">{parameters.region}</GenericFieldLabel>
-        <GenericFieldLabel label="User Name">{parameters.clientName}</GenericFieldLabel>
+        <GenericFieldLabel label="User Name">{parameters.userName}</GenericFieldLabel>
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
-        <GenericFieldLabel label="Access Key ID">{accessKeyId}</GenericFieldLabel>
-        <GenericFieldLabel label="Access Key Secret">{secretAccessKey}</GenericFieldLabel>
+        <GenericFieldLabel label="Secret Access Key ID">{accessKeyId}</GenericFieldLabel>
+        <GenericFieldLabel label="Secret Access Key">{secretAccessKey}</GenericFieldLabel>
       </SecretRotationReviewSection>
     </>
   );

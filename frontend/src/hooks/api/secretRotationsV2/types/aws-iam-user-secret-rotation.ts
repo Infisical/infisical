@@ -9,7 +9,7 @@ export type TAwsIamUserSecretRotation = TSecretRotationV2Base & {
   type: SecretRotation.AwsIamUserSecret;
   parameters: {
     region: string;
-    clientName: string;
+    userName: string;
   };
   secretsMapping: {
     accessKeyId: string;

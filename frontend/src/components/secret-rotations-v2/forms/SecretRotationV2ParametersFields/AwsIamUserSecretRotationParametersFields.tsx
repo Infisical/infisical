@@ -25,7 +25,7 @@ export const AwsIamUserSecretRotationParametersFields = () => {
   return (
     <>
       <Controller
-        name="parameters.clientName"
+        name="parameters.userName"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
@@ -70,13 +70,13 @@ export const AwsIamUserSecretRotationParametersFields = () => {
         )}
       />
       <Controller
+        control={control}
+        name="parameters.region"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl isError={Boolean(error)} errorText={error?.message} label="Region">
             <AwsRegionSelect value={value} onChange={onChange} />
           </FormControl>
         )}
-        control={control}
-        name="parameters.region"
       />
     </>
   );

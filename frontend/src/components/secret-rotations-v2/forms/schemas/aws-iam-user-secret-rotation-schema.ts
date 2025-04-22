@@ -7,7 +7,7 @@ export const AwsIamUserSecretRotationSchema = z
   .object({
     type: z.literal(SecretRotation.AwsIamUserSecret),
     parameters: z.object({
-      clientName: z.string().trim().min(1, "Client Name required"),
+      userName: z.string().trim().min(1, "User Name required"),
       region: z.string().trim().min(1, "Region required")
     }),
     secretsMapping: z.object({
