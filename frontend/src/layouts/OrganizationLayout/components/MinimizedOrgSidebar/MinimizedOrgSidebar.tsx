@@ -57,7 +57,7 @@ import { MenuIconButton } from "../MenuIconButton";
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 
 const getPlan = (subscription: SubscriptionPlan) => {
-  if (subscription.dynamicSecret) return "Enterprise Plan";
+  if (subscription.groups) return "Enterprise Plan";
   if (subscription.pitRecovery) return "Pro Plan";
   return "Free Plan";
 };
