@@ -454,18 +454,22 @@ export const authLoginServiceFactory = ({
       const orgAdmins = await orgDAL.findOrgMembersByRole(organizationId, OrgMembershipRole.Admin);
       const adminEmails = orgAdmins.map((admin) => admin.user?.email).filter(Boolean) as string[];
 
-      if (adminEmails.length > 0) {
-        await smtpService.sendMail({
-          recipients: adminEmails,
-          subjectLine: "Security Alert: Admin SSO Bypass",
-          substitutions: {
-            email: user.email,
-            timestamp: new Date().toISOString(),
-            ip: ipAddress,
-            userAgent
-          },
-          template: SmtpTemplates.OrgAdminBreakglassAccess
-        });
+      try {
+        if (adminEmails.length > 0) {
+          await smtpService.sendMail({
+            recipients: adminEmails,
+            subjectLine: "Security Alert: Admin SSO Bypass",
+            substitutions: {
+              email: user.email,
+              timestamp: new Date().toISOString(),
+              ip: ipAddress,
+              userAgent
+            },
+            template: SmtpTemplates.OrgAdminBreakglassAccess
+          });
+        }
+      } catch (error) {
+        logger.error(error, `Failed to send SSO bypass notification emails for user ${user.email}`);
       }
     }
 

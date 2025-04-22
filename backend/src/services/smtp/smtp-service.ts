@@ -44,7 +44,7 @@ export enum SmtpTemplates {
   SecretRotationFailed = "secretRotationFailed.handlebars",
   ProjectAccessRequest = "projectAccess.handlebars",
   OrgAdminProjectDirectAccess = "orgAdminProjectGrantAccess.handlebars",
-  OrgAdminBreakglassAccess = "OrgAdminBreakglassAccess.handlebars",
+  OrgAdminBreakglassAccess = "orgAdminBreakglassAccess.handlebars",
   ServiceTokenExpired = "serviceTokenExpired.handlebars"
 }
 
