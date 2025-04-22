@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-types";
 import { backfillPermissionV1SchemaToV2Schema } from "@app/ee/services/permission/project-permission";
-import { IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
+import { ApiDocsTags, IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -25,6 +25,8 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Create a permanent or a non expiry specific privilege for identity.",
       security: [
         {
@@ -85,6 +87,8 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Create a temporary or a expiring specific privilege for identity.",
       security: [
         {
@@ -157,6 +161,8 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Update a specific privilege of an identity.",
       security: [
         {
@@ -240,6 +246,8 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Delete a specific privilege of an identity.",
       security: [
         {
@@ -279,6 +287,8 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Retrieve details of a specific privilege by privilege slug.",
       security: [
         {
@@ -319,6 +329,8 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "List of a specific privilege of an identity in a project.",
       security: [
         {

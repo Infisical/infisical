@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { Auth0ConnectionListItemSchema, SanitizedAuth0ConnectionSchema } from "@app/services/app-connection/auth0";
@@ -86,6 +87,8 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: "List the available App Connection Options.",
       response: {
         200: z.object({
@@ -107,6 +110,8 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: "List all the App Connections for the current organization.",
       response: {
         200: z.object({ appConnections: SanitizedAppConnectionSchema.array() })

@@ -6,7 +6,7 @@ import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-s
 import { SshCaKeySource, SshCaStatus } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-schema";
-import { SSH_CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
+import { ApiDocsTags, SSH_CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -20,6 +20,8 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateAuthorities],
       description: "Create SSH CA",
       body: z
         .object({
@@ -92,6 +94,8 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateAuthorities],
       description: "Get SSH CA",
       params: z.object({
         sshCaId: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.GET.sshCaId)
@@ -138,6 +142,8 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateAuthorities],
       description: "Get public key of SSH CA",
       params: z.object({
         sshCaId: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.GET_PUBLIC_KEY.sshCaId)
@@ -163,6 +169,8 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateAuthorities],
       description: "Update SSH CA",
       params: z.object({
         sshCaId: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.UPDATE.sshCaId)
@@ -216,6 +224,8 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateAuthorities],
       description: "Delete SSH CA",
       params: z.object({
         sshCaId: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.DELETE.sshCaId)
@@ -261,6 +271,8 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateAuthorities],
       description: "Get list of certificate templates for the SSH CA",
       params: z.object({
         sshCaId: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.GET_CERTIFICATE_TEMPLATES.sshCaId)
