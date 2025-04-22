@@ -115,6 +115,7 @@ declare module "@fastify/request-context" {
 declare module "fastify" {
   interface Session {
     callbackPort: string;
+    isAdminLogin: boolean;
   }
 
   interface FastifyRequest {

@@ -166,16 +166,23 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     schema: {
       querystring: z.object({
-        callback_port: z.string().optional()
+        callback_port: z.string().optional(),
+        is_admin_login: z
+          .string()
+          .optional()
+          .transform((val) => val === "true")
       })
     },
     preValidation: [
       async (req, res) => {
-        const { callback_port: callbackPort } = req.query;
+        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query;
         // ensure fresh session state per login attempt
         await req.session.regenerate();
         if (callbackPort) {
           req.session.set("callbackPort", callbackPort);
+        }
+        if (isAdminLogin) {
+          req.session.set("isAdminLogin", isAdminLogin);
         }
         return (
           passport.authenticate("google", {
@@ -200,10 +207,13 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       // this is due to zod type difference
     }) as never,
     handler: async (req, res) => {
+      const isAdminLogin = req.session.get("isAdminLogin");
       await req.session.destroy();
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
+            req.passportUser.providerAuthToken
+          )}&isAdminLogin=${isAdminLogin}`
         );
       }
       return res.redirect(
@@ -217,16 +227,24 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     schema: {
       querystring: z.object({
-        callback_port: z.string().optional()
+        callback_port: z.string().optional(),
+        is_admin_login: z
+          .string()
+          .optional()
+          .transform((val) => val === "true")
       })
     },
     preValidation: [
       async (req, res) => {
-        const { callback_port: callbackPort } = req.query;
+        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query;
         // ensure fresh session state per login attempt
         await req.session.regenerate();
         if (callbackPort) {
           req.session.set("callbackPort", callbackPort);
+        }
+
+        if (isAdminLogin) {
+          req.session.set("isAdminLogin", isAdminLogin);
         }
 
         return (
@@ -289,10 +307,13 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       // this is due to zod type difference
     }) as any,
     handler: async (req, res) => {
+      const isAdminLogin = req.session.get("isAdminLogin");
       await req.session.destroy();
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
+            req.passportUser.providerAuthToken
+          )}&isAdminLogin=${isAdminLogin}`
         );
       }
       return res.redirect(
@@ -306,16 +327,24 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     schema: {
       querystring: z.object({
-        callback_port: z.string().optional()
+        callback_port: z.string().optional(),
+        is_admin_login: z
+          .string()
+          .optional()
+          .transform((val) => val === "true")
       })
     },
     preValidation: [
       async (req, res) => {
-        const { callback_port: callbackPort } = req.query;
+        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query;
         // ensure fresh session state per login attempt
         await req.session.regenerate();
         if (callbackPort) {
           req.session.set("callbackPort", callbackPort);
+        }
+
+        if (isAdminLogin) {
+          req.session.set("isAdminLogin", isAdminLogin);
         }
 
         return (
@@ -342,10 +371,13 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any,
     handler: async (req, res) => {
+      const isAdminLogin = req.session.get("isAdminLogin");
       await req.session.destroy();
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
+            req.passportUser.providerAuthToken
+          )}&isAdminLogin=${isAdminLogin}`
         );
       }
       return res.redirect(

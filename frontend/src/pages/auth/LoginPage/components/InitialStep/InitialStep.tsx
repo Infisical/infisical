@@ -269,12 +269,14 @@ export const InitialStep = ({
               variant="outline_bg"
               onClick={() => {
                 const callbackPort = queryParams.get("callback_port");
+                const queryString = [
+                  callbackPort && `callback_port=${callbackPort}`,
+                  isAdmin && "is_admin_login=true"
+                ]
+                  .filter(Boolean)
+                  .join("&");
 
-                window.open(
-                  `/api/v1/sso/redirect/google${
-                    callbackPort ? `?callback_port=${callbackPort}` : ""
-                  }`
-                );
+                window.open(`/api/v1/sso/redirect/google${queryString ? `?${queryString}` : ""}`);
                 window.close();
               }}
               className="h-10 w-full bg-mineshaft-600"
@@ -291,13 +293,14 @@ export const InitialStep = ({
               variant="outline_bg"
               onClick={() => {
                 const callbackPort = queryParams.get("callback_port");
+                const queryString = [
+                  callbackPort && `callback_port=${callbackPort}`,
+                  isAdmin && "is_admin_login=true"
+                ]
+                  .filter(Boolean)
+                  .join("&");
 
-                window.open(
-                  `/api/v1/sso/redirect/github${
-                    callbackPort ? `?callback_port=${callbackPort}` : ""
-                  }`
-                );
-
+                window.open(`/api/v1/sso/redirect/github${queryString ? `?${queryString}` : ""}`);
                 window.close();
               }}
               className="h-10 w-full bg-mineshaft-600"
@@ -314,13 +317,14 @@ export const InitialStep = ({
               variant="outline_bg"
               onClick={() => {
                 const callbackPort = queryParams.get("callback_port");
+                const queryString = [
+                  callbackPort && `callback_port=${callbackPort}`,
+                  isAdmin && "is_admin_login=true"
+                ]
+                  .filter(Boolean)
+                  .join("&");
 
-                window.open(
-                  `/api/v1/sso/redirect/gitlab${
-                    callbackPort ? `?callback_port=${callbackPort}` : ""
-                  }`
-                );
-
+                window.open(`/api/v1/sso/redirect/gitlab${queryString ? `?${queryString}` : ""}`);
                 window.close();
               }}
               className="h-10 w-full bg-mineshaft-600"
