@@ -34,7 +34,7 @@ export enum ApiDocsTags {
   SecretImports = "Secret Imports",
   SecretRotations = "Secret Rotations",
   IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
-  IdentitySpecificPrivilegesV2 = "Identity Specific Privileges  V2",
+  IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
   AppConnections = "App Connections",
   SecretSyncs = "Secret Syncs",
   Integrations = "Integrations",

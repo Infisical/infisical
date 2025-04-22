@@ -27,7 +27,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.SERVICE_TOKEN]),
     schema: {
       hide: false,
-      tags: [ApiDocsTags.Integrations],
+      tags: [ApiDocsTags.ServiceTokens],
       description: "Return Infisical Token data",
       security: [
         {
