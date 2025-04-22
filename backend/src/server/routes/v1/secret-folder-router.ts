@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { SecretFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { FOLDERS } from "@app/lib/api-docs";
+import { ApiDocsTags, FOLDERS } from "@app/lib/api-docs";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { isValidFolderName } from "@app/lib/validator";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
@@ -19,6 +19,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       description: "Create folders",
       security: [
         {
@@ -98,6 +100,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       description: "Update folder",
       security: [
         {
@@ -181,6 +185,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       description: "Update folders by batch",
       security: [
         {
@@ -259,6 +265,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       description: "Delete a folder",
       security: [
         {
@@ -332,6 +340,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       description: "Get folders",
       security: [
         {
@@ -390,6 +400,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       description: "Get folder by id",
       security: [
         {

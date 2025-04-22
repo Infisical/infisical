@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { IdentityAwsAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { AWS_AUTH } from "@app/lib/api-docs";
+import { ApiDocsTags, AWS_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -21,6 +21,8 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AwsAuth],
       description: "Login with AWS Auth",
       body: z.object({
         identityId: z.string().trim().describe(AWS_AUTH.LOGIN.identityId),
@@ -71,6 +73,8 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AwsAuth],
       description: "Attach AWS Auth configuration onto identity",
       security: [
         {
@@ -165,6 +169,8 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AwsAuth],
       description: "Update AWS Auth configuration on identity",
       security: [
         {
@@ -247,6 +253,8 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AwsAuth],
       description: "Retrieve AWS Auth configuration on identity",
       security: [
         {
@@ -293,6 +301,8 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AwsAuth],
       description: "Delete AWS Auth configuration on identity",
       security: [
         {
