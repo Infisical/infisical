@@ -43,7 +43,7 @@ export const getAzureConnectionAccessToken = async (
     appConnection.app !== AppConnection.AzureAppConfiguration &&
     appConnection.app !== AppConnection.AzureClientSecrets
   ) {
-    throw new BadRequestError({ message: `Connection with ID '${connectionId}' is not an Azure Key Vault connection` });
+    throw new BadRequestError({ message: `Connection with ID '${connectionId}' is not a valid Azure connection` });
   }
 
   const credentials = (await decryptAppConnectionCredentials({

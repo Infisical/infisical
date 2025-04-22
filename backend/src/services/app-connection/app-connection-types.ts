@@ -145,12 +145,12 @@ export type TAppConnectionConfig =
   | TGcpConnectionConfig
   | TAzureKeyVaultConnectionConfig
   | TAzureAppConfigurationConnectionConfig
+  | TAzureClientSecretsConnectionConfig
   | TDatabricksConnectionConfig
   | THumanitecConnectionConfig
   | TTerraformCloudConnectionConfig
   | TSqlConnectionConfig
   | TCamundaConnectionConfig
-  | TAzureClientSecretsConnectionConfig
   | TVercelConnectionConfig
   | TWindmillConnectionConfig
   | TAuth0ConnectionConfig;
@@ -161,6 +161,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateGcpConnectionCredentialsSchema
   | TValidateAzureKeyVaultConnectionCredentialsSchema
   | TValidateAzureAppConfigurationConnectionCredentialsSchema
+  | TValidateAzureClientSecretsConnectionCredentialsSchema
   | TValidateDatabricksConnectionCredentialsSchema
   | TValidateHumanitecConnectionCredentialsSchema
   | TValidatePostgresConnectionCredentialsSchema
@@ -168,7 +169,6 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateCamundaConnectionCredentialsSchema
   | TValidateVercelConnectionCredentialsSchema
   | TValidateTerraformCloudConnectionCredentialsSchema
-  | TValidateAzureClientSecretsConnectionCredentialsSchema
   | TValidateWindmillConnectionCredentialsSchema
   | TValidateAuth0ConnectionCredentialsSchema;
 

@@ -134,6 +134,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.AzureKeyVault]: validateAzureKeyVaultConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureAppConfiguration]:
       validateAzureAppConfigurationConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureClientSecrets]:
+      validateAzureClientSecretsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -141,8 +143,6 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Vercel]: validateVercelConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TerraformCloud]: validateTerraformCloudConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Auth0]: validateAuth0ConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.AzureClientSecrets]:
-      validateAzureClientSecretsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Windmill]: validateWindmillConnectionCredentials as TAppConnectionCredentialsValidator
   };
 

@@ -3,7 +3,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 
 export const SECRET_ROTATION_NAME_MAP: Record<SecretRotation, string> = {
   [SecretRotation.PostgresCredentials]: "PostgreSQL Credentials",
-  [SecretRotation.MsSqlCredentials]: "Microsoft SQL Sever Credentials",
+  [SecretRotation.MsSqlCredentials]: "Microsoft SQL Server Credentials",
   [SecretRotation.Auth0ClientSecret]: "Auth0 Client Secret",
   [SecretRotation.AzureClientSecret]: "Azure Client Secret"
 };

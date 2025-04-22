@@ -43,6 +43,7 @@ export const AzureClientSecretRotationSecretsMappingFields = () => {
               <Input
                 value={value}
                 onChange={onChange}
+                type="password"
                 placeholder={rotationOption?.template.secretsMapping.clientSecret}
               />
             </FormControl>

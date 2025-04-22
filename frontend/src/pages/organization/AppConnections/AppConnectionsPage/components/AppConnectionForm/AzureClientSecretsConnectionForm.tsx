@@ -83,15 +83,7 @@ export const AzureClientSecretsConnectionForm = ({ appConnection }: Props) => {
     }
   };
 
-  let isMissingConfig: boolean;
-
-  switch (selectedMethod) {
-    case AzureClientSecretsConnectionMethod.OAuth:
-      isMissingConfig = !oauthClientId;
-      break;
-    default:
-      throw new Error(`Unhandled Azure Connection method: ${selectedMethod}`);
-  }
+  const isMissingConfig = !oauthClientId;
 
   const methodDetails = getAppConnectionMethodDetails(selectedMethod);
 

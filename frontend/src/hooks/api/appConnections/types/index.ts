@@ -80,6 +80,7 @@ export type TAppConnectionMap = {
   [AppConnection.GCP]: TGcpConnection;
   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnection;
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
+  [AppConnection.AzureClientSecrets]: TAzureClientSecretsConnection;
   [AppConnection.Databricks]: TDatabricksConnection;
   [AppConnection.Humanitec]: THumanitecConnection;
   [AppConnection.TerraformCloud]: TTerraformCloudConnection;
@@ -87,7 +88,6 @@ export type TAppConnectionMap = {
   [AppConnection.Postgres]: TPostgresConnection;
   [AppConnection.MsSql]: TMsSqlConnection;
   [AppConnection.Camunda]: TCamundaConnection;
-  [AppConnection.AzureClientSecrets]: TAzureClientSecretsConnection;
   [AppConnection.Windmill]: TWindmillConnection;
   [AppConnection.Auth0]: TAuth0Connection;
 };

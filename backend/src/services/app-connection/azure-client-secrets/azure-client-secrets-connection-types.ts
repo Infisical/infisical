@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 
 import { DiscriminativePick } from "@app/lib/types";
 

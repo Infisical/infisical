@@ -31,6 +31,8 @@ export const getAzureClientSecretsConnectionListItem = () => {
   };
 };
 
+const EXPIRATION_TIME = 300000;
+
 export const getAzureConnectionAccessToken = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
@@ -62,9 +64,10 @@ export const getAzureConnectionAccessToken = async (
   })) as TAzureClientSecretsConnectionCredentials;
 
   const { expiresAt, refreshToken } = credentials;
+  const currentTime = Date.now();
 
   // get new token if expired or less than 5 minutes until expiry
-  if (Date.now() < expiresAt - 300000) {
+  if (currentTime < expiresAt - EXPIRATION_TIME) {
     return credentials.accessToken;
   }
 
@@ -82,7 +85,7 @@ export const getAzureConnectionAccessToken = async (
   const updatedCredentials = {
     ...credentials,
     accessToken: data.access_token,
-    expiresAt: Date.now() + data.expires_in * 1000,
+    expiresAt: currentTime + data.expires_in * 1000,
     refreshToken: data.refresh_token
   };
 
@@ -101,6 +104,10 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
   const { credentials: inputCredentials, method } = config;
 
   const { INF_APP_CONNECTION_AZURE_CLIENT_ID, INF_APP_CONNECTION_AZURE_CLIENT_SECRET, SITE_URL } = getConfig();
+
+  if (!SITE_URL) {
+    throw new InternalServerError({ message: "SITE_URL env var is required to complete Azure OAuth flow" });
+  }
 
   if (!INF_APP_CONNECTION_AZURE_CLIENT_ID || !INF_APP_CONNECTION_AZURE_CLIENT_SECRET) {
     throw new InternalServerError({

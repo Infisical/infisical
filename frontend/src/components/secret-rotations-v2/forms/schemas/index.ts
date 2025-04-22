@@ -6,10 +6,10 @@ import { MsSqlCredentialsRotationSchema } from "@app/components/secret-rotations
 import { PostgresCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/postgres-credentials-rotation-schema";
 
 const SecretRotationUnionSchema = z.discriminatedUnion("type", [
-  PostgresCredentialsRotationSchema,
-  MsSqlCredentialsRotationSchema,
   Auth0ClientSecretRotationSchema,
-  AzureClientSecretRotationSchema
+  AzureClientSecretRotationSchema,
+  PostgresCredentialsRotationSchema,
+  MsSqlCredentialsRotationSchema
 ]);
 
 export const SecretRotationV2FormSchema = SecretRotationUnionSchema;

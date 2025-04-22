@@ -452,8 +452,8 @@ export const appConnectionServiceFactory = ({
     terraformCloud: terraformCloudConnectionService(connectAppConnectionById),
     camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     vercel: vercelConnectionService(connectAppConnectionById),
-    auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     azureClientSecrets: azureClientSecretsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     windmill: windmillConnectionService(connectAppConnectionById)
   };
 };

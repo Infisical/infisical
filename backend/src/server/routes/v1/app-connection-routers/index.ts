@@ -25,6 +25,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.GCP]: registerGcpConnectionRouter,
     [AppConnection.AzureKeyVault]: registerAzureKeyVaultConnectionRouter,
     [AppConnection.AzureAppConfiguration]: registerAzureAppConfigurationConnectionRouter,
+    [AppConnection.AzureClientSecrets]: registerAzureClientSecretsConnectionRouter,
     [AppConnection.Databricks]: registerDatabricksConnectionRouter,
     [AppConnection.Humanitec]: registerHumanitecConnectionRouter,
     [AppConnection.TerraformCloud]: registerTerraformCloudConnectionRouter,
@@ -32,7 +33,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Postgres]: registerPostgresConnectionRouter,
     [AppConnection.MsSql]: registerMsSqlConnectionRouter,
     [AppConnection.Camunda]: registerCamundaConnectionRouter,
-    [AppConnection.AzureClientSecrets]: registerAzureClientSecretsConnectionRouter,
     [AppConnection.Windmill]: registerWindmillConnectionRouter,
     [AppConnection.Auth0]: registerAuth0ConnectionRouter
   };
