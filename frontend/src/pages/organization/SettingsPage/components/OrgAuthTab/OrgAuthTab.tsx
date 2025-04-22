@@ -45,6 +45,7 @@ export const OrgAuthTab = withPermission(
     const { data: samlConfig, isPending: isLoadingSamlConfig } = useGetSSOConfig(
       currentOrg?.id ?? ""
     );
+
     const { data: ldapConfig, isPending: isLoadingLdapConfig } = useGetLDAPConfig(
       currentOrg?.id ?? ""
     );
@@ -54,7 +55,8 @@ export const OrgAuthTab = withPermission(
       !enabledLoginMethods || enabledLoginMethods.includes(method);
 
     const isOidcConfigured = oidcConfig && (oidcConfig.discoveryURL || oidcConfig.issuer);
-    const isSamlConfigured = samlConfig && samlConfig.entryPoint;
+    const isSamlConfigured =
+      samlConfig && (samlConfig.entryPoint || samlConfig.issuer || samlConfig.cert);
     const isLdapConfigured = ldapConfig && ldapConfig.url;
 
     const shouldShowCreateIdentityProviderView =

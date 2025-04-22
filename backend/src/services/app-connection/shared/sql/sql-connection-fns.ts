@@ -77,20 +77,22 @@ export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection,
 export const validateSqlConnectionCredentials = async (config: TSqlConnectionConfig) => {
   const { credentials, app } = config;
 
-  const client = await getSqlConnectionClient({ app, credentials });
+  let client: Knex | undefined;
 
   try {
+    client = await getSqlConnectionClient({ app, credentials });
+
     await client.raw(`Select 1`);
 
     return credentials;
   } catch (error) {
     throw new BadRequestError({
-      message:
-        (error as Error)?.message?.replaceAll(credentials.password, "********************") ??
-        "Unable to validate connection: verify credentials"
+      message: `Unable to validate connection: ${
+        (error as Error)?.message?.replaceAll(credentials.password, "********************") ?? "verify credentials"
+      }`
     });
   } finally {
-    await client.destroy();
+    await client?.destroy();
   }
 };
 
