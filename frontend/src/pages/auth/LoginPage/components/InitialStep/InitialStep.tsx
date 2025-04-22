@@ -269,12 +269,17 @@ export const InitialStep = ({
               variant="outline_bg"
               onClick={() => {
                 const callbackPort = queryParams.get("callback_port");
-                const queryString = [
-                  callbackPort && `callback_port=${callbackPort}`,
-                  isAdmin && "is_admin_login=true"
-                ]
-                  .filter(Boolean)
-                  .join("&");
+                const searchParams = new URLSearchParams();
+
+                if (callbackPort) {
+                  searchParams.append("callback_port", callbackPort);
+                }
+
+                if (isAdmin) {
+                  searchParams.append("is_admin_login", "true");
+                }
+
+                const queryString = searchParams.toString();
 
                 window.open(`/api/v1/sso/redirect/google${queryString ? `?${queryString}` : ""}`);
                 window.close();
@@ -293,12 +298,17 @@ export const InitialStep = ({
               variant="outline_bg"
               onClick={() => {
                 const callbackPort = queryParams.get("callback_port");
-                const queryString = [
-                  callbackPort && `callback_port=${callbackPort}`,
-                  isAdmin && "is_admin_login=true"
-                ]
-                  .filter(Boolean)
-                  .join("&");
+                const searchParams = new URLSearchParams();
+
+                if (callbackPort) {
+                  searchParams.append("callback_port", callbackPort);
+                }
+
+                if (isAdmin) {
+                  searchParams.append("is_admin_login", "true");
+                }
+
+                const queryString = searchParams.toString();
 
                 window.open(`/api/v1/sso/redirect/github${queryString ? `?${queryString}` : ""}`);
                 window.close();
@@ -317,12 +327,17 @@ export const InitialStep = ({
               variant="outline_bg"
               onClick={() => {
                 const callbackPort = queryParams.get("callback_port");
-                const queryString = [
-                  callbackPort && `callback_port=${callbackPort}`,
-                  isAdmin && "is_admin_login=true"
-                ]
-                  .filter(Boolean)
-                  .join("&");
+                const searchParams = new URLSearchParams();
+
+                if (callbackPort) {
+                  searchParams.append("callback_port", callbackPort);
+                }
+
+                if (isAdmin) {
+                  searchParams.append("is_admin_login", "true");
+                }
+
+                const queryString = searchParams.toString();
 
                 window.open(`/api/v1/sso/redirect/gitlab${queryString ? `?${queryString}` : ""}`);
                 window.close();
