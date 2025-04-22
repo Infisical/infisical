@@ -211,9 +211,9 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       await req.session.destroy();
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
-            req.passportUser.providerAuthToken
-          )}&isAdminLogin=${isAdminLogin}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}${
+            isAdminLogin ? `&isAdminLogin=${isAdminLogin}` : ""
+          }`
         );
       }
       return res.redirect(
@@ -311,9 +311,9 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       await req.session.destroy();
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
-            req.passportUser.providerAuthToken
-          )}&isAdminLogin=${isAdminLogin}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}${
+            isAdminLogin ? `&isAdminLogin=${isAdminLogin}` : ""
+          }`
         );
       }
       return res.redirect(
@@ -375,9 +375,9 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       await req.session.destroy();
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
-            req.passportUser.providerAuthToken
-          )}&isAdminLogin=${isAdminLogin}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}${
+            isAdminLogin ? `&isAdminLogin=${isAdminLogin}` : ""
+          }`
         );
       }
       return res.redirect(
