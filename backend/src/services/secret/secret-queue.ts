@@ -259,7 +259,7 @@ export const secretQueueFactory = ({
         });
       }
 
-      if (recipients) {
+      if (recipients?.length) {
         await secretReminderRecipientsDAL.transaction(async (tx) => {
           await secretReminderRecipientsDAL.delete({ secretId: newSecret.id }, tx);
           await secretReminderRecipientsDAL.insertMany(

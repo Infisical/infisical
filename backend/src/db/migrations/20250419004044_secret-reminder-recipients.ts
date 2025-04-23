@@ -1,7 +1,6 @@
 import { Knex } from "knex";
 
 import { TableName } from "../schemas";
-import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
   const hasSecretReminderRecipientsTable = await knex.schema.hasTable(TableName.SecretReminderRecipients);
@@ -23,8 +22,6 @@ export async function up(knex: Knex): Promise<void> {
       table.index("secretId");
       table.unique(["secretId", "userId"]);
     });
-
-    await createOnUpdateTrigger(knex, TableName.SecretReminderRecipients);
   }
 }
 
@@ -33,6 +30,5 @@ export async function down(knex: Knex): Promise<void> {
 
   if (hasSecretReminderRecipientsTable) {
     await knex.schema.dropTableIfExists(TableName.SecretReminderRecipients);
-    await dropOnUpdateTrigger(knex, TableName.SecretReminderRecipients);
   }
 }
