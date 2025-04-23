@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { SecretRotations } from "@app/lib/api-docs";
@@ -29,6 +30,7 @@ export const PasswordRequirementsSchema = z
     }),
     allowedSymbols: z
       .string()
+      .regex(new RE2("[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?~]"), "Invalid symbols")
       .optional()
       .describe(SecretRotations.PARAMETERS.GENERAL.PASSWORD_REQUIREMENTS.allowedSymbols)
   })

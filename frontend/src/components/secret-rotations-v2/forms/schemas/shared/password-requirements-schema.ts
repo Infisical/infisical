@@ -14,6 +14,7 @@ export const PasswordRequirementsSchema = z
     }),
     allowedSymbols: z
       .string()
+      .regex(/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~]/, "Invalid symbols")
       .optional()
       .transform((value) => value || "-_.~!*")
   })

@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
@@ -16,7 +17,7 @@ export const LdapConnectionSimpleBindCredentialsSchema = z.object({
     .string()
     .trim()
     .min(1, "URL required")
-    .refine((value) => value.startsWith("ldap://") || value.startsWith("ldaps://"))
+    .regex(new RE2(/^ldaps?:\/\//))
     .describe(AppConnections.CREDENTIALS.LDAP.url),
   dn: z.string().trim().min(1, "Distinguished Name (DN) required").describe(AppConnections.CREDENTIALS.LDAP.dn),
   password: z.string().trim().min(1, "Password required").describe(AppConnections.CREDENTIALS.LDAP.password),
