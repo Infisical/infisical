@@ -9,7 +9,7 @@ export enum LdapConnectionProvider {
   ActiveDirectory = "active-directory"
 }
 
-export type TLdapConnection = TRootAppConnection & { app: AppConnection.Ldap } & {
+export type TLdapConnection = TRootAppConnection & { app: AppConnection.LDAP } & {
   method: LdapConnectionMethod.SimpleBind;
   credentials: {
     provider: LdapConnectionProvider;

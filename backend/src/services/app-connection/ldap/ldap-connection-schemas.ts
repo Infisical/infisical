@@ -12,7 +12,12 @@ import { LdapConnectionMethod, LdapProvider } from "./ldap-connection-enums";
 
 export const LdapConnectionSimpleBindCredentialsSchema = z.object({
   provider: z.nativeEnum(LdapProvider).describe(AppConnections.CREDENTIALS.LDAP.provider),
-  url: z.string().trim().min(1, "URL required").describe(AppConnections.CREDENTIALS.LDAP.url),
+  url: z
+    .string()
+    .trim()
+    .min(1, "URL required")
+    .refine((value) => value.startsWith("ldap://") || value.startsWith("ldaps://"))
+    .describe(AppConnections.CREDENTIALS.LDAP.url),
   dn: z.string().trim().min(1, "Distinguished Name (DN) required").describe(AppConnections.CREDENTIALS.LDAP.dn),
   password: z.string().trim().min(1, "Password required").describe(AppConnections.CREDENTIALS.LDAP.password),
   sslRejectUnauthorized: z.boolean().optional().describe(AppConnections.CREDENTIALS.LDAP.sslRejectUnauthorized),
@@ -25,7 +30,7 @@ export const LdapConnectionSimpleBindCredentialsSchema = z.object({
 });
 
 const BaseLdapConnectionSchema = BaseAppConnectionSchema.extend({
-  app: z.literal(AppConnection.Ldap)
+  app: z.literal(AppConnection.LDAP)
 });
 
 export const LdapConnectionSchema = z.intersection(
@@ -54,28 +59,28 @@ export const SanitizedLdapConnectionSchema = z.discriminatedUnion("method", [
 
 export const ValidateLdapConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
-    method: z.literal(LdapConnectionMethod.SimpleBind).describe(AppConnections.CREATE(AppConnection.Ldap).method),
+    method: z.literal(LdapConnectionMethod.SimpleBind).describe(AppConnections.CREATE(AppConnection.LDAP).method),
     credentials: LdapConnectionSimpleBindCredentialsSchema.describe(
-      AppConnections.CREATE(AppConnection.Ldap).credentials
+      AppConnections.CREATE(AppConnection.LDAP).credentials
     )
   })
 ]);
 
 export const CreateLdapConnectionSchema = ValidateLdapConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.Ldap)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.LDAP)
 );
 
 export const UpdateLdapConnectionSchema = z
   .object({
     credentials: LdapConnectionSimpleBindCredentialsSchema.optional().describe(
-      AppConnections.UPDATE(AppConnection.Ldap).credentials
+      AppConnections.UPDATE(AppConnection.LDAP).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Ldap));
+  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.LDAP));
 
 export const LdapConnectionListItemSchema = z.object({
   name: z.literal("LDAP"),
-  app: z.literal(AppConnection.Ldap),
+  app: z.literal(AppConnection.LDAP),
   // the below is preferable but currently breaks with our zod to json schema parser
   // methods: z.tuple([z.literal(AwsConnectionMethod.ServicePrincipal), z.literal(AwsConnectionMethod.AccessKey)]),
   methods: z.nativeEnum(LdapConnectionMethod).array()

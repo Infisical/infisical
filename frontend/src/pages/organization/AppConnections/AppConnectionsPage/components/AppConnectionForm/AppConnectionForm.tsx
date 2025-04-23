@@ -90,7 +90,7 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <WindmillConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Auth0:
       return <Auth0ConnectionForm onSubmit={onSubmit} />;
-    case AppConnection.Ldap:
+    case AppConnection.LDAP:
       return <LdapConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
@@ -156,7 +156,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <WindmillConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Auth0:
       return <Auth0ConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
-    case AppConnection.Ldap:
+    case AppConnection.LDAP:
       return <LdapConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);

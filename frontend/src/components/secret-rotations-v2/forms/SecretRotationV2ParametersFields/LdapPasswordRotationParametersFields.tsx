@@ -1,10 +1,8 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { DEFAULT_PASSWORD_REQUIREMENTS } from "@app/components/secret-rotations-v2/forms/schemas/shared";
-import { FormControl, Input, Tooltip } from "@app/components/v2";
+import { FormControl, Input } from "@app/components/v2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 export const LdapPasswordRotationParametersFields = () => {
@@ -24,37 +22,7 @@ export const LdapPasswordRotationParametersFields = () => {
             isError={Boolean(error)}
             errorText={error?.message}
             label="Distinguished Name (DN)"
-            helperText={
-              <Tooltip
-                className="max-w-md"
-                content={
-                  <>
-                    Ensure that your connection has the{" "}
-                    <span className="font-semibold">read_clients</span> permission and the
-                    application exists in the connection&#39;s audience.
-                  </>
-                }
-              >
-                <div>
-                  <span>Don&#39;t see the application you&#39;re looking for?</span>{" "}
-                  <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                </div>
-              </Tooltip>
-            }
           >
-            {/* <FilterableSelect
-            menuPlacement="top"
-            isLoading={isClientsPending && Boolean(connectionId)}
-            isDisabled={!connectionId}
-            value={clients?.find((client) => client.id === value) ?? null}
-            onChange={(option) => {
-              onChange((option as SingleValue<TAuth0Client>)?.id ?? null);
-            }}
-            options={clients}
-            placeholder="Select an application..."
-            getOptionLabel={(option) => option.name}
-            getOptionValue={(option) => option.id}
-          /> */}
             <Input
               value={value}
               onChange={onChange}
@@ -74,7 +42,7 @@ export const LdapPasswordRotationParametersFields = () => {
             defaultValue={DEFAULT_PASSWORD_REQUIREMENTS.length}
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Passsword Length"
+                label="Password Length"
                 isError={Boolean(error)}
                 errorText={error?.message}
                 helperText="The length of the password to generate"
@@ -189,7 +157,7 @@ export const LdapPasswordRotationParametersFields = () => {
                   placeholder="-_.~!*"
                   size="sm"
                   {...field}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
+                  onChange={(e) => field.onChange(e.target.value)}
                 />
               </FormControl>
             )}

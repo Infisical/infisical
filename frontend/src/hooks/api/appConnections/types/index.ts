@@ -89,5 +89,5 @@ export type TAppConnectionMap = {
   [AppConnection.Camunda]: TCamundaConnection;
   [AppConnection.Windmill]: TWindmillConnection;
   [AppConnection.Auth0]: TAuth0Connection;
-  [AppConnection.Ldap]: TLdapConnection;
+  [AppConnection.LDAP]: TLdapConnection;
 };

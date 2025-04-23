@@ -37,7 +37,7 @@ type Props = {
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Ldap)
+  app: z.literal(AppConnection.LDAP)
 });
 
 const formSchema = z.discriminatedUnion("method", [
@@ -45,7 +45,12 @@ const formSchema = z.discriminatedUnion("method", [
     method: z.literal(LdapConnectionMethod.SimpleBind),
     credentials: z.object({
       provider: z.nativeEnum(LdapConnectionProvider),
-      url: z.string().url().trim().min(1, "LDAP URL required"),
+      url: z
+        .string()
+        .regex(/^ldaps?:\/\//, 'Must start with "ldaps://" or "ldap://"')
+        .url()
+        .trim()
+        .min(1, "LDAP URL required"),
       dn: z.string().trim().min(1, "Distinguished Name (DN) required"),
       password: z.string().trim().min(1, "Password required"),
       sslRejectUnauthorized: z.boolean(),
@@ -67,7 +72,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
-      app: AppConnection.Ldap,
+      app: AppConnection.LDAP,
       method: LdapConnectionMethod.SimpleBind,
       credentials: {
         provider: LdapConnectionProvider.ActiveDirectory,
@@ -88,7 +93,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
   } = form;
 
   const selectedProvider = watch("credentials.provider");
-  const sslEnabled = watch("credentials.url").startsWith("ldaps://");
+  const sslEnabled = watch("credentials.url")?.startsWith("ldaps://") ?? false;
 
   return (
     <FormProvider {...form}>
@@ -106,7 +111,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <FormControl
                 tooltipText={`The method you would like to use to connect with ${
-                  APP_CONNECTION_MAP[AppConnection.Ldap].name
+                  APP_CONNECTION_MAP[AppConnection.LDAP].name
                 }. This field cannot be changed after creation.`}
                 errorText={error?.message}
                 isError={Boolean(error?.message)}
@@ -213,7 +218,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     <FormControl
                       errorText={error?.message}
                       isError={Boolean(error?.message)}
-                      label="Binding Distinguised Name (DN)"
+                      label="Binding Distinguished Name (DN)"
                     >
                       <Input {...field} placeholder="CN=John,OU=Users,DC=example,DC=com" />
                     </FormControl>
@@ -263,7 +268,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl
-                    className={` ${sslEnabled ? "" : "opacity-50"}`}
+                    className={sslEnabled ? "" : "opacity-50"}
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >

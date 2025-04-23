@@ -76,7 +76,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Camunda]: ValidateCamundaConnectionCredentialsSchema,
   [AppConnection.Windmill]: ValidateWindmillConnectionCredentialsSchema,
   [AppConnection.Auth0]: ValidateAuth0ConnectionCredentialsSchema,
-  [AppConnection.Ldap]: ValidateLdapConnectionCredentialsSchema
+  [AppConnection.LDAP]: ValidateLdapConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

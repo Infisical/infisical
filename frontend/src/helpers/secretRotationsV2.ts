@@ -31,7 +31,7 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.PostgresCredentials]: AppConnection.Postgres,
   [SecretRotation.MsSqlCredentials]: AppConnection.MsSql,
   [SecretRotation.Auth0ClientSecret]: AppConnection.Auth0,
-  [SecretRotation.LdapPassword]: AppConnection.Ldap
+  [SecretRotation.LdapPassword]: AppConnection.LDAP
 };
 
 // if a rotation can potentially have downtime due to rotating a single credential set this to false

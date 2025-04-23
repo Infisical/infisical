@@ -33,6 +33,9 @@ export const PasswordRequirementsSchema = z
       .describe(SecretRotations.PARAMETERS.GENERAL.PASSWORD_REQUIREMENTS.allowedSymbols)
   })
   .refine((data) => {
+    return Object.values(data.required).some((count) => count > 0);
+  }, "At least one character type must be required")
+  .refine((data) => {
     const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
     return total <= data.length;
   }, "Sum of required characters cannot exceed the total length")

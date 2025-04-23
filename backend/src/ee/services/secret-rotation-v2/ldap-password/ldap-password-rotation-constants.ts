@@ -5,7 +5,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 export const LDAP_PASSWORD_ROTATION_LIST_OPTION: TSecretRotationV2ListItem = {
   name: "LDAP Password",
   type: SecretRotation.LdapPassword,
-  connection: AppConnection.Ldap,
+  connection: AppConnection.LDAP,
   template: {
     secretsMapping: {
       dn: "LDAP_DN",

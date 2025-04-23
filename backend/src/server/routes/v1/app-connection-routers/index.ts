@@ -34,5 +34,5 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Camunda]: registerCamundaConnectionRouter,
     [AppConnection.Windmill]: registerWindmillConnectionRouter,
     [AppConnection.Auth0]: registerAuth0ConnectionRouter,
-    [AppConnection.Ldap]: registerLdapConnectionRouter
+    [AppConnection.LDAP]: registerLdapConnectionRouter
   };

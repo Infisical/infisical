@@ -138,7 +138,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.TerraformCloud]: validateTerraformCloudConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Auth0]: validateAuth0ConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Windmill]: validateWindmillConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Ldap]: validateLdapConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.LDAP]: validateLdapConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -220,5 +220,5 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Vercel]: platformManagedCredentialsNotSupported,
   [AppConnection.Windmill]: platformManagedCredentialsNotSupported,
   [AppConnection.Auth0]: platformManagedCredentialsNotSupported,
-  [AppConnection.Ldap]: platformManagedCredentialsNotSupported // we could support this in the future
+  [AppConnection.LDAP]: platformManagedCredentialsNotSupported // we could support this in the future
 };

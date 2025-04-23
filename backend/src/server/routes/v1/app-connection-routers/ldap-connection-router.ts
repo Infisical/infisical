@@ -9,7 +9,7 @@ import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
 export const registerLdapConnectionRouter = async (server: FastifyZodProvider) => {
   registerAppConnectionEndpoints({
-    app: AppConnection.Ldap,
+    app: AppConnection.LDAP,
     server,
     sanitizedResponseSchema: SanitizedLdapConnectionSchema,
     createSchema: CreateLdapConnectionSchema,

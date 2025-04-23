@@ -59,7 +59,7 @@ export const UpdateLdapPasswordRotationSchema = BaseUpdateSecretRotationSchema(S
 
 export const LdapPasswordRotationListItemSchema = z.object({
   name: z.literal("LDAP Password"),
-  connection: z.literal(AppConnection.Ldap),
+  connection: z.literal(AppConnection.LDAP),
   type: z.literal(SecretRotation.LdapPassword),
   template: LdapPasswordRotationTemplateSchema
 });

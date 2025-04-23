@@ -15,8 +15,17 @@ export const PasswordRequirementsSchema = z
     allowedSymbols: z
       .string()
       .optional()
-      .transform((value) => value ?? "-_.~!*")
+      .transform((value) => value || "-_.~!*")
   })
+  .refine(
+    (data) => {
+      return Object.values(data.required).some((count) => count > 0);
+    },
+    {
+      message: "At least one character type must be required",
+      path: ["required.digits"]
+    }
+  )
   .refine(
     (data) => {
       const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);

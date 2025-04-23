@@ -11,7 +11,7 @@ import { TLdapConnectionConfig } from "./ldap-connection-types";
 export const getLdapConnectionListItem = () => {
   return {
     name: "LDAP" as const,
-    app: AppConnection.Ldap as const,
+    app: AppConnection.LDAP as const,
     methods: Object.values(LdapConnectionMethod) as [LdapConnectionMethod.SimpleBind]
   };
 };

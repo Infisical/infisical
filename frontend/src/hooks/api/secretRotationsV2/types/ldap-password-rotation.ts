@@ -30,7 +30,7 @@ export type TLdapPasswordRotationGeneratedCredentialsResponse =
 export type TLdapPasswordRotationOption = {
   name: string;
   type: SecretRotation.LdapPassword;
-  connection: AppConnection.Ldap;
+  connection: AppConnection.LDAP;
   template: {
     secretsMapping: TLdapPasswordRotation["secretsMapping"];
   };

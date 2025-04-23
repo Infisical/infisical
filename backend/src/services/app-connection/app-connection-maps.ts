@@ -15,5 +15,5 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Camunda]: "Camunda",
   [AppConnection.Windmill]: "Windmill",
   [AppConnection.Auth0]: "Auth0",
-  [AppConnection.Ldap]: "LDAP"
+  [AppConnection.LDAP]: "LDAP"
 };
