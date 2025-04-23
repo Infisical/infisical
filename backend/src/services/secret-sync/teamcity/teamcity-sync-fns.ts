@@ -11,6 +11,7 @@ import {
 } from "@app/services/secret-sync/teamcity/teamcity-sync-types";
 
 // Note: Most variables won't be returned with a value due to them being a "password" type (starting with "env.").
+// TeamCity API returns empty string for password-type variables for security reasons.
 const listTeamCityVariables = async ({ instanceUrl, accessToken, project, buildConfig }: TTeamCityListVariables) => {
   const { data } = await request.get<TTeamCityListVariablesResponse>(
     buildConfig
@@ -28,7 +29,7 @@ const listTeamCityVariables = async ({ instanceUrl, accessToken, project, buildC
   return Object.fromEntries(
     data.property.map((variable) => [
       variable.name.startsWith("env.") ? variable.name.substring(4) : variable.name,
-      { ...variable, value: variable.value || "" } // This will almost always be empty string
+      { ...variable, value: variable.value || "" } // Password values will be empty strings from the API for security
     ])
   );
 };
@@ -72,7 +73,7 @@ const deleteTeamCityVariable = async ({
   return request.delete(
     buildConfig
       ? `${instanceUrl}/app/rest/buildTypes/${buildConfig}/parameters/${key}`
-      : `${instanceUrl}/app/rest/projects/${project}/parameters/${key}`,
+      : `${instanceUrl}/app/rest/projects/id:${project}/parameters/${key}`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`
@@ -162,7 +163,7 @@ export const TeamCitySyncFns = {
         } catch (error) {
           throw new SecretSyncError({
             error,
-            secretKey: variable.name
+            secretKey: key
           });
         }
       }

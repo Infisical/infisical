@@ -21,7 +21,7 @@ export const registerTeamCityConnectionRouter = async (server: FastifyZodProvide
     updateSchema: UpdateTeamCityConnectionSchema
   });
 
-  // The below endpoints are not exposed and for Infisical App use
+  // The following endpoints are for internal Infisical App use only and not part of the public API
   server.route({
     method: "GET",
     url: `/:connectionId/projects`,
@@ -51,11 +51,8 @@ export const registerTeamCityConnectionRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      console.log("HIT1");
       const { connectionId } = req.params;
       const projects = await server.services.appConnection.teamcity.listProjects(connectionId, req.permission);
-
-      console.log(projects);
 
       return projects;
     }
