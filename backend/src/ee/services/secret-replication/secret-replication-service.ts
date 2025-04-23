@@ -267,7 +267,6 @@ export const secretReplicationServiceFactory = ({
       const sourceLocalSecrets = await secretV2BridgeDAL.find({ folderId: folder.id, type: SecretType.Shared });
       const sourceSecretImports = await secretImportDAL.find({ folderId: folder.id });
       const sourceImportedSecrets = await fnSecretsV2FromImports({
-        projectId,
         secretImports: sourceSecretImports,
         secretDAL: secretV2BridgeDAL,
         folderDAL,
