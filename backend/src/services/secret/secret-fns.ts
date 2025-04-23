@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import path from "path";
+import RE2 from "re2";
 
 import {
   ActionProjectType,
@@ -218,7 +219,9 @@ type TInterpolateSecretArg = {
 };
 
 const MAX_SECRET_REFERENCE_DEPTH = 5;
-const INTERPOLATION_SYNTAX_REG = /\${([a-zA-Z0-9-_.]+)}/g;
+const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.]+)}`;
+const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
+
 export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderDAL }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, string>> = {};
   const getCacheUniqueKey = (environment: string, secretPath: string) => `${environment}-${secretPath}`;
@@ -273,9 +276,17 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
     if (!value) return "";
     if (depth > MAX_SECRET_REFERENCE_DEPTH) return "";
 
-    const refs = value.match(INTERPOLATION_SYNTAX_REG);
+    const refs = [];
+    let match;
+    const execRegex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
+
+    // eslint-disable-next-line no-cond-assign
+    while ((match = execRegex.exec(value)) !== null) {
+      refs.push(match[0]);
+    }
+
     let expandedValue = value;
-    if (refs) {
+    if (refs.length > 0) {
       for (const interpolationSyntax of refs) {
         const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
         const entities = interpolationKey.trim().split(".");
@@ -284,7 +295,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
           const [secretKey] = entities;
           // eslint-disable-next-line
           let referenceValue = await fetchSecret(environment, secretPath, secretKey);
-          if (INTERPOLATION_SYNTAX_REG.test(referenceValue)) {
+          if (INTERPOLATION_TEST_REGEX.test(referenceValue)) {
             // eslint-disable-next-line
             referenceValue = await recursivelyExpandSecret({
               environment,
@@ -305,7 +316,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
 
           // eslint-disable-next-line
           let referenceValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
-          if (INTERPOLATION_SYNTAX_REG.test(referenceValue)) {
+          if (INTERPOLATION_TEST_REGEX.test(referenceValue)) {
             // eslint-disable-next-line
             referenceValue = await recursivelyExpandSecret({
               environment: secretReferenceEnvironment,
@@ -332,7 +343,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
   }) => {
     if (!inputSecret.value) return inputSecret.value;
 
-    const shouldExpand = Boolean(inputSecret.value?.match(INTERPOLATION_SYNTAX_REG));
+    const shouldExpand = INTERPOLATION_TEST_REGEX.test(inputSecret.value);
     if (!shouldExpand) return inputSecret.value;
 
     const expandedSecretValue = await recursivelyExpandSecret(inputSecret);
@@ -451,7 +462,18 @@ export const fnSecretBlindIndexCheckV2 = async ({
  * // ]
  */
 export const getAllNestedSecretReferences = (maybeSecretReference: string) => {
-  const references = Array.from(maybeSecretReference.matchAll(INTERPOLATION_SYNTAX_REG), (m) => m[1]);
+  const matches = [];
+  let match;
+
+  const execRegex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
+
+  // eslint-disable-next-line no-cond-assign
+  while ((match = execRegex.exec(maybeSecretReference)) !== null) {
+    matches.push(match);
+  }
+
+  const references = matches.map((m) => m[1]);
+
   return references
     .filter((el) => el.includes("."))
     .map((el) => {

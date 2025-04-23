@@ -31,6 +31,7 @@ export const ProjectLayout = () => {
   const { t } = useTranslation();
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
+  const { subscription } = useSubscription();
 
   const isSecretManager = currentWorkspace?.type === ProjectType.SecretManager;
   const isCertManager = currentWorkspace?.type === ProjectType.CertificateManager;
@@ -47,7 +48,6 @@ export const ProjectLayout = () => {
   });
 
   // we only show the secret rotations v1 tab if they have existing rotations
-  const { subscription } = useSubscription();
   const { data: secretRotations } = useGetSecretRotations({
     workspaceId,
     options: {

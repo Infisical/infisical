@@ -31,7 +31,7 @@ interface CheckPasswordParams {
  * - Contains at least 1 number (0-9) or special character (emojis included)
  * - Does not contain 3 repeat, consecutive characters
  * - Does not contain any escape characters/sequences
- * - Does not contain PII and/or low entropy data (eg. email address, URL, phone number, DoB, SSN, driver's license, passport)
+ * - Does not contain PII and/or low entropy data (eg. email address, URL, SSN)
  * - Is not in a database of breached passwords
  *
  * The function returns whether or not the password [password]

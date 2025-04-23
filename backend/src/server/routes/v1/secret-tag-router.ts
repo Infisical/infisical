@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { SecretTagsSchema } from "@app/db/schemas";
-import { SECRET_TAGS } from "@app/lib/api-docs";
+import { ApiDocsTags, SECRET_TAGS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -15,6 +15,8 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.LIST.projectId)
       }),
@@ -44,6 +46,8 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_ID.projectId),
         tagId: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_ID.tagId)
@@ -75,6 +79,8 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_SLUG.projectId),
         tagSlug: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_SLUG.tagSlug)
@@ -107,6 +113,8 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.CREATE.projectId)
       }),
@@ -141,6 +149,8 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.UPDATE.projectId),
         tagId: z.string().trim().describe(SECRET_TAGS.UPDATE.tagId)
@@ -176,6 +186,8 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.DELETE.projectId),
         tagId: z.string().trim().describe(SECRET_TAGS.DELETE.tagId)

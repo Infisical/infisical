@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { SecretApprovalRequestsSchema, SecretsSchema, SecretType, ServiceTokenScopes } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { RAW_SECRETS, SECRETS } from "@app/lib/api-docs";
+import { ApiDocsTags, RAW_SECRETS, SECRETS } from "@app/lib/api-docs";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -48,6 +48,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Secrets],
       description: "Attach tags to a secret",
       security: [
         {
@@ -103,6 +105,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Secrets],
       description: "Detach tags from a secret",
       security: [
         {
@@ -158,6 +162,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Secrets],
       description: "List secrets",
       security: [
         {
@@ -355,6 +361,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Secrets],
       params: z.object({
         secretId: z.string()
       }),
@@ -390,6 +398,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Secrets],
       description: "Get a secret by name",
       security: [
         {
@@ -496,6 +506,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Secrets],
       description: "Create secret",
       security: [
         {
@@ -609,6 +621,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Secrets],
       description: "Update secret",
       security: [
         {
@@ -729,6 +743,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Secrets],
       description: "Delete secret",
       security: [
         {
@@ -1486,6 +1502,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Secrets],
       body: z.object({
         projectSlug: z.string().trim(),
         sourceEnvironment: z.string().trim(),
@@ -1911,6 +1929,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Secrets],
       description: "Create many secrets",
       security: [
         {
@@ -2017,6 +2037,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Secrets],
       description: "Update many secrets",
       security: [
         {
@@ -2170,6 +2192,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Secrets],
       description: "Delete many secrets",
       security: [
         {
@@ -2266,6 +2290,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Secrets],
       description: "Get secret reference tree",
       security: [
         {

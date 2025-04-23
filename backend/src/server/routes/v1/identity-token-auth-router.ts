@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { IdentityAccessTokensSchema, IdentityTokenAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { TOKEN_AUTH } from "@app/lib/api-docs";
+import { ApiDocsTags, TOKEN_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -18,6 +18,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.TokenAuth],
       description: "Attach Token Auth configuration onto identity",
       security: [
         {
@@ -108,6 +110,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.TokenAuth],
       description: "Update Token Auth configuration on identity",
       security: [
         {
@@ -192,6 +196,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.TokenAuth],
       description: "Retrieve Token Auth configuration on identity",
       security: [
         {
@@ -239,6 +245,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.TokenAuth],
       description: "Delete Token Auth configuration on identity",
       security: [
         {
@@ -287,6 +295,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.TokenAuth],
       description: "Create token for identity with Token Auth",
       security: [
         {
@@ -349,6 +359,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.TokenAuth],
       description: "Get tokens for identity with Token Auth",
       security: [
         {
@@ -402,6 +414,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.TokenAuth],
       description: "Update token for identity with Token Auth",
       security: [
         {
@@ -456,6 +470,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.TokenAuth],
       description: "Revoke token for identity with Token Auth",
       security: [
         {

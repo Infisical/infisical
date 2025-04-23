@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { IdentityKubernetesAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { KUBERNETES_AUTH } from "@app/lib/api-docs";
+import { ApiDocsTags, KUBERNETES_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -35,6 +35,8 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KubernetesAuth],
       description: "Login with Kubernetes Auth",
       body: z.object({
         identityId: z.string().trim().describe(KUBERNETES_AUTH.LOGIN.identityId),
@@ -85,6 +87,8 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KubernetesAuth],
       description: "Attach Kubernetes Auth configuration onto identity",
       security: [
         {
@@ -182,6 +186,8 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KubernetesAuth],
       description: "Update Kubernetes Auth configuration on identity",
       security: [
         {
@@ -278,6 +284,8 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KubernetesAuth],
       description: "Retrieve Kubernetes Auth configuration on identity",
       security: [
         {
@@ -325,6 +333,8 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KubernetesAuth],
       description: "Delete Kubernetes Auth configuration on identity",
       security: [
         {

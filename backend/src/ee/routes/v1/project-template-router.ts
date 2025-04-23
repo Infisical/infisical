@@ -5,7 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { ProjectTemplateDefaultEnvironments } from "@app/ee/services/project-template/project-template-constants";
 import { isInfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
-import { ProjectTemplates } from "@app/lib/api-docs";
+import { ApiDocsTags, ProjectTemplates } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -101,6 +101,8 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectTemplates],
       description: "List project templates for the current organization.",
       response: {
         200: z.object({
@@ -137,6 +139,8 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectTemplates],
       description: "Get a project template by ID.",
       params: z.object({
         templateId: z.string().uuid()
@@ -176,6 +180,8 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectTemplates],
       description: "Create a project template.",
       body: z.object({
         name: slugSchema({ field: "name" })
@@ -219,6 +225,8 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectTemplates],
       description: "Update a project template.",
       params: z.object({ templateId: z.string().uuid().describe(ProjectTemplates.UPDATE.templateId) }),
       body: z.object({
@@ -269,6 +277,8 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectTemplates],
       description: "Delete a project template.",
       params: z.object({ templateId: z.string().uuid().describe(ProjectTemplates.DELETE.templateId) }),
 

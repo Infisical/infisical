@@ -6,7 +6,7 @@ import { LdapPasswordRotationListItemSchema } from "@app/ee/services/secret-rota
 import { MsSqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
 import { PostgresCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
-import { SecretRotations } from "@app/lib/api-docs";
+import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -26,6 +26,8 @@ export const registerSecretRotationV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretRotations],
       description: "List the available Secret Rotation Options.",
       response: {
         200: z.object({
@@ -47,6 +49,8 @@ export const registerSecretRotationV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretRotations],
       description: "List all the Secret Rotations for the specified project.",
       querystring: z.object({
         projectId: z.string().trim().min(1, "Project ID required").describe(SecretRotations.LIST().projectId)

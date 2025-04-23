@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { ServiceTokensSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ApiDocsTags } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -25,6 +26,8 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.SERVICE_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ServiceTokens],
       description: "Return Infisical Token data",
       security: [
         {
