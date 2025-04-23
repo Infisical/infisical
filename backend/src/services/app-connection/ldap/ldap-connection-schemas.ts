@@ -51,7 +51,6 @@ export const SanitizedLdapConnectionSchema = z.discriminatedUnion("method", [
       provider: true,
       url: true,
       dn: true,
-      sslEnabled: true,
       sslRejectUnauthorized: true,
       sslCertificate: true
     })
