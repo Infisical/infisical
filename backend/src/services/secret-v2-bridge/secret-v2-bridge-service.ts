@@ -25,6 +25,7 @@ import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-app
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { diff, groupBy } from "@app/lib/fn";
@@ -46,7 +47,7 @@ import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import {
   MAX_SECRET_CACHE_BYTES,
   SECRET_DAL_TTL,
-  SecretDalCacheKeys,
+  SecretServiceCacheKeys,
   TSecretV2BridgeDALFactory
 } from "./secret-v2-bridge-dal";
 import {
@@ -81,7 +82,6 @@ import {
 } from "./secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
 
 type TSecretV2BridgeServiceFactoryDep = {
   secretDAL: TSecretV2BridgeDALFactory;
@@ -111,7 +111,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   >;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setExpiry" | "setItemWithExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setExpiry" | "setItemWithExpiry" | "deleteItem">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -941,9 +941,9 @@ export const secretV2BridgeServiceFactory = ({
     });
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
 
-    const cachedSecretDalVersion = await keyStore.getItem(SecretDalCacheKeys.getSecretDalVersion(projectId));
+    const cachedSecretDalVersion = await keyStore.getItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
-    const cacheKey = SecretDalCacheKeys.getSecretsOfServiceLayer(projectId, secretDalVersion, {
+    const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer(projectId, secretDalVersion, {
       ...dto,
       permissionRules: permission.rules
     });
@@ -953,18 +953,28 @@ export const secretV2BridgeServiceFactory = ({
         type: KmsDataKey.SecretManager,
         projectId
       });
+
     const encryptedCachedSecrets = await keyStore.getItem(cacheKey);
     if (encryptedCachedSecrets) {
-      await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL);
-      const cachedSecrets = secretManagerDecryptor({ cipherTextBlob: Buffer.from(encryptedCachedSecrets, "base64") });
-      const { secrets, imports = [] } = JSON.parse(cachedSecrets.toString("utf8")) as {
-        secrets: typeof decryptedSecrets;
-        imports: typeof importedSecrets;
-      };
-      return {
-        secrets: secrets.map((el) => ({ ...el, createdAt: new Date(el.createdAt), updatedAt: new Date(el.updatedAt) })),
-        imports
-      };
+      try {
+        await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL);
+        const cachedSecrets = secretManagerDecryptor({ cipherTextBlob: Buffer.from(encryptedCachedSecrets, "base64") });
+        const { secrets, imports = [] } = JSON.parse(cachedSecrets.toString("utf8")) as {
+          secrets: typeof decryptedSecrets;
+          imports: typeof importedSecrets;
+        };
+        return {
+          secrets: secrets.map((el) => ({
+            ...el,
+            createdAt: new Date(el.createdAt),
+            updatedAt: new Date(el.updatedAt)
+          })),
+          imports
+        };
+      } catch (err) {
+        logger.error(err, "Secret service layer cache miss");
+        await keyStore.deleteItem(cacheKey);
+      }
     }
 
     let paths: { folderId: string; path: string }[] = [];

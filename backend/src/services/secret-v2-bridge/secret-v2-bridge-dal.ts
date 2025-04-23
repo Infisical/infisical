@@ -1,3 +1,4 @@
+import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { validate as uuidValidate } from "uuid";
 
@@ -21,22 +22,21 @@ import type {
   TFindSecretsByFolderIdsFilter,
   TGetSecretsDTO
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
-import { MongoAbility } from "@casl/ability";
 
-export const SecretDalCacheKeys = {
+export const SecretServiceCacheKeys = {
   get productKey() {
     const { INFISICAL_PLATFORM_VERSION } = getConfig();
     return `${ProjectType.SecretManager}:${INFISICAL_PLATFORM_VERSION || 0}`;
   },
   getSecretDalVersion: (projectId: string) => {
-    return `${SecretDalCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal-version`;
+    return `${SecretServiceCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal-version`;
   },
   getSecretsOfServiceLayer: (
     projectId: string,
     version: number,
     dto: TGetSecretsDTO & { permissionRules: MongoAbility["rules"] }
   ) => {
-    return `${SecretDalCacheKeys.productKey}:${projectId}:${
+    return `${SecretServiceCacheKeys.productKey}:${projectId}:${
       TableName.SecretV2
     }-dal:v${version}:get-secrets-service-layer:${dto.actorId}-${generateCacheKeyFromData(dto)}`;
   }
@@ -55,7 +55,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const secretOrm = ormify(db, TableName.SecretV2);
 
   const invalidateSecretCacheByProjectId = async (projectId: string) => {
-    const secretDalVersionKey = SecretDalCacheKeys.getSecretDalVersion(projectId);
+    const secretDalVersionKey = SecretServiceCacheKeys.getSecretDalVersion(projectId);
     await keyStore.incrementBy(secretDalVersionKey, 1);
     await keyStore.setExpiry(secretDalVersionKey, SECRET_DAL_VERSION_TTL);
   };
@@ -287,7 +287,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
-  const findByFolderId = async (dto: { folderId: string; userId?: string; tx?: Knex; useCache?: boolean }) => {
+  const findByFolderId = async (dto: { folderId: string; userId?: string; tx?: Knex }) => {
     try {
       const { folderId, tx } = dto;
       let { userId } = dto;
