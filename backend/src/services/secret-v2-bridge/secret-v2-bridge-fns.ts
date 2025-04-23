@@ -509,7 +509,7 @@ export const expandSecretReferencesFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) return { value: "", tags: [] };
-    const secrets = await secretDAL.findByFolderId({ folderId: folder.id, projectId, useCache: true });
+    const secrets = await secretDAL.findByFolderId({ folderId: folder.id });
 
     const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[] }>>((prev, secret) => {
       // eslint-disable-next-line no-param-reassign
