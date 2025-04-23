@@ -9,11 +9,11 @@ It is intended to provide a scalable, secure, and production-ready baseline for 
 
 ## Core Components
 
-- **Cloud Run:** Infisical backend and frontend services are containerized and deployed as fully managed Cloud Run services.
+- **Cloud Run:** Infisical service is containerized and deployed as fully managed Cloud Run services.
 
 - **Cloud SQL:** Infisical uses Postgres as its persistence layer. As such, Cloud SQL for PostgreSQL is used.
 
-- **MemoryStore for Redis:** To enhance performance, Infisical requires Redis.
+- **MemoryStore for Redis:** To schedule jobs, process audit logs and cache  performance, Infisical requires Redis.
 
 ## Securing Infisical's root credential
 
@@ -112,9 +112,3 @@ This architecture leverages Google Cloud's managed services to achieve high avai
   
   </Step>
 </Steps>
-
-## Summary
-
-Self-hosting Infisical on Google Cloud Run enables a highly scalable and secure deployment without managing infrastructure manually.
- Using GCP-managed services like Cloud SQL and MemoryStore, combined with Cloud Run's serverless capabilities, organizations can quickly
-  deploy Infisical with minimal operational overhead while maintaining enterprise-grade security and performance.
