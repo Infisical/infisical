@@ -1089,7 +1089,8 @@ export const registerRoutes = async (
     secretApprovalRequestSecretDAL,
     kmsService,
     snapshotService,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    keyStore
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({

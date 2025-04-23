@@ -1,6 +1,6 @@
 import { Modal, ModalContent } from "@app/components/v2";
 import { KmipClientCertificate } from "@app/hooks/api/kmip/types";
-import { CertificateContent } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTab/components/CertificateContent";
+import { CertificateContent } from "@app/pages/cert-manager/CertificatesPage/components/CertificateContent";
 
 type Props = {
   isOpen: boolean;

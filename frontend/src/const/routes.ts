@@ -281,6 +281,14 @@ export const ROUTE_PATHS = Object.freeze({
       "/cert-manager/$projectId/overview",
       "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/overview"
     ),
+    CertificateAuthoritiesPage: setRoute(
+      "/cert-manager/$projectId/certificate-authorities",
+      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificate-authorities"
+    ),
+    AlertingPage: setRoute(
+      "/cert-manager/$projectId/alerting",
+      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/alerting"
+    ),
     PkiCollectionDetailsByIDPage: setRoute(
       "/cert-manager/$projectId/pki-collections/$collectionId",
       "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/pki-collections/$collectionId"
