@@ -254,7 +254,7 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const findOrgMembersByRole = async (orgId: string, role: OrgMembershipRole, tx?: Knex) => {
     try {
-      const conn = tx || db;
+      const conn = tx || db.replicaNode();
       const members = await conn(TableName.OrgMembership)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
         .where(`${TableName.OrgMembership}.role`, role)
