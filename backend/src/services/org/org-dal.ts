@@ -217,9 +217,8 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const findOrgMembersByUsername = async (orgId: string, usernames: string[], tx?: Knex) => {
     try {
-      const conn = tx || db;
+      const conn = tx || db.replicaNode();
       const members = await conn(TableName.OrgMembership)
-        // .replicaNode()(TableName.OrgMembership)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin<TUserEncryptionKeys>(
