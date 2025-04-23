@@ -1,0 +1,64 @@
+import { AxiosError } from "axios";
+
+import { request } from "@app/lib/config/request";
+import { BadRequestError } from "@app/lib/errors";
+import { removeTrailingSlash } from "@app/lib/fn";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+
+import { TeamCityConnectionMethod } from "./teamcity-connection-enums";
+import {
+  TTeamCityConnection,
+  TTeamCityConnectionConfig,
+  TTeamCityListProjectsResponse
+} from "./teamcity-connection-types";
+
+export const getTeamCityConnectionListItem = () => {
+  return {
+    name: "TeamCity" as const,
+    app: AppConnection.TeamCity as const,
+    methods: Object.values(TeamCityConnectionMethod) as [TeamCityConnectionMethod.AccessToken]
+  };
+};
+
+export const validateTeamCityConnectionCredentials = async (config: TTeamCityConnectionConfig) => {
+  const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
+  const { accessToken } = config.credentials;
+
+  try {
+    await request.get(`${instanceUrl}/app/rest/server`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      }
+    });
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to validate credentials: ${error.message || "Unknown error"}`
+      });
+    }
+    throw new BadRequestError({
+      message: "Unable to validate connection: verify credentials"
+    });
+  }
+
+  return config.credentials;
+};
+
+export const listTeamCityProjects = async (appConnection: TTeamCityConnection) => {
+  const instanceUrl = removeTrailingSlash(appConnection.credentials.instanceUrl);
+  const { accessToken } = appConnection.credentials;
+
+  const resp = await request.get<TTeamCityListProjectsResponse>(
+    `${instanceUrl}/app/rest/projects?fields=project(id,name,buildTypes(buildType(id,name)))`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      }
+    }
+  );
+
+  // Filter out the root project. Should not be seen by users.
+  return resp.data.project.filter((proj) => proj.id !== "_Root");
+};

@@ -64,6 +64,12 @@ import {
   TValidatePostgresConnectionCredentialsSchema
 } from "./postgres";
 import {
+  TTeamCityConnection,
+  TTeamCityConnectionConfig,
+  TTeamCityConnectionInput,
+  TValidateTeamCityConnectionCredentialsSchema
+} from "./teamcity";
+import {
   TTerraformCloudConnection,
   TTerraformCloudConnectionConfig,
   TTerraformCloudConnectionInput,
@@ -97,6 +103,7 @@ export type TAppConnection = { id: string } & (
   | TCamundaConnection
   | TWindmillConnection
   | TAuth0Connection
+  | TTeamCityConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -118,6 +125,7 @@ export type TAppConnectionInput = { id: string } & (
   | TCamundaConnectionInput
   | TWindmillConnectionInput
   | TAuth0ConnectionInput
+  | TTeamCityConnectionInput
 );
 
 export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput;
@@ -144,7 +152,8 @@ export type TAppConnectionConfig =
   | TSqlConnectionConfig
   | TCamundaConnectionConfig
   | TWindmillConnectionConfig
-  | TAuth0ConnectionConfig;
+  | TAuth0ConnectionConfig
+  | TTeamCityConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -160,7 +169,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateTerraformCloudConnectionCredentialsSchema
   | TValidateVercelConnectionCredentialsSchema
   | TValidateWindmillConnectionCredentialsSchema
-  | TValidateAuth0ConnectionCredentialsSchema;
+  | TValidateAuth0ConnectionCredentialsSchema
+  | TValidateTeamCityConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

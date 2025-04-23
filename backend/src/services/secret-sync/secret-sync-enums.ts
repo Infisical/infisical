@@ -10,7 +10,8 @@ export enum SecretSync {
   TerraformCloud = "terraform-cloud",
   Camunda = "camunda",
   Vercel = "vercel",
-  Windmill = "windmill"
+  Windmill = "windmill",
+  TeamCity = "teamcity"
 }
 
 export enum SecretSyncInitialSyncBehavior {

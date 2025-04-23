@@ -428,7 +428,8 @@
             "integrations/app-connections/postgres",
             "integrations/app-connections/terraform-cloud",
             "integrations/app-connections/vercel",
-            "integrations/app-connections/windmill"
+            "integrations/app-connections/windmill",
+            "integrations/app-connections/teamcity"
           ]
         }
       ]
@@ -451,7 +452,8 @@
             "integrations/secret-syncs/humanitec",
             "integrations/secret-syncs/terraform-cloud",
             "integrations/secret-syncs/vercel",
-            "integrations/secret-syncs/windmill"
+            "integrations/secret-syncs/windmill",
+            "integrations/secret-syncs/teamcity"
           ]
         }
       ]
@@ -558,9 +560,7 @@
     },
     {
       "group": "Others",
-      "pages": [
-        "integrations/external/backstage"
-      ]
+      "pages": ["integrations/external/backstage"]
     },
     {
       "group": "",
@@ -1072,6 +1072,18 @@
                 "api-reference/endpoints/app-connections/windmill/update",
                 "api-reference/endpoints/app-connections/windmill/delete"
               ]
+            },
+            {
+              "group": "TeamCity",
+              "pages": [
+                "api-reference/endpoints/app-connections/teamcity/list",
+                "api-reference/endpoints/app-connections/teamcity/available",
+                "api-reference/endpoints/app-connections/teamcity/get-by-id",
+                "api-reference/endpoints/app-connections/teamcity/get-by-name",
+                "api-reference/endpoints/app-connections/teamcity/create",
+                "api-reference/endpoints/app-connections/teamcity/update",
+                "api-reference/endpoints/app-connections/teamcity/delete"
+              ]
             }
           ]
         },
@@ -1241,6 +1253,20 @@
                 "api-reference/endpoints/secret-syncs/windmill/sync-secrets",
                 "api-reference/endpoints/secret-syncs/windmill/import-secrets",
                 "api-reference/endpoints/secret-syncs/windmill/remove-secrets"
+              ]
+            },
+            {
+              "group": "TeamCity",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/teamcity/list",
+                "api-reference/endpoints/secret-syncs/teamcity/get-by-id",
+                "api-reference/endpoints/secret-syncs/teamcity/get-by-name",
+                "api-reference/endpoints/secret-syncs/teamcity/create",
+                "api-reference/endpoints/secret-syncs/teamcity/update",
+                "api-reference/endpoints/secret-syncs/teamcity/delete",
+                "api-reference/endpoints/secret-syncs/teamcity/sync-secrets",
+                "api-reference/endpoints/secret-syncs/teamcity/import-secrets",
+                "api-reference/endpoints/secret-syncs/teamcity/remove-secrets"
               ]
             }
           ]
