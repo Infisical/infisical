@@ -177,6 +177,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
           .del()
           .returning("id");
         numberOfRetryOnFailure = 0; // reset
+        logger.info(`${QueueName.DailyResourceCleanUp}: ${deletedAuditLogIds?.length} audit logs deleted`);
       } catch (error) {
         numberOfRetryOnFailure += 1;
         logger.error(error, "Failed to delete audit log on pruning");
