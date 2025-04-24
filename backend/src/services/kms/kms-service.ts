@@ -787,13 +787,16 @@ export const kmsServiceFactory = ({
             return projectDataKey;
           }
         }
+      } catch (error) {
+        logger.error(error, "Failed to get project data key");
+        throw error;
       } finally {
         await lock?.release();
       }
     }
 
     if (!project.kmsSecretManagerEncryptedDataKey) {
-      throw new Error("Missing project data key");
+      throw new BadRequestError({ message: "Missing project data key" });
     }
 
     const kmsDecryptor = await decryptWithKmsKey({
