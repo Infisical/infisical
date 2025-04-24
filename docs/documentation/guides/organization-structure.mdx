@@ -6,40 +6,55 @@ description: "Learn how to structure your projects, secrets, and other resources
 
 Infisical is designed to provide comprehensive, centralized, and efficient management of secrets, certificates, and encryption keys within organizations. Below is an overview of Infisical's structured components, which developers and administrators can leverage for optimal project management and security posture.
 
-### 1. Projects
+### 0. Cluster/Instance
+
+- **Best Practice**: In most cases, a single Infisical instance or cluster is sufficient. Multiple clusters are typically only necessary for large, globally distributed organizations.
+- **Use Cases**:
+    - **Cloud-hosted** deployments typically use a single cluster. While technically possible, using multiple clusters is not a common practice and is generally unnecessary.
+    - **Self-hosted** deployments can be configured with multiple clusters if needed.
+
+
+### 1. Organization
+
+- **Definition**: An Infisical [organization](/documentation/platform/organization) is a set of projects that use the same billing.
+- **Use Cases**: 
+    - In **self-hosted** setups, you can create multiple organizations (e.g., one for each department or business unit).
+    - In **cloud-hosted deployments**, it's standard to use a single organization.
+
+### 2. Projects
 
 - **Definition and Role**: [Projects](/documentation/platform/project) are the highest-level construct within an [organization](/documentation/platform/organization) in Infisical. They serve as the primary container for all functionalities.
 - **Correspondence to Code Repositories**: Projects typically align with specific code repositories.
 - **Functional Capabilities**: Each project encompasses features for managing secrets, certificates, and encryption keys, serving as the central hub for these resources.
 
-### 2. Environments
+### 3. Environments
 
 - **Purpose**: Environments are designed for organizing and compartmentalizing secrets within projects.
 - **Customization Options**: Environments can be tailored to align with existing infrastructure setups of any project. Default options include **Development**, **Staging**, and **Production**.
 - **Structure**: Each environment inherently has a root level for storing secrets, but additional sub-organizations can be created through [folders](/documentation/platform/folder) for better secret management.
 
-### 3. Folders
+### 4. Folders
 
 - **Use Case**: Folders are available for more advanced organizational needs, allowing logical separation of secrets.
 - **Typical Structure**: Folders can correspond to specific logical units, such as microservices or different layers of an application, providing refined control over secrets.
 
-### 4. Imports
+### 5. Imports
 
 - **Purpose and Benefits**: To promote reusability and avoid redundancy, Infisical supports the use of imports. This allows secrets, folders, or entire environments to be referenced across multiple projects as needed.
 - **Best Practice**: Utilizing [secret imports](/documentation/platform/secret-reference#secret-imports) or [references](/documentation/platform/secret-reference#secret-referencing) ensures consistency and minimizes manual overhead.
 
-### 5. Approval Workflows
+### 6. Approval Workflows
 
 - **Importance**: Implementing approval workflows is recommended for organizations aiming to enhance efficiency and strengthen their security posture.
 - **Types of Workflows**:
     - **[Access Requests](/documentation/platform/pr-workflows)**: This workflow allows developers to request access to sensitive resources. Such access can be configured for temporary use, a practice known as "just-in-time" access.
     - **[Change Requests](/documentation/platform/access-controls/access-requests)**: Facilitates reviews and approvals when changes are proposed for sensitive environments or specific folders, ensuring proper oversight.
 
-### 6. Access Controls
+### 7. Access Controls
 
 Infisical’s access control framework is unified for both human users and machine identities, ensuring consistent management across the board.
 
-### 6.1 Roles
+### 7.1 Roles
 
 - **2 Role Types**:
     - **Organization-Level Roles**: Provide broad access across the organization (e.g., ability to manage billing, configure settings, etc.).
@@ -49,17 +64,17 @@ Infisical’s access control framework is unified for both human users and machi
 
 <Note>Project access is defined not via an organization-level role, but rather through specific project memberships of both human and machine identities. Admin roles bypass this by default. </Note>
 
-### 6.2 Additional Privileges
+### 7.2 Additional Privileges
 
 [Additional privileges](/documentation/platform/access-controls/additional-privileges) can be assigned to users and machines on an ad-hoc basis for specific scenarios where roles alone are insufficient. If you find yourself using additional privileges too much, it is recommended to create custom roles. Additional privileges can be temporary or permanent.
 
 
 
-### 6.3 Attribute-Based Access Control (ABAC)
+### 7.3 Attribute-Based Access Control (ABAC)
 
 [Attribute-based Access Controls](/documentation/platform/access-controls/attribute-based-access-controls) allow restrictions based on tags or attributes linked to secrets. These can be integrated with SAML assertions and other security frameworks for dynamic access management.
 
-### 6.4 User Groups
+### 7.4 User Groups
 
 - **Application**: Organizations should use users groups in situations when they have a lot of developers with the same level of access (e.g., separated by team, department, seniority, etc.).
 - **Synchronization**: [User groups](/documentation/platform/groups) can be synced with an identity provider to maintain consistency and reduce manual management.
