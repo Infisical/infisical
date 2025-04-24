@@ -1,38 +1,38 @@
 ---
-title: "Commands and Configuration"
-description: "Learn all the available commands and configuration of the linux package."
+title: "Configurations"
+description: "Learn how to configure and manage the Infisical Linux package"
 ---
 
-## Configuration
+## Configuration Overview
 
-All Infisical configuration is managed from a central file called `infisical.rb` located in the `/etc/infisical` directory.
+All configuration for the Infisical Linux package is managed through a single file called `infisical.rb`, located in the `/etc/infisical` directory. 
+This file defines all necessary settings, including encryption keys, database connections, and environment-specific settings.
 
-<Info> After updating the `infisical.rb` file, remember to run `infisical-ctl reconfigure` to apply the changes. </Info>
+<Info> After making any changes to the `infisical.rb` file, always run `infisical-ctl reconfigure` to apply them. </Info>
 
 ### Example Configuration
 
-```ruby
+```ruby infisical.rb
 # Important: Replace these values with secure keys in production
 infisical_core['ENCRYPTION_KEY'] = '6c1fe4e407b8911c104518103505b218'
 infisical_core['AUTH_SECRET'] = '5lrMXKKWCVocS/uerPsl7V+TX/aaUaI7iDkgl3tSmLE='
 
 # Database connection strings
-infisical_core['DB_CONNECTION_URI'] = 'postgres://infisical:infisical@localhost:5432/infisical'
-infisical_core['REDIS_URL'] = 'redis://localhost:6379'
+infisical_core['DB_CONNECTION_URI'] = 'postgres://infisical:some-password@some-host:5432/infisical'
+infisical_core['REDIS_URL'] = 'redis://some-host:6379'
 ```
 
-For a complete list of configuration options, visit our [configuration variables documentation](/self-hosting/configuration/envars).
+For a full list of supported configuration variables, refer to the [configuration variables documentation](/self-hosting/configuration/envars).
 
-## Available Commands
+## All `infisical-ctl` Commands
 
-The `infisical-ctl` command provides several options to manage your Infisical deployment:
+The Infisical Linux package includes the `infisical-ctl` command-line tool, which allows you to manage your deployment. 
+The available commands are listed below.
 
-| Command | Description |
-| --- | --- |
-| `infisical-ctl reconfigure` | Restarts the Infisical services and applies any configuration changes |
-| `infisical-ctl tail` | Shows the logs of the Infisical application |
-| `infisical-ctl status` | Displays the current running status of the Infisical services |
-| `infisical-ctl stop` | Stops the Infisical services |
-| `infisical-ctl start` | Starts the Infisical services |
-
-For database migration-related commands, refer to the [Migrations Guide](/self-hosting/native/linux-package/migration).
+| Command                      | Description                                                                 |
+|-----------------------------|-----------------------------------------------------------------------------|
+| `infisical-ctl reconfigure` | Applies changes from `infisical.rb` and restarts the Infisical services.   |
+| `infisical-ctl start`       | Starts the Infisical services.                                             |
+| `infisical-ctl stop`        | Stops all running Infisical services.                                      |
+| `infisical-ctl status`      | Displays the current status of the Infisical services.                     |
+| `infisical-ctl tail`        | Streams real-time logs from the Infisical application.                     |

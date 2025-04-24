@@ -283,7 +283,6 @@
           "group": "Linux Package",
           "pages": [
             "self-hosting/deployment-options/native/linux-package/installation",
-            "self-hosting/deployment-options/native/linux-package/migration",
             "self-hosting/deployment-options/native/linux-package/commands-configuration"
           ]
         },
