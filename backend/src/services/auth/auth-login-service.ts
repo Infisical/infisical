@@ -39,6 +39,7 @@ import {
   AuthTokenType,
   MfaMethod
 } from "./auth-type";
+import { removeTrailingSlash } from "@app/lib/fn";
 
 type TAuthLoginServiceFactoryDep = {
   userDAL: TUserDALFactory;
@@ -465,7 +466,8 @@ export const authLoginServiceFactory = ({
             email: user.email,
             timestamp: new Date().toISOString(),
             ip: ipAddress,
-            userAgent
+            userAgent,
+            siteUrl: removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com")
           },
           template: SmtpTemplates.OrgAdminBreakglassAccess
         });
