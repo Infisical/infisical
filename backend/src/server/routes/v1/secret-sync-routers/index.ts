@@ -8,6 +8,7 @@ import { registerCamundaSyncRouter } from "./camunda-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
 import { registerGcpSyncRouter } from "./gcp-sync-router";
 import { registerGitHubSyncRouter } from "./github-sync-router";
+import { registerHCVaultSyncRouter } from "./hc-vault-sync-router";
 import { registerHumanitecSyncRouter } from "./humanitec-sync-router";
 import { registerTerraformCloudSyncRouter } from "./terraform-cloud-sync-router";
 import { registerVercelSyncRouter } from "./vercel-sync-router";
@@ -27,5 +28,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.TerraformCloud]: registerTerraformCloudSyncRouter,
   [SecretSync.Camunda]: registerCamundaSyncRouter,
   [SecretSync.Vercel]: registerVercelSyncRouter,
-  [SecretSync.Windmill]: registerWindmillSyncRouter
+  [SecretSync.Windmill]: registerWindmillSyncRouter,
+  [SecretSync.HCVault]: registerHCVaultSyncRouter
 };

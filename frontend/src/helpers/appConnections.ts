@@ -11,14 +11,14 @@ import {
   DatabricksConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
+  HCVaultConnectionMethod,
   HumanitecConnectionMethod,
   MsSqlConnectionMethod,
   PostgresConnectionMethod,
   TAppConnection,
   TerraformCloudConnectionMethod,
   VercelConnectionMethod,
-  WindmillConnectionMethod,
-  HCVaultConnectionMethod
+  WindmillConnectionMethod
 } from "@app/hooks/api/appConnections/types";
 
 export const APP_CONNECTION_MAP: Record<

@@ -91,9 +91,9 @@ export const listHCVaultMounts = async (appConnection: THCVaultConnection) => {
 
   const mounts: string[] = [];
 
-  // Filter for "kv" type only
+  // Filter for "kv" version 2 type only
   Object.entries(data.data).forEach(([path, mount]) => {
-    if (mount.type === "kv") {
+    if (mount.type === "kv" && mount.options?.version === "2") {
       mounts.push(path);
     }
   });

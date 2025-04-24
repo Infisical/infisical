@@ -56,6 +56,12 @@ import {
 } from "./azure-key-vault";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import {
+  THCVaultSync,
+  THCVaultSyncInput,
+  THCVaultSyncListItem,
+  THCVaultSyncWithCredentials
+} from "./hc-vault/hc-vault-sync-types";
+import {
   THumanitecSync,
   THumanitecSyncInput,
   THumanitecSyncListItem,
@@ -81,7 +87,8 @@ export type TSecretSync =
   | TTerraformCloudSync
   | TCamundaSync
   | TVercelSync
-  | TWindmillSync;
+  | TWindmillSync
+  | THCVaultSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -95,7 +102,8 @@ export type TSecretSyncWithCredentials =
   | TTerraformCloudSyncWithCredentials
   | TCamundaSyncWithCredentials
   | TVercelSyncWithCredentials
-  | TWindmillSyncWithCredentials;
+  | TWindmillSyncWithCredentials
+  | THCVaultSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -109,7 +117,8 @@ export type TSecretSyncInput =
   | TTerraformCloudSyncInput
   | TCamundaSyncInput
   | TVercelSyncInput
-  | TWindmillSyncInput;
+  | TWindmillSyncInput
+  | THCVaultSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -123,7 +132,8 @@ export type TSecretSyncListItem =
   | TTerraformCloudSyncListItem
   | TCamundaSyncListItem
   | TVercelSyncListItem
-  | TWindmillSyncListItem;
+  | TWindmillSyncListItem
+  | THCVaultSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

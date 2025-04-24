@@ -43,6 +43,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.Camunda:
     case SecretSync.Vercel:
     case SecretSync.Windmill:
+    case SecretSync.HCVault:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:

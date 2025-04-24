@@ -2002,6 +2002,10 @@ export const SecretSyncs = {
     WINDMILL: {
       workspace: "The Windmill workspace to sync secrets to.",
       path: "The Windmill workspace path to sync secrets to."
+    },
+    HC_VAULT: {
+      mount: "The Hashicorp Vault Secrets Engine Mount to sync secrets to.",
+      path: "The Hashicorp Vault path to sync secrets to."
     }
   }
 };

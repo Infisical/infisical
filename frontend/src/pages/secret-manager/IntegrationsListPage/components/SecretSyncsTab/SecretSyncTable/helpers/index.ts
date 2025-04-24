@@ -94,6 +94,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.workspace;
       secondaryText = destinationConfig.path;
       break;
+    case SecretSync.HCVault:
+      primaryText = destinationConfig.mount;
+      secondaryText = destinationConfig.path;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

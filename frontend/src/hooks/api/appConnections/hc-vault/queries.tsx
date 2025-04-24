@@ -10,7 +10,7 @@ const hcVaultConnectionKeys = {
     [...hcVaultConnectionKeys.all, "mounts", connectionId] as const
 };
 
-export const useHCVaultConnectionListWorkspaces = (
+export const useHCVaultConnectionListMounts = (
   connectionId: string,
   options?: Omit<
     UseQueryOptions<
@@ -26,7 +26,7 @@ export const useHCVaultConnectionListWorkspaces = (
     queryKey: hcVaultConnectionKeys.listMounts(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<string[]>(
-        `/api/v1/app-connections/hc-vault/${connectionId}/mounts`
+        `/api/v1/app-connections/hashicorp-vault/${connectionId}/mounts`
       );
 
       return data;

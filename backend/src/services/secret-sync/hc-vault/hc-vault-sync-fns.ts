@@ -1,0 +1,126 @@
+import { request } from "@app/lib/config/request";
+import { removeTrailingSlash } from "@app/lib/fn";
+import { getHCVaultAccessToken } from "@app/services/app-connection/hc-vault";
+import {
+  THCVaultListVariables,
+  THCVaultListVariablesResponse,
+  THCVaultSyncWithCredentials,
+  TPostHCVaultVariable
+} from "@app/services/secret-sync/hc-vault/hc-vault-sync-types";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+
+const listHCVaultVariables = async ({ instanceUrl, mount, accessToken, path }: THCVaultListVariables) => {
+  const { data } = await request.get<THCVaultListVariablesResponse>(
+    `${instanceUrl}/v1/${removeTrailingSlash(mount)}/data/${path}`,
+    {
+      headers: {
+        "X-Vault-Token": accessToken
+      }
+    }
+  );
+
+  return data.data.data;
+};
+
+// Hashicorp Vault updates all variables in one batch. This is to respect their versioning
+const updateHCVaultVariables = async ({ path, instanceUrl, accessToken, mount, data }: TPostHCVaultVariable) =>
+  request.post(
+    `${instanceUrl}/v1/${removeTrailingSlash(mount)}/data/${path}`,
+    {
+      data
+    },
+    {
+      headers: {
+        "X-Vault-Token": accessToken,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+
+export const HCVaultSyncFns = {
+  syncSecrets: async (secretSync: THCVaultSyncWithCredentials, secretMap: TSecretMap) => {
+    const {
+      connection,
+      destinationConfig: { mount, path },
+      syncOptions: { disableSecretDeletion }
+    } = secretSync;
+
+    const accessToken = await getHCVaultAccessToken(connection);
+    const { instanceUrl } = connection.credentials;
+
+    const variables = await listHCVaultVariables({ instanceUrl, accessToken, mount, path });
+    let tainted = false;
+
+    for await (const entry of Object.entries(secretMap)) {
+      const [key, { value }] = entry;
+      if (value !== variables[key]) {
+        variables[key] = value;
+        tainted = true;
+      }
+    }
+
+    if (disableSecretDeletion) return;
+
+    for await (const [key] of Object.entries(variables)) {
+      if (!(key in secretMap)) {
+        delete variables[key];
+        tainted = true;
+      }
+    }
+
+    // Only update variables if there was a change detected
+    if (!tainted) return;
+
+    try {
+      await updateHCVaultVariables({ accessToken, instanceUrl, mount, path, data: variables });
+    } catch (error) {
+      throw new SecretSyncError({
+        error
+      });
+    }
+  },
+  removeSecrets: async (secretSync: THCVaultSyncWithCredentials, secretMap: TSecretMap) => {
+    const {
+      connection,
+      destinationConfig: { mount, path }
+    } = secretSync;
+
+    const accessToken = await getHCVaultAccessToken(connection);
+    const { instanceUrl } = connection.credentials;
+
+    const variables = await listHCVaultVariables({ instanceUrl, accessToken, mount, path });
+
+    for await (const [key] of Object.entries(variables)) {
+      if (key in secretMap) {
+        delete variables[key];
+      }
+    }
+
+    try {
+      await updateHCVaultVariables({ accessToken, instanceUrl, mount, path, data: variables });
+    } catch (error) {
+      throw new SecretSyncError({
+        error
+      });
+    }
+  },
+  getSecrets: async (secretSync: THCVaultSyncWithCredentials) => {
+    const {
+      connection,
+      destinationConfig: { mount, path }
+    } = secretSync;
+
+    const accessToken = await getHCVaultAccessToken(connection);
+    const { instanceUrl } = connection.credentials;
+
+    const variables = await listHCVaultVariables({
+      instanceUrl,
+      accessToken,
+      mount,
+      path
+    });
+
+    return Object.fromEntries(Object.entries(variables).map(([key, value]) => [key, { value }]));
+  }
+};

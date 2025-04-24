@@ -17,13 +17,13 @@ import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
+import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";
-import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 
 type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;

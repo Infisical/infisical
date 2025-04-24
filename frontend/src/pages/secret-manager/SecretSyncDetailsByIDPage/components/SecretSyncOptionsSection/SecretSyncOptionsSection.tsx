@@ -52,6 +52,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Camunda:
     case SecretSync.Vercel:
     case SecretSync.Windmill:
+    case SecretSync.HCVault:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

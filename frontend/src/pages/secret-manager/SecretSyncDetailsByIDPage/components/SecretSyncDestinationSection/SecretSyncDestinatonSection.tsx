@@ -18,6 +18,7 @@ import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 import { GitHubSyncDestinationSection } from "./GitHubSyncDestinationSection";
+import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
@@ -72,6 +73,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.Windmill:
       DestinationComponents = <WindmillSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.HCVault:
+      DestinationComponents = <HCVaultSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

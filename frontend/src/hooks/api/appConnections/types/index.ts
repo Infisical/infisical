@@ -24,13 +24,13 @@ export * from "./camunda-connection";
 export * from "./databricks-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
+export * from "./hc-vault-connection";
 export * from "./humanitec-connection";
 export * from "./mssql-connection";
 export * from "./postgres-connection";
 export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
-export * from "./hc-vault-connection";
 
 export type TAppConnection =
   | TAwsConnection

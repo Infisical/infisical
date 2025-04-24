@@ -11,6 +11,7 @@ import { CamundaSyncFields } from "./CamundaSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
+import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
@@ -46,6 +47,8 @@ export const SecretSyncDestinationFields = () => {
       return <VercelSyncFields />;
     case SecretSync.Windmill:
       return <WindmillSyncFields />;
+    case SecretSync.HCVault:
+      return <HCVaultSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

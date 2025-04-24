@@ -26,6 +26,9 @@ export type THCVaultConnectionConfig = DiscriminativePick<THCVaultConnectionInpu
 export type THCVaultMountResponse = {
   data: {
     [key: string]: {
+      options: {
+        version?: string | null;
+      } | null;
       type: string; // We're only interested in "kv" types
     };
   };
