@@ -1,3 +1,5 @@
+import { SshCaStatus } from "../sshCa";
+import { SshCertTemplateStatus } from "../sshCertificateTemplates";
 import { CaStatus, CaType } from "./enums";
 
 export const caTypeToNameMap: { [K in CaType]: string } = {
@@ -11,7 +13,7 @@ export const caStatusToNameMap: { [K in CaStatus]: string } = {
   [CaStatus.PENDING_CERTIFICATE]: "Pending Certificate"
 };
 
-export const getCaStatusBadgeVariant = (status: CaStatus) => {
+export const getCaStatusBadgeVariant = (status: CaStatus | SshCaStatus | SshCertTemplateStatus) => {
   switch (status) {
     case CaStatus.ACTIVE:
       return "success";

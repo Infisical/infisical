@@ -17,7 +17,12 @@ export const useGetDynamicSecretLeases = ({
   enabled = true
 }: TListDynamicSecretLeaseDTO) => {
   return useQuery({
-    queryKey: dynamicSecretLeaseKeys.list({ path, environmentSlug, projectSlug, dynamicSecretName }),
+    queryKey: dynamicSecretLeaseKeys.list({
+      path,
+      environmentSlug,
+      projectSlug,
+      dynamicSecretName
+    }),
     enabled: Boolean(projectSlug && environmentSlug && path && dynamicSecretName && enabled),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ leases: TDynamicSecretLease[] }>(
@@ -35,5 +40,3 @@ export const useGetDynamicSecretLeases = ({
     }
   });
 };
-
-

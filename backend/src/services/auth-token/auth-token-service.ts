@@ -1,13 +1,15 @@
 import crypto from "node:crypto";
 
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { Knex } from "knex";
 
 import { TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 
-import { AuthModeJwtTokenPayload } from "../auth/auth-type";
+import { AuthModeJwtTokenPayload, AuthModeRefreshJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
 import { TUserDALFactory } from "../user/user-dal";
 import { TTokenDALFactory } from "./auth-token-dal";
 import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenForUserDTO } from "./auth-token-types";
@@ -51,6 +53,12 @@ export const getTokenConfig = (tokenType: TokenType) => {
       return { token, expiresAt };
     }
     case TokenType.TOKEN_EMAIL_PASSWORD_RESET: {
+      // generate random hex
+      const token = crypto.randomBytes(16).toString("hex");
+      const expiresAt = new Date(new Date().getTime() + 86400000);
+      return { token, expiresAt };
+    }
+    case TokenType.TOKEN_EMAIL_PASSWORD_SETUP: {
       // generate random hex
       const token = crypto.randomBytes(16).toString("hex");
       const expiresAt = new Date(new Date().getTime() + 86400000);
@@ -123,14 +131,13 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
     return deletedToken?.[0];
   };
 
-  const getUserTokenSession = async ({
-    userId,
-    ip,
-    userAgent
-  }: TIssueAuthTokenDTO): Promise<TAuthTokenSessions | undefined> => {
-    let session = await tokenDAL.findOneTokenSession({ userId, ip, userAgent });
+  const getUserTokenSession = async (
+    { userId, ip, userAgent }: TIssueAuthTokenDTO,
+    tx?: Knex
+  ): Promise<TAuthTokenSessions | undefined> => {
+    let session = await tokenDAL.findOneTokenSession({ userId, ip, userAgent }, tx);
     if (!session) {
-      session = await tokenDAL.insertTokenSession(userId, ip, userAgent);
+      session = await tokenDAL.insertTokenSession(userId, ip, userAgent, tx);
     }
     return session;
   };
@@ -143,6 +150,40 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
   const getTokenSessionByUser = async (userId: string) => tokenDAL.findTokenSessions({ userId });
 
   const revokeAllMySessions = async (userId: string) => tokenDAL.deleteTokenSession({ userId });
+
+  const validateRefreshToken = async (refreshToken?: string) => {
+    const appCfg = getConfig();
+    if (!refreshToken)
+      throw new NotFoundError({
+        name: "AuthTokenNotFound",
+        message: "Failed to find refresh token"
+      });
+
+    const decodedToken = jwt.verify(refreshToken, appCfg.AUTH_SECRET) as AuthModeRefreshJwtTokenPayload;
+
+    if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN)
+      throw new UnauthorizedError({
+        message: "The token provided is not a refresh token",
+        name: "InvalidToken"
+      });
+
+    const tokenVersion = await getUserTokenSessionById(decodedToken.tokenVersionId, decodedToken.userId);
+
+    if (!tokenVersion)
+      throw new UnauthorizedError({
+        message: "Valid token version not found",
+        name: "InvalidToken"
+      });
+
+    if (decodedToken.refreshVersion !== tokenVersion.refreshVersion) {
+      throw new UnauthorizedError({
+        message: "Token version mismatch",
+        name: "InvalidToken"
+      });
+    }
+
+    return { decodedToken, tokenVersion };
+  };
 
   // to parse jwt identity in inject identity plugin
   const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
@@ -182,6 +223,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
     clearTokenSessionById,
     getTokenSessionByUser,
     revokeAllMySessions,
+    validateRefreshToken,
     fnValidateJwtIdentity,
     getUserTokenSessionById
   };

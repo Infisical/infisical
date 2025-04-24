@@ -102,6 +102,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           db.ref("temporaryAccessEndTime").withSchema(TableName.IdentityProjectMembershipRole),
           db.ref("projectId").withSchema(TableName.IdentityProjectMembership),
           db.ref("name").as("projectName").withSchema(TableName.Project),
+          db.ref("type").as("projectType").withSchema(TableName.Project),
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
           db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
@@ -126,7 +127,8 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           createdAt,
           updatedAt,
           projectId,
-          projectName
+          projectName,
+          projectType
         }) => ({
           id,
           identityId,
@@ -147,7 +149,8 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           },
           project: {
             id: projectId,
-            name: projectName
+            name: projectName,
+            type: projectType
           }
         }),
         key: "id",

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { IdentityOidcAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { OIDC_AUTH } from "@app/lib/api-docs";
+import { ApiDocsTags, OIDC_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -11,14 +11,28 @@ import {
   validateOidcAuthAudiencesField,
   validateOidcBoundClaimsField
 } from "@app/services/identity-oidc-auth/identity-oidc-auth-validators";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
-const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.omit({
-  encryptedCaCert: true,
-  caCertIV: true,
-  caCertTag: true
+const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.pick({
+  id: true,
+  accessTokenTTL: true,
+  accessTokenMaxTTL: true,
+  accessTokenNumUsesLimit: true,
+  accessTokenTrustedIps: true,
+  identityId: true,
+  oidcDiscoveryUrl: true,
+  boundIssuer: true,
+  boundAudiences: true,
+  boundClaims: true,
+  claimMetadataMapping: true,
+  boundSubject: true,
+  createdAt: true,
+  updatedAt: true
 }).extend({
   caCert: z.string()
 });
+
+const MAX_OIDC_CLAIM_SIZE = 32_768;
 
 export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -28,6 +42,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OidcAuth],
       description: "Login with OIDC Auth",
       body: z.object({
         identityId: z.string().trim().describe(OIDC_AUTH.LOGIN.identityId),
@@ -43,7 +59,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       }
     },
     handler: async (req) => {
-      const { identityOidcAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+      const { identityOidcAuth, accessToken, identityAccessToken, identityMembershipOrg, oidcTokenData } =
         await server.services.identityOidcAuth.login({
           identityId: req.body.identityId,
           jwt: req.body.jwt
@@ -57,7 +73,11 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           metadata: {
             identityId: identityOidcAuth.identityId,
             identityAccessTokenId: identityAccessToken.id,
-            identityOidcAuthId: identityOidcAuth.id
+            identityOidcAuthId: identityOidcAuth.id,
+            oidcClaimsReceived:
+              Buffer.from(JSON.stringify(oidcTokenData), "utf8").byteLength < MAX_OIDC_CLAIM_SIZE
+                ? oidcTokenData
+                : { payload: "Error: Payload exceeds 32KB, provided oidc claim not recorded in audit log." }
           }
         }
       });
@@ -78,6 +98,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OidcAuth],
       description: "Attach OIDC Auth configuration onto identity",
       security: [
         {
@@ -87,42 +109,43 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       params: z.object({
         identityId: z.string().trim().describe(OIDC_AUTH.ATTACH.identityId)
       }),
-      body: z.object({
-        oidcDiscoveryUrl: z.string().url().min(1).describe(OIDC_AUTH.ATTACH.oidcDiscoveryUrl),
-        caCert: z.string().trim().default("").describe(OIDC_AUTH.ATTACH.caCert),
-        boundIssuer: z.string().min(1).describe(OIDC_AUTH.ATTACH.boundIssuer),
-        boundAudiences: validateOidcAuthAudiencesField.describe(OIDC_AUTH.ATTACH.boundAudiences),
-        boundClaims: validateOidcBoundClaimsField.describe(OIDC_AUTH.ATTACH.boundClaims),
-        boundSubject: z.string().optional().default("").describe(OIDC_AUTH.ATTACH.boundSubject),
-        accessTokenTrustedIps: z
-          .object({
-            ipAddress: z.string().trim()
-          })
-          .array()
-          .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
-          .describe(OIDC_AUTH.ATTACH.accessTokenTrustedIps),
-        accessTokenTTL: z
-          .number()
-          .int()
-          .min(1)
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenTTL must have a non zero number"
-          })
-          .default(2592000)
-          .describe(OIDC_AUTH.ATTACH.accessTokenTTL),
-        accessTokenMaxTTL: z
-          .number()
-          .int()
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
-          .default(2592000)
-          .describe(OIDC_AUTH.ATTACH.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(OIDC_AUTH.ATTACH.accessTokenNumUsesLimit)
-      }),
+      body: z
+        .object({
+          oidcDiscoveryUrl: z.string().url().min(1).describe(OIDC_AUTH.ATTACH.oidcDiscoveryUrl),
+          caCert: z.string().trim().default("").describe(OIDC_AUTH.ATTACH.caCert),
+          boundIssuer: z.string().min(1).describe(OIDC_AUTH.ATTACH.boundIssuer),
+          boundAudiences: validateOidcAuthAudiencesField.describe(OIDC_AUTH.ATTACH.boundAudiences),
+          boundClaims: validateOidcBoundClaimsField.describe(OIDC_AUTH.ATTACH.boundClaims),
+          claimMetadataMapping: validateOidcBoundClaimsField.describe(OIDC_AUTH.ATTACH.claimMetadataMapping).optional(),
+          boundSubject: z.string().optional().default("").describe(OIDC_AUTH.ATTACH.boundSubject),
+          accessTokenTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+            .describe(OIDC_AUTH.ATTACH.accessTokenTrustedIps),
+          accessTokenTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .default(2592000)
+            .describe(OIDC_AUTH.ATTACH.accessTokenTTL),
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .default(2592000)
+            .describe(OIDC_AUTH.ATTACH.accessTokenMaxTTL),
+          accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(OIDC_AUTH.ATTACH.accessTokenNumUsesLimit)
+        })
+        .refine(
+          (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
+          "Access Token TTL cannot be greater than Access Token Max TTL."
+        ),
       response: {
         200: z.object({
           identityOidcAuth: IdentityOidcAuthResponseSchema
@@ -136,7 +159,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
@@ -151,6 +175,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
             boundIssuer: identityOidcAuth.boundIssuer,
             boundAudiences: identityOidcAuth.boundAudiences,
             boundClaims: identityOidcAuth.boundClaims as Record<string, string>,
+            claimMetadataMapping: identityOidcAuth.claimMetadataMapping as Record<string, string>,
             boundSubject: identityOidcAuth.boundSubject as string,
             accessTokenTTL: identityOidcAuth.accessTokenTTL,
             accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL,
@@ -174,6 +199,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OidcAuth],
       description: "Update OIDC Auth configuration on identity",
       security: [
         {
@@ -190,6 +217,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           boundIssuer: z.string().min(1).describe(OIDC_AUTH.UPDATE.boundIssuer),
           boundAudiences: validateOidcAuthAudiencesField.describe(OIDC_AUTH.UPDATE.boundAudiences),
           boundClaims: validateOidcBoundClaimsField.describe(OIDC_AUTH.UPDATE.boundClaims),
+          claimMetadataMapping: validateOidcBoundClaimsField.describe(OIDC_AUTH.UPDATE.claimMetadataMapping).optional(),
           boundSubject: z.string().optional().default("").describe(OIDC_AUTH.UPDATE.boundSubject),
           accessTokenTrustedIps: z
             .object({
@@ -202,26 +230,24 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           accessTokenTTL: z
             .number()
             .int()
-            .min(1)
+            .min(0)
             .max(315360000)
-            .refine((value) => value !== 0, {
-              message: "accessTokenTTL must have a non zero number"
-            })
             .default(2592000)
             .describe(OIDC_AUTH.UPDATE.accessTokenTTL),
           accessTokenMaxTTL: z
             .number()
             .int()
+            .min(0)
             .max(315360000)
-            .refine((value) => value !== 0, {
-              message: "accessTokenMaxTTL must have a non zero number"
-            })
             .default(2592000)
             .describe(OIDC_AUTH.UPDATE.accessTokenMaxTTL),
-
           accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(OIDC_AUTH.UPDATE.accessTokenNumUsesLimit)
         })
-        .partial(),
+        .partial()
+        .refine(
+          (val) => (val.accessTokenMaxTTL && val.accessTokenTTL ? val.accessTokenTTL <= val.accessTokenMaxTTL : true),
+          "Access Token TTL cannot be greater than Access Token Max TTL."
+        ),
       response: {
         200: z.object({
           identityOidcAuth: IdentityOidcAuthResponseSchema
@@ -250,6 +276,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
             boundIssuer: identityOidcAuth.boundIssuer,
             boundAudiences: identityOidcAuth.boundAudiences,
             boundClaims: identityOidcAuth.boundClaims as Record<string, string>,
+            claimMetadataMapping: identityOidcAuth.claimMetadataMapping as Record<string, string>,
             boundSubject: identityOidcAuth.boundSubject as string,
             accessTokenTTL: identityOidcAuth.accessTokenTTL,
             accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL,
@@ -271,6 +298,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OidcAuth],
       description: "Retrieve OIDC Auth configuration on identity",
       security: [
         {
@@ -318,6 +347,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OidcAuth],
       description: "Delete OIDC Auth configuration on identity",
       security: [
         {

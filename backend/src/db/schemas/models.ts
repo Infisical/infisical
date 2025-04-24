@@ -2,6 +2,14 @@ import { z } from "zod";
 
 export enum TableName {
   Users = "users",
+  SshHost = "ssh_hosts",
+  SshHostLoginUser = "ssh_host_login_users",
+  SshHostLoginUserMapping = "ssh_host_login_user_mappings",
+  SshCertificateAuthority = "ssh_certificate_authorities",
+  SshCertificateAuthoritySecret = "ssh_certificate_authority_secrets",
+  SshCertificateTemplate = "ssh_certificate_templates",
+  SshCertificate = "ssh_certificates",
+  SshCertificateBody = "ssh_certificate_bodies",
   CertificateAuthority = "certificate_authorities",
   CertificateTemplateEstConfig = "certificate_template_est_configs",
   CertificateAuthorityCert = "certificate_authority_certs",
@@ -33,6 +41,7 @@ export enum TableName {
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
   ApiKey = "api_keys",
+  ProjectSshConfig = "project_ssh_configs",
   Project = "projects",
   ProjectBot = "project_bots",
   Environment = "project_environments",
@@ -68,12 +77,14 @@ export enum TableName {
   IdentityUaClientSecret = "identity_ua_client_secrets",
   IdentityAwsAuth = "identity_aws_auths",
   IdentityOidcAuth = "identity_oidc_auths",
+  IdentityJwtAuth = "identity_jwt_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
   IdentityProjectAdditionalPrivilege = "identity_project_additional_privilege",
   // used by both identity and users
   IdentityMetadata = "identity_metadata",
+  ResourceMetadata = "resource_metadata",
   ScimToken = "scim_tokens",
   AccessApprovalPolicy = "access_approval_policies",
   AccessApprovalPolicyApprover = "access_approval_policies_approvers",
@@ -105,6 +116,11 @@ export enum TableName {
   SecretApprovalRequestSecretV2 = "secret_approval_requests_secrets_v2",
   SecretApprovalRequestSecretTagV2 = "secret_approval_request_secret_tags_v2",
   SnapshotSecretV2 = "secret_snapshot_secrets_v2",
+  ProjectSplitBackfillIds = "project_split_backfill_ids",
+  // Gateway
+  OrgGatewayConfig = "org_gateway_config",
+  Gateway = "gateways",
+  ProjectGateway = "project_gateways",
   // junction tables with tags
   SecretV2JnTag = "secret_v2_tag_junction",
   JnSecretTag = "secret_tag_junction",
@@ -117,11 +133,20 @@ export enum TableName {
   ExternalKms = "external_kms",
   InternalKms = "internal_kms",
   InternalKmsKeyVersion = "internal_kms_key_version",
+  TotpConfig = "totp_configs",
   // @depreciated
   KmsKeyVersion = "kms_key_versions",
   WorkflowIntegrations = "workflow_integrations",
   SlackIntegrations = "slack_integrations",
-  ProjectSlackConfigs = "project_slack_configs"
+  ProjectSlackConfigs = "project_slack_configs",
+  AppConnection = "app_connections",
+  SecretSync = "secret_syncs",
+  KmipClient = "kmip_clients",
+  KmipOrgConfig = "kmip_org_configs",
+  KmipOrgServerCertificates = "kmip_org_server_certificates",
+  KmipClientCertificates = "kmip_client_certificates",
+  SecretRotationV2 = "secret_rotations_v2",
+  SecretRotationV2SecretMapping = "secret_rotation_v2_secret_mappings"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
@@ -195,5 +220,27 @@ export enum IdentityAuthMethod {
   GCP_AUTH = "gcp-auth",
   AWS_AUTH = "aws-auth",
   AZURE_AUTH = "azure-auth",
-  OIDC_AUTH = "oidc-auth"
+  OIDC_AUTH = "oidc-auth",
+  JWT_AUTH = "jwt-auth"
+}
+
+export enum ProjectType {
+  SecretManager = "secret-manager",
+  CertificateManager = "cert-manager",
+  KMS = "kms",
+  SSH = "ssh"
+}
+
+export enum ActionProjectType {
+  SecretManager = ProjectType.SecretManager,
+  CertificateManager = ProjectType.CertificateManager,
+  KMS = ProjectType.KMS,
+  SSH = ProjectType.SSH,
+  // project operations that happen on all types
+  Any = "any"
+}
+
+export enum SortDirection {
+  ASC = "asc",
+  DESC = "desc"
 }

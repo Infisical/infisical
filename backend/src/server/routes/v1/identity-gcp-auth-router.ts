@@ -2,12 +2,13 @@ import { z } from "zod";
 
 import { IdentityGcpAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { GCP_AUTH } from "@app/lib/api-docs";
+import { ApiDocsTags, GCP_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { validateGcpAuthField } from "@app/services/identity-gcp-auth/identity-gcp-auth-validators";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -17,9 +18,11 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.GcpAuth],
       description: "Login with GCP Auth",
       body: z.object({
-        identityId: z.string().trim().describe(GCP_AUTH.LOGIN.identityId).trim(),
+        identityId: z.string().trim().describe(GCP_AUTH.LOGIN.identityId),
         jwt: z.string()
       }),
       response: {
@@ -65,6 +68,8 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.GcpAuth],
       description: "Attach GCP Auth configuration onto identity",
       security: [
         {
@@ -74,40 +79,40 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
       params: z.object({
         identityId: z.string().trim().describe(GCP_AUTH.ATTACH.identityId)
       }),
-      body: z.object({
-        type: z.enum(["iam", "gce"]),
-        allowedServiceAccounts: validateGcpAuthField.describe(GCP_AUTH.ATTACH.allowedServiceAccounts),
-        allowedProjects: validateGcpAuthField.describe(GCP_AUTH.ATTACH.allowedProjects),
-        allowedZones: validateGcpAuthField.describe(GCP_AUTH.ATTACH.allowedZones),
-        accessTokenTrustedIps: z
-          .object({
-            ipAddress: z.string().trim()
-          })
-          .array()
-          .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
-          .describe(GCP_AUTH.ATTACH.accessTokenTrustedIps),
-        accessTokenTTL: z
-          .number()
-          .int()
-          .min(1)
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenTTL must have a non zero number"
-          })
-          .default(2592000)
-          .describe(GCP_AUTH.ATTACH.accessTokenTTL),
-        accessTokenMaxTTL: z
-          .number()
-          .int()
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
-          .default(2592000)
-          .describe(GCP_AUTH.ATTACH.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(GCP_AUTH.ATTACH.accessTokenNumUsesLimit)
-      }),
+      body: z
+        .object({
+          type: z.enum(["iam", "gce"]),
+          allowedServiceAccounts: validateGcpAuthField.describe(GCP_AUTH.ATTACH.allowedServiceAccounts),
+          allowedProjects: validateGcpAuthField.describe(GCP_AUTH.ATTACH.allowedProjects),
+          allowedZones: validateGcpAuthField.describe(GCP_AUTH.ATTACH.allowedZones),
+          accessTokenTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+            .describe(GCP_AUTH.ATTACH.accessTokenTrustedIps),
+          accessTokenTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .default(2592000)
+            .describe(GCP_AUTH.ATTACH.accessTokenTTL),
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .default(2592000)
+            .describe(GCP_AUTH.ATTACH.accessTokenMaxTTL),
+          accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(GCP_AUTH.ATTACH.accessTokenNumUsesLimit)
+        })
+        .refine(
+          (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
+          "Access Token TTL cannot be greater than Access Token Max TTL."
+        ),
       response: {
         200: z.object({
           identityGcpAuth: IdentityGcpAuthsSchema
@@ -121,7 +126,8 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
@@ -155,6 +161,8 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.GcpAuth],
       description: "Update GCP Auth configuration on identity",
       security: [
         {
@@ -164,31 +172,34 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
       params: z.object({
         identityId: z.string().trim().describe(GCP_AUTH.UPDATE.identityId)
       }),
-      body: z.object({
-        type: z.enum(["iam", "gce"]).optional(),
-        allowedServiceAccounts: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedServiceAccounts),
-        allowedProjects: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedProjects),
-        allowedZones: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedZones),
-        accessTokenTrustedIps: z
-          .object({
-            ipAddress: z.string().trim()
-          })
-          .array()
-          .min(1)
-          .optional()
-          .describe(GCP_AUTH.UPDATE.accessTokenTrustedIps),
-        accessTokenTTL: z.number().int().min(0).max(315360000).optional().describe(GCP_AUTH.UPDATE.accessTokenTTL),
-        accessTokenNumUsesLimit: z.number().int().min(0).optional().describe(GCP_AUTH.UPDATE.accessTokenNumUsesLimit),
-        accessTokenMaxTTL: z
-          .number()
-          .int()
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
-          .optional()
-          .describe(GCP_AUTH.UPDATE.accessTokenMaxTTL)
-      }),
+      body: z
+        .object({
+          type: z.enum(["iam", "gce"]).optional(),
+          allowedServiceAccounts: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedServiceAccounts),
+          allowedProjects: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedProjects),
+          allowedZones: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedZones),
+          accessTokenTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .optional()
+            .describe(GCP_AUTH.UPDATE.accessTokenTrustedIps),
+          accessTokenTTL: z.number().int().min(0).max(315360000).optional().describe(GCP_AUTH.UPDATE.accessTokenTTL),
+          accessTokenNumUsesLimit: z.number().int().min(0).optional().describe(GCP_AUTH.UPDATE.accessTokenNumUsesLimit),
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .optional()
+            .describe(GCP_AUTH.UPDATE.accessTokenMaxTTL)
+        })
+        .refine(
+          (val) => (val.accessTokenMaxTTL && val.accessTokenTTL ? val.accessTokenTTL <= val.accessTokenMaxTTL : true),
+          "Access Token TTL cannot be greater than Access Token Max TTL."
+        ),
       response: {
         200: z.object({
           identityGcpAuth: IdentityGcpAuthsSchema
@@ -236,6 +247,8 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.GcpAuth],
       description: "Retrieve GCP Auth configuration on identity",
       security: [
         {
@@ -283,6 +296,8 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.GcpAuth],
       description: "Delete GCP Auth configuration on identity",
       security: [
         {

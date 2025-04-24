@@ -16,7 +16,7 @@ From local development to production, Infisical SDKs provide the easiest way for
     <Card href="https://github.com/Infisical/python-sdk-official" title="Python" icon="python" color="#4c8abe">
         Manage secrets for your Python application on demand
     </Card>
-    <Card href="/sdks/languages/java" title="Java" icon="java" color="#e41f23">
+    <Card href="https://github.com/Infisical/java-sdk?tab=readme-ov-file#infisical-nodejs-sdk" title="Java" icon="java" color="#e41f23">
         Manage secrets for your Java application on demand
     </Card>
     <Card href="/sdks/languages/go" title="Go" icon="golang" color="#367B99">
@@ -34,12 +34,6 @@ From local development to production, Infisical SDKs provide the easiest way for
 ## FAQ
 
 <AccordionGroup>
-    <Accordion title="Isn't it inefficient if my app makes a request every time it needs a secret?">
-        The client SDK caches every secret and implements a 5-minute waiting period before re-requesting it. The waiting period can be controlled by
-        setting the `cacheTTL` parameter at the time of initializing the client.
-        
-        Note: The exact parameter name may differ depending on the language.
-    </Accordion>
     <Accordion title="What if a request for a secret fails?">
         The SDK caches every secret and falls back to the cached value if a request fails. If no cached
         value ever-existed, the SDK falls back to whatever value is on the process environment.

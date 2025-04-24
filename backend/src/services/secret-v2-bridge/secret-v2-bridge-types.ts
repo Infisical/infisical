@@ -1,12 +1,15 @@
 import { Knex } from "knex";
 
 import { SecretType, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas";
+import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
@@ -21,6 +24,12 @@ export type TSecretReferenceDTO = {
   secretKey: string;
 };
 
+export enum SecretUpdateMode {
+  Ignore = "ignore",
+  Upsert = "upsert",
+  FailOnNotFound = "failOnNotFound"
+}
+
 export type TGetSecretsDTO = {
   expandSecretReferences?: boolean;
   path: string;
@@ -28,12 +37,24 @@ export type TGetSecretsDTO = {
   includeImports?: boolean;
   recursive?: boolean;
   tagSlugs?: string[];
+  viewSecretValue: boolean;
+  throwOnMissingReadValuePermission?: boolean;
+  metadataFilter?: {
+    key?: string;
+    value?: string;
+  }[];
   orderBy?: SecretsOrderBy;
   orderDirection?: OrderByDirection;
   offset?: number;
   limit?: number;
   search?: string;
+  keys?: string[];
 } & TProjectPermission;
+
+export type TGetSecretsMissingReadValuePermissionDTO = Omit<
+  TGetSecretsDTO,
+  "viewSecretValue" | "recursive" | "expandSecretReferences"
+>;
 
 export type TGetASecretDTO = {
   secretName: string;
@@ -44,6 +65,7 @@ export type TGetASecretDTO = {
   includeImports?: boolean;
   version?: number;
   projectId: string;
+  viewSecretValue: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSecretDTO = TProjectPermission & {
@@ -57,6 +79,7 @@ export type TCreateSecretDTO = TProjectPermission & {
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
+  secretMetadata?: ResourceMetadataDTO;
 };
 
 export type TUpdateSecretDTO = TProjectPermission & {
@@ -74,6 +97,7 @@ export type TUpdateSecretDTO = TProjectPermission & {
   metadata?: {
     source?: string;
   };
+  secretMetadata?: ResourceMetadataDTO;
 };
 
 export type TDeleteSecretDTO = TProjectPermission & {
@@ -93,6 +117,7 @@ export type TCreateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
     secretComment?: string;
     skipMultilineEncoding?: boolean;
     tagIds?: string[];
+    secretMetadata?: ResourceMetadataDTO;
     metadata?: {
       source?: string;
     };
@@ -103,15 +128,18 @@ export type TUpdateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
   projectId: string;
   environment: string;
+  mode: SecretUpdateMode;
   secrets: {
     secretKey: string;
     newSecretName?: string;
-    secretValue: string;
+    secretValue?: string;
     secretComment?: string;
     skipMultilineEncoding?: boolean;
     tagIds?: string[];
     secretReminderRepeatDays?: number | null;
     secretReminderNote?: string | null;
+    secretMetadata?: ResourceMetadataDTO;
+    secretPath?: string;
   }[];
 };
 
@@ -135,12 +163,24 @@ export type TSecretReference = { environment: string; secretPath: string; secret
 
 export type TFnSecretBulkInsert = {
   folderId: string;
+  orgId: string;
   tx?: Knex;
-  inputSecrets: Array<Omit<TSecretsV2Insert, "folderId"> & { tagIds?: string[]; references: TSecretReference[] }>;
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences">;
+  inputSecrets: Array<
+    Omit<TSecretsV2Insert, "folderId"> & {
+      tagIds?: string[];
+      references: TSecretReference[];
+      secretMetadata?: ResourceMetadataDTO;
+    }
+  >;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
-  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  actor?: {
+    type: string;
+    actorId: string;
+  };
 };
 
 type TRequireReferenceIfValue =
@@ -155,14 +195,20 @@ type TRequireReferenceIfValue =
 
 export type TFnSecretBulkUpdate = {
   folderId: string;
+  orgId: string;
   inputSecrets: {
     filter: Partial<TSecretsV2>;
-    data: TRequireReferenceIfValue & { tags?: string[] };
+    data: TRequireReferenceIfValue & { tags?: string[]; secretMetadata?: ResourceMetadataDTO };
   }[];
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "upsertSecretReferences">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "upsertSecretReferences" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
-  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  actor?: {
+    type: string;
+    actorId: string;
+  };
   tx?: Knex;
 };
 
@@ -233,6 +279,13 @@ export type TUpdateManySecretsFnFactory = {
   folderDAL: TSecretFolderDALFactory;
 };
 
+export type TFindByFolderIdDALDTO = {
+  folderId: string;
+  userId?: string;
+  tx?: Knex;
+  projectId: string;
+};
+
 export type TUpdateManySecretsFn = {
   projectId: string;
   environment: string;
@@ -293,7 +346,9 @@ export type TFindSecretsByFolderIdsFilter = {
   orderDirection?: OrderByDirection;
   search?: string;
   tagSlugs?: string[];
+  metadataFilter?: { key?: string; value?: string }[];
   includeTagsInSearch?: boolean;
+  keys?: string[];
 };
 
 export type TGetSecretsRawByFolderMappingsDTO = {
@@ -301,4 +356,13 @@ export type TGetSecretsRawByFolderMappingsDTO = {
   folderMappings: { folderId: string; path: string; environment: string }[];
   userId: string;
   filters: TFindSecretsByFolderIdsFilter;
+  filterByAction?: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
 };
+
+export type TGetAccessibleSecretsDTO = {
+  environment: string;
+  projectId: string;
+  secretPath: string;
+  recursive?: boolean;
+  filterByAction: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
+} & TProjectPermission;

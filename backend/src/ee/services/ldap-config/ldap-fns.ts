@@ -36,8 +36,7 @@ export const testLDAPConfig = async (ldapConfig: TLDAPConfig): Promise<boolean> 
     });
 
     ldapClient.on("error", (err) => {
-      logger.error("LDAP client error:", err);
-      logger.error(err);
+      logger.error(err, "LDAP client error");
       resolve(false);
     });
 
@@ -98,12 +97,14 @@ export const searchGroups = async (
 
         res.on("searchEntry", (entry) => {
           const dn = entry.dn.toString();
-          const regex = /cn=([^,]+)/;
-          const match = dn.match(regex);
-          // parse the cn from the dn
-          const cn = (match && match[1]) as string;
+          const cnStartIndex = dn.indexOf("cn=");
 
-          groups.push({ dn, cn });
+          if (cnStartIndex !== -1) {
+            const valueStartIndex = cnStartIndex + 3;
+            const commaIndex = dn.indexOf(",", valueStartIndex);
+            const cn = dn.substring(valueStartIndex, commaIndex === -1 ? undefined : commaIndex);
+            groups.push({ dn, cn });
+          }
         });
         res.on("error", (error) => {
           ldapClient.unbind();

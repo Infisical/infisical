@@ -24,10 +24,6 @@ func CallGetServiceTokenDetailsV2(httpClient *resty.Client) (GetServiceTokenDeta
 		return GetServiceTokenDetailsResponse{}, fmt.Errorf("CallGetServiceTokenDetails: Unsuccessful response: [response=%s]", response)
 	}
 
-	// logging for better debugging and user experience
-	fmt.Printf("Workspace ID: %v\n", tokenDetailsResponse.Workspace)
-	fmt.Printf("TokenName: %v\n", tokenDetailsResponse.Name)
-
 	return tokenDetailsResponse, nil
 }
 
@@ -128,4 +124,25 @@ func CallGetServiceAccountKeysV2(httpClient *resty.Client, request GetServiceAcc
 	}
 
 	return serviceAccountKeysResponse, nil
+}
+
+func CallGetProjectByID(httpClient *resty.Client, request GetProjectByIDRequest) (GetProjectByIDResponse, error) {
+
+	var projectResponse GetProjectByIDResponse
+
+	response, err := httpClient.
+		R().SetResult(&projectResponse).
+		SetHeader("User-Agent", USER_AGENT_NAME).
+		Get(fmt.Sprintf("%s/v1/workspace/%s", API_HOST_URL, request.ProjectID))
+
+	if err != nil {
+		return GetProjectByIDResponse{}, fmt.Errorf("CallGetProject: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return GetProjectByIDResponse{}, fmt.Errorf("CallGetProject: Unsuccessful response: [response=%s]", response)
+	}
+
+	return projectResponse, nil
+
 }

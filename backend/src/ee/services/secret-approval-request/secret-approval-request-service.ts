@@ -1,10 +1,12 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import {
+  ActionProjectType,
   ProjectMembershipRole,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
+  TableName,
   TSecretApprovalRequestsSecretsInsert,
   TSecretApprovalRequestsSecretsV2Insert
 } from "@app/db/schemas";
@@ -21,6 +23,8 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
+import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import {
   decryptSecretWithBot,
@@ -54,8 +58,9 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
+import { throwIfMissingSecretReadValueOrDescribePermission } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
+import { ProjectPermissionSecretActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
@@ -85,11 +90,17 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
   secretTagDAL: Pick<
     TSecretTagDALFactory,
-    "findManyTagsById" | "saveTagsToSecret" | "deleteTagsManySecret" | "saveTagsToSecretV2" | "deleteTagsToSecretV2"
+    | "findManyTagsById"
+    | "saveTagsToSecret"
+    | "deleteTagsManySecret"
+    | "saveTagsToSecretV2"
+    | "deleteTagsToSecretV2"
+    | "find"
   >;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany" | "insertMany">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "find" | "findOne" | "findById">;
@@ -102,7 +113,13 @@ type TSecretApprovalRequestServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
-    "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany"
+    | "insertMany"
+    | "upsertSecretReferences"
+    | "findBySecretKeys"
+    | "bulkUpdate"
+    | "deleteMany"
+    | "find"
+    | "invalidateSecretCacheByProjectId"
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -137,18 +154,20 @@ export const secretApprovalRequestServiceFactory = ({
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
   licenseService,
-  projectSlackConfigDAL
+  projectSlackConfigDAL,
+  resourceMetadataDAL
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    await permissionService.getProjectPermission(
-      actor as ActorType.USER,
+    await permissionService.getProjectPermission({
+      actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, actorId);
     return count;
@@ -168,7 +187,14 @@ export const secretApprovalRequestServiceFactory = ({
   }: TListApprovalsDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
@@ -211,13 +237,14 @@ export const secretApprovalRequestServiceFactory = ({
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
     const { policy } = secretApprovalRequest;
-    const { hasRole } = await permissionService.getProjectPermission(
+    const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerUserId !== actorId &&
@@ -232,15 +259,23 @@ export const secretApprovalRequestServiceFactory = ({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const encrypedSecrets = await secretApprovalRequestSecretDAL.findByRequestIdBridgeSecretV2(
+      const encryptedSecrets = await secretApprovalRequestSecretDAL.findByRequestIdBridgeSecretV2(
         secretApprovalRequest.id
       );
-      secrets = encrypedSecrets.map((el) => ({
+      secrets = encryptedSecrets.map((el) => ({
         ...el,
         secretKey: el.key,
         id: el.id,
         version: el.version,
-        secretValue: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
+        secretMetadata: el.secretMetadata as ResourceMetadataDTO,
+        isRotatedSecret: el.secret?.isRotatedSecret ?? false,
+        secretValue:
+          // eslint-disable-next-line no-nested-ternary
+          el.secret && el.secret.isRotatedSecret
+            ? undefined
+            : el.encryptedValue
+              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+              : "",
         secretComment: el.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
           : "",
@@ -268,14 +303,15 @@ export const secretApprovalRequestServiceFactory = ({
               secretComment: el.secretVersion.encryptedComment
                 ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
                 : "",
-              tags: el.secretVersion.tags
+              tags: el.secretVersion.tags,
+              secretMetadata: el.oldSecretMetadata as ResourceMetadataDTO
             }
           : undefined
       }));
     } else {
       if (!botKey) throw new NotFoundError({ message: `Project bot key not found`, name: "BotKeyNotFound" }); // CLI depends on this error message. TODO(daniel): Make API check for name BotKeyNotFound instead of message
-      const encrypedSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
-      secrets = encrypedSecrets.map((el) => ({
+      const encryptedSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
+      secrets = encryptedSecrets.map((el) => ({
         ...el,
         ...decryptSecretWithBot(el, botKey),
         secret: el.secret
@@ -304,6 +340,7 @@ export const secretApprovalRequestServiceFactory = ({
     approvalId,
     actor,
     status,
+    comment,
     actorId,
     actorAuthMethod,
     actorOrgId
@@ -323,13 +360,25 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const { policy } = secretApprovalRequest;
-    const { hasRole } = await permissionService.getProjectPermission(
-      ActorType.USER,
+    if (policy.deletedAt) {
+      throw new BadRequestError({
+        message: "The policy associated with this secret approval request has been deleted."
+      });
+    }
+    if (!policy.allowedSelfApprovals && actorId === secretApprovalRequest.committerUserId) {
+      throw new BadRequestError({
+        message: "Failed to review secret approval request. Users are not authorized to review their own request."
+      });
+    }
+
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor: ActorType.USER,
       actorId,
-      secretApprovalRequest.projectId,
+      projectId: secretApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerUserId !== actorId &&
@@ -349,15 +398,18 @@ export const secretApprovalRequestServiceFactory = ({
         return secretApprovalRequestReviewerDAL.create(
           {
             status,
+            comment,
             requestId: secretApprovalRequest.id,
             reviewerUserId: actorId
           },
           tx
         );
       }
-      return secretApprovalRequestReviewerDAL.updateById(review.id, { status }, tx);
+
+      return secretApprovalRequestReviewerDAL.updateById(review.id, { status, comment }, tx);
     });
-    return reviewStatus;
+
+    return { ...reviewStatus, projectId: secretApprovalRequest.projectId };
   };
 
   const updateApprovalStatus = async ({
@@ -383,13 +435,20 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const { policy } = secretApprovalRequest;
-    const { hasRole } = await permissionService.getProjectPermission(
-      ActorType.USER,
+    if (policy.deletedAt) {
+      throw new BadRequestError({
+        message: "The policy associated with this secret approval request has been deleted."
+      });
+    }
+
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor: ActorType.USER,
       actorId,
-      secretApprovalRequest.projectId,
+      projectId: secretApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerUserId !== actorId &&
@@ -433,13 +492,20 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const { policy, folderId, projectId } = secretApprovalRequest;
-    const { hasRole } = await permissionService.getProjectPermission(
-      ActorType.USER,
+    if (policy.deletedAt) {
+      throw new BadRequestError({
+        message: "The policy associated with this secret approval request has been deleted."
+      });
+    }
+
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor: ActorType.USER,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -462,7 +528,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (!hasMinApproval && !isSoftEnforcement)
       throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
 
-    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    const { botKey, shouldUseSecretV2Bridge, project } = await projectBotService.getBotKey(projectId);
     let mergeStatus;
     if (shouldUseSecretV2Bridge) {
       // this cycle if for bridged secrets
@@ -524,6 +590,7 @@ export const secretApprovalRequestServiceFactory = ({
           ? await fnSecretV2BridgeBulkInsert({
               tx,
               folderId,
+              orgId: actorOrgId,
               inputSecrets: secretCreationCommits.map((el) => ({
                 tagIds: el?.tags.map(({ id }) => id),
                 version: 1,
@@ -531,6 +598,7 @@ export const secretApprovalRequestServiceFactory = ({
                 encryptedValue: el.encryptedValue,
                 skipMultilineEncoding: el.skipMultilineEncoding,
                 key: el.key,
+                secretMetadata: el.secretMetadata as ResourceMetadataDTO,
                 references: el.encryptedValue
                   ? getAllSecretReferencesV2Bridge(
                       secretManagerDecryptor({
@@ -540,6 +608,7 @@ export const secretApprovalRequestServiceFactory = ({
                   : [],
                 type: SecretType.Shared
               })),
+              resourceMetadataDAL,
               secretDAL: secretV2BridgeDAL,
               secretVersionDAL: secretVersionV2BridgeDAL,
               secretTagDAL,
@@ -549,10 +618,11 @@ export const secretApprovalRequestServiceFactory = ({
         const updatedSecrets = secretUpdationCommits.length
           ? await fnSecretV2BridgeBulkUpdate({
               folderId,
+              orgId: actorOrgId,
               tx,
               inputSecrets: secretUpdationCommits.map((el) => {
                 const encryptedValue =
-                  typeof el.encryptedValue !== "undefined"
+                  !el.secret?.isRotatedSecret && typeof el.encryptedValue !== "undefined"
                     ? {
                         encryptedValue: el.encryptedValue as Buffer,
                         references: el.encryptedValue
@@ -573,6 +643,7 @@ export const secretApprovalRequestServiceFactory = ({
                     skipMultilineEncoding: el.skipMultilineEncoding,
                     key: el.key,
                     tags: el?.tags.map(({ id }) => id),
+                    secretMetadata: el.secretMetadata as ResourceMetadataDTO,
                     ...encryptedValue
                   }
                 };
@@ -580,7 +651,8 @@ export const secretApprovalRequestServiceFactory = ({
               secretDAL: secretV2BridgeDAL,
               secretVersionDAL: secretVersionV2BridgeDAL,
               secretTagDAL,
-              secretVersionTagDAL: secretVersionTagV2BridgeDAL
+              secretVersionTagDAL: secretVersionTagV2BridgeDAL,
+              resourceMetadataDAL
             })
           : [];
         const deletedSecret = secretDeletionCommits.length
@@ -798,6 +870,7 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     await snapshotService.performSnapshot(folderId);
     const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
     if (!folder) {
@@ -805,6 +878,7 @@ export const secretApprovalRequestServiceFactory = ({
     }
     await secretQueueService.syncSecrets({
       projectId,
+      orgId: actorOrgId,
       secretPath: folder.path,
       environmentSlug: folder.environmentSlug,
       actorId,
@@ -813,7 +887,6 @@ export const secretApprovalRequestServiceFactory = ({
 
     if (isSoftEnforcement) {
       const cfg = getConfig();
-      const project = await projectDAL.findProjectById(projectId);
       const env = await projectEnvDAL.findOne({ id: policy.envId });
       const requestedByUser = await userDAL.findOne({ id: actorId });
       const approverUsers = await userDAL.find({
@@ -833,7 +906,7 @@ export const secretApprovalRequestServiceFactory = ({
           bypassReason,
           secretPath: policy.secretPath,
           environment: env.name,
-          approvalUrl: `${cfg.SITE_URL}/project/${project.id}/approval`
+          approvalUrl: `${cfg.SITE_URL}/secret-manager/${project.id}/approval`
         },
         template: SmtpTemplates.AccessSecretRequestBypassed
       });
@@ -857,17 +930,19 @@ export const secretApprovalRequestServiceFactory = ({
   }: TGenerateSecretApprovalRequestDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+      environment,
+      secretPath
+    });
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
@@ -952,6 +1027,7 @@ export const secretApprovalRequestServiceFactory = ({
               : keyName2BlindIndex[secretName];
           // add tags
           if (tagIds?.length) commitTagIds[keyName2BlindIndex[secretName]] = tagIds;
+
           return {
             ...latestSecretVersions[secretId],
             ...el,
@@ -1107,7 +1183,8 @@ export const secretApprovalRequestServiceFactory = ({
           environment: env.name,
           secretPath,
           projectId,
-          requestId: secretApprovalRequest.id
+          requestId: secretApprovalRequest.id,
+          secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretName) ?? []))]
         }
       }
     });
@@ -1137,14 +1214,14 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor === ActorType.SERVICE || actor === ActorType.Machine)
       throw new BadRequestError({ message: "Cannot use service token or machine token over protected branches" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
       throw new NotFoundError({
@@ -1188,6 +1265,7 @@ export const secretApprovalRequestServiceFactory = ({
           ),
           skipMultilineEncoding: createdSecret.skipMultilineEncoding,
           key: createdSecret.secretKey,
+          secretMetadata: createdSecret.secretMetadata,
           type: SecretType.Shared
         }))
       );
@@ -1221,9 +1299,10 @@ export const secretApprovalRequestServiceFactory = ({
             type: SecretType.Shared
           }))
         );
-        if (secrets.length)
+
+        if (secrets.length !== secretsWithNewName.length)
           throw new NotFoundError({
-            message: `Secret does not exist: ${secretsToUpdateStoredInDB.map((el) => el.key).join(",")}`
+            message: `Secret does not exist: ${secrets.map((el) => el.key).join(",")}`
           });
       }
 
@@ -1243,12 +1322,14 @@ export const secretApprovalRequestServiceFactory = ({
             reminderNote,
             secretComment,
             metadata,
-            skipMultilineEncoding
+            skipMultilineEncoding,
+            secretMetadata
           }) => {
             const secretId = updatingSecretsGroupByKey[secretKey][0].id;
-            if (tagIds?.length) commitTagIds[secretKey] = tagIds;
+            if (tagIds?.length) commitTagIds[newSecretName ?? secretKey] = tagIds;
             return {
               ...latestSecretVersions[secretId],
+              secretMetadata,
               key: newSecretName || secretKey,
               encryptedComment: setKnexStringValue(
                 secretComment,
@@ -1274,17 +1355,48 @@ export const secretApprovalRequestServiceFactory = ({
     // deleted secrets
     const deletedSecrets = data[SecretOperations.Delete];
     if (deletedSecrets && deletedSecrets.length) {
-      const secretsToDeleteInDB = await secretV2BridgeDAL.findBySecretKeys(
+      const secretsToDeleteInDB = await secretV2BridgeDAL.find({
         folderId,
-        deletedSecrets.map((el) => ({
-          key: el.secretKey,
-          type: SecretType.Shared
-        }))
-      );
+        $complex: {
+          operator: "and",
+          value: [
+            {
+              operator: "or",
+              value: deletedSecrets.map((el) => ({
+                operator: "and",
+                value: [
+                  {
+                    operator: "eq",
+                    field: `${TableName.SecretV2}.key` as "key",
+                    value: el.secretKey
+                  },
+                  {
+                    operator: "eq",
+                    field: "type",
+                    value: SecretType.Shared
+                  }
+                ]
+              }))
+            }
+          ]
+        }
+      });
       if (secretsToDeleteInDB.length !== deletedSecrets.length)
         throw new NotFoundError({
           message: `Secret does not exist: ${secretsToDeleteInDB.map((el) => el.key).join(",")}`
         });
+      secretsToDeleteInDB.forEach((el) => {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionSecretActions.Delete,
+          subject(ProjectPermissionSub.Secrets, {
+            environment,
+            secretPath,
+            secretName: el.key,
+            secretTags: el.tags?.map((i) => i.slug)
+          })
+        );
+      });
+
       const secretsGroupedByKey = groupBy(secretsToDeleteInDB, (i) => i.key);
       const deletedSecretIds = deletedSecrets.map((el) => secretsGroupedByKey[el.secretKey][0].id);
       const latestSecretVersions = await secretVersionV2BridgeDAL.findLatestVersionMany(folderId, deletedSecretIds);
@@ -1310,9 +1422,9 @@ export const secretApprovalRequestServiceFactory = ({
     const tagsGroupById = groupBy(tags, (i) => i.id);
 
     commits.forEach((commit) => {
-      let action = ProjectPermissionActions.Create;
-      if (commit.op === SecretOperations.Update) action = ProjectPermissionActions.Edit;
-      if (commit.op === SecretOperations.Delete) action = ProjectPermissionActions.Delete;
+      let action = ProjectPermissionSecretActions.Create;
+      if (commit.op === SecretOperations.Update) action = ProjectPermissionSecretActions.Edit;
+      if (commit.op === SecretOperations.Delete) return; // we do the validation on top
 
       ForbiddenError.from(permission).throwUnlessCan(
         action,
@@ -1350,7 +1462,8 @@ export const secretApprovalRequestServiceFactory = ({
             reminderRepeatDays,
             encryptedValue,
             secretId,
-            secretVersion
+            secretVersion,
+            secretMetadata
           }) => ({
             version,
             requestId: doc.id,
@@ -1363,7 +1476,8 @@ export const secretApprovalRequestServiceFactory = ({
             reminderRepeatDays,
             reminderNote,
             encryptedComment,
-            key
+            key,
+            secretMetadata: JSON.stringify(secretMetadata)
           })
         ),
         tx
@@ -1401,7 +1515,8 @@ export const secretApprovalRequestServiceFactory = ({
           environment: env.name,
           secretPath,
           projectId,
-          requestId: secretApprovalRequest.id
+          requestId: secretApprovalRequest.id,
+          secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))]
         }
       }
     });

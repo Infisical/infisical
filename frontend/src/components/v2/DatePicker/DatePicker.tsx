@@ -1,19 +1,23 @@
 import { ChangeEventHandler, useState } from "react";
-import { DayPicker, DayPickerProps } from "react-day-picker";
+import { DayPicker, DayPickerProps, getDefaultClassNames, UI } from "react-day-picker";
 import { faCalendar } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { PopoverContentProps, PopoverProps } from "@radix-ui/react-popover";
 import { format, setHours, setMinutes } from "date-fns";
+import { twMerge } from "tailwind-merge";
 
 import { Button } from "../Button";
 import { Input } from "../Input";
 import { Popover, PopoverContent, PopoverTrigger } from "../Popoverv2";
+
+const defaultClassNames = getDefaultClassNames();
 
 export type DatePickerProps = Omit<DayPickerProps, "selected"> & {
   value?: Date;
   onChange: (date?: Date) => void;
   popUpProps: PopoverProps;
   popUpContentProps: PopoverContentProps;
+  dateFormat?: "PPP" | "PP" | "P"; // extend as needed
 };
 
 // Doc: https://react-day-picker.js.org/
@@ -22,6 +26,7 @@ export const DatePicker = ({
   onChange,
   popUpProps,
   popUpContentProps,
+  dateFormat = "PPP",
   ...props
 }: DatePickerProps) => {
   const [timeValue, setTimeValue] = useState<string>(value ? format(value, "HH:mm") : "00:00");
@@ -53,10 +58,33 @@ export const DatePicker = ({
     <Popover {...popUpProps}>
       <PopoverTrigger asChild>
         <Button variant="outline_bg" leftIcon={<FontAwesomeIcon icon={faCalendar} />}>
-          {value ? format(value, "PPP") : "Pick a date and time"}
+          {value ? format(value, dateFormat) : "Pick a date and time"}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-fit p-2" {...popUpContentProps}>
+      <PopoverContent
+        {...popUpContentProps}
+        className={twMerge(
+          "w-fit border border-mineshaft-600 bg-mineshaft-800 p-2 font-inter",
+          popUpContentProps.className
+        )}
+      >
+        <div className="px-2 pt-4">
+          <DayPicker
+            {...props}
+            mode="single"
+            selected={value}
+            onSelect={handleDaySelect}
+            className="font-inter text-mineshaft-200"
+            classNames={{
+              today: "text-primary border-primary",
+              selected: " text-mineshaft-100 bg-mineshaft-500",
+              root: `text-mineshaft-300  ${defaultClassNames}`,
+              [UI.DayButton]: "p-3 rounded hover:text-mineshaft-100",
+              [UI.Weekday]: "px-3 pt-3",
+              [UI.Chevron]: "fill-mineshaft-300"
+            }}
+          />
+        </div>
         <div className="mx-4 my-4">
           <Input
             type="time"
@@ -65,17 +93,6 @@ export const DatePicker = ({
             className="bg-mineshaft-700 text-white [color-scheme:dark]"
           />
         </div>
-        <DayPicker
-          {...props}
-          mode="single"
-          selected={value}
-          onSelect={handleDaySelect}
-          modifiersStyles={{
-            selected: {
-              background: "#cad62d"
-            }
-          }}
-        />
       </PopoverContent>
     </Popover>
   );

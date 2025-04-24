@@ -2,17 +2,61 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName, TSecretSharing } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import { DatabaseError, NotFoundError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
+
+import { SecretSharingType } from "./secret-sharing-types";
 
 export type TSecretSharingDALFactory = ReturnType<typeof secretSharingDALFactory>;
 
 export const secretSharingDALFactory = (db: TDbClient) => {
   const sharedSecretOrm = ormify(db, TableName.SecretSharing);
 
-  const countAllUserOrgSharedSecrets = async ({ orgId, userId }: { orgId: string; userId: string }) => {
+  const getSecretRequestById = async (id: string) => {
+    const repDb = db.replicaNode();
+
+    const secretRequest = await repDb(TableName.SecretSharing)
+      .leftJoin(TableName.Organization, `${TableName.Organization}.id`, `${TableName.SecretSharing}.orgId`)
+      .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.SecretSharing}.userId`)
+      .where(`${TableName.SecretSharing}.id`, id)
+      .where(`${TableName.SecretSharing}.type`, SecretSharingType.Request)
+      .select(
+        repDb.ref("name").withSchema(TableName.Organization).as("orgName"),
+        repDb.ref("firstName").withSchema(TableName.Users).as("requesterFirstName"),
+        repDb.ref("lastName").withSchema(TableName.Users).as("requesterLastName"),
+        repDb.ref("username").withSchema(TableName.Users).as("requesterUsername")
+      )
+      .select(selectAllTableCols(TableName.SecretSharing))
+      .first();
+
+    if (!secretRequest) {
+      throw new NotFoundError({
+        message: `Secret request with ID '${id}' not found`
+      });
+    }
+
+    return {
+      ...secretRequest,
+      requester: {
+        organizationName: secretRequest.orgName,
+        firstName: secretRequest.requesterFirstName,
+        lastName: secretRequest.requesterLastName,
+        username: secretRequest.requesterUsername
+      }
+    };
+  };
+
+  const countAllUserOrgSharedSecrets = async ({
+    orgId,
+    userId,
+    type
+  }: {
+    orgId: string;
+    userId: string;
+    type: SecretSharingType;
+  }) => {
     try {
       interface CountResult {
         count: string;
@@ -22,6 +66,7 @@ export const secretSharingDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.SecretSharing)
         .where(`${TableName.SecretSharing}.orgId`, orgId)
         .where(`${TableName.SecretSharing}.userId`, userId)
+        .where(`${TableName.SecretSharing}.type`, type)
         .count("*")
         .first();
 
@@ -38,6 +83,7 @@ export const secretSharingDALFactory = (db: TDbClient) => {
       const docs = await (tx || db)(TableName.SecretSharing)
         .where("expiresAt", "<", today)
         .andWhere("encryptedValue", "<>", "")
+        .andWhere("type", SecretSharingType.Share)
         .update({
           encryptedValue: "",
           tag: "",
@@ -50,6 +96,26 @@ export const secretSharingDALFactory = (db: TDbClient) => {
     }
   };
 
+  const pruneExpiredSecretRequests = async (tx?: Knex) => {
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning expired secret requests started`);
+    try {
+      const today = new Date();
+
+      const docs = await (tx || db)(TableName.SecretSharing)
+        .whereNotNull("expiresAt")
+        .andWhere("expiresAt", "<", today)
+        .andWhere("encryptedSecret", null)
+        .andWhere("type", SecretSharingType.Request)
+        .delete();
+
+      logger.info(`${QueueName.DailyResourceCleanUp}: pruning expired secret requests completed`);
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "pruneExpiredSecretRequests" });
+    }
+  };
+
   const findActiveSharedSecrets = async (filters: Partial<TSecretSharing>, tx?: Knex) => {
     try {
       const now = new Date();
@@ -57,6 +123,7 @@ export const secretSharingDALFactory = (db: TDbClient) => {
         .where(filters)
         .andWhere("expiresAt", ">", now)
         .andWhere("encryptedValue", "<>", "")
+        .andWhere("type", SecretSharingType.Share)
         .select(selectAllTableCols(TableName.SecretSharing))
         .orderBy("expiresAt", "asc");
     } catch (error) {
@@ -86,7 +153,9 @@ export const secretSharingDALFactory = (db: TDbClient) => {
     ...sharedSecretOrm,
     countAllUserOrgSharedSecrets,
     pruneExpiredSharedSecrets,
+    pruneExpiredSecretRequests,
     softDeleteById,
-    findActiveSharedSecrets
+    findActiveSharedSecrets,
+    getSecretRequestById
   };
 };

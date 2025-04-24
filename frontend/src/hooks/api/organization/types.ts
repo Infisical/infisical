@@ -1,17 +1,24 @@
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { IdentityMembershipOrg } from "@app/hooks/api/identities/types";
 
+import { MfaMethod } from "../auth/types";
+
 export type Organization = {
   id: string;
   name: string;
   createAt: string;
   updatedAt: string;
   authEnforced: boolean;
+  bypassOrgAuthEnabled: boolean;
   orgAuthMethod: string;
   scimEnabled: boolean;
   slug: string;
   defaultMembershipRole: string;
   enforceMfa: boolean;
+  selectedMfaMethod?: MfaMethod;
+  shouldUseNewPrivilegeSystem: boolean;
+  allowSecretSharingOutsideOrganization?: boolean;
+  userRole: string;
 };
 
 export type UpdateOrgDTO = {
@@ -22,6 +29,9 @@ export type UpdateOrgDTO = {
   slug?: string;
   defaultMembershipRoleSlug?: string;
   enforceMfa?: boolean;
+  selectedMfaMethod?: MfaMethod;
+  allowSecretSharingOutsideOrganization?: boolean;
+  bypassOrgAuthEnabled?: boolean;
 };
 
 export type BillingDetails = {
@@ -48,7 +58,7 @@ export type Invoice = {
 };
 
 export type PmtMethod = {
-  id: string;
+  _id: string;
   brand: string;
   exp_month: number;
   exp_year: number;

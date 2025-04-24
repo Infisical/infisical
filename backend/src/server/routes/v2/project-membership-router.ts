@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { OrgMembershipRole, ProjectMembershipRole, ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PROJECT_USERS } from "@app/lib/api-docs";
+import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -15,6 +15,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectUsers],
       description: "Invite members to project",
       security: [
         {
@@ -27,7 +29,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       body: z.object({
         emails: z.string().email().array().default([]).describe(PROJECT_USERS.INVITE_MEMBER.emails),
         usernames: z.string().array().default([]).describe(PROJECT_USERS.INVITE_MEMBER.usernames),
-        roleSlugs: z.string().array().optional().describe(PROJECT_USERS.INVITE_MEMBER.roleSlugs)
+        roleSlugs: z.string().array().min(1).optional().describe(PROJECT_USERS.INVITE_MEMBER.roleSlugs)
       }),
       response: {
         200: z.object({
@@ -49,7 +51,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         projects: [
           {
             id: req.params.projectId,
-            projectRoleSlug: [ProjectMembershipRole.Member]
+            projectRoleSlug: req.body.roleSlugs || [ProjectMembershipRole.Member]
           }
         ]
       });
@@ -78,6 +80,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectUsers],
       description: "Remove members from project",
       security: [
         {

@@ -61,7 +61,9 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals"),
           db.ref("secretPath").withSchema(TableName.AccessApprovalPolicy).as("policySecretPath"),
           db.ref("enforcementLevel").withSchema(TableName.AccessApprovalPolicy).as("policyEnforcementLevel"),
-          db.ref("envId").withSchema(TableName.AccessApprovalPolicy).as("policyEnvId")
+          db.ref("allowedSelfApprovals").withSchema(TableName.AccessApprovalPolicy).as("policyAllowedSelfApprovals"),
+          db.ref("envId").withSchema(TableName.AccessApprovalPolicy).as("policyEnvId"),
+          db.ref("deletedAt").withSchema(TableName.AccessApprovalPolicy).as("policyDeletedAt")
         )
 
         .select(db.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
@@ -118,7 +120,9 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
             approvals: doc.policyApprovals,
             secretPath: doc.policySecretPath,
             enforcementLevel: doc.policyEnforcementLevel,
-            envId: doc.policyEnvId
+            allowedSelfApprovals: doc.policyAllowedSelfApprovals,
+            envId: doc.policyEnvId,
+            deletedAt: doc.policyDeletedAt
           },
           requestedByUser: {
             userId: doc.requestedByUserId,
@@ -141,7 +145,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
               }
             : null,
 
-          isApproved: !!doc.privilegeId
+          isApproved: !!doc.policyDeletedAt || !!doc.privilegeId
         }),
         childrenMapper: [
           {
@@ -252,7 +256,9 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("slug").withSchema(TableName.Environment).as("environment"),
         tx.ref("secretPath").withSchema(TableName.AccessApprovalPolicy).as("policySecretPath"),
         tx.ref("enforcementLevel").withSchema(TableName.AccessApprovalPolicy).as("policyEnforcementLevel"),
-        tx.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals")
+        tx.ref("allowedSelfApprovals").withSchema(TableName.AccessApprovalPolicy).as("policyAllowedSelfApprovals"),
+        tx.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals"),
+        tx.ref("deletedAt").withSchema(TableName.AccessApprovalPolicy).as("policyDeletedAt")
       );
 
   const findById = async (id: string, tx?: Knex) => {
@@ -271,7 +277,9 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
             name: el.policyName,
             approvals: el.policyApprovals,
             secretPath: el.policySecretPath,
-            enforcementLevel: el.policyEnforcementLevel
+            enforcementLevel: el.policyEnforcementLevel,
+            allowedSelfApprovals: el.policyAllowedSelfApprovals,
+            deletedAt: el.policyDeletedAt
           },
           requestedByUser: {
             userId: el.requestedByUserId,
@@ -363,6 +371,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         )
 
         .where(`${TableName.Environment}.projectId`, projectId)
+        .where(`${TableName.AccessApprovalPolicy}.deletedAt`, null)
         .select(selectAllTableCols(TableName.AccessApprovalRequest))
         .select(db.ref("status").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerStatus"))
         .select(db.ref("reviewerUserId").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerUserId"));

@@ -1,0 +1,62 @@
+---
+title: "Keycloak OIDC Group Membership Mapping"
+sidebarTitle: "Group Membership Mapping"
+description: "Learn how to sync Keycloak group members to matching groups in Infisical."
+---
+
+You can have Infisical automatically sync group
+memberships between Keycloak and Infisical by configuring a group membership mapper in Keycloak.
+When a user logs in via OIDC, they will be added to Infisical groups that match their Keycloak groups names, and removed from any
+Infisical groups not present in their groups claim.
+
+<Info>
+    When enabled, manual
+    management of Infisical group memberships will be disabled.
+</Info>
+
+<Warning>
+    Group membership changes in the Keycloak only sync with Infisical when a
+    user logs in via OIDC. For example, if you remove a user from a group in Keycloak, this change will not be reflected in Infisical until their next OIDC login. To ensure this behavior, Infisical recommends enabling Enforce OIDC
+    SSO in the OIDC settings.
+</Warning>
+
+
+<Steps>
+    <Step title="Configure a group membership mapper in Keycloak">
+        1.1. In your realm, navigate to the **Clients** tab and select your Infisical client.
+
+        ![OIDC keycloak client](/images/sso/keycloak-oidc/group-membership-mapping/select-client.png)
+
+        1.2. Select the **Client Scopes** tab.
+
+        ![OIDC keycloak client scopes](/images/sso/keycloak-oidc/group-membership-mapping/select-client-scopes.png)
+
+        1.3. Next, select the dedicated scope for your Infisical client.
+
+        ![OIDC keycloak dedicated scope](/images/sso/keycloak-oidc/group-membership-mapping/select-dedicated-scope.png)
+
+        1.4. Click on the **Add mapper** button, and select the **By configuration** option.
+
+        ![OIDC keycloak add mapper by configuration](/images/sso/keycloak-oidc/group-membership-mapping/create-mapper-by-configuration.png)
+
+        1.5. Select the **Group Membership** option.
+
+        ![OIDC keycloak group membership option](/images/sso/keycloak-oidc/group-membership-mapping/select-group-membership-mapper.png)
+
+        1.6. Give your mapper a name and ensure the following properties are set to the following before saving:
+            - **Token Claim Name** is set to `groups`
+            - **Full group path** is disabled
+
+        ![OIDC keycloak group membership mapper](/images/sso/keycloak-oidc/group-membership-mapping/create-group-membership-mapper.png)
+    </Step>
+    <Step title="Setup groups in Infisical and enable OIDC Group Membership Mapping">
+        2.1. In Infisical, create any groups you would like to sync users to. Make sure the name of the Infisical group is an exact match of the Keycloak group name.
+        ![OIDC keycloak infisical group](/images/sso/keycloak-oidc/group-membership-mapping/create-infisical-group.png)
+
+        2.2. Next, enable **OIDC Group Membership Mapping** in Organization Settings > Security.
+        ![OIDC keycloak enable group membership mapping](/images/sso/keycloak-oidc/group-membership-mapping/enable-group-membership-mapping.png)
+
+        2.3. The next time a user logs in they will be synced to their matching Keycloak groups.
+        ![OIDC keycloak synced users](/images/sso/keycloak-oidc/group-membership-mapping/synced-users.png)
+    </Step>
+</Steps>

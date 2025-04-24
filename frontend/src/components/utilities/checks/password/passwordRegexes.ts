@@ -20,18 +20,6 @@ export const lowEntropyRegexes = [
   // URL (incl. subdomains, paths, top-level domains & query params)
   /^(?:(?:https?|ftp):\/\/)?(?:\w+\.)?[a-zA-Z0-9.-]+\.(?:com|org|net|edu)(?:\/\S*)?(?:\?\S*)?$/,
 
-  // Date in various formats
-  /(\b\d{1,4}[-/.]?\d{1,2}[-/.]?\d{1,4}\b)|(\b\d{1,4}[-/.]?\w{3}[-/.]?\d{1,4}\b)/,
-
-  // Phone numbers (generalized)
-  /(?:\+(?:[1-9]\d{0,2})\s?)?(?:\(\d{1,4}\)\s?)?(?:\d[-.\s]?){5,}\d/,
-
-  // Passport numbers (generalized)
-  /\b(?:[A-Z0-9]{6,9}|[A-Z0-9]{8,9}|[A-Z0-9]{9}|[A-Z0-9]{10,11})\b/,
-
-  // Driver's license numbers (generalized)
-  /\b(?:[A-Z0-9]{7,10}|[A-Z0-9]{10,11}|[A-Z0-9]{7,10})\b/,
-
   // US social security number
   /\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/
 ];

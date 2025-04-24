@@ -1,6 +1,16 @@
 import { Redis } from "ioredis";
 
+import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
 import { Redlock, Settings } from "@app/lib/red-lock";
+
+export const PgSqlLock = {
+  BootUpMigration: 2023,
+  SuperAdminInit: 2024,
+  KmsRootKeyInit: 2025,
+  OrgGatewayRootCaInit: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-root-ca:${orgId}`),
+  OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`),
+  SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`)
+} as const;
 
 export type TKeyStoreFactory = ReturnType<typeof keyStoreFactory>;
 
@@ -23,13 +33,18 @@ export const KeyStorePrefixes = {
     `sync-integration-mutex-${projectId}-${environmentSlug}-${secretPath}` as const,
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
+  SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
+  SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
+  SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,
-  ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`
+  ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
+  GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`
 };
 
 export const KeyStoreTtls = {
   SetSyncSecretIntegrationLastRunTimestampInSeconds: 60,
+  SetSecretSyncLastRunTimestampInSeconds: 60,
   AccessTokenStatusUpdateInSeconds: 120
 };
 
@@ -62,6 +77,8 @@ export const keyStoreFactory = (redisUrl: string) => {
 
   const incrementBy = async (key: string, value: number) => redis.incrby(key, value);
 
+  const setExpiry = async (key: string, expiryInSeconds: number) => redis.expire(key, expiryInSeconds);
+
   const waitTillReady = async ({
     key,
     waitingCb,
@@ -88,6 +105,7 @@ export const keyStoreFactory = (redisUrl: string) => {
   return {
     setItem,
     getItem,
+    setExpiry,
     setItemWithExpiry,
     deleteItem,
     incrementBy,

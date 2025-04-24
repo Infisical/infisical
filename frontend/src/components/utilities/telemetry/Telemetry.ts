@@ -1,9 +1,7 @@
 /* eslint-disable */
 import { PostHog } from "posthog-js";
 import { initPostHog } from "@app/components/analytics/posthog";
-import { ENV } from "@app/components/utilities/config";
-
-declare let TELEMETRY_CAPTURING_ENABLED: any;
+import { envConfig } from "@app/config/env";
 
 class Capturer {
   api: PostHog;
@@ -13,7 +11,7 @@ class Capturer {
   }
 
   capture(item: string) {
-    if (ENV === "production" && TELEMETRY_CAPTURING_ENABLED === true) {
+    if (envConfig.ENV === "production" && envConfig.TELEMETRY_CAPTURING_ENABLED === true) {
       try {
         this.api.capture(item);
       } catch (error) {
@@ -23,7 +21,7 @@ class Capturer {
   }
 
   identify(id: string, email?: string) {
-    if (ENV === "production" && TELEMETRY_CAPTURING_ENABLED === true) {
+    if (envConfig.ENV === "production" && envConfig.TELEMETRY_CAPTURING_ENABLED === true) {
       try {
         this.api.identify(id, {
           email: email

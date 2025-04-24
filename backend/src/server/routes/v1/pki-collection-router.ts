@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { PkiCollectionItemsSchema, PkiCollectionsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PKI_COLLECTIONS } from "@app/lib/api-docs";
+import { ApiDocsTags, PKI_COLLECTIONS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -17,6 +17,8 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Create PKI collection",
       body: z.object({
         projectId: z.string().trim().describe(PKI_COLLECTIONS.CREATE.projectId),
@@ -60,6 +62,8 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Get PKI collection",
       params: z.object({
         collectionId: z.string().trim().describe(PKI_COLLECTIONS.GET.collectionId)
@@ -100,6 +104,8 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Update PKI collection",
       params: z.object({
         collectionId: z.string().trim().describe(PKI_COLLECTIONS.UPDATE.collectionId)
@@ -146,6 +152,8 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Delete PKI collection",
       params: z.object({
         collectionId: z.string().trim().describe(PKI_COLLECTIONS.DELETE.collectionId)
@@ -186,6 +194,8 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Get items in PKI collection",
       params: z.object({
         collectionId: z.string().trim().describe(PKI_COLLECTIONS.LIST_ITEMS.collectionId)
@@ -247,6 +257,8 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Add item to PKI collection",
       params: z.object({
         collectionId: z.string().trim().describe(PKI_COLLECTIONS.ADD_ITEM.collectionId)
@@ -298,6 +310,8 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Remove item from PKI collection",
       params: z.object({
         collectionId: z.string().trim().describe(PKI_COLLECTIONS.DELETE_ITEM.collectionId),

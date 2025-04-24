@@ -16,6 +16,7 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectServiceFactory } from "../project/project-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectEnvServiceFactory } from "../project-env/project-env-service";
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
@@ -30,10 +31,12 @@ export type TImportDataIntoInfisicalDTO = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findLastEnvPosition" | "create" | "findOne">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "create">;
-  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "create">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "create" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "create">;
+
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
 
   folderDAL: Pick<TSecretFolderDALFactory, "create" | "findBySecretPath" | "findById">;
   projectService: Pick<TProjectServiceFactory, "createProject">;
@@ -503,6 +506,7 @@ export const importDataIntoInfisicalFn = async ({
   secretTagDAL,
   secretVersionTagDAL,
   folderDAL,
+  resourceMetadataDAL,
   input: { data, actor, actorId, actorOrgId, actorAuthMethod }
 }: TImportDataIntoInfisicalDTO) => {
   // Import data to infisical
@@ -762,10 +766,16 @@ export const importDataIntoInfisicalFn = async ({
               };
             }),
             folderId: selectedFolder.id,
+            orgId: actorOrgId,
+            resourceMetadataDAL,
             secretDAL,
             secretVersionDAL,
             secretTagDAL,
             secretVersionTagDAL,
+            actor: {
+              type: actor,
+              actorId
+            },
             tx
           });
         }

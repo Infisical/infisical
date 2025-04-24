@@ -1,17 +1,31 @@
 import { Job, JobsOptions, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
 import Redis from "ioredis";
+import PgBoss, { WorkOptions } from "pg-boss";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import {
+  TSecretRotationRotateSecretsJobPayload,
+  TSecretRotationSendNotificationJobPayload
+} from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import {
   TScanFullRepoEventPayload,
   TScanPushEventPayload
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
+import { getConfig } from "@app/lib/config/env";
+import { logger } from "@app/lib/logger";
 import {
   TFailedIntegrationSyncEmailsPayload,
   TIntegrationSyncPayload,
   TSyncSecretsDTO
 } from "@app/services/secret/secret-types";
+import {
+  TQueueSecretSyncImportSecretsByIdDTO,
+  TQueueSecretSyncRemoveSecretsByIdDTO,
+  TQueueSecretSyncSyncSecretsByIdDTO,
+  TQueueSendSecretSyncActionFailedNotificationsDTO
+} from "@app/services/secret-sync/secret-sync-types";
+import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 
 export enum QueueName {
   SecretRotation = "secret-rotation",
@@ -33,7 +47,9 @@ export enum QueueName {
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
   ProjectV3Migration = "project-v3-migration",
   AccessTokenStatusUpdate = "access-token-status-update",
-  ImportSecretsFromExternalSource = "import-secrets-from-external-source"
+  ImportSecretsFromExternalSource = "import-secrets-from-external-source",
+  AppConnectionSecretSync = "app-connection-secret-sync",
+  SecretRotationV2 = "secret-rotation-v2"
 }
 
 export enum QueueJobs {
@@ -58,7 +74,14 @@ export enum QueueJobs {
   ProjectV3Migration = "project-v3-migration",
   IdentityAccessTokenStatusUpdate = "identity-access-token-status-update",
   ServiceTokenStatusUpdate = "service-token-status-update",
-  ImportSecretsFromExternalSource = "import-secrets-from-external-source"
+  ImportSecretsFromExternalSource = "import-secrets-from-external-source",
+  SecretSyncSyncSecrets = "secret-sync-sync-secrets",
+  SecretSyncImportSecrets = "secret-sync-import-secrets",
+  SecretSyncRemoveSecrets = "secret-sync-remove-secrets",
+  SecretSyncSendActionFailedNotifications = "secret-sync-send-action-failed-notifications",
+  SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
+  SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
+  SecretRotationV2SendNotification = "secret-rotation-v2-send-notification"
 }
 
 export type TQueueJobTypes = {
@@ -93,7 +116,7 @@ export type TQueueJobTypes = {
   };
   [QueueName.SecretWebhook]: {
     name: QueueJobs.SecWebhook;
-    payload: { projectId: string; environment: string; secretPath: string; depth?: number };
+    payload: TWebhookPayloads;
   };
 
   [QueueName.AccessTokenStatusUpdate]:
@@ -181,19 +204,78 @@ export type TQueueJobTypes = {
       };
     };
   };
+  [QueueName.AppConnectionSecretSync]:
+    | {
+        name: QueueJobs.SecretSyncSyncSecrets;
+        payload: TQueueSecretSyncSyncSecretsByIdDTO;
+      }
+    | {
+        name: QueueJobs.SecretSyncImportSecrets;
+        payload: TQueueSecretSyncImportSecretsByIdDTO;
+      }
+    | {
+        name: QueueJobs.SecretSyncRemoveSecrets;
+        payload: TQueueSecretSyncRemoveSecretsByIdDTO;
+      }
+    | {
+        name: QueueJobs.SecretSyncSendActionFailedNotifications;
+        payload: TQueueSendSecretSyncActionFailedNotificationsDTO;
+      };
+  [QueueName.SecretRotationV2]:
+    | {
+        name: QueueJobs.SecretRotationV2QueueRotations;
+        payload: undefined;
+      }
+    | {
+        name: QueueJobs.SecretRotationV2RotateSecrets;
+        payload: TSecretRotationRotateSecretsJobPayload;
+      }
+    | {
+        name: QueueJobs.SecretRotationV2SendNotification;
+        payload: TSecretRotationSendNotificationJobPayload;
+      };
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
-export const queueServiceFactory = (redisUrl: string) => {
+export const queueServiceFactory = (
+  redisUrl: string,
+  { dbConnectionUrl, dbRootCert }: { dbConnectionUrl: string; dbRootCert?: string }
+) => {
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
   const queueContainer = {} as Record<
     QueueName,
     Queue<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
   >;
+
+  const pgBoss = new PgBoss({
+    connectionString: dbConnectionUrl,
+    archiveCompletedAfterSeconds: 60,
+    cronMonitorIntervalSeconds: 5,
+    archiveFailedAfterSeconds: 1000, // we want to keep failed jobs for a longer time so that it can be retried
+    deleteAfterSeconds: 30,
+    ssl: dbRootCert
+      ? {
+          rejectUnauthorized: true,
+          ca: Buffer.from(dbRootCert, "base64").toString("ascii")
+        }
+      : false
+  });
+
+  const queueContainerPg = {} as Record<QueueJobs, boolean>;
+
   const workerContainer = {} as Record<
     QueueName,
     Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
   >;
+
+  const initialize = async () => {
+    logger.info("Initializing pg-queue...");
+    await pgBoss.start();
+
+    pgBoss.on("error", (error) => {
+      logger.error(error, "pg-queue error");
+    });
+  };
 
   const start = <T extends QueueName>(
     name: T,
@@ -209,10 +291,34 @@ export const queueServiceFactory = (redisUrl: string) => {
       connection
     });
 
-    workerContainer[name] = new Worker<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name, jobFn, {
-      ...queueSettings,
-      connection
-    });
+    const appCfg = getConfig();
+    if (appCfg.QUEUE_WORKERS_ENABLED) {
+      workerContainer[name] = new Worker<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name, jobFn, {
+        ...queueSettings,
+        connection
+      });
+    }
+  };
+
+  const startPg = async <T extends QueueName>(
+    jobName: QueueJobs,
+    jobsFn: (jobs: PgBoss.JobWithMetadata<TQueueJobTypes[T]["payload"]>[]) => Promise<void>,
+    options: WorkOptions & {
+      workerCount: number;
+    }
+  ) => {
+    if (queueContainerPg[jobName]) {
+      throw new Error(`${jobName} queue is already initialized`);
+    }
+
+    await pgBoss.createQueue(jobName);
+    queueContainerPg[jobName] = true;
+
+    await Promise.all(
+      Array.from({ length: options.workerCount }).map(() =>
+        pgBoss.work<TQueueJobTypes[T]["payload"]>(jobName, { ...options, includeMetadata: true }, jobsFn)
+      )
+    );
   };
 
   const listen = <
@@ -223,6 +329,11 @@ export const queueServiceFactory = (redisUrl: string) => {
     event: U,
     listener: WorkerListener<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>[U]
   ) => {
+    const appCfg = getConfig();
+    if (!appCfg.QUEUE_WORKERS_ENABLED) {
+      return;
+    }
+
     const worker = workerContainer[name];
     worker.on(event, listener);
   };
@@ -238,6 +349,27 @@ export const queueServiceFactory = (redisUrl: string) => {
     await q.add(job, data, opts);
   };
 
+  const queuePg = async <T extends QueueName>(
+    job: TQueueJobTypes[T]["name"],
+    data: TQueueJobTypes[T]["payload"],
+    opts?: PgBoss.SendOptions & { jobId?: string }
+  ) => {
+    await pgBoss.send({
+      name: job,
+      data,
+      options: opts
+    });
+  };
+
+  const schedulePg = async <T extends QueueName>(
+    job: TQueueJobTypes[T]["name"],
+    cron: string,
+    data: TQueueJobTypes[T]["payload"],
+    opts?: PgBoss.ScheduleOptions & { jobId?: string }
+  ) => {
+    await pgBoss.schedule(job, cron, data, opts);
+  };
+
   const stopRepeatableJob = async <T extends QueueName>(
     name: T,
     job: TQueueJobTypes[T]["name"],
@@ -250,6 +382,13 @@ export const queueServiceFactory = (redisUrl: string) => {
     }
   };
 
+  const getRepeatableJobs = (name: QueueName, startOffset?: number, endOffset?: number) => {
+    const q = queueContainer[name];
+    if (!q) throw new Error(`Queue '${name}' not initialized`);
+
+    return q.getRepeatableJobs(startOffset, endOffset);
+  };
+
   const stopRepeatableJobByJobId = async <T extends QueueName>(name: T, jobId: string) => {
     const q = queueContainer[name];
     const job = await q.getJob(jobId);
@@ -257,6 +396,11 @@ export const queueServiceFactory = (redisUrl: string) => {
     if (!job.repeatJobKey) return true;
     await job.remove();
     return q.removeRepeatableByKey(job.repeatJobKey);
+  };
+
+  const stopRepeatableJobByKey = async <T extends QueueName>(name: T, repeatJobKey: string) => {
+    const q = queueContainer[name];
+    return q.removeRepeatableByKey(repeatJobKey);
   };
 
   const stopJobById = async <T extends QueueName>(name: T, jobId: string) => {
@@ -274,5 +418,20 @@ export const queueServiceFactory = (redisUrl: string) => {
     await Promise.all(Object.values(workerContainer).map((worker) => worker.close()));
   };
 
-  return { start, listen, queue, shutdown, stopRepeatableJob, stopRepeatableJobByJobId, clearQueue, stopJobById };
+  return {
+    initialize,
+    start,
+    listen,
+    queue,
+    shutdown,
+    stopRepeatableJob,
+    stopRepeatableJobByJobId,
+    stopRepeatableJobByKey,
+    clearQueue,
+    stopJobById,
+    getRepeatableJobs,
+    startPg,
+    queuePg,
+    schedulePg
+  };
 };

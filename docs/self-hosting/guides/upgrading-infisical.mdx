@@ -1,0 +1,57 @@
+---
+
+title: "Upgrade Infisical Instance"
+description: "How to upgrade Infisical self-hosted instance"
+
+---
+
+Keeping your Infisical instance up to date is key to making sure you receive the latest performance improvements, security patches, and feature updates. 
+We release updates approximately once a week, which may include new features, bug fixes, performance enhancements, and critical security patches.
+
+Since secrets management is a critical component of your infrastructure, we aim to avoid disruptive changes that will impact fetching secrets in downstream clients.
+If a release requires specific attention, a note will be attached to the corresponding [release](https://github.com/Infisical/infisical/releases) version.
+
+During an upgrade, two key components are updated:
+
+- **Infisical Application:** The core application code is updated.
+- **PostgreSQL Database Schema:** Schema migrations run automatically to ensure your database remains in sync with the updated application.
+
+> **Before You Upgrade:**  
+> **Always back up your database.** While our automated migration system is robust, having a backup ensures you can recover quickly in the event of an issue.
+
+## Automated Schema Migrations
+
+In previous versions (prior to `v0.111.0-postgres`), schema migrations had to be executed manually before starting the application. 
+Now, migrations run automatically during boot-up. This improvement streamlines the upgrade process, reduces manual steps, and minimizes the risk of inconsistencies between your database schema and application code.
+
+### Benefits of Automated Migrations
+
+- **Seamless Integration:**  
+  Migrations are now part of the boot-up process, removing the need for manual intervention.
+
+- **Synchronous Upgrades:**  
+  In multi-instance deployments, one instance acquires a lock and performs the migration while the others wait. This ensures that if a migration fails, the rollout is halted to prevent inconsistencies.
+
+- **Reduced Room for Error:**  
+  Automatic migrations help ensure that your database schema always remains in sync with your application code.
+
+## Upgrade Steps
+
+1. **Back Up Your Data:**  
+   - Ensure you have a complete backup of your Postgres database.
+   - Verify that your backup is current and accessible.
+
+2. **Select the Upgrade Version:**  
+   - Visit the [Infisical releases page](https://github.com/Infisical/infisical/releases) for a list of available versions.
+   - Look for releases with the prefix `infisical/` as there are other releases that are not related to the Infisical instance.
+
+3. **Start the Upgrade Process:**  
+   - Launch the new version of Infisical. During startup, the application will automatically compare the current database schema with the updated schema in the code.
+   - If any differences are detected, Infisical will apply the necessary migrations automatically.
+
+4. **Multi-Instance Coordination:**  
+   - In environments with multiple instances, one instance will acquire a lock and perform the migration while the other instances wait.
+   - Once the migration is complete, all instances will operate with the updated schema.
+
+5. **Verify the Upgrade:**  
+   - Review the logs for any migration errors or warnings. 

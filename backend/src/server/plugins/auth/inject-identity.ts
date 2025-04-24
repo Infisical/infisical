@@ -1,3 +1,4 @@
+import { requestContext } from "@fastify/request-context";
 import { FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import jwt, { JwtPayload } from "jsonwebtoken";
@@ -8,6 +9,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType, AuthMethod, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 export type TAuthMode =
   | {
@@ -43,6 +45,7 @@ export type TAuthMode =
       identityName: string;
       orgId: string;
       authMethod: null;
+      isInstanceAdmin?: boolean;
     }
   | {
       authMode: AuthMode.SCIM_TOKEN;
@@ -129,14 +132,22 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
       }
       case AuthMode.IDENTITY_ACCESS_TOKEN: {
         const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
+        const serverCfg = await getServerCfg();
         req.auth = {
           authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
           actor,
           orgId: identity.orgId,
           identityId: identity.identityId,
           identityName: identity.name,
-          authMethod: null
+          authMethod: null,
+          isInstanceAdmin: serverCfg?.adminIdentityIds?.includes(identity.identityId)
         };
+        if (token?.identityAuth?.oidc) {
+          requestContext.set("identityAuthInfo", {
+            identityId: identity.identityId,
+            oidc: token?.identityAuth?.oidc
+          });
+        }
         break;
       }
       case AuthMode.SERVICE_TOKEN: {

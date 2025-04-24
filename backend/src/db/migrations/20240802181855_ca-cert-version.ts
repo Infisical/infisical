@@ -64,23 +64,25 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   if (await knex.schema.hasTable(TableName.Certificate)) {
-    await knex.schema.alterTable(TableName.Certificate, (t) => {
-      t.uuid("caCertId").nullable();
-      t.foreign("caCertId").references("id").inTable(TableName.CertificateAuthorityCert);
-    });
+    const hasCaCertIdColumn = await knex.schema.hasColumn(TableName.Certificate, "caCertId");
+    if (!hasCaCertIdColumn) {
+      await knex.schema.alterTable(TableName.Certificate, (t) => {
+        t.uuid("caCertId").nullable();
+        t.foreign("caCertId").references("id").inTable(TableName.CertificateAuthorityCert);
+      });
 
-    await knex.raw(`
+      await knex.raw(`
         UPDATE "${TableName.Certificate}" cert
         SET "caCertId" = (
           SELECT caCert.id
           FROM "${TableName.CertificateAuthorityCert}" caCert
           WHERE caCert."caId" = cert."caId"
-        )
-      `);
+        )`);
 
-    await knex.schema.alterTable(TableName.Certificate, (t) => {
-      t.uuid("caCertId").notNullable().alter();
-    });
+      await knex.schema.alterTable(TableName.Certificate, (t) => {
+        t.uuid("caCertId").notNullable().alter();
+      });
+    }
   }
 }
 

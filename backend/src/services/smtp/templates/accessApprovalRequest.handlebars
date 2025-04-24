@@ -40,11 +40,16 @@
         {{/each}}
       </ul>
     </p>
+    {{#if note}}
+    <p>User Note: "{{note}}"</p>
+    {{/if}}
 
     <p>
       View the request and approve or deny it
       <a href="{{approvalUrl}}">here</a>.
     </p>
+
+    {{emailFooter}}
   </body>
 
 </html>

@@ -1,14 +1,16 @@
 import slugify from "@sindresorhus/slugify";
-import ms from "ms";
 import { z } from "zod";
 
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-types";
+import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
-import { IDENTITY_ADDITIONAL_PRIVILEGE_V2 } from "@app/lib/api-docs";
+import { ApiDocsTags, IDENTITY_ADDITIONAL_PRIVILEGE_V2 } from "@app/lib/api-docs";
+import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedIdentityPrivilegeSchema } from "@app/server/routes/santizedSchemas/identitiy-additional-privilege";
+import { SanitizedIdentityPrivilegeSchema } from "@app/server/routes/sanitizedSchema/identitiy-additional-privilege";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
@@ -19,6 +21,8 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.IdentitySpecificPrivilegesV2],
       description: "Add an additional privilege for identity.",
       security: [
         {
@@ -28,18 +32,10 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       body: z.object({
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.identityId),
         projectId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.projectId),
-        slug: z
-          .string()
-          .min(1)
-          .max(60)
-          .trim()
-          .refine((val) => val.toLowerCase() === val, "Must be lowercase")
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid slug"
-          })
-          .optional()
-          .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.slug),
-        permissions: ProjectPermissionV2Schema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.permission),
+        slug: slugSchema({ min: 1, max: 60 }).optional().describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.slug),
+        permissions: ProjectPermissionV2Schema.array()
+          .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.permission)
+          .refine(checkForInvalidPermissionCombination),
         type: z.discriminatedUnion("isTemporary", [
           z.object({
             isTemporary: z.literal(false)
@@ -90,6 +86,8 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.IdentitySpecificPrivilegesV2],
       description: "Update a specific identity privilege.",
       security: [
         {
@@ -100,19 +98,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         id: z.string().trim().describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.id)
       }),
       body: z.object({
-        slug: z
-          .string()
-          .min(1)
-          .max(60)
-          .trim()
-          .refine((val) => val.toLowerCase() === val, "Must be lowercase")
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid slug"
-          })
-          .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.slug),
+        slug: slugSchema({ min: 1, max: 60 }).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.slug),
         permissions: ProjectPermissionV2Schema.array()
           .optional()
-          .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.privilegePermission),
+          .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.privilegePermission)
+          .refine(checkForInvalidPermissionCombination),
         type: z.discriminatedUnion("isTemporary", [
           z.object({ isTemporary: z.literal(false).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.isTemporary) }),
           z.object({
@@ -162,6 +152,8 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.IdentitySpecificPrivilegesV2],
       description: "Delete the specified identity privilege.",
       security: [
         {
@@ -197,6 +189,8 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.IdentitySpecificPrivilegesV2],
       description: "Retrieve details of a specific privilege by id.",
       security: [
         {
@@ -232,6 +226,8 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.IdentitySpecificPrivilegesV2],
       description: "Retrieve details of a specific privilege by slug.",
       security: [
         {
@@ -272,6 +268,8 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.IdentitySpecificPrivilegesV2],
       description: "List privileges for the specified identity by project.",
       security: [
         {

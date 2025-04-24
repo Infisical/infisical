@@ -46,7 +46,9 @@ export type TFeatureSet = {
   auditLogStreams: false;
   auditLogStreamLimit: 3;
   samlSSO: false;
+  hsm: false;
   oidcSSO: false;
+  secretAccessInsights: false;
   scim: false;
   ldap: false;
   groups: false;
@@ -54,7 +56,7 @@ export type TFeatureSet = {
   trial_end: null;
   has_used_trial: true;
   secretApproval: false;
-  secretRotation: true;
+  secretRotation: false;
   caCrl: false;
   instanceUserManagement: false;
   externalKms: false;
@@ -66,6 +68,8 @@ export type TFeatureSet = {
   pkiEst: boolean;
   enforceMfa: boolean;
   projectTemplates: false;
+  kmip: false;
+  gateway: false;
 };
 
 export type TOrgPlansTableDTO = {

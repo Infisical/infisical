@@ -1,0 +1,45 @@
+extensions:
+  health_check:
+  pprof:
+  zpages:
+  basicauth/server:
+    htpasswd:
+      inline: |
+        infisical:infisical
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+        auth:
+          authenticator: basicauth/server
+
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: otel-collector
+          scrape_interval: 30s
+          static_configs:
+            - targets: [backend:9464]
+          metric_relabel_configs:
+            - action: labeldrop
+              regex: "service_instance_id|service_name"
+processors:
+  batch:
+
+exporters:
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    auth:
+      authenticator: basicauth/server
+    resource_to_telemetry_conversion:
+      enabled: true
+
+service:
+  extensions: [basicauth/server, health_check, pprof, zpages]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]

@@ -1,14 +1,18 @@
-import { ForbiddenError, subject } from "@casl/ability";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-argument */
+// akhilmhdh: I did this, quite strange bug with eslint. Everything do have a type stil has this error
+import { ForbiddenError } from "@casl/ability";
 
-import { TableName, TSecretTagJunctionInsert, TSecretV2TagJunctionInsert } from "@app/db/schemas";
+import { ActionProjectType, TableName, TSecretTagJunctionInsert, TSecretV2TagJunctionInsert } from "@app/db/schemas";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { InternalServerError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
+import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "@app/services/secret/secret-fns";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -19,8 +23,16 @@ import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secre
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
+import {
+  hasSecretReadValueOrDescribePermission,
+  throwIfMissingSecretReadValueOrDescribePermission
+} from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "../permission/project-permission";
 import {
   TGetSnapshotDataDTO,
   TProjectSnapshotCountDTO,
@@ -83,20 +95,21 @@ export const secretSnapshotServiceFactory = ({
     actorAuthMethod,
     path
   }: TProjectSnapshotCountDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
     // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-    );
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      environment,
+      secretPath: path
+    });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) {
@@ -119,20 +132,21 @@ export const secretSnapshotServiceFactory = ({
     limit = 20,
     offset = 0
   }: TProjectSnapshotListDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
     // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-    );
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      environment,
+      secretPath: path
+    });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder)
@@ -147,15 +161,17 @@ export const secretSnapshotServiceFactory = ({
   const getSnapshotData = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TGetSnapshotDataDTO) => {
     const snapshot = await snapshotDAL.findById(id);
     if (!snapshot) throw new NotFoundError({ message: `Snapshot with ID '${id}' not found` });
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      snapshot.projectId,
+      projectId: snapshot.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
+
     const shouldUseBridge = snapshot.projectVersion === 3;
     let snapshotDetails;
     if (shouldUseBridge) {
@@ -164,67 +180,111 @@ export const secretSnapshotServiceFactory = ({
         projectId: snapshot.projectId
       });
       const encryptedSnapshotDetails = await snapshotDAL.findSecretSnapshotV2DataById(id);
+
+      const fullFolderPath = await getFullFolderPath({
+        folderDAL,
+        folderId: encryptedSnapshotDetails.folderId,
+        envId: encryptedSnapshotDetails.environment.id
+      });
+
       snapshotDetails = {
         ...encryptedSnapshotDetails,
-        secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => ({
-          ...el,
-          secretKey: el.key,
-          secretValue: el.encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-            : "",
-          secretComment: el.encryptedComment
-            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
-            : ""
-        }))
+        secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => {
+          const canReadValue = hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            {
+              environment: encryptedSnapshotDetails.environment.slug,
+              secretPath: fullFolderPath,
+              secretName: el.key,
+              secretTags: el.tags.length ? el.tags.map((tag) => tag.slug) : undefined
+            }
+          );
+
+          let secretValue = "";
+          if (canReadValue) {
+            secretValue = el.encryptedValue
+              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+              : "";
+          } else {
+            secretValue = INFISICAL_SECRET_VALUE_HIDDEN_MASK;
+          }
+
+          return {
+            ...el,
+            secretKey: el.key,
+            secretValueHidden: !canReadValue,
+            secretValue,
+            secretComment: el.encryptedComment
+              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
+              : ""
+          };
+        })
       };
     } else {
       const encryptedSnapshotDetails = await snapshotDAL.findSecretSnapshotDataById(id);
+
+      const fullFolderPath = await getFullFolderPath({
+        folderDAL,
+        folderId: encryptedSnapshotDetails.folderId,
+        envId: encryptedSnapshotDetails.environment.id
+      });
+
       const { botKey } = await projectBotService.getBotKey(snapshot.projectId);
       if (!botKey)
         throw new NotFoundError({ message: `Project bot key not found for project with ID '${snapshot.projectId}'` });
       snapshotDetails = {
         ...encryptedSnapshotDetails,
-        secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => ({
-          ...el,
-          secretKey: decryptSymmetric128BitHexKeyUTF8({
+        secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => {
+          const secretKey = decryptSymmetric128BitHexKeyUTF8({
             ciphertext: el.secretKeyCiphertext,
             iv: el.secretKeyIV,
             tag: el.secretKeyTag,
             key: botKey
-          }),
-          secretValue: decryptSymmetric128BitHexKeyUTF8({
-            ciphertext: el.secretValueCiphertext,
-            iv: el.secretValueIV,
-            tag: el.secretValueTag,
-            key: botKey
-          }),
-          secretComment:
-            el.secretCommentTag && el.secretCommentIV && el.secretCommentCiphertext
-              ? decryptSymmetric128BitHexKeyUTF8({
-                  ciphertext: el.secretCommentCiphertext,
-                  iv: el.secretCommentIV,
-                  tag: el.secretCommentTag,
-                  key: botKey
-                })
-              : ""
-        }))
+          });
+
+          const canReadValue = hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            {
+              environment: encryptedSnapshotDetails.environment.slug,
+              secretPath: fullFolderPath,
+              secretName: secretKey,
+              secretTags: el.tags.length ? el.tags.map((tag) => tag.slug) : undefined
+            }
+          );
+
+          let secretValue = "";
+
+          if (canReadValue) {
+            secretValue = decryptSymmetric128BitHexKeyUTF8({
+              ciphertext: el.secretValueCiphertext,
+              iv: el.secretValueIV,
+              tag: el.secretValueTag,
+              key: botKey
+            });
+          } else {
+            secretValue = INFISICAL_SECRET_VALUE_HIDDEN_MASK;
+          }
+
+          return {
+            ...el,
+            secretKey,
+            secretValueHidden: !canReadValue,
+            secretValue,
+            secretComment:
+              el.secretCommentTag && el.secretCommentIV && el.secretCommentCiphertext
+                ? decryptSymmetric128BitHexKeyUTF8({
+                    ciphertext: el.secretCommentCiphertext,
+                    iv: el.secretCommentIV,
+                    tag: el.secretCommentTag,
+                    key: botKey
+                  })
+                : ""
+          };
+        })
       };
     }
-
-    const fullFolderPath = await getFullFolderPath({
-      folderDAL,
-      folderId: snapshotDetails.folderId,
-      envId: snapshotDetails.environment.id
-    });
-
-    // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, {
-        environment: snapshotDetails.environment.slug,
-        secretPath: fullFolderPath
-      })
-    );
 
     return snapshotDetails;
   };
@@ -322,13 +382,14 @@ export const secretSnapshotServiceFactory = ({
     if (!snapshot) throw new NotFoundError({ message: `Snapshot with ID '${snapshotId}' not found` });
     const shouldUseBridge = snapshot.projectVersion === 3;
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      snapshot.projectId,
+      projectId: snapshot.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretRollback
@@ -337,8 +398,32 @@ export const secretSnapshotServiceFactory = ({
     if (shouldUseBridge) {
       const rollback = await snapshotDAL.transaction(async (tx) => {
         const rollbackSnaps = await snapshotDAL.findRecursivelySnapshotsV2Bridge(snapshot.id, tx);
-        // this will remove all secrets in current folder
-        const deletedTopLevelSecs = await secretV2BridgeDAL.delete({ folderId: snapshot.folderId }, tx);
+        const secretRotationIds = rollbackSnaps
+          .flatMap((snap) => snap.secretVersions)
+          .filter((el) => el.isRotatedSecret)
+          .map((el) => el.secretId);
+
+        // this will remove all secrets in current folder except rotated secrets which we ignore
+        const deletedTopLevelSecs = await secretV2BridgeDAL.delete(
+          {
+            $complex: {
+              operator: "and",
+              value: [
+                {
+                  operator: "eq",
+                  field: "folderId",
+                  value: snapshot.folderId
+                },
+                {
+                  operator: "notIn",
+                  field: "id",
+                  value: secretRotationIds
+                }
+              ]
+            }
+          },
+          tx
+        );
         const deletedTopLevelSecsGroupById = groupBy(deletedTopLevelSecs, (item) => item.id);
         // this will remove all secrets and folders on child
         // due to sql foreign key and link list connection removing the folders removes everything below too
@@ -363,14 +448,31 @@ export const secretSnapshotServiceFactory = ({
         );
         const secrets = await secretV2BridgeDAL.insertMany(
           rollbackSnaps.flatMap(({ secretVersions, folderId }) =>
-            secretVersions.map(
-              ({ latestSecretVersion, version, updatedAt, createdAt, secretId, envId, id, tags, ...el }) => ({
-                ...el,
-                id: secretId,
-                version: deletedTopLevelSecsGroupById[secretId] ? latestSecretVersion + 1 : latestSecretVersion,
-                folderId
-              })
-            )
+            secretVersions
+              .filter((v) => !v.isRotatedSecret)
+              .map(
+                ({
+                  latestSecretVersion,
+                  version,
+                  updatedAt,
+                  createdAt,
+                  secretId,
+                  envId,
+                  id,
+                  tags,
+                  // exclude the bottom fields from the secret - they are for versioning only.
+                  userActorId,
+                  identityActorId,
+                  actorType,
+                  isRotatedSecret,
+                  ...el
+                }) => ({
+                  ...el,
+                  id: secretId,
+                  version: deletedTopLevelSecsGroupById[secretId] ? latestSecretVersion + 1 : latestSecretVersion,
+                  folderId
+                })
+              )
           ),
           tx
         );
@@ -395,8 +497,18 @@ export const secretSnapshotServiceFactory = ({
           })),
           tx
         );
+        const userActorId = actor === ActorType.USER ? actorId : undefined;
+        const identityActorId = actor !== ActorType.USER ? actorId : undefined;
+        const actorType = actor || ActorType.PLATFORM;
+
         const secretVersions = await secretVersionV2BridgeDAL.insertMany(
-          secrets.map(({ id, updatedAt, createdAt, ...el }) => ({ ...el, secretId: id })),
+          secrets.map(({ id, updatedAt, createdAt, ...el }) => ({
+            ...el,
+            secretId: id,
+            userActorId,
+            identityActorId,
+            actorType
+          })),
           tx
         );
         await secretVersionV2TagBridgeDAL.insertMany(

@@ -1,1 +1,1 @@
-export { UserProvider, useUser } from "./UserContext";
+export { useUser } from "./UserContext";

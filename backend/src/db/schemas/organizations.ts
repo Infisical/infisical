@@ -21,7 +21,13 @@ export const OrganizationsSchema = z.object({
   kmsDefaultKeyId: z.string().uuid().nullable().optional(),
   kmsEncryptedDataKey: zodBuffer.nullable().optional(),
   defaultMembershipRole: z.string().default("member"),
-  enforceMfa: z.boolean().default(false)
+  enforceMfa: z.boolean().default(false),
+  selectedMfaMethod: z.string().nullable().optional(),
+  allowSecretSharingOutsideOrganization: z.boolean().default(true).nullable().optional(),
+  shouldUseNewPrivilegeSystem: z.boolean().default(true),
+  privilegeUpgradeInitiatedByUsername: z.string().nullable().optional(),
+  privilegeUpgradeInitiatedAt: z.date().nullable().optional(),
+  bypassOrgAuthEnabled: z.boolean().default(false)
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

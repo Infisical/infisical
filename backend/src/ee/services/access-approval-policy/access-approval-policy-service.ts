@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -8,7 +9,11 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
+import { TAccessApprovalRequestReviewerDALFactory } from "../access-approval-request/access-approval-request-reviewer-dal";
+import { ApprovalStatus } from "../access-approval-request/access-approval-request-types";
 import { TGroupDALFactory } from "../group/group-dal";
+import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
 import { TAccessApprovalPolicyApproverDALFactory } from "./access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "./access-approval-policy-dal";
 import {
@@ -21,7 +26,7 @@ import {
   TUpdateAccessApprovalPolicy
 } from "./access-approval-policy-types";
 
-type TSecretApprovalPolicyServiceFactoryDep = {
+type TAccessApprovalPolicyServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   accessApprovalPolicyDAL: TAccessApprovalPolicyDALFactory;
@@ -30,6 +35,9 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   groupDAL: TGroupDALFactory;
   userDAL: Pick<TUserDALFactory, "find">;
+  accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update" | "find">;
+  additionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
+  accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update">;
 };
 
 export type TAccessApprovalPolicyServiceFactory = ReturnType<typeof accessApprovalPolicyServiceFactory>;
@@ -41,8 +49,11 @@ export const accessApprovalPolicyServiceFactory = ({
   permissionService,
   projectEnvDAL,
   projectDAL,
-  userDAL
-}: TSecretApprovalPolicyServiceFactoryDep) => {
+  userDAL,
+  accessApprovalRequestDAL,
+  additionalPrivilegeDAL,
+  accessApprovalRequestReviewerDAL
+}: TAccessApprovalPolicyServiceFactoryDep) => {
   const createAccessApprovalPolicy = async ({
     name,
     actor,
@@ -54,7 +65,8 @@ export const accessApprovalPolicyServiceFactory = ({
     approvers,
     projectSlug,
     environment,
-    enforcementLevel
+    enforcementLevel,
+    allowedSelfApprovals
   }: TCreateAccessApprovalPolicy) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
@@ -76,13 +88,15 @@ export const accessApprovalPolicyServiceFactory = ({
     if (!groupApprovers && approvals > userApprovers.length + userApproverNames.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretApproval
@@ -140,7 +154,8 @@ export const accessApprovalPolicyServiceFactory = ({
           approvals,
           secretPath,
           name,
-          enforcementLevel
+          enforcementLevel,
+          allowedSelfApprovals
         },
         tx
       );
@@ -180,16 +195,16 @@ export const accessApprovalPolicyServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // Anyone in the project should be able to get the policies.
-    /* const { permission } = */ await permissionService.getProjectPermission(
+    await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
-    // ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
-    const accessApprovalPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id });
+    const accessApprovalPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id, deletedAt: null });
     return accessApprovalPolicies;
   };
 
@@ -203,7 +218,8 @@ export const accessApprovalPolicyServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     approvals,
-    enforcementLevel
+    enforcementLevel,
+    allowedSelfApprovals
   }: TUpdateAccessApprovalPolicy) => {
     const groupApprovers = approvers
       .filter((approver) => approver.type === ApproverType.Group)
@@ -231,13 +247,14 @@ export const accessApprovalPolicyServiceFactory = ({
     if (!accessApprovalPolicy) {
       throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
     }
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      accessApprovalPolicy.projectId,
+      projectId: accessApprovalPolicy.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
@@ -248,7 +265,8 @@ export const accessApprovalPolicyServiceFactory = ({
           approvals,
           secretPath,
           name,
-          enforcementLevel
+          enforcementLevel,
+          allowedSelfApprovals
         },
         tx
       );
@@ -314,19 +332,42 @@ export const accessApprovalPolicyServiceFactory = ({
     const policy = await accessApprovalPolicyDAL.findById(policyId);
     if (!policy) throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      policy.projectId,
+      projectId: policy.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SecretApproval
     );
 
-    await accessApprovalPolicyDAL.deleteById(policyId);
+    await accessApprovalPolicyDAL.transaction(async (tx) => {
+      await accessApprovalPolicyDAL.softDeleteById(policyId, tx);
+      const allAccessApprovalRequests = await accessApprovalRequestDAL.find({ policyId });
+
+      if (allAccessApprovalRequests.length) {
+        const accessApprovalRequestsIds = allAccessApprovalRequests.map((request) => request.id);
+
+        const privilegeIdsArray = allAccessApprovalRequests
+          .map((request) => request.privilegeId)
+          .filter((id): id is string => id != null);
+
+        if (privilegeIdsArray.length) {
+          await additionalPrivilegeDAL.delete({ $in: { id: privilegeIdsArray } }, tx);
+        }
+
+        await accessApprovalRequestReviewerDAL.update(
+          { $in: { id: accessApprovalRequestsIds }, status: ApprovalStatus.PENDING },
+          { status: ApprovalStatus.REJECTED },
+          tx
+        );
+      }
+    });
+
     return policy;
   };
 
@@ -342,13 +383,14 @@ export const accessApprovalPolicyServiceFactory = ({
 
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    const { membership } = await permissionService.getProjectPermission(
+    const { membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
     }
@@ -356,7 +398,11 @@ export const accessApprovalPolicyServiceFactory = ({
     const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
 
-    const policies = await accessApprovalPolicyDAL.find({ envId: environment.id, projectId: project.id });
+    const policies = await accessApprovalPolicyDAL.find({
+      envId: environment.id,
+      projectId: project.id,
+      deletedAt: null
+    });
     if (!policies) throw new NotFoundError({ message: `No policies found in environment with slug '${envSlug}'` });
 
     return { count: policies.length };
@@ -377,13 +423,14 @@ export const accessApprovalPolicyServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      policy.projectId,
+      projectId: policy.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 

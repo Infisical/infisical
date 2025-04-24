@@ -9,7 +9,6 @@ import (
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
-	"github.com/go-resty/resty/v2"
 	"github.com/zalando/go-keyring"
 )
 
@@ -55,7 +54,7 @@ func GetUserCredsFromKeyRing(userEmail string) (credentials models.UserCredentia
 	return userCredentials, err
 }
 
-func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
+func GetCurrentLoggedInUserDetails(setConfigVariables bool) (LoggedInUserDetails, error) {
 	if ConfigFileExists() {
 		configFile, err := GetConfigFile()
 		if err != nil {
@@ -75,17 +74,24 @@ func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
 			}
 		}
 
+		if setConfigVariables {
+			config.INFISICAL_URL_MANUAL_OVERRIDE = config.INFISICAL_URL
+			//configFile.LoggedInUserDomain
+			//if not empty set as infisical url
+			if configFile.LoggedInUserDomain != "" {
+				config.INFISICAL_URL = AppendAPIEndpoint(configFile.LoggedInUserDomain)
+			}
+		}
+
 		// check to to see if the JWT is still valid
-		httpClient := resty.New().
+		httpClient, err := GetRestyClientWithCustomHeaders()
+		if err != nil {
+			return LoggedInUserDetails{}, fmt.Errorf("getCurrentLoggedInUserDetails: unable to get client with custom headers [err=%s]", err)
+		}
+
+		httpClient.
 			SetAuthToken(userCreds.JTWToken).
 			SetHeader("Accept", "application/json")
-
-		config.INFISICAL_URL_MANUAL_OVERRIDE = config.INFISICAL_URL
-		//configFile.LoggedInUserDomain
-		//if not empty set as infisical url
-		if configFile.LoggedInUserDomain != "" {
-			config.INFISICAL_URL = AppendAPIEndpoint(configFile.LoggedInUserDomain)
-		}
 
 		isAuthenticated := api.CallIsAuthenticated(httpClient)
 		// TODO: add refresh token

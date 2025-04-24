@@ -256,6 +256,12 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           `${TableName.SecretVersionV2Tag}.${TableName.SecretTag}Id`,
           db.ref("id").withSchema("secVerTag")
         )
+        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
+        .leftJoin(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretRotationV2SecretMapping}.secretId`
+        )
         .select(selectAllTableCols(TableName.SecretApprovalRequestSecretV2))
         .select({
           secVerTagId: "secVerTag.id",
@@ -279,7 +285,13 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           db.ref("key").withSchema(TableName.SecretVersionV2).as("secVerKey"),
           db.ref("encryptedValue").withSchema(TableName.SecretVersionV2).as("secVerValue"),
           db.ref("encryptedComment").withSchema(TableName.SecretVersionV2).as("secVerComment")
-        );
+        )
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+        )
+        .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
       const formatedDoc = sqlNestRelationships({
         data: doc,
         key: "id",
@@ -298,14 +310,16 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           {
             key: "secretId",
             label: "secret" as const,
-            mapper: ({ orgSecVersion, orgSecKey, orgSecValue, orgSecComment, secretId }) =>
+            mapper: ({ orgSecVersion, orgSecKey, orgSecValue, orgSecComment, secretId, rotationId }) =>
               secretId
                 ? {
                     id: secretId,
                     version: orgSecVersion,
                     key: orgSecKey,
                     encryptedValue: orgSecValue,
-                    encryptedComment: orgSecComment
+                    encryptedComment: orgSecComment,
+                    isRotatedSecret: Boolean(rotationId),
+                    rotationId
                   }
                 : undefined
           },
@@ -338,9 +352,19 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
                 })
               }
             ]
+          },
+          {
+            key: "metadataId",
+            label: "oldSecretMetadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
+            })
           }
         ]
       });
+
       return formatedDoc?.map(({ secret, secretVersion, ...el }) => ({
         ...el,
         secret: secret?.[0],

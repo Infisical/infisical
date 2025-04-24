@@ -8,6 +8,7 @@ import {
   AddIdentityAwsAuthDTO,
   AddIdentityAzureAuthDTO,
   AddIdentityGcpAuthDTO,
+  AddIdentityJwtAuthDTO,
   AddIdentityKubernetesAuthDTO,
   AddIdentityOidcAuthDTO,
   AddIdentityTokenAuthDTO,
@@ -22,6 +23,7 @@ import {
   DeleteIdentityAzureAuthDTO,
   DeleteIdentityDTO,
   DeleteIdentityGcpAuthDTO,
+  DeleteIdentityJwtAuthDTO,
   DeleteIdentityKubernetesAuthDTO,
   DeleteIdentityOidcAuthDTO,
   DeleteIdentityTokenAuthDTO,
@@ -32,6 +34,7 @@ import {
   IdentityAwsAuth,
   IdentityAzureAuth,
   IdentityGcpAuth,
+  IdentityJwtAuth,
   IdentityKubernetesAuth,
   IdentityOidcAuth,
   IdentityTokenAuth,
@@ -42,6 +45,7 @@ import {
   UpdateIdentityAzureAuthDTO,
   UpdateIdentityDTO,
   UpdateIdentityGcpAuthDTO,
+  UpdateIdentityJwtAuthDTO,
   UpdateIdentityKubernetesAuthDTO,
   UpdateIdentityOidcAuthDTO,
   UpdateIdentityTokenAuthDTO,
@@ -51,7 +55,7 @@ import {
 
 export const useCreateIdentity = () => {
   const queryClient = useQueryClient();
-  return useMutation<Identity, {}, CreateIdentityDTO>({
+  return useMutation<Identity, object, CreateIdentityDTO>({
     mutationFn: async (body) => {
       const {
         data: { identity }
@@ -59,14 +63,16 @@ export const useCreateIdentity = () => {
       return identity;
     },
     onSuccess: (_, { organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
     }
   });
 };
 
 export const useUpdateIdentity = () => {
   const queryClient = useQueryClient();
-  return useMutation<Identity, {}, UpdateIdentityDTO>({
+  return useMutation<Identity, object, UpdateIdentityDTO>({
     mutationFn: async ({ identityId, name, role, metadata }) => {
       const {
         data: { identity }
@@ -79,15 +85,17 @@ export const useUpdateIdentity = () => {
       return identity;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
     }
   });
 };
 
 export const useDeleteIdentity = () => {
   const queryClient = useQueryClient();
-  return useMutation<Identity, {}, DeleteIdentityDTO>({
+  return useMutation<Identity, object, DeleteIdentityDTO>({
     mutationFn: async ({ identityId }) => {
       const {
         data: { identity }
@@ -95,7 +103,9 @@ export const useDeleteIdentity = () => {
       return identity;
     },
     onSuccess: (_, { organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
     }
   });
 };
@@ -104,7 +114,7 @@ export const useDeleteIdentity = () => {
 
 export const useAddIdentityUniversalAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityUniversalAuth, {}, AddIdentityUniversalAuthDTO>({
+  return useMutation<IdentityUniversalAuth, object, AddIdentityUniversalAuthDTO>({
     mutationFn: async ({
       identityId,
       clientSecretTrustedIps,
@@ -125,16 +135,20 @@ export const useAddIdentityUniversalAuth = () => {
       return identityUniversalAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityUniversalAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
+      });
     }
   });
 };
 
 export const useUpdateIdentityUniversalAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityUniversalAuth, {}, UpdateIdentityUniversalAuthDTO>({
+  return useMutation<IdentityUniversalAuth, object, UpdateIdentityUniversalAuthDTO>({
     mutationFn: async ({
       identityId,
       clientSecretTrustedIps,
@@ -155,16 +169,20 @@ export const useUpdateIdentityUniversalAuth = () => {
       return identityUniversalAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityUniversalAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
+      });
     }
   });
 };
 
 export const useDeleteIdentityUniversalAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityUniversalAuth, {}, DeleteIdentityUniversalAuthDTO>({
+  return useMutation<IdentityUniversalAuth, object, DeleteIdentityUniversalAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
         data: { identityUniversalAuth }
@@ -172,9 +190,13 @@ export const useDeleteIdentityUniversalAuth = () => {
       return identityUniversalAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityUniversalAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
+      });
     }
   });
 };
@@ -183,7 +205,7 @@ export const useCreateIdentityUniversalAuthClientSecret = () => {
   const queryClient = useQueryClient();
   return useMutation<
     CreateIdentityUniversalAuthClientSecretRes,
-    {},
+    object,
     CreateIdentityUniversalAuthClientSecretDTO
   >({
     mutationFn: async ({ identityId, description, ttl, numUsesLimit }) => {
@@ -198,16 +220,16 @@ export const useCreateIdentityUniversalAuthClientSecret = () => {
       return data;
     },
     onSuccess: (_, { identityId }) => {
-      queryClient.invalidateQueries(
-        identitiesKeys.getIdentityUniversalAuthClientSecrets(identityId)
-      );
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityUniversalAuthClientSecrets(identityId)
+      });
     }
   });
 };
 
 export const useRevokeIdentityUniversalAuthClientSecret = () => {
   const queryClient = useQueryClient();
-  return useMutation<ClientSecretData, {}, DeleteIdentityUniversalAuthClientSecretDTO>({
+  return useMutation<ClientSecretData, object, DeleteIdentityUniversalAuthClientSecretDTO>({
     mutationFn: async ({ identityId, clientSecretId }) => {
       const {
         data: { clientSecretData }
@@ -217,16 +239,16 @@ export const useRevokeIdentityUniversalAuthClientSecret = () => {
       return clientSecretData;
     },
     onSuccess: (_, { identityId }) => {
-      queryClient.invalidateQueries(
-        identitiesKeys.getIdentityUniversalAuthClientSecrets(identityId)
-      );
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityUniversalAuthClientSecrets(identityId)
+      });
     }
   });
 };
 
 export const useAddIdentityGcpAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityGcpAuth, {}, AddIdentityGcpAuthDTO>({
+  return useMutation<IdentityGcpAuth, object, AddIdentityGcpAuthDTO>({
     mutationFn: async ({
       identityId,
       type,
@@ -257,16 +279,18 @@ export const useAddIdentityGcpAuth = () => {
       return identityGcpAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityGcpAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityGcpAuth(identityId) });
     }
   });
 };
 
 export const useUpdateIdentityGcpAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityGcpAuth, {}, UpdateIdentityGcpAuthDTO>({
+  return useMutation<IdentityGcpAuth, object, UpdateIdentityGcpAuthDTO>({
     mutationFn: async ({
       identityId,
       type,
@@ -297,16 +321,18 @@ export const useUpdateIdentityGcpAuth = () => {
       return identityGcpAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityGcpAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityGcpAuth(identityId) });
     }
   });
 };
 
 export const useDeleteIdentityGcpAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityGcpAuth, {}, DeleteIdentityGcpAuthDTO>({
+  return useMutation<IdentityGcpAuth, object, DeleteIdentityGcpAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
         data: { identityGcpAuth }
@@ -314,16 +340,18 @@ export const useDeleteIdentityGcpAuth = () => {
       return identityGcpAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityGcpAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityGcpAuth(identityId) });
     }
   });
 };
 
 export const useAddIdentityAwsAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityAwsAuth, {}, AddIdentityAwsAuthDTO>({
+  return useMutation<IdentityAwsAuth, object, AddIdentityAwsAuthDTO>({
     mutationFn: async ({
       identityId,
       stsEndpoint,
@@ -352,16 +380,18 @@ export const useAddIdentityAwsAuth = () => {
       return identityAwsAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityAwsAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAwsAuth(identityId) });
     }
   });
 };
 
 export const useUpdateIdentityAwsAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityAwsAuth, {}, UpdateIdentityAwsAuthDTO>({
+  return useMutation<IdentityAwsAuth, object, UpdateIdentityAwsAuthDTO>({
     mutationFn: async ({
       identityId,
       stsEndpoint,
@@ -390,16 +420,18 @@ export const useUpdateIdentityAwsAuth = () => {
       return identityAwsAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityAwsAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAwsAuth(identityId) });
     }
   });
 };
 
 export const useDeleteIdentityAwsAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityAwsAuth, {}, DeleteIdentityAwsAuthDTO>({
+  return useMutation<IdentityAwsAuth, object, DeleteIdentityAwsAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
         data: { identityAwsAuth }
@@ -407,16 +439,18 @@ export const useDeleteIdentityAwsAuth = () => {
       return identityAwsAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityAwsAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAwsAuth(identityId) });
     }
   });
 };
 
 export const useUpdateIdentityOidcAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityOidcAuth, {}, UpdateIdentityOidcAuthDTO>({
+  return useMutation<IdentityOidcAuth, object, UpdateIdentityOidcAuthDTO>({
     mutationFn: async ({
       identityId,
       accessTokenTTL,
@@ -428,6 +462,7 @@ export const useUpdateIdentityOidcAuth = () => {
       boundIssuer,
       boundAudiences,
       boundClaims,
+      claimMetadataMapping,
       boundSubject
     }) => {
       const {
@@ -444,23 +479,26 @@ export const useUpdateIdentityOidcAuth = () => {
           accessTokenTTL,
           accessTokenMaxTTL,
           accessTokenNumUsesLimit,
-          accessTokenTrustedIps
+          accessTokenTrustedIps,
+          claimMetadataMapping
         }
       );
 
       return identityOidcAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityOidcAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOidcAuth(identityId) });
     }
   });
 };
 
 export const useAddIdentityOidcAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityOidcAuth, {}, AddIdentityOidcAuthDTO>({
+  return useMutation<IdentityOidcAuth, object, AddIdentityOidcAuthDTO>({
     mutationFn: async ({
       identityId,
       oidcDiscoveryUrl,
@@ -468,6 +506,7 @@ export const useAddIdentityOidcAuth = () => {
       boundIssuer,
       boundAudiences,
       boundClaims,
+      claimMetadataMapping,
       boundSubject,
       accessTokenTTL,
       accessTokenMaxTTL,
@@ -488,23 +527,26 @@ export const useAddIdentityOidcAuth = () => {
           accessTokenTTL,
           accessTokenMaxTTL,
           accessTokenNumUsesLimit,
-          accessTokenTrustedIps
+          accessTokenTrustedIps,
+          claimMetadataMapping
         }
       );
 
       return identityOidcAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityOidcAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOidcAuth(identityId) });
     }
   });
 };
 
 export const useDeleteIdentityOidcAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityTokenAuth, {}, DeleteIdentityOidcAuthDTO>({
+  return useMutation<IdentityTokenAuth, object, DeleteIdentityOidcAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
         data: { identityOidcAuth }
@@ -512,16 +554,136 @@ export const useDeleteIdentityOidcAuth = () => {
       return identityOidcAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityOidcAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOidcAuth(identityId) });
+    }
+  });
+};
+export const useUpdateIdentityJwtAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityJwtAuth, object, UpdateIdentityJwtAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      configurationType,
+      jwksUrl,
+      jwksCaCert,
+      publicKeys,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps,
+      boundIssuer,
+      boundAudiences,
+      boundClaims,
+      boundSubject
+    }) => {
+      const {
+        data: { identityJwtAuth }
+      } = await apiRequest.patch<{ identityJwtAuth: IdentityJwtAuth }>(
+        `/api/v1/auth/jwt-auth/identities/${identityId}`,
+        {
+          configurationType,
+          jwksUrl,
+          jwksCaCert,
+          publicKeys,
+          boundIssuer,
+          boundAudiences,
+          boundClaims,
+          boundSubject,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityJwtAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityJwtAuth(identityId) });
+    }
+  });
+};
+
+export const useAddIdentityJwtAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityJwtAuth, object, AddIdentityJwtAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      configurationType,
+      jwksUrl,
+      jwksCaCert,
+      publicKeys,
+      boundIssuer,
+      boundAudiences,
+      boundClaims,
+      boundSubject,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityJwtAuth }
+      } = await apiRequest.post<{ identityJwtAuth: IdentityJwtAuth }>(
+        `/api/v1/auth/jwt-auth/identities/${identityId}`,
+        {
+          configurationType,
+          jwksUrl,
+          jwksCaCert,
+          publicKeys,
+          boundIssuer,
+          boundAudiences,
+          boundClaims,
+          boundSubject,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityJwtAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityJwtAuth(identityId) });
+    }
+  });
+};
+
+export const useDeleteIdentityJwtAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityTokenAuth, object, DeleteIdentityJwtAuthDTO>({
+    mutationFn: async ({ identityId }) => {
+      const {
+        data: { identityJwtAuth }
+      } = await apiRequest.delete(`/api/v1/auth/jwt-auth/identities/${identityId}`);
+      return identityJwtAuth;
+    },
+    onSuccess: (_, { organizationId, identityId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityJwtAuth(identityId) });
     }
   });
 };
 
 export const useAddIdentityAzureAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityAzureAuth, {}, AddIdentityAzureAuthDTO>({
+  return useMutation<IdentityAzureAuth, object, AddIdentityAzureAuthDTO>({
     mutationFn: async ({
       identityId,
       tenantId,
@@ -550,16 +712,20 @@ export const useAddIdentityAzureAuth = () => {
       return identityAzureAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityKubernetesAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId)
+      });
     }
   });
 };
 
 export const useAddIdentityKubernetesAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityKubernetesAuth, {}, AddIdentityKubernetesAuthDTO>({
+  return useMutation<IdentityKubernetesAuth, object, AddIdentityKubernetesAuthDTO>({
     mutationFn: async ({
       identityId,
       kubernetesHost,
@@ -594,16 +760,18 @@ export const useAddIdentityKubernetesAuth = () => {
       return identityKubernetesAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityAzureAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAzureAuth(identityId) });
     }
   });
 };
 
 export const useUpdateIdentityAzureAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityAzureAuth, {}, UpdateIdentityAzureAuthDTO>({
+  return useMutation<IdentityAzureAuth, object, UpdateIdentityAzureAuthDTO>({
     mutationFn: async ({
       identityId,
       tenantId,
@@ -632,16 +800,18 @@ export const useUpdateIdentityAzureAuth = () => {
       return identityAzureAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityAzureAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAzureAuth(identityId) });
     }
   });
 };
 
 export const useDeleteIdentityAzureAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityAzureAuth, {}, DeleteIdentityAzureAuthDTO>({
+  return useMutation<IdentityAzureAuth, object, DeleteIdentityAzureAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
         data: { identityAzureAuth }
@@ -649,16 +819,18 @@ export const useDeleteIdentityAzureAuth = () => {
       return identityAzureAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityAzureAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAzureAuth(identityId) });
     }
   });
 };
 
 export const useUpdateIdentityKubernetesAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityKubernetesAuth, {}, UpdateIdentityKubernetesAuthDTO>({
+  return useMutation<IdentityKubernetesAuth, object, UpdateIdentityKubernetesAuthDTO>({
     mutationFn: async ({
       identityId,
       kubernetesHost,
@@ -693,16 +865,20 @@ export const useUpdateIdentityKubernetesAuth = () => {
       return identityKubernetesAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityKubernetesAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId)
+      });
     }
   });
 };
 
 export const useDeleteIdentityKubernetesAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityTokenAuth, {}, DeleteIdentityKubernetesAuthDTO>({
+  return useMutation<IdentityTokenAuth, object, DeleteIdentityKubernetesAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
         data: { identityKubernetesAuth }
@@ -710,16 +886,20 @@ export const useDeleteIdentityKubernetesAuth = () => {
       return identityKubernetesAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityKubernetesAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId)
+      });
     }
   });
 };
 
 export const useAddIdentityTokenAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityTokenAuth, {}, AddIdentityTokenAuthDTO>({
+  return useMutation<IdentityTokenAuth, object, AddIdentityTokenAuthDTO>({
     mutationFn: async ({
       identityId,
       accessTokenTTL,
@@ -742,16 +922,20 @@ export const useAddIdentityTokenAuth = () => {
       return identityTokenAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityUniversalAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityTokenAuth(identityId)
+      });
     }
   });
 };
 
 export const useUpdateIdentityTokenAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityTokenAuth, {}, UpdateIdentityTokenAuthDTO>({
+  return useMutation<IdentityTokenAuth, object, UpdateIdentityTokenAuthDTO>({
     mutationFn: async ({
       identityId,
       accessTokenTTL,
@@ -774,16 +958,20 @@ export const useUpdateIdentityTokenAuth = () => {
       return identityTokenAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityUniversalAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityTokenAuth(identityId)
+      });
     }
   });
 };
 
 export const useDeleteIdentityTokenAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityTokenAuth, {}, DeleteIdentityTokenAuthDTO>({
+  return useMutation<IdentityTokenAuth, object, DeleteIdentityTokenAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
         data: { identityTokenAuth }
@@ -791,16 +979,18 @@ export const useDeleteIdentityTokenAuth = () => {
       return identityTokenAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityTokenAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityTokenAuth(identityId) });
     }
   });
 };
 
 export const useCreateTokenIdentityTokenAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<CreateTokenIdentityTokenAuthRes, {}, CreateTokenIdentityTokenAuthDTO>({
+  return useMutation<CreateTokenIdentityTokenAuthRes, object, CreateTokenIdentityTokenAuthDTO>({
     mutationFn: async ({ identityId, name }) => {
       const { data } = await apiRequest.post<CreateTokenIdentityTokenAuthRes>(
         `/api/v1/auth/token-auth/identities/${identityId}/tokens`,
@@ -812,14 +1002,16 @@ export const useCreateTokenIdentityTokenAuth = () => {
       return data;
     },
     onSuccess: (_, { identityId }) => {
-      queryClient.invalidateQueries(identitiesKeys.getIdentityTokensTokenAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityTokensTokenAuth(identityId)
+      });
     }
   });
 };
 
 export const useUpdateIdentityTokenAuthToken = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityAccessToken, {}, UpdateTokenIdentityTokenAuthDTO>({
+  return useMutation<IdentityAccessToken, object, UpdateTokenIdentityTokenAuthDTO>({
     mutationFn: async ({ tokenId, name }) => {
       const {
         data: { token }
@@ -833,14 +1025,16 @@ export const useUpdateIdentityTokenAuthToken = () => {
       return token;
     },
     onSuccess: (_, { identityId }) => {
-      queryClient.invalidateQueries(identitiesKeys.getIdentityTokensTokenAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityTokensTokenAuth(identityId)
+      });
     }
   });
 };
 
 export const useRevokeIdentityTokenAuthToken = () => {
   const queryClient = useQueryClient();
-  return useMutation<RevokeTokenRes, {}, RevokeTokenDTO>({
+  return useMutation<RevokeTokenRes, object, RevokeTokenDTO>({
     mutationFn: async ({ tokenId }) => {
       const { data } = await apiRequest.post<RevokeTokenRes>(
         `/api/v1/auth/token-auth/tokens/${tokenId}/revoke`
@@ -849,7 +1043,9 @@ export const useRevokeIdentityTokenAuthToken = () => {
       return data;
     },
     onSuccess: (_, { identityId }) => {
-      queryClient.invalidateQueries(identitiesKeys.getIdentityTokensTokenAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityTokensTokenAuth(identityId)
+      });
     }
   });
 };

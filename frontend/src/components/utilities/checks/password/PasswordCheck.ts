@@ -34,12 +34,12 @@ const passwordCheck = async ({
   const tests = [
     {
       name: "tooShort",
-      validator: (pwd: string) => pwd.length >= 14,
+      validator: (pwd: string) => pwd?.length >= 14,
       setError: setPasswordErrorTooShort
     },
     {
       name: "tooLong",
-      validator: (pwd: string) => pwd.length < 101,
+      validator: (pwd: string) => pwd?.length < 101,
       setError: setPasswordErrorTooLong
     },
     {

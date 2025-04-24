@@ -6,7 +6,6 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/models"
-	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog/log"
 )
 
@@ -20,7 +19,7 @@ func GetAllFolders(params models.GetAllFoldersParameters) ([]models.SingleFolder
 
 		log.Debug().Msg("GetAllFolders: Trying to fetch folders using logged in details")
 
-		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := GetCurrentLoggedInUserDetails(true)
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +64,11 @@ func GetAllFolders(params models.GetAllFoldersParameters) ([]models.SingleFolder
 
 func GetFoldersViaJTW(JTWToken string, workspaceId string, environmentName string, foldersPath string) ([]models.SingleFolder, error) {
 	// set up resty client
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return nil, err
+	}
+
 	httpClient.SetAuthToken(JTWToken).
 		SetHeader("Accept", "application/json")
 
@@ -100,7 +103,10 @@ func GetFoldersViaServiceToken(fullServiceToken string, workspaceId string, envi
 
 	serviceToken := fmt.Sprintf("%v.%v.%v", serviceTokenParts[0], serviceTokenParts[1], serviceTokenParts[2])
 
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get client with custom headers [err=%v]", err)
+	}
 
 	httpClient.SetAuthToken(serviceToken).
 		SetHeader("Accept", "application/json")
@@ -143,7 +149,11 @@ func GetFoldersViaServiceToken(fullServiceToken string, workspaceId string, envi
 }
 
 func GetFoldersViaMachineIdentity(accessToken string, workspaceId string, envSlug string, foldersPath string) ([]models.SingleFolder, error) {
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return nil, err
+	}
+
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
 
@@ -177,7 +187,7 @@ func CreateFolder(params models.CreateFolderParameters) (models.SingleFolder, er
 	if params.InfisicalToken == "" {
 		RequireLogin()
 		RequireLocalWorkspaceFile()
-		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := GetCurrentLoggedInUserDetails(true)
 
 		if err != nil {
 			return models.SingleFolder{}, err
@@ -191,9 +201,12 @@ func CreateFolder(params models.CreateFolderParameters) (models.SingleFolder, er
 	}
 
 	// set up resty client
-	httpClient := resty.New()
-	httpClient.
-		SetAuthToken(params.InfisicalToken).
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return models.SingleFolder{}, err
+	}
+
+	httpClient.SetAuthToken(params.InfisicalToken).
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json")
 
@@ -224,7 +237,7 @@ func DeleteFolder(params models.DeleteFolderParameters) ([]models.SingleFolder, 
 		RequireLogin()
 		RequireLocalWorkspaceFile()
 
-		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := GetCurrentLoggedInUserDetails(true)
 
 		if err != nil {
 			return nil, err
@@ -238,9 +251,12 @@ func DeleteFolder(params models.DeleteFolderParameters) ([]models.SingleFolder, 
 	}
 
 	// set up resty client
-	httpClient := resty.New()
-	httpClient.
-		SetAuthToken(params.InfisicalToken).
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return nil, err
+	}
+
+	httpClient.SetAuthToken(params.InfisicalToken).
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json")
 

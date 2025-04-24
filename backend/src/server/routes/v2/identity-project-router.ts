@@ -1,4 +1,3 @@
-import ms from "ms";
 import { z } from "zod";
 
 import {
@@ -7,8 +6,9 @@ import {
   ProjectMembershipRole,
   ProjectUserMembershipRolesSchema
 } from "@app/db/schemas";
-import { ORGANIZATIONS, PROJECT_IDENTITIES } from "@app/lib/api-docs";
+import { ApiDocsTags, ORGANIZATIONS, PROJECT_IDENTITIES } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -27,6 +27,8 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectIdentities],
       description: "Create project identity membership",
       security: [
         {
@@ -101,6 +103,8 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectIdentities],
       description: "Update project identity memberships",
       security: [
         {
@@ -170,6 +174,8 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectIdentities],
       description: "Delete project identity memberships",
       security: [
         {
@@ -207,6 +213,8 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectIdentities],
       description: "Return project identity memberships",
       security: [
         {
@@ -300,6 +308,8 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectIdentities],
       description: "Return project identity membership",
       security: [
         {
@@ -347,6 +357,60 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
         actorOrgId: req.permission.orgId,
         projectId: req.params.projectId,
         identityId: req.params.identityId
+      });
+      return { identityMembership };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/identity-memberships/:identityMembershipId",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectIdentities],
+      params: z.object({
+        identityMembershipId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          identityMembership: z.object({
+            id: z.string(),
+            identityId: z.string(),
+            createdAt: z.date(),
+            updatedAt: z.date(),
+            roles: z.array(
+              z.object({
+                id: z.string(),
+                role: z.string(),
+                customRoleId: z.string().optional().nullable(),
+                customRoleName: z.string().optional().nullable(),
+                customRoleSlug: z.string().optional().nullable(),
+                isTemporary: z.boolean(),
+                temporaryMode: z.string().optional().nullable(),
+                temporaryRange: z.string().nullable().optional(),
+                temporaryAccessStartTime: z.date().nullable().optional(),
+                temporaryAccessEndTime: z.date().nullable().optional()
+              })
+            ),
+            identity: IdentitiesSchema.pick({ name: true, id: true }).extend({
+              authMethods: z.array(z.string())
+            }),
+            project: SanitizedProjectSchema.pick({ name: true, id: true })
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const identityMembership = await server.services.identityProject.getProjectIdentityByMembershipId({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityMembershipId: req.params.identityMembershipId
       });
       return { identityMembership };
     }

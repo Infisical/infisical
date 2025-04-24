@@ -32,6 +32,7 @@ export type TSecretApprovalSecChange = {
   secretKey: string;
   secretValue?: string;
   secretComment?: string;
+  isRotatedSecret?: boolean;
   tags?: string[];
 };
 
@@ -44,6 +45,7 @@ export type TSecretApprovalRequest = {
   reviewers: {
     userId: string;
     status: ApprovalStatus;
+    comment: string;
     email: string;
     firstName: string;
     lastName: string;
@@ -82,6 +84,7 @@ export type TSecretApprovalRequest = {
   conflicts: Array<{ secretId: string; op: CommitType.UPDATE }>;
   commits: ({
     // if there is no secret means it was creation
+    secretMetadata?: { key: string; value: string }[];
     secret?: { version: number };
     secretVersion: SecretV3Raw;
     // if there is no new version its for Delete
@@ -113,6 +116,7 @@ export type TGetSecretApprovalRequestDetails = {
 
 export type TUpdateSecretApprovalReviewStatusDTO = {
   status: ApprovalStatus;
+  comment?: string;
   id: string;
 };
 

@@ -38,7 +38,8 @@ export default {
       directory: "./seeds"
     },
     migrations: {
-      tableName: "infisical_migrations"
+      tableName: "infisical_migrations",
+      loadExtensions: [".mjs", ".ts"]
     }
   },
   production: {
@@ -62,7 +63,8 @@ export default {
       max: 10
     },
     migrations: {
-      tableName: "infisical_migrations"
+      tableName: "infisical_migrations",
+      loadExtensions: [".mjs", ".ts"]
     }
   }
 } as Knex.Config;

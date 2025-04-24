@@ -222,10 +222,10 @@
       "org-members-description": "Manage members of your organization. These users could afterwards be formed into projects.",
       "search-members": "Search members...",
       "add-dialog": {
-        "add-member-to-project": "Add a member to your project",
+        "add-member-to-project": "Add users to your project",
         "already-all-invited": "All the users in your organization are already invited.",
         "add-user-org-first": "Add more users to the organization first.",
-        "user-will-email": "The user will receive an email with the instructions.",
+        "user-will-email": "Users will receive an email with instructions to gain access.",
         "looking-add": "<0>If you are looking to add users to your org,</0><1>click here</1>",
         "add-user-to-org": "Add Users to Organization"
       }
@@ -301,8 +301,8 @@
       "project-id-description2": "For more guidance, including code snipets for various languages and frameworks, see ",
       "auto-generated": "This is your project's auto-generated unique identifier. It can't be changed.",
       "docs": "Infisical Docs",
-      "auto-capitalization": "Auto Capitalization",
-      "auto-capitalization-description": "According to standards, Infisical will automatically capitalize your keys. If you want to disable this feature, you can do so here."
+      "enforce-capitalization": "Enforce Capitalization",
+      "enforce-capitalization-description": "According to standards, Infisical enforces uppercase secret keys. If you want to disable this feature, you can do so here."
     }
   },
   "signup": {

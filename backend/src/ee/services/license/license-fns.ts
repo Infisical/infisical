@@ -24,11 +24,13 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   rbac: false,
   customRateLimits: false,
   customAlerts: false,
+  secretAccessInsights: false,
   auditLogs: false,
   auditLogsRetentionDays: 0,
   auditLogStreams: false,
   auditLogStreamLimit: 3,
   samlSSO: false,
+  hsm: false,
   oidcSSO: false,
   scim: false,
   ldap: false,
@@ -37,7 +39,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   trial_end: null,
   has_used_trial: true,
   secretApproval: false,
-  secretRotation: true,
+  secretRotation: false,
   caCrl: false,
   instanceUserManagement: false,
   externalKms: false,
@@ -48,7 +50,9 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   },
   pkiEst: false,
   enforceMfa: false,
-  projectTemplates: false
+  projectTemplates: false,
+  kmip: false,
+  gateway: false
 });
 
 export const setupLicenseRequestWithStore = (baseURL: string, refreshUrl: string, licenseKey: string) => {

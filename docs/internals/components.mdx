@@ -1,28 +1,34 @@
 ---
 title: "Components"
-description: "Infisical's components span multiple clients, an API, and a storage backend."
+description: "Understand Infisical's core architectural components and how they work together."
 ---
 
-## Infisical API
+## Overview
 
-The Infisical API (sometimes referred to as the **backend**) contains the core platform logic.
+Infisical is architected around several key components that work in concert to provide a secure and streamlined secret management experience. These components span the client, API, and storage layers, ensuring that secrets are protected at every stage of their lifecycle.
 
-## Storage backend
+## 1. API (Backend)
 
-Infisical relies on a storage backend to store data including users and secrets. Infisical's storage backend is Postgres.
+Infisical exposes a well-documented [REST API](https://infisical.com/docs/api-reference/overview/introduction) that enables programmatic interaction with the platform, enabling a wide range of use cases.
 
-## Redis
+## 2. Storage Backend
 
-Infisical uses [Redis](https://redis.com) to enable more complex workflows including a queuing system to manage long running asynchronous tasks, cron jobs, as well as reliable cache for frequently used resources.
+Infisical relies on a robust storage backend to durably store secrets, users, and other platform data. Infisical's storage backend is [PostgreSQL](https://www.postgresql.org/).
 
-## Infisical Web UI
+## 3. Caching Layer
 
-The Web UI is the browser-based portal that connects to the Infisical API.
+Infisical uses [Redis](https://redis.com) to enable more complex workflows including a queuing system to manage long-running asynchronous tasks, cron jobs, as well as reliable cache for frequently used resources.
 
-## Infisical clients
+## 4. Clients
 
-Clients are any application or infrastructure that connecting to the Infisical API using one of the below methods:
-- Public API: Making API requests directly to the Infisical API.
-- Client SDK: A platform-specific library with method abstractions for working with secrets. Currently, there are three official SDKs: [Node SDK](https://infisical.com/docs/sdks/languages/node), [Python SDK](https://infisical.com/docs/sdks/languages/python), and [Java SDK](https://infisical.com/docs/sdks/languages/java).
-- CLI: A terminal-based interface for interacting with the Infisical API.
-- Kubernetes Operator: This operator retrieves secrets from Infisical and securely store
+Clients are interfaces through which users and applications interact with the Infisical API:
+
+- **Web UI**: A browser-based portal providing a user-friendly interface for managing secrets, configurations, and performing administrative tasks.
+
+- [**CLI**](https://infisical.com/docs/cli): A terminal-based tool for interacting with the Infisical API, enabling automation, scripting, and integration into CI/CD pipelines.
+
+- **SDKs (Software Development Kits)**: Platform-specific libraries with method abstractions for working with secrets. Supported languages include [Node.js](https://infisical.com/docs/sdks/languages/node), [Python](https://infisical.com/docs/sdks/languages/python), [Java](https://infisical.com/docs/sdks/languages/java), [Golang](https://infisical.com/docs/sdks/languages/go), [Ruby](https://infisical.com/docs/sdks/languages/ruby) and [.NET](https://infisical.com/docs/sdks/languages/csharp).
+
+- [**Kubernetes Operator**](https://infisical.com/docs/integrations/platforms/kubernetes): A Kubernetes-native component that facilitates the secure retrieval and management of secrets within a Kubernetes cluster. The operator supports multiple custom resource definitions (CRDs) for syncing secrets.
+
+- [**Infisical Agent**](https://infisical.com/docs/integrations/platforms/infisical-agent): Daemon that automatically fetches and manages access tokens and secrets to be used in various client resources.

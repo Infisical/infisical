@@ -12,4 +12,12 @@ export type OIDCConfigData = {
   clientId: string;
   clientSecret: string;
   allowedEmailDomains?: string;
+  manageGroupMemberships: boolean;
+  jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm;
 };
+
+export enum OIDCJWTSignatureAlgorithm {
+  RS256 = "RS256",
+  HS256 = "HS256",
+  RS512 = "RS512"
+}

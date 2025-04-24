@@ -27,7 +27,6 @@ import (
 	"github.com/Infisical/infisical-merge/packages/srp"
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/fatih/color"
-	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
 	"github.com/posthog/posthog-go"
 	"github.com/rs/cors"
@@ -154,6 +153,8 @@ var loginCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 
+		presetDomain := config.INFISICAL_URL
+
 		clearSelfHostedDomains, err := cmd.Flags().GetBool("clear-domains")
 		if err != nil {
 			util.HandleError(err)
@@ -176,10 +177,16 @@ var loginCmd = &cobra.Command{
 			return
 		}
 
+		customHeaders, err := util.GetInfisicalCustomHeadersMap()
+		if err != nil {
+			util.HandleError(err, "Unable to get custom headers")
+		}
+
 		infisicalClient := infisicalSdk.NewInfisicalClient(context.Background(), infisicalSdk.Config{
 			SiteUrl:          config.INFISICAL_URL,
 			UserAgent:        api.USER_AGENT,
 			AutoTokenRefresh: false,
+			CustomHeaders:    customHeaders,
 		})
 
 		loginMethod, err := cmd.Flags().GetString("method")
@@ -198,7 +205,7 @@ var loginCmd = &cobra.Command{
 
 		// standalone user auth
 		if loginMethod == "user" {
-			currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+			currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 			// if the key can't be found or there is an error getting current credentials from key ring, allow them to override
 			if err != nil && (strings.Contains(err.Error(), "we couldn't find your logged in details")) {
 				log.Debug().Err(err)
@@ -216,11 +223,19 @@ var loginCmd = &cobra.Command{
 					return
 				}
 			}
+
+			usePresetDomain, err := usePresetDomain(presetDomain)
+
+			if err != nil {
+				util.HandleError(err)
+			}
+
 			//override domain
 			domainQuery := true
 			if config.INFISICAL_URL_MANUAL_OVERRIDE != "" &&
 				config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_EU_URL) &&
-				config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_US_URL) {
+				config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_US_URL) &&
+				!usePresetDomain {
 				overrideDomain, err := DomainOverridePrompt()
 				if err != nil {
 					util.HandleError(err)
@@ -228,7 +243,7 @@ var loginCmd = &cobra.Command{
 
 				//if not override set INFISICAL_URL to exported var
 				//set domainQuery to false
-				if !overrideDomain {
+				if !overrideDomain && !usePresetDomain {
 					domainQuery = false
 					config.INFISICAL_URL = util.AppendAPIEndpoint(config.INFISICAL_URL_MANUAL_OVERRIDE)
 					config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", strings.TrimSuffix(config.INFISICAL_URL, "/api"))
@@ -237,7 +252,7 @@ var loginCmd = &cobra.Command{
 			}
 
 			//prompt user to select domain between Infisical cloud and self-hosting
-			if domainQuery {
+			if domainQuery && !usePresetDomain {
 				err = askForDomain()
 				if err != nil {
 					util.HandleError(err, "Unable to parse domain url")
@@ -305,7 +320,11 @@ var loginCmd = &cobra.Command{
 			credential, err := authStrategies[strategy](cmd, infisicalClient)
 
 			if err != nil {
-				util.HandleError(fmt.Errorf("unable to authenticate with %s [err=%v]", formatAuthMethod(loginMethod), err))
+				euErrorMessage := ""
+				if strings.HasPrefix(config.INFISICAL_URL, util.INFISICAL_DEFAULT_US_URL) {
+					euErrorMessage = fmt.Sprintf("\nIf you are using the Infisical Cloud Europe Region, please switch to it by using the \"--domain %s\" flag.", util.INFISICAL_DEFAULT_EU_URL)
+				}
+				util.HandleError(fmt.Errorf("unable to authenticate with %s [err=%v].%s", formatAuthMethod(loginMethod), err, euErrorMessage))
 			}
 
 			if plainOutput {
@@ -343,9 +362,12 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 	if loginTwoResponse.MfaEnabled {
 		i := 1
 		for i < 6 {
-			mfaVerifyCode := askForMFACode()
+			mfaVerifyCode := askForMFACode("email")
 
-			httpClient := resty.New()
+			httpClient, err := util.GetRestyClientWithCustomHeaders()
+			if err != nil {
+				util.HandleError(err, "Unable to get resty client with custom headers")
+			}
 			httpClient.SetAuthToken(loginTwoResponse.Token)
 			verifyMFAresponse, mfaErrorResponse, requestError := api.CallVerifyMfaToken(httpClient, api.VerifyMfaTokenRequest{
 				Email:    email,
@@ -526,13 +548,52 @@ func DomainOverridePrompt() (bool, error) {
 	return selectedOption == OVERRIDE, err
 }
 
+func usePresetDomain(presetDomain string) (bool, error) {
+	infisicalConfig, err := util.GetConfigFile()
+	if err != nil {
+		return false, fmt.Errorf("askForDomain: unable to get config file because [err=%s]", err)
+	}
+
+	preconfiguredUrl := strings.TrimSuffix(presetDomain, "/api")
+
+	if preconfiguredUrl != "" && preconfiguredUrl != util.INFISICAL_DEFAULT_US_URL && preconfiguredUrl != util.INFISICAL_DEFAULT_EU_URL {
+		parsedDomain := strings.TrimSuffix(strings.Trim(preconfiguredUrl, "/"), "/api")
+
+		_, err := url.ParseRequestURI(parsedDomain)
+		if err != nil {
+			return false, errors.New(fmt.Sprintf("Invalid domain URL: '%s'", parsedDomain))
+		}
+
+		config.INFISICAL_URL = fmt.Sprintf("%s/api", parsedDomain)
+		config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", parsedDomain)
+
+		if !slices.Contains(infisicalConfig.Domains, parsedDomain) {
+			infisicalConfig.Domains = append(infisicalConfig.Domains, parsedDomain)
+			err = util.WriteConfigFile(&infisicalConfig)
+
+			if err != nil {
+				return false, fmt.Errorf("askForDomain: unable to write domains to config file because [err=%s]", err)
+			}
+		}
+
+		whilte := color.New(color.FgGreen)
+		boldWhite := whilte.Add(color.Bold)
+		time.Sleep(time.Second * 1)
+		boldWhite.Printf("[INFO] Using domain '%s' from domain flag or INFISICAL_API_URL environment variable\n", parsedDomain)
+
+		return true, nil
+	}
+
+	return false, nil
+}
+
 func askForDomain() error {
 
 	// query user to choose between Infisical cloud or self-hosting
 	const (
 		INFISICAL_CLOUD_US = "Infisical Cloud (US Region)"
 		INFISICAL_CLOUD_EU = "Infisical Cloud (EU Region)"
-		SELF_HOSTING       = "Self-Hosting"
+		SELF_HOSTING       = "Self-Hosting or Dedicated Instance"
 		ADD_NEW_DOMAIN     = "Add a new domain"
 	)
 
@@ -673,7 +734,10 @@ func askForLoginCredentials() (email string, password string, err error) {
 
 func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2Response, *api.GetLoginTwoV2Response, error) {
 	log.Debug().Msg(fmt.Sprint("getFreshUserCredentials: ", "email", email, "password: ", password))
-	httpClient := resty.New()
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return nil, nil, err
+	}
 	httpClient.SetRetryCount(5)
 
 	params := srp.GetParams(4096)
@@ -723,7 +787,10 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 func GetJwtTokenWithOrganizationId(oldJwtToken string, email string) string {
 	log.Debug().Msg(fmt.Sprint("GetJwtTokenWithOrganizationId: ", "oldJwtToken", oldJwtToken))
 
-	httpClient := resty.New()
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		util.HandleError(err, "Unable to get resty client with custom headers")
+	}
 	httpClient.SetAuthToken(oldJwtToken)
 
 	organizationResponse, err := api.CallGetAllOrganizations(httpClient)
@@ -756,13 +823,17 @@ func GetJwtTokenWithOrganizationId(oldJwtToken string, email string) string {
 	if selectedOrgRes.MfaEnabled {
 		i := 1
 		for i < 6 {
-			mfaVerifyCode := askForMFACode()
+			mfaVerifyCode := askForMFACode(selectedOrgRes.MfaMethod)
 
-			httpClient := resty.New()
+			httpClient, err := util.GetRestyClientWithCustomHeaders()
+			if err != nil {
+				util.HandleError(err, "Unable to get resty client with custom headers")
+			}
 			httpClient.SetAuthToken(selectedOrgRes.Token)
 			verifyMFAresponse, mfaErrorResponse, requestError := api.CallVerifyMfaToken(httpClient, api.VerifyMfaTokenRequest{
-				Email:    email,
-				MFAToken: mfaVerifyCode,
+				Email:     email,
+				MFAToken:  mfaVerifyCode,
+				MFAMethod: selectedOrgRes.MfaMethod,
 			})
 			if requestError != nil {
 				util.HandleError(err)
@@ -817,9 +888,15 @@ func generateFromPassword(password string, salt []byte, p *params) (hash []byte,
 	return hash, nil
 }
 
-func askForMFACode() string {
+func askForMFACode(mfaMethod string) string {
+	var label string
+	if mfaMethod == "totp" {
+		label = "Enter the verification code from your mobile authenticator app or use a recovery code"
+	} else {
+		label = "Enter the 2FA verification code sent to your email"
+	}
 	mfaCodePromptUI := promptui.Prompt{
-		Label: "Enter the 2FA verification code sent to your email",
+		Label: label,
 	}
 
 	mfaVerifyCode, err := mfaCodePromptUI.Run()
@@ -853,7 +930,14 @@ func askToPasteJwtToken(success chan models.UserCredentials, failure chan error)
 	}
 
 	// verify JTW
-	httpClient := resty.New().
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		failure <- err
+		fmt.Println("Error getting resty client with custom headers", err)
+		os.Exit(1)
+	}
+
+	httpClient.
 		SetAuthToken(userCredentials.JTWToken).
 		SetHeader("Accept", "application/json")
 

@@ -1,8 +1,9 @@
 /* eslint-disable no-await-in-loop */
-import { subject } from "@casl/ability";
 import path from "path";
+import RE2 from "re2";
 
 import {
+  ActionProjectType,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
@@ -11,17 +12,20 @@ import {
   TSecretFolders,
   TSecrets
 } from "@app/db/schemas";
+import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import {
   buildSecretBlindIndexFromName,
   decryptSymmetric128BitHexKeyUTF8,
   encryptSymmetric128BitHexKeyUTF8
 } from "@app/lib/crypto";
+import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import {
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
   fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
@@ -31,8 +35,10 @@ import {
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { KmsDataKey } from "../kms/kms-types";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
+import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import {
   TCreateManySecretsRawFn,
@@ -45,6 +51,8 @@ import {
   TUpdateManySecretsRawFn,
   TUpdateManySecretsRawFnFactory
 } from "./secret-types";
+
+export const INFISICAL_SECRET_VALUE_HIDDEN_MASK = "<hidden-by-infisical>";
 
 export const generateSecretBlindIndexBySalt = async (secretName: string, secretBlindIndexDoc: TSecretBlindIndexes) => {
   const appCfg = getConfig();
@@ -172,24 +180,22 @@ export const recursivelyGetSecretPaths = ({
       folderId: p.folderId
     }));
 
-    const { permission } = await permissionService.getProjectPermission(
-      auth.actor,
-      auth.actorId,
+    const { permission } = await permissionService.getProjectPermission({
+      actor: auth.actor,
+      actorId: auth.actorId,
       projectId,
-      auth.actorAuthMethod,
-      auth.actorOrgId
-    );
+      actorAuthMethod: auth.actorAuthMethod,
+      actorOrgId: auth.actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     // Filter out paths that the user does not have permission to access, and paths that are not in the current path
     const allowedPaths = paths.filter(
       (folder) =>
-        permission.can(
-          ProjectPermissionActions.Read,
-          subject(ProjectPermissionSub.Secrets, {
-            environment,
-            secretPath: folder.path
-          })
-        ) && folder.path.startsWith(currentPath === "/" ? "" : currentPath)
+        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+          environment,
+          secretPath: folder.path
+        }) && folder.path.startsWith(currentPath === "/" ? "" : currentPath)
     );
 
     return allowedPaths;
@@ -202,7 +208,7 @@ export const recursivelyGetSecretPaths = ({
 const formatMultiValueEnv = (val?: string) => {
   if (!val) return "";
   if (!val.match("\n")) return val;
-  return `"${val.replace(/\n/g, "\\n")}"`;
+  return `"${val.replaceAll("\n", "\\n")}"`;
 };
 
 type TInterpolateSecretArg = {
@@ -213,7 +219,9 @@ type TInterpolateSecretArg = {
 };
 
 const MAX_SECRET_REFERENCE_DEPTH = 5;
-const INTERPOLATION_SYNTAX_REG = /\${([^}]+)}/g;
+const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.]+)}`;
+const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
+
 export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderDAL }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, string>> = {};
   const getCacheUniqueKey = (environment: string, secretPath: string) => `${environment}-${secretPath}`;
@@ -268,9 +276,17 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
     if (!value) return "";
     if (depth > MAX_SECRET_REFERENCE_DEPTH) return "";
 
-    const refs = value.match(INTERPOLATION_SYNTAX_REG);
+    const refs = [];
+    let match;
+    const execRegex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
+
+    // eslint-disable-next-line no-cond-assign
+    while ((match = execRegex.exec(value)) !== null) {
+      refs.push(match[0]);
+    }
+
     let expandedValue = value;
-    if (refs) {
+    if (refs.length > 0) {
       for (const interpolationSyntax of refs) {
         const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
         const entities = interpolationKey.trim().split(".");
@@ -279,7 +295,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
           const [secretKey] = entities;
           // eslint-disable-next-line
           let referenceValue = await fetchSecret(environment, secretPath, secretKey);
-          if (INTERPOLATION_SYNTAX_REG.test(referenceValue)) {
+          if (INTERPOLATION_TEST_REGEX.test(referenceValue)) {
             // eslint-disable-next-line
             referenceValue = await recursivelyExpandSecret({
               environment,
@@ -300,7 +316,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
 
           // eslint-disable-next-line
           let referenceValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
-          if (INTERPOLATION_SYNTAX_REG.test(referenceValue)) {
+          if (INTERPOLATION_TEST_REGEX.test(referenceValue)) {
             // eslint-disable-next-line
             referenceValue = await recursivelyExpandSecret({
               environment: secretReferenceEnvironment,
@@ -327,7 +343,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
   }) => {
     if (!inputSecret.value) return inputSecret.value;
 
-    const shouldExpand = Boolean(inputSecret.value?.match(INTERPOLATION_SYNTAX_REG));
+    const shouldExpand = INTERPOLATION_TEST_REGEX.test(inputSecret.value);
     if (!shouldExpand) return inputSecret.value;
 
     const expandedSecretValue = await recursivelyExpandSecret(inputSecret);
@@ -338,6 +354,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
 
 export const decryptSecretRaw = (
   secret: TSecrets & {
+    secretValueHidden: boolean;
     workspace: string;
     environment: string;
     secretPath: string;
@@ -356,12 +373,14 @@ export const decryptSecretRaw = (
     key
   });
 
-  const secretValue = decryptSymmetric128BitHexKeyUTF8({
-    ciphertext: secret.secretValueCiphertext,
-    iv: secret.secretValueIV,
-    tag: secret.secretValueTag,
-    key
-  });
+  const secretValue = !secret.secretValueHidden
+    ? decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretValueCiphertext,
+        iv: secret.secretValueIV,
+        tag: secret.secretValueTag,
+        key
+      })
+    : INFISICAL_SECRET_VALUE_HIDDEN_MASK;
 
   let secretComment = "";
 
@@ -379,6 +398,7 @@ export const decryptSecretRaw = (
     secretPath: secret.secretPath,
     workspace: secret.workspace,
     environment: secret.environment,
+    secretValueHidden: secret.secretValueHidden,
     secretValue,
     secretComment,
     version: secret.version,
@@ -442,7 +462,18 @@ export const fnSecretBlindIndexCheckV2 = async ({
  * // ]
  */
 export const getAllNestedSecretReferences = (maybeSecretReference: string) => {
-  const references = Array.from(maybeSecretReference.matchAll(INTERPOLATION_SYNTAX_REG), (m) => m[1]);
+  const matches = [];
+  let match;
+
+  const execRegex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
+
+  // eslint-disable-next-line no-cond-assign
+  while ((match = execRegex.exec(maybeSecretReference)) !== null) {
+    matches.push(match);
+  }
+
+  const references = matches.map((m) => m[1]);
+
   return references
     .filter((el) => el.includes("."))
     .map((el) => {
@@ -573,6 +604,7 @@ export const fnSecretBulkInsert = async ({
       [`${TableName.Secret}Id` as const]: newSecretGroupByBlindIndex[secretBlindIndex as string][0].id
     }))
   );
+
   const secretVersions = await secretVersionDAL.insertMany(
     sanitizedInputSecrets.map((el) => ({
       ...el,
@@ -745,7 +777,8 @@ export const createManySecretsRawFnFactory = ({
   secretVersionV2BridgeDAL,
   secretV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
-  kmsService
+  kmsService,
+  resourceMetadataDAL
 }: TCreateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const createManySecretsRawFn = async ({
@@ -756,7 +789,7 @@ export const createManySecretsRawFnFactory = ({
     userId
   }: TCreateManySecretsRawFn) => {
     const { botKey, shouldUseSecretV2Bridge } = await getBotKeyFn(projectId);
-
+    const project = await projectDAL.findById(projectId);
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
       throw new NotFoundError({
@@ -810,7 +843,9 @@ export const createManySecretsRawFnFactory = ({
             tagIds: el.tags
           })),
           folderId,
+          orgId: project.orgId,
           secretDAL: secretV2BridgeDAL,
+          resourceMetadataDAL,
           secretVersionDAL: secretVersionV2BridgeDAL,
           secretTagDAL,
           secretVersionTagDAL: secretVersionTagV2BridgeDAL,
@@ -905,6 +940,7 @@ export const updateManySecretsRawFnFactory = ({
   secretVersionTagV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretV2BridgeDAL,
+  resourceMetadataDAL,
   kmsService
 }: TUpdateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
@@ -916,6 +952,7 @@ export const updateManySecretsRawFnFactory = ({
     userId
   }: TUpdateManySecretsRawFn): Promise<Array<{ id: string }>> => {
     const { botKey, shouldUseSecretV2Bridge } = await getBotKeyFn(projectId);
+    const project = await projectDAL.findById(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -984,11 +1021,13 @@ export const updateManySecretsRawFnFactory = ({
       const updatedSecrets = await secretDAL.transaction(async (tx) =>
         fnSecretV2BridgeBulkUpdate({
           folderId,
+          orgId: project.orgId,
           tx,
           inputSecrets: inputSecrets.map((el) => ({
             filter: { id: secretsToUpdateInDBGroupedByKey[el.key][0].id, type: SecretType.Shared },
             data: el
           })),
+          resourceMetadataDAL,
           secretDAL: secretV2BridgeDAL,
           secretVersionDAL: secretVersionV2BridgeDAL,
           secretTagDAL,
@@ -1136,5 +1175,71 @@ export const decryptSecretWithBot = (
     secretKey,
     secretValue,
     secretComment
+  };
+};
+
+type TFnDeleteProjectSecretReminders = {
+  secretDAL: Pick<TSecretDALFactory, "find">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
+  queueService: Pick<TQueueServiceFactory, "stopRepeatableJob">;
+  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
+};
+
+export const fnDeleteProjectSecretReminders = async (
+  projectId: string,
+  { secretDAL, secretV2BridgeDAL, queueService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders
+) => {
+  const projectFolders = await folderDAL.findByProjectId(projectId);
+  const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId, false);
+
+  const projectSecrets = shouldUseSecretV2Bridge
+    ? await secretV2BridgeDAL.find({
+        $in: { folderId: projectFolders.map((folder) => folder.id) },
+        $notNull: ["reminderRepeatDays"]
+      })
+    : await secretDAL.find({
+        $in: { folderId: projectFolders.map((folder) => folder.id) },
+        $notNull: ["secretReminderRepeatDays"]
+      });
+
+  const appCfg = getConfig();
+  for await (const secret of projectSecrets) {
+    const repeatDays = shouldUseSecretV2Bridge
+      ? (secret as { reminderRepeatDays: number }).reminderRepeatDays
+      : (secret as { secretReminderRepeatDays: number }).secretReminderRepeatDays;
+
+    // We're using the queue service directly to get around conflicting imports.
+    if (repeatDays) {
+      await queueService.stopRepeatableJob(
+        QueueName.SecretReminder,
+        QueueJobs.SecretReminder,
+        {
+          // on prod it this will be in days, in development this will be second
+          every: appCfg.NODE_ENV === "development" ? secondsToMillis(repeatDays) : daysToMillisecond(repeatDays)
+        },
+        `reminder-${secret.id}`
+      );
+    }
+  }
+};
+
+export const conditionallyHideSecretValue = (
+  shouldHideValue: boolean,
+  {
+    secretValueCiphertext,
+    secretValueIV,
+    secretValueTag
+  }: {
+    secretValueCiphertext: string;
+    secretValueIV: string;
+    secretValueTag: string;
+  }
+) => {
+  return {
+    secretValueCiphertext: shouldHideValue ? INFISICAL_SECRET_VALUE_HIDDEN_MASK : secretValueCiphertext,
+    secretValueIV: shouldHideValue ? INFISICAL_SECRET_VALUE_HIDDEN_MASK : secretValueIV,
+    secretValueTag: shouldHideValue ? INFISICAL_SECRET_VALUE_HIDDEN_MASK : secretValueTag,
+    secretValueHidden: shouldHideValue
   };
 };

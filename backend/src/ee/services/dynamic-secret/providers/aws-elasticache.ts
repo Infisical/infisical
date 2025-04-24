@@ -13,6 +13,7 @@ import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { DynamicSecretAwsElastiCacheSchema, TDynamicProviderFns } from "./models";
 
@@ -80,7 +81,7 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
     }
   };
 
-  const addUserToInfisicalGroup = async (userId: string) => {
+  const $addUserToInfisicalGroup = async (userId: string) => {
     // figure out if the default user is already in the group, if it is, then we shouldn't add it again
 
     const addUserToGroupCommand = new ModifyUserGroupCommand({
@@ -96,7 +97,7 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
     await ensureInfisicalGroupExists(clusterName);
 
     await elastiCache.send(new CreateUserCommand(creationInput)); // First create the user
-    await addUserToInfisicalGroup(creationInput.UserId); // Then add the user to the group. We know the group is already a part of the cluster because of ensureInfisicalGroupExists()
+    await $addUserToInfisicalGroup(creationInput.UserId); // Then add the user to the group. We know the group is already a part of the cluster because of ensureInfisicalGroupExists()
 
     return {
       userId: creationInput.UserId,
@@ -127,7 +128,7 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
 };
 
 const generatePassword = () => {
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 64)();
 };
 
@@ -144,6 +145,14 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
     // We can't return the parsed statements here because we need to use the handlebars template to generate the username and password, before we can use the parsed statements.
     CreateElastiCacheUserSchema.parse(JSON.parse(providerInputs.creationStatement));
     DeleteElasticCacheUserSchema.parse(JSON.parse(providerInputs.revocationStatement));
+    validateHandlebarTemplate("AWS ElastiCache creation", providerInputs.creationStatement, {
+      allowedExpressions: (val) => ["username", "password", "expiration"].includes(val)
+    });
+    if (providerInputs.revocationStatement) {
+      validateHandlebarTemplate("AWS ElastiCache revoke", providerInputs.revocationStatement, {
+        allowedExpressions: (val) => ["username"].includes(val)
+      });
+    }
 
     return providerInputs;
   };
@@ -211,8 +220,8 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
     return { entityId };
   };
 
-  const renew = async (inputs: unknown, entityId: string) => {
-    // Do nothing
+  const renew = async (_inputs: unknown, entityId: string) => {
+    // No renewal necessary
     return { entityId };
   };
 

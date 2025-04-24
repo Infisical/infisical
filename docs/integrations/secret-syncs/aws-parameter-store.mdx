@@ -1,0 +1,146 @@
+---
+title: "AWS Parameter Store Sync"
+description: "Learn how to configure an AWS Parameter Store Sync for Infisical."
+---
+
+**Prerequisites:**
+
+        - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
+        - Create an [AWS Connection](/integrations/app-connections/aws) with the required **Secret Sync** permissions
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+        ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+
+        2. Select the **AWS Parameter Store** option.
+        ![Select AWS Parameter Store](/images/secret-syncs/aws-parameter-store/select-aws-parameter-store-option.png)
+
+        3. Configure the **Source** from where secrets should be retrieved, then click **Next**.
+        ![Configure Source](/images/secret-syncs/aws-parameter-store/aws-parameter-store-source.png)
+
+            - **Environment**: The project environment to retrieve secrets from.
+            - **Secret Path**: The folder path to retrieve secrets from.
+
+        <Tip>
+            If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+        </Tip>
+
+        4. Configure the **Destination** to where secrets should be deployed, then click **Next**.
+        ![Configure Destination](/images/secret-syncs/aws-parameter-store/aws-parameter-store-destination.png)
+
+            - **AWS Connection**: The AWS Connection to authenticate with.
+            - **Region**: The AWS region to deploy secrets to.
+            - **Path**: The AWS Parameter Store path to deploy secrets to.
+
+        5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
+        ![Configure Options](/images/secret-syncs/aws-parameter-store/aws-parameter-store-options.png)
+
+            - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
+                - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
+                - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Parameter Store when keys conflict.
+                - **Import Secrets (Prioritize AWS Parameter Store)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Parameter Store over Infisical when keys conflict.
+            - **KMS Key**: The AWS KMS key ID or alias to encrypt parameters with.
+            - **Tags**: Optional resource tags to add to parameters synced by Infisical.
+            - **Sync Secret Metadata as Resource Tags**: If enabled, metadata attached to secrets will be added as resource tags to parameters synced by Infisical.
+            <Note>
+                Manually configured tags from the **Tags** field will take precedence over secret metadata when tag keys conflict.
+            </Note>
+            - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+            - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
+
+        6. Configure the **Details** of your Parameter Store Sync, then click **Next**.
+        ![Configure Details](/images/secret-syncs/aws-parameter-store/aws-parameter-store-details.png)
+
+            - **Name**: The name of your sync. Must be slug-friendly.
+            - **Description**: An optional description for your sync.
+
+        7. Review your Parameter Store Sync configuration, then click **Create Sync**.
+        ![Confirm Configuration](/images/secret-syncs/aws-parameter-store/aws-parameter-store-review.png)
+
+        8. If enabled, your Parameter Store Sync will begin syncing your secrets to the destination endpoint.
+        ![Sync Secrets](/images/secret-syncs/aws-parameter-store/aws-parameter-store-created.png)
+
+    </Tab>
+    <Tab title="API">
+        To create an **AWS Parameter Store Sync**, make an API request to the [Create AWS
+        Parameter Store Sync](/api-reference/endpoints/secret-syncs/aws-parameter-store/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+        --url https://app.infisical.com/api/v1/secret-syncs/aws-parameter-store \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-parameter-store-sync",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "an example sync",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "environment": "dev",
+            "secretPath": "/my-secrets",
+            "isEnabled": true,
+            "syncOptions": {
+                "initialSyncBehavior": "overwrite-destination"
+            },
+            "destinationConfig": {
+                "region": "us-east-1",
+                "path": "/my-aws/path/"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-parameter-store-sync",
+                "description": "an example sync",
+                "isEnabled": true,
+                "version": 1,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "syncStatus": "succeeded",
+                "lastSyncJobId": "123",
+                "lastSyncMessage": null,
+                "lastSyncedAt": "2023-11-07T05:31:56Z",
+                "importStatus": null,
+                "lastImportJobId": null,
+                "lastImportMessage": null,
+                "lastImportedAt": null,
+                "removeStatus": null,
+                "lastRemoveJobId": null,
+                "lastRemoveMessage": null,
+                "lastRemovedAt": null,
+                "syncOptions": {
+                    "initialSyncBehavior": "overwrite-destination"
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connection": {
+                    "app": "aws",
+                    "name": "my-aws-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/my-secrets"
+                },
+                "destination": "aws-parameter-store",
+                "destinationConfig": {
+                    "region": "us-east-1",
+                    "path": "/my-aws/path/"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

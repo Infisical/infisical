@@ -1,10 +1,22 @@
 import { z } from "zod";
 
+export type PasswordRequirements = {
+  length: number;
+  required: {
+    lowercase: number;
+    uppercase: number;
+    digits: number;
+    symbols: number;
+  };
+  allowedSymbols?: string;
+};
+
 export enum SqlProviders {
   Postgres = "postgres",
   MySQL = "mysql2",
   Oracle = "oracledb",
-  MsSQL = "mssql"
+  MsSQL = "mssql",
+  SapAse = "sap-ase"
 }
 
 export enum ElasticSearchAuthTypes {
@@ -15,6 +27,17 @@ export enum ElasticSearchAuthTypes {
 export enum LdapCredentialType {
   Dynamic = "dynamic",
   Static = "static"
+}
+
+export enum TotpConfigType {
+  URL = "url",
+  MANUAL = "manual"
+}
+
+export enum TotpAlgorithm {
+  SHA1 = "sha1",
+  SHA256 = "sha256",
+  SHA512 = "sha512"
 }
 
 export const DynamicSecretRedisDBSchema = z.object({
@@ -88,10 +111,33 @@ export const DynamicSecretSqlDBSchema = z.object({
   database: z.string().trim(),
   username: z.string().trim(),
   password: z.string().trim(),
+  passwordRequirements: z
+    .object({
+      length: z.number().min(1).max(250),
+      required: z
+        .object({
+          lowercase: z.number().min(0),
+          uppercase: z.number().min(0),
+          digits: z.number().min(0),
+          symbols: z.number().min(0)
+        })
+        .refine((data) => {
+          const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+          return total <= 250;
+        }, "Sum of required characters cannot exceed 250"),
+      allowedSymbols: z.string().optional()
+    })
+    .refine((data) => {
+      const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
+      return total <= data.length;
+    }, "Sum of required characters cannot exceed the total length")
+    .optional()
+    .describe("Password generation requirements"),
   creationStatement: z.string().trim(),
   revocationStatement: z.string().trim(),
   renewStatement: z.string().trim().optional(),
-  ca: z.string().optional()
+  ca: z.string().optional(),
+  projectGatewayId: z.string().nullable().optional()
 });
 
 export const DynamicSecretCassandraSchema = z.object({
@@ -105,6 +151,16 @@ export const DynamicSecretCassandraSchema = z.object({
   revocationStatement: z.string().trim(),
   renewStatement: z.string().trim().optional(),
   ca: z.string().optional()
+});
+
+export const DynamicSecretSapAseSchema = z.object({
+  host: z.string().trim().toLowerCase(),
+  port: z.number(),
+  database: z.string().trim(),
+  username: z.string().trim(),
+  password: z.string().trim(),
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim()
 });
 
 export const DynamicSecretAwsIamSchema = z.object({
@@ -221,6 +277,34 @@ export const LdapSchema = z.union([
   })
 ]);
 
+export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
+  z.object({
+    configType: z.literal(TotpConfigType.URL),
+    url: z
+      .string()
+      .url()
+      .trim()
+      .min(1)
+      .refine((val) => {
+        const urlObj = new URL(val);
+        const secret = urlObj.searchParams.get("secret");
+
+        return Boolean(secret);
+      }, "OTP URL must contain secret field")
+  }),
+  z.object({
+    configType: z.literal(TotpConfigType.MANUAL),
+    secret: z
+      .string()
+      .trim()
+      .min(1)
+      .transform((val) => val.replace(/\s+/g, "")),
+    period: z.number().optional(),
+    algorithm: z.nativeEnum(TotpAlgorithm).optional(),
+    digits: z.number().optional()
+  })
+]);
+
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
   Cassandra = "cassandra",
@@ -234,12 +318,15 @@ export enum DynamicSecretProviders {
   AzureEntraID = "azure-entra-id",
   Ldap = "ldap",
   SapHana = "sap-hana",
-  Snowflake = "snowflake"
+  Snowflake = "snowflake",
+  Totp = "totp",
+  SapAse = "sap-ase"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.SqlDatabase), inputs: DynamicSecretSqlDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Cassandra), inputs: DynamicSecretCassandraSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.SapAse), inputs: DynamicSecretSapAseSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.AwsIam), inputs: DynamicSecretAwsIamSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Redis), inputs: DynamicSecretRedisDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.SapHana), inputs: DynamicSecretSapHanaSchema }),
@@ -250,7 +337,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.RabbitMq), inputs: DynamicSecretRabbitMqSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.AzureEntraID), inputs: AzureEntraIDSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Ldap), inputs: LdapSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema })
 ]);
 
 export type TDynamicProviderFns = {

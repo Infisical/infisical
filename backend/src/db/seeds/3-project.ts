@@ -4,7 +4,7 @@ import { Knex } from "knex";
 
 import { encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 
-import { ProjectMembershipRole, SecretEncryptionAlgo, SecretKeyEncoding, TableName } from "../schemas";
+import { ProjectMembershipRole, ProjectType, SecretEncryptionAlgo, SecretKeyEncoding, TableName } from "../schemas";
 import { buildUserProjectKey, getUserPrivateKey, seedData1 } from "../seed-data";
 
 export const DEFAULT_PROJECT_ENVS = [
@@ -24,6 +24,7 @@ export async function seed(knex: Knex): Promise<void> {
       name: seedData1.project.name,
       orgId: seedData1.organization.id,
       slug: "first-project",
+      type: ProjectType.SecretManager,
       // eslint-disable-next-line
       // @ts-ignore
       id: seedData1.project.id

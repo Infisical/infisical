@@ -4,6 +4,66 @@ title: "Changelog"
 
 The changelog below reflects new product developments and updates on a monthly basis.
 
+## March 2025
+
+- Released [Infisical Gateway](https://infisical.com/docs/documentation/platform/gateways/overview) for secure access to private resources without needing direct inbound connections to private networks.
+- Enhanced [Terraform](https://infisical.com/docs/integrations/frameworks/terraform#terraform) capabilities with token authentication, ability to import existing Infisical secrets as resources, and support for project templates. 
+- Self-hosted improvements: Usage and billing visibility for enabled features, ability to delete users, and support for multiple super admins.
+- UI and UX updates: Improved secret import interface on the overview page, password reset without backup PDF.
+- CLI enhancements: Various improvements including multiline secret support and ability to pass headers.
+- Kubernetes operator updates: Auto-reloading for DaemonSets and StatefulSets (previously only Deployments), added support for ConfigMaps.
+- Implemented powerful [Access Control](https://infisical.com/docs/documentation/platform/access-controls/overview#access-controls) updates including \"**Grant Privileges**\" feature for designating specific users for policy management, **Access Tree** visualization for simulating permissions, and ability to restrict scope of secret sharing within organizations.
+- Released new **Secret Requests** feature under Secret Share, added support for reminders with webhook triggers and implementing password policies for dynamic secrets. 
+- Enhanced secret version history to show who made changes.
+- New integrations and syncs: **Crossplane** provider, **Humanitec** secret sync, **Airflow** system integration
+- Performed significant performance optimizations including a 50% reduction in database usage and optimized client secret handling for universal auth.
+- Enhanced security features with ability to add custom instance banners (useful for regulated industries), short-lived tokens for Kubernetes auth, and OIDC claim passing from machine identity login to permissions.
+- [Golang SDK](https://infisical.com/docs/sdks/languages/go#infisical-go-sdk): New API added for enhanced functionality
+- Added capability to programmatically configure an Infisical instance from start to finish without UI interaction.
+
+## February 2025
+
+- Released [KMIP integration](https://infisical.com/docs/documentation/platform/kms/kmip) with PKI structure, auth model integration with machine identities, complete set of client operations, and client certificate authentication flow.
+- Added new [AWS App Connection](https://infisical.com/docs/integrations/app-connections/aws) and [Secret Sync](https://infisical.com/docs/integrations/secret-syncs/aws-secrets-manager) functionality for enhanced AWS integration.
+- Released new [Azure Key Vault App Connection](https://infisical.com/docs/integrations/app-connections/azure-key-vault) and [Secret Sync](https://infisical.com/docs/integrations/secret-syncs/azure-key-vault), plus Terraform provider support.
+- Introduced more comprehensive logging with detailed records for secret sharing and metadata in audit logs.
+- Introduced new [permission types](https://infisical.com/docs/internals/permissions/project-permissions#subject-secrets): \"View Value\" vs \"Describe Value\" for more granular access control over secrets.
+- Updated encryption logic with unified approach for all platform data, ensuring consistency across the system.
+- Added support for [OIDC group mapping](https://infisical.com/docs/documentation/platform/sso/general-oidc) to automatically map groups to Infisical for role-based access control.
+- Added [Terraform Cloud support for OIDC](https://infisical.com/docs/documentation/platform/identities/oidc-auth/terraform-cloud#terraform-cloud).
+
+## January 2025
+
+- Released new integration architecture with decoupled authentication, replacing native integrations with [App Connections](https://infisical.com/docs/integrations/app-connections/overview) and [Secret Syncs](https://infisical.com/docs/integrations/secret-syncs/overview). Initial support for AWS Parameter Store, GitHub, and GCP Secret Manager with improved API and Terraform integration capabilities.
+- Added support for OIDC group mapping in [Keycloak](https://infisical.com/docs/documentation/platform/sso/keycloak-oidc/overview), enabling automatic mapping of Keycloak groups to Infisical for role-based access control.
+- Enhanced [Kubernetes operator](https://infisical.com/docs/integrations/platforms/kubernetes/overview#kubernetes-operator) with namespaced group support, bi-directional secret sync (push to Infisical), [dynamic secrets](https://infisical.com/docs/documentation/platform/dynamic-secrets/overview#dynamic-secrets) capabilities, and support for multiple operator instances.
+- Restructured navigation with dedicated sections for Secrets Management, [Certificate Management (PKI)](https://infisical.com/docs/documentation/platform/pki/overview), [Key Management (KMS)](https://infisical.com/docs/documentation/platform/kms/overview#key-management-service-kms), and [SSH Key Management](https://infisical.com/docs/documentation/platform/ssh).
+- Added [ephemeral Terraform resource](https://infisical.com/docs/integrations/frameworks/terraform#terraform-provider) support and improved secret sync architecture.
+- Released [.NET provider](https://github.com/Infisical/infisical-dotnet-configuration) with first-party Azure authentication support and Azure CLI integration.
+- Implemented secret Access Visibility allowing users to view all entities with access to specific secrets in the secret side panel.
+- Added secret filtering by metadata and SSH assigned certificates (Version 1).
+
+## December 2024
+- Added [GCP KMS](https://infisical.com/docs/documentation/platform/kms/overview) integration support.
+- Added support for [K8s CSI integration](https://infisical.com/docs/integrations/platforms/kubernetes-csi) and ability to point K8s operator to specific secret versions.
+- Fixed [Java SDK](https://github.com/Infisical/java-sdk) compatibility issues with Alpine Linux.
+- Fixed SCIM group role assignment issues.
+- Added Group View Page for improved team management.
+- Added instance URL to email verification for Infisical accounts.
+- Added ability to copy full path of nested folders.
+- Added custom templating support for K8s operator, allowing flexible secret key mapping and additional fields.
+- Optimized secrets versions table performance.
+
+## November 2024
+- Improved EnvKey migration functionality with support for Blocks, Inheritance, and Branches.
+- Added [Hardware Security Module (HSM) Encryption](https://infisical.com/docs/documentation/platform/kms/hsm-integration) support.
+- Updated permissions handling in [Infisical Terraform Provider](https://registry.terraform.io/providers/Infisical/infisical/latest/docs) to use lists instead of sets.
+- Enhanced [SCIM](https://infisical.com/docs/documentation/platform/scim/overview) implementation to remove SAML dependency.
+- Enhanced [OIDC Authentication](https://infisical.com/docs/documentation/platform/identities/oidc-auth/general) implementation and added Default Org Slug support.
+- Added support for multiple authentication methods per identity.
+- Added AWS Parameter Store integration sync improvements.
+- Added new screen and API for managing additional privileges.
+- Added Dynamic Secrets support for SQL Server.
 
 ## October 2024
 - Significantly improved performance of audit log operations in UI. 
@@ -113,7 +173,7 @@ The changelog below reflects new product developments and updates on a monthly b
 
 - Replaced internal [Winston](https://github.com/winstonjs/winston) with [Pino](https://github.com/pinojs/pino) logging library with external logging to AWS CloudWatch
 - Added admin panel to self-hosting experience.
-- Released [secret rotation](https://infisical.com/docs/documentation/platform/secret-rotation/overview) feature with preliminary support for rotating [SendGrid](https://infisical.com/docs/documentation/platform/secret-rotation/sendgrid), [PostgreSQL/CockroachDB](https://infisical.com/docs/documentation/platform/secret-rotation/postgres), and [MySQL/MariaDB](https://infisical.com/docs/documentation/platform/secret-rotation/mysql) credentials.
+- Released [secret rotation](https://infisical.com/docs/documentation/platform/secret-rotation/overview) feature with preliminary support for rotating [SendGrid](https://infisical.com/docs/documentation/platform/secret-rotation/sendgrid), [PostgreSQL/CockroachDB](https://infisical.com/docs/documentation/platform/secret-rotation/postgres-credentials), and [MySQL/MariaDB](https://infisical.com/docs/documentation/platform/secret-rotation/mysql) credentials.
 - Released secret reminders feature.
 
 ## Oct 2023

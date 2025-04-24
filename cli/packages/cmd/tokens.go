@@ -13,7 +13,6 @@ import (
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/util"
-	"github.com/go-resty/resty/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +40,7 @@ var tokensCreateCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// get plain text workspace key
-		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 
 		if err != nil {
 			util.HandleError(err, "Unable to retrieve your logged in your details. Please login in then try again")
@@ -136,7 +135,11 @@ var tokensCreateCmd = &cobra.Command{
 		}
 
 		// make a call to the api to save the encrypted symmetric key details
-		httpClient := resty.New()
+		httpClient, err := util.GetRestyClientWithCustomHeaders()
+		if err != nil {
+			util.HandleError(err, "Unable to get resty client with custom headers")
+		}
+
 		httpClient.SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken).
 			SetHeader("Accept", "application/json")
 

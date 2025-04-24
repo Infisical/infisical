@@ -3,6 +3,7 @@ export {
   useDeleteGroupFromWorkspace,
   useLeaveProject,
   useMigrateProjectToV3,
+  useRequestProjectAccess,
   useUpdateGroupWorkspaceRole
 } from "./mutations";
 export {
@@ -32,11 +33,17 @@ export {
   useListWorkspaceGroups,
   useListWorkspacePkiAlerts,
   useListWorkspacePkiCollections,
+  useListWorkspaceSshCas,
+  useListWorkspaceSshCertificates,
+  useListWorkspaceSshCertificateTemplates,
+  useListWorkspaceSshHosts,
   useNameWorkspaceSecrets,
-  useRenameWorkspace,
+  useSearchProjects,
   useToggleAutoCapitalization,
   useUpdateIdentityWorkspaceRole,
+  useUpdateProject,
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment,
-  useUpgradeProject} from "./queries";
+  useUpgradeProject
+} from "./queries";
 export { workspaceKeys } from "./query-keys";

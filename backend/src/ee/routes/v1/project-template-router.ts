@@ -1,4 +1,3 @@
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectTemplatesSchema } from "@app/db/schemas";
@@ -6,23 +5,14 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { ProjectTemplateDefaultEnvironments } from "@app/ee/services/project-template/project-template-constants";
 import { isInfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
-import { ProjectTemplates } from "@app/lib/api-docs";
+import { ApiDocsTags, ProjectTemplates } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
+import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const MAX_JSON_SIZE_LIMIT_IN_BYTES = 32_768;
-
-const SlugSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(32)
-  .refine((val) => val.toLowerCase() === val, "Must be lowercase")
-  .refine((v) => slugify(v) === v, {
-    message: "Must be valid slug format"
-  });
 
 const isReservedRoleSlug = (slug: string) =>
   Object.values(ProjectMembershipRole).includes(slug as ProjectMembershipRole);
@@ -34,14 +24,14 @@ const SanitizedProjectTemplateSchema = ProjectTemplatesSchema.extend({
   roles: z
     .object({
       name: z.string().trim().min(1),
-      slug: SlugSchema,
+      slug: slugSchema(),
       permissions: UnpackedPermissionSchema.array()
     })
     .array(),
   environments: z
     .object({
       name: z.string().trim().min(1),
-      slug: SlugSchema,
+      slug: slugSchema(),
       position: z.number().min(1)
     })
     .array()
@@ -50,7 +40,7 @@ const SanitizedProjectTemplateSchema = ProjectTemplatesSchema.extend({
 const ProjectTemplateRolesSchema = z
   .object({
     name: z.string().trim().min(1),
-    slug: SlugSchema,
+    slug: slugSchema(),
     permissions: ProjectPermissionV2Schema.array()
   })
   .array()
@@ -78,7 +68,7 @@ const ProjectTemplateRolesSchema = z
 const ProjectTemplateEnvironmentsSchema = z
   .object({
     name: z.string().trim().min(1),
-    slug: SlugSchema,
+    slug: slugSchema(),
     position: z.number().min(1)
   })
   .array()
@@ -111,6 +101,8 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectTemplates],
       description: "List project templates for the current organization.",
       response: {
         200: z.object({
@@ -147,6 +139,8 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectTemplates],
       description: "Get a project template by ID.",
       params: z.object({
         templateId: z.string().uuid()
@@ -186,11 +180,15 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectTemplates],
       description: "Create a project template.",
       body: z.object({
-        name: SlugSchema.refine((val) => !isInfisicalProjectTemplate(val), {
-          message: `The requested project template name is reserved.`
-        }).describe(ProjectTemplates.CREATE.name),
+        name: slugSchema({ field: "name" })
+          .refine((val) => !isInfisicalProjectTemplate(val), {
+            message: `The requested project template name is reserved.`
+          })
+          .describe(ProjectTemplates.CREATE.name),
         description: z.string().max(256).trim().optional().describe(ProjectTemplates.CREATE.description),
         roles: ProjectTemplateRolesSchema.default([]).describe(ProjectTemplates.CREATE.roles),
         environments: ProjectTemplateEnvironmentsSchema.default(ProjectTemplateDefaultEnvironments).describe(
@@ -227,12 +225,15 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectTemplates],
       description: "Update a project template.",
       params: z.object({ templateId: z.string().uuid().describe(ProjectTemplates.UPDATE.templateId) }),
       body: z.object({
-        name: SlugSchema.refine((val) => !isInfisicalProjectTemplate(val), {
-          message: `The requested project template name is reserved.`
-        })
+        name: slugSchema({ field: "name" })
+          .refine((val) => !isInfisicalProjectTemplate(val), {
+            message: `The requested project template name is reserved.`
+          })
           .optional()
           .describe(ProjectTemplates.UPDATE.name),
         description: z.string().max(256).trim().optional().describe(ProjectTemplates.UPDATE.description),
@@ -276,6 +277,8 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectTemplates],
       description: "Delete a project template.",
       params: z.object({ templateId: z.string().uuid().describe(ProjectTemplates.DELETE.templateId) }),
 

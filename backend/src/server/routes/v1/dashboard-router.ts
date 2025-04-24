@@ -1,12 +1,10 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { SecretFoldersSchema, SecretImportsSchema, SecretTagsSchema } from "@app/db/schemas";
+import { SecretFoldersSchema, SecretImportsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import {
-  ProjectPermissionDynamicSecretActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
+import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
 import { DASHBOARD } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -15,26 +13,18 @@ import { secretsLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedDynamicSecretSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
+import {
+  booleanSchema,
+  SanitizedDynamicSecretSchema,
+  SanitizedTagSchema,
+  secretRawSchema
+} from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
-
-// handle querystring boolean values
-const booleanSchema = z
-  .union([z.boolean(), z.string().trim()])
-  .transform((value) => {
-    if (typeof value === "string") {
-      // ie if not empty, 0 or false, return true
-      return Boolean(value) && Number(value) !== 0 && value.toLowerCase() !== "false";
-    }
-
-    return value;
-  })
-  .optional()
-  .default(true);
 
 const parseSecretPathSearch = (search?: string) => {
   if (!search)
@@ -107,21 +97,70 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         search: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.search).optional(),
         includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecrets),
         includeFolders: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeFolders),
+        includeImports: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeImports),
+        includeSecretRotations: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecretRotations),
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeDynamicSecrets)
       }),
       response: {
         200: z.object({
           folders: SecretFoldersSchema.extend({ environment: z.string() }).array().optional(),
           dynamicSecrets: SanitizedDynamicSecretSchema.extend({ environment: z.string() }).array().optional(),
+          secretRotations: z
+            .intersection(
+              SecretRotationV2Schema,
+              z.object({
+                secrets: secretRawSchema
+                  .extend({
+                    secretValueHidden: z.boolean(),
+                    secretPath: z.string().optional(),
+                    secretMetadata: ResourceMetadataSchema.optional(),
+                    tags: SanitizedTagSchema.array().optional()
+                  })
+                  .nullable()
+                  .array()
+              })
+            )
+            .array()
+            .optional(),
           secrets: secretRawSchema
             .extend({
+              secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
-              tags: SecretTagsSchema.pick({
-                id: true,
-                slug: true,
-                color: true
-              })
-                .extend({ name: z.string() })
+              secretMetadata: ResourceMetadataSchema.optional(),
+              tags: SanitizedTagSchema.array().optional()
+            })
+            .array()
+            .optional(),
+          imports: SecretImportsSchema.omit({ importEnv: true })
+            .extend({
+              importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() }),
+              environment: z.string()
+            })
+            .array()
+            .optional(),
+          importedByEnvs: z
+            .object({
+              environment: z.string(),
+              importedBy: z
+                .object({
+                  environment: z.object({
+                    name: z.string(),
+                    slug: z.string()
+                  }),
+                  folders: z
+                    .object({
+                      name: z.string(),
+                      isImported: z.boolean(),
+                      secrets: z
+                        .object({
+                          secretId: z.string(),
+                          referencedSecretKey: z.string()
+                        })
+                        .array()
+                        .optional()
+                    })
+                    .array()
+                })
                 .array()
                 .optional()
             })
@@ -130,6 +169,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           totalFolderCount: z.number().optional(),
           totalDynamicSecretCount: z.number().optional(),
           totalSecretCount: z.number().optional(),
+          totalImportCount: z.number().optional(),
+          totalSecretRotationCount: z.number().optional(),
           totalCount: z.number()
         })
       }
@@ -146,7 +187,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         orderDirection,
         includeFolders,
         includeSecrets,
-        includeDynamicSecrets
+        includeImports,
+        includeDynamicSecrets,
+        includeSecretRotations
       } = req.query;
 
       const environments = req.query.environments.split(",");
@@ -162,15 +205,67 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       let remainingLimit = limit;
       let adjustedOffset = offset;
 
+      let imports: Awaited<ReturnType<typeof server.services.secretImport.getImportsMultiEnv>> | undefined;
       let folders: Awaited<ReturnType<typeof server.services.folder.getFoldersMultiEnv>> | undefined;
       let secrets: Awaited<ReturnType<typeof server.services.secret.getSecretsRawMultiEnv>> | undefined;
       let dynamicSecrets:
         | Awaited<ReturnType<typeof server.services.dynamicSecret.listDynamicSecretsByEnvs>>
         | undefined;
+      let secretRotations:
+        | Awaited<ReturnType<typeof server.services.secretRotationV2.getDashboardSecretRotations>>
+        | undefined;
 
       let totalFolderCount: number | undefined;
       let totalDynamicSecretCount: number | undefined;
       let totalSecretCount: number | undefined;
+      let totalImportCount: number | undefined;
+      let totalSecretRotationCount: number | undefined;
+
+      if (includeImports) {
+        totalImportCount = await server.services.secretImport.getProjectImportMultiEnvCount({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          projectId,
+          environments,
+          path: secretPath,
+          search
+        });
+
+        if (remainingLimit > 0 && totalImportCount > adjustedOffset) {
+          imports = await server.services.secretImport.getImportsMultiEnv({
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            actorAuthMethod: req.permission.authMethod,
+            actorOrgId: req.permission.orgId,
+            projectId,
+            environments,
+            path: secretPath,
+            search,
+            limit: remainingLimit,
+            offset: adjustedOffset
+          });
+
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            projectId: req.query.projectId,
+            event: {
+              type: EventType.GET_SECRET_IMPORTS,
+              metadata: {
+                environment: environments.join(","),
+                folderId: imports?.[0]?.folderId,
+                numberOfImports: imports.length
+              }
+            }
+          });
+
+          remainingLimit -= imports.length;
+          adjustedOffset = 0;
+        } else {
+          adjustedOffset = Math.max(0, adjustedOffset - totalImportCount);
+        }
+      }
 
       if (includeFolders) {
         // this is the unique count, ie duplicate folders across envs only count as 1
@@ -218,23 +313,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           totalCount: totalFolderCount ?? 0
         };
 
-      const { permission } = await server.services.permission.getProjectPermission(
-        req.permission.type,
-        req.permission.id,
-        projectId,
-        req.permission.authMethod,
-        req.permission.orgId
-      );
-
-      const allowedDynamicSecretEnvironments = // filter envs user has access to
-        environments.filter((environment) =>
-          permission.can(
-            ProjectPermissionDynamicSecretActions.Lease,
-            subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })
-          )
-        );
-
-      if (includeDynamicSecrets && allowedDynamicSecretEnvironments.length) {
+      if (includeDynamicSecrets) {
         // this is the unique count, ie duplicate secrets across envs only count as 1
         totalDynamicSecretCount = await server.services.dynamicSecret.getCountMultiEnv({
           actor: req.permission.type,
@@ -243,7 +322,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           actorOrgId: req.permission.orgId,
           projectId,
           search,
-          environmentSlugs: allowedDynamicSecretEnvironments,
+          environmentSlugs: environments,
           path: secretPath,
           isInternal: true
         });
@@ -258,7 +337,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             search,
             orderBy,
             orderDirection,
-            environmentSlugs: allowedDynamicSecretEnvironments,
+            environmentSlugs: environments,
             path: secretPath,
             limit: remainingLimit,
             offset: adjustedOffset,
@@ -272,6 +351,56 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           adjustedOffset = 0;
         } else {
           adjustedOffset = Math.max(0, adjustedOffset - totalDynamicSecretCount);
+        }
+      }
+
+      if (includeSecretRotations) {
+        totalSecretRotationCount = await server.services.secretRotationV2.getDashboardSecretRotationCount(
+          {
+            projectId,
+            search,
+            environments,
+            secretPath
+          },
+          req.permission
+        );
+
+        if (remainingLimit > 0 && totalSecretRotationCount > adjustedOffset) {
+          secretRotations = await server.services.secretRotationV2.getDashboardSecretRotations(
+            {
+              projectId,
+              search,
+              orderBy,
+              orderDirection,
+              environments,
+              secretPath,
+              limit: remainingLimit,
+              offset: adjustedOffset
+            },
+            req.permission
+          );
+
+          await server.services.auditLog.createAuditLog({
+            projectId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.GET_SECRET_ROTATIONS,
+              metadata: {
+                count: secretRotations.length,
+                rotationIds: secretRotations.map((rotation) => rotation.id),
+                secretPath,
+                environment: environments.join(",")
+              }
+            }
+          });
+
+          // get the count of unique secret rotation names to properly adjust remaining limit
+          const uniqueSecretRotationCount = new Set(secretRotations.map((rotation) => rotation.name)).size;
+
+          remainingLimit -= uniqueSecretRotationCount;
+          adjustedOffset = 0;
+        } else {
+          adjustedOffset = Math.max(0, adjustedOffset - totalSecretRotationCount);
         }
       }
 
@@ -291,6 +420,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
         if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
           secrets = await server.services.secret.getSecretsRawMultiEnv({
+            viewSecretValue: true,
             actorId: req.permission.id,
             actor: req.permission.type,
             actorOrgId: req.permission.orgId,
@@ -305,40 +435,68 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             offset: adjustedOffset,
             isInternal: true
           });
+        }
+      }
 
-          for await (const environment of environments) {
-            const secretCountFromEnv = secrets.filter((secret) => secret.environment === environment).length;
+      if (secrets?.length || secretRotations?.length) {
+        for await (const environment of environments) {
+          const secretCountFromEnv =
+            (secrets?.filter((secret) => secret.environment === environment).length ?? 0) +
+            (secretRotations
+              ?.filter((rotation) => rotation.environment.slug === environment)
+              .flatMap((rotation) => rotation.secrets.filter((secret) => Boolean(secret))).length ?? 0);
 
-            if (secretCountFromEnv) {
-              await server.services.auditLog.createAuditLog({
-                projectId,
-                ...req.auditLogInfo,
-                event: {
-                  type: EventType.GET_SECRETS,
-                  metadata: {
-                    environment,
-                    secretPath,
-                    numberOfSecrets: secretCountFromEnv
-                  }
+          if (secretCountFromEnv) {
+            await server.services.auditLog.createAuditLog({
+              projectId,
+              ...req.auditLogInfo,
+              event: {
+                type: EventType.GET_SECRETS,
+                metadata: {
+                  environment,
+                  secretPath,
+                  numberOfSecrets: secretCountFromEnv
+                }
+              }
+            });
+
+            if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
+              await server.services.telemetry.sendPostHogEvents({
+                event: PostHogEventTypes.SecretPulled,
+                distinctId: getTelemetryDistinctId(req),
+                properties: {
+                  numberOfSecrets: secretCountFromEnv,
+                  workspaceId: projectId,
+                  environment,
+                  secretPath,
+                  channel: getUserAgentType(req.headers["user-agent"]),
+                  ...req.auditLogInfo
                 }
               });
-
-              if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
-                await server.services.telemetry.sendPostHogEvents({
-                  event: PostHogEventTypes.SecretPulled,
-                  distinctId: getTelemetryDistinctId(req),
-                  properties: {
-                    numberOfSecrets: secretCountFromEnv,
-                    workspaceId: projectId,
-                    environment,
-                    secretPath,
-                    channel: getUserAgentType(req.headers["user-agent"]),
-                    ...req.auditLogInfo
-                  }
-                });
-              }
             }
           }
+        }
+      }
+
+      const importedByEnvs = [];
+
+      for await (const environment of environments) {
+        const importedBy = await server.services.secretImport.getFolderIsImportedBy({
+          path: secretPath,
+          environment,
+          projectId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          secrets: secrets?.filter((s) => s.environment === environment)
+        });
+
+        if (importedBy) {
+          importedByEnvs.push({
+            environment,
+            importedBy
+          });
         }
       }
 
@@ -346,10 +504,20 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         folders,
         dynamicSecrets,
         secrets,
+        imports,
+        secretRotations,
         totalFolderCount,
         totalDynamicSecretCount,
+        totalImportCount,
         totalSecretCount,
-        totalCount: (totalFolderCount ?? 0) + (totalDynamicSecretCount ?? 0) + (totalSecretCount ?? 0)
+        totalSecretRotationCount,
+        importedByEnvs,
+        totalCount:
+          (totalFolderCount ?? 0) +
+          (totalDynamicSecretCount ?? 0) +
+          (totalSecretCount ?? 0) +
+          (totalImportCount ?? 0) +
+          (totalSecretRotationCount ?? 0)
       };
     }
   });
@@ -390,10 +558,12 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_DETAILS_LIST.search).optional(),
         tags: z.string().trim().transform(decodeURIComponent).describe(DASHBOARD.SECRET_DETAILS_LIST.tags).optional(),
+        viewSecretValue: booleanSchema.default(true),
         includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecrets),
         includeFolders: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeFolders),
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeDynamicSecrets),
-        includeImports: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeImports)
+        includeImports: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeImports),
+        includeSecretRotations: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecretRotations)
       }),
       response: {
         200: z.object({
@@ -405,17 +575,29 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .optional(),
           folders: SecretFoldersSchema.array().optional(),
           dynamicSecrets: SanitizedDynamicSecretSchema.array().optional(),
+          secretRotations: z
+            .intersection(
+              SecretRotationV2Schema,
+              z.object({
+                secrets: secretRawSchema
+                  .extend({
+                    secretValueHidden: z.boolean(),
+                    secretPath: z.string().optional(),
+                    secretMetadata: ResourceMetadataSchema.optional(),
+                    tags: SanitizedTagSchema.array().optional()
+                  })
+                  .nullable()
+                  .array()
+              })
+            )
+            .array()
+            .optional(),
           secrets: secretRawSchema
             .extend({
+              secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
-              tags: SecretTagsSchema.pick({
-                id: true,
-                slug: true,
-                color: true
-              })
-                .extend({ name: z.string() })
-                .array()
-                .optional()
+              secretMetadata: ResourceMetadataSchema.optional(),
+              tags: SanitizedTagSchema.array().optional()
             })
             .array()
             .optional(),
@@ -423,6 +605,29 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           totalFolderCount: z.number().optional(),
           totalDynamicSecretCount: z.number().optional(),
           totalSecretCount: z.number().optional(),
+          importedBy: z
+            .object({
+              environment: z.object({
+                name: z.string(),
+                slug: z.string()
+              }),
+              folders: z
+                .object({
+                  name: z.string(),
+                  isImported: z.boolean(),
+                  secrets: z
+                    .object({
+                      secretId: z.string(),
+                      referencedSecretKey: z.string()
+                    })
+                    .array()
+                    .optional()
+                })
+                .array()
+            })
+            .array()
+            .optional(),
+          totalSecretRotationCount: z.number().optional(),
           totalCount: z.number()
         })
       }
@@ -441,7 +646,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeFolders,
         includeSecrets,
         includeDynamicSecrets,
-        includeImports
+        includeImports,
+        includeSecretRotations
       } = req.query;
 
       if (!projectId || !environment) throw new BadRequestError({ message: "Missing workspace id or environment" });
@@ -460,11 +666,15 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       let folders: Awaited<ReturnType<typeof server.services.folder.getFolders>> | undefined;
       let secrets: Awaited<ReturnType<typeof server.services.secret.getSecretsRaw>>["secrets"] | undefined;
       let dynamicSecrets: Awaited<ReturnType<typeof server.services.dynamicSecret.listDynamicSecretsByEnv>> | undefined;
+      let secretRotations:
+        | Awaited<ReturnType<typeof server.services.secretRotationV2.getDashboardSecretRotations>>
+        | undefined;
 
       let totalImportCount: number | undefined;
       let totalFolderCount: number | undefined;
       let totalDynamicSecretCount: number | undefined;
       let totalSecretCount: number | undefined;
+      let totalSecretRotationCount: number | undefined;
 
       if (includeImports) {
         totalImportCount = await server.services.secretImport.getProjectImportCount({
@@ -547,6 +757,53 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
+      if (includeSecretRotations) {
+        totalSecretRotationCount = await server.services.secretRotationV2.getDashboardSecretRotationCount(
+          {
+            projectId,
+            search,
+            environments: [environment],
+            secretPath
+          },
+          req.permission
+        );
+
+        if (remainingLimit > 0 && totalSecretRotationCount > adjustedOffset) {
+          secretRotations = await server.services.secretRotationV2.getDashboardSecretRotations(
+            {
+              projectId,
+              search,
+              orderBy,
+              orderDirection,
+              environments: [environment],
+              secretPath,
+              limit: remainingLimit,
+              offset: adjustedOffset
+            },
+            req.permission
+          );
+
+          await server.services.auditLog.createAuditLog({
+            projectId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.GET_SECRET_ROTATIONS,
+              metadata: {
+                count: secretRotations.length,
+                rotationIds: secretRotations.map((rotation) => rotation.id),
+                secretPath,
+                environment
+              }
+            }
+          });
+
+          remainingLimit -= secretRotations.length;
+          adjustedOffset = 0;
+        } else {
+          adjustedOffset = Math.max(0, adjustedOffset - totalSecretRotationCount);
+        }
+      }
+
       try {
         if (includeDynamicSecrets) {
           totalDynamicSecretCount = await server.services.dynamicSecret.getDynamicSecretCount({
@@ -582,7 +839,13 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             adjustedOffset = Math.max(0, adjustedOffset - totalDynamicSecretCount);
           }
         }
+      } catch (error) {
+        if (!(error instanceof ForbiddenError)) {
+          throw error;
+        }
+      }
 
+      try {
         if (includeSecrets) {
           totalSecretCount = await server.services.secret.getSecretsCount({
             actorId: req.permission.id,
@@ -597,51 +860,25 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           });
 
           if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
-            const secretsRaw = await server.services.secret.getSecretsRaw({
-              actorId: req.permission.id,
-              actor: req.permission.type,
-              actorOrgId: req.permission.orgId,
-              environment,
-              actorAuthMethod: req.permission.authMethod,
-              projectId,
-              path: secretPath,
-              orderBy,
-              orderDirection,
-              search,
-              limit: remainingLimit,
-              offset: adjustedOffset,
-              tagSlugs: tags
-            });
-
-            secrets = secretsRaw.secrets;
-
-            await server.services.auditLog.createAuditLog({
-              projectId,
-              ...req.auditLogInfo,
-              event: {
-                type: EventType.GET_SECRETS,
-                metadata: {
-                  environment,
-                  secretPath,
-                  numberOfSecrets: secrets.length
-                }
-              }
-            });
-
-            if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
-              await server.services.telemetry.sendPostHogEvents({
-                event: PostHogEventTypes.SecretPulled,
-                distinctId: getTelemetryDistinctId(req),
-                properties: {
-                  numberOfSecrets: secrets.length,
-                  workspaceId: projectId,
-                  environment,
-                  secretPath,
-                  channel: getUserAgentType(req.headers["user-agent"]),
-                  ...req.auditLogInfo
-                }
-              });
-            }
+            secrets = (
+              await server.services.secret.getSecretsRaw({
+                actorId: req.permission.id,
+                actor: req.permission.type,
+                viewSecretValue: req.query.viewSecretValue,
+                throwOnMissingReadValuePermission: false,
+                actorOrgId: req.permission.orgId,
+                environment,
+                actorAuthMethod: req.permission.authMethod,
+                projectId,
+                path: secretPath,
+                orderBy,
+                orderDirection,
+                search,
+                limit: remainingLimit,
+                offset: adjustedOffset,
+                tagSlugs: tags
+              })
+            ).secrets;
           }
         }
       } catch (error) {
@@ -650,17 +887,69 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
+      const importedBy = await server.services.secretImport.getFolderIsImportedBy({
+        path: secretPath,
+        environment,
+        projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        secrets
+      });
+
+      if (secrets?.length || secretRotations?.length) {
+        const secretCount =
+          (secrets?.length ?? 0) +
+          (secretRotations?.flatMap((rotation) => rotation.secrets.filter((secret) => Boolean(secret))).length ?? 0);
+
+        await server.services.auditLog.createAuditLog({
+          projectId,
+          ...req.auditLogInfo,
+          event: {
+            type: EventType.GET_SECRETS,
+            metadata: {
+              environment,
+              secretPath,
+              numberOfSecrets: secretCount
+            }
+          }
+        });
+
+        if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
+          await server.services.telemetry.sendPostHogEvents({
+            event: PostHogEventTypes.SecretPulled,
+            distinctId: getTelemetryDistinctId(req),
+            properties: {
+              numberOfSecrets: secretCount,
+              workspaceId: projectId,
+              environment,
+              secretPath,
+              channel: getUserAgentType(req.headers["user-agent"]),
+              ...req.auditLogInfo
+            }
+          });
+        }
+      }
+
       return {
         imports,
         folders,
         dynamicSecrets,
         secrets,
+        secretRotations,
         totalImportCount,
         totalFolderCount,
         totalDynamicSecretCount,
         totalSecretCount,
+        totalSecretRotationCount,
+        importedBy,
         totalCount:
-          (totalImportCount ?? 0) + (totalFolderCount ?? 0) + (totalDynamicSecretCount ?? 0) + (totalSecretCount ?? 0)
+          (totalImportCount ?? 0) +
+          (totalFolderCount ?? 0) +
+          (totalDynamicSecretCount ?? 0) +
+          (totalSecretCount ?? 0) +
+          (totalSecretRotationCount ?? 0)
       };
     }
   });
@@ -692,18 +981,14 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .optional(),
           secrets: secretRawSchema
             .extend({
+              secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
-              tags: SecretTagsSchema.pick({
-                id: true,
-                slug: true,
-                color: true
-              })
-                .extend({ name: z.string() })
-                .array()
-                .optional()
+              secretMetadata: ResourceMetadataSchema.optional(),
+              tags: SanitizedTagSchema.array().optional()
             })
             .array()
-            .optional()
+            .optional(),
+          secretRotations: SecretRotationV2Schema.array().optional()
         })
       }
     },
@@ -744,6 +1029,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       const secrets = await server.services.secret.getSecretsRawByFolderMappings(
         {
+          filterByAction: ProjectPermissionSecretActions.DescribeSecret,
           projectId,
           folderMappings,
           filters: {
@@ -758,6 +1044,17 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const dynamicSecrets = searchHasTags
         ? []
         : await server.services.dynamicSecret.listDynamicSecretsByFolderIds(
+            {
+              projectId,
+              folderMappings,
+              filters: sharedFilters
+            },
+            req.permission
+          );
+
+      const secretRotations = searchHasTags
+        ? []
+        : await server.services.secretRotationV2.getQuickSearchSecretRotations(
             {
               projectId,
               folderMappings,
@@ -798,6 +1095,24 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             });
           }
         }
+
+        const secretRotationsFromEnv = secretRotations.filter((rotation) => rotation.environment.slug === environment);
+
+        if (secretRotationsFromEnv.length) {
+          await server.services.auditLog.createAuditLog({
+            projectId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.GET_SECRET_ROTATIONS,
+              metadata: {
+                count: secretRotationsFromEnv.length,
+                rotationIds: secretRotationsFromEnv.map((rotation) => rotation.id),
+                secretPath,
+                environment
+              }
+            }
+          });
+        }
       }
 
       const sliceQuickSearch = <T>(array: T[]) => array.slice(0, 25);
@@ -810,6 +1125,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           searchPath
             ? dynamicSecrets.filter((dynamicSecret) => dynamicSecret.path.endsWith(searchPath))
             : dynamicSecrets
+        ),
+        secretRotations: sliceQuickSearch(
+          searchPath ? secretRotations.filter((rotation) => rotation.folder.path.endsWith(searchPath)) : secretRotations
         ),
         folders: searchHasTags
           ? []
@@ -838,6 +1156,138 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               })
             )
       };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/accessible-secrets",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      querystring: z.object({
+        projectId: z.string().trim(),
+        environment: z.string().trim(),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        recursive: booleanSchema.default(false),
+        filterByAction: z
+          .enum([ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSecretActions.ReadValue])
+          .default(ProjectPermissionSecretActions.ReadValue)
+      }),
+      response: {
+        200: z.object({
+          secrets: secretRawSchema
+            .extend({
+              secretPath: z.string().optional(),
+              secretValueHidden: z.boolean()
+            })
+            .array()
+            .optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { projectId, environment, secretPath, filterByAction, recursive } = req.query;
+
+      const { secrets } = await server.services.secret.getAccessibleSecrets({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        environment,
+        secretPath,
+        projectId,
+        filterByAction,
+        recursive
+      });
+
+      return { secrets };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets-by-keys",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      querystring: z.object({
+        projectId: z.string().trim(),
+        environment: z.string().trim(),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        keys: z.string().trim().transform(decodeURIComponent),
+        viewSecretValue: booleanSchema.default(false)
+      }),
+      response: {
+        200: z.object({
+          secrets: secretRawSchema
+            .extend({
+              secretValueHidden: z.boolean(),
+              secretPath: z.string().optional(),
+              secretMetadata: ResourceMetadataSchema.optional(),
+              tags: SanitizedTagSchema.array().optional()
+            })
+            .array()
+            .optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { secretPath, projectId, environment, viewSecretValue } = req.query;
+
+      const keys = req.query.keys?.split(",").filter((key) => Boolean(key.trim())) ?? [];
+      if (!keys.length) throw new BadRequestError({ message: "One or more keys required" });
+
+      const { secrets } = await server.services.secret.getSecretsRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        viewSecretValue,
+        environment,
+        actorAuthMethod: req.permission.authMethod,
+        projectId,
+        path: secretPath,
+        keys
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.GET_SECRETS,
+          metadata: {
+            environment,
+            secretPath,
+            numberOfSecrets: secrets.length
+          }
+        }
+      });
+
+      if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SecretPulled,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            numberOfSecrets: secrets.length,
+            workspaceId: projectId,
+            environment,
+            secretPath,
+            channel: getUserAgentType(req.headers["user-agent"]),
+            ...req.auditLogInfo
+          }
+        });
+      }
+
+      return { secrets };
     }
   });
 };

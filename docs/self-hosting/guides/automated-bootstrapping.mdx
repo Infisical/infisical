@@ -1,0 +1,150 @@
+---
+title: "Programmatic Provisioning"
+description: "Learn how to provision and configure Infisical instances programmatically without UI interaction"
+---
+
+Infisical's Automated Bootstrapping feature enables you to provision and configure an Infisical instance without using the UI, allowing for complete automation through static configuration files, API calls, or CLI commands. This is especially valuable for enterprise environments where automated deployment and infrastructure-as-code practices are essential.
+
+## Overview
+
+The Automated Bootstrapping workflow automates the following processes:
+- Creating an admin user account
+- Initializing an organization for the entire instance
+- Establishing an **instance admin machine identity** with full administrative permissions
+- Returning the machine identity credentials for further automation
+
+## Key Concepts
+
+- **Instance Initialization**: Infisical requires [configuration variables](/self-hosting/configuration/envars) to be set during launch, after which the bootstrap process can be triggered.
+- **Instance Admin Machine Identity**: The bootstrapping process creates a machine identity with instance-level admin privileges, which can be used to programmatically manage all aspects of the Infisical instance.
+  ![Instance Admin Identity](/images/self-hosting/guides/automated-bootstrapping/identity-instance-admin.png)
+- **Token Auth**: The instance admin machine identity uses [Token Auth](/documentation/platform/identities/token-auth), providing a JWT token that can be used directly to make authenticated requests to the Infisical API.
+
+## Prerequisites
+
+- An Infisical instance launched with all required configuration variables
+- Access to the Infisical CLI or the ability to make API calls to the instance
+- Network connectivity to the Infisical instance
+
+## Bootstrap Methods
+
+You can bootstrap an Infisical instance using either the API or the CLI.
+
+<Tabs>
+  <Tab title="Using the API">
+    Make a POST request to the bootstrap endpoint:
+
+    ```
+    POST: http://your-infisical-instance.com/api/v1/admin/bootstrap
+    {
+        "email": "admin@example.com",
+        "password": "your-secure-password",
+        "organization": "your-org-name"
+    }
+    ```
+
+    Example using curl:
+
+    ```bash
+    curl -X POST \
+      -H "Content-Type: application/json" \
+      -d '{"email":"admin@example.com","password":"your-secure-password","organization":"your-org-name"}' \
+      http://your-infisical-instance.com/api/v1/admin/bootstrap
+    ```
+  </Tab>
+  <Tab title="Using the CLI">
+    Use the [Infisical CLI](/cli/commands/bootstrap) to bootstrap the instance and extract the token for immediate use in automation:
+
+    ```bash
+    infisical bootstrap --domain="http://localhost:8080" --email="admin@example.com" --password="your-secure-password" --organization="your-org-name" | jq ".identity.credentials.token"
+    ```
+
+    This example command pipes the output through `jq` to extract only the machine identity token, making it easy to capture and use directly in automation scripts or export as an environment variable for tools like Terraform.
+  </Tab>
+</Tabs>
+
+## API Response Structure
+
+The bootstrap process returns a JSON response with details about the created user, organization, and machine identity:
+
+```json
+{
+  "identity": {
+    "credentials": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZGVudGl0eUlkIjoiZGIyMjQ3OTItZWQxOC00Mjc3LTlkYWUtNTdlNzUyMzE1ODU0IiwiaWRlbnRpdHlBY2Nlc3NUb2tlbklkIjoiZmVkZmZmMGEtYmU3Yy00NjViLWEwZWEtZjM5OTNjMTg4OGRlIiwiYXV0aFRva2VuVHlwZSI6ImlkZW50aXR5QWNjZXNzVG9rZW4iLCJpYXQiOjE3NDIzMjI0ODl9.mqcZZqIFqER1e9ubrQXp8FbzGYi8nqqZwfMvz09g-8Y"
+    },
+    "id": "db224792-ed18-4277-9dae-57e752315854",
+    "name": "Instance Admin Identity"
+  },
+  "message": "Successfully bootstrapped instance",
+  "organization": {
+    "id": "b56bece0-42f5-4262-b25e-be7bf5f84957",
+    "name": "dog",
+    "slug": "dog-v-e5l"
+  },
+  "user": {
+    "email": "admin@example.com",
+    "firstName": "Admin",
+    "id": "a418f355-c8da-453c-bbc8-6c07208eeb3c",
+    "lastName": "User",
+    "superAdmin": true,
+    "username": "admin@example.com"
+  }
+}
+```
+
+## Using the Instance Admin Machine Identity Token
+
+The bootstrap process automatically creates a machine identity with Token Auth configured. The returned token has instance-level admin privileges (the highest level of access) and should be treated with the same security considerations as a root credential.
+
+The token enables full programmatic control of your Infisical instance and can be used in the following ways:
+
+### 1. Infrastructure Automation
+
+Store the token securely for use with infrastructure automation tools. Due to the sensitive nature of this token, ensure it's protected using appropriate secret management practices:
+
+#### Kubernetes Secret (with appropriate RBAC restrictions)
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: infisical-admin-credentials
+type: Opaque
+data:
+  token: <base64-encoded-token>
+```
+
+#### Environment Variable for Terraform
+
+```bash
+export INFISICAL_TOKEN=your-access-token
+terraform apply
+```
+
+### 2. Programmatic Resource Management
+
+Use the token to authenticate API calls for creating and managing Infisical resources. The token works exactly like any other Token Auth access token in the Infisical API:
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer ${INFISICAL_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projectName": "New Project",
+    "projectDescription": "A project created via API",
+    "slug": "new-project-slug",
+    "template": "default",
+    "type": "SECRET_MANAGER"
+  }' \
+  https://your-infisical-instance.com/api/v2/projects
+```
+
+## Important Notes
+
+- **Security Warning**: The instance admin machine identity has the highest level of privileges in your Infisical deployment. The token should be treated with the utmost security and handled like a root credential. Unauthorized access to this token could compromise your entire Infisical instance.
+- Security controls prevent privilege escalation: instance admin identities cannot be managed by non-instance admin users and identities
+- The instance admin permission of the generated identity can be revoked later in the server admin panel if needed
+- The generated admin user account can still be used for UI access if needed, or can be removed if you prefer to manage everything through the machine identity
+- This process is designed to work with future Crossplane providers and the existing Terraform provider for full infrastructure-as-code capabilities
+- All necessary configuration variables should be set during the initial launch of the Infisical instance

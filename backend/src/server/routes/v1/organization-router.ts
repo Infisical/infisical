@@ -1,21 +1,21 @@
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
   AuditLogsSchema,
   GroupsSchema,
   IncidentContactsSchema,
-  OrganizationsSchema,
   OrgMembershipsSchema,
   OrgRolesSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
-import { getLastMidnightDateISO } from "@app/lib/fn";
+import { ApiDocsTags, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
+import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
+import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 
 import { integrationAuthPubSchema } from "../sanitizedSchemas";
 
@@ -29,9 +29,12 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          organizations: OrganizationsSchema.extend({
-            orgAuthMethod: z.string()
-          }).array()
+          organizations: sanitizedOrganizationSchema
+            .extend({
+              orgAuthMethod: z.string(),
+              userRole: z.string()
+            })
+            .array()
         })
       }
     },
@@ -54,7 +57,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organization: OrganizationsSchema
+          organization: sanitizedOrganizationSchema
         })
       }
     },
@@ -106,10 +109,20 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AuditLogs],
       description: "Get all audit logs for an organization",
       querystring: z.object({
         projectId: z.string().optional().describe(AUDIT_LOGS.EXPORT.projectId),
+        environment: z.string().optional().describe(AUDIT_LOGS.EXPORT.environment),
         actorType: z.nativeEnum(ActorType).optional(),
+        secretPath: z
+          .string()
+          .optional()
+          .transform((val) => (!val ? val : removeTrailingSlash(val)))
+          .describe(AUDIT_LOGS.EXPORT.secretPath),
+        secretKey: z.string().optional().describe(AUDIT_LOGS.EXPORT.secretKey),
+
         // eventType is split with , for multiple values, we need to transform it to array
         eventType: z
           .string()
@@ -242,29 +255,20 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
-        name: z.string().trim().max(64, { message: "Name must be 64 or fewer characters" }).optional(),
-        slug: z
-          .string()
-          .trim()
-          .max(64, { message: "Slug must be 64 or fewer characters" })
-          .regex(/^[a-zA-Z0-9-]+$/, "Slug must only contain alphanumeric characters or hyphens")
-          .optional(),
+        name: GenericResourceNameSchema.optional(),
+        slug: slugSchema({ max: 64 }).optional(),
         authEnforced: z.boolean().optional(),
         scimEnabled: z.boolean().optional(),
-        defaultMembershipRoleSlug: z
-          .string()
-          .min(1)
-          .trim()
-          .refine((v) => slugify(v) === v, {
-            message: "Membership role must be a valid slug"
-          })
-          .optional(),
-        enforceMfa: z.boolean().optional()
+        defaultMembershipRoleSlug: slugSchema({ max: 64, field: "Default Membership Role" }).optional(),
+        enforceMfa: z.boolean().optional(),
+        selectedMfaMethod: z.nativeEnum(MfaMethod).optional(),
+        allowSecretSharingOutsideOrganization: z.boolean().optional(),
+        bypassOrgAuthEnabled: z.boolean().optional()
       }),
       response: {
         200: z.object({
           message: z.string(),
-          organization: OrganizationsSchema
+          organization: sanitizedOrganizationSchema
         })
       }
     },

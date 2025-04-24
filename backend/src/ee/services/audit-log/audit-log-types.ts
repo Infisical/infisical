@@ -2,12 +2,36 @@ import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
 } from "@app/ee/services/project-template/project-template-types";
-import { SymmetricEncryption } from "@app/lib/crypto/cipher";
+import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
+import {
+  TCreateSecretRotationV2DTO,
+  TDeleteSecretRotationV2DTO,
+  TSecretRotationV2Raw,
+  TUpdateSecretRotationV2DTO
+} from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
+import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
+import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TProjectPermission } from "@app/lib/types";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
+import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
+import {
+  TCreateSecretSyncDTO,
+  TDeleteSecretSyncDTO,
+  TSecretSyncRaw,
+  TUpdateSecretSyncDTO
+} from "@app/services/secret-sync/secret-sync-types";
+
+import { KmipPermission } from "../kmip/kmip-enum";
+import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
 
 export type TListProjectAuditLogDTO = {
   filter: {
@@ -18,18 +42,30 @@ export type TListProjectAuditLogDTO = {
     endDate?: string;
     startDate?: string;
     projectId?: string;
+    environment?: string;
     auditLogActorId?: string;
     actorType?: ActorType;
+    secretPath?: string;
+    secretKey?: string;
     eventMetadata?: Record<string, string>;
   };
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateAuditLogDTO = {
   event: Event;
-  actor: UserActor | IdentityActor | ServiceActor | ScimClientActor | PlatformActor;
+  actor:
+    | UserActor
+    | IdentityActor
+    | ServiceActor
+    | ScimClientActor
+    | PlatformActor
+    | UnknownUserActor
+    | KmipClientActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
+
+export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
 interface BaseAuthData {
   ipAddress?: string;
@@ -60,6 +96,7 @@ export enum EventType {
   DELETE_SECRETS = "delete-secrets",
   GET_WORKSPACE_KEY = "get-workspace-key",
   AUTHORIZE_INTEGRATION = "authorize-integration",
+  UPDATE_INTEGRATION_AUTH = "update-integration-auth",
   UNAUTHORIZE_INTEGRATION = "unauthorize-integration",
   CREATE_INTEGRATION = "create-integration",
   DELETE_INTEGRATION = "delete-integration",
@@ -94,6 +131,11 @@ export enum EventType {
   UPDATE_IDENTITY_OIDC_AUTH = "update-identity-oidc-auth",
   GET_IDENTITY_OIDC_AUTH = "get-identity-oidc-auth",
   REVOKE_IDENTITY_OIDC_AUTH = "revoke-identity-oidc-auth",
+  LOGIN_IDENTITY_JWT_AUTH = "login-identity-jwt-auth",
+  ADD_IDENTITY_JWT_AUTH = "add-identity-jwt-auth",
+  UPDATE_IDENTITY_JWT_AUTH = "update-identity-jwt-auth",
+  GET_IDENTITY_JWT_AUTH = "get-identity-jwt-auth",
+  REVOKE_IDENTITY_JWT_AUTH = "revoke-identity-jwt-auth",
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
@@ -137,6 +179,24 @@ export enum EventType {
   SECRET_APPROVAL_REQUEST = "secret-approval-request",
   SECRET_APPROVAL_CLOSED = "secret-approval-closed",
   SECRET_APPROVAL_REOPENED = "secret-approval-reopened",
+  SECRET_APPROVAL_REQUEST_REVIEW = "secret-approval-request-review",
+  SIGN_SSH_KEY = "sign-ssh-key",
+  ISSUE_SSH_CREDS = "issue-ssh-creds",
+  CREATE_SSH_CA = "create-ssh-certificate-authority",
+  GET_SSH_CA = "get-ssh-certificate-authority",
+  UPDATE_SSH_CA = "update-ssh-certificate-authority",
+  DELETE_SSH_CA = "delete-ssh-certificate-authority",
+  GET_SSH_CA_CERTIFICATE_TEMPLATES = "get-ssh-certificate-authority-certificate-templates",
+  CREATE_SSH_CERTIFICATE_TEMPLATE = "create-ssh-certificate-template",
+  UPDATE_SSH_CERTIFICATE_TEMPLATE = "update-ssh-certificate-template",
+  DELETE_SSH_CERTIFICATE_TEMPLATE = "delete-ssh-certificate-template",
+  GET_SSH_CERTIFICATE_TEMPLATE = "get-ssh-certificate-template",
+  CREATE_SSH_HOST = "create-ssh-host",
+  UPDATE_SSH_HOST = "update-ssh-host",
+  DELETE_SSH_HOST = "delete-ssh-host",
+  GET_SSH_HOST = "get-ssh-host",
+  ISSUE_SSH_HOST_USER_CERT = "issue-ssh-host-user-cert",
+  ISSUE_SSH_HOST_HOST_CERT = "issue-ssh-host-host-cert",
   CREATE_CA = "create-certificate-authority",
   GET_CA = "get-certificate-authority",
   UPDATE_CA = "update-certificate-authority",
@@ -174,6 +234,7 @@ export enum EventType {
   GET_PROJECT_KMS_BACKUP = "get-project-kms-backup",
   LOAD_PROJECT_KMS_BACKUP = "load-project-kms-backup",
   ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project",
+  ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
   CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
@@ -193,8 +254,14 @@ export enum EventType {
   UPDATE_CMEK = "update-cmek",
   DELETE_CMEK = "delete-cmek",
   GET_CMEKS = "get-cmeks",
+  GET_CMEK = "get-cmek",
   CMEK_ENCRYPT = "cmek-encrypt",
   CMEK_DECRYPT = "cmek-decrypt",
+  CMEK_SIGN = "cmek-sign",
+  CMEK_VERIFY = "cmek-verify",
+  CMEK_LIST_SIGNING_ALGORITHMS = "cmek-list-signing-algorithms",
+  CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
+
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
   GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
   GET_PROJECT_TEMPLATES = "get-project-templates",
@@ -202,13 +269,73 @@ export enum EventType {
   CREATE_PROJECT_TEMPLATE = "create-project-template",
   UPDATE_PROJECT_TEMPLATE = "update-project-template",
   DELETE_PROJECT_TEMPLATE = "delete-project-template",
-  APPLY_PROJECT_TEMPLATE = "apply-project-template"
+  APPLY_PROJECT_TEMPLATE = "apply-project-template",
+  GET_APP_CONNECTIONS = "get-app-connections",
+  GET_AVAILABLE_APP_CONNECTIONS_DETAILS = "get-available-app-connections-details",
+  GET_APP_CONNECTION = "get-app-connection",
+  CREATE_APP_CONNECTION = "create-app-connection",
+  UPDATE_APP_CONNECTION = "update-app-connection",
+  DELETE_APP_CONNECTION = "delete-app-connection",
+  CREATE_SHARED_SECRET = "create-shared-secret",
+  CREATE_SECRET_REQUEST = "create-secret-request",
+  DELETE_SHARED_SECRET = "delete-shared-secret",
+  READ_SHARED_SECRET = "read-shared-secret",
+  GET_SECRET_SYNCS = "get-secret-syncs",
+  GET_SECRET_SYNC = "get-secret-sync",
+  CREATE_SECRET_SYNC = "create-secret-sync",
+  UPDATE_SECRET_SYNC = "update-secret-sync",
+  DELETE_SECRET_SYNC = "delete-secret-sync",
+  SECRET_SYNC_SYNC_SECRETS = "secret-sync-sync-secrets",
+  SECRET_SYNC_IMPORT_SECRETS = "secret-sync-import-secrets",
+  SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets",
+  OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
+  OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
+  CREATE_KMIP_CLIENT = "create-kmip-client",
+  UPDATE_KMIP_CLIENT = "update-kmip-client",
+  DELETE_KMIP_CLIENT = "delete-kmip-client",
+  GET_KMIP_CLIENT = "get-kmip-client",
+  GET_KMIP_CLIENTS = "get-kmip-clients",
+  CREATE_KMIP_CLIENT_CERTIFICATE = "create-kmip-client-certificate",
+
+  SETUP_KMIP = "setup-kmip",
+  GET_KMIP = "get-kmip",
+  REGISTER_KMIP_SERVER = "register-kmip-server",
+
+  KMIP_OPERATION_CREATE = "kmip-operation-create",
+  KMIP_OPERATION_GET = "kmip-operation-get",
+  KMIP_OPERATION_DESTROY = "kmip-operation-destroy",
+  KMIP_OPERATION_GET_ATTRIBUTES = "kmip-operation-get-attributes",
+  KMIP_OPERATION_ACTIVATE = "kmip-operation-activate",
+  KMIP_OPERATION_REVOKE = "kmip-operation-revoke",
+  KMIP_OPERATION_LOCATE = "kmip-operation-locate",
+  KMIP_OPERATION_REGISTER = "kmip-operation-register",
+
+  GET_SECRET_ROTATIONS = "get-secret-rotations",
+  GET_SECRET_ROTATION = "get-secret-rotation",
+  GET_SECRET_ROTATION_GENERATED_CREDENTIALS = "get-secret-rotation-generated-credentials",
+  CREATE_SECRET_ROTATION = "create-secret-rotation",
+  UPDATE_SECRET_ROTATION = "update-secret-rotation",
+  DELETE_SECRET_ROTATION = "delete-secret-rotation",
+  SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
+
+  PROJECT_ACCESS_REQUEST = "project-access-request"
 }
+
+export const filterableSecretEvents: EventType[] = [
+  EventType.GET_SECRET,
+  EventType.DELETE_SECRETS,
+  EventType.CREATE_SECRETS,
+  EventType.UPDATE_SECRETS,
+  EventType.CREATE_SECRET,
+  EventType.UPDATE_SECRET,
+  EventType.DELETE_SECRET
+];
 
 interface UserActorMetadata {
   userId: string;
   email?: string | null;
   username: string;
+  permission?: Record<string, unknown>;
 }
 
 interface ServiceActorMetadata {
@@ -219,11 +346,19 @@ interface ServiceActorMetadata {
 interface IdentityActorMetadata {
   identityId: string;
   name: string;
+  permission?: Record<string, unknown>;
 }
 
 interface ScimClientActorMetadata {}
 
 interface PlatformActorMetadata {}
+
+interface KmipClientActorMetadata {
+  clientId: string;
+  name: string;
+}
+
+interface UnknownUserActorMetadata {}
 
 export interface UserActor {
   type: ActorType.USER;
@@ -240,6 +375,16 @@ export interface PlatformActor {
   metadata: PlatformActorMetadata;
 }
 
+export interface KmipClientActor {
+  type: ActorType.KMIP_CLIENT;
+  metadata: KmipClientActorMetadata;
+}
+
+export interface UnknownUserActor {
+  type: ActorType.UNKNOWN_USER;
+  metadata: UnknownUserActorMetadata;
+}
+
 export interface IdentityActor {
   type: ActorType.IDENTITY;
   metadata: IdentityActorMetadata;
@@ -250,7 +395,7 @@ export interface ScimClientActor {
   metadata: ScimClientActorMetadata;
 }
 
-export type Actor = UserActor | ServiceActor | IdentityActor | ScimClientActor | PlatformActor;
+export type Actor = UserActor | ServiceActor | IdentityActor | ScimClientActor | PlatformActor | KmipClientActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -261,6 +406,8 @@ interface GetSecretsEvent {
   };
 }
 
+type TSecretMetadata = { key: string; value: string }[];
+
 interface GetSecretEvent {
   type: EventType.GET_SECRET;
   metadata: {
@@ -269,6 +416,7 @@ interface GetSecretEvent {
     secretId: string;
     secretKey: string;
     secretVersion: number;
+    secretMetadata?: TSecretMetadata;
   };
 }
 
@@ -280,6 +428,7 @@ interface CreateSecretEvent {
     secretId: string;
     secretKey: string;
     secretVersion: number;
+    secretMetadata?: TSecretMetadata;
   };
 }
 
@@ -288,7 +437,13 @@ interface CreateSecretBatchEvent {
   metadata: {
     environment: string;
     secretPath: string;
-    secrets: Array<{ secretId: string; secretKey: string; secretVersion: number }>;
+    secrets: Array<{
+      secretId: string;
+      secretKey: string;
+      secretPath?: string;
+      secretVersion: number;
+      secretMetadata?: TSecretMetadata;
+    }>;
   };
 }
 
@@ -300,6 +455,7 @@ interface UpdateSecretEvent {
     secretId: string;
     secretKey: string;
     secretVersion: number;
+    secretMetadata?: TSecretMetadata;
   };
 }
 
@@ -307,8 +463,14 @@ interface UpdateSecretBatchEvent {
   type: EventType.UPDATE_SECRETS;
   metadata: {
     environment: string;
-    secretPath: string;
-    secrets: Array<{ secretId: string; secretKey: string; secretVersion: number }>;
+    secretPath?: string;
+    secrets: Array<{
+      secretId: string;
+      secretKey: string;
+      secretVersion: number;
+      secretMetadata?: TSecretMetadata;
+      secretPath?: string;
+    }>;
   };
 }
 
@@ -352,6 +514,13 @@ interface GetWorkspaceKeyEvent {
 
 interface AuthorizeIntegrationEvent {
   type: EventType.AUTHORIZE_INTEGRATION;
+  metadata: {
+    integration: string;
+  };
+}
+
+interface UpdateIntegrationAuthEvent {
+  type: EventType.UPDATE_INTEGRATION_AUTH;
   metadata: {
     integration: string;
   };
@@ -699,9 +868,9 @@ interface AddIdentityGcpAuthEvent {
   metadata: {
     identityId: string;
     type: string;
-    allowedServiceAccounts: string;
-    allowedProjects: string;
-    allowedZones: string;
+    allowedServiceAccounts?: string | null;
+    allowedProjects?: string | null;
+    allowedZones?: string | null;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
@@ -721,9 +890,9 @@ interface UpdateIdentityGcpAuthEvent {
   metadata: {
     identityId: string;
     type?: string;
-    allowedServiceAccounts?: string;
-    allowedProjects?: string;
-    allowedZones?: string;
+    allowedServiceAccounts?: string | null;
+    allowedProjects?: string | null;
+    allowedZones?: string | null;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
@@ -844,6 +1013,7 @@ interface LoginIdentityOidcAuthEvent {
     identityId: string;
     identityOidcAuthId: string;
     identityAccessTokenId: string;
+    oidcClaimsReceived: Record<string, unknown>;
   };
 }
 
@@ -856,6 +1026,7 @@ interface AddIdentityOidcAuthEvent {
     boundIssuer: string;
     boundAudiences: string;
     boundClaims: Record<string, string>;
+    claimMetadataMapping: Record<string, string>;
     boundSubject: string;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
@@ -880,6 +1051,7 @@ interface UpdateIdentityOidcAuthEvent {
     boundIssuer?: string;
     boundAudiences?: string;
     boundClaims?: Record<string, string>;
+    claimMetadataMapping?: Record<string, string>;
     boundSubject?: string;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
@@ -890,6 +1062,67 @@ interface UpdateIdentityOidcAuthEvent {
 
 interface GetIdentityOidcAuthEvent {
   type: EventType.GET_IDENTITY_OIDC_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface LoginIdentityJwtAuthEvent {
+  type: EventType.LOGIN_IDENTITY_JWT_AUTH;
+  metadata: {
+    identityId: string;
+    identityJwtAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityJwtAuthEvent {
+  type: EventType.ADD_IDENTITY_JWT_AUTH;
+  metadata: {
+    identityId: string;
+    configurationType: string;
+    jwksUrl?: string;
+    jwksCaCert: string;
+    publicKeys: string[];
+    boundIssuer: string;
+    boundAudiences: string;
+    boundClaims: Record<string, string>;
+    boundSubject: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityJwtAuthEvent {
+  type: EventType.UPDATE_IDENTITY_JWT_AUTH;
+  metadata: {
+    identityId: string;
+    configurationType?: string;
+    jwksUrl?: string;
+    jwksCaCert?: string;
+    publicKeys?: string[];
+    boundIssuer?: string;
+    boundAudiences?: string;
+    boundClaims?: Record<string, string>;
+    boundSubject?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityJwtAuthEvent {
+  type: EventType.REVOKE_IDENTITY_JWT_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface GetIdentityJwtAuthEvent {
+  type: EventType.GET_IDENTITY_JWT_AUTH;
   metadata: {
     identityId: string;
   };
@@ -961,6 +1194,7 @@ interface CreateFolderEvent {
     folderId: string;
     folderName: string;
     folderPath: string;
+    description?: string;
   };
 }
 
@@ -1129,6 +1363,201 @@ interface SecretApprovalRequest {
     committedBy: string;
     secretApprovalRequestSlug: string;
     secretApprovalRequestId: string;
+  };
+}
+
+interface SecretApprovalRequestReview {
+  type: EventType.SECRET_APPROVAL_REQUEST_REVIEW;
+  metadata: {
+    secretApprovalRequestId: string;
+    reviewedBy: string;
+    status: ApprovalStatus;
+    comment: string;
+  };
+}
+
+interface SignSshKey {
+  type: EventType.SIGN_SSH_KEY;
+  metadata: {
+    certificateTemplateId: string;
+    certType: SshCertType;
+    principals: string[];
+    ttl: string;
+    keyId: string;
+  };
+}
+
+interface IssueSshCreds {
+  type: EventType.ISSUE_SSH_CREDS;
+  metadata: {
+    certificateTemplateId: string;
+    keyAlgorithm: SshCertKeyAlgorithm;
+    certType: SshCertType;
+    principals: string[];
+    ttl: string;
+    keyId: string;
+  };
+}
+
+interface CreateSshCa {
+  type: EventType.CREATE_SSH_CA;
+  metadata: {
+    sshCaId: string;
+    friendlyName: string;
+  };
+}
+
+interface GetSshCa {
+  type: EventType.GET_SSH_CA;
+  metadata: {
+    sshCaId: string;
+    friendlyName: string;
+  };
+}
+
+interface UpdateSshCa {
+  type: EventType.UPDATE_SSH_CA;
+  metadata: {
+    sshCaId: string;
+    friendlyName: string;
+    status: SshCaStatus;
+  };
+}
+
+interface DeleteSshCa {
+  type: EventType.DELETE_SSH_CA;
+  metadata: {
+    sshCaId: string;
+    friendlyName: string;
+  };
+}
+
+interface GetSshCaCertificateTemplates {
+  type: EventType.GET_SSH_CA_CERTIFICATE_TEMPLATES;
+  metadata: {
+    sshCaId: string;
+    friendlyName: string;
+  };
+}
+
+interface CreateSshCertificateTemplate {
+  type: EventType.CREATE_SSH_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+    sshCaId: string;
+    name: string;
+    ttl: string;
+    maxTTL: string;
+    allowedUsers: string[];
+    allowedHosts: string[];
+    allowUserCertificates: boolean;
+    allowHostCertificates: boolean;
+    allowCustomKeyIds: boolean;
+  };
+}
+
+interface GetSshCertificateTemplate {
+  type: EventType.GET_SSH_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
+interface UpdateSshCertificateTemplate {
+  type: EventType.UPDATE_SSH_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+    sshCaId: string;
+    name: string;
+    status: SshCertTemplateStatus;
+    ttl: string;
+    maxTTL: string;
+    allowedUsers: string[];
+    allowedHosts: string[];
+    allowUserCertificates: boolean;
+    allowHostCertificates: boolean;
+    allowCustomKeyIds: boolean;
+  };
+}
+
+interface DeleteSshCertificateTemplate {
+  type: EventType.DELETE_SSH_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
+interface CreateSshHost {
+  type: EventType.CREATE_SSH_HOST;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+    userCertTtl: string;
+    hostCertTtl: string;
+    loginMappings: {
+      loginUser: string;
+      allowedPrincipals: {
+        usernames: string[];
+      };
+    }[];
+    userSshCaId: string;
+    hostSshCaId: string;
+  };
+}
+
+interface UpdateSshHost {
+  type: EventType.UPDATE_SSH_HOST;
+  metadata: {
+    sshHostId: string;
+    hostname?: string;
+    userCertTtl?: string;
+    hostCertTtl?: string;
+    loginMappings?: {
+      loginUser: string;
+      allowedPrincipals: {
+        usernames: string[];
+      };
+    }[];
+    userSshCaId?: string;
+    hostSshCaId?: string;
+  };
+}
+
+interface DeleteSshHost {
+  type: EventType.DELETE_SSH_HOST;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+  };
+}
+
+interface GetSshHost {
+  type: EventType.GET_SSH_HOST;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+  };
+}
+
+interface IssueSshHostUserCert {
+  type: EventType.ISSUE_SSH_HOST_USER_CERT;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+    loginUser: string;
+    principals: string[];
+    ttl: string;
+  };
+}
+
+interface IssueSshHostHostCert {
+  type: EventType.ISSUE_SSH_HOST_HOST_CERT;
+  metadata: {
+    sshHostId: string;
+    hostname: string;
+    serialNumber: string;
+    principals: string[];
+    ttl: string;
   };
 }
 
@@ -1479,6 +1908,11 @@ interface OrgAdminAccessProjectEvent {
   }; // no metadata yet
 }
 
+interface OrgAdminBypassSSOEvent {
+  type: EventType.ORG_ADMIN_BYPASS_SSO;
+  metadata: Record<string, string>; // no metadata yet
+}
+
 interface CreateCertificateTemplateEstConfig {
   type: EventType.CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG;
   metadata: {
@@ -1575,7 +2009,7 @@ interface CreateCmekEvent {
     keyId: string;
     name: string;
     description?: string;
-    encryptionAlgorithm: SymmetricEncryption;
+    encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
   };
 }
 
@@ -1602,6 +2036,13 @@ interface GetCmeksEvent {
   };
 }
 
+interface GetCmekEvent {
+  type: EventType.GET_CMEK;
+  metadata: {
+    keyId: string;
+  };
+}
+
 interface CmekEncryptEvent {
   type: EventType.CMEK_ENCRYPT;
   metadata: {
@@ -1611,6 +2052,39 @@ interface CmekEncryptEvent {
 
 interface CmekDecryptEvent {
   type: EventType.CMEK_DECRYPT;
+  metadata: {
+    keyId: string;
+  };
+}
+
+interface CmekSignEvent {
+  type: EventType.CMEK_SIGN;
+  metadata: {
+    keyId: string;
+    signingAlgorithm: SigningAlgorithm;
+    signature: string;
+  };
+}
+
+interface CmekVerifyEvent {
+  type: EventType.CMEK_VERIFY;
+  metadata: {
+    keyId: string;
+    signingAlgorithm: SigningAlgorithm;
+    signature: string;
+    signatureValid: boolean;
+  };
+}
+
+interface CmekListSigningAlgorithmsEvent {
+  type: EventType.CMEK_LIST_SIGNING_ALGORITHMS;
+  metadata: {
+    keyId: string;
+  };
+}
+
+interface CmekGetPublicKeyEvent {
+  type: EventType.CMEK_GET_PUBLIC_KEY;
   metadata: {
     keyId: string;
   };
@@ -1668,6 +2142,377 @@ interface ApplyProjectTemplateEvent {
   };
 }
 
+interface GetAppConnectionsEvent {
+  type: EventType.GET_APP_CONNECTIONS;
+  metadata: {
+    app?: AppConnection;
+    count: number;
+    connectionIds: string[];
+  };
+}
+
+interface GetAvailableAppConnectionsDetailsEvent {
+  type: EventType.GET_AVAILABLE_APP_CONNECTIONS_DETAILS;
+  metadata: {
+    app?: AppConnection;
+    count: number;
+    connectionIds: string[];
+  };
+}
+
+interface GetAppConnectionEvent {
+  type: EventType.GET_APP_CONNECTION;
+  metadata: {
+    connectionId: string;
+  };
+}
+
+interface CreateAppConnectionEvent {
+  type: EventType.CREATE_APP_CONNECTION;
+  metadata: Omit<TCreateAppConnectionDTO, "credentials"> & { connectionId: string };
+}
+
+interface UpdateAppConnectionEvent {
+  type: EventType.UPDATE_APP_CONNECTION;
+  metadata: Omit<TUpdateAppConnectionDTO, "credentials"> & { connectionId: string; credentialsUpdated: boolean };
+}
+
+interface DeleteAppConnectionEvent {
+  type: EventType.DELETE_APP_CONNECTION;
+  metadata: {
+    connectionId: string;
+  };
+}
+
+interface CreateSharedSecretEvent {
+  type: EventType.CREATE_SHARED_SECRET;
+  metadata: {
+    id: string;
+    accessType: string;
+    name?: string;
+    expiresAfterViews?: number;
+    usingPassword: boolean;
+    expiresAt: string;
+  };
+}
+
+interface CreateSecretRequestEvent {
+  type: EventType.CREATE_SECRET_REQUEST;
+  metadata: {
+    id: string;
+    accessType: string;
+    name?: string;
+  };
+}
+
+interface DeleteSharedSecretEvent {
+  type: EventType.DELETE_SHARED_SECRET;
+  metadata: {
+    id: string;
+    name?: string;
+  };
+}
+
+interface ReadSharedSecretEvent {
+  type: EventType.READ_SHARED_SECRET;
+  metadata: {
+    id: string;
+    name?: string;
+    accessType: string;
+  };
+}
+
+interface GetSecretSyncsEvent {
+  type: EventType.GET_SECRET_SYNCS;
+  metadata: {
+    destination?: SecretSync;
+    count: number;
+    syncIds: string[];
+  };
+}
+
+interface GetSecretSyncEvent {
+  type: EventType.GET_SECRET_SYNC;
+  metadata: {
+    destination: SecretSync;
+    syncId: string;
+  };
+}
+
+interface CreateSecretSyncEvent {
+  type: EventType.CREATE_SECRET_SYNC;
+  metadata: Omit<TCreateSecretSyncDTO, "projectId"> & { syncId: string };
+}
+
+interface UpdateSecretSyncEvent {
+  type: EventType.UPDATE_SECRET_SYNC;
+  metadata: TUpdateSecretSyncDTO;
+}
+
+interface DeleteSecretSyncEvent {
+  type: EventType.DELETE_SECRET_SYNC;
+  metadata: TDeleteSecretSyncDTO;
+}
+
+interface SecretSyncSyncSecretsEvent {
+  type: EventType.SECRET_SYNC_SYNC_SECRETS;
+  metadata: Pick<
+    TSecretSyncRaw,
+    "syncOptions" | "destinationConfig" | "destination" | "syncStatus" | "connectionId" | "folderId"
+  > & {
+    syncId: string;
+    syncMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+  };
+}
+
+interface SecretSyncImportSecretsEvent {
+  type: EventType.SECRET_SYNC_IMPORT_SECRETS;
+  metadata: Pick<
+    TSecretSyncRaw,
+    "syncOptions" | "destinationConfig" | "destination" | "importStatus" | "connectionId" | "folderId"
+  > & {
+    syncId: string;
+    importMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+    importBehavior: SecretSyncImportBehavior;
+  };
+}
+
+interface SecretSyncRemoveSecretsEvent {
+  type: EventType.SECRET_SYNC_REMOVE_SECRETS;
+  metadata: Pick<
+    TSecretSyncRaw,
+    "syncOptions" | "destinationConfig" | "destination" | "removeStatus" | "connectionId" | "folderId"
+  > & {
+    syncId: string;
+    removeMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+  };
+}
+
+interface OidcGroupMembershipMappingAssignUserEvent {
+  type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER;
+  metadata: {
+    assignedToGroups: { id: string; name: string }[];
+    userId: string;
+    userEmail: string;
+    userGroupsClaim: string[];
+  };
+}
+
+interface OidcGroupMembershipMappingRemoveUserEvent {
+  type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER;
+  metadata: {
+    removedFromGroups: { id: string; name: string }[];
+    userId: string;
+    userEmail: string;
+    userGroupsClaim: string[];
+  };
+}
+
+interface CreateKmipClientEvent {
+  type: EventType.CREATE_KMIP_CLIENT;
+  metadata: {
+    name: string;
+    id: string;
+    permissions: KmipPermission[];
+  };
+}
+
+interface UpdateKmipClientEvent {
+  type: EventType.UPDATE_KMIP_CLIENT;
+  metadata: {
+    name: string;
+    id: string;
+    permissions: KmipPermission[];
+  };
+}
+
+interface DeleteKmipClientEvent {
+  type: EventType.DELETE_KMIP_CLIENT;
+  metadata: {
+    id: string;
+  };
+}
+
+interface GetKmipClientEvent {
+  type: EventType.GET_KMIP_CLIENT;
+  metadata: {
+    id: string;
+  };
+}
+
+interface GetKmipClientsEvent {
+  type: EventType.GET_KMIP_CLIENTS;
+  metadata: {
+    ids: string[];
+  };
+}
+
+interface CreateKmipClientCertificateEvent {
+  type: EventType.CREATE_KMIP_CLIENT_CERTIFICATE;
+  metadata: {
+    clientId: string;
+    ttl: string;
+    keyAlgorithm: string;
+    serialNumber: string;
+  };
+}
+
+interface KmipOperationGetEvent {
+  type: EventType.KMIP_OPERATION_GET;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationDestroyEvent {
+  type: EventType.KMIP_OPERATION_DESTROY;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationCreateEvent {
+  type: EventType.KMIP_OPERATION_CREATE;
+  metadata: {
+    id: string;
+    algorithm: string;
+  };
+}
+
+interface KmipOperationGetAttributesEvent {
+  type: EventType.KMIP_OPERATION_GET_ATTRIBUTES;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationActivateEvent {
+  type: EventType.KMIP_OPERATION_ACTIVATE;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationRevokeEvent {
+  type: EventType.KMIP_OPERATION_REVOKE;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationLocateEvent {
+  type: EventType.KMIP_OPERATION_LOCATE;
+  metadata: {
+    ids: string[];
+  };
+}
+
+interface KmipOperationRegisterEvent {
+  type: EventType.KMIP_OPERATION_REGISTER;
+  metadata: {
+    id: string;
+    algorithm: string;
+    name: string;
+  };
+}
+
+interface ProjectAccessRequestEvent {
+  type: EventType.PROJECT_ACCESS_REQUEST;
+  metadata: {
+    projectId: string;
+    requesterId: string;
+    requesterEmail: string;
+  };
+}
+
+interface SetupKmipEvent {
+  type: EventType.SETUP_KMIP;
+  metadata: {
+    keyAlgorithm: CertKeyAlgorithm;
+  };
+}
+
+interface GetKmipEvent {
+  type: EventType.GET_KMIP;
+  metadata: {
+    id: string;
+  };
+}
+
+interface RegisterKmipServerEvent {
+  type: EventType.REGISTER_KMIP_SERVER;
+  metadata: {
+    serverCertificateSerialNumber: string;
+    hostnamesOrIps: string;
+    commonName: string;
+    keyAlgorithm: CertKeyAlgorithm;
+    ttl: string;
+  };
+}
+
+interface GetSecretRotationsEvent {
+  type: EventType.GET_SECRET_ROTATIONS;
+  metadata: {
+    type?: SecretRotation;
+    count: number;
+    rotationIds: string[];
+    secretPath?: string;
+    environment?: string;
+  };
+}
+
+interface GetSecretRotationEvent {
+  type: EventType.GET_SECRET_ROTATION;
+  metadata: {
+    type: SecretRotation;
+    rotationId: string;
+    secretPath: string;
+    environment: string;
+  };
+}
+
+interface GetSecretRotationCredentialsEvent {
+  type: EventType.GET_SECRET_ROTATION_GENERATED_CREDENTIALS;
+  metadata: {
+    type: SecretRotation;
+    rotationId: string;
+    secretPath: string;
+    environment: string;
+  };
+}
+
+interface CreateSecretRotationEvent {
+  type: EventType.CREATE_SECRET_ROTATION;
+  metadata: Omit<TCreateSecretRotationV2DTO, "projectId"> & { rotationId: string };
+}
+
+interface UpdateSecretRotationEvent {
+  type: EventType.UPDATE_SECRET_ROTATION;
+  metadata: TUpdateSecretRotationV2DTO;
+}
+
+interface DeleteSecretRotationEvent {
+  type: EventType.DELETE_SECRET_ROTATION;
+  metadata: TDeleteSecretRotationV2DTO;
+}
+
+interface RotateSecretRotationEvent {
+  type: EventType.SECRET_ROTATION_ROTATE_SECRETS;
+  metadata: Pick<TSecretRotationV2Raw, "parameters" | "secretsMapping" | "type" | "connectionId" | "folderId"> & {
+    status: SecretRotationStatus;
+    rotationId: string;
+    jobId?: string | undefined;
+    occurredAt: Date;
+    message?: string | null | undefined;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1680,6 +2525,7 @@ export type Event =
   | DeleteSecretBatchEvent
   | GetWorkspaceKeyEvent
   | AuthorizeIntegrationEvent
+  | UpdateIntegrationAuthEvent
   | UnauthorizeIntegrationEvent
   | CreateIntegrationEvent
   | DeleteIntegrationEvent
@@ -1733,6 +2579,11 @@ export type Event =
   | DeleteIdentityOidcAuthEvent
   | UpdateIdentityOidcAuthEvent
   | GetIdentityOidcAuthEvent
+  | LoginIdentityJwtAuthEvent
+  | AddIdentityJwtAuthEvent
+  | UpdateIdentityJwtAuthEvent
+  | GetIdentityJwtAuthEvent
+  | DeleteIdentityJwtAuthEvent
   | CreateEnvironmentEvent
   | GetEnvironmentEvent
   | UpdateEnvironmentEvent
@@ -1757,6 +2608,23 @@ export type Event =
   | SecretApprovalClosed
   | SecretApprovalRequest
   | SecretApprovalReopened
+  | SignSshKey
+  | IssueSshCreds
+  | CreateSshCa
+  | GetSshCa
+  | UpdateSshCa
+  | DeleteSshCa
+  | GetSshCaCertificateTemplates
+  | CreateSshCertificateTemplate
+  | UpdateSshCertificateTemplate
+  | GetSshCertificateTemplate
+  | DeleteSshCertificateTemplate
+  | CreateSshHost
+  | UpdateSshHost
+  | DeleteSshHost
+  | GetSshHost
+  | IssueSshHostUserCert
+  | IssueSshHostHostCert
   | CreateCa
   | GetCa
   | UpdateCa
@@ -1794,6 +2662,7 @@ export type Event =
   | GetProjectKmsBackupEvent
   | LoadProjectKmsBackupEvent
   | OrgAdminAccessProjectEvent
+  | OrgAdminBypassSSOEvent
   | CreateCertificateTemplate
   | UpdateCertificateTemplate
   | GetCertificateTemplate
@@ -1812,9 +2681,14 @@ export type Event =
   | CreateCmekEvent
   | UpdateCmekEvent
   | DeleteCmekEvent
+  | GetCmekEvent
   | GetCmeksEvent
   | CmekEncryptEvent
   | CmekDecryptEvent
+  | CmekSignEvent
+  | CmekVerifyEvent
+  | CmekListSigningAlgorithmsEvent
+  | CmekGetPublicKeyEvent
   | GetExternalGroupOrgRoleMappingsEvent
   | UpdateExternalGroupOrgRoleMappingsEvent
   | GetProjectTemplatesEvent
@@ -1822,4 +2696,50 @@ export type Event =
   | CreateProjectTemplateEvent
   | UpdateProjectTemplateEvent
   | DeleteProjectTemplateEvent
-  | ApplyProjectTemplateEvent;
+  | ApplyProjectTemplateEvent
+  | GetAppConnectionsEvent
+  | GetAvailableAppConnectionsDetailsEvent
+  | GetAppConnectionEvent
+  | CreateAppConnectionEvent
+  | UpdateAppConnectionEvent
+  | DeleteAppConnectionEvent
+  | CreateSharedSecretEvent
+  | DeleteSharedSecretEvent
+  | ReadSharedSecretEvent
+  | GetSecretSyncsEvent
+  | GetSecretSyncEvent
+  | CreateSecretSyncEvent
+  | UpdateSecretSyncEvent
+  | DeleteSecretSyncEvent
+  | SecretSyncSyncSecretsEvent
+  | SecretSyncImportSecretsEvent
+  | SecretSyncRemoveSecretsEvent
+  | OidcGroupMembershipMappingAssignUserEvent
+  | OidcGroupMembershipMappingRemoveUserEvent
+  | CreateKmipClientEvent
+  | UpdateKmipClientEvent
+  | DeleteKmipClientEvent
+  | GetKmipClientEvent
+  | GetKmipClientsEvent
+  | CreateKmipClientCertificateEvent
+  | SetupKmipEvent
+  | GetKmipEvent
+  | RegisterKmipServerEvent
+  | KmipOperationGetEvent
+  | KmipOperationDestroyEvent
+  | KmipOperationCreateEvent
+  | KmipOperationGetAttributesEvent
+  | KmipOperationActivateEvent
+  | KmipOperationRevokeEvent
+  | KmipOperationLocateEvent
+  | KmipOperationRegisterEvent
+  | ProjectAccessRequestEvent
+  | CreateSecretRequestEvent
+  | SecretApprovalRequestReview
+  | GetSecretRotationsEvent
+  | GetSecretRotationEvent
+  | GetSecretRotationCredentialsEvent
+  | CreateSecretRotationEvent
+  | UpdateSecretRotationEvent
+  | DeleteSecretRotationEvent
+  | RotateSecretRotationEvent;

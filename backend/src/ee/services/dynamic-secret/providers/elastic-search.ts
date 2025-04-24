@@ -8,7 +8,7 @@ import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretElasticSearchSchema, ElasticSearchAuthTypes, TDynamicProviderFns } from "./models";
 
 const generatePassword = () => {
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 64)();
 };
 
@@ -19,15 +19,14 @@ const generateUsername = () => {
 export const ElasticSearchProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretElasticSearchSchema.parseAsync(inputs);
-    verifyHostInputValidity(providerInputs.host);
-
-    return providerInputs;
+    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
+    return { ...providerInputs, hostIp };
   };
 
-  const getClient = async (providerInputs: z.infer<typeof DynamicSecretElasticSearchSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretElasticSearchSchema> & { hostIp: string }) => {
     const connection = new ElasticSearchClient({
       node: {
-        url: new URL(`${providerInputs.host}:${providerInputs.port}`),
+        url: new URL(`${providerInputs.hostIp}:${providerInputs.port}`),
         ...(providerInputs.ca && {
           ssl: {
             rejectUnauthorized: false,
@@ -55,7 +54,7 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     const infoResponse = await connection
       .info()
@@ -67,7 +66,7 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
 
   const create = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     const username = generateUsername();
     const password = generatePassword();
@@ -85,7 +84,7 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     await connection.security.deleteUser({
       username: entityId
@@ -95,8 +94,8 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
     return { entityId };
   };
 
-  const renew = async (inputs: unknown, entityId: string) => {
-    // Do nothing
+  const renew = async (_inputs: unknown, entityId: string) => {
+    // No renewal necessary
     return { entityId };
   };
 

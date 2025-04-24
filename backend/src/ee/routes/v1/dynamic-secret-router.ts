@@ -1,16 +1,17 @@
-import slugify from "@sindresorhus/slugify";
-import ms from "ms";
 import { z } from "zod";
 
 import { DynamicSecretLeasesSchema } from "@app/db/schemas";
 import { DynamicSecretProviderSchema } from "@app/ee/services/dynamic-secret/providers/models";
-import { DYNAMIC_SECRETS } from "@app/lib/api-docs";
+import { ApiDocsTags, DYNAMIC_SECRETS } from "@app/lib/api-docs";
 import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 export const registerDynamicSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -20,6 +21,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.DynamicSecrets],
       body: z.object({
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.CREATE.projectSlug),
         provider: DynamicSecretProviderSchema.describe(DYNAMIC_SECRETS.CREATE.provider),
@@ -48,15 +51,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
           .nullable(),
         path: z.string().describe(DYNAMIC_SECRETS.CREATE.path).trim().default("/").transform(removeTrailingSlash),
         environmentSlug: z.string().describe(DYNAMIC_SECRETS.CREATE.environmentSlug).min(1),
-        name: z
-          .string()
-          .describe(DYNAMIC_SECRETS.CREATE.name)
-          .min(1)
-          .toLowerCase()
-          .max(64)
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid"
-          })
+        name: slugSchema({ min: 1, max: 64, field: "Name" }).describe(DYNAMIC_SECRETS.CREATE.name),
+        metadata: ResourceMetadataSchema.optional()
       }),
       response: {
         200: z.object({
@@ -117,6 +113,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.DynamicSecrets],
       params: z.object({
         name: z.string().toLowerCase().describe(DYNAMIC_SECRETS.UPDATE.name)
       }),
@@ -151,7 +149,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
                 ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
             })
             .nullable(),
-          newName: z.string().describe(DYNAMIC_SECRETS.UPDATE.newName).optional()
+          newName: z.string().describe(DYNAMIC_SECRETS.UPDATE.newName).optional(),
+          metadata: ResourceMetadataSchema.optional()
         })
       }),
       response: {
@@ -184,6 +183,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.DynamicSecrets],
       params: z.object({
         name: z.string().toLowerCase().describe(DYNAMIC_SECRETS.DELETE.name)
       }),
@@ -220,6 +221,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.DynamicSecrets],
       params: z.object({
         name: z.string().min(1).describe(DYNAMIC_SECRETS.GET_BY_NAME.name)
       }),
@@ -246,6 +249,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         name: req.params.name,
         ...req.query
       });
+
       return { dynamicSecret: dynamicSecretCfg };
     }
   });
@@ -257,6 +261,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.DynamicSecrets],
       querystring: z.object({
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST.projectSlug),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(DYNAMIC_SECRETS.LIST.path),
@@ -288,18 +294,20 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.DynamicSecrets],
       params: z.object({
-        name: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEAES_BY_NAME.name)
+        name: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEASES_BY_NAME.name)
       }),
       querystring: z.object({
-        projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEAES_BY_NAME.projectSlug),
+        projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEASES_BY_NAME.projectSlug),
         path: z
           .string()
           .trim()
           .default("/")
           .transform(removeTrailingSlash)
-          .describe(DYNAMIC_SECRETS.LIST_LEAES_BY_NAME.path),
-        environmentSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEAES_BY_NAME.environmentSlug)
+          .describe(DYNAMIC_SECRETS.LIST_LEASES_BY_NAME.path),
+        environmentSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEASES_BY_NAME.environmentSlug)
       }),
       response: {
         200: z.object({

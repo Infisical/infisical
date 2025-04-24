@@ -1,3 +1,4 @@
+import { PureAbility } from "@casl/ability";
 import { ZodIssue } from "zod";
 
 export type { TAccessApprovalPolicy } from "./accessApproval/types";
@@ -33,9 +34,9 @@ export type {
   CreateWorkspaceDTO,
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
-  RenameWorkspaceDTO,
   ToggleAutoCapitalizationDTO,
   UpdateEnvironmentDTO,
+  UpdateProjectDTO,
   Workspace,
   WorkspaceEnv,
   WorkspaceTag
@@ -43,20 +44,55 @@ export type {
 
 export enum ApiErrorTypes {
   ValidationError = "ValidationFailure",
+  PermissionBoundaryError = "PermissionBoundaryError",
   BadRequestError = "BadRequest",
   UnauthorizedError = "UnauthorizedError",
-  ForbiddenError = "PermissionDenied"
+  ForbiddenError = "PermissionDenied",
+  CustomForbiddenError = "ForbiddenError"
 }
 
 export type TApiErrors =
   | {
+      reqId: string;
       error: ApiErrorTypes.ValidationError;
       message: ZodIssue[];
+      statusCode: 422;
+    }
+  | {
+      reqId: string;
+      error: ApiErrorTypes.UnauthorizedError;
+      message: string;
+      statusCode: 401;
+    }
+  | {
+      reqId: string;
+      error: ApiErrorTypes.ForbiddenError;
+      message: string;
+      details: PureAbility["rules"];
       statusCode: 403;
     }
-  | { error: ApiErrorTypes.ForbiddenError; message: string; statusCode: 401 }
   | {
+      reqId: string;
+      error: ApiErrorTypes.CustomForbiddenError;
+      message: string;
+      statusCode: 403;
+    }
+  | {
+      reqId: string;
       statusCode: 400;
       message: string;
       error: ApiErrorTypes.BadRequestError;
+    }
+  | {
+      reqId: string;
+      statusCode: 403;
+      message: string;
+      error: ApiErrorTypes.PermissionBoundaryError;
+      details: {
+        missingPermissions: {
+          action: string;
+          subject: string;
+          conditions: Record<string, Record<string, string>>;
+        }[];
+      };
     };

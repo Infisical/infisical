@@ -2,20 +2,25 @@
 import { ForbiddenError } from "@casl/ability";
 import axios from "axios";
 import jwt from "jsonwebtoken";
+import RE2 from "re2";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityAwsAuthDALFactory } from "./identity-aws-auth-dal";
 import { extractPrincipalArn } from "./identity-aws-auth-fns";
 import {
@@ -29,7 +34,7 @@ import {
 } from "./identity-aws-auth-types";
 
 type TIdentityAwsAuthServiceFactoryDep = {
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   identityAwsAuthDAL: Pick<TIdentityAwsAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -37,6 +42,40 @@ type TIdentityAwsAuthServiceFactoryDep = {
 };
 
 export type TIdentityAwsAuthServiceFactory = ReturnType<typeof identityAwsAuthServiceFactory>;
+
+const awsRegionFromHeader = (authorizationHeader: string): string | null => {
+  // https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-auth-using-authorization-header.html
+  // The Authorization header takes the following form.
+  //  Authorization: AWS4-HMAC-SHA256
+  //	Credential=AKIAIOSFODNN7EXAMPLE/20230719/us-east-1/sts/aws4_request,
+  // 	SignedHeaders=content-length;content-type;host;x-amz-date,
+  //	Signature=fe5f80f77d5fa3beca038a248ff027d0445342fe2855ddc963176630326f1024
+  //
+  // The credential is in the form of "<your-access-key-id>/<date>/<aws-region>/<aws-service>/aws4_request"
+  try {
+    const fields = authorizationHeader.split(" ");
+    for (const field of fields) {
+      if (field.startsWith("Credential=")) {
+        const parts = field.split("/");
+        if (parts.length >= 3) {
+          return parts[2];
+        }
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
+function isValidAwsRegion(region: string | null): boolean {
+  const validRegionPattern = new RE2("^[a-z0-9-]+$");
+  if (typeof region !== "string" || region.length === 0 || region.length > 20) {
+    return false;
+  }
+
+  return validRegionPattern.test(region);
+}
 
 export const identityAwsAuthServiceFactory = ({
   identityAccessTokenDAL,
@@ -55,6 +94,13 @@ export const identityAwsAuthServiceFactory = ({
 
     const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
     const body: string = Buffer.from(iamRequestBody, "base64").toString();
+    const region = headers.Authorization ? awsRegionFromHeader(headers.Authorization) : null;
+
+    if (!isValidAwsRegion(region)) {
+      throw new BadRequestError({ message: "Invalid AWS region" });
+    }
+
+    const url = region ? `https://sts.${region}.amazonaws.com` : identityAwsAuth.stsEndpoint;
 
     const {
       data: {
@@ -64,7 +110,7 @@ export const identityAwsAuthServiceFactory = ({
       }
     }: { data: TGetCallerIdentityResponse } = await axios({
       method: iamHttpRequestMethod,
-      url: headers?.Host ? `https://${headers.Host}` : identityAwsAuth.stsEndpoint,
+      url,
       headers,
       data: body
     });
@@ -92,7 +138,8 @@ export const identityAwsAuthServiceFactory = ({
         .some((principalArn) => {
           // convert wildcard ARN to a regular expression: "arn:aws:iam::123456789012:*" -> "^arn:aws:iam::123456789012:.*$"
           // considers exact matches + wildcard matches
-          const regex = new RegExp(`^${principalArn.replace(/\*/g, ".*")}$`);
+          // heavily validated in router
+          const regex = new RE2(`^${principalArn.replaceAll("*", ".*")}$`);
           return regex.test(extractPrincipalArn(Arn));
         });
 
@@ -126,12 +173,12 @@ export const identityAwsAuthServiceFactory = ({
         authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
-      {
-        expiresIn:
-          Number(identityAccessToken.accessTokenMaxTTL) === 0
-            ? undefined
-            : Number(identityAccessToken.accessTokenMaxTTL)
-      }
+      // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
+      Number(identityAccessToken.accessTokenTTL) === 0
+        ? undefined
+        : {
+            expiresIn: Number(identityAccessToken.accessTokenTTL)
+          }
     );
 
     return { accessToken, identityAwsAuth, identityAccessToken, identityMembershipOrg };
@@ -149,8 +196,11 @@ export const identityAwsAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TAttachAwsAuthDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
@@ -171,7 +221,7 @@ export const identityAwsAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -250,7 +300,7 @@ export const identityAwsAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -304,7 +354,7 @@ export const identityAwsAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
     return { ...awsIdentityAuth, orgId: identityMembershipOrg.orgId };
   };
 
@@ -322,14 +372,14 @@ export const identityAwsAuthServiceFactory = ({
         message: "The identity does not have aws auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
@@ -339,13 +389,29 @@ export const identityAwsAuthServiceFactory = ({
       actorOrgId
     );
 
-    if (!isAtLeastAsPrivileged(permission, rolePermission))
-      throw new ForbiddenRequestError({
-        message: "Failed to revoke aws auth of identity with more privileged role"
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      OrgPermissionIdentityActions.RevokeAuth,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+
+    if (!permissionBoundary.isValid)
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to revoke aws auth of identity with more privileged role",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.RevokeAuth,
+          OrgPermissionSubjects.Identity
+        ),
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const revokedIdentityAwsAuth = await identityAwsAuthDAL.transaction(async (tx) => {
       const deletedAwsAuth = await identityAwsAuthDAL.delete({ identityId }, tx);
+      await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.AWS_AUTH }, tx);
+
       return { ...deletedAwsAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityAwsAuth;

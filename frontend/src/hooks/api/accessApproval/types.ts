@@ -16,17 +16,18 @@ export type TAccessApprovalPolicy = {
   enforcementLevel: EnforcementLevel;
   updatedAt: Date;
   approvers?: Approver[];
+  allowedSelfApprovals: boolean;
 };
 
-export enum ApproverType{
+export enum ApproverType {
   User = "user",
   Group = "group"
 }
 
-export type Approver ={
+export type Approver = {
   id: string;
   type: ApproverType;
-}
+};
 
 export type TAccessApprovalRequest = {
   id: string;
@@ -70,12 +71,16 @@ export type TAccessApprovalRequest = {
     secretPath?: string | null;
     envId: string;
     enforcementLevel: EnforcementLevel;
+    deletedAt: Date | null;
+    allowedSelfApprovals: boolean;
   };
 
   reviewers: {
     member: string;
     status: string;
   }[];
+
+  note?: string;
 };
 
 export type TAccessApproval = {
@@ -116,6 +121,7 @@ export type TProjectUserPrivilege = {
 
 export type TCreateAccessRequestDTO = {
   projectSlug: string;
+  note?: string;
 } & Omit<TProjectUserPrivilege, "id" | "createdAt" | "updatedAt" | "slug" | "projectMembershipId">;
 
 export type TGetAccessApprovalRequestsDTO = {
@@ -143,6 +149,7 @@ export type TCreateAccessPolicyDTO = {
   approvals?: number;
   secretPath?: string;
   enforcementLevel?: EnforcementLevel;
+  allowedSelfApprovals: boolean;
 };
 
 export type TUpdateAccessPolicyDTO = {
@@ -153,6 +160,7 @@ export type TUpdateAccessPolicyDTO = {
   environment?: string;
   approvals?: number;
   enforcementLevel?: EnforcementLevel;
+  allowedSelfApprovals: boolean;
   // for invalidating list
   projectSlug: string;
 };

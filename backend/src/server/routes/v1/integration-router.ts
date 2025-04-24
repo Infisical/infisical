@@ -2,13 +2,14 @@ import { z } from "zod";
 
 import { IntegrationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { INTEGRATION } from "@app/lib/api-docs";
+import { ApiDocsTags, INTEGRATION } from "@app/lib/api-docs";
 import { removeTrailingSlash, shake } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { IntegrationMetadataSchema } from "@app/services/integration/integration-schema";
+import { Integrations } from "@app/services/integration-auth/integration-list";
 import { PostHogEventTypes, TIntegrationCreatedEvent } from "@app/services/telemetry/telemetry-types";
 
 import {} from "../sanitizedSchemas";
@@ -21,6 +22,8 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Create an integration to sync secrets.",
       security: [
         {
@@ -118,6 +121,8 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Update an integration by integration id",
       security: [
         {
@@ -130,7 +135,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         app: z.string().trim().optional().describe(INTEGRATION.UPDATE.app),
         appId: z.string().trim().optional().describe(INTEGRATION.UPDATE.appId),
-        isActive: z.boolean().describe(INTEGRATION.UPDATE.isActive),
+        isActive: z.boolean().optional().describe(INTEGRATION.UPDATE.isActive),
         secretPath: z
           .string()
           .trim()
@@ -140,7 +145,9 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         targetEnvironment: z.string().trim().optional().describe(INTEGRATION.UPDATE.targetEnvironment),
         owner: z.string().trim().optional().describe(INTEGRATION.UPDATE.owner),
         environment: z.string().trim().optional().describe(INTEGRATION.UPDATE.environment),
-        metadata: IntegrationMetadataSchema.optional()
+        path: z.string().trim().optional().describe(INTEGRATION.UPDATE.path),
+        metadata: IntegrationMetadataSchema.optional(),
+        region: z.string().trim().optional().describe(INTEGRATION.UPDATE.region)
       }),
       response: {
         200: z.object({
@@ -175,6 +182,8 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Get an integration by integration id",
       security: [
         {
@@ -206,6 +215,33 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         id: req.params.integrationId
       });
 
+      if (integration.region) {
+        integration.metadata = {
+          ...(integration.metadata || {}),
+          region: integration.region
+        };
+      }
+
+      if (
+        integration.integration === Integrations.AWS_SECRET_MANAGER ||
+        integration.integration === Integrations.AWS_PARAMETER_STORE
+      ) {
+        const awsRoleDetails = await server.services.integration.getIntegrationAWSIamRole({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          id: req.params.integrationId
+        });
+
+        if (awsRoleDetails) {
+          integration.metadata = {
+            ...(integration.metadata || {}),
+            awsIamRole: awsRoleDetails.role
+          };
+        }
+      }
+
       return { integration };
     }
   });
@@ -217,6 +253,8 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Remove an integration using the integration object ID",
       security: [
         {
@@ -285,6 +323,8 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Manually trigger sync of an integration by integration id",
       security: [
         {

@@ -1,4 +1,5 @@
 /* eslint-disable max-classes-per-file */
+
 export class DatabaseError extends Error {
   name: string;
 
@@ -52,10 +53,35 @@ export class ForbiddenRequestError extends Error {
 
   error: unknown;
 
-  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown } = {}) {
+  details?: unknown;
+
+  constructor({
+    name,
+    error,
+    message,
+    details
+  }: { message?: string; name?: string; error?: unknown; details?: unknown } = {}) {
     super(message ?? "You are not allowed to access this resource");
     this.name = name || "ForbiddenError";
     this.error = error;
+    this.details = details;
+  }
+}
+
+export class PermissionBoundaryError extends ForbiddenRequestError {
+  constructor({
+    message,
+    name,
+    error,
+    details
+  }: {
+    message?: string;
+    name?: string;
+    error?: unknown;
+    details?: unknown;
+  }) {
+    super({ message, name, error, details });
+    this.name = "PermissionBoundaryError";
   }
 }
 
@@ -131,5 +157,17 @@ export class ScimRequestError extends Error {
     this.error = error;
     this.detail = detail;
     this.status = status;
+  }
+}
+
+export class OidcAuthError extends Error {
+  name: string;
+
+  error: unknown;
+
+  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
+    super(message || "Something went wrong");
+    this.name = name || "OidcAuthError";
+    this.error = error;
   }
 }

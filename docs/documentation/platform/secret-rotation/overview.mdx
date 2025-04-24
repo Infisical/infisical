@@ -6,44 +6,110 @@ description: "Learn how to set up automated secret rotation in Infisical."
 
 ## Introduction
 
-Secret rotation is a process that involves updating secret credentials periodically to minimize the risk of their compromise. 
-Rotating secrets helps prevent unauthorized access to systems and sensitive data by ensuring that old credentials are replaced with new ones regularly.
+Secret rotation is a security best practice that involves systematically updating credentials and access tokens at regular intervals to minimize the risk of compromise. By proactively replacing existing secrets with new ones, organizations reduce the potential impact of credential theft or leakage.
 
-Rotated secrets may include, but are not limited to:
+Examples of rotated secrets include:
 
-1. API keys for external services;
-2. Database credentials for various platforms.
+- API keys and authentication tokens for cloud services and third-party integrations
+- Database credentials across production, staging, and development environments
 
-## Rotation Process
+## How Rotation Works
 
-The practice of rotating secrets is a systematic and interval-based operation, carried out in four fundamental phases.
+Secret Rotation systematically replaces secrets at regular intervals while ensuring zero downtime for your applications. This overlapping lifecycle approach maintains continuous availability while enhancing your security posture.
 
-### 1. Creation
+### Visual Timeline
 
-The system initiates the rotation process by either making an API call to an external service or generating a new secret value internally.
-Upon successful creation, the system will temporarily have three versions of the secret:
+```mermaid
+gantt
+    title Credential Lifecycle (Interval = 30 days)
+    dateFormat  YYYY-MM-DD
+    axisFormat %b %d
 
-- **Current active secret**: The one currently in use.
-- **Future active secret (pending)**: The newly created secret, awaiting validation.
-- **Previous active secret**: The old secret, soon to be retired.
+    section Credentials 1
+    Active      :active, a1, 2023-01-01, 30d
+    Inactive    :done, i1, after a1, 30d
+    Revoked     :crit, r1, after i1, 30d
 
-### 2. Testing
+    section Credentials 2
+    Active      :active, a2, 2023-01-31, 30d
+    Inactive    :done, i2, after a2, 30d
+    Revoked     :crit, r2, after i2, 30d
 
-The newly generated secret is subjected to a verification process to ensure its validity and functionality.
-This involves conducting checks or tests that simulate actual operations the secret would perform.
-Only the current active and the future active (pending) secrets are considered operational at this stage, while the previous active secret remains in standby mode.
+    section Credentials 3
+    Active      :active, a3, 2023-03-02, 30d
+    Inactive    :done, i3, after a3, 30d
+    Revoked     :crit, r3, after i3, 30d
+```
 
-### 3. Deletion
+### Credential States
 
-Post-verification, the system deactivates and deletes the previous active secret, leaving only the current and future active (pending) secrets in the system.
+Each set of credentials transitions through three distinct states:
 
-### 4. Activation
+- **Active**: The primary credentials that will be used for new connections
+- **Inactive**: These credentials are still valid but are no longer issued for new connections
+    <Note>
+        Some rotation providers utilize a single credential set due to technical constraints. As a result, inactive credentials for these providers will immediately become invalid once rotated.
 
-Finally, the system promotes the future active (pending) secret to be the new current active secret. It then triggers necessary side effects, such as invoking webhooks and generating events, to notify other services of the change.
+        To avoid service interruptions, Infisical recommends manually rotating these credentials to prevent downtime.
+    </Note>
+- **Revoked**: Permanently invalidated and deleted from the system
+
+### Rotation Cycle Example (30-Day Interval)
+
+Using a __30-Day__ rotation interval as an example, here's how the process unfolds:
+
+1. __Day 0__
+    - `Credential set 1` is issued and set to **Active**
+    - Applications begin using this set for authentication
+
+2. __Day 30__
+    - `Credential set 2` is issued and set to **Active**
+    - `Credential set 1` transitions to **Inactive** but remains valid
+    - New connections utilize set 2 while existing connections with set 1 continue to work
+
+    <Note>
+        This overlapping validity period ensures that at any point during the active period of a credential set, you are guaranteed that retrieved credentials will be valid for the specified rotation period.
+    </Note>
+
+3. __Day 60__
+    - `Credential set 3` is issued and set to **Active**
+    - `Credential set 2` transitions to **Inactive** but remains valid
+    - `Credential set 1` is **Revoked** and securely deleted
+    - By now, all applications should have transitioned to using set 2 or 3
+
+4. __Day 90__
+    - `Credential set 4` is issued and set to **Active**
+    - `Credential set 3` transitions to **Inactive** but remains valid
+    - `Credential set 2` is **Revoked** and securely deleted
+    - The cycle continues...
+
+### Benefits of This Approach
+
+- **Zero Downtime**: Applications always have valid credentials
+- **Grace Period**: The inactive period gives applications time to update to new credentials
+- **Reduced Risk**: Credentials are regularly cycled, limiting the impact of potential compromise
+- **Predictable Schedule**: Makes credential management more systematic and easier to automate
+
+### Implementation Considerations
+
+- Choose a rotation interval appropriate for your security requirements and operational needs
+- Ensure your applications can handle credential updates gracefully
+- Monitor for applications still using credentials nearing revocation
 
 ## Infisical Secret Rotation Strategies
 
-1. [SendGrid Integration](./sendgrid)
-2. [PostgreSQL/CockroachDB Implementation](./postgres)
-3. [MySQL/MariaDB Configuration](./mysql)
-4. [AWS IAM User](./aws-iam)
+- [PostgreSQL Credentials](./postgres)
+- [Microsoft SQL Server Credentials](./mssql)
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Why do certain rotations only use a single credential set?">
+        Some credential providers have limitations that affect rotation patterns:
+
+        - The third-party provider's API only supports managing one active credential set at a time
+        - The specific use-case (such as personal login accounts) is inherently limited to a single active credential
+
+        In either scenario, when service continuity is critical, Infisical recommends disabling auto-rotation and performing manual credential rotation during scheduled maintenance windows.
+    </Accordion>
+</AccordionGroup>

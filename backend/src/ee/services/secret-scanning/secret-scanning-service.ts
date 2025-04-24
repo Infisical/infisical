@@ -15,6 +15,7 @@ import { TSecretScanningDALFactory } from "./secret-scanning-dal";
 import { TSecretScanningQueueFactory } from "./secret-scanning-queue";
 import {
   SecretScanningRiskStatus,
+  TGetAllOrgRisksDTO,
   TGetOrgInstallStatusDTO,
   TGetOrgRisksDTO,
   TInstallAppSessionDTO,
@@ -118,11 +119,21 @@ export const secretScanningServiceFactory = ({
     return Boolean(appInstallation);
   };
 
-  const getRisksByOrg = async ({ actor, orgId, actorId, actorAuthMethod, actorOrgId }: TGetOrgRisksDTO) => {
+  const getRisksByOrg = async ({ actor, orgId, actorId, actorAuthMethod, actorOrgId, filter }: TGetOrgRisksDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
+
+    const results = await secretScanningDAL.findByOrgId(orgId, filter);
+
+    return results;
+  };
+
+  const getAllRisksByOrg = async ({ actor, orgId, actorId, actorAuthMethod, actorOrgId }: TGetAllOrgRisksDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
+
     const risks = await secretScanningDAL.find({ orgId }, { sort: [["createdAt", "desc"]] });
-    return { risks };
+    return risks;
   };
 
   const updateRiskStatus = async ({
@@ -189,6 +200,7 @@ export const secretScanningServiceFactory = ({
     linkInstallationToOrg,
     getOrgInstallationStatus,
     getRisksByOrg,
+    getAllRisksByOrg,
     updateRiskStatus,
     handleRepoPushEvent,
     handleRepoDeleteEvent

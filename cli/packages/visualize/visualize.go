@@ -94,6 +94,33 @@ func getLongestValues(rows [][3]string) (longestSecretName, longestSecretType in
 	return
 }
 
+func GenericTable(headers []string, rows [][]string) {
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.SetStyle(table.StyleLight)
+
+	// t.SetTitle(tableOptions.Title)
+	t.Style().Options.DrawBorder = true
+	t.Style().Options.SeparateHeader = true
+	t.Style().Options.SeparateColumns = true
+
+	tableHeaders := table.Row{}
+	for _, header := range headers {
+		tableHeaders = append(tableHeaders, header)
+	}
+
+	t.AppendHeader(tableHeaders)
+	for _, row := range rows {
+		tableRow := table.Row{}
+		for _, val := range row {
+			tableRow = append(tableRow, val)
+		}
+		t.AppendRow(tableRow)
+	}
+
+	t.Render()
+}
+
 // stringWidth returns the width of a string.
 // ANSI escape sequences are ignored and double-width characters are handled correctly.
 func stringWidth(str string) (width int) {

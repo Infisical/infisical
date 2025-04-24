@@ -1,0 +1,71 @@
+---
+title: "Humanitec Connection"
+description: "Learn how to configure a Humanitec Connection for Infisical."
+---
+
+Infisical supports connecting to Humanitec using a service user.
+
+## Setup Humanitec Connection in Infisical
+
+<Steps>
+    <Step title="Move to Service Users on Humanitec">
+        Navigate to the Humanitec **Service Users** tab.
+        ![Humanitec Service Users Tab](/images/app-connections/humanitec/humanitec-service-users.png)
+    </Step>
+    <Step title="Create a Service User">
+        Create a new service user. Take into account that the role set here will affect the permissions of the API Token so be sure to set it so the Service User has access permissions to the App you want to integrate to Infisical.
+        ![Humanitec Create New Service User](/images/app-connections/humanitec/humanitec-create-new-user.png)
+    </Step>
+    <Step title="Add API Token for the Service User">
+        Add a new API token for the service user.
+        ![Humanitec Add API Token](/images/app-connections/humanitec/humanitec-add-api-token.png)
+    </Step>
+    <Step title="Create the API Token for the Service User">
+        Create the API token for the service user.
+        This token's permission will be limited to the **Service User** role.
+        <Note>
+            If you configure an expiry date for your API token you will need to manually rotate to a new token prior to expiration to avoid integration downtime.
+        </Note>
+        ![Humanitec Create API Token](/images/app-connections/humanitec/humanitec-create-api-token.png)
+    </Step>
+    <Step title="Copy the API Token">
+        A modal with the API token will be displayed. Save the token in a secure location for later use in the following steps.
+        ![Humanitec Copy API Token](/images/app-connections/humanitec/humanitec-copy-api-token.png)
+    </Step>
+    <Step title="Service User has been successfully created">
+        After following the previous steps the Service User has been successfully created, and now should be visible on the Service Users tab.
+        ![Humanitec Service User Created](/images/app-connections/humanitec/humanitec-service-account-filled.png)
+    </Step>
+    <Step title="Add Service User to Application">
+        Move to the **Applications** tab and add the Service User to the Application you want to sync with Infisical.
+        Clicking on the App Title will open the App details page.
+        ![Humanitec Applications Tab](/images/app-connections/humanitec/humanitec-applications-tab.png)
+    </Step>
+    <Step title="Add new member to this Application">
+        Move to the **People** tab and add a new member to this Application. The recently created User Service should be visible on the dropdown shown.
+        Make sure to assign at least Developer role as Write permissions are required.
+        ![Humanitec Add User to Application](/images/app-connections/humanitec/humanitec-add-user.png)
+        ![Humanitec Add User Options](/images/app-connections/humanitec/humanitec-add-user-options.png)
+        ![Humanitec Add User Role](/images/app-connections/humanitec/humanitec-add-user-role.png)
+    </Step>
+    <Step title="Connection Created">
+        Your **Humanitec Connection** is now available for use.
+        ![Humanitec Connection Created](/images/app-connections/humanitec/humanitec-user-added.png)
+    </Step>
+    <Step title="Navigate to App Connections">
+        Navigate to the **App Connections** tab on the **Organization Settings** page.
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+    </Step>
+    <Step title="Add Connection">
+        Select the **Humanitec Connection** option from the connection options modal.
+        ![Select Humanitec Connection](/images/app-connections/humanitec/humanitec-app-connection-option.png)
+    </Step>
+    <Step title="Fill the Humanitec Connection Modal">
+        Fill the Humanitec Connection modal, here you will need to provide the User Service API Token generated in the previous step.
+        ![Humanitec Connection Modal](/images/app-connections/humanitec/humanitec-app-connection-modal.png)
+    </Step>
+    <Step title="Connection Created">
+        Your **Humanitec Connection** is now available for use.
+        ![Humanitec Connection Created](/images/app-connections/humanitec/humanitec-app-connection-created.png)
+    </Step>
+</Steps>

@@ -217,20 +217,33 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("temporaryAccessStartTime").withSchema(TableName.ProjectUserMembershipRole),
           db.ref("temporaryAccessEndTime").withSchema(TableName.ProjectUserMembershipRole),
           db.ref("name").as("projectName").withSchema(TableName.Project),
-          db.ref("id").as("projectId").withSchema(TableName.Project)
+          db.ref("id").as("projectId").withSchema(TableName.Project),
+          db.ref("type").as("projectType").withSchema(TableName.Project)
         )
         .where({ isGhost: false });
 
       const members = sqlNestRelationships({
         data: docs,
-        parentMapper: ({ email, firstName, username, lastName, publicKey, isGhost, id, projectId, projectName }) => ({
+        parentMapper: ({
+          email,
+          firstName,
+          username,
+          lastName,
+          publicKey,
+          isGhost,
+          id,
+          projectId,
+          projectName,
+          projectType
+        }) => ({
           id,
           userId,
           projectId,
           user: { email, username, firstName, lastName, id: userId, publicKey, isGhost },
           project: {
             id: projectId,
-            name: projectName
+            name: projectName,
+            type: projectType
           }
         }),
         key: "id",

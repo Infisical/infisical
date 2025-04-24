@@ -5,6 +5,8 @@ import { TableName, TGroups } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 
+import { EFilterReturnedUsers } from "./group-types";
+
 export type TGroupDALFactory = ReturnType<typeof groupDALFactory>;
 
 export const groupDALFactory = (db: TDbClient) => {
@@ -66,7 +68,8 @@ export const groupDALFactory = (db: TDbClient) => {
     offset = 0,
     limit,
     username, // depreciated in favor of search
-    search
+    search,
+    filter
   }: {
     orgId: string;
     groupId: string;
@@ -74,6 +77,7 @@ export const groupDALFactory = (db: TDbClient) => {
     limit?: number;
     username?: string;
     search?: string;
+    filter?: EFilterReturnedUsers;
   }) => {
     try {
       const query = db
@@ -90,6 +94,7 @@ export const groupDALFactory = (db: TDbClient) => {
         .select(
           db.ref("id").withSchema(TableName.OrgMembership),
           db.ref("groupId").withSchema(TableName.UserGroupMembership),
+          db.ref("createdAt").withSchema(TableName.UserGroupMembership).as("joinedGroupAt"),
           db.ref("email").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
@@ -106,22 +111,42 @@ export const groupDALFactory = (db: TDbClient) => {
       }
 
       if (search) {
-        void query.andWhereRaw(`CONCAT_WS(' ', "firstName", "lastName", "username") ilike '%${search}%'`);
+        void query.andWhereRaw(`CONCAT_WS(' ', "firstName", "lastName", "username") ilike ?`, [`%${search}%`]);
       } else if (username) {
         void query.andWhere(`${TableName.Users}.username`, "ilike", `%${username}%`);
+      }
+
+      switch (filter) {
+        case EFilterReturnedUsers.EXISTING_MEMBERS:
+          void query.andWhere(`${TableName.UserGroupMembership}.createdAt`, "is not", null);
+          break;
+        case EFilterReturnedUsers.NON_MEMBERS:
+          void query.andWhere(`${TableName.UserGroupMembership}.createdAt`, "is", null);
+          break;
+        default:
+          break;
       }
 
       const members = await query;
 
       return {
         members: members.map(
-          ({ email, username: memberUsername, firstName, lastName, userId, groupId: memberGroupId }) => ({
+          ({
+            email,
+            username: memberUsername,
+            firstName,
+            lastName,
+            userId,
+            groupId: memberGroupId,
+            joinedGroupAt
+          }) => ({
             id: userId,
             email,
             username: memberUsername,
             firstName,
             lastName,
-            isPartOfGroup: !!memberGroupId
+            isPartOfGroup: !!memberGroupId,
+            joinedGroupAt
           })
         ),
         // @ts-expect-error col select is raw and not strongly typed

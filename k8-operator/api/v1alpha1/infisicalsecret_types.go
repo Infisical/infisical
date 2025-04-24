@@ -38,6 +38,14 @@ type KubernetesAuthDetails struct {
 
 	// +kubebuilder:validation:Required
 	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`
+
+	// Optionally automatically create a service account token for the configured service account.
+	// If this is set to `true`, the operator will automatically create a service account token for the configured service account.
+	// +kubebuilder:validation:Optional
+	AutoCreateServiceAccountToken bool `json:"autoCreateServiceAccountToken"`
+	// The audiences to use for the service account token. This is only relevant if `autoCreateServiceAccountToken` is true.
+	// +kubebuilder:validation:Optional
+	ServiceAccountTokenAudiences []string `json:"serviceAccountTokenAudiences"`
 }
 
 type KubernetesServiceAccountRef struct {
@@ -116,59 +124,6 @@ type MachineIdentityScopeInWorkspace struct {
 	Recursive bool `json:"recursive"`
 }
 
-type KubeSecretReference struct {
-	// The name of the Kubernetes Secret
-	// +kubebuilder:validation:Required
-	SecretName string `json:"secretName"`
-
-	// The name space where the Kubernetes Secret is located
-	// +kubebuilder:validation:Required
-	SecretNamespace string `json:"secretNamespace"`
-}
-
-type MangedKubeSecretConfig struct {
-	// The name of the Kubernetes Secret
-	// +kubebuilder:validation:Required
-	SecretName string `json:"secretName"`
-
-	// The name space where the Kubernetes Secret is located
-	// +kubebuilder:validation:Required
-	SecretNamespace string `json:"secretNamespace"`
-
-	// The Kubernetes Secret type (experimental feature). More info: https://kubernetes.io/docs/concepts/configuration/secret/#secret-types
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:=Opaque
-	SecretType string `json:"secretType"`
-
-	// The Kubernetes Secret creation policy.
-	// Enum with values: 'Owner', 'Orphan'.
-	// Owner creates the secret and sets .metadata.ownerReferences of the InfisicalSecret CRD that created it.
-	// Orphan will not set the secret owner. This will result in the secret being orphaned and not deleted when the resource is deleted.
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:=Orphan
-	CreationPolicy string `json:"creationPolicy"`
-}
-
-type CaReference struct {
-	// The name of the Kubernetes Secret
-	// +kubebuilder:validation:Required
-	SecretName string `json:"secretName"`
-
-	// The namespace where the Kubernetes Secret is located
-	// +kubebuilder:validation:Required
-	SecretNamespace string `json:"secretNamespace"`
-
-	// +kubebuilder:validation:Required
-	// The name of the secret property with the CA certificate value
-	SecretKey string `json:"key"`
-}
-
-type TLSConfig struct {
-	// Reference to secret containing CA cert
-	// +kubebuilder:validation:Optional
-	CaRef CaReference `json:"caRef,omitempty"`
-}
-
 // InfisicalSecretSpec defines the desired state of InfisicalSecret
 type InfisicalSecretSpec struct {
 	// +kubebuilder:validation:Optional
@@ -177,8 +132,13 @@ type InfisicalSecretSpec struct {
 	// +kubebuilder:validation:Optional
 	Authentication Authentication `json:"authentication"`
 
-	// +kubebuilder:validation:Required
-	ManagedSecretReference MangedKubeSecretConfig `json:"managedSecretReference"`
+	// +kubebuilder:validation:Optional
+	ManagedSecretReference ManagedKubeSecretConfig `json:"managedSecretReference"`
+
+	// +kubebuilder:validation:Optional
+	ManagedKubeSecretReferences []ManagedKubeSecretConfig `json:"managedKubeSecretReferences"`
+	// +kubebuilder:validation:Optional
+	ManagedKubeConfigMapReferences []ManagedKubeConfigMapConfig `json:"managedKubeConfigMapReferences"`
 
 	// +kubebuilder:default:=60
 	ResyncInterval int `json:"resyncInterval"`

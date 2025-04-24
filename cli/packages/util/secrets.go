@@ -14,9 +14,9 @@ import (
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
-	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/zalando/go-keyring"
+	"gopkg.in/yaml.v3"
 )
 
 func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment string, secretPath string, includeImports bool, recursive bool, tagSlugs string, expandSecretReferences bool) ([]models.SingleEnvironmentVariable, error) {
@@ -27,7 +27,10 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 
 	serviceToken := fmt.Sprintf("%v.%v.%v", serviceTokenParts[0], serviceTokenParts[1], serviceTokenParts[2])
 
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get client with custom headers [err=%v]", err)
+	}
 
 	httpClient.SetAuthToken(serviceToken).
 		SetHeader("Accept", "application/json")
@@ -78,7 +81,11 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 }
 
 func GetPlainTextSecretsV3(accessToken string, workspaceId string, environmentName string, secretsPath string, includeImports bool, recursive bool, tagSlugs string, expandSecretReferences bool) (models.PlaintextSecretResult, error) {
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return models.PlaintextSecretResult{}, err
+	}
+
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
 
@@ -121,7 +128,11 @@ func GetPlainTextSecretsV3(accessToken string, workspaceId string, environmentNa
 }
 
 func GetSinglePlainTextSecretByNameV3(accessToken string, workspaceId string, environmentName string, secretsPath string, secretName string) (models.SingleEnvironmentVariable, string, error) {
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return models.SingleEnvironmentVariable{}, "", err
+	}
+
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
 
@@ -152,7 +163,11 @@ func GetSinglePlainTextSecretByNameV3(accessToken string, workspaceId string, en
 }
 
 func CreateDynamicSecretLease(accessToken string, projectSlug string, environmentName string, secretsPath string, slug string, ttl string) (models.DynamicSecretLease, error) {
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return models.DynamicSecretLease{}, err
+	}
+
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
 
@@ -246,7 +261,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 
 		log.Debug().Msg("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
 
-		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := GetCurrentLoggedInUserDetails(true)
 		isConnected := ValidateInfisicalAPIConnection()
 
 		if isConnected {
@@ -524,7 +539,11 @@ func GetEnvelopmentBasedOnGitBranch(workspaceFile models.WorkspaceConfigFile) st
 }
 
 func GetPlainTextWorkspaceKey(authenticationToken string, receiverPrivateKey string, workspaceId string) ([]byte, error) {
-	httpClient := resty.New()
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return nil, fmt.Errorf("GetPlainTextWorkspaceKey: unable to get client with custom headers [err=%v]", err)
+	}
+
 	httpClient.SetAuthToken(authenticationToken).
 		SetHeader("Accept", "application/json")
 
@@ -564,7 +583,99 @@ func GetPlainTextWorkspaceKey(authenticationToken string, receiverPrivateKey str
 	return crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey), nil
 }
 
-func SetRawSecrets(secretArgs []string, secretType string, environmentName string, secretsPath string, projectId string, tokenDetails *models.TokenDetails) ([]models.SecretSetOperation, error) {
+func parseSecrets(fileName string, content string) (map[string]string, error) {
+	secrets := make(map[string]string)
+
+	if strings.HasSuffix(fileName, ".yaml") || strings.HasSuffix(fileName, ".yml") {
+		// Handle YAML secrets
+		var yamlData map[string]interface{}
+		if err := yaml.Unmarshal([]byte(content), &yamlData); err != nil {
+			return nil, fmt.Errorf("failed to parse YAML file: %v", err)
+		}
+
+		for key, value := range yamlData {
+			if strValue, ok := value.(string); ok {
+				secrets[key] = strValue
+			} else {
+				return nil, fmt.Errorf("YAML secret '%s' must be a string", key)
+			}
+		}
+	} else {
+		// Handle .env files
+		lines := strings.Split(content, "\n")
+
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+
+			// Ignore empty lines and comments
+			if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "//") {
+				continue
+			}
+
+			// Ensure it's a valid key=value pair
+			splitKeyValue := strings.SplitN(line, "=", 2)
+			if len(splitKeyValue) != 2 {
+				return nil, fmt.Errorf("invalid format, expected key=value in line: %s", line)
+			}
+
+			key, value := strings.TrimSpace(splitKeyValue[0]), strings.TrimSpace(splitKeyValue[1])
+
+			// Handle quoted values
+			if (strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`)) ||
+				(strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`)) {
+				value = value[1 : len(value)-1] // Remove surrounding quotes
+			}
+
+			secrets[key] = value
+		}
+	}
+
+	return secrets, nil
+}
+
+func validateSecretKey(key string) error {
+	if key == "" {
+		return errors.New("secret keys cannot be empty")
+	}
+	if unicode.IsNumber(rune(key[0])) {
+		return fmt.Errorf("secret key '%s' cannot start with a number", key)
+	}
+	if strings.Contains(key, " ") {
+		return fmt.Errorf("secret key '%s' cannot contain spaces", key)
+	}
+	return nil
+}
+
+func SetRawSecrets(secretArgs []string, secretType string, environmentName string, secretsPath string, projectId string, tokenDetails *models.TokenDetails, file string) ([]models.SecretSetOperation, error) {
+	if file != "" {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				PrintErrorMessageAndExit("File does not exist")
+			}
+			return nil, fmt.Errorf("unable to process file [err=%v]", err)
+		}
+
+		parsedSecrets, err := parseSecrets(file, string(content))
+		if err != nil {
+			PrintErrorMessageAndExit(fmt.Sprintf("error parsing secrets: %v", err))
+		}
+
+		// Step 2: Validate secrets
+		for key, value := range parsedSecrets {
+			if err := validateSecretKey(key); err != nil {
+				PrintErrorMessageAndExit(err.Error())
+			}
+			if strings.TrimSpace(value) == "" {
+				PrintErrorMessageAndExit(fmt.Sprintf("Secret key '%s' has an empty value", key))
+			}
+			secretArgs = append(secretArgs, fmt.Sprintf("%s=%s", key, value))
+		}
+
+		if len(secretArgs) == 0 {
+			PrintErrorMessageAndExit("no valid secrets found in the file")
+		}
+	}
 
 	if tokenDetails == nil {
 		return nil, fmt.Errorf("unable to process set secret operations, token details are missing")
@@ -579,9 +690,12 @@ func SetRawSecrets(secretArgs []string, secretType string, environmentName strin
 		getAllEnvironmentVariablesRequest.InfisicalToken = tokenDetails.Token
 	}
 
-	httpClient := resty.New().
-		SetAuthToken(tokenDetails.Token).
-		SetHeader("Accept", "application/json")
+	httpClient, err := GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get client with custom headers [err=%v]", err)
+	}
+	httpClient.SetAuthToken(tokenDetails.Token)
+	httpClient.SetHeader("Accept", "application/json")
 
 	// pull current secrets
 	secrets, err := GetAllEnvironmentVariables(getAllEnvironmentVariablesRequest, "")

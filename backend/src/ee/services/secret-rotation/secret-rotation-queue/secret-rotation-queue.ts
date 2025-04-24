@@ -5,18 +5,15 @@ import {
   IAMClient
 } from "@aws-sdk/client-iam";
 
-import { SecretKeyEncoding, SecretType } from "@app/db/schemas";
+import { SecretType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import {
-  encryptSymmetric128BitHexKeyUTF8,
-  infisicalSymmetricDecrypt,
-  infisicalSymmetricEncypt
-} from "@app/lib/crypto/encryption";
+import { encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto/encryption";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -51,7 +48,7 @@ type TSecretRotationQueueFactoryDep = {
   secretRotationDAL: TSecretRotationDALFactory;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretDAL: Pick<TSecretDALFactory, "bulkUpdate" | "find">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "find">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "find" | "invalidateSecretCacheByProjectId">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -135,20 +132,15 @@ export const secretRotationQueueFactory = ({
 
       // deep copy
       const provider = JSON.parse(JSON.stringify(rotationProvider)) as TSecretRotationProviderTemplate;
+      const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: secretRotation.projectId
+        });
 
-      // now get the encrypted variable values
-      // in includes the inputs, the previous outputs
-      // internal mapping variables etc
-      const { encryptedDataTag, encryptedDataIV, encryptedData, keyEncoding } = secretRotation;
-      if (!encryptedDataTag || !encryptedDataIV || !encryptedData || !keyEncoding) {
-        throw new DisableRotationErrors({ message: "No inputs found" });
-      }
-      const decryptedData = infisicalSymmetricDecrypt({
-        keyEncoding: keyEncoding as SecretKeyEncoding,
-        ciphertext: encryptedData,
-        iv: encryptedDataIV,
-        tag: encryptedDataTag
-      });
+      const decryptedData = secretManagerDecryptor({
+        cipherTextBlob: secretRotation.encryptedRotationData
+      }).toString();
 
       const variables = JSON.parse(decryptedData) as TSecretRotationEncData;
       // rotation set cycle
@@ -180,6 +172,8 @@ export const secretRotationQueueFactory = ({
           provider.template.client === TDbProviderClients.MsSqlServer
             ? ({
                 encrypt: appCfg.ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT,
+                // when ca is provided use that
+                trustServerCertificate: !ca,
                 cryptoCredentialsDetails: ca ? { ca } : {}
               } as Record<string, unknown>)
             : undefined;
@@ -301,11 +295,9 @@ export const secretRotationQueueFactory = ({
         outputs: newCredential.outputs,
         internal: newCredential.internal
       });
-      const encVarData = infisicalSymmetricEncypt(JSON.stringify(variables));
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId: secretRotation.projectId
-      });
+      const encryptedRotationData = secretManagerEncryptor({
+        plainText: Buffer.from(JSON.stringify(variables))
+      }).cipherTextBlob;
 
       const numberOfSecretsRotated = rotationOutputs.length;
       if (shouldUseSecretV2Bridge) {
@@ -321,11 +313,7 @@ export const secretRotationQueueFactory = ({
           await secretRotationDAL.updateById(
             rotationId,
             {
-              encryptedData: encVarData.ciphertext,
-              encryptedDataIV: encVarData.iv,
-              encryptedDataTag: encVarData.tag,
-              keyEncoding: encVarData.encoding,
-              algorithm: encVarData.algorithm,
+              encryptedRotationData,
               lastRotatedAt: new Date(),
               statusMessage: "Rotated successfull",
               status: "success"
@@ -345,11 +333,14 @@ export const secretRotationQueueFactory = ({
           await secretVersionV2BridgeDAL.insertMany(
             updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => ({
               ...el,
+              actorType: ActorType.PLATFORM,
               secretId: id
             })),
             tx
           );
         });
+
+        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(secretRotation.projectId);
       } else {
         if (!botKey)
           throw new NotFoundError({
@@ -369,11 +360,7 @@ export const secretRotationQueueFactory = ({
           await secretRotationDAL.updateById(
             rotationId,
             {
-              encryptedData: encVarData.ciphertext,
-              encryptedDataIV: encVarData.iv,
-              encryptedDataTag: encVarData.tag,
-              keyEncoding: encVarData.encoding,
-              algorithm: encVarData.algorithm,
+              encryptedRotationData,
               lastRotatedAt: new Date(),
               statusMessage: "Rotated successfull",
               status: "success"

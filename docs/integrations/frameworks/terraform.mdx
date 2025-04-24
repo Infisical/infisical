@@ -1,101 +1,237 @@
 ---
 title: "Terraform"
-description: "Learn how to fetch Secrets From Infisical With Terraform."
+description: "Learn how to fetch secrets from Infisical with Terraform using both traditional data sources and ephemeral resources"
 ---
 
-This guide provides step-by-step guidance on how to fetch secrets from Infisical using Terraform.
+This guide demonstrates how to use Infisical to manage secrets in your Terraform infrastructure code, supporting both traditional data sources and ephemeral resources for enhanced security. It uses:
+
+- Infisical (you can use [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance of Infisical](https://infisical.com/docs/self-hosting/overview)) to store your secrets
+- The [Terraform Provider](https://registry.terraform.io/providers/Infisical/infisical/latest/docs) to fetch secrets for your infrastructure
 
 ## Prerequisites
 
-- Basic understanding of Terraform
-- Install [Terraform](https://www.terraform.io/downloads.html)
+Before you begin, make sure you have:
 
-## Steps
+- [Terraform](https://www.terraform.io/downloads.html) installed (v1.10.0+ for ephemeral resources)
+- An Infisical account with access to a project
+- Basic understanding of Terraform and infrastructure as code
 
-### 1. Define Required Providers
+## Project Setup
 
-Specify `infisical` in the `required_providers` block within the `terraform` block of your configuration file. If you would like to use a specific version of the provider, uncomment and replace `<latest version>` with the version of the Infisical provider that you want to use.
+### Configure Provider
 
-```hcl main.tf
+First, specify the Infisical provider in your Terraform configuration:
+
+```hcl
 terraform {
   required_providers {
     infisical = {
-      # version = <latest version>
       source = "infisical/infisical"
     }
   }
 }
 ```
 
-### 2. Configure the Infisical Provider
+### Authentication
 
-Set up the Infisical provider by specifying the `host` and `service_token`. Replace `<>` in `service_token` with your actual token. The `host` is only required if you are using a self-hosted instance of Infisical.
+Configure the provider using one of these authentication methods:
 
-```hcl main.tf
+#### Machine Identity (Recommended)
+
+Using a Machine Identity, you can authenticate your Terraform provider using either [OIDC Auth](https://infisical.com/docs/documentation/platform/identities/oidc-auth/general) or [Universal Auth](https://infisical.com/docs/documentation/platform/identities/universal-auth) methods.
+
+```hcl
 provider "infisical" {
-  host          = "https://app.infisical.com" # Only required if using a self-hosted instance of Infisical, default is https://app.infisical.com
-  client_id     = "<>"
-  client_secret = "<>"
-  service_token = "<>" # DEPRECATED, USE MACHINE IDENTITY AUTH INSTEAD
+  host          = "https://app.infisical.com" # Optional for cloud, required for self-hosted
+  auth {
+    universal { # or use oidc authentication method by providing an identity_id
+      client_id     = var.infisical_client_id
+      client_secret = var.infisical_client_secret
+    }
+  }
+}
+```
+Learn more about [machine identities](/documentation/platform/identities/machine-identities).
+
+#### Service Token (Legacy)
+
+<Warning>
+Machine Identity authentication is strongly recommended as the secure and modern method. Service tokens are considered legacy and will be deprecated in a future release.
+</Warning>
+
+```hcl
+provider "infisical" {
+  host          = "https://app.infisical.com"
+  service_token = var.infisical_service_token
+}
+```
+
+## Using Secrets in Terraform
+
+Infisical provides two methods to fetch and use secrets in your Terraform configurations:
+
+### Method 1: Ephemeral Resources (Recommended)
+
+Ephemeral resources, introduced in Terraform v1.10, provide enhanced security by ensuring sensitive values are never persisted in state files. This is the recommended approach for handling secrets in your infrastructure code.
+
+```hcl
+# Fetch database credentials ephemerally
+ephemeral "infisical_secret" "db_creds" {
+  name         = "DB_CREDENTIALS"
+  env_slug     = "prod"
+  workspace_id = var.infisical_workspace_id
+  folder_path  = "/database"
+}
+
+# Use the credentials to configure a provider
+provider "postgresql" {
+  host     = data.aws_db_instance.example.address
+  port     = data.aws_db_instance.example.port
+  username = jsondecode(ephemeral.infisical_secret.db_creds.value)["username"]
+  password = jsondecode(ephemeral.infisical_secret.db_creds.value)["password"]
+}
+```
+
+Key benefits:
+- Values are never stored in state files
+- Secrets are fetched on-demand during each Terraform operation
+- Perfect for GitOps workflows
+- Improved security posture for your infrastructure as code
+
+### Method 2: Data Sources
+
+For backwards compatibility or when working with older Terraform versions, you can use the traditional data source approach:
+
+```hcl
+# Fetch all secrets in a folder
+data "infisical_secrets" "my_secrets" {
+  env_slug     = "dev"
+  workspace_id = var.infisical_workspace_id
+  folder_path  = "/api"
+}
+
+# Use individual secrets
+resource "aws_db_instance" "example" {
+  username = data.infisical_secrets.my_secrets.secrets["DB_USER"]
+  password = data.infisical_secrets.my_secrets.secrets["DB_PASS"]
 }
 ```
 
 <Warning>
-  It is recommended to use Terraform variables to pass your service token dynamically to avoid hard coding it
+  When using data sources, secret values are stored in Terraform's state file. Ensure your state file is properly secured.
 </Warning>
 
-### 3. Fetch Infisical Secrets
+## Common Use Cases
 
-Use the `infisical_secrets` data source to fetch your secrets. In this block, you must set the `env_slug` and `folder_path` to scope the secrets you want. 
+### Secure Database Credential Management
 
-`env_slug` is the slug of the environment name. This slug name can be found under the project settings page on the Infisical dashboard. 
-
-`folder_path` is the path to the folder in a given environment. The path `/` for root of the environment where as `/folder1` is the folder at the root of the environment.
-
-```hcl main.tf
-data "infisical_secrets" "my-secrets" {
-  env_slug    = "dev"
-  folder_path = "/some-folder/another-folder"
-  workspace_id = "your-project-id"
-}
-```
-
-### 4. Define Outputs
-
-As an example, we are going to output your fetched secrets. Replace `SECRET-NAME` with the actual name of your secret.
-
-For a single secret:
-
-```hcl main.tf
-output "single-secret" {
-  value = data.infisical_secrets.my-secrets.secrets["SECRET-NAME"]
-}
-```
-
-For all secrets:
+Manage database credentials securely without exposing sensitive information in your state files:
 
 ```hcl
-output "all-secrets" {
-  value = data.infisical_secrets.my-secrets.secrets
+# Fetch database credentials securely
+ephemeral "infisical_secret" "db_creds" {
+  name         = "DB_CREDENTIALS"
+  env_slug     = "prod"
+  workspace_id = var.infisical_workspace_id
+  folder_path  = "/database"
+}
+
+# Use the credentials in your database instance
+resource "aws_db_instance" "example" {
+  identifier        = "my-database"
+  allocated_storage = 20
+  engine            = "postgres"
+  engine_version    = "14.0"
+  instance_class    = "db.t3.micro"
+  
+  # Securely inject credentials from Infisical
+  username = jsondecode(ephemeral.infisical_secret.db_creds.value)["username"]
+  password = jsondecode(ephemeral.infisical_secret.db_creds.value)["password"]
 }
 ```
 
-### 5. Run Terraform
+### GitOps Workflow with OIDC
 
-Once your configuration is complete, initialize your Terraform working directory:
+To eliminate the need for static credentials, you can authenticate your workflow using [OpenID Connect (OIDC)](https://infisical.com/docs/documentation/platform/identities/oidc-auth/general) through providers like the [Infisical Secrets GitHub Action](https://github.com/Infisical/secrets-action).
+Once authenticated, you can securely access secrets through the Infisical provider:
 
-```bash
-$ terraform init
+```hcl
+provider "infisical" {
+  # Auth credentials automatically injected from the environment
+}
+
+# Fetch deployment credentials
+ephemeral "infisical_secret" "deploy_token" {
+  name         = "DEPLOY_TOKEN"
+  env_slug     = "prod"
+  workspace_id = var.infisical_workspace_id
+  folder_path  = "/deployment"
+}
 ```
+For detailed instructions on setting up OIDC authentication with GitHub Actions, refer to our [GitHub Actions OIDC guide](https://infisical.com/docs/documentation/platform/identities/oidc-auth/github).
 
-Then, run the plan command to view the fetched secrets:
+## Best Practices
 
-```bash
-$ terraform plan
-```
+1. **Use Ephemeral Resources**: Whenever possible, use ephemeral resources instead of data sources for improved security.
 
-Terraform will now fetch your secrets from Infisical and display them as output according to your configuration.
+2. **Organize Secrets**: Structure your secrets in Infisical using folders to maintain clean separation:
+   ```hcl
+   ephemeral "infisical_secret" "db_secret" {
+     folder_path = "/databases/postgresql"  # Organized by service
+     # ...
+   }
+   ```
 
-## Conclusion
+3. **Variable Usage**: Use Terraform variables for workspace IDs and environment slugs:
+   ```hcl
+   variable "environment" {
+     description = "Environment (dev, staging, prod)"
+     type        = string
+   }
 
-You have now successfully set up and used the Infisical provider with Terraform to fetch secrets. For more information, visit the [Infisical documentation](https://registry.terraform.io/providers/Infisical/infisical/latest/docs).
+   ephemeral "infisical_secret" "secret" {
+     env_slug = var.environment
+     # ...
+   }
+   ```
+
+4. **Error Handling**: Add lifecycle blocks for critical secrets:
+   ```hcl
+   ephemeral "infisical_secret" "critical_secret" {
+     # ...
+     lifecycle {
+       postcondition {
+         condition     = length(self.value) > 0
+         error_message = "Critical secret must not be empty"
+       }
+     }
+   }
+   ```
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="What happens if I'm using an older version of Terraform?">
+        If you're using Terraform < v1.10.0, you'll need to use the data source approach.
+        Consider upgrading to take advantage of the enhanced security features provided
+        by ephemeral resources.
+    </Accordion>
+    <Accordion title="Can I mix ephemeral resources and data sources?">
+        Yes, you can use both in the same configuration. However, we recommend using
+        ephemeral resources for any sensitive values to ensure they're not stored in state.
+    </Accordion>
+    <Accordion title="How do I secure my state file when using data sources?">
+        When using data sources, follow Terraform's best practices for state management:
+        - Use remote state with encryption at rest
+        - Implement proper access controls
+        - Consider using state encryption
+        - Treat the state like a secret
+        
+        Better yet, use ephemeral resources to avoid storing sensitive values in state entirely.
+    </Accordion>
+</AccordionGroup>
+
+See also:
+- [Machine Identity setup guide](/documentation/platform/identities/machine-identities)
+- [Terraform Provider Registry](https://registry.terraform.io/providers/Infisical/infisical/latest/docs)
+- [GitOps Best Practices](https://www.infisical.com/blog/gitops-best-practices)

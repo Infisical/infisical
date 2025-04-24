@@ -2,6 +2,7 @@ import handlebars from "handlebars";
 import ldapjs from "ldapjs";
 import ldif from "ldif";
 import { customAlphabet } from "nanoid";
+import RE2 from "re2";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
@@ -52,7 +53,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const getClient = async (providerInputs: z.infer<typeof LdapSchema>): Promise<ldapjs.Client> => {
+  const $getClient = async (providerInputs: z.infer<typeof LdapSchema>): Promise<ldapjs.Client> => {
     return new Promise((resolve, reject) => {
       const client = ldapjs.createClient({
         url: providerInputs.url,
@@ -83,7 +84,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
     return client.connected;
   };
 
@@ -191,10 +192,11 @@ export const LdapProvider = (): TDynamicProviderFns => {
 
   const create = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     if (providerInputs.credentialType === LdapCredentialType.Static) {
-      const dnMatch = providerInputs.rotationLdif.match(/^dn:\s*(.+)/m);
+      const dnRegex = new RE2("^dn:\\s*(.+)", "m");
+      const dnMatch = dnRegex.exec(providerInputs.rotationLdif);
 
       if (dnMatch) {
         const username = dnMatch[1];
@@ -235,10 +237,11 @@ export const LdapProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     if (providerInputs.credentialType === LdapCredentialType.Static) {
-      const dnMatch = providerInputs.rotationLdif.match(/^dn:\s*(.+)/m);
+      const dnRegex = new RE2("^dn:\\s*(.+)", "m");
+      const dnMatch = dnRegex.exec(providerInputs.rotationLdif);
 
       if (dnMatch) {
         const username = dnMatch[1];
@@ -268,7 +271,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
   };
 
   const renew = async (inputs: unknown, entityId: string) => {
-    // Do nothing
+    // No renewal necessary
     return { entityId };
   };
 

@@ -1,10 +1,11 @@
-import ms from "ms";
 import { z } from "zod";
 
 import { CertificatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
+import { ApiDocsTags, CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
+import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyUsage, CrlReason } from "@app/services/certificate/certificate-types";
@@ -12,6 +13,7 @@ import {
   validateAltNamesField,
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerCertRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -22,6 +24,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.GET.serialNumber)
@@ -68,6 +72,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
       description: "Issue certificate",
       body: z
         .object({
@@ -150,6 +156,17 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.IssueCert,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          caId: req.body.caId,
+          certificateTemplateId: req.body.certificateTemplateId,
+          commonName: req.body.commonName,
+          ...req.auditLogInfo
+        }
+      });
+
       return {
         certificate,
         certificateChain,
@@ -168,6 +185,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
       description: "Sign certificate",
       body: z
         .object({
@@ -228,7 +247,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, issuingCaCertificate, serialNumber, ca } =
+      const { certificate, certificateChain, issuingCaCertificate, serialNumber, ca, commonName } =
         await server.services.certificateAuthority.signCertFromCa({
           isInternal: false,
           actor: req.permission.type,
@@ -251,6 +270,17 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignCert,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          caId: req.body.caId,
+          certificateTemplateId: req.body.certificateTemplateId,
+          commonName,
+          ...req.auditLogInfo
+        }
+      });
+
       return {
         certificate: certificate.toString("pem"),
         certificateChain,
@@ -268,6 +298,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
       description: "Revoke",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.REVOKE.serialNumber)
@@ -322,6 +354,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
       description: "Delete certificate",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.DELETE.serialNumber)
@@ -368,6 +402,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate body of certificate",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.GET_CERT.serialNumber)

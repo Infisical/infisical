@@ -1,20 +1,53 @@
+import dns from "node:dns/promises";
+import net from "node:net";
+
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { getDbConnectionHost } from "@app/lib/knex";
 
-export const verifyHostInputValidity = (host: string) => {
+export const verifyHostInputValidity = async (host: string, isGateway = false) => {
   const appCfg = getConfig();
-  const dbHost = appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI);
 
-  if (
-    appCfg.isCloud &&
-    // localhost
-    // internal ips
-    (host === "host.docker.internal" || host.match(/^10\.\d+\.\d+\.\d+/) || host.match(/^192\.168\.\d+\.\d+/))
-  )
-    throw new BadRequestError({ message: "Invalid db host" });
+  if (appCfg.isDevelopmentMode) return [host];
 
-  if (host === "localhost" || host === "127.0.0.1" || dbHost === host) {
-    throw new BadRequestError({ message: "Invalid db host" });
+  const reservedHosts = [appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI)].concat(
+    (appCfg.DB_READ_REPLICAS || []).map((el) => getDbConnectionHost(el.DB_CONNECTION_URI)),
+    getDbConnectionHost(appCfg.REDIS_URL),
+    getDbConnectionHost(appCfg.AUDIT_LOGS_DB_CONNECTION_URI)
+  );
+
+  // get host db ip
+  const exclusiveIps: string[] = [];
+  for await (const el of reservedHosts) {
+    if (el) {
+      if (net.isIPv4(el)) {
+        exclusiveIps.push(el);
+      } else {
+        const resolvedIps = await dns.resolve4(el);
+        exclusiveIps.push(...resolvedIps);
+      }
+    }
   }
+
+  const normalizedHost = host.split(":")[0];
+  const inputHostIps: string[] = [];
+  if (net.isIPv4(host)) {
+    inputHostIps.push(host);
+  } else {
+    if (normalizedHost === "localhost" || normalizedHost === "host.docker.internal") {
+      throw new BadRequestError({ message: "Invalid db host" });
+    }
+    const resolvedIps = await dns.resolve4(host);
+    inputHostIps.push(...resolvedIps);
+  }
+
+  if (!isGateway && !(appCfg.DYNAMIC_SECRET_ALLOW_INTERNAL_IP || appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)) {
+    const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));
+    if (isInternalIp) throw new BadRequestError({ message: "Invalid db host" });
+  }
+
+  const isAppUsedIps = inputHostIps.some((el) => exclusiveIps.includes(el));
+  if (isAppUsedIps) throw new BadRequestError({ message: "Invalid db host" });
+  return inputHostIps;
 };

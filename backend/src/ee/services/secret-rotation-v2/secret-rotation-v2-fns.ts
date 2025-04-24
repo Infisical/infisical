@@ -1,0 +1,224 @@
+import { AxiosError } from "axios";
+
+import { getConfig } from "@app/lib/config/env";
+import { KmsDataKey } from "@app/services/kms/kms-types";
+
+import { AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./auth0-client-secret";
+import { MSSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mssql-credentials";
+import { POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-credentials";
+import { SecretRotation, SecretRotationStatus } from "./secret-rotation-v2-enums";
+import { TSecretRotationV2ServiceFactoryDep } from "./secret-rotation-v2-service";
+import {
+  TSecretRotationV2,
+  TSecretRotationV2GeneratedCredentials,
+  TSecretRotationV2ListItem,
+  TSecretRotationV2Raw
+} from "./secret-rotation-v2-types";
+
+const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2ListItem> = {
+  [SecretRotation.PostgresCredentials]: POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION,
+  [SecretRotation.MsSqlCredentials]: MSSQL_CREDENTIALS_ROTATION_LIST_OPTION,
+  [SecretRotation.Auth0ClientSecret]: AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION
+};
+
+export const listSecretRotationOptions = () => {
+  return Object.values(SECRET_ROTATION_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
+};
+
+const getNextUTCDayInterval = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"] = { hours: 0, minutes: 0 }) => {
+  const now = new Date();
+
+  return new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + 1, // Add 1 day to get tomorrow
+      hours,
+      minutes,
+      0,
+      0
+    )
+  );
+};
+
+const getNextUTCMinuteInterval = ({ minutes }: TSecretRotationV2["rotateAtUtc"] = { hours: 0, minutes: 0 }) => {
+  const now = new Date();
+  return new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      now.getUTCHours(),
+      now.getUTCMinutes() + 1, // Add 1 minute to get the next minute
+      minutes, // use minutes as seconds in dev
+      0
+    )
+  );
+};
+
+export const getNextUtcRotationInterval = (rotateAtUtc?: TSecretRotationV2["rotateAtUtc"]) => {
+  const appCfg = getConfig();
+
+  if (appCfg.isRotationDevelopmentMode) {
+    return getNextUTCMinuteInterval(rotateAtUtc);
+  }
+
+  return getNextUTCDayInterval(rotateAtUtc);
+};
+
+export const encryptSecretRotationCredentials = async ({
+  projectId,
+  generatedCredentials,
+  kmsService
+}: {
+  projectId: string;
+  generatedCredentials: TSecretRotationV2GeneratedCredentials;
+  kmsService: TSecretRotationV2ServiceFactoryDep["kmsService"];
+}) => {
+  const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    type: KmsDataKey.SecretManager,
+    projectId
+  });
+
+  const { cipherTextBlob: encryptedCredentialsBlob } = encryptor({
+    plainText: Buffer.from(JSON.stringify(generatedCredentials))
+  });
+
+  return encryptedCredentialsBlob;
+};
+
+export const decryptSecretRotationCredentials = async ({
+  projectId,
+  encryptedGeneratedCredentials,
+  kmsService
+}: {
+  projectId: string;
+  encryptedGeneratedCredentials: Buffer;
+  kmsService: TSecretRotationV2ServiceFactoryDep["kmsService"];
+}) => {
+  const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    type: KmsDataKey.SecretManager,
+    projectId
+  });
+
+  const decryptedPlainTextBlob = decryptor({
+    cipherTextBlob: encryptedGeneratedCredentials
+  });
+
+  return JSON.parse(decryptedPlainTextBlob.toString()) as TSecretRotationV2GeneratedCredentials;
+};
+
+export const getSecretRotationRotateSecretJobOptions = ({
+  id,
+  nextRotationAt
+}: Pick<TSecretRotationV2Raw, "id" | "nextRotationAt">) => {
+  const appCfg = getConfig();
+
+  return {
+    jobId: `secret-rotation-v2-rotate-${id}`,
+    retryLimit: appCfg.isRotationDevelopmentMode ? 3 : 5,
+    retryBackoff: true,
+    startAfter: nextRotationAt ?? undefined
+  };
+};
+
+export const calculateNextRotationAt = ({
+  rotateAtUtc,
+  isAutoRotationEnabled,
+  rotationInterval,
+  rotationStatus,
+  isManualRotation,
+  ...params
+}: Pick<
+  TSecretRotationV2,
+  "isAutoRotationEnabled" | "lastRotatedAt" | "rotateAtUtc" | "rotationInterval" | "rotationStatus"
+> & { isManualRotation: boolean }) => {
+  if (!isAutoRotationEnabled) return null;
+
+  if (rotationStatus === SecretRotationStatus.Failed) {
+    return getNextUtcRotationInterval(rotateAtUtc);
+  }
+
+  const lastRotatedAt = new Date(params.lastRotatedAt);
+
+  const appCfg = getConfig();
+
+  if (appCfg.isRotationDevelopmentMode) {
+    // treat interval as minute
+    const nextRotation = new Date(lastRotatedAt.getTime() + rotationInterval * 60 * 1000);
+
+    // in development mode we use rotateAtUtc.minutes as seconds
+    nextRotation.setUTCSeconds(rotateAtUtc.minutes);
+    nextRotation.setUTCMilliseconds(0);
+
+    // If creation/manual rotation seconds are after the configured seconds we pad an additional minute
+    // to ensure a full interval has elapsed before rotation
+    if (isManualRotation && lastRotatedAt.getUTCSeconds() >= rotateAtUtc.minutes) {
+      nextRotation.setUTCMinutes(nextRotation.getUTCMinutes() + 1);
+    }
+
+    return nextRotation;
+  }
+
+  // production mode - rotationInterval = days
+
+  const nextRotation = new Date(lastRotatedAt);
+
+  nextRotation.setUTCHours(rotateAtUtc.hours);
+  nextRotation.setUTCMinutes(rotateAtUtc.minutes);
+  nextRotation.setUTCSeconds(0);
+  nextRotation.setUTCMilliseconds(0);
+
+  // If creation/manual rotation was after the daily rotation time,
+  // we need pad an additional day to ensure full rotation interval
+  if (
+    isManualRotation &&
+    (lastRotatedAt.getUTCHours() > rotateAtUtc.hours ||
+      (lastRotatedAt.getUTCHours() === rotateAtUtc.hours && lastRotatedAt.getUTCMinutes() >= rotateAtUtc.minutes))
+  ) {
+    nextRotation.setUTCDate(nextRotation.getUTCDate() + rotationInterval + 1);
+  } else {
+    nextRotation.setUTCDate(nextRotation.getUTCDate() + rotationInterval);
+  }
+
+  return nextRotation;
+};
+
+export const expandSecretRotation = async (
+  { encryptedLastRotationMessage, ...secretRotation }: TSecretRotationV2Raw,
+  kmsService: TSecretRotationV2ServiceFactoryDep["kmsService"]
+) => {
+  const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    type: KmsDataKey.SecretManager,
+    projectId: secretRotation.projectId
+  });
+
+  const lastRotationMessage = encryptedLastRotationMessage
+    ? decryptor({
+        cipherTextBlob: encryptedLastRotationMessage
+      }).toString()
+    : null;
+
+  return {
+    ...secretRotation,
+    lastRotationMessage
+  } as TSecretRotationV2;
+};
+
+const MAX_MESSAGE_LENGTH = 1024;
+
+export const parseRotationErrorMessage = (err: unknown): string => {
+  let errorMessage = `Infisical encountered an issue while generating credentials with the configured inputs: `;
+
+  if (err instanceof AxiosError) {
+    errorMessage += err?.response?.data
+      ? JSON.stringify(err?.response?.data)
+      : err?.message ?? "An unknown error occurred.";
+  } else {
+    errorMessage += (err as Error)?.message || "An unknown error occurred.";
+  }
+
+  return errorMessage.length <= MAX_MESSAGE_LENGTH
+    ? errorMessage
+    : `${errorMessage.substring(0, MAX_MESSAGE_LENGTH - 3)}...`;
+};

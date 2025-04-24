@@ -58,10 +58,18 @@
       "pages": [
         "handbook/onboarding", 
         "handbook/spending-money",
+        "handbook/compensation",
         "handbook/time-off",
         "handbook/hiring",
         "handbook/meetings",
-        "handbook/talking-to-customers"
+        "handbook/talking-to-customers",
+        {
+          "group": "Engineering",
+          "pages": [
+            "documentation/engineering/oncall",
+            "documentation/engineering/how-to-write-design-doc"
+          ]
+        }
       ]
     }
   ],

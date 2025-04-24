@@ -1,17 +1,13 @@
 import { z } from "zod";
 
-import {
-  SecretApprovalRequestsReviewersSchema,
-  SecretApprovalRequestsSchema,
-  SecretTagsSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { SecretApprovalRequestsReviewersSchema, SecretApprovalRequestsSchema, UsersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { secretRawSchema } from "@app/server/routes/sanitizedSchemas";
+import { SanitizedTagSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 const approvalRequestUser = z.object({ userId: z.string().nullable().optional() }).merge(
   UsersSchema.pick({
@@ -52,7 +48,9 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                 })
                 .array(),
               secretPath: z.string().optional().nullable(),
-              enforcementLevel: z.string()
+              enforcementLevel: z.string(),
+              deletedAt: z.date().nullish(),
+              allowedSelfApprovals: z.boolean()
             }),
             committerUser: approvalRequestUser,
             commits: z.object({ op: z.string(), secretId: z.string().nullable().optional() }).array(),
@@ -157,7 +155,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         id: z.string()
       }),
       body: z.object({
-        status: z.enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED])
+        status: z.enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED]),
+        comment: z.string().optional()
       }),
       response: {
         200: z.object({
@@ -173,8 +172,25 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         approvalId: req.params.id,
-        status: req.body.status
+        status: req.body.status,
+        comment: req.body.comment
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: review.projectId,
+        event: {
+          type: EventType.SECRET_APPROVAL_REQUEST_REVIEW,
+          metadata: {
+            secretApprovalRequestId: review.requestId,
+            reviewedBy: review.reviewerUserId,
+            status: review.status as ApprovalStatus,
+            comment: review.comment || ""
+          }
+        }
+      });
+
       return { review };
     }
   });
@@ -230,15 +246,6 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     }
   });
 
-  const tagSchema = SecretTagsSchema.pick({
-    id: true,
-    slug: true,
-    name: true,
-    color: true
-  })
-    .array()
-    .optional();
-
   server.route({
     method: "GET",
     url: "/:id",
@@ -260,18 +267,23 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                 approvals: z.number(),
                 approvers: approvalRequestUser.array(),
                 secretPath: z.string().optional().nullable(),
-                enforcementLevel: z.string()
+                enforcementLevel: z.string(),
+                deletedAt: z.date().nullish(),
+                allowedSelfApprovals: z.boolean()
               }),
               environment: z.string(),
               statusChangedByUser: approvalRequestUser.optional(),
               committerUser: approvalRequestUser,
-              reviewers: approvalRequestUser.extend({ status: z.string() }).array(),
+              reviewers: approvalRequestUser.extend({ status: z.string(), comment: z.string().optional() }).array(),
               secretPath: z.string(),
               commits: secretRawSchema
-                .omit({ _id: true, environment: true, workspace: true, type: true, version: true })
+                .omit({ _id: true, environment: true, workspace: true, type: true, version: true, secretValue: true })
                 .extend({
+                  secretValue: z.string().optional(),
+                  isRotatedSecret: z.boolean().optional(),
                   op: z.string(),
-                  tags: tagSchema,
+                  tags: SanitizedTagSchema.array().optional(),
+                  secretMetadata: ResourceMetadataSchema.nullish(),
                   secret: z
                     .object({
                       id: z.string(),
@@ -289,7 +301,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                       secretKey: z.string(),
                       secretValue: z.string().optional(),
                       secretComment: z.string().optional(),
-                      tags: tagSchema
+                      tags: SanitizedTagSchema.array().optional(),
+                      secretMetadata: ResourceMetadataSchema.nullish()
                     })
                     .optional()
                 })

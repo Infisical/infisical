@@ -4,30 +4,34 @@ import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
-import { IdentityAuthMethod, SecretKeyEncoding, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
+import { IdentityAuthMethod, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { getConfig } from "@app/lib/config/env";
-import { generateAsymmetricKeyPair } from "@app/lib/crypto";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
-  decryptSymmetric,
-  encryptSymmetric,
-  generateSymmetricKey,
-  infisicalSymmetricDecrypt,
-  infisicalSymmetricEncypt
-} from "@app/lib/crypto/encryption";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { getConfig } from "@app/lib/config/env";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  NotFoundError,
+  PermissionBoundaryError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { getStringValueByDot } from "@app/lib/template/dot-access";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
-import { TOrgBotDALFactory } from "../org/org-bot-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
+import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityOidcAuthDALFactory } from "./identity-oidc-auth-dal";
-import { doesFieldValueMatchOidcPolicy } from "./identity-oidc-auth-fns";
+import { doesAudValueMatchOidcPolicy, doesFieldValueMatchOidcPolicy } from "./identity-oidc-auth-fns";
 import {
   TAttachOidcAuthDTO,
   TGetOidcAuthDTO,
@@ -39,10 +43,10 @@ import {
 type TIdentityOidcAuthServiceFactoryDep = {
   identityOidcAuthDAL: TIdentityOidcAuthDALFactory;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "transaction" | "create">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TIdentityOidcAuthServiceFactory = ReturnType<typeof identityOidcAuthServiceFactory>;
@@ -53,7 +57,7 @@ export const identityOidcAuthServiceFactory = ({
   permissionService,
   licenseService,
   identityAccessTokenDAL,
-  orgBotDAL
+  kmsService
 }: TIdentityOidcAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: oidcJwt }: TLoginOidcAuthDTO) => {
     const identityOidcAuth = await identityOidcAuthDAL.findOne({ identityId });
@@ -70,38 +74,21 @@ export const identityOidcAuthServiceFactory = ({
       });
     }
 
-    const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot) {
-      throw new NotFoundError({
-        message: `Organization bot not found for organization with ID '${identityMembershipOrg.orgId}'`,
-        name: "OrgBotNotFound"
-      });
-    }
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.orgId
     });
 
-    const { encryptedCaCert, caCertIV, caCertTag } = identityOidcAuth;
-
     let caCert = "";
-    if (encryptedCaCert && caCertIV && caCertTag) {
-      caCert = decryptSymmetric({
-        ciphertext: encryptedCaCert,
-        iv: caCertIV,
-        tag: caCertTag,
-        key
-      });
+    if (identityOidcAuth.encryptedCaCertificate) {
+      caCert = decryptor({ cipherTextBlob: identityOidcAuth.encryptedCaCertificate }).toString();
     }
 
     const requestAgent = new https.Agent({ ca: caCert, rejectUnauthorized: !!caCert });
     const { data: discoveryDoc } = await axios.get<{ jwks_uri: string }>(
       `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
       {
-        httpsAgent: requestAgent
+        httpsAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
       }
     );
     const jwksUri = discoveryDoc.jwks_uri;
@@ -115,7 +102,7 @@ export const identityOidcAuthServiceFactory = ({
 
     const client = new JwksClient({
       jwksUri,
-      requestAgent
+      requestAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
     });
 
     const { kid } = decodedToken.header;
@@ -132,7 +119,6 @@ export const identityOidcAuthServiceFactory = ({
           message: `Access denied: ${error.message}`
         });
       }
-
       throw error;
     }
 
@@ -148,7 +134,7 @@ export const identityOidcAuthServiceFactory = ({
       if (
         !identityOidcAuth.boundAudiences
           .split(", ")
-          .some((policyValue) => doesFieldValueMatchOidcPolicy(tokenData.aud, policyValue))
+          .some((policyValue) => doesAudValueMatchOidcPolicy(tokenData.aud, policyValue))
       ) {
         throw new UnauthorizedError({
           message: "Access denied: OIDC audience not allowed."
@@ -159,14 +145,34 @@ export const identityOidcAuthServiceFactory = ({
     if (identityOidcAuth.boundClaims) {
       Object.keys(identityOidcAuth.boundClaims).forEach((claimKey) => {
         const claimValue = (identityOidcAuth.boundClaims as Record<string, string>)[claimKey];
+        const value = getStringValueByDot(tokenData, claimKey) || "";
+
+        if (!value) {
+          throw new UnauthorizedError({
+            message: `Access denied: token has no ${claimKey} field`
+          });
+        }
+
         // handle both single and multi-valued claims
-        if (
-          !claimValue.split(", ").some((claimEntry) => doesFieldValueMatchOidcPolicy(tokenData[claimKey], claimEntry))
-        ) {
+        if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchOidcPolicy(value, claimEntry))) {
           throw new UnauthorizedError({
             message: "Access denied: OIDC claim not allowed."
           });
         }
+      });
+    }
+
+    const filteredClaims: Record<string, string> = {};
+    if (identityOidcAuth.claimMetadataMapping) {
+      Object.keys(identityOidcAuth.claimMetadataMapping).forEach((permissionKey) => {
+        const claimKey = (identityOidcAuth.claimMetadataMapping as Record<string, string>)[permissionKey];
+        const value = getStringValueByDot(tokenData, claimKey) || "";
+        if (!value) {
+          throw new UnauthorizedError({
+            message: `Access denied: token has no ${claimKey} field`
+          });
+        }
+        filteredClaims[permissionKey] = value;
       });
     }
 
@@ -191,18 +197,23 @@ export const identityOidcAuthServiceFactory = ({
       {
         identityId: identityOidcAuth.identityId,
         identityAccessTokenId: identityAccessToken.id,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
+        identityAuth: {
+          oidc: {
+            claims: filteredClaims
+          }
+        }
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
-      {
-        expiresIn:
-          Number(identityAccessToken.accessTokenMaxTTL) === 0
-            ? undefined
-            : Number(identityAccessToken.accessTokenMaxTTL)
-      }
+      // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
+      Number(identityAccessToken.accessTokenTTL) === 0
+        ? undefined
+        : {
+            expiresIn: Number(identityAccessToken.accessTokenTTL)
+          }
     );
 
-    return { accessToken, identityOidcAuth, identityAccessToken, identityMembershipOrg };
+    return { accessToken, identityOidcAuth, identityAccessToken, identityMembershipOrg, oidcTokenData: tokenData };
   };
 
   const attachOidcAuth = async ({
@@ -212,6 +223,7 @@ export const identityOidcAuthServiceFactory = ({
     boundIssuer,
     boundAudiences,
     boundClaims,
+    claimMetadataMapping,
     boundSubject,
     accessTokenTTL,
     accessTokenMaxTTL,
@@ -220,8 +232,10 @@ export const identityOidcAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TAttachOidcAuthDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) {
       if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
@@ -244,7 +258,7 @@ export const identityOidcAuthServiceFactory = ({
       actorOrgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -264,67 +278,21 @@ export const identityOidcAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const orgBot = await orgBotDAL.transaction(async (tx) => {
-      const doc = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId }, tx);
-      if (doc) return doc;
-
-      const { privateKey, publicKey } = generateAsymmetricKeyPair();
-      const key = generateSymmetricKey();
-      const {
-        ciphertext: encryptedPrivateKey,
-        iv: privateKeyIV,
-        tag: privateKeyTag,
-        encoding: privateKeyKeyEncoding,
-        algorithm: privateKeyAlgorithm
-      } = infisicalSymmetricEncypt(privateKey);
-      const {
-        ciphertext: encryptedSymmetricKey,
-        iv: symmetricKeyIV,
-        tag: symmetricKeyTag,
-        encoding: symmetricKeyKeyEncoding,
-        algorithm: symmetricKeyAlgorithm
-      } = infisicalSymmetricEncypt(key);
-
-      return orgBotDAL.create(
-        {
-          name: "Infisical org bot",
-          publicKey,
-          privateKeyIV,
-          encryptedPrivateKey,
-          symmetricKeyIV,
-          symmetricKeyTag,
-          encryptedSymmetricKey,
-          symmetricKeyAlgorithm,
-          orgId: identityMembershipOrg.orgId,
-          privateKeyTag,
-          privateKeyAlgorithm,
-          privateKeyKeyEncoding,
-          symmetricKeyKeyEncoding
-        },
-        tx
-      );
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.orgId
     });
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
-    });
-
-    const { ciphertext: encryptedCaCert, iv: caCertIV, tag: caCertTag } = encryptSymmetric(caCert, key);
 
     const identityOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
       const doc = await identityOidcAuthDAL.create(
         {
           identityId: identityMembershipOrg.identityId,
           oidcDiscoveryUrl,
-          encryptedCaCert,
-          caCertIV,
-          caCertTag,
+          encryptedCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob,
           boundIssuer,
           boundAudiences,
           boundClaims,
+          claimMetadataMapping,
           boundSubject,
           accessTokenMaxTTL,
           accessTokenTTL,
@@ -345,6 +313,7 @@ export const identityOidcAuthServiceFactory = ({
     boundIssuer,
     boundAudiences,
     boundClaims,
+    claimMetadataMapping,
     boundSubject,
     accessTokenTTL,
     accessTokenMaxTTL,
@@ -381,7 +350,7 @@ export const identityOidcAuthServiceFactory = ({
       actorOrgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -406,6 +375,7 @@ export const identityOidcAuthServiceFactory = ({
       boundIssuer,
       boundAudiences,
       boundClaims,
+      claimMetadataMapping,
       boundSubject,
       accessTokenMaxTTL,
       accessTokenTTL,
@@ -415,38 +385,19 @@ export const identityOidcAuthServiceFactory = ({
         : undefined
     };
 
-    const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot) {
-      throw new NotFoundError({
-        message: `Organization bot not found for organization with ID '${identityMembershipOrg.orgId}'`,
-        name: "OrgBotNotFound"
-      });
-    }
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.orgId
     });
 
     if (caCert !== undefined) {
-      const { ciphertext: encryptedCACert, iv: caCertIV, tag: caCertTag } = encryptSymmetric(caCert, key);
-      updateQuery.encryptedCaCert = encryptedCACert;
-      updateQuery.caCertIV = caCertIV;
-      updateQuery.caCertTag = caCertTag;
+      updateQuery.encryptedCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
     }
 
     const updatedOidcAuth = await identityOidcAuthDAL.updateById(identityOidcAuth.id, updateQuery);
-    const updatedCACert =
-      updatedOidcAuth.encryptedCaCert && updatedOidcAuth.caCertIV && updatedOidcAuth.caCertTag
-        ? decryptSymmetric({
-            ciphertext: updatedOidcAuth.encryptedCaCert,
-            iv: updatedOidcAuth.caCertIV,
-            tag: updatedOidcAuth.caCertTag,
-            key
-          })
-        : "";
+    const updatedCACert = updatedOidcAuth.encryptedCaCertificate
+      ? decryptor({ cipherTextBlob: updatedOidcAuth.encryptedCaCertificate }).toString()
+      : "";
 
     return {
       ...updatedOidcAuth,
@@ -472,31 +423,18 @@ export const identityOidcAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     const identityOidcAuth = await identityOidcAuthDAL.findOne({ identityId });
 
-    const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot) {
-      throw new NotFoundError({
-        message: `Organization bot not found for organization with ID ${identityMembershipOrg.orgId}`,
-        name: "OrgBotNotFound"
-      });
-    }
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.orgId
     });
 
-    const caCert = decryptSymmetric({
-      ciphertext: identityOidcAuth.encryptedCaCert,
-      iv: identityOidcAuth.caCertIV,
-      tag: identityOidcAuth.caCertTag,
-      key
-    });
+    const caCert = identityOidcAuth.encryptedCaCertificate
+      ? decryptor({ cipherTextBlob: identityOidcAuth.encryptedCaCertificate }).toString()
+      : "";
 
     return { ...identityOidcAuth, orgId: identityMembershipOrg.orgId, caCert };
   };
@@ -513,7 +451,7 @@ export const identityOidcAuthServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
@@ -521,7 +459,7 @@ export const identityOidcAuthServiceFactory = ({
       actorOrgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
@@ -531,14 +469,29 @@ export const identityOidcAuthServiceFactory = ({
       actorOrgId
     );
 
-    if (!isAtLeastAsPrivileged(permission, rolePermission)) {
-      throw new ForbiddenRequestError({
-        message: "Failed to revoke OIDC auth of identity with more privileged role"
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      OrgPermissionIdentityActions.RevokeAuth,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+
+    if (!permissionBoundary.isValid)
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to revoke oidc auth of identity with more privileged role",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.RevokeAuth,
+          OrgPermissionSubjects.Identity
+        ),
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
-    }
 
     const revokedIdentityOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
       const deletedOidcAuth = await identityOidcAuthDAL.delete({ identityId }, tx);
+      await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.OIDC_AUTH }, tx);
+
       return { ...deletedOidcAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
 

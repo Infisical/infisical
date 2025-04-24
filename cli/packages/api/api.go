@@ -205,6 +205,25 @@ func CallGetAllWorkSpacesUserBelongsTo(httpClient *resty.Client) (GetWorkSpacesR
 	return workSpacesResponse, nil
 }
 
+func CallGetProjectById(httpClient *resty.Client, id string) (Project, error) {
+	var projectResponse GetProjectByIdResponse
+	response, err := httpClient.
+		R().
+		SetResult(&projectResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		Get(fmt.Sprintf("%v/v1/workspace/%s", config.INFISICAL_URL, id))
+
+	if err != nil {
+		return Project{}, err
+	}
+
+	if response.IsError() {
+		return Project{}, fmt.Errorf("CallGetProjectById: Unsuccessful response:  [response=%v]", response)
+	}
+
+	return projectResponse.Project, nil
+}
+
 func CallIsAuthenticated(httpClient *resty.Client) bool {
 	var workSpacesResponse GetWorkSpacesResponse
 	response, err := httpClient.
@@ -524,4 +543,80 @@ func CallUpdateRawSecretsV3(httpClient *resty.Client, request UpdateRawSecretByN
 	}
 
 	return nil
+}
+
+func CallRegisterGatewayIdentityV1(httpClient *resty.Client) (*GetRelayCredentialsResponseV1, error) {
+	var resBody GetRelayCredentialsResponseV1
+	response, err := httpClient.
+		R().
+		SetResult(&resBody).
+		SetHeader("User-Agent", USER_AGENT).
+		Post(fmt.Sprintf("%v/v1/gateways/register-identity", config.INFISICAL_URL))
+
+	if err != nil {
+		return nil, fmt.Errorf("CallRegisterGatewayIdentityV1: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return nil, fmt.Errorf("CallRegisterGatewayIdentityV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return &resBody, nil
+}
+
+func CallExchangeRelayCertV1(httpClient *resty.Client, request ExchangeRelayCertRequestV1) (*ExchangeRelayCertResponseV1, error) {
+	var resBody ExchangeRelayCertResponseV1
+	response, err := httpClient.
+		R().
+		SetResult(&resBody).
+		SetBody(request).
+		SetHeader("User-Agent", USER_AGENT).
+		Post(fmt.Sprintf("%v/v1/gateways/exchange-cert", config.INFISICAL_URL))
+
+	if err != nil {
+		return nil, fmt.Errorf("CallExchangeRelayCertV1: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return nil, fmt.Errorf("CallExchangeRelayCertV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return &resBody, nil
+}
+
+func CallGatewayHeartBeatV1(httpClient *resty.Client) error {
+	response, err := httpClient.
+		R().
+		SetHeader("User-Agent", USER_AGENT).
+		Post(fmt.Sprintf("%v/v1/gateways/heartbeat", config.INFISICAL_URL))
+
+	if err != nil {
+		return fmt.Errorf("CallGatewayHeartBeatV1: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return fmt.Errorf("CallGatewayHeartBeatV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return nil
+}
+
+func CallBootstrapInstance(httpClient *resty.Client, request BootstrapInstanceRequest) (map[string]interface{}, error) {
+	var resBody map[string]interface{}
+	response, err := httpClient.
+		R().
+		SetResult(&resBody).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v1/admin/bootstrap", request.Domain))
+
+	if err != nil {
+		return nil, fmt.Errorf("CallBootstrapInstance: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return nil, fmt.Errorf("CallBootstrapInstance: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return resBody, nil
 }

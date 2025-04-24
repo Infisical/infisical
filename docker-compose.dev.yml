@@ -56,20 +56,6 @@ services:
       POSTGRES_USER: infisical
       POSTGRES_DB: infisical-test
 
-  db-migration:
-    container_name: infisical-db-migration
-    depends_on:
-      - db
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
-    env_file: .env
-    environment:
-      - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
-    command: npm run migration:latest
-    volumes:
-      - ./backend/src:/app/src
-
   backend:
     container_name: infisical-dev-api
     build:
@@ -80,12 +66,11 @@ services:
         condition: service_started
       redis:
         condition: service_started
-      db-migration:
-        condition: service_completed_successfully
     env_file:
       - .env
     ports:
       - 4000:4000
+      - 9464:9464 # for OTEL collection of Prometheus metrics
     environment:
       - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
@@ -94,6 +79,42 @@ services:
       - ./backend/src:/app/src
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.dev.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    profiles: [metrics]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - 1888:1888 # pprof extension
+      - 8888:8888 # Prometheus metrics exposed by the Collector
+      - 8889:8889 # Prometheus exporter metrics
+      - 13133:13133 # health_check extension
+      - 4317:4317 # OTLP gRPC receiver
+      - 4318:4318 # OTLP http receiver
+      - 55679:55679 # zpages extension
+    profiles: [metrics-otel]
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_LOG_LEVEL=debug
+    ports:
+      - "3005:3000"
+    volumes:
+      - "grafana_storage:/var/lib/grafana"
+    profiles: [metrics]
 
   frontend:
     container_name: infisical-dev-frontend
@@ -107,13 +128,12 @@ services:
       - ./frontend/src:/app/src/ # mounted whole src to avoid missing reload on new files
       - ./frontend/public:/app/public
     env_file: .env
-    environment:
-      - NEXT_PUBLIC_ENV=development
-      - INFISICAL_TELEMETRY_ENABLED=false
 
   pgadmin:
     image: dpage/pgadmin4
     restart: always
+    volumes:
+      - ./servers.json:/pgadmin4/servers.json
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: pass
@@ -159,6 +179,17 @@ services:
       - openldap
     profiles: [ldap]
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1.0
+    restart: always
+    environment:
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+    command: start-dev
+    ports:
+      - 8088:8080
+    profiles: [sso]
+
 volumes:
   postgres-data:
     driver: local
@@ -166,3 +197,4 @@ volumes:
     driver: local
   ldap_data:
   ldap_config:
+  grafana_storage:

@@ -13,7 +13,15 @@ export enum PostHogEventTypes {
   IntegrationCreated = "Integration Created",
   MachineIdentityCreated = "Machine Identity Created",
   UserOrgInvitation = "User Org Invitation",
-  TelemetryInstanceStats = "Self Hosted Instance Stats"
+  TelemetryInstanceStats = "Self Hosted Instance Stats",
+  SecretRequestCreated = "Secret Request Created",
+  SecretRequestDeleted = "Secret Request Deleted",
+  SignSshKey = "Sign SSH Key",
+  IssueSshCreds = "Issue SSH Credentials",
+  IssueSshHostUserCert = "Issue SSH Host User Certificate",
+  IssueSshHostHostCert = "Issue SSH Host Host Certificate",
+  SignCert = "Sign PKI Certificate",
+  IssueCert = "Issue PKI Certificate"
 }
 
 export type TSecretModifiedEvent = {
@@ -120,6 +128,81 @@ export type TTelemetryInstanceStatsEvent = {
   };
 };
 
+export type TSecretRequestCreatedEvent = {
+  event: PostHogEventTypes.SecretRequestCreated;
+  properties: {
+    secretRequestId: string;
+    organizationId: string;
+    secretRequestName?: string;
+  };
+};
+
+export type TSecretRequestDeletedEvent = {
+  event: PostHogEventTypes.SecretRequestDeleted;
+  properties: {
+    secretRequestId: string;
+    organizationId: string;
+  };
+};
+
+export type TSignSshKeyEvent = {
+  event: PostHogEventTypes.SignSshKey;
+  properties: {
+    certificateTemplateId: string;
+    principals: string[];
+    userAgent?: string;
+  };
+};
+
+export type TIssueSshCredsEvent = {
+  event: PostHogEventTypes.IssueSshCreds;
+  properties: {
+    certificateTemplateId: string;
+    principals: string[];
+    userAgent?: string;
+  };
+};
+
+export type TIssueSshHostUserCertEvent = {
+  event: PostHogEventTypes.IssueSshHostUserCert;
+  properties: {
+    sshHostId: string;
+    hostname: string;
+    principals: string[];
+    userAgent?: string;
+  };
+};
+
+export type TIssueSshHostHostCertEvent = {
+  event: PostHogEventTypes.IssueSshHostHostCert;
+  properties: {
+    sshHostId: string;
+    hostname: string;
+    principals: string[];
+    userAgent?: string;
+  };
+};
+
+export type TSignCertificateEvent = {
+  event: PostHogEventTypes.SignCert;
+  properties: {
+    caId?: string;
+    certificateTemplateId?: string;
+    commonName: string;
+    userAgent?: string;
+  };
+};
+
+export type TIssueCertificateEvent = {
+  event: PostHogEventTypes.IssueCert;
+  properties: {
+    caId?: string;
+    certificateTemplateId?: string;
+    commonName: string;
+    userAgent?: string;
+  };
+};
+
 export type TPostHogEvent = { distinctId: string } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
@@ -130,4 +213,12 @@ export type TPostHogEvent = { distinctId: string } & (
   | TIntegrationCreatedEvent
   | TProjectCreateEvent
   | TTelemetryInstanceStatsEvent
+  | TSecretRequestCreatedEvent
+  | TSecretRequestDeletedEvent
+  | TSignSshKeyEvent
+  | TIssueSshCredsEvent
+  | TIssueSshHostUserCertEvent
+  | TIssueSshHostHostCertEvent
+  | TSignCertificateEvent
+  | TIssueCertificateEvent
 );

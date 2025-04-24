@@ -1,6 +1,7 @@
 export type TCloudIntegration = {
   name: string;
   slug: string;
+  syncSlug?: string;
   image: string;
   isAvailable: boolean;
   type: string;
@@ -41,6 +42,7 @@ export type TIntegration = {
       key: string;
       value: string;
     }[];
+    azureLabel?: string;
 
     kmsKeyId?: string;
     secretSuffix?: string;
@@ -57,7 +59,21 @@ export type TIntegration = {
     shouldMaskSecrets?: boolean;
     shouldProtectSecrets?: boolean;
     shouldEnableDelete?: boolean;
+
+    octopusDeployScopeValues?: TOctopusDeployScopeValues;
+    awsIamRole?: string;
+    region?: string;
+    metadataSyncMode?: IntegrationMetadataSyncMode;
   };
+};
+
+export type TOctopusDeployScopeValues = {
+  Environment?: string[];
+  Action?: string[];
+  Channel?: string[];
+  Machine?: string[];
+  ProcessOwner?: string[];
+  Role?: string[];
 };
 
 export type TIntegrationWithEnv = TIntegration & {
@@ -77,4 +93,9 @@ export enum IntegrationSyncBehavior {
 export enum IntegrationMappingBehavior {
   ONE_TO_ONE = "one-to-one",
   MANY_TO_ONE = "many-to-one"
+}
+
+export enum IntegrationMetadataSyncMode {
+  CUSTOM = "custom",
+  SECRET_METADATA = "secret-metadata"
 }

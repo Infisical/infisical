@@ -46,9 +46,10 @@ export type TDeleteCertificateTemplateDTO = {
 
 export type TCreateEstConfigDTO = {
   certificateTemplateId: string;
-  caChain: string;
+  caChain?: string;
   passphrase: string;
   isEnabled: boolean;
+  disableBootstrapCertValidation: boolean;
 };
 
 export type TUpdateEstConfigDTO = {
@@ -56,11 +57,13 @@ export type TUpdateEstConfigDTO = {
   caChain?: string;
   passphrase?: string;
   isEnabled?: boolean;
+  disableBootstrapCertValidation?: boolean;
 };
 
 export type TEstConfig = {
   id: string;
   certificateTemplateId: string;
   caChain: string;
-  isEnabled: false;
+  isEnabled: boolean;
+  disableBootstrapCertValidation: boolean;
 };

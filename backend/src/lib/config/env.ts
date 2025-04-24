@@ -1,7 +1,7 @@
-import { Logger } from "pino";
 import { z } from "zod";
 
 import { removeTrailingSlash } from "../fn";
+import { CustomLogger } from "../logger/logger";
 import { zpStr } from "../zod";
 
 export const GITLAB_URL = "https://gitlab.com";
@@ -10,7 +10,7 @@ export const GITLAB_URL = "https://gitlab.com";
 export const IS_PACKAGED = (process as any)?.pkg !== undefined;
 
 const zodStrBool = z
-  .enum(["true", "false"])
+  .string()
   .optional()
   .transform((val) => val === "true");
 
@@ -24,6 +24,7 @@ const databaseReadReplicaSchema = z
 
 const envSchema = z
   .object({
+    INFISICAL_PLATFORM_VERSION: zpStr(z.string().optional()),
     PORT: z.coerce.number().default(IS_PACKAGED ? 8080 : 4000),
     DISABLE_SECRET_SCANNING: z
       .enum(["true", "false"])
@@ -55,7 +56,9 @@ const envSchema = z
     // TODO(akhilmhdh): will be changed to one
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
+    QUEUE_WORKERS_ENABLED: zodStrBool.default("true"),
     HTTPS_ENABLED: zodStrBool,
+    ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
     SMTP_IGNORE_TLS: zodStrBool.default("false"),
@@ -157,16 +160,104 @@ const envSchema = z
     INFISICAL_CLOUD: zodStrBool.default("false"),
     MAINTENANCE_MODE: zodStrBool.default("false"),
     CAPTCHA_SECRET: zpStr(z.string().optional()),
-    PLAIN_API_KEY: zpStr(z.string().optional()),
-    PLAIN_WISH_LABEL_IDS: zpStr(z.string().optional()),
+    CAPTCHA_SITE_KEY: zpStr(z.string().optional()),
+    INTERCOM_ID: zpStr(z.string().optional()),
+
+    // TELEMETRY
+    OTEL_TELEMETRY_COLLECTION_ENABLED: zodStrBool.default("false"),
+    OTEL_EXPORT_OTLP_ENDPOINT: zpStr(z.string().optional()),
+    OTEL_OTLP_PUSH_INTERVAL: z.coerce.number().default(30000),
+    OTEL_COLLECTOR_BASIC_AUTH_USERNAME: zpStr(z.string().optional()),
+    OTEL_COLLECTOR_BASIC_AUTH_PASSWORD: zpStr(z.string().optional()),
+    OTEL_EXPORT_TYPE: z.enum(["prometheus", "otlp"]).optional(),
+
+    PYLON_API_KEY: zpStr(z.string().optional()),
     DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false"),
     SSL_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default("x-ssl-client-cert"),
     WORKFLOW_SLACK_CLIENT_ID: zpStr(z.string().optional()),
     WORKFLOW_SLACK_CLIENT_SECRET: zpStr(z.string().optional()),
-    ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true")
+    ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true"),
+
+    // HSM
+    HSM_LIB_PATH: zpStr(z.string().optional()),
+    HSM_PIN: zpStr(z.string().optional()),
+    HSM_KEY_LABEL: zpStr(z.string().optional()),
+    HSM_SLOT: z.coerce.number().optional().default(0),
+
+    USE_PG_QUEUE: zodStrBool.default("false"),
+    SHOULD_INIT_PG_QUEUE: zodStrBool.default("false"),
+
+    /* Gateway----------------------------------------------------------------------------- */
+    GATEWAY_INFISICAL_STATIC_IP_ADDRESS: zpStr(z.string().optional()),
+    GATEWAY_RELAY_ADDRESS: zpStr(z.string().optional()),
+    GATEWAY_RELAY_REALM: zpStr(z.string().optional()),
+    GATEWAY_RELAY_AUTH_SECRET: zpStr(z.string().optional()),
+
+    DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
+    /* ----------------------------------------------------------------------------- */
+
+    /* App Connections ----------------------------------------------------------------------------- */
+    ALLOW_INTERNAL_IP_CONNECTIONS: zodStrBool.default("false"),
+
+    // aws
+    INF_APP_CONNECTION_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
+
+    // github oauth
+    INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
+
+    // github app
+    INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_APP_SLUG: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_APP_ID: zpStr(z.string().optional()),
+
+    // gcp app
+    INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL: zpStr(z.string().optional()),
+
+    // azure app
+    INF_APP_CONNECTION_AZURE_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRET: zpStr(z.string().optional()),
+
+    // datadog
+    SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
+    DATADOG_PROFILING_ENABLED: zodStrBool.default("false"),
+    DATADOG_ENV: zpStr(z.string().optional().default("prod")),
+    DATADOG_SERVICE: zpStr(z.string().optional().default("infisical-core")),
+    DATADOG_HOSTNAME: zpStr(z.string().optional()),
+
+    /* CORS ----------------------------------------------------------------------------- */
+
+    CORS_ALLOWED_ORIGINS: zpStr(
+      z
+        .string()
+        .optional()
+        .transform((val) => {
+          if (!val) return undefined;
+          return JSON.parse(val) as string[];
+        })
+    ),
+
+    CORS_ALLOWED_HEADERS: zpStr(
+      z
+        .string()
+        .optional()
+        .transform((val) => {
+          if (!val) return undefined;
+          return JSON.parse(val) as string[];
+        })
+    )
   })
+  // To ensure that basic encryption is always possible.
+  .refine(
+    (data) => Boolean(data.ENCRYPTION_KEY) || Boolean(data.ROOT_ENCRYPTION_KEY),
+    "Either ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY must be defined."
+  )
   .transform((data) => ({
     ...data,
+
     DB_READ_REPLICAS: data.DB_READ_REPLICAS
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
@@ -174,24 +265,30 @@ const envSchema = z
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL),
     isDevelopmentMode: data.NODE_ENV === "development",
+    isRotationDevelopmentMode: data.NODE_ENV === "development" && data.ROTATION_DEVELOPMENT_MODE,
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
+
     isSecretScanningConfigured:
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
       Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET),
+    isHsmConfigured:
+      Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
+
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
     SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(",")
   }));
 
-let envCfg: Readonly<z.infer<typeof envSchema>>;
+export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
+let envCfg: TEnvConfig;
 
 export const getConfig = () => envCfg;
 // cannot import singleton logger directly as it needs config to load various transport
-export const initEnvConfig = (logger: Logger) => {
+export const initEnvConfig = (logger?: CustomLogger) => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
-    logger.error("Invalid environment variables. Check the error below");
-    logger.error(parsedEnv.error.issues);
+    (logger ?? console).error("Invalid environment variables. Check the error below");
+    (logger ?? console).error(parsedEnv.error.issues);
     process.exit(-1);
   }
 

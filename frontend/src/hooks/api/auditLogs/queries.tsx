@@ -1,8 +1,9 @@
-import { useInfiniteQuery, UseInfiniteQueryOptions, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
+import { TReactQueryOptions } from "@app/types/reactQuery";
 
 import { Actor, AuditLog, TGetAuditLogsFilter } from "./types";
 
@@ -16,18 +17,10 @@ export const auditLogKeys = {
 export const useGetAuditLogs = (
   filters: TGetAuditLogsFilter,
   projectId: string | null,
-  options: Omit<
-    UseInfiniteQueryOptions<
-      AuditLog[],
-      unknown,
-      AuditLog[],
-      AuditLog[],
-      ReturnType<typeof auditLogKeys.getAuditLogs>
-    >,
-    "queryFn" | "queryKey" | "getNextPageParam"
-  > = {}
+  options: TReactQueryOptions["options"] = {}
 ) => {
   return useInfiniteQuery({
+    initialPageParam: 0,
     queryKey: auditLogKeys.getAuditLogs(projectId, filters),
     queryFn: async ({ pageParam }) => {
       try {

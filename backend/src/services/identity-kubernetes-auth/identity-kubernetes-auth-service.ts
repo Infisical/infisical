@@ -3,28 +3,25 @@ import axios, { AxiosError } from "axios";
 import https from "https";
 import jwt from "jsonwebtoken";
 
-import { IdentityAuthMethod, SecretKeyEncoding, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
+import { IdentityAuthMethod, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { getConfig } from "@app/lib/config/env";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
-  decryptSymmetric,
-  encryptSymmetric,
-  generateAsymmetricKeyPair,
-  generateSymmetricKey,
-  infisicalSymmetricDecrypt,
-  infisicalSymmetricEncypt
-} from "@app/lib/crypto/encryption";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { getConfig } from "@app/lib/config/env";
+import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
-import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
+import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityKubernetesAuthDALFactory } from "./identity-kubernetes-auth-dal";
 import { extractK8sUsername } from "./identity-kubernetes-auth-fns";
 import {
@@ -41,11 +38,11 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     TIdentityKubernetesAuthDALFactory,
     "create" | "findOne" | "transaction" | "updateById" | "delete"
   >;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "findById">;
-  orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "transaction" | "create">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKubernetesAuthServiceFactory>;
@@ -54,9 +51,9 @@ export const identityKubernetesAuthServiceFactory = ({
   identityKubernetesAuthDAL,
   identityOrgMembershipDAL,
   identityAccessTokenDAL,
-  orgBotDAL,
   permissionService,
-  licenseService
+  licenseService,
+  kmsService
 }: TIdentityKubernetesAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: serviceAccountJwt }: TLoginKubernetesAuthDTO) => {
     const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
@@ -75,42 +72,24 @@ export const identityKubernetesAuthServiceFactory = ({
       });
     }
 
-    const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot) {
-      throw new NotFoundError({
-        message: `Organization bot not found for organization with ID ${identityMembershipOrg.orgId}`,
-        name: "OrgBotNotFound"
-      });
-    }
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.orgId
     });
 
-    const { encryptedCaCert, caCertIV, caCertTag, encryptedTokenReviewerJwt, tokenReviewerJwtIV, tokenReviewerJwtTag } =
-      identityKubernetesAuth;
-
     let caCert = "";
-    if (encryptedCaCert && caCertIV && caCertTag) {
-      caCert = decryptSymmetric({
-        ciphertext: encryptedCaCert,
-        iv: caCertIV,
-        tag: caCertTag,
-        key
-      });
+    if (identityKubernetesAuth.encryptedKubernetesCaCertificate) {
+      caCert = decryptor({ cipherTextBlob: identityKubernetesAuth.encryptedKubernetesCaCertificate }).toString();
     }
 
     let tokenReviewerJwt = "";
-    if (encryptedTokenReviewerJwt && tokenReviewerJwtIV && tokenReviewerJwtTag) {
-      tokenReviewerJwt = decryptSymmetric({
-        ciphertext: encryptedTokenReviewerJwt,
-        iv: tokenReviewerJwtIV,
-        tag: tokenReviewerJwtTag,
-        key
-      });
+    if (identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt) {
+      tokenReviewerJwt = decryptor({
+        cipherTextBlob: identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt
+      }).toString();
+    } else {
+      // if no token reviewer is provided means the incoming token has to act as reviewer
+      tokenReviewerJwt = serviceAccountJwt;
     }
 
     const { data } = await axios
@@ -120,7 +99,8 @@ export const identityKubernetesAuthServiceFactory = ({
           apiVersion: "authentication.k8s.io/v1",
           kind: "TokenReview",
           spec: {
-            token: serviceAccountJwt
+            token: serviceAccountJwt,
+            ...(identityKubernetesAuth.allowedAudience ? { audiences: [identityKubernetesAuth.allowedAudience] } : {})
           }
         },
         {
@@ -128,7 +108,8 @@ export const identityKubernetesAuthServiceFactory = ({
             "Content-Type": "application/json",
             Authorization: `Bearer ${tokenReviewerJwt}`
           },
-
+          signal: AbortSignal.timeout(10000),
+          timeout: 10000,
           // if ca cert, rejectUnauthorized: true
           httpsAgent: new https.Agent({
             ca: caCert,
@@ -228,12 +209,12 @@ export const identityKubernetesAuthServiceFactory = ({
         authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
-      {
-        expiresIn:
-          Number(identityAccessToken.accessTokenMaxTTL) === 0
-            ? undefined
-            : Number(identityAccessToken.accessTokenMaxTTL)
-      }
+      // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
+      Number(identityAccessToken.accessTokenTTL) === 0
+        ? undefined
+        : {
+            expiresIn: Number(identityAccessToken.accessTokenTTL)
+          }
     );
 
     return { accessToken, identityKubernetesAuth, identityAccessToken, identityMembershipOrg };
@@ -254,8 +235,11 @@ export const identityKubernetesAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TAttachKubernetesAuthDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
@@ -276,7 +260,7 @@ export const identityKubernetesAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -296,79 +280,27 @@ export const identityKubernetesAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const orgBot = await orgBotDAL.transaction(async (tx) => {
-      const doc = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId }, tx);
-      if (doc) return doc;
-
-      const { privateKey, publicKey } = generateAsymmetricKeyPair();
-      const key = generateSymmetricKey();
-      const {
-        ciphertext: encryptedPrivateKey,
-        iv: privateKeyIV,
-        tag: privateKeyTag,
-        encoding: privateKeyKeyEncoding,
-        algorithm: privateKeyAlgorithm
-      } = infisicalSymmetricEncypt(privateKey);
-      const {
-        ciphertext: encryptedSymmetricKey,
-        iv: symmetricKeyIV,
-        tag: symmetricKeyTag,
-        encoding: symmetricKeyKeyEncoding,
-        algorithm: symmetricKeyAlgorithm
-      } = infisicalSymmetricEncypt(key);
-
-      return orgBotDAL.create(
-        {
-          name: "Infisical org bot",
-          publicKey,
-          privateKeyIV,
-          encryptedPrivateKey,
-          symmetricKeyIV,
-          symmetricKeyTag,
-          encryptedSymmetricKey,
-          symmetricKeyAlgorithm,
-          orgId: identityMembershipOrg.orgId,
-          privateKeyTag,
-          privateKeyAlgorithm,
-          privateKeyKeyEncoding,
-          symmetricKeyKeyEncoding
-        },
-        tx
-      );
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.orgId
     });
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
-    });
-
-    const { ciphertext: encryptedCaCert, iv: caCertIV, tag: caCertTag } = encryptSymmetric(caCert, key);
-    const {
-      ciphertext: encryptedTokenReviewerJwt,
-      iv: tokenReviewerJwtIV,
-      tag: tokenReviewerJwtTag
-    } = encryptSymmetric(tokenReviewerJwt, key);
 
     const identityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const doc = await identityKubernetesAuthDAL.create(
         {
           identityId: identityMembershipOrg.identityId,
           kubernetesHost,
-          encryptedCaCert,
-          caCertIV,
-          caCertTag,
-          encryptedTokenReviewerJwt,
-          tokenReviewerJwtIV,
-          tokenReviewerJwtTag,
           allowedNamespaces,
           allowedNames,
           allowedAudience,
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,
-          accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps)
+          accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
+          encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
+            ? encryptor({ plainText: Buffer.from(tokenReviewerJwt) }).cipherTextBlob
+            : null,
+          encryptedKubernetesCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob
         },
         tx
       );
@@ -421,7 +353,7 @@ export const identityKubernetesAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -454,61 +386,36 @@ export const identityKubernetesAuthServiceFactory = ({
         : undefined
     };
 
-    const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot) {
-      throw new NotFoundError({
-        message: `Organization bot not found for organization with ID ${identityMembershipOrg.orgId}`,
-        name: "OrgBotNotFound"
-      });
-    }
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.orgId
     });
 
     if (caCert !== undefined) {
-      const { ciphertext: encryptedCACert, iv: caCertIV, tag: caCertTag } = encryptSymmetric(caCert, key);
-      updateQuery.encryptedCaCert = encryptedCACert;
-      updateQuery.caCertIV = caCertIV;
-      updateQuery.caCertTag = caCertTag;
+      updateQuery.encryptedKubernetesCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
     }
 
-    if (tokenReviewerJwt !== undefined) {
-      const {
-        ciphertext: encryptedTokenReviewerJwt,
-        iv: tokenReviewerJwtIV,
-        tag: tokenReviewerJwtTag
-      } = encryptSymmetric(tokenReviewerJwt, key);
-      updateQuery.encryptedTokenReviewerJwt = encryptedTokenReviewerJwt;
-      updateQuery.tokenReviewerJwtIV = tokenReviewerJwtIV;
-      updateQuery.tokenReviewerJwtTag = tokenReviewerJwtTag;
+    if (tokenReviewerJwt) {
+      updateQuery.encryptedKubernetesTokenReviewerJwt = encryptor({
+        plainText: Buffer.from(tokenReviewerJwt)
+      }).cipherTextBlob;
+    } else if (tokenReviewerJwt === null) {
+      updateQuery.encryptedKubernetesTokenReviewerJwt = null;
     }
 
     const updatedKubernetesAuth = await identityKubernetesAuthDAL.updateById(identityKubernetesAuth.id, updateQuery);
 
-    const updatedCACert =
-      updatedKubernetesAuth.encryptedCaCert && updatedKubernetesAuth.caCertIV && updatedKubernetesAuth.caCertTag
-        ? decryptSymmetric({
-            ciphertext: updatedKubernetesAuth.encryptedCaCert,
-            iv: updatedKubernetesAuth.caCertIV,
-            tag: updatedKubernetesAuth.caCertTag,
-            key
-          })
-        : "";
+    const updatedCACert = updatedKubernetesAuth.encryptedKubernetesCaCertificate
+      ? decryptor({
+          cipherTextBlob: updatedKubernetesAuth.encryptedKubernetesCaCertificate
+        }).toString()
+      : "";
 
-    const updatedTokenReviewerJwt =
-      updatedKubernetesAuth.encryptedTokenReviewerJwt &&
-      updatedKubernetesAuth.tokenReviewerJwtIV &&
-      updatedKubernetesAuth.tokenReviewerJwtTag
-        ? decryptSymmetric({
-            ciphertext: updatedKubernetesAuth.encryptedTokenReviewerJwt,
-            iv: updatedKubernetesAuth.tokenReviewerJwtIV,
-            tag: updatedKubernetesAuth.tokenReviewerJwtTag,
-            key
-          })
-        : "";
+    const updatedTokenReviewerJwt = updatedKubernetesAuth.encryptedKubernetesTokenReviewerJwt
+      ? decryptor({
+          cipherTextBlob: updatedKubernetesAuth.encryptedKubernetesTokenReviewerJwt
+        }).toString()
+      : "";
 
     return {
       ...updatedKubernetesAuth,
@@ -528,12 +435,16 @@ export const identityKubernetesAuthServiceFactory = ({
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
+    const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
+    if (!identityKubernetesAuth) {
+      throw new NotFoundError({ message: `Failed to find Kubernetes Auth for identity with ID ${identityId}` });
+    }
+
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.KUBERNETES_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have Kubernetes Auth attached"
       });
     }
-    const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -542,43 +453,23 @@ export const identityKubernetesAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot)
-      throw new NotFoundError({
-        message: `Organization bot not found for organization with ID ${identityMembershipOrg.orgId}`,
-        name: "OrgBotNotFound"
-      });
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.orgId
     });
 
-    const { encryptedCaCert, caCertIV, caCertTag, encryptedTokenReviewerJwt, tokenReviewerJwtIV, tokenReviewerJwtTag } =
-      identityKubernetesAuth;
-
     let caCert = "";
-    if (encryptedCaCert && caCertIV && caCertTag) {
-      caCert = decryptSymmetric({
-        ciphertext: encryptedCaCert,
-        iv: caCertIV,
-        tag: caCertTag,
-        key
-      });
+    if (identityKubernetesAuth.encryptedKubernetesCaCertificate) {
+      caCert = decryptor({ cipherTextBlob: identityKubernetesAuth.encryptedKubernetesCaCertificate }).toString();
     }
 
     let tokenReviewerJwt = "";
-    if (encryptedTokenReviewerJwt && tokenReviewerJwtIV && tokenReviewerJwtTag) {
-      tokenReviewerJwt = decryptSymmetric({
-        ciphertext: encryptedTokenReviewerJwt,
-        iv: tokenReviewerJwtIV,
-        tag: tokenReviewerJwtTag,
-        key
-      });
+    if (identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt) {
+      tokenReviewerJwt = decryptor({
+        cipherTextBlob: identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt
+      }).toString();
     }
 
     return { ...identityKubernetesAuth, caCert, tokenReviewerJwt, orgId: identityMembershipOrg.orgId };
@@ -599,14 +490,14 @@ export const identityKubernetesAuthServiceFactory = ({
         message: "The identity does not have kubernetes auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
@@ -615,13 +506,27 @@ export const identityKubernetesAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!isAtLeastAsPrivileged(permission, rolePermission))
-      throw new ForbiddenRequestError({
-        message: "Failed to revoke kubernetes auth of identity with more privileged role"
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      OrgPermissionIdentityActions.RevokeAuth,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+    if (!permissionBoundary.isValid)
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to revoke kubernetes auth of identity with more privileged role",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.RevokeAuth,
+          OrgPermissionSubjects.Identity
+        ),
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const revokedIdentityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const deletedKubernetesAuth = await identityKubernetesAuthDAL.delete({ identityId }, tx);
+      await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.KUBERNETES_AUTH }, tx);
       return { ...deletedKubernetesAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityKubernetesAuth;

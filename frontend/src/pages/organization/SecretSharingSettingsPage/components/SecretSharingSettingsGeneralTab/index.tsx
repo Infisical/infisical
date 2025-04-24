@@ -1,0 +1,1 @@
+export { SecretSharingSettingsGeneralTab } from "./SecretSharingSettingsGeneralTab";

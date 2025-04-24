@@ -30,8 +30,9 @@ export const useToggle = (initialState = false): UseToggleReturn => {
   const timedToggle = useCallback((timeout = 2000) => {
     setValue((prev) => !prev);
 
-    setTimeout(() => {
+    const timeoutRef = setTimeout(() => {
       setValue(false);
+      clearTimeout(timeoutRef);
     }, timeout);
   }, []);
 

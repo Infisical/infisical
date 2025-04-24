@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 // logger follows a singleton pattern
 // easier to use it that's all.
+import { requestContext } from "@fastify/request-context";
 import pino, { Logger } from "pino";
 import { z } from "zod";
 
@@ -13,13 +15,36 @@ const logLevelToSeverityLookup: Record<string, string> = {
   "60": "CRITICAL"
 };
 
-// eslint-disable-next-line import/no-mutable-exports
-export let logger: Readonly<Logger>;
 // akhilmhdh:
 // The logger is not placed in the main app config to avoid a circular dependency.
 // The config requires the logger to display errors when an invalid environment is supplied.
 // On the other hand, the logger needs the config to obtain credentials for AWS or other transports.
 // By keeping the logger separate, it becomes an independent package.
+
+// We define our own custom logger interface to enforce structure to the logging methods.
+
+export interface CustomLogger extends Omit<Logger, "info" | "error" | "warn" | "debug"> {
+  info: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (obj: unknown, msg?: string, ...args: any[]): void;
+  };
+
+  error: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (obj: unknown, msg?: string, ...args: any[]): void;
+  };
+  warn: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (obj: unknown, msg?: string, ...args: any[]): void;
+  };
+  debug: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (obj: unknown, msg?: string, ...args: any[]): void;
+  };
+}
+
+// eslint-disable-next-line import/no-mutable-exports
+export let logger: Readonly<CustomLogger>;
 
 const loggerConfig = z.object({
   AWS_CLOUDWATCH_LOG_GROUP_NAME: z.string().default("infisical-log-stream"),
@@ -62,7 +87,18 @@ const redactedKeys = [
   "config"
 ];
 
-export const initLogger = async () => {
+const UNKNOWN_REQUEST_ID = "UNKNOWN_REQUEST_ID";
+
+const extractReqId = () => {
+  try {
+    return requestContext.get("reqId") || UNKNOWN_REQUEST_ID;
+  } catch (err) {
+    console.log("failed to get request context", err);
+    return UNKNOWN_REQUEST_ID;
+  }
+};
+
+export const initLogger = () => {
   const cfg = loggerConfig.parse(process.env);
   const targets: pino.TransportMultiOptions["targets"][number][] = [
     {
@@ -94,6 +130,30 @@ export const initLogger = async () => {
     targets
   });
 
+  const wrapLogger = (originalLogger: Logger): CustomLogger => {
+    // eslint-disable-next-line no-param-reassign, @typescript-eslint/no-explicit-any
+    originalLogger.info = (obj: unknown, msg?: string, ...args: any[]) => {
+      return originalLogger.child({ reqId: extractReqId() }).info(obj, msg, ...args);
+    };
+
+    // eslint-disable-next-line no-param-reassign, @typescript-eslint/no-explicit-any
+    originalLogger.error = (obj: unknown, msg?: string, ...args: any[]) => {
+      return originalLogger.child({ reqId: extractReqId() }).error(obj, msg, ...args);
+    };
+
+    // eslint-disable-next-line no-param-reassign, @typescript-eslint/no-explicit-any
+    originalLogger.warn = (obj: unknown, msg?: string, ...args: any[]) => {
+      return originalLogger.child({ reqId: extractReqId() }).warn(obj, msg, ...args);
+    };
+
+    // eslint-disable-next-line no-param-reassign, @typescript-eslint/no-explicit-any
+    originalLogger.debug = (obj: unknown, msg?: string, ...args: any[]) => {
+      return originalLogger.child({ reqId: extractReqId() }).debug(obj, msg, ...args);
+    };
+
+    return originalLogger;
+  };
+
   logger = pino(
     {
       mixin(_context, level) {
@@ -113,5 +173,6 @@ export const initLogger = async () => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     transport
   );
-  return logger;
+
+  return wrapLogger(logger);
 };

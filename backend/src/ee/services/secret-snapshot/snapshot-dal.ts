@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop */
+/* eslint-disable no-await-in-loop,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-argument */
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -181,6 +181,11 @@ export const snapshotDALFactory = (db: TDbClient) => {
           `${TableName.SnapshotFolder}.folderVersionId`,
           `${TableName.SecretFolderVersion}.id`
         )
+        .leftJoin(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretRotationV2SecretMapping}.secretId`,
+          `${TableName.SecretVersionV2}.secretId`
+        )
         .select(selectAllTableCols(TableName.SecretVersionV2))
         .select(
           db.ref("id").withSchema(TableName.Snapshot).as("snapshotId"),
@@ -195,7 +200,8 @@ export const snapshotDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
           db.ref("id").withSchema(TableName.SecretVersionV2Tag).as("tagVersionId"),
           db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
-          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
+          db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping)
         );
       return sqlNestRelationships({
         data,
@@ -221,7 +227,11 @@ export const snapshotDALFactory = (db: TDbClient) => {
           {
             key: "id",
             label: "secretVersions" as const,
-            mapper: (el) => SecretVersionsV2Schema.parse(el),
+            mapper: (el) => ({
+              ...SecretVersionsV2Schema.parse(el),
+              isRotatedSecret: Boolean(el.rotationId),
+              rotationId: el.rotationId
+            }),
             childrenMapper: [
               {
                 key: "tagVersionId",
@@ -476,6 +486,11 @@ export const snapshotDALFactory = (db: TDbClient) => {
           `${TableName.SecretVersionV2Tag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
+        .leftJoin(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretVersionV2}.secretId`,
+          `${TableName.SecretRotationV2SecretMapping}.secretId`
+        )
         .leftJoin<{ latestSecretVersion: number }>(
           (tx || db)(TableName.SecretVersionV2)
             .groupBy("secretId")
@@ -506,7 +521,8 @@ export const snapshotDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
           db.ref("id").withSchema(TableName.SecretVersionV2Tag).as("tagVersionId"),
           db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
-          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
+          db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping)
         );
 
       const formated = sqlNestRelationships({
@@ -523,7 +539,8 @@ export const snapshotDALFactory = (db: TDbClient) => {
             label: "secretVersions" as const,
             mapper: (el) => ({
               ...SecretVersionsV2Schema.parse(el),
-              latestSecretVersion: el.latestSecretVersion as number
+              latestSecretVersion: el.latestSecretVersion as number,
+              isRotatedSecret: Boolean(el.rotationId)
             }),
             childrenMapper: [
               {

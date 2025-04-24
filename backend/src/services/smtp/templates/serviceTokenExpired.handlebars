@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>Service Token Expiring Soon</title>
+  </head>
+
+  <body>
+    <h2>Service Token Expiry Notice</h2>
+    <p>Your service token <strong>"{{tokenName}}"</strong> will expire within 24 hours.</p>
+    
+    <p>This token is currently being used on project "{{projectName}}". If this token is still needed for your workflow, please create a new one before it expires.</p>
+    
+    <a href="{{url}}">Create New Token</a>
+    
+    {{emailFooter}}
+  </body>
+</html>

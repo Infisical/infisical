@@ -4,6 +4,7 @@ export {
   useAddIdentityAwsAuth,
   useAddIdentityAzureAuth,
   useAddIdentityGcpAuth,
+  useAddIdentityJwtAuth,
   useAddIdentityKubernetesAuth,
   useAddIdentityOidcAuth,
   useAddIdentityTokenAuth,
@@ -15,6 +16,7 @@ export {
   useDeleteIdentityAwsAuth,
   useDeleteIdentityAzureAuth,
   useDeleteIdentityGcpAuth,
+  useDeleteIdentityJwtAuth,
   useDeleteIdentityKubernetesAuth,
   useDeleteIdentityOidcAuth,
   useDeleteIdentityTokenAuth,
@@ -25,20 +27,25 @@ export {
   useUpdateIdentityAwsAuth,
   useUpdateIdentityAzureAuth,
   useUpdateIdentityGcpAuth,
+  useUpdateIdentityJwtAuth,
   useUpdateIdentityKubernetesAuth,
   useUpdateIdentityOidcAuth,
   useUpdateIdentityTokenAuth,
   useUpdateIdentityTokenAuthToken,
-  useUpdateIdentityUniversalAuth} from "./mutations";
+  useUpdateIdentityUniversalAuth
+} from "./mutations";
 export {
   useGetIdentityAwsAuth,
   useGetIdentityAzureAuth,
   useGetIdentityById,
   useGetIdentityGcpAuth,
+  useGetIdentityJwtAuth,
   useGetIdentityKubernetesAuth,
   useGetIdentityOidcAuth,
   useGetIdentityProjectMemberships,
   useGetIdentityTokenAuth,
   useGetIdentityTokensTokenAuth,
   useGetIdentityUniversalAuth,
-  useGetIdentityUniversalAuthClientSecrets} from "./queries";
+  useGetIdentityUniversalAuthClientSecrets,
+  useSearchIdentities
+} from "./queries";

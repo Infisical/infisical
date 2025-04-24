@@ -5,12 +5,13 @@ import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretRedisDBSchema, TDynamicProviderFns } from "./models";
 
 const generatePassword = () => {
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 64)();
 };
 
@@ -51,16 +52,28 @@ const executeTransactions = async (connection: Redis, commands: string[]): Promi
 export const RedisDatabaseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretRedisDBSchema.parseAsync(inputs);
-    verifyHostInputValidity(providerInputs.host);
-    return providerInputs;
+    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
+    validateHandlebarTemplate("Redis creation", providerInputs.creationStatement, {
+      allowedExpressions: (val) => ["username", "password", "expiration"].includes(val)
+    });
+    if (providerInputs.renewStatement) {
+      validateHandlebarTemplate("Redis renew", providerInputs.renewStatement, {
+        allowedExpressions: (val) => ["username", "expiration"].includes(val)
+      });
+    }
+    validateHandlebarTemplate("Redis revoke", providerInputs.revocationStatement, {
+      allowedExpressions: (val) => ["username"].includes(val)
+    });
+
+    return { ...providerInputs, hostIp };
   };
 
-  const getClient = async (providerInputs: z.infer<typeof DynamicSecretRedisDBSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretRedisDBSchema> & { hostIp: string }) => {
     let connection: Redis | null = null;
     try {
       connection = new Redis({
         username: providerInputs.username,
-        host: providerInputs.host,
+        host: providerInputs.hostIp,
         port: providerInputs.port,
         password: providerInputs.password,
         ...(providerInputs.ca && {
@@ -92,7 +105,7 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     const pingResponse = await connection
       .ping()
@@ -104,7 +117,7 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
   const create = async (inputs: unknown, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     const username = generateUsername();
     const password = generatePassword();
@@ -126,7 +139,7 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     const username = entityId;
 
@@ -141,7 +154,9 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
   const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    if (!providerInputs.renewStatement) return { entityId };
+
+    const connection = await $getClient(providerInputs);
 
     const username = entityId;
     const expiration = new Date(expireAt).toISOString();

@@ -1,0 +1,237 @@
+---
+title: "Kubernetes Operator"
+sidebarTitle: "Overview"
+description: "How to use Infisical to inject, push, and manage secrets within Kubernetes clusters"
+---
+
+The Infisical Operator is a collection of Kubernetes controllers that streamline how secrets are managed between Infisical and your Kubernetes cluster. 
+It provides multiple Custom Resource Definitions (CRDs) which enable you to:
+
+- **Sync** secrets from Infisical into Kubernetes (`InfisicalSecret`).
+- **Push** new secrets from Kubernetes to Infisical (`InfisicalPushSecret`).
+- **Manage** dynamic secrets and automatically create time-bound leases (`InfisicalDynamicSecret`).
+
+When these CRDs are configured, the Infisical Operator will continuously monitors for changes and performs necessary updates to keep your Kubernetes secrets up to date. 
+It can also automatically reload dependent Deployments resources whenever relevant secrets are updated.
+
+<Note>
+  If you are already using the External Secrets operator, you can view the
+  integration documentation for it
+  [here](https://external-secrets.io/latest/provider/infisical/).
+</Note>
+
+## Install 
+
+The operator can be install via [Helm](https://helm.sh). Helm is a package manager for Kubernetes that allows you to define, install, and upgrade Kubernetes applications.
+
+**Install the latest Helm repository**
+```bash
+helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/' 
+```
+
+```bash  
+helm repo update
+```
+
+The operator can be installed either cluster-wide or restricted to a specific namespace. 
+If you require stronger isolation and stricter access controls, a namespace-scoped installation may make more sense.
+
+<Tabs>
+  <Tab title="Cluster Wide Installation">
+    ```bash
+    helm install --generate-name infisical-helm-charts/secrets-operator
+    ```
+  </Tab>
+  <Tab title="Namespace Scoped Installation">
+    The operator can be configured to watch and manage secrets in a specific namespace instead of having cluster-wide access. This is useful for:
+
+    - **Enhanced Security**: Limit the operator's permissions to only specific namespaces instead of cluster-wide access
+    - **Multi-tenant Clusters**: Run separate operator instances for different teams or applications
+    - **Resource Isolation**: Ensure operators in different namespaces don't interfere with each other
+    - **Development & Testing**: Run development and production operators side by side in isolated namespaces
+
+    **Note**: For multiple namespace-scoped installations, only the first installation should install CRDs. Subsequent installations should set `installCRDs: false` to avoid conflicts.
+
+    ```bash
+    # First namespace installation (with CRDs)
+    helm install operator-namespace1 infisical-helm-charts/secrets-operator \
+      --namespace first-namespace \
+      --set scopedNamespace=first-namespace \
+      --set scopedRBAC=true
+
+    # Subsequent namespace installations
+    helm install operator-namespace2 infisical-helm-charts/secrets-operator \
+      --namespace another-namespace \
+      --set scopedNamespace=another-namespace \
+      --set scopedRBAC=true \
+      --set installCRDs=false
+    ```
+
+    When scoped to a namespace, the operator will:
+
+    - Only watch InfisicalSecrets in the specified namespace
+    - Only create/update Kubernetes secrets in that namespace
+    - Only access deployments in that namespace
+
+    The default configuration gives cluster-wide access:
+
+    ```yaml
+    installCRDs: true # Install CRDs (set to false for additional namespace installations)
+    scopedNamespace: "" # Empty for cluster-wide access
+    scopedRBAC: false # Cluster-wide permissions
+    ```
+
+    If you want to install operators in multiple namespaces simultaneously:
+    - Make sure to set `installCRDs: false` for all but one of the installations to avoid conflicts, as CRDs are cluster-wide resources.
+    - Use unique release names for each installation (e.g., operator-namespace1, operator-namespace2).
+
+  </Tab>
+</Tabs>
+
+## Custom Resource Definitions
+
+Currently the operator supports the following CRD's. We are constantly expanding the functionality of the operator, and this list will be updated as new CRD's are added.
+
+1. [InfisicalSecret](/integrations/platforms/kubernetes/infisical-secret-crd): Sync secrets from Infisical to a Kubernetes secret.
+2. [InfisicalPushSecret](/integrations/platforms/kubernetes/infisical-push-secret-crd): Push secrets from a Kubernetes secret to Infisical.
+3. [InfisicalDynamicSecret](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd): Sync dynamic secrets and create leases automatically in Kubernetes.
+
+## General Configuration
+### Private/self-signed certificate
+To connect to Infisical instances behind a private/self-signed certificate, you can configure the TLS settings in the CRD
+to point to a CA certificate stored in a Kubernetes secret resource.
+
+```yaml
+---
+spec:
+  hostAPI: https://app.infisical.com/api
+  tls:
+    caRef:
+      secretName: custom-ca-certificate
+      secretNamespace: default
+      key: ca.crt
+---
+```
+
+
+## Advanced Templating
+
+With the Infisical Secrets Operator, you can use templating to dynamically generate secrets in Kubernetes. The templating is built on top of [Go templates](https://pkg.go.dev/text/template), which is a powerful and flexible template engine built into Go.
+
+Please be aware that trying to reference non-existing keys will result in an error. Additionally, each template field is processed individually, which means one template field cannot reference another template field.
+
+<Note>
+  Please note that templating is currently only supported for the `InfisicalPushSecret` and `InfisicalSecret` CRDs.
+</Note>
+
+### Available helper functions
+
+The Infisical Secrets Operator exposes a wide range of helper functions to make it easier to work with secrets in Kubernetes.
+
+| Function | Description | Signature |
+| -------- | ----------- | --------- |
+| `decodeBase64ToBytes` | Given a base64 encoded string, this function will decode the base64-encoded string. | `decodeBase64ToBytes(encodedString string) string` |
+| `encodeBase64` | Given a string, this function will encode the string to a base64 encoded string. | `encodeBase64(plainString string) string` |
+| `pkcs12key`| Extracts all private keys from a PKCS#12 archive and encodes them in PKCS#8 PEM format. | `pkcs12key(input string) string` |
+| `pkcs12keyPass`|Same as pkcs12key. Uses the provided password to decrypt the PKCS#12 archive. | `pkcs12keyPass(pass string, input string) string` |
+| `pkcs12cert`      | Extracts all certificates from a PKCS#12 archive and orders them if possible. If disjunct or multiple leaf certs are provided they are returned as-is. Sort order: `leaf / intermediate(s) / root`. | `pkcs12cert(input string) string` |
+| `pkcs12certPass`  | Same as `pkcs12cert`. Uses the provided password to decrypt the PKCS#12 archive. | `pkcs12certPass(pass string, input string) string` |
+| `pemToPkcs12`     | Takes a PEM encoded certificate and key and creates a base64 encoded PKCS#12 archive. | `pemToPkcs12(cert string, key string) string` |
+| `pemToPkcs12Pass` | Same as `pemToPkcs12`. Uses the provided password to encrypt the PKCS#12 archive. | `pemToPkcs12Pass(cert string, key string, pass string) string` |
+| `fullPemToPkcs12` | Takes a PEM encoded certificates chain and key and creates a base64 encoded PKCS#12 archive. | `fullPemToPkcs12(cert string, key string) string` |
+| `fullPemToPkcs12Pass`   | Same as `fullPemToPkcs12`. Uses the provided password to encrypt the PKCS#12 archive. | `fullPemToPkcs12Pass(cert string, key string, pass string) string` |
+| `filterPEM`       | Filters PEM blocks with a specific type from a list of PEM blocks.. | `filterPEM(pemType string, input string) string` |
+| `filterCertChain`   | Filters PEM block(s) with a specific certificate type (`leaf`, `intermediate` or `root`) from a certificate chain of PEM blocks (PEM blocks with type `CERTIFICATE`). | `filterCertChain(certType string, input string) string` |
+| `jwkPublicKeyPem`   | Takes an json-serialized JWK and returns an PEM block of type `PUBLIC KEY` that contains the public key. [See here](https://golang.org/pkg/crypto/x509/#MarshalPKIXPublicKey) for details. | `jwkPublicKeyPem(jwkjson string) string` |
+| `jwkPrivateKeyPem`   | Takes an json-serialized JWK and returns an PEM block of type `PRIVATE KEY` that contains the private key. [See here](https://pkg.go.dev/crypto/x509#MarshalPKCS8PrivateKey) for details. | `jwkPrivateKeyPem(jwkjson string) string` |
+| `toYaml`   | Takes an interface, marshals it to yaml. It returns a string, even on marshal error (empty string). | `toYaml(v any) string` |
+| `fromYaml`   | Function converts a YAML document into a `map[string]any`. | `fromYaml(str string) map[string]any` |
+
+### Sprig functions
+
+The Infisical Secrets Operator integrates with the [Sprig library](https://github.com/Masterminds/sprig) to provide additional helper functions.
+
+<Note>
+  We've removed `expandEnv` and `env` from the supported functions for security reasons.
+</Note>
+
+
+## Global configuration
+
+To configure global settings that will apply to all instances of `InfisicalSecret`, you can define these configurations in a Kubernetes ConfigMap.
+For example, you can configure all `InfisicalSecret` instances to fetch secrets from a single backend API without specifying the `hostAPI` parameter for each instance.
+
+### Available global properties
+
+| Property | Description                                                                       | Default value                 |
+| -------- | --------------------------------------------------------------------------------- | ----------------------------- |
+| hostAPI  | If `hostAPI` in `InfisicalSecret` instance is left empty, this value will be used | https://app.infisical.com/api |
+
+### Applying global configurations
+
+All global configurations must reside in a Kubernetes ConfigMap named `infisical-config` in the namespace `infisical-operator-system`.
+To apply global configuration to the operator, copy the following yaml into `infisical-config.yaml` file.
+
+```yaml infisical-config.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: infisical-operator-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: infisical-config
+  namespace: infisical-operator-system
+data:
+  hostAPI: https://example.com/api # <-- global hostAPI
+```
+
+Then apply this change via kubectl by running the following
+
+```bash
+kubectl apply -f infisical-config.yaml
+```
+
+## Troubleshoot operator
+
+If the operator is unable to fetch secrets from the API, it will not affect the managed Kubernetes secret.
+It will continue attempting to reconnect to the API indefinitely.
+The InfisicalSecret resource uses the `status.conditions` field to report its current state and any errors encountered.
+
+```yaml
+$ kubectl get infisicalSecrets
+NAME                     AGE
+infisicalsecret-sample   12s
+
+$ kubectl describe infisicalSecret infisicalsecret-sample
+...
+Spec:
+...
+Status:
+  Conditions:
+    Last Transition Time:  2022-12-18T04:29:09Z
+    Message:               Infisical controller has located the Infisical token in provided Kubernetes secret
+    Reason:                OK
+    Status:                True
+    Type:                  secrets.infisical.com/LoadedInfisicalToken
+    Last Transition Time:  2022-12-18T04:29:10Z
+    Message:               Failed to update secret because: 400 Bad Request
+    Reason:                Error
+    Status:                False
+    Type:                  secrets.infisical.com/ReadyToSyncSecrets
+Events:                    <none>
+```
+
+## Uninstall Operator
+
+The managed secret created by the operator will not be deleted when the operator is uninstalled.
+
+<Tabs>
+	 <Tab title="Helm">
+		Install Infisical Helm repository 
+    ```bash
+    helm uninstall <release name>
+    ```
+   </Tab>
+</Tabs>

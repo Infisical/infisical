@@ -34,9 +34,10 @@ export type TDeleteCertTemplateDTO = {
 
 export type TCreateEstConfigurationDTO = {
   certificateTemplateId: string;
-  caChain: string;
+  caChain?: string;
   passphrase: string;
   isEnabled: boolean;
+  disableBootstrapCertValidation: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateEstConfigurationDTO = {
@@ -44,6 +45,7 @@ export type TUpdateEstConfigurationDTO = {
   caChain?: string;
   passphrase?: string;
   isEnabled?: boolean;
+  disableBootstrapCertValidation?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetEstConfigurationDTO =

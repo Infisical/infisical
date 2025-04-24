@@ -7,11 +7,13 @@ export type TAttachOidcAuthDTO = {
   boundIssuer: string;
   boundAudiences: string;
   boundClaims: Record<string, string>;
+  claimMetadataMapping?: Record<string, string>;
   boundSubject: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateOidcAuthDTO = {
@@ -21,6 +23,7 @@ export type TUpdateOidcAuthDTO = {
   boundIssuer?: string;
   boundAudiences?: string;
   boundClaims?: Record<string, string>;
+  claimMetadataMapping?: Record<string, string>;
   boundSubject?: string;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;

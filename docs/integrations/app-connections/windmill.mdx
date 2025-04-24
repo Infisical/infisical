@@ -1,0 +1,112 @@
+---
+title: "Windmill Connection"
+description: "Learn how to configure a Windmill Connection for Infisical."
+---
+
+Infisical supports connecting to Windmill using an **Access Token** to securely sync your secrets to Windmill.
+
+## Get a Windmill Access Token
+
+Ensure the user generating the access token has the required role and permissions based on your use-case:
+<Tabs>
+    <Tab title="Secret Sync">
+        <Note>
+            The user generating the access token should be at least a `Developer` in the configured workspace and have `write` permissions for the workspace path secrets will be synced to.
+        </Note>
+    </Tab>
+</Tabs>
+
+
+<Steps>
+    <Step title="Navigate to Account Settings">
+        In Windmill, click on your user in the sidebar and select **Account Settings**.
+        ![Windmill Account Settings](/images/app-connections/windmill/windmill-account-settings.png)
+    </Step>
+    <Step title="Access Token Section">
+        In the **Tokens** section on the drawer, click **Create token**.
+        ![Windmill Create Token](/images/app-connections/windmill/windmill-create-token.png)
+    </Step>
+    <Step title="Create Access Token">
+        Give your token a name and click **New token**.
+        <Note>
+            If you configure an expiry date for your access token, you must manually rotate to a new token before the expiration date to prevent service interruption.
+        </Note>
+        ![Windmill New Token](/images/app-connections/windmill/windmill-new-token.png)
+    </Step>
+    <Step title="Copy Access Token">
+        Copy your new access token and save it for the steps below.
+        ![Windmill Copy Token](/images/app-connections/windmill/windmill-copy-token.png)
+    </Step>
+</Steps>
+
+
+## Setup Windmill Connection in Infisical
+
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, go to **Organization Settings** and select the **App Connections** tab.
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Add Connection">
+                Click the **+ Add Connection** button and select the **Windmill Connection** option.
+                ![Select Windmill Connection](/images/app-connections/windmill/select-windmill-connection.png)
+            </Step>
+            <Step title="Configure Connection">
+                Configure your Windmill Connection using the access token generated in the steps above. Then click **Connect to Windmill**.
+                ![Windmill Configure Connection](/images/app-connections/windmill/create-windmill-access-token.png)
+
+                - **Name**: The name of the connection to be created. Must be slug-friendly.
+                - **Description**: An optional description to provide details about this connection.
+                - **Instance URL**: The URL of your Windmill instance. If you are not self-hosting Windmill you can leave this field blank.
+                - **Access Token**: The access token generated in the steps above.
+            </Step>
+            <Step title="Connection Created">
+                Your Windmill Connection is now available for use.
+                ![Windmill Connection Created](/images/app-connections/windmill/windmill-access-token-created.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a Windmill Connection, make an API request to the [Create Windmill
+        Connection](/api-reference/endpoints/app-connections/windmill/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/windmill \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-windmill-connection",
+                    "method": "access-token",
+                    "credentials": {
+                        "token": "...",
+                        "instanceUrl": "https://app.windmill.dev"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "appConnection": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-windmill-connection",
+                "version": 123,
+                "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2025-04-01T05:31:56Z",
+                "updatedAt": "2025-04-01T05:31:56Z",
+                "app": "windmill",
+                "method": "access-token",
+                "credentials": {
+                    "instanceUrl": "https://app.windmill.dev"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

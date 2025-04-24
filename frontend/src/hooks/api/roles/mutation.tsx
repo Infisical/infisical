@@ -18,7 +18,7 @@ import {
 export const useCreateProjectRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TProjectRole, {}, TCreateProjectRoleDTO>({
+  return useMutation<TProjectRole, object, TCreateProjectRoleDTO>({
     mutationFn: async ({ projectId, ...dto }: TCreateProjectRoleDTO) => {
       const {
         data: { role }
@@ -26,7 +26,7 @@ export const useCreateProjectRole = () => {
       return role;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectId));
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getProjectRoles(projectId) });
     }
   });
 };
@@ -34,7 +34,7 @@ export const useCreateProjectRole = () => {
 export const useUpdateProjectRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TProjectRole, {}, TUpdateProjectRoleDTO>({
+  return useMutation<TProjectRole, object, TUpdateProjectRoleDTO>({
     mutationFn: async ({ id, projectId, ...dto }: TUpdateProjectRoleDTO) => {
       const {
         data: { role }
@@ -42,9 +42,11 @@ export const useUpdateProjectRole = () => {
       return role;
     },
     onSuccess: (_, { projectId, slug }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectId));
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getProjectRoles(projectId) });
       if (slug) {
-        queryClient.invalidateQueries(roleQueryKeys.getProjectRoleBySlug(projectId, slug));
+        queryClient.invalidateQueries({
+          queryKey: roleQueryKeys.getProjectRoleBySlug(projectId, slug)
+        });
       }
     }
   });
@@ -52,7 +54,7 @@ export const useUpdateProjectRole = () => {
 
 export const useDeleteProjectRole = () => {
   const queryClient = useQueryClient();
-  return useMutation<TProjectRole, {}, TDeleteProjectRoleDTO>({
+  return useMutation<TProjectRole, object, TDeleteProjectRoleDTO>({
     mutationFn: async ({ projectId, id }: TDeleteProjectRoleDTO) => {
       const {
         data: { role }
@@ -60,7 +62,7 @@ export const useDeleteProjectRole = () => {
       return role;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectId));
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getProjectRoles(projectId) });
     }
   });
 };
@@ -68,7 +70,7 @@ export const useDeleteProjectRole = () => {
 export const useCreateOrgRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TOrgRole, {}, TCreateOrgRoleDTO>({
+  return useMutation<TOrgRole, object, TCreateOrgRoleDTO>({
     mutationFn: async ({ orgId, permissions, ...dto }: TCreateOrgRoleDTO) => {
       const {
         data: { role }
@@ -80,7 +82,7 @@ export const useCreateOrgRole = () => {
       return role;
     },
     onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getOrgRoles(orgId));
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getOrgRoles(orgId) });
     }
   });
 };
@@ -88,7 +90,7 @@ export const useCreateOrgRole = () => {
 export const useUpdateOrgRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TOrgRole, {}, TUpdateOrgRoleDTO>({
+  return useMutation<TOrgRole, object, TUpdateOrgRoleDTO>({
     mutationFn: async ({ id, orgId, permissions, ...dto }: TUpdateOrgRoleDTO) => {
       const {
         data: { role }
@@ -100,8 +102,8 @@ export const useUpdateOrgRole = () => {
       return role;
     },
     onSuccess: (_, { id, orgId }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getOrgRoles(orgId));
-      queryClient.invalidateQueries(roleQueryKeys.getOrgRole(orgId, id));
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getOrgRoles(orgId) });
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getOrgRole(orgId, id) });
     }
   });
 };
@@ -109,7 +111,7 @@ export const useUpdateOrgRole = () => {
 export const useDeleteOrgRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TOrgRole, {}, TDeleteOrgRoleDTO>({
+  return useMutation<TOrgRole, object, TDeleteOrgRoleDTO>({
     mutationFn: async ({ orgId, id }: TDeleteOrgRoleDTO) => {
       const {
         data: { role }
@@ -120,8 +122,8 @@ export const useDeleteOrgRole = () => {
       return role;
     },
     onSuccess: (_, { id, orgId }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getOrgRoles(orgId));
-      queryClient.invalidateQueries(roleQueryKeys.getOrgRole(orgId, id));
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getOrgRoles(orgId) });
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getOrgRole(orgId, id) });
     }
   });
 };

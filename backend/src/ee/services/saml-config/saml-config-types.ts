@@ -6,7 +6,8 @@ export enum SamlProviders {
   AZURE_SAML = "azure-saml",
   JUMPCLOUD_SAML = "jumpcloud-saml",
   GOOGLE_SAML = "google-saml",
-  KEYCLOAK_SAML = "keycloak-saml"
+  KEYCLOAK_SAML = "keycloak-saml",
+  AUTH0_SAML = "auth0-saml"
 }
 
 export type TCreateSamlCfgDTO = {
@@ -14,7 +15,7 @@ export type TCreateSamlCfgDTO = {
   isActive: boolean;
   entryPoint: string;
   issuer: string;
-  cert: string;
+  idpCert: string;
 } & TOrgPermission;
 
 export type TUpdateSamlCfgDTO = Partial<{
@@ -22,7 +23,7 @@ export type TUpdateSamlCfgDTO = Partial<{
   isActive: boolean;
   entryPoint: string;
   issuer: string;
-  cert: string;
+  idpCert: string;
 }> &
   TOrgPermission;
 

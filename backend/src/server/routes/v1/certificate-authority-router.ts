@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
-import ms from "ms";
 import { z } from "zod";
 
 import { CertificateAuthoritiesSchema, CertificateTemplatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
+import { ApiDocsTags, CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
+import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
@@ -14,6 +15,7 @@ import {
   validateAltNamesField,
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerCaRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -24,6 +26,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Create CA",
       body: z
         .object({
@@ -103,6 +107,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get CA",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET.caId)
@@ -149,6 +155,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get DER-encoded certificate of CA",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT_BY_ID.caId),
@@ -175,6 +183,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Update CA",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.UPDATE.caId)
@@ -229,6 +239,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Delete CA",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.DELETE.caId)
@@ -274,6 +286,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get CA CSR",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CSR.caId)
@@ -319,6 +333,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Perform CA certificate renewal",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.caId)
@@ -374,6 +390,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get list of past and current CA certificates for a CA",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.caId)
@@ -422,6 +440,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get current CA cert and cert chain of a CA",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId)
@@ -471,6 +491,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Create intermediate CA certificate from parent CA",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.caId)
@@ -534,6 +556,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Import certificate and chain to CA",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.IMPORT_CERT.caId)
@@ -586,6 +610,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Issue certificate from CA",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.caId)
@@ -649,6 +675,16 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.IssueCert,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          caId: ca.id,
+          commonName: req.body.commonName,
+          ...req.auditLogInfo
+        }
+      });
+
       return {
         certificate,
         certificateChain,
@@ -667,6 +703,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Sign certificate from CA",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.caId)
@@ -707,7 +745,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, issuingCaCertificate, serialNumber, ca } =
+      const { certificate, certificateChain, issuingCaCertificate, serialNumber, ca, commonName } =
         await server.services.certificateAuthority.signCertFromCa({
           isInternal: false,
           caId: req.params.caId,
@@ -731,6 +769,16 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignCert,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          caId: ca.id,
+          commonName,
+          ...req.auditLogInfo
+        }
+      });
+
       return {
         certificate: certificate.toString("pem"),
         certificateChain,
@@ -748,6 +796,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get list of certificate templates for the CA",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.caId)
@@ -793,6 +843,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get list of CRLs of the CA",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.caId)

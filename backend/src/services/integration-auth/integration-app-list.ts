@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
+import { Client as OctopusDeployClient, ProjectRepository as OctopusDeployRepository } from "@octopusdeploy/api-client";
 
 import { TIntegrationAuths } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
@@ -131,22 +132,48 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
 
 /**
  * Return list of names of apps for Vercel integration
+ * This is re-used for getting custom environments for Vercel
  */
-const getAppsVercel = async ({ accessToken, teamId }: { teamId?: string | null; accessToken: string }) => {
-  const apps: Array<{ name: string; appId: string }> = [];
+export const getAppsVercel = async ({
+  accessToken,
+  teamId,
+  includeCustomEnvironments
+}: {
+  teamId?: string | null;
+  accessToken: string;
+  includeCustomEnvironments?: boolean;
+}) => {
+  const apps: Array<{ name: string; appId: string; customEnvironments: Array<{ slug: string; id: string }> }> = [];
 
   const limit = "20";
   let hasMorePages = true;
   let next: number | null = null;
 
   interface Response {
-    projects: { name: string; id: string }[];
+    projects: {
+      name: string;
+      id: string;
+    }[];
     pagination: {
       count: number;
       next: number | null;
       prev: number;
     };
   }
+
+  const getProjectCustomEnvironments = async (projectId: string) => {
+    const { data } = await request.get<{ environments: { id: string; slug: string }[] }>(
+      `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${projectId}/custom-environments`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      }
+    );
+
+    return data.environments;
+  };
 
   while (hasMorePages) {
     const params: { [key: string]: string } = {
@@ -169,12 +196,38 @@ const getAppsVercel = async ({ accessToken, teamId }: { teamId?: string | null; 
       }
     });
 
-    data.projects.forEach((a) => {
-      apps.push({
-        name: a.name,
-        appId: a.id
+    if (includeCustomEnvironments) {
+      const projectsWithCustomEnvironments = await Promise.all(
+        data.projects.map(async (a) => {
+          const customEnvironments = await getProjectCustomEnvironments(a.id);
+
+          return {
+            ...a,
+            customEnvironments
+          };
+        })
+      );
+
+      projectsWithCustomEnvironments.forEach((a) => {
+        apps.push({
+          name: a.name,
+          appId: a.id,
+          customEnvironments:
+            a.customEnvironments?.map((env) => ({
+              slug: env.slug,
+              id: env.id
+            })) ?? []
+        });
       });
-    });
+    } else {
+      data.projects.forEach((a) => {
+        apps.push({
+          name: a.name,
+          appId: a.id,
+          customEnvironments: []
+        });
+      });
+    }
 
     next = data.pagination.next;
 
@@ -870,16 +923,14 @@ const getAppsCodefresh = async ({ accessToken }: { accessToken: string }) => {
 /**
  * Return list of projects for Windmill integration
  */
-const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
-  const { data } = await request.get<{ id: string; name: string }[]>(
-    `${IntegrationUrls.WINDMILL_API_URL}/workspaces/list`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "application/json"
-      }
+const getAppsWindmill = async ({ accessToken, url }: { accessToken: string; url?: string | null }) => {
+  const apiUrl = url ? `${url}/api` : IntegrationUrls.WINDMILL_API_URL;
+  const { data } = await request.get<{ id: string; name: string }[]>(`${apiUrl}/workspaces/list`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Accept-Encoding": "application/json"
     }
-  );
+  });
 
   // check for write access of secrets in windmill workspaces
   const writeAccessCheck = data.map(async (app) => {
@@ -888,7 +939,7 @@ const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
       const folderPath = "f/folder/variable";
 
       const { data: writeUser } = await request.post<object>(
-        `${IntegrationUrls.WINDMILL_API_URL}/w/${app.id}/variables/create`,
+        `${apiUrl}/w/${app.id}/variables/create`,
         {
           path: userPath,
           value: "variable",
@@ -904,7 +955,7 @@ const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
       );
 
       const { data: writeFolder } = await request.post<object>(
-        `${IntegrationUrls.WINDMILL_API_URL}/w/${app.id}/variables/create`,
+        `${apiUrl}/w/${app.id}/variables/create`,
         {
           path: folderPath,
           value: "variable",
@@ -921,14 +972,14 @@ const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
 
       // is write access is allowed then delete the created secrets from workspace
       if (writeUser && writeFolder) {
-        await request.delete(`${IntegrationUrls.WINDMILL_API_URL}/w/${app.id}/variables/delete/${userPath}`, {
+        await request.delete(`${apiUrl}/w/${app.id}/variables/delete/${userPath}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "Accept-Encoding": "application/json"
           }
         });
 
-        await request.delete(`${IntegrationUrls.WINDMILL_API_URL}/w/${app.id}/variables/delete/${folderPath}`, {
+        await request.delete(`${apiUrl}/w/${app.id}/variables/delete/${folderPath}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "Accept-Encoding": "application/json"
@@ -1087,6 +1138,33 @@ const getAppsAzureDevOps = async ({ accessToken, orgName }: { accessToken: strin
   return apps;
 };
 
+const getAppsOctopusDeploy = async ({
+  apiKey,
+  instanceURL,
+  spaceName = "Default"
+}: {
+  apiKey: string;
+  instanceURL: string;
+  spaceName?: string;
+}) => {
+  const client = await OctopusDeployClient.create({
+    instanceURL,
+    apiKey,
+    userAgentApp: "Infisical Integration"
+  });
+
+  const repository = new OctopusDeployRepository(client, spaceName);
+
+  const projects = await repository.list({
+    take: 1000
+  });
+
+  return projects.Items.map((project) => ({
+    name: project.Name,
+    appId: project.Id
+  }));
+};
+
 export const getApps = async ({
   integration,
   integrationAuth,
@@ -1236,7 +1314,8 @@ export const getApps = async ({
 
     case Integrations.WINDMILL:
       return getAppsWindmill({
-        accessToken
+        accessToken,
+        url
       });
 
     case Integrations.DIGITAL_OCEAN_APP_PLATFORM:
@@ -1258,6 +1337,13 @@ export const getApps = async ({
       return getAppsAzureDevOps({
         accessToken,
         orgName: azureDevOpsOrgName as string
+      });
+
+    case Integrations.OCTOPUS_DEPLOY:
+      return getAppsOctopusDeploy({
+        apiKey: accessToken,
+        instanceURL: url!,
+        spaceName: workspaceSlug
       });
 
     default:

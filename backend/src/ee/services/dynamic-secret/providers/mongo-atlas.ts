@@ -8,7 +8,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { DynamicSecretMongoAtlasSchema, TDynamicProviderFns } from "./models";
 
 const generatePassword = (size = 48) => {
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 48)(size);
 };
 
@@ -22,7 +22,7 @@ export const MongoAtlasProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const getClient = async (providerInputs: z.infer<typeof DynamicSecretMongoAtlasSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretMongoAtlasSchema>) => {
     const client = axios.create({
       baseURL: "https://cloud.mongodb.com/api/atlas",
       headers: {
@@ -40,7 +40,7 @@ export const MongoAtlasProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const isConnected = await client({
       method: "GET",
@@ -59,7 +59,7 @@ export const MongoAtlasProvider = (): TDynamicProviderFns => {
 
   const create = async (inputs: unknown, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const username = generateUsername();
     const password = generatePassword();
@@ -87,7 +87,7 @@ export const MongoAtlasProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const username = entityId;
     const isExisting = await client({
@@ -114,7 +114,7 @@ export const MongoAtlasProvider = (): TDynamicProviderFns => {
 
   const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const username = entityId;
     const expiration = new Date(expireAt).toISOString();

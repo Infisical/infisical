@@ -1,23 +1,39 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { ProjectsSchema, ProjectUpgradeStatus, ProjectVersion, TableName, TProjectsUpdate } from "@app/db/schemas";
+import {
+  ProjectsSchema,
+  ProjectType,
+  ProjectUpgradeStatus,
+  ProjectVersion,
+  SortDirection,
+  TableName,
+  TProjects,
+  TProjectsUpdate
+} from "@app/db/schemas";
 import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
-import { Filter, ProjectFilterType } from "./project-types";
+import { ActorType } from "../auth/auth-type";
+import { Filter, ProjectFilterType, SearchProjectSortBy } from "./project-types";
 
 export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
 
 export const projectDALFactory = (db: TDbClient) => {
   const projectOrm = ormify(db, TableName.Project);
 
-  const findAllProjects = async (userId: string) => {
+  const findUserProjects = async (userId: string, orgId: string, projectType: ProjectType | "all") => {
     try {
       const workspaces = await db
         .replicaNode()(TableName.ProjectMembership)
         .where({ userId })
         .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .andWhere((qb) => {
+          if (projectType !== "all") {
+            void qb.where(`${TableName.Project}.type`, projectType);
+          }
+        })
         .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
@@ -31,14 +47,17 @@ export const projectDALFactory = (db: TDbClient) => {
           { column: `${TableName.Environment}.position`, order: "asc" }
         ]);
 
-      const groups: string[] = await db(TableName.UserGroupMembership)
-        .where({ userId })
-        .select(selectAllTableCols(TableName.UserGroupMembership))
-        .pluck("groupId");
+      const groups = db(TableName.UserGroupMembership).where({ userId }).select("groupId");
 
       const groupWorkspaces = await db(TableName.GroupProjectMembership)
         .whereIn("groupId", groups)
         .join(TableName.Project, `${TableName.GroupProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .andWhere((qb) => {
+          if (projectType !== "all") {
+            void qb.where(`${TableName.Project}.type`, projectType);
+          }
+        })
         .whereNotIn(
           `${TableName.Project}.id`,
           workspaces.map(({ id }) => id)
@@ -108,12 +127,17 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findAllProjectsByIdentity = async (identityId: string) => {
+  const findAllProjectsByIdentity = async (identityId: string, projectType?: ProjectType) => {
     try {
       const workspaces = await db
         .replicaNode()(TableName.IdentityProjectMembership)
         .where({ identityId })
         .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .andWhere((qb) => {
+          if (projectType) {
+            void qb.where(`${TableName.Project}.type`, projectType);
+          }
+        })
         .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
@@ -191,6 +215,10 @@ export const projectDALFactory = (db: TDbClient) => {
 
       return project;
     } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+
       throw new DatabaseError({ error, name: "Find all projects" });
     }
   };
@@ -240,6 +268,10 @@ export const projectDALFactory = (db: TDbClient) => {
 
       return project;
     } catch (error) {
+      if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
+        throw error;
+      }
+
       throw new DatabaseError({ error, name: "Find project by slug" });
     }
   };
@@ -260,7 +292,7 @@ export const projectDALFactory = (db: TDbClient) => {
       }
       throw new BadRequestError({ message: "Invalid filter type" });
     } catch (error) {
-      if (error instanceof BadRequestError) {
+      if (error instanceof BadRequestError || error instanceof NotFoundError || error instanceof UnauthorizedError) {
         throw error;
       }
       throw new DatabaseError({ error, name: `Failed to find project by ${filter.type}` });
@@ -307,9 +339,95 @@ export const projectDALFactory = (db: TDbClient) => {
     };
   };
 
+  const getProjectFromSplitId = async (projectId: string, projectType: ProjectType) => {
+    try {
+      const project = await db(TableName.ProjectSplitBackfillIds)
+        .where({
+          sourceProjectId: projectId,
+          destinationProjectType: projectType
+        })
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.ProjectSplitBackfillIds}.destinationProjectId`)
+        .select(selectAllTableCols(TableName.Project))
+        .first();
+      return project;
+    } catch (error) {
+      throw new DatabaseError({ error, name: `Failed to find split project with id ${projectId}` });
+    }
+  };
+
+  const searchProjects = async (dto: {
+    orgId: string;
+    actor: ActorType;
+    actorId: string;
+    type?: ProjectType;
+    limit?: number;
+    offset?: number;
+    name?: string;
+    sortBy?: SearchProjectSortBy;
+    sortDir?: SortDirection;
+  }) => {
+    const { limit = 20, offset = 0, sortBy = SearchProjectSortBy.NAME, sortDir = SortDirection.ASC } = dto;
+
+    const userMembershipSubquery = db(TableName.ProjectMembership).where({ userId: dto.actorId }).select("projectId");
+    const groups = db(TableName.UserGroupMembership).where({ userId: dto.actorId }).select("groupId");
+    const groupMembershipSubquery = db(TableName.GroupProjectMembership).whereIn("groupId", groups).select("projectId");
+
+    const identityMembershipSubQuery = db(TableName.IdentityProjectMembership)
+      .where({ identityId: dto.actorId })
+      .select("projectId");
+
+    // Get the SQL strings for the subqueries
+    const userMembershipSql = userMembershipSubquery.toQuery();
+    const groupMembershipSql = groupMembershipSubquery.toQuery();
+    const identityMembershipSql = identityMembershipSubQuery.toQuery();
+
+    const query = db
+      .replicaNode()(TableName.Project)
+      .where(`${TableName.Project}.orgId`, dto.orgId)
+      .select(selectAllTableCols(TableName.Project))
+      .select(db.raw("COUNT(*) OVER() AS count"))
+      .select<(TProjects & { isMember: boolean; count: number })[]>(
+        dto.actor === ActorType.USER
+          ? db.raw(
+              `
+          CASE
+            WHEN ${TableName.Project}.id IN (?) THEN TRUE
+            WHEN ${TableName.Project}.id IN (?) THEN TRUE
+            ELSE FALSE
+          END as "isMember"
+        `,
+              [db.raw(userMembershipSql), db.raw(groupMembershipSql)]
+            )
+          : db.raw(
+              `
+          CASE
+            WHEN ${TableName.Project}.id IN (?) THEN TRUE
+            ELSE FALSE
+          END as "isMember"
+        `,
+              [db.raw(identityMembershipSql)]
+            )
+      )
+      .limit(limit)
+      .offset(offset);
+    if (sortBy === SearchProjectSortBy.NAME) {
+      void query.orderBy([{ column: `${TableName.Project}.name`, order: sortDir }]);
+    }
+
+    if (dto.type) {
+      void query.where(`${TableName.Project}.type`, dto.type);
+    }
+    if (dto.name) {
+      void query.whereILike(`${TableName.Project}.name`, `%${dto.name}%`);
+    }
+    const docs = await query;
+
+    return { docs, totalCount: Number(docs?.[0]?.count ?? 0) };
+  };
+
   return {
     ...projectOrm,
-    findAllProjects,
+    findUserProjects,
     setProjectUpgradeStatus,
     findAllProjectsByIdentity,
     findProjectGhostUser,
@@ -317,6 +435,8 @@ export const projectDALFactory = (db: TDbClient) => {
     findProjectByFilter,
     findProjectBySlug,
     findProjectWithOrg,
-    checkProjectUpgradeStatus
+    checkProjectUpgradeStatus,
+    getProjectFromSplitId,
+    searchProjects
   };
 };

@@ -1,0 +1,544 @@
+---
+title: "HSM Integration"
+description: "Learn more about integrating an HSM with Infisical KMS."
+---
+
+<Note>
+  Changing the encryption strategy for your instance is an Enterprise-only feature.
+  This section is intended for users who have obtained an Enterprise license and are on-premise.
+
+
+  Please reach out to sales@infisical.com if you have any questions.
+</Note>
+
+## Overview
+
+Infisical KMS currently supports two encryption strategies:
+1. **Standard Encryption**: This is the default encryption strategy used by Infisical KMS. It uses a software-protected encryption key to encrypt KMS keys within your Infisical instance. The root encryption key is defined by setting the `ENCRYPTION_KEY` environment variable.
+2. **Hardware Security Module (HSM)**: This encryption strategy uses a Hardware Security Module (HSM) to create a root encryption key that is stored on a physical device to encrypt the KMS keys within your instance.
+
+## Hardware Security Module (HSM)
+
+![HSM Illustration](/images/platform/kms/hsm/hsm-illustration.png)
+
+Using a hardware security module comes with the added benefit of having a secure and tamper-proof device to store your encryption keys. This ensures that your data is protected from unauthorized access.
+
+<Warning>
+  All encryption keys used for cryptographic operations are stored within the HSM. This means that if the HSM is lost or destroyed, you will no longer be able to decrypt your data stored within Infisical. Most providers offer recovery options for HSM devices, which you should consider when setting up an HSM device.
+</Warning>
+
+Enabling HSM encryption has a set of key benefits:
+1. **Root Key Wrapping**: The root KMS encryption key that is used to secure your Infisical instance will be encrypted using the HSM device rather than the standard software-protected key.
+2. **FIPS 140-2/3 Compliance**: Using an HSM device ensures that your Infisical instance is FIPS 140-2 or FIPS 140-3 compliant. For FIPS 140-3, ensure that your HSM is FIPS 140-3 validated.
+
+#### Caveats
+- **Performance**: Using an HSM device can have a performance impact on your Infisical instance. This is due to the additional latency introduced by the HSM device. This is however only noticeable when your instance(s) start up or when the encryption strategy is changed.
+- **Key Recovery**: If the HSM device is lost or destroyed, you will no longer be able to decrypt your data stored within Infisical. Most HSM providers offer recovery options, which you should consider when setting up an HSM device.
+
+### Requirements
+- An Infisical instance with a version number that is equal to or greater than `v0.91.0`.
+- If you are using Docker, your instance must be using the `infisical/infisical-fips` image.
+- An HSM device from a provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), or others.
+
+
+### FIPS Compliance
+FIPS, also known as the Federal Information Processing Standard, is a set of standards that are used to accredit cryptographic modules. FIPS 140-2 and FIPS 140-3 are the two most common standards used for cryptographic modules. If your HSM uses FIPS 140-3 validated hardware, Infisical will automatically be FIPS 140-3 compliant. If your HSM uses FIPS 140-2 validated hardware, Infisical will be FIPS 140-2 compliant.
+
+HSM devices are especially useful for organizations that operate in regulated industries such as healthcare, finance, and government, where data security and compliance are of the utmost importance.
+
+For organizations that work with US government agencies, FIPS compliance is almost always a requirement when dealing with sensitive information. FIPS compliance ensures that the cryptographic modules used by the organization meet the security requirements set by the US government.
+
+## Setup Instructions
+
+
+<Steps>
+    <Step title="Setting up an HSM Device">
+        To set up HSM encryption, you need to configure an HSM provider and HSM key. The HSM provider is used to connect to the HSM device, and the HSM key is used to encrypt Infisical's KMS keys. We recommend using a Cloud HSM provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm) or [AWS CloudHSM](https://aws.amazon.com/cloudhsm/).
+
+        You need to follow the instructions provided by the HSM provider to set up the HSM device. Once the HSM device is set up, the HSM device can be used within Infisical.
+
+        After setting up the HSM from your provider, you will have a set of files that you can use to access the HSM. These files need to be present on the machine where Infisical is running.
+        If you are using containers, you will need to mount the folder where these files are stored as a volume in the container.
+
+        The setup process for an HSM device varies depending on the provider. We have created a guide for Thales Luna Cloud HSM, which you can find below.
+        
+    </Step>
+    <Step title="Configure HSM on Infisical">
+
+    <Warning>
+      Are you using Docker or Kubernetes for your deployment? If you are using Docker or Kubernetes, please follow the instructions in the [Using HSM's in your Deployment](#using-hsms-in-your-deployment) section.
+    </Warning>
+
+        Configuring the HSM on Infisical requires setting a set of environment variables:
+        - `HSM_LIB_PATH`: The path to the PKCS#11 library provided by the HSM provider. This usually comes in the form of a `.so` for Linux and MacOS, or a `.dll` file for Windows. For Docker, you need to mount the library path as a volume. Further instructions can be found below. If you are using Docker, make sure to set the HSM_LIB_PATH environment variable to the path where the library is mounted in the container.
+        - `HSM_PIN`: The PKCS#11 PIN to use for authentication with the HSM device.
+        - `HSM_SLOT`: The slot number to use for the HSM device. This is typically between `0` and `5` for most HSM devices.
+        - `HSM_KEY_LABEL`: The label of the key to use for encryption. **Please note that if no key is found with the provided label, the HSM will create a new key with the provided label.**
+
+        You can read more about the [default instance configurations](/self-hosting/configuration/envars) here.
+    </Step>
+    <Step title="Restart Instance">
+        After setting up the HSM, you need to restart the Infisical instance for the changes to take effect.
+    </Step>
+    <Step title="Navigate to the Server Admin Console">
+        ![Server Admin Console](/images/platform/kms/hsm/server-admin-console.png)
+    </Step>
+    <Step title="Update the KMS Encryption Strategy to HSM">
+        ![Set Encryption Strategy](/images/platform/kms/hsm/encryption-strategy.png)
+
+        Once you press the 'Save' button, your Infisical instance will immediately switch to the HSM encryption strategy. This will re-encrypt your KMS key with keys from the HSM device.
+    </Step>
+    <Step title="Verify Encryption Strategy">
+        To verify that the HSM was correctly configured, you can try creating a new secret in one of your projects. If the secret is created successfully, the HSM is now being used for encryption.
+    </Step>
+</Steps>
+
+
+## Using HSMs In Your Deployment
+
+<Tabs>
+  <Tab title="Docker">
+    When using Docker, you need to mount the path containing the HSM client files. This section covers how to configure your Infisical instance to use an HSM with Docker.
+
+    <Tabs>
+      <Tab title="Thales Luna Cloud HSM">
+        <Steps>
+          <Step title="Create HSM client folder">
+            When using Docker, you are able to set your HSM library path to any location on your machine. In this example, we are going to be using `/etc/luna-docker`.
+
+            ```bash
+              mkdir /etc/luna-docker
+            ```
+
+            After [setting up your Luna Cloud HSM client](https://thalesdocs.com/gphsm/luna/7/docs/network/Content/install/client_install/add_dpod.htm), you should have a set of files, referred to as the HSM client. You don't need all the files, but for simplicity we recommend copying all the files from the client.
+
+            A folder structure of a client folder will often look like this:
+            ```
+            partition-ca-certificate.pem
+            partition-certificate.pem
+            server-certificate.pem
+            Chrystoki.conf
+            /plugins
+              libcloud.plugin
+            /lock
+            /libs
+              /64
+                libCryptoki2.so
+            /jsp
+              LunaProvider.jar
+              /64
+                libLunaAPI.so
+            /etc
+              openssl.cnf
+            /bin
+              /64
+                ckdemo
+                lunacm
+                multitoken
+                vtl
+            ```
+            
+            The most important parts of the client folder is the `Chrystoki.conf` file, and the `libs`, `plugins`, and `jsp` folders. You need to copy these files to the folder you created in the first step.
+
+            ```bash
+              cp -r /<path-to-where-your-luna-client-is-located> /etc/luna-docker
+            ```
+
+          </Step>
+
+          <Step title="Update Chrystoki.conf">
+            The `Chrystoki.conf` file is used to configure the HSM client. You need to update the `Chrystoki.conf` file to point to the correct file paths.
+
+            In this example, we will be mounting the `/etc/luna-docker` folder to the Docker container under a different path. The path we will use in this example is `/usr/safenet/lunaclient`. This means `/etc/luna-docker` will be mounted to `/usr/safenet/lunaclient` in the Docker container.
+
+            An example config file will look like this:
+
+            ```Chrystoki.conf
+                Chrystoki2 = {
+                  # This path points to the mounted path, /usr/safenet/lunaclient
+                  LibUNIX64 = /usr/safenet/lunaclient/libs/64/libCryptoki2.so;
+                }
+
+                Luna = {
+                  DefaultTimeOut = 500000;
+                  PEDTimeout1 = 100000;
+                  PEDTimeout2 = 200000;
+                  PEDTimeout3 = 20000;
+                  KeypairGenTimeOut = 2700000;
+                  CloningCommandTimeOut = 300000;
+                  CommandTimeOutPedSet = 720000;
+                }
+
+                CardReader = {
+                  LunaG5Slots = 0;
+                  RemoteCommand = 1;
+                }
+
+                Misc = {
+                  # Update the paths to point to the mounted path if your folder structure is different from the one mentioned in the previous step.
+                  PluginModuleDir = /usr/safenet/lunaclient/plugins;
+                  MutexFolder = /usr/safenet/lunaclient/lock;
+                  PE1746Enabled = 1;
+                  ToolsDir = /usr/bin;
+
+                }
+
+                Presentation = {
+                  ShowEmptySlots = no;
+                }
+
+                LunaSA Client = {
+                  ReceiveTimeout = 20000;
+                  # Update the paths to point to the mounted path if your folder structure is different from the one mentioned in the previous step.
+                  SSLConfigFile = /usr/safenet/lunaclient/etc/openssl.cnf;
+                  ClientPrivKeyFile = ./etc/ClientNameKey.pem;
+                  ClientCertFile = ./etc/ClientNameCert.pem;
+                  ServerCAFile = ./etc/CAFile.pem;
+                  NetClient = 1;
+                  TCPKeepAlive = 1;
+                }
+
+
+                REST = {
+                  AppLogLevel = error
+                  ServerName = <REDACTED>;
+                  ServerPort = 443;
+                  AuthTokenConfigURI = <REDACTED>;
+                  AuthTokenClientId = <REDACTED>;
+                  AuthTokenClientSecret = <REDACTED>;
+                  RestClient = 1;
+                  ClientTimeoutSec = 120;
+                  ClientPoolSize = 32;
+                  ClientEofRetryCount = 15;
+                  ClientConnectRetryCount = 900;
+                  ClientConnectIntervalMs = 1000;
+                }
+                XTC = {
+                  Enabled = 1;
+                  TimeoutSec = 600;
+                }
+            ```
+
+            Save the file after updating the paths.
+          </Step>
+
+          <Step title="Run Docker">
+            Running Docker with HSM encryption requires setting the HSM-related environment variables as mentioned previously in the [HSM setup instructions](#setup-instructions). You can set these environment variables in your Docker run command.
+
+            We are setting the environment variables for Docker via the command line in this example, but you can also pass in a `.env` file to set these environment variables.
+
+            <Warning>
+              If no key is found with the provided key label, the HSM will create a new key with the provided label.
+              Infisical depends on an AES and HMAC key to be present in the HSM. If these keys are not present, Infisical will create them. The AES key label will be the value of the `HSM_KEY_LABEL` environment variable, and the HMAC key label will be the value of the `HSM_KEY_LABEL` environment variable with the suffix `_HMAC`.
+            </Warning>
+
+            ```bash
+            docker run -p 80:8080 \
+              -v /etc/luna-docker:/usr/safenet/lunaclient \
+              -e HSM_LIB_PATH="/usr/safenet/lunaclient/libs/64/libCryptoki2.so" \
+              -e HSM_PIN="<your-hsm-device-pin>" \
+              -e HSM_SLOT=<hsm-device-slot> \
+              -e HSM_KEY_LABEL="<your-key-label>" \
+            
+              # The rest are unrelated to HSM setup...
+              -e ENCRYPTION_KEY="<>" \
+              -e AUTH_SECRET="<>" \
+              -e DB_CONNECTION_URI="<>" \
+              -e REDIS_URL="<>" \
+              -e SITE_URL="<>" \
+              infisical/infisical-fips:<version> # Replace <version> with the version you want to use
+            ```
+
+            We recommend reading further about [using Infisical with Docker](/self-hosting/deployment-options/standalone-infisical).
+
+          </Step>
+        </Steps>
+        After following these steps, your Docker setup will be ready to use HSM encryption.
+      </Tab>
+    </Tabs>
+  </Tab>
+  <Tab title="Kubernetes">
+    When you are deploying Infisical with the [Kubernetes self-hosting option](/self-hosting/deployment-options/kubernetes-helm), you can still use HSM encryption, but you need to ensure that the HSM client files are present in the container.
+
+    <Tabs>
+      <Tab title="Thales Luna Cloud HSM">
+        <Note>
+          This is only supported on helm chart version `1.4.1` and above. Please see the [Helm Chart Changelog](https://github.com/Infisical/infisical/blob/main/helm-charts/infisical-standalone-postgres/CHANGELOG.md#141-march-19-2025) for more information.
+        </Note>
+
+        <Steps>
+          <Step title="Create HSM client folder">
+            When using Kubernetes, you need to mount the path containing the HSM client files. This section covers how to configure your Infisical instance to use an HSM with Kubernetes.
+
+
+            ```bash
+            mkdir /etc/hsm-client
+            ```
+
+            After [setting up your Luna Cloud HSM client](https://thalesdocs.com/gphsm/luna/7/docs/network/Content/install/client_install/add_dpod.htm), you should have a set of files, referred to as the HSM client. You don't need all the files, but for simplicity we recommend copying all the files from the client.
+
+            A folder structure of a client folder will often look like this:
+            ```
+            partition-ca-certificate.pem
+            partition-certificate.pem
+            server-certificate.pem
+            Chrystoki.conf
+            /plugins
+              libcloud.plugin
+            /lock
+            /libs
+              /64
+                libCryptoki2.so
+            /jsp
+              LunaProvider.jar
+              /64
+                libLunaAPI.so
+            /etc
+              openssl.cnf
+            /bin
+              /64
+                ckdemo
+                lunacm
+                multitoken
+                vtl
+            ```
+
+            The most important parts of the client folder is the `Chrystoki.conf` file, and the `libs`, `plugins`, and `jsp` folders. You need to copy these files to the folder you created in the first step.
+
+            ```bash
+            cp -r /<path-to-where-your-hsm-client-is-located> /etc/hsm-client
+            ```
+          </Step>
+          <Step title="Update Chrystoki.conf">
+            The `Chrystoki.conf` file is used to configure the HSM client. You need to update the `Chrystoki.conf` file to point to the correct file paths.
+
+            In this example, we will be mounting the `/etc/hsm-client` folder from the host to containers in our deployment's pods at the path `/hsm-client`. This means the contents of `/etc/hsm-client` on the host will be accessible at `/hsm-client` within the containers.
+
+            An example config file will look like this:
+
+            ```Chrystoki.conf
+              Chrystoki2 = {
+                # This path points to the mounted path, /hsm-client
+                LibUNIX64 = /hsm-client/libs/64/libCryptoki2.so;
+              }
+
+              Luna = {
+                DefaultTimeOut = 500000;
+                PEDTimeout1 = 100000;
+                PEDTimeout2 = 200000;
+                PEDTimeout3 = 20000;
+                KeypairGenTimeOut = 2700000;
+                CloningCommandTimeOut = 300000;
+                CommandTimeOutPedSet = 720000;
+              }
+
+              CardReader = {
+                LunaG5Slots = 0;
+                RemoteCommand = 1;
+              }
+
+              Misc = {
+                # Update the paths to point to the mounted path if your folder structure is different from the one mentioned in the previous step.
+                PluginModuleDir = /hsm-client/plugins;
+                MutexFolder = /hsm-client/lock;
+                PE1746Enabled = 1;
+                ToolsDir = /usr/bin;
+
+              }
+
+              Presentation = {
+                ShowEmptySlots = no;
+              }
+
+              LunaSA Client = {
+                ReceiveTimeout = 20000;
+                # Update the paths to point to the mounted path if your folder structure is different from the one mentioned in the previous step.
+                SSLConfigFile = /hsm-client/etc/openssl.cnf;
+                ClientPrivKeyFile = ./etc/ClientNameKey.pem;
+                ClientCertFile = ./etc/ClientNameCert.pem;
+                ServerCAFile = ./etc/CAFile.pem;
+                NetClient = 1;
+                TCPKeepAlive = 1;
+              }
+
+
+              REST = {
+                AppLogLevel = error
+                ServerName = <REDACTED>;
+                ServerPort = 443;
+                AuthTokenConfigURI = <REDACTED>;
+                AuthTokenClientId = <REDACTED>;
+                AuthTokenClientSecret = <REDACTED>;
+                RestClient = 1;
+                ClientTimeoutSec = 120;
+                ClientPoolSize = 32;
+                ClientEofRetryCount = 15;
+                ClientConnectRetryCount = 900;
+                ClientConnectIntervalMs = 1000;
+              }
+              XTC = {
+                Enabled = 1;
+                TimeoutSec = 600;
+              }
+            ```
+
+            Save the file after updating the paths.
+          </Step>
+
+          <Step title="Creating Persistent Volume Claim (PVC)">
+            You need to create a Persistent Volume Claim (PVC) to mount the HSM client files to the Infisical deployment.
+
+
+            ```bash
+            kubectl apply -f - <<EOF
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: infisical-data-pvc
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 500Mi
+            EOF
+            ```
+            The above command will create a PVC named `infisical-data-pvc` with a storage size of `500Mi`. You can change the storage size if needed.
+
+
+            Next we need to create a temporary pod with the PVC mounted as a volume, allowing us to copy the HSM client files into this mounted storage.
+
+            ```bash
+            kubectl apply -f - <<EOF
+            apiVersion: v1
+            kind: Pod
+            metadata:
+              name: hsm-setup-pod
+            spec:
+              containers:
+              - name: setup
+                image: busybox
+                command: ["/bin/sh", "-c", "sleep 3600"]
+                volumeMounts:
+                - name: hsm-data
+                  mountPath: /data
+              volumes:
+              - name: hsm-data
+                persistentVolumeClaim:
+                  claimName: infisical-data-pvc
+            EOF
+            ```
+
+            The above command will create a pod named `hsm-setup-pod` with a busybox image. The pod will sleep for 3600 seconds _(one hour)_, which is enough time to upload the HSM client files to the PVC.
+
+            Ensure that the pod is running and is healthy by running the following command:
+
+            ```bash
+            kubectl wait --for=condition=Ready pod/hsm-setup-pod --timeout=60s
+            ```
+
+            Next we need to copy the HSM client files into the PVC.
+
+            ```bash
+            kubectl exec hsm-setup-pod -- mkdir -p /data/ # Create the data directory
+            kubectl cp ./hsm-client/ hsm-setup-pod:/data/ # Copy the HSM client files into the PVC
+            kubectl exec hsm-setup-pod -- chmod -R 755 /data/ # Set the correct permissions for the HSM client files
+            ```
+
+            Finally, we are ready to delete the temporary pod, as we have successfully uploaded the HSM client files to the PVC. This step may take a few minutes to complete.
+
+            ```bash
+            kubectl delete pod hsm-setup-pod
+            ```
+          </Step>
+
+          <Step title="Updating your environment variables">
+            Next we need to update the environment variables used for the deployment. If you followed the [setup instructions for Kubernetes deployments](/self-hosting/deployment-options/kubernetes-helm), you should have a Kubernetes secret called `infisical-secrets`.
+            We need to update the secret with the following environment variables:
+
+            - `HSM_LIB_PATH` - The path to the HSM client library _(mapped to `/hsm-client/libs/64/libCryptoki2.so`)_
+            - `HSM_PIN` - The PIN for the HSM device that you created when setting up your Luna Cloud HSM client
+            - `HSM_SLOT` - The slot number for the HSM device that you selected when setting up your Luna Cloud HSM client
+            - `HSM_KEY_LABEL` - The label for the HSM key. If no key is found with the provided key label, the HSM will create a new key with the provided label.
+
+            The following is an example of the secret that you should update:
+
+            ```yaml
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: infisical-secrets
+            type: Opaque
+            stringData:
+              # ... Other environment variables ...
+              HSM_LIB_PATH: "/hsm-client/libs/64/libCryptoki2.so" # If you followed this guide, this will be the path of the Luna Cloud HSM client
+              HSM_PIN: "<your-hsm-device-pin>"
+              HSM_SLOT: "<hsm-device-slot>"
+              HSM_KEY_LABEL: "<your-key-label>"
+            ```
+
+            Save the file after updating the environment variables, and apply the secret changes
+
+            ```bash
+            kubectl apply -f ./secret-file-name.yaml
+            ```
+          </Step>
+
+          <Step title="Updating the Deployment">
+            After we've successfully configured the PVC and updated our environment variables, we are ready to update the deployment configuration so that the pods it creates can access the HSM client files.
+
+            We need to update the Docker image of the deployment to use `infisical/infisical-fips`. The `infisical/infisical-fips` image is a functionally identical image to the `infisical/infisical` image, but it is built with support for HSM encryption.
+
+            ```yaml
+              # ... The rest of the values.yaml file ...
+              
+              image:
+                repository: infisical/infisical-fips # Very important: Must use "infisical/infisical-fips"
+                tag: "v0.117.1-postgres"
+                pullPolicy: IfNotPresent
+
+              extraVolumeMounts:
+                - name: hsm-data
+                  mountPath: /hsm-client # The path we will mount the HSM client files to
+                  subPath: ./hsm-client
+
+              extraVolumes:
+                - name: hsm-data 
+                  persistentVolumeClaim:
+                    claimName: infisical-data-pvc # The PVC we created in the previous step
+
+              # ... The rest of the values.yaml file ...
+            ```
+
+
+          </Step>
+
+          <Step title="Upgrading the Helm Chart">
+            After updating the values.yaml file, you need to upgrade the Helm chart in order for the changes to take effect.
+
+            ```bash
+            helm upgrade --install infisical infisical-helm-charts/infisical-standalone --values /path/to/values.yaml
+            ```
+          </Step>
+          <Step title="Restarting the Deployment">
+            After upgrading the Helm chart, you need to restart the deployment in order for the changes to take effect.
+
+            ```bash
+            kubectl rollout restart deployment/infisical-infisical
+            ```
+          </Step>
+        </Steps>
+        After following these steps, your Kubernetes setup will be ready to use HSM encryption.
+      </Tab>
+    </Tabs>
+  </Tab>
+</Tabs>
+
+
+## Disabling HSM Encryption
+
+To disable HSM encryption, navigate to Infisical's Server Admin Console and set the KMS encryption strategy to `Software-based Encryption`. This will revert the encryption strategy back to the default software-based encryption.
+
+<Note>
+  In order to disable HSM encryption, the Infisical instance must be able to access the HSM device. If the HSM device is no longer accessible, you will not be able to disable HSM encryption.
+</Note>

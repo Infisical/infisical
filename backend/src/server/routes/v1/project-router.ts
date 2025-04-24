@@ -2,18 +2,24 @@ import { z } from "zod";
 
 import {
   IntegrationsSchema,
+  ProjectEnvironmentsSchema,
   ProjectMembershipsSchema,
   ProjectRolesSchema,
   ProjectSlackConfigsSchema,
+  ProjectType,
+  SecretFoldersSchema,
+  SortDirection,
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PROJECTS } from "@app/lib/api-docs";
+import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
+import { re2Validator } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
-import { ProjectFilterType } from "@app/services/project/project-types";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { ProjectFilterType, SearchProjectSortBy } from "@app/services/project/project-types";
 import { validateSlackChannelsField } from "@app/services/slack/slack-auth-validators";
 
 import { integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
@@ -135,7 +141,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         includeRoles: z
           .enum(["true", "false"])
           .default("false")
-          .transform((value) => value === "true")
+          .transform((value) => value === "true"),
+        type: z
+          .enum([ProjectType.SecretManager, ProjectType.KMS, ProjectType.CertificateManager, ProjectType.SSH, "all"])
+          .optional()
       }),
       response: {
         200: z.object({
@@ -154,7 +163,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        type: req.query.type
       });
       return { workspaces };
     }
@@ -167,6 +177,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
       description: "Get project",
       security: [
         {
@@ -205,6 +217,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
       description: "Delete project",
       security: [
         {
@@ -280,6 +294,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
       description: "Update project",
       security: [
         {
@@ -296,7 +312,24 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .max(64, { message: "Name must be 64 or fewer characters" })
           .optional()
           .describe(PROJECTS.UPDATE.name),
-        autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization)
+        description: z
+          .string()
+          .trim()
+          .max(256, { message: "Description must be 256 or fewer characters" })
+          .optional()
+          .describe(PROJECTS.UPDATE.projectDescription),
+        autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization),
+        hasDeleteProtection: z.boolean().optional().describe(PROJECTS.UPDATE.hasDeleteProtection),
+        slug: z
+          .string()
+          .trim()
+          .max(64, { message: "Slug must be 64 characters or fewer" })
+          .refine(re2Validator(/^[a-z0-9]+(?:[_-][a-z0-9]+)*$/), {
+            message:
+              "Project slug can only contain lowercase letters and numbers, with optional single hyphens (-) or underscores (_) between words. Cannot start or end with a hyphen or underscore."
+          })
+          .optional()
+          .describe(PROJECTS.UPDATE.slug)
       }),
       response: {
         200: z.object({
@@ -313,7 +346,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         },
         update: {
           name: req.body.name,
-          autoCapitalization: req.body.autoCapitalization
+          description: req.body.description,
+          autoCapitalization: req.body.autoCapitalization,
+          hasDeleteProtection: req.body.hasDeleteProtection,
+          slug: req.body.slug
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
@@ -355,6 +391,43 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         autoCapitalization: req.body.autoCapitalization
+      });
+      return {
+        message: "Successfully changed workspace settings",
+        workspace
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:workspaceId/delete-protection",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        hasDeleteProtection: z.boolean()
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          workspace: SanitizedProjectSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const workspace = await server.services.project.toggleDeleteProtection({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        hasDeleteProtection: req.body.hasDeleteProtection
       });
       return {
         message: "Successfully changed workspace settings",
@@ -446,6 +519,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "List integrations for a project.",
       security: [
         {
@@ -489,6 +564,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "List integration auth objects for a workspace.",
       security: [
         {
@@ -650,6 +727,136 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return slackConfig;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:workspaceId/environment-folder-tree",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: z.record(
+          ProjectEnvironmentsSchema.extend({ folders: SecretFoldersSchema.extend({ path: z.string() }).array() })
+        )
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const environmentsFolders = await server.services.folder.getProjectEnvironmentsFolders(
+        req.params.workspaceId,
+        req.permission
+      );
+
+      return environmentsFolders;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/search",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      body: z.object({
+        limit: z.number().default(100),
+        offset: z.number().default(0),
+        type: z.nativeEnum(ProjectType).optional(),
+        orderBy: z.nativeEnum(SearchProjectSortBy).optional().default(SearchProjectSortBy.NAME),
+        orderDirection: z.nativeEnum(SortDirection).optional().default(SortDirection.ASC),
+        name: z
+          .string()
+          .trim()
+          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
+            message: "Invalid pattern: only alphanumeric characters, - are allowed."
+          })
+          .optional()
+      }),
+      response: {
+        200: z.object({
+          projects: SanitizedProjectSchema.extend({ isMember: z.boolean() }).array(),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { docs: projects, totalCount } = await server.services.project.searchProjects({
+        permission: req.permission,
+        ...req.body
+      });
+
+      return { projects, totalCount };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:workspaceId/project-access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        comment: z
+          .string()
+          .trim()
+          .max(2500)
+          .refine(
+            (val) =>
+              characterValidator([
+                CharacterType.AlphaNumeric,
+                CharacterType.Hyphen,
+                CharacterType.Comma,
+                CharacterType.Fullstop,
+                CharacterType.Spaces,
+                CharacterType.Exclamation
+              ])(val),
+            {
+              message: "Invalid pattern: only alphanumeric characters, spaces, -.!, are allowed."
+            }
+          )
+          .optional()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.project.requestProjectAccess({
+        permission: req.permission,
+        comment: req.body.comment,
+        projectId: req.params.workspaceId
+      });
+
+      if (req.auth.actor === ActorType.USER) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: req.params.workspaceId,
+          event: {
+            type: EventType.PROJECT_ACCESS_REQUEST,
+            metadata: {
+              projectId: req.params.workspaceId,
+              requesterEmail: req.auth.user.email || req.auth.user.username,
+              requesterId: req.auth.userId
+            }
+          }
+        });
+      }
+
+      return { message: "Project access request has been send to project admins" };
     }
   });
 };

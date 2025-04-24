@@ -32,13 +32,21 @@ export const getUserAgentType = (userAgent: string | undefined) => {
 export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
   server.decorateRequest("auditLogInfo", null);
   server.addHook("onRequest", async (req) => {
-    if (!req.auth) return;
     const userAgent = req.headers["user-agent"] ?? "";
     const payload = {
       ipAddress: req.realIp,
       userAgent,
       userAgentType: getUserAgentType(userAgent)
     } as typeof req.auditLogInfo;
+
+    if (!req.auth) {
+      payload.actor = {
+        type: ActorType.UNKNOWN_USER,
+        metadata: {}
+      };
+      req.auditLogInfo = payload;
+      return;
+    }
     if (req.auth.actor === ActorType.USER) {
       payload.actor = {
         type: ActorType.USER,

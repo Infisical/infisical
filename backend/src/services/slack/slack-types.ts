@@ -62,6 +62,7 @@ export type TSlackNotification =
         secretPath: string;
         requestId: string;
         projectId: string;
+        secretKeys: string[];
       };
     }
   | {
@@ -75,5 +76,6 @@ export type TSlackNotification =
         projectName: string;
         permissions: string[];
         approvalUrl: string;
+        note?: string;
       };
     };

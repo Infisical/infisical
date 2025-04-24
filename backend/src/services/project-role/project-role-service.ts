@@ -1,7 +1,7 @@
 import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 
-import { ProjectMembershipRole, TableName } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -9,7 +9,8 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 
 import { ActorAuthMethod } from "../auth/auth-type";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
@@ -58,19 +59,23 @@ export const projectRoleServiceFactory = ({
       projectId = filter.projectId;
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Role);
     const existingRole = await projectRoleDAL.findOne({ slug: data.slug, projectId });
     if (existingRole) {
       throw new BadRequestError({ name: "Create Role", message: "Project role with same slug already exists" });
     }
 
+    validateHandlebarTemplate("Project Role Create", JSON.stringify(data.permissions || []), {
+      allowedExpressions: (val) => val.includes("identity.")
+    });
     const role = await projectRoleDAL.create({
       ...data,
       projectId
@@ -95,13 +100,14 @@ export const projectRoleServiceFactory = ({
       projectId = filter.projectId;
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
     if (roleSlug !== "custom" && Object.values(ProjectMembershipRole).includes(roleSlug as ProjectMembershipRole)) {
       const predefinedRole = getPredefinedRoles(projectId, roleSlug as ProjectMembershipRole)[0];
@@ -117,13 +123,14 @@ export const projectRoleServiceFactory = ({
     const projectRole = await projectRoleDAL.findById(roleId);
     if (!projectRole) throw new NotFoundError({ message: "Project role not found", name: "Delete role" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectRole.projectId,
+      projectId: projectRole.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
 
     if (data?.slug) {
@@ -131,6 +138,9 @@ export const projectRoleServiceFactory = ({
       if (existingRole && existingRole.id !== roleId)
         throw new BadRequestError({ name: "Update Role", message: "Project role with the same slug already exists" });
     }
+    validateHandlebarTemplate("Project Role Update", JSON.stringify(data.permissions || []), {
+      allowedExpressions: (val) => val.includes("identity.")
+    });
 
     const updatedRole = await projectRoleDAL.updateById(projectRole.id, {
       ...data,
@@ -144,13 +154,14 @@ export const projectRoleServiceFactory = ({
   const deleteRole = async ({ actor, actorId, actorAuthMethod, actorOrgId, roleId }: TDeleteRoleDTO) => {
     const projectRole = await projectRoleDAL.findById(roleId);
     if (!projectRole) throw new NotFoundError({ message: "Project role not found", name: "Delete role" });
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectRole.projectId,
+      projectId: projectRole.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Role);
 
     const identityRole = await identityProjectMembershipRoleDAL.findOne({ customRoleId: roleId });
@@ -185,13 +196,14 @@ export const projectRoleServiceFactory = ({
       projectId = filter.projectId;
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
     const customRoles = await projectRoleDAL.find(
       { projectId },
@@ -208,12 +220,13 @@ export const projectRoleServiceFactory = ({
     actorAuthMethod: ActorAuthMethod,
     actorOrgId: string | undefined
   ) => {
-    const { permission, membership } = await permissionService.getUserProjectPermission(
+    const { permission, membership } = await permissionService.getUserProjectPermission({
       userId,
       projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
+      authMethod: actorAuthMethod,
+      userOrgId: actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     return { permissions: packRules(permission.rules), membership };
   };
 

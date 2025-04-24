@@ -8,6 +8,10 @@ import {
   TCmekDecryptResponse,
   TCmekEncrypt,
   TCmekEncryptResponse,
+  TCmekSign,
+  TCmekSignResponse,
+  TCmekVerify,
+  TCmekVerifyResponse,
   TCreateCmek,
   TDeleteCmek,
   TUpdateCmek
@@ -22,7 +26,7 @@ export const useCreateCmek = () => {
       return data;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(cmekKeys.getCmeksByProjectId({ projectId }));
+      queryClient.invalidateQueries({ queryKey: cmekKeys.getCmeksByProjectId({ projectId }) });
     }
   });
 };
@@ -40,7 +44,7 @@ export const useUpdateCmek = () => {
       return data;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(cmekKeys.getCmeksByProjectId({ projectId }));
+      queryClient.invalidateQueries({ queryKey: cmekKeys.getCmeksByProjectId({ projectId }) });
     }
   });
 };
@@ -54,7 +58,7 @@ export const useDeleteCmek = () => {
       return data;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(cmekKeys.getCmeksByProjectId({ projectId }));
+      queryClient.invalidateQueries({ queryKey: cmekKeys.getCmeksByProjectId({ projectId }) });
     }
   });
 };
@@ -70,6 +74,44 @@ export const useCmekEncrypt = () => {
       );
 
       return data;
+    }
+  });
+};
+
+export const useCmekSign = () => {
+  return useMutation({
+    mutationFn: async ({
+      keyId,
+      data,
+      signingAlgorithm,
+      isBase64Encoded
+    }: TCmekSign & { isBase64Encoded: boolean }) => {
+      const res = await apiRequest.post<TCmekSignResponse>(`/api/v1/kms/keys/${keyId}/sign`, {
+        data: isBase64Encoded ? data : encodeBase64(Buffer.from(data)),
+        signingAlgorithm
+      });
+
+      return res.data;
+    }
+  });
+};
+
+export const useCmekVerify = () => {
+  return useMutation({
+    mutationFn: async ({
+      keyId,
+      data,
+      signature,
+      signingAlgorithm,
+      isBase64Encoded
+    }: TCmekVerify & { isBase64Encoded: boolean }) => {
+      const res = await apiRequest.post<TCmekVerifyResponse>(`/api/v1/kms/keys/${keyId}/verify`, {
+        data: isBase64Encoded ? data : encodeBase64(Buffer.from(data)),
+        signature,
+        signingAlgorithm
+      });
+
+      return res.data;
     }
   });
 };

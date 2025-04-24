@@ -44,7 +44,7 @@ export const FormLabel = ({
     )}
     {tooltipText && (
       <Tooltip content={tooltipText} className={tooltipClassName}>
-        <FontAwesomeIcon icon={faQuestionCircle} size="1x" className="ml-2" />
+        <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
       </Tooltip>
     )}
   </Label.Root>
@@ -58,7 +58,7 @@ export type FormHelperTextProps = {
 export const FormHelperText = ({ isError, text }: FormHelperTextProps) => (
   <div
     className={twMerge(
-      "mt-2 flex items-center font-inter text-xs text-mineshaft-300 opacity-90",
+      "mt-2 flex items-center font-inter text-xs text-mineshaft-300 text-opacity-90",
       isError && "text-red-600"
     )}
   >
@@ -83,6 +83,7 @@ export type FormControlProps = {
   className?: string;
   icon?: ReactNode;
   tooltipText?: ReactElement | string;
+  tooltipClassName?: string;
 };
 
 export const FormControl = ({
@@ -96,7 +97,8 @@ export const FormControl = ({
   isError,
   icon,
   className,
-  tooltipText
+  tooltipText,
+  tooltipClassName
 }: FormControlProps): JSX.Element => {
   return (
     <div className={twMerge("mb-4", className)}>
@@ -108,6 +110,7 @@ export const FormControl = ({
           id={id}
           icon={icon}
           tooltipText={tooltipText}
+          tooltipClassName={tooltipClassName}
         />
       ) : (
         label

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { UNIVERSAL_AUTH } from "@app/lib/api-docs";
+import { ApiDocsTags, UNIVERSAL_AUTH } from "@app/lib/api-docs";
 import { writeLimit } from "@app/server/config/rateLimiter";
 
 export const registerIdentityAccessTokenRouter = async (server: FastifyZodProvider) => {
@@ -11,6 +11,8 @@ export const registerIdentityAccessTokenRouter = async (server: FastifyZodProvid
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.UniversalAuth],
       description: "Renew access token",
       body: z.object({
         accessToken: z.string().trim().describe(UNIVERSAL_AUTH.RENEW_ACCESS_TOKEN.accessToken)
@@ -44,6 +46,8 @@ export const registerIdentityAccessTokenRouter = async (server: FastifyZodProvid
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.UniversalAuth],
       description: "Revoke access token",
       body: z.object({
         accessToken: z.string().trim().describe(UNIVERSAL_AUTH.REVOKE_ACCESS_TOKEN.accessToken)

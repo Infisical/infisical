@@ -1,9 +1,9 @@
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { SecretTagsSchema } from "@app/db/schemas";
-import { SECRET_TAGS } from "@app/lib/api-docs";
+import { ApiDocsTags, SECRET_TAGS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -15,6 +15,8 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.LIST.projectId)
       }),
@@ -44,6 +46,8 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_ID.projectId),
         tagId: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_ID.tagId)
@@ -75,6 +79,8 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_SLUG.projectId),
         tagSlug: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_SLUG.tagSlug)
@@ -107,18 +113,13 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.CREATE.projectId)
       }),
       body: z.object({
-        slug: z
-          .string()
-          .toLowerCase()
-          .trim()
-          .describe(SECRET_TAGS.CREATE.slug)
-          .refine((v) => slugify(v) === v, {
-            message: "Invalid slug. Slug can only contain alphanumeric characters and hyphens."
-          }),
+        slug: slugSchema({ max: 64 }).describe(SECRET_TAGS.CREATE.slug),
         color: z.string().trim().describe(SECRET_TAGS.CREATE.color)
       }),
       response: {
@@ -148,19 +149,14 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.UPDATE.projectId),
         tagId: z.string().trim().describe(SECRET_TAGS.UPDATE.tagId)
       }),
       body: z.object({
-        slug: z
-          .string()
-          .toLowerCase()
-          .trim()
-          .describe(SECRET_TAGS.UPDATE.slug)
-          .refine((v) => slugify(v) === v, {
-            message: "Invalid slug. Slug can only contain alphanumeric characters and hyphens."
-          }),
+        slug: slugSchema({ max: 64 }).describe(SECRET_TAGS.UPDATE.slug),
         color: z.string().trim().describe(SECRET_TAGS.UPDATE.color)
       }),
       response: {
@@ -190,6 +186,8 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.DELETE.projectId),
         tagId: z.string().trim().describe(SECRET_TAGS.DELETE.tagId)

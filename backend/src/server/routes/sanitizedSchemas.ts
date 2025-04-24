@@ -7,11 +7,13 @@ import {
   ProjectRolesSchema,
   ProjectsSchema,
   SecretApprovalPoliciesSchema,
+  SecretTagsSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
-import { UnpackedPermissionSchema } from "./santizedSchemas/permission";
+import { UnpackedPermissionSchema } from "./sanitizedSchema/permission";
 
 // sometimes the return data must be santizied to avoid leaking important values
 // always prefer pick over omit in zod
@@ -30,31 +32,57 @@ export const integrationAuthPubSchema = IntegrationAuthsSchema.pick({
 
 export const DefaultResponseErrorsSchema = {
   400: z.object({
+    reqId: z.string(),
     statusCode: z.literal(400),
     message: z.string(),
     error: z.string()
   }),
   404: z.object({
+    reqId: z.string(),
     statusCode: z.literal(404),
     message: z.string(),
     error: z.string()
   }),
   401: z.object({
+    reqId: z.string(),
     statusCode: z.literal(401),
-    message: z.any(),
-    error: z.string()
-  }),
-  403: z.object({
-    statusCode: z.literal(403),
     message: z.string(),
     error: z.string()
   }),
+  403: z.object({
+    reqId: z.string(),
+    statusCode: z.literal(403),
+    message: z.string(),
+    details: z.any().optional(),
+    error: z.string()
+  }),
+  // Zod errors return a message of varying shapes and sizes, so z.any() is used here
+  422: z.object({
+    reqId: z.string(),
+    statusCode: z.literal(422),
+    message: z.any(),
+    error: z.string()
+  }),
   500: z.object({
+    reqId: z.string(),
     statusCode: z.literal(500),
     message: z.string(),
     error: z.string()
   })
 };
+
+export const booleanSchema = z
+  .union([z.boolean(), z.string().trim()])
+  .transform((value) => {
+    if (typeof value === "string") {
+      // ie if not empty, 0 or false, return true
+      return Boolean(value) && Number(value) !== 0 && value.toLowerCase() !== "false";
+    }
+
+    return value;
+  })
+  .optional()
+  .default(true);
 
 export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
   z.object({
@@ -97,9 +125,19 @@ export const secretRawSchema = z.object({
   secretReminderNote: z.string().nullable().optional(),
   secretReminderRepeatDays: z.number().nullable().optional(),
   skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
-  metadata: z.unknown().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  actor: z
+    .object({
+      actorId: z.string().nullable().optional(),
+      actorType: z.string().nullable().optional(),
+      name: z.string().nullable().optional(),
+      membershipId: z.string().nullable().optional()
+    })
+    .optional()
+    .nullable(),
+  isRotatedSecret: z.boolean().optional(),
+  rotationId: z.string().uuid().nullish()
 });
 
 export const ProjectPermissionSchema = z.object({
@@ -189,12 +227,17 @@ export const SanitizedRoleSchemaV1 = ProjectRolesSchema.extend({
 });
 
 export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
+  encryptedInput: true,
+  keyEncoding: true,
+  inputCiphertext: true,
   inputIV: true,
   inputTag: true,
-  inputCiphertext: true,
-  keyEncoding: true,
   algorithm: true
-});
+}).merge(
+  z.object({
+    metadata: ResourceMetadataSchema.optional()
+  })
+);
 
 export const SanitizedAuditLogStreamSchema = z.object({
   id: z.string(),
@@ -206,6 +249,8 @@ export const SanitizedAuditLogStreamSchema = z.object({
 export const SanitizedProjectSchema = ProjectsSchema.pick({
   id: true,
   name: true,
+  description: true,
+  type: true,
   slug: true,
   autoCapitalization: true,
   orgId: true,
@@ -215,5 +260,14 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   upgradeStatus: true,
   pitVersionLimit: true,
   kmsCertificateKeyId: true,
-  auditLogsRetentionDays: true
+  auditLogsRetentionDays: true,
+  hasDeleteProtection: true
+});
+
+export const SanitizedTagSchema = SecretTagsSchema.pick({
+  id: true,
+  slug: true,
+  color: true
+}).extend({
+  name: z.string()
 });

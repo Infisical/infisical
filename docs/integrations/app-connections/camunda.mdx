@@ -1,0 +1,77 @@
+---
+title: "Camunda Connection"
+description: "Learn how to configure a Camunda Connection for Infisical."
+---
+
+Infisical supports connecting to Camunda APIs using [client credentials](https://docs.camunda.io/docs/apis-tools/administration-api/authentication/#client-credentials-and-scopes).
+
+## Configure Client Credentials for Infisical
+
+<Steps>
+    <Step title="Navigate to Organization Management">
+        In your Camunda Cloud Console, navigate to the **Organization** tab in the top navigation menu.
+        ![Organization Management](/images/app-connections/camunda/camunda-console.png)
+    </Step>
+    <Step title="Access Administration API">
+        From the Organization Management tabs, click on **Administration API** to manage your API credentials and click the **Create client credentials** button.
+        ![Create Client Credentials](/images/app-connections/camunda/camunda-organization-page.png)
+    </Step>
+    <Step title="Name Your Client">
+        Enter a recognizable name for your client, such as "my-infisical-client". The name can contain letters, dashes, underscores, and digits.
+    </Step>
+    <Step title="Set Credential Permissions">
+        In the "Create new client credentials" modal, select the following permissions required for secret syncs:
+        
+        - **Cluster**: Enable read access (Get)
+        - **Connector secrets**: Enable all operations (Get, Create, Update, Delete)
+
+        These specific permissions are required for Infisical to properly sync and manage your Camunda secrets.
+        ![Set Permissions](/images/app-connections/camunda/camunda-create-client-1.png)
+        ![Set Permissions 2](/images/app-connections/camunda/camunda-create-client-2.png)
+    </Step>
+    <Step title="Complete Creation">
+        Click the **Create** button to generate your client credentials.
+    </Step>
+    <Step title="Save Your Credentials">
+        After creation, you'll be shown your client credentials. For the Infisical connection, you'll need:
+
+        - **Client ID** (`CAMUNDA_CONSOLE_CLIENT_ID`)
+        - **Client Secret** (`CAMUNDA_CONSOLE_CLIENT_SECRET`)
+
+        **IMPORTANT**: Make sure to securely save the Client Secret, as it will not be shown again after you close this dialog.
+
+        You can download these credentials or copy them to use in the next section.
+        ![Client Credentials](/images/app-connections/camunda/camunda-client-credentials.png)
+    </Step>
+
+</Steps>
+
+## Setup Camunda Connection in Infisical
+
+<Steps>
+  <Step title="Navigate to App Connections">
+    Navigate to the **App Connections** tab on the **Organization Settings**
+    page. ![App Connections
+    Tab](/images/app-connections/general/add-connection.png)
+  </Step>
+  <Step title="Add Connection">
+    Select the **Camunda Connection** option from the connection options modal.
+    ![Select Camunda
+    Connection](/images/app-connections/camunda/camunda-app-connection-select.png)
+  </Step>
+  <Step title="Input Credentials">
+    Select the **Client Credentials** method and enter the Camunda client
+    credentials you created:
+    
+    - **Client ID**: Your `CAMUNDA_CONSOLE_CLIENT_ID` value
+    - **Client Secret**: Your `CAMUNDA_CONSOLE_CLIENT_SECRET` value
+    
+    Infisical will automatically configure the connection using these credentials to access the Camunda API. Click **Connect to Camunda** to establish the connection. ![Connect to Camunda](/images/app-connections/camunda/camunda-app-connection-form.png)
+
+  </Step>
+  <Step title="Connection Created">
+    Your **Camunda Connection** is now available for use in your Infisical
+    projects. ![Camunda Connection
+    Created](/images/app-connections/camunda/camunda-app-connection-created.png)
+  </Step>
+</Steps>

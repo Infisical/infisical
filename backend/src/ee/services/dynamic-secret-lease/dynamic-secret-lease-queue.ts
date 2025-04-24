@@ -1,8 +1,10 @@
-import { SecretKeyEncoding } from "@app/db/schemas";
 import { DisableRotationErrors } from "@app/ee/services/secret-rotation/secret-rotation-queue";
-import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { DynamicSecretStatus } from "../dynamic-secret/dynamic-secret-types";
@@ -14,6 +16,8 @@ type TDynamicSecretLeaseQueueServiceFactoryDep = {
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "findById" | "deleteById" | "find" | "updateById">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findById" | "deleteById" | "updateById">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findById">;
 };
 
 export type TDynamicSecretLeaseQueueServiceFactory = ReturnType<typeof dynamicSecretLeaseQueueServiceFactory>;
@@ -22,7 +26,9 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
   queueService,
   dynamicSecretDAL,
   dynamicSecretProviders,
-  dynamicSecretLeaseDAL
+  dynamicSecretLeaseDAL,
+  kmsService,
+  folderDAL
 }: TDynamicSecretLeaseQueueServiceFactoryDep) => {
   const pruneDynamicSecret = async (dynamicSecretCfgId: string) => {
     await queueService.queue(
@@ -76,15 +82,21 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);
         if (!dynamicSecretLease) throw new DisableRotationErrors({ message: "Dynamic secret lease not found" });
 
+        const folder = await folderDAL.findById(dynamicSecretLease.dynamicSecret.folderId);
+        if (!folder)
+          throw new NotFoundError({
+            message: `Failed to find folder with ${dynamicSecretLease.dynamicSecret.folderId}`
+          });
+
+        const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: folder.projectId
+        });
+
         const dynamicSecretCfg = dynamicSecretLease.dynamicSecret;
         const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
         const decryptedStoredInput = JSON.parse(
-          infisicalSymmetricDecrypt({
-            keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
-            ciphertext: dynamicSecretCfg.inputCiphertext,
-            tag: dynamicSecretCfg.inputTag,
-            iv: dynamicSecretCfg.inputIV
-          })
+          secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
         ) as object;
 
         await selectedProvider.revoke(decryptedStoredInput, dynamicSecretLease.externalEntityId);
@@ -100,16 +112,22 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         if ((dynamicSecretCfg.status as DynamicSecretStatus) !== DynamicSecretStatus.Deleting)
           throw new DisableRotationErrors({ message: "Document not deleted" });
 
+        const folder = await folderDAL.findById(dynamicSecretCfg.folderId);
+        if (!folder)
+          throw new NotFoundError({
+            message: `Failed to find folder with ${dynamicSecretCfg.folderId}`
+          });
+
+        const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: folder.projectId
+        });
+
         const dynamicSecretLeases = await dynamicSecretLeaseDAL.find({ dynamicSecretId: dynamicSecretCfgId });
         if (dynamicSecretLeases.length) {
           const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
           const decryptedStoredInput = JSON.parse(
-            infisicalSymmetricDecrypt({
-              keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
-              ciphertext: dynamicSecretCfg.inputCiphertext,
-              tag: dynamicSecretCfg.inputTag,
-              iv: dynamicSecretCfg.inputIV
-            })
+            secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
           ) as object;
 
           await Promise.all(dynamicSecretLeases.map(({ id }) => unsetLeaseRevocation(id)));

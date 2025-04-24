@@ -13,6 +13,7 @@ export type TDynamicSecret = {
   status?: DynamicSecretStatus;
   statusDetails?: string;
   maxTTL: string;
+  metadata?: { key: string; value: string }[];
 };
 
 export enum DynamicSecretProviders {
@@ -28,7 +29,9 @@ export enum DynamicSecretProviders {
   AzureEntraId = "azure-entra-id",
   Ldap = "ldap",
   SapHana = "sap-hana",
-  Snowflake = "snowflake"
+  Snowflake = "snowflake",
+  Totp = "totp",
+  SapAse = "sap-ase"
 }
 
 export enum SqlProviders {
@@ -52,6 +55,7 @@ export type TDynamicSecretProvider =
         revocationStatement: string;
         renewStatement?: string;
         ca?: string | undefined;
+        gatewayId?: string;
       };
     }
   | {
@@ -220,6 +224,18 @@ export type TDynamicSecretProvider =
       };
     }
   | {
+      type: DynamicSecretProviders.SapAse;
+      inputs: {
+        host: string;
+        port: number;
+        username: string;
+        database: string;
+        password: string;
+        creationStatement: string;
+        revocationStatement: string;
+      };
+    }
+  | {
       type: DynamicSecretProviders.Snowflake;
       inputs: {
         orgId: string;
@@ -230,7 +246,23 @@ export type TDynamicSecretProvider =
         revocationStatement: string;
         renewStatement?: string;
       };
+    }
+  | {
+      type: DynamicSecretProviders.Totp;
+      inputs:
+        | {
+            configType: "url";
+            url: string;
+          }
+        | {
+            configType: "manual";
+            secret: string;
+            period?: number;
+            algorithm?: string;
+            digits?: number;
+          };
     };
+
 export type TCreateDynamicSecretDTO = {
   projectSlug: string;
   provider: TDynamicSecretProvider;
@@ -239,6 +271,7 @@ export type TCreateDynamicSecretDTO = {
   path: string;
   environmentSlug: string;
   name: string;
+  metadata?: { key: string; value: string }[];
 };
 
 export type TUpdateDynamicSecretDTO = {
@@ -248,6 +281,7 @@ export type TUpdateDynamicSecretDTO = {
   environmentSlug: string;
   data: {
     newName?: string;
+    metadata?: { key: string; value: string }[];
     defaultTTL?: string;
     maxTTL?: string | null;
     inputs?: unknown;

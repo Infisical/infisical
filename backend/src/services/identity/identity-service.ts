@@ -2,13 +2,16 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrgMembershipRole, TableName, TOrgRoles } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 
-import { ActorType } from "../auth/auth-type";
+import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityDALFactory } from "./identity-dal";
 import { TIdentityMetadataDALFactory } from "./identity-metadata-dal";
 import { TIdentityOrgDALFactory } from "./identity-org-dal";
@@ -18,6 +21,7 @@ import {
   TGetIdentityByIdDTO,
   TListOrgIdentitiesByOrgIdDTO,
   TListProjectIdentitiesByIdentityIdDTO,
+  TSearchOrgIdentitiesByOrgIdDTO,
   TUpdateIdentityDTO
 } from "./identity-types";
 
@@ -50,17 +54,37 @@ export const identityServiceFactory = ({
     actorOrgId,
     metadata
   }: TCreateIdentityDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
+    const { permission, membership } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
       role,
       orgId
     );
     const isCustomRole = Boolean(customRole);
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to create a more privileged identity" });
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      OrgPermissionIdentityActions.GrantPrivileges,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+    if (!permissionBoundary.isValid)
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to create identity",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.GrantPrivileges,
+          OrgPermissionSubjects.Identity
+        ),
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const plan = await licenseService.getPlan(orgId);
 
@@ -108,30 +132,22 @@ export const identityServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    metadata
+    metadata,
+    isActorSuperAdmin
   }: TUpdateIdentityDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
+
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityOrgMembership.orgId,
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
-
-    const { permission: identityRolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      id,
-      identityOrgMembership.orgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     let customRole: TOrgRoles | undefined;
     if (role) {
@@ -141,9 +157,23 @@ export const identityServiceFactory = ({
       );
 
       const isCustomRole = Boolean(customOrgRole);
-      const hasRequiredNewRolePermission = isAtLeastAsPrivileged(permission, rolePermission);
-      if (!hasRequiredNewRolePermission)
-        throw new ForbiddenRequestError({ message: "Failed to create a more privileged identity" });
+      const appliedRolePermissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
+        OrgPermissionIdentityActions.GrantPrivileges,
+        OrgPermissionSubjects.Identity,
+        permission,
+        rolePermission
+      );
+      if (!appliedRolePermissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to update identity",
+            membership.shouldUseNewPrivilegeSystem,
+            OrgPermissionIdentityActions.GrantPrivileges,
+            OrgPermissionSubjects.Identity
+          ),
+          details: { missingPermissions: appliedRolePermissionBoundary.missingPermissions }
+        });
       if (isCustomRole) customRole = customOrgRole;
     }
 
@@ -193,11 +223,20 @@ export const identityServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
     return identity;
   };
 
-  const deleteIdentity = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TDeleteIdentityDTO) => {
+  const deleteIdentity = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    id,
+    isActorSuperAdmin
+  }: TDeleteIdentityDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
+
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
@@ -208,17 +247,8 @@ export const identityServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
-    const { permission: identityRolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      id,
-      identityOrgMembership.orgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
 
     const deletedIdentity = await identityDAL.deleteById(id);
 
@@ -240,7 +270,7 @@ export const identityServiceFactory = ({
     search
   }: TListOrgIdentitiesByOrgIdDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     const identityMemberships = await identityOrgMembershipDAL.find({
       [`${TableName.IdentityOrgMembership}.orgId` as "orgId"]: orgId,
@@ -257,6 +287,33 @@ export const identityServiceFactory = ({
     });
 
     return { identityMemberships, totalCount };
+  };
+
+  const searchOrgIdentities = async ({
+    orgId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    limit,
+    offset,
+    orderBy,
+    orderDirection,
+    searchFilter = {}
+  }: TSearchOrgIdentitiesByOrgIdDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+
+    const { totalCount, docs } = await identityOrgMembershipDAL.searchIdentities({
+      orgId,
+      limit,
+      offset,
+      orderBy,
+      orderDirection,
+      searchFilter
+    });
+
+    return { identityMemberships: docs, totalCount };
   };
 
   const listProjectIdentitiesByIdentityId = async ({
@@ -276,7 +333,7 @@ export const identityServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     const identityMemberships = await identityProjectDAL.findByIdentityId(identityId);
     return identityMemberships;
@@ -288,6 +345,7 @@ export const identityServiceFactory = ({
     deleteIdentity,
     listOrgIdentities,
     getIdentityById,
+    searchOrgIdentities,
     listProjectIdentitiesByIdentityId
   };
 };

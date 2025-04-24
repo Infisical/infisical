@@ -3,28 +3,31 @@ import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } from "openid-client";
 
-import { OrgMembershipStatus, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
+import { OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
-import {
-  decryptSymmetric,
-  encryptSymmetric,
-  generateAsymmetricKeyPair,
-  generateSymmetricKey,
-  infisicalSymmetricDecrypt,
-  infisicalSymmetricEncypt
-} from "@app/lib/crypto/encryption";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { OrgServiceActor } from "@app/lib/types";
+import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
+import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
@@ -45,7 +48,14 @@ import {
 type TOidcConfigServiceFactoryDep = {
   userDAL: Pick<
     TUserDALFactory,
-    "create" | "findOne" | "transaction" | "updateById" | "findById" | "findUserEncKeyByUserId"
+    | "create"
+    | "findOne"
+    | "updateById"
+    | "findById"
+    | "findUserEncKeyByUserId"
+    | "findUserEncKeyByUserIdsBatch"
+    | "find"
+    | "transaction"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   orgDAL: Pick<
@@ -53,12 +63,27 @@ type TOidcConfigServiceFactoryDep = {
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "create">;
-  orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
-  smtpService: Pick<TSmtpService, "sendMail">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  smtpService: Pick<TSmtpService, "sendMail" | "verify">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getUserOrgPermission">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
+  groupDAL: Pick<TGroupDALFactory, "findByOrgId">;
+  userGroupMembershipDAL: Pick<
+    TUserGroupMembershipDALFactory,
+    | "find"
+    | "transaction"
+    | "insertMany"
+    | "findGroupMembershipsByUserIdInOrg"
+    | "delete"
+    | "filterProjectsByUserMembership"
+  >;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -71,9 +96,16 @@ export const oidcConfigServiceFactory = ({
   licenseService,
   permissionService,
   tokenService,
-  orgBotDAL,
   smtpService,
-  oidcConfigDAL
+  oidcConfigDAL,
+  userGroupMembershipDAL,
+  groupDAL,
+  groupProjectDAL,
+  projectKeyDAL,
+  projectDAL,
+  projectBotDAL,
+  auditLogService,
+  kmsService
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const org = await orgDAL.findOne({ slug: dto.orgSlug });
@@ -104,43 +136,19 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    // decrypt and return cfg
-    const orgBot = await orgBotDAL.findOne({ orgId: oidcCfg.orgId });
-    if (!orgBot) {
-      throw new NotFoundError({
-        message: `Organization bot for organization with ID '${oidcCfg.orgId}' not found`,
-        name: "OrgBotNotFound"
-      });
-    }
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: oidcCfg.orgId
     });
 
-    const { encryptedClientId, clientIdIV, clientIdTag, encryptedClientSecret, clientSecretIV, clientSecretTag } =
-      oidcCfg;
-
     let clientId = "";
-    if (encryptedClientId && clientIdIV && clientIdTag) {
-      clientId = decryptSymmetric({
-        ciphertext: encryptedClientId,
-        key,
-        tag: clientIdTag,
-        iv: clientIdIV
-      });
+    if (oidcCfg.encryptedOidcClientId) {
+      clientId = decryptor({ cipherTextBlob: oidcCfg.encryptedOidcClientId }).toString();
     }
 
     let clientSecret = "";
-    if (encryptedClientSecret && clientSecretIV && clientSecretTag) {
-      clientSecret = decryptSymmetric({
-        key,
-        tag: clientSecretTag,
-        iv: clientSecretIV,
-        ciphertext: encryptedClientSecret
-      });
+    if (oidcCfg.encryptedOidcClientSecret) {
+      clientSecret = decryptor({ cipherTextBlob: oidcCfg.encryptedOidcClientSecret }).toString();
     }
 
     return {
@@ -156,11 +164,22 @@ export const oidcConfigServiceFactory = ({
       isActive: oidcCfg.isActive,
       allowedEmailDomains: oidcCfg.allowedEmailDomains,
       clientId,
-      clientSecret
+      clientSecret,
+      manageGroupMemberships: oidcCfg.manageGroupMemberships,
+      jwtSignatureAlgorithm: oidcCfg.jwtSignatureAlgorithm
     };
   };
 
-  const oidcLogin = async ({ externalId, email, firstName, lastName, orgId, callbackPort }: TOidcLoginDTO) => {
+  const oidcLogin = async ({
+    externalId,
+    email,
+    firstName,
+    lastName,
+    orgId,
+    callbackPort,
+    groups = [],
+    manageGroupMemberships
+  }: TOidcLoginDTO) => {
     const serverCfg = await getServerCfg();
 
     if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.OIDC)) {
@@ -223,6 +242,7 @@ export const oidcConfigServiceFactory = ({
         let newUser: TUsers | undefined;
 
         if (serverCfg.trustOidcEmails) {
+          // we prioritize getting the most complete user to create the new alias under
           newUser = await userDAL.findOne(
             {
               email,
@@ -230,6 +250,23 @@ export const oidcConfigServiceFactory = ({
             },
             tx
           );
+
+          if (!newUser) {
+            // this fetches user entries created via invites
+            newUser = await userDAL.findOne(
+              {
+                username: email
+              },
+              tx
+            );
+
+            if (newUser && !newUser.isEmailVerified) {
+              // we automatically mark it as email-verified because we've configured trust for OIDC emails
+              newUser = await userDAL.updateById(newUser.id, {
+                isEmailVerified: true
+              });
+            }
+          }
         }
 
         if (!newUser) {
@@ -297,6 +334,83 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
+    if (manageGroupMemberships) {
+      const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(user.id, orgId);
+      const orgGroups = await groupDAL.findByOrgId(orgId);
+
+      const userGroupsNames = userGroups.map((membership) => membership.groupName);
+      const missingGroupsMemberships = groups.filter((groupName) => !userGroupsNames.includes(groupName));
+      const groupsToAddUserTo = orgGroups.filter((group) => missingGroupsMemberships.includes(group.name));
+
+      for await (const group of groupsToAddUserTo) {
+        await addUsersToGroupByUserIds({
+          userIds: [user.id],
+          group,
+          userDAL,
+          userGroupMembershipDAL,
+          orgDAL,
+          groupProjectDAL,
+          projectKeyDAL,
+          projectDAL,
+          projectBotDAL
+        });
+      }
+
+      if (groupsToAddUserTo.length) {
+        await auditLogService.createAuditLog({
+          actor: {
+            type: ActorType.PLATFORM,
+            metadata: {}
+          },
+          orgId,
+          event: {
+            type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER,
+            metadata: {
+              userId: user.id,
+              userEmail: user.email ?? user.username,
+              assignedToGroups: groupsToAddUserTo.map(({ id, name }) => ({ id, name })),
+              userGroupsClaim: groups
+            }
+          }
+        });
+      }
+
+      const membershipsToRemove = userGroups
+        .filter((membership) => !groups.includes(membership.groupName))
+        .map((membership) => membership.groupId);
+      const groupsToRemoveUserFrom = orgGroups.filter((group) => membershipsToRemove.includes(group.id));
+
+      for await (const group of groupsToRemoveUserFrom) {
+        await removeUsersFromGroupByUserIds({
+          userIds: [user.id],
+          group,
+          userDAL,
+          userGroupMembershipDAL,
+          groupProjectDAL,
+          projectKeyDAL
+        });
+      }
+
+      if (groupsToRemoveUserFrom.length) {
+        await auditLogService.createAuditLog({
+          actor: {
+            type: ActorType.PLATFORM,
+            metadata: {}
+          },
+          orgId,
+          event: {
+            type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER,
+            metadata: {
+              userId: user.id,
+              userEmail: user.email ?? user.username,
+              removedFromGroups: groupsToRemoveUserFrom.map(({ id, name }) => ({ id, name })),
+              userGroupsClaim: groups
+            }
+          }
+        });
+      }
+    }
+
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
     const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
@@ -332,14 +446,20 @@ export const oidcConfigServiceFactory = ({
         userId: user.id
       });
 
-      await smtpService.sendMail({
-        template: SmtpTemplates.EmailVerification,
-        subjectLine: "Infisical confirmation code",
-        recipients: [user.email],
-        substitutions: {
-          code: token
-        }
-      });
+      await smtpService
+        .sendMail({
+          template: SmtpTemplates.EmailVerification,
+          subjectLine: "Infisical confirmation code",
+          recipients: [user.email],
+          substitutions: {
+            code: token
+          }
+        })
+        .catch((err: Error) => {
+          throw new OidcAuthError({
+            message: `Error sending email confirmation code for user registration - contact the Infisical instance admin. ${err.message}`
+          });
+        });
     }
 
     return { isUserCompleted, providerAuthToken };
@@ -361,7 +481,9 @@ export const oidcConfigServiceFactory = ({
     tokenEndpoint,
     userinfoEndpoint,
     clientId,
-    clientSecret
+    clientSecret,
+    manageGroupMemberships,
+    jwtSignatureAlgorithm
   }: TUpdateOidcCfgDTO) => {
     const org = await orgDAL.findOne({
       slug: orgSlug
@@ -389,18 +511,21 @@ export const oidcConfigServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
 
-    const orgBot = await orgBotDAL.findOne({ orgId: org.id });
-    if (!orgBot)
-      throw new NotFoundError({
-        message: `Organization bot for organization with ID '${org.id}' not found`,
-        name: "OrgBotNotFound"
-      });
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: org.id
     });
+
+    const serverCfg = await getServerCfg();
+    if (isActive && !serverCfg.trustOidcEmails) {
+      const isSmtpConnected = await smtpService.verify();
+      if (!isSmtpConnected) {
+        throw new BadRequestError({
+          message:
+            "Cannot enable OIDC when there are issues with the instance's SMTP configuration. Bypass this by turning on trust for OIDC emails in the server admin console."
+        });
+      }
+    }
 
     const updateQuery: TOidcConfigsUpdate = {
       allowedEmailDomains,
@@ -412,26 +537,17 @@ export const oidcConfigServiceFactory = ({
       userinfoEndpoint,
       jwksUri,
       isActive,
-      lastUsed: null
+      lastUsed: null,
+      manageGroupMemberships,
+      jwtSignatureAlgorithm
     };
 
     if (clientId !== undefined) {
-      const { ciphertext: encryptedClientId, iv: clientIdIV, tag: clientIdTag } = encryptSymmetric(clientId, key);
-      updateQuery.encryptedClientId = encryptedClientId;
-      updateQuery.clientIdIV = clientIdIV;
-      updateQuery.clientIdTag = clientIdTag;
+      updateQuery.encryptedOidcClientId = encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob;
     }
 
     if (clientSecret !== undefined) {
-      const {
-        ciphertext: encryptedClientSecret,
-        iv: clientSecretIV,
-        tag: clientSecretTag
-      } = encryptSymmetric(clientSecret, key);
-
-      updateQuery.encryptedClientSecret = encryptedClientSecret;
-      updateQuery.clientSecretIV = clientSecretIV;
-      updateQuery.clientSecretTag = clientSecretTag;
+      updateQuery.encryptedOidcClientSecret = encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob;
     }
 
     const [ssoConfig] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery);
@@ -455,7 +571,9 @@ export const oidcConfigServiceFactory = ({
     tokenEndpoint,
     userinfoEndpoint,
     clientId,
-    clientSecret
+    clientSecret,
+    manageGroupMemberships,
+    jwtSignatureAlgorithm
   }: TCreateOidcCfgDTO) => {
     const org = await orgDAL.findOne({
       slug: orgSlug
@@ -482,60 +600,10 @@ export const oidcConfigServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
 
-    const orgBot = await orgBotDAL.transaction(async (tx) => {
-      const doc = await orgBotDAL.findOne({ orgId: org.id }, tx);
-      if (doc) return doc;
-
-      const { privateKey, publicKey } = generateAsymmetricKeyPair();
-      const key = generateSymmetricKey();
-      const {
-        ciphertext: encryptedPrivateKey,
-        iv: privateKeyIV,
-        tag: privateKeyTag,
-        encoding: privateKeyKeyEncoding,
-        algorithm: privateKeyAlgorithm
-      } = infisicalSymmetricEncypt(privateKey);
-      const {
-        ciphertext: encryptedSymmetricKey,
-        iv: symmetricKeyIV,
-        tag: symmetricKeyTag,
-        encoding: symmetricKeyKeyEncoding,
-        algorithm: symmetricKeyAlgorithm
-      } = infisicalSymmetricEncypt(key);
-
-      return orgBotDAL.create(
-        {
-          name: "Infisical org bot",
-          publicKey,
-          privateKeyIV,
-          encryptedPrivateKey,
-          symmetricKeyIV,
-          symmetricKeyTag,
-          encryptedSymmetricKey,
-          symmetricKeyAlgorithm,
-          orgId: org.id,
-          privateKeyTag,
-          privateKeyAlgorithm,
-          privateKeyKeyEncoding,
-          symmetricKeyKeyEncoding
-        },
-        tx
-      );
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: org.id
     });
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
-    });
-
-    const { ciphertext: encryptedClientId, iv: clientIdIV, tag: clientIdTag } = encryptSymmetric(clientId, key);
-    const {
-      ciphertext: encryptedClientSecret,
-      iv: clientSecretIV,
-      tag: clientSecretTag
-    } = encryptSymmetric(clientSecret, key);
 
     const oidcCfg = await oidcConfigDAL.create({
       issuer,
@@ -548,12 +616,10 @@ export const oidcConfigServiceFactory = ({
       tokenEndpoint,
       userinfoEndpoint,
       orgId: org.id,
-      encryptedClientId,
-      clientIdIV,
-      clientIdTag,
-      encryptedClientSecret,
-      clientSecretIV,
-      clientSecretTag
+      manageGroupMemberships,
+      jwtSignatureAlgorithm,
+      encryptedOidcClientId: encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob,
+      encryptedOidcClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob
     });
 
     return oidcCfg;
@@ -615,7 +681,8 @@ export const oidcConfigServiceFactory = ({
     const client = new issuer.Client({
       client_id: oidcCfg.clientId,
       client_secret: oidcCfg.clientSecret,
-      redirect_uris: [`${appCfg.SITE_URL}/api/v1/sso/oidc/callback`]
+      redirect_uris: [`${appCfg.SITE_URL}/api/v1/sso/oidc/callback`],
+      id_token_signed_response_alg: oidcCfg.jwtSignatureAlgorithm
     });
 
     const strategy = new OpenIdStrategy(
@@ -647,7 +714,9 @@ export const oidcConfigServiceFactory = ({
           firstName: claims.given_name ?? "",
           lastName: claims.family_name ?? "",
           orgId: org.id,
-          callbackPort
+          groups: claims.groups as string[] | undefined,
+          callbackPort,
+          manageGroupMemberships: oidcCfg.manageGroupMemberships
         })
           .then(({ isUserCompleted, providerAuthToken }) => {
             cb(null, { isUserCompleted, providerAuthToken });
@@ -661,5 +730,16 @@ export const oidcConfigServiceFactory = ({
     return strategy;
   };
 
-  return { oidcLogin, getOrgAuthStrategy, getOidc, updateOidcCfg, createOidcCfg };
+  const isOidcManageGroupMembershipsEnabled = async (orgId: string, actor: OrgServiceActor) => {
+    await permissionService.getUserOrgPermission(actor.id, orgId, actor.authMethod, actor.orgId);
+
+    const oidcConfig = await oidcConfigDAL.findOne({
+      orgId,
+      isActive: true
+    });
+
+    return Boolean(oidcConfig?.manageGroupMemberships);
+  };
+
+  return { oidcLogin, getOrgAuthStrategy, getOidc, updateOidcCfg, createOidcCfg, isOidcManageGroupMembershipsEnabled };
 };

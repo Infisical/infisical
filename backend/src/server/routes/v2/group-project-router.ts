@@ -1,4 +1,3 @@
-import ms from "ms";
 import { z } from "zod";
 
 import {
@@ -7,7 +6,8 @@ import {
   ProjectMembershipRole,
   ProjectUserMembershipRolesSchema
 } from "@app/db/schemas";
-import { PROJECTS } from "@app/lib/api-docs";
+import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
+import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -16,12 +16,14 @@ import { ProjectUserMembershipTemporaryMode } from "@app/services/project-member
 export const registerGroupProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/:projectId/groups/:groupId",
+    url: "/:projectId/groups/:groupIdOrName",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     config: {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectGroups],
       description: "Add group to project",
       security: [
         {
@@ -30,7 +32,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       ],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.ADD_GROUP_TO_PROJECT.projectId),
-        groupId: z.string().trim().describe(PROJECTS.ADD_GROUP_TO_PROJECT.groupId)
+        groupIdOrName: z.string().trim().describe(PROJECTS.ADD_GROUP_TO_PROJECT.groupIdOrName)
       }),
       body: z
         .object({
@@ -76,7 +78,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId,
         roles: req.body.roles || [{ role: req.body.role }],
         projectId: req.params.projectId,
-        groupId: req.params.groupId
+        groupIdOrName: req.params.groupIdOrName
       });
 
       return { groupMembership };
@@ -88,6 +90,8 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     url: "/:projectId/groups/:groupId",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectGroups],
       description: "Update group in project",
       security: [
         {
@@ -147,6 +151,8 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectGroups],
       description: "Remove group from project",
       security: [
         {
@@ -185,6 +191,8 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectGroups],
       description: "Return list of groups in project",
       security: [
         {
@@ -243,6 +251,8 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectGroups],
       description: "Return project group",
       security: [
         {

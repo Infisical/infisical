@@ -100,6 +100,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("lastName").withSchema("committerUser").as("committerUserLastName"),
         tx.ref("reviewerUserId").withSchema(TableName.SecretApprovalRequestReviewer),
         tx.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
+        tx.ref("comment").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerComment"),
         tx.ref("email").withSchema("secretApprovalReviewerUser").as("reviewerEmail"),
         tx.ref("username").withSchema("secretApprovalReviewerUser").as("reviewerUsername"),
         tx.ref("firstName").withSchema("secretApprovalReviewerUser").as("reviewerFirstName"),
@@ -111,7 +112,9 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
         tx.ref("envId").withSchema(TableName.SecretApprovalPolicy).as("policyEnvId"),
         tx.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
-        tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals")
+        tx.ref("allowedSelfApprovals").withSchema(TableName.SecretApprovalPolicy).as("policyAllowedSelfApprovals"),
+        tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
+        tx.ref("deletedAt").withSchema(TableName.SecretApprovalPolicy).as("policyDeletedAt")
       );
 
   const findById = async (id: string, tx?: Knex) => {
@@ -147,7 +150,9 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             approvals: el.policyApprovals,
             secretPath: el.policySecretPath,
             enforcementLevel: el.policyEnforcementLevel,
-            envId: el.policyEnvId
+            envId: el.policyEnvId,
+            deletedAt: el.policyDeletedAt,
+            allowedSelfApprovals: el.policyAllowedSelfApprovals
           }
         }),
         childrenMapper: [
@@ -160,8 +165,10 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               reviewerEmail: email,
               reviewerLastName: lastName,
               reviewerUsername: username,
-              reviewerFirstName: firstName
-            }) => (userId ? { userId, status, email, firstName, lastName, username } : undefined)
+              reviewerFirstName: firstName,
+              reviewerComment: comment
+            }) =>
+              userId ? { userId, status, email, firstName, lastName, username, comment: comment ?? "" } : undefined
           },
           {
             key: "approverUserId",
@@ -222,6 +229,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               `${TableName.SecretApprovalRequest}.policyId`,
               `${TableName.SecretApprovalPolicyApprover}.policyId`
             )
+            .join(
+              TableName.SecretApprovalPolicy,
+              `${TableName.SecretApprovalRequest}.policyId`,
+              `${TableName.SecretApprovalPolicy}.id`
+            )
             .where({ projectId })
             .andWhere(
               (bd) =>
@@ -229,6 +241,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                   .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
                   .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
             )
+            .andWhere((bd) => void bd.where(`${TableName.SecretApprovalPolicy}.deletedAt`, null))
             .select("status", `${TableName.SecretApprovalRequest}.id`)
             .groupBy(`${TableName.SecretApprovalRequest}.id`, "status")
             .count("status")
@@ -325,6 +338,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           ),
           db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
           db.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
+          db.ref("allowedSelfApprovals").withSchema(TableName.SecretApprovalPolicy).as("policyAllowedSelfApprovals"),
           db.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
           db.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
           db.ref("userId").withSchema(TableName.UserGroupMembership).as("approverGroupUserId"),
@@ -353,7 +367,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             name: el.policyName,
             approvals: el.policyApprovals,
             secretPath: el.policySecretPath,
-            enforcementLevel: el.policyEnforcementLevel
+            enforcementLevel: el.policyEnforcementLevel,
+            allowedSelfApprovals: el.policyAllowedSelfApprovals
           },
           committerUser: {
             userId: el.committerUserId,
@@ -471,6 +486,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             `DENSE_RANK() OVER (partition by ${TableName.Environment}."projectId" ORDER BY ${TableName.SecretApprovalRequest}."id" DESC) as rank`
           ),
           db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
+          db.ref("allowedSelfApprovals").withSchema(TableName.SecretApprovalPolicy).as("policyAllowedSelfApprovals"),
           db.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
           db.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
           db.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
@@ -500,7 +516,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             name: el.policyName,
             approvals: el.policyApprovals,
             secretPath: el.policySecretPath,
-            enforcementLevel: el.policyEnforcementLevel
+            enforcementLevel: el.policyEnforcementLevel,
+            allowedSelfApprovals: el.policyAllowedSelfApprovals
           },
           committerUser: {
             userId: el.committerUserId,

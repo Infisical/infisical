@@ -7,8 +7,11 @@ import { registerCaCrlRouter } from "./certificate-authority-crl-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
+import { registerGatewayRouter } from "./gateway-router";
 import { registerGroupRouter } from "./group-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
+import { registerKmipRouter } from "./kmip-router";
+import { registerKmipSpecRouter } from "./kmip-spec-router";
 import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
 import { registerOidcRouter } from "./oidc-router";
@@ -22,9 +25,14 @@ import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-rou
 import { registerSecretApprovalRequestRouter } from "./secret-approval-request-router";
 import { registerSecretRotationProviderRouter } from "./secret-rotation-provider-router";
 import { registerSecretRotationRouter } from "./secret-rotation-router";
+import { registerSecretRouter } from "./secret-router";
 import { registerSecretScanningRouter } from "./secret-scanning-router";
 import { registerSecretVersionRouter } from "./secret-version-router";
 import { registerSnapshotRouter } from "./snapshot-router";
+import { registerSshCaRouter } from "./ssh-certificate-authority-router";
+import { registerSshCertRouter } from "./ssh-certificate-router";
+import { registerSshCertificateTemplateRouter } from "./ssh-certificate-template-router";
+import { registerSshHostRouter } from "./ssh-host-router";
 import { registerTrustedIpRouter } from "./trusted-ip-router";
 import { registerUserAdditionalPrivilegeRouter } from "./user-additional-privilege-router";
 
@@ -61,11 +69,23 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     { prefix: "/dynamic-secrets" }
   );
 
+  await server.register(registerGatewayRouter, { prefix: "/gateways" });
+
   await server.register(
     async (pkiRouter) => {
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
     },
     { prefix: "/pki" }
+  );
+
+  await server.register(
+    async (sshRouter) => {
+      await sshRouter.register(registerSshCaRouter, { prefix: "/ca" });
+      await sshRouter.register(registerSshCertRouter, { prefix: "/certificates" });
+      await sshRouter.register(registerSshCertificateTemplateRouter, { prefix: "/certificate-templates" });
+      await sshRouter.register(registerSshHostRouter, { prefix: "/hosts" });
+    },
+    { prefix: "/ssh" }
   );
 
   await server.register(
@@ -80,6 +100,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerLdapRouter, { prefix: "/ldap" });
   await server.register(registerSecretScanningRouter, { prefix: "/secret-scanning" });
   await server.register(registerSecretRotationRouter, { prefix: "/secret-rotations" });
+  await server.register(registerSecretRouter, { prefix: "/secrets" });
   await server.register(registerSecretVersionRouter, { prefix: "/secret" });
   await server.register(registerGroupRouter, { prefix: "/groups" });
   await server.register(registerAuditLogStreamRouter, { prefix: "/audit-log-streams" });
@@ -96,4 +117,12 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   });
 
   await server.register(registerProjectTemplateRouter, { prefix: "/project-templates" });
+
+  await server.register(
+    async (kmipRouter) => {
+      await kmipRouter.register(registerKmipRouter);
+      await kmipRouter.register(registerKmipSpecRouter, { prefix: "/spec" });
+    },
+    { prefix: "/kmip" }
+  );
 };

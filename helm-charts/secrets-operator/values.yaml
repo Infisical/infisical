@@ -32,7 +32,7 @@ controllerManager:
         - ALL
     image:
       repository: infisical/kubernetes-operator
-      tag: v0.7.4
+      tag: v0.9.1
     resources:
       limits:
         cpu: 500m
@@ -45,7 +45,6 @@ controllerManager:
     annotations: {}
   nodeSelector: {}
   tolerations: []
-kubernetesClusterDomain: cluster.local
 metricsService:
   ports:
   - name: https
@@ -53,3 +52,7 @@ metricsService:
     protocol: TCP
     targetPort: https
   type: ClusterIP
+kubernetesClusterDomain: cluster.local
+scopedNamespace: ""
+scopedRBAC: false
+installCRDs: true

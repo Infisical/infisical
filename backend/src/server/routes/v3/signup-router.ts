@@ -4,6 +4,7 @@ import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
+import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -100,7 +101,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         encryptedPrivateKeyTag: z.string().trim(),
         salt: z.string().trim(),
         verifier: z.string().trim(),
-        organizationName: z.string().trim().min(1),
+        organizationName: GenericResourceNameSchema,
         providerAuthToken: z.string().trim().optional().nullish(),
         attributionSource: z.string().trim().optional(),
         password: z.string()
@@ -118,13 +119,6 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       const userAgent = req.headers["user-agent"];
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
-
-      const serverCfg = await getServerCfg();
-      if (!serverCfg.allowSignUp) {
-        throw new ForbiddenRequestError({
-          message: "Signup's are disabled"
-        });
-      }
 
       const { user, accessToken, refreshToken, organizationId } =
         await server.services.signup.completeEmailAccountSignup({

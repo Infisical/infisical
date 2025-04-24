@@ -1,0 +1,101 @@
+---
+title: "Auth0 Connection"
+description: "Learn how to configure an Auth0 Connection for Infisical."
+---
+
+Infisical supports the use of [Client Credentials](https://auth0.com/docs/get-started/authentication-and-authorization-flow/client-credentials-flow) to connect with your Auth0 applications.
+
+## Configure a Machine-to-Machine Application in Auth0
+
+<Steps>
+    <Step title="Auth0 Applications Dashboard">
+        Navigate to the **Applications** page in Auth0 via the sidebar and click **Create Application**.
+        ![Applications Page](/images/app-connections/auth0/auth0-dashboard-applications.png)
+    </Step>
+    <Step title="Create a Machine-to-Machine Application">
+        Give your application a name and select **Machine-to-Machine** for the application type.
+
+        ![Create Machine-to-Machine Application](/images/app-connections/auth0/auth0-select-m2m.png)
+    </Step>
+    <Step title="Configure Authorization">
+        Depending on your connection use case, authorize your application for the applicable API and grant the relevant permissions. Once done, click **Authorize**.
+
+        <Tabs>
+            <Tab title="Secret Rotation">
+                Select the **Auth0 Management API** option from the dropdown and grant the `update:client_keys` and `read:clients` permission.
+                ![Secret Rotation Authorization](/images/app-connections/auth0/auth0-secret-rotation-api-selection.png)
+            </Tab>
+        </Tabs>
+    </Step>
+    <Step title="Application Client Credentials">
+        On your application page, select the **Settings** tab and copy the **Domain**, **Client ID** and **Client Secret** for later.
+
+        ![Client Credentials](/images/app-connections/auth0/auth0-client-credentials.png)
+    </Step>
+    <Step title="Application Audience">
+        Next, select the **APIs** tab and copy the **API Identifier**.
+        ![Application Audience](/images/app-connections/auth0/auth0-audience.png)
+    </Step>
+</Steps>
+
+## Setup Auth0 Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to the App Connections tab on the Organization Settings page.
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+
+        2. Select the **Auth0 Connection** option.
+        ![Select Auth0 Connection](/images/app-connections/auth0/select-auth0-connection.png)
+
+        3. Select the **Client Credentials** method option and provide the details obtained from the previous section and press **Connect to Auth0**.
+        ![Create Auth0 Connection](/images/app-connections/auth0/client-credentials-create.png)
+
+        4. Your **Auth0 Connection** is now available for use.
+        ![Assume Role Auth0 Connection](/images/app-connections/auth0/client_credentials_connection.png)
+    </Tab>
+    <Tab title="API">
+        To create a Auth0 Connection, make an API request to the [Create Auth0
+        Connection](/api-reference/endpoints/app-connections/auth0/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+        --url https://app.infisical.com/api/v1/app-connections/auth0 \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-auth0-connection",
+            "method": "client-credentials",
+            "credentials": {
+                "domain": "xxx-xxxxxxxxx.us.auth0.com",
+                "clientId": "...",
+                "clientSecret": "...",
+                "audience": "https://xxx-xxxxxxxxx.us.auth0.com/api/v2/"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "appConnection": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-auth0-connection",
+                "version": 1,
+                "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "app": "auth0",
+                "method": "client-credentials",
+                "credentials": {
+                    "domain": "xxx-xxxxxxxxx.us.auth0.com",
+                    "clientId": "...",
+                    "audience": "https://xxx-xxxxxxxxx.us.auth0.com/api/v2/"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

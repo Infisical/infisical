@@ -8,6 +8,13 @@ export enum ProjectVersion {
   V3 = 3
 }
 
+export enum ProjectType {
+  SecretManager = "secret-manager",
+  CertificateManager = "cert-manager",
+  KMS = "kms",
+  SSH = "ssh"
+}
+
 export enum ProjectUserMembershipTemporaryMode {
   Relative = "relative"
 }
@@ -16,6 +23,8 @@ export type Workspace = {
   __v: number;
   id: string;
   name: string;
+  type: ProjectType;
+  description?: string;
   orgId: string;
   version: ProjectVersion;
   upgradeStatus: string | null;
@@ -26,8 +35,8 @@ export type Workspace = {
   auditLogsRetentionDays: number;
   slug: string;
   createdAt: string;
-
   roles?: TProjectRole[];
+  hasDeleteProtection: boolean;
 };
 
 export type WorkspaceEnv = {
@@ -56,14 +65,23 @@ export type TGetUpgradeProjectStatusDTO = {
 // mutation dto
 export type CreateWorkspaceDTO = {
   projectName: string;
+  projectDescription?: string;
   kmsKeyId?: string;
   template?: string;
+  type: ProjectType;
 };
 
-export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };
+export type UpdateProjectDTO = {
+  projectID: string;
+  newProjectName: string;
+  newProjectDescription?: string;
+  newSlug?: string;
+};
+
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };
 export type UpdateAuditLogsRetentionDTO = { projectSlug: string; auditLogsRetentionDays: number };
 export type ToggleAutoCapitalizationDTO = { workspaceID: string; state: boolean };
+export type ToggleDeleteProjectProtectionDTO = { workspaceID: string; state: boolean };
 
 export type DeleteWorkspaceDTO = { workspaceID: string };
 
@@ -157,3 +175,12 @@ export type TListProjectIdentitiesDTO = {
 export enum ProjectIdentityOrderBy {
   Name = "name"
 }
+export type TSearchProjectsDTO = {
+  type?: ProjectType;
+  name?: string;
+  limit?: number;
+  offset?: number;
+  options?: { enabled?: boolean };
+  orderBy?: ProjectIdentityOrderBy;
+  orderDirection?: OrderByDirection;
+};

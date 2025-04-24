@@ -3,16 +3,13 @@ ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 ARG CAPTCHA_SITE_KEY=captcha-site-key
 
-FROM  node:20-alpine AS base
+FROM node:20-slim AS base
 
 FROM base AS frontend-dependencies
 
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
-
 WORKDIR /app
 
-COPY frontend/package.json frontend/package-lock.json frontend/next.config.js ./
+COPY frontend/package.json frontend/package-lock.json  ./
 
 # Install dependencies
 RUN npm ci --only-production --ignore-scripts
@@ -27,17 +24,16 @@ COPY --from=frontend-dependencies /app/node_modules ./node_modules
 COPY /frontend .
 
 ENV NODE_ENV production
-ENV NEXT_PUBLIC_ENV production
 ARG POSTHOG_HOST
-ENV NEXT_PUBLIC_POSTHOG_HOST $POSTHOG_HOST
+ENV VITE_POSTHOG_HOST $POSTHOG_HOST
 ARG POSTHOG_API_KEY
-ENV NEXT_PUBLIC_POSTHOG_API_KEY $POSTHOG_API_KEY
+ENV VITE_POSTHOG_API_KEY $POSTHOG_API_KEY
 ARG INTERCOM_ID
-ENV NEXT_PUBLIC_INTERCOM_ID $INTERCOM_ID
+ENV VITE_INTERCOM_ID $INTERCOM_ID
 ARG INFISICAL_PLATFORM_VERSION
-ENV NEXT_PUBLIC_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
+ENV VITE_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
 ARG CAPTCHA_SITE_KEY
-ENV NEXT_PUBLIC_CAPTCHA_SITE_KEY $CAPTCHA_SITE_KEY 
+ENV VITE_CAPTCHA_SITE_KEY $CAPTCHA_SITE_KEY 
 
 # Build
 RUN npm run build
@@ -46,31 +42,34 @@ RUN npm run build
 FROM base AS frontend-runner
 WORKDIR /app
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 non-root-user
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 --gid nodejs non-root-user
 
-RUN mkdir -p /app/.next/cache/images && chown non-root-user:nodejs /app/.next/cache/images
-VOLUME /app/.next/cache/images
-
-COPY --chown=non-root-user:nodejs --chmod=555 frontend/scripts ./scripts
-COPY --from=frontend-builder /app/public ./public
-RUN chown non-root-user:nodejs ./public/data
-
-COPY --from=frontend-builder --chown=non-root-user:nodejs /app/.next/standalone ./
-COPY --from=frontend-builder --chown=non-root-user:nodejs /app/.next/static ./.next/static
+COPY --from=frontend-builder --chown=non-root-user:nodejs /app/dist ./
 
 USER non-root-user
-
-ENV NEXT_TELEMETRY_DISABLED 1
 
 ##
 ## BACKEND
 ##
 FROM base AS backend-build
-RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 non-root-user
 
 WORKDIR /app
+
+# Install all required dependencies for build
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    unixodbc \
+    freetds-bin \
+    unixodbc-dev \
+    libc-dev \
+    freetds-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 --gid nodejs non-root-user
 
 COPY backend/package*.json ./
 RUN npm ci --only-production
@@ -85,6 +84,21 @@ FROM base AS backend-runner
 
 WORKDIR /app
 
+# Install all required dependencies for runtime
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    unixodbc \
+    freetds-bin \
+    unixodbc-dev \
+    libc-dev \
+    freetds-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Configure ODBC
+RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+
 COPY backend/package*.json ./
 RUN npm ci --only-production
 
@@ -94,13 +108,37 @@ RUN mkdir frontend-build
 
 # Production stage
 FROM base AS production
-RUN apk add --upgrade --no-cache ca-certificates
-RUN apk add --no-cache bash curl && curl -1sLf \
-  'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
-  && apk add infisical=0.31.1 && apk add --no-cache git
 
-RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 non-root-user
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    bash \
+    curl \
+    git \
+    python3 \
+    make \
+    g++ \
+    unixodbc \
+    freetds-bin \
+    unixodbc-dev \
+    libc-dev \
+    freetds-dev \
+		wget \
+    openssh-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Infisical CLI
+RUN curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash \
+    && apt-get update && apt-get install -y infisical=0.31.1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /
+
+# Configure ODBC in production
+RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+
+# Setup user permissions
+RUN groupadd --system --gid 1001 nodejs \
+  && useradd --system --uid 1001 --gid nodejs non-root-user
 
 # Give non-root-user permission to update SSL certs
 RUN chown -R non-root-user /etc/ssl/certs
@@ -112,21 +150,17 @@ RUN chmod u+rx /usr/sbin/update-ca-certificates
 
 ## set pre baked keys
 ARG POSTHOG_API_KEY
-ENV NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY \
-  BAKED_NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY
+ENV POSTHOG_API_KEY=$POSTHOG_API_KEY
 ARG INTERCOM_ID=intercom-id
-ENV NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID \
-  BAKED_NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID
+ENV INTERCOM_ID=$INTERCOM_ID
 ARG CAPTCHA_SITE_KEY
-ENV NEXT_PUBLIC_CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY \
-  BAKED_NEXT_PUBLIC_CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY
-
-WORKDIR / 
+ENV CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY
 
 COPY --from=backend-runner /app /backend
-
 COPY --from=frontend-runner /app ./backend/frontend-build
 
+ARG INFISICAL_PLATFORM_VERSION
+ENV INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
 
 ENV PORT 8080
 ENV HOST=0.0.0.0
@@ -134,6 +168,7 @@ ENV HTTPS_ENABLED false
 ENV NODE_ENV production
 ENV STANDALONE_BUILD true 
 ENV STANDALONE_MODE true
+
 WORKDIR /backend
 
 ENV TELEMETRY_ENABLED true

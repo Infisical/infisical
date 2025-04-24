@@ -34,7 +34,8 @@ export enum Integrations {
   HASURA_CLOUD = "hasura-cloud",
   RUNDECK = "rundeck",
   AZURE_DEVOPS = "azure-devops",
-  AZURE_APP_CONFIGURATION = "azure-app-configuration"
+  AZURE_APP_CONFIGURATION = "azure-app-configuration",
+  OCTOPUS_DEPLOY = "octopus-deploy"
 }
 
 export enum IntegrationType {
@@ -62,6 +63,7 @@ export enum IntegrationUrls {
   GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token",
   GITLAB_TOKEN_URL = "https://gitlab.com/oauth/token",
   BITBUCKET_TOKEN_URL = "https://bitbucket.org/site/oauth2/access_token",
+  CAMUNDA_TOKEN_URL = "https://login.cloud.camunda.io/oauth/token",
 
   // integration apps endpoints
   GCP_API_URL = "https://cloudresourcemanager.googleapis.com",
@@ -75,7 +77,6 @@ export enum IntegrationUrls {
   RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2",
   FLYIO_API_URL = "https://api.fly.io/graphql",
   CIRCLECI_API_URL = "https://circleci.com/api",
-  DATABRICKS_API_URL = "https:/xxxx.com/api",
   TRAVISCI_API_URL = "https://api.travis-ci.com",
   SUPABASE_API_URL = "https://api.supabase.com",
   LARAVELFORGE_API_URL = "https://forge.laravel.com",
@@ -93,6 +94,8 @@ export enum IntegrationUrls {
   NORTHFLANK_API_URL = "https://api.northflank.com",
   HASURA_CLOUD_API_URL = "https://data.pro.hasura.io/v1/graphql",
   AZURE_DEVOPS_API_URL = "https://dev.azure.com",
+  HUMANITEC_API_URL = "https://api.humanitec.io",
+  CAMUNDA_API_URL = "https://api.cloud.camunda.io",
 
   GCP_SECRET_MANAGER_SERVICE_NAME = "secretmanager.googleapis.com",
   GCP_SECRET_MANAGER_URL = `https://${GCP_SECRET_MANAGER_SERVICE_NAME}`,
@@ -192,6 +195,7 @@ export const getIntegrationOptions = async () => {
     {
       name: "AWS Secrets Manager",
       slug: "aws-secret-manager",
+      syncSlug: "aws-secrets-manager",
       image: "Amazon Web Services.png",
       isAvailable: true,
       type: "custom",
@@ -217,9 +221,9 @@ export const getIntegrationOptions = async () => {
       docsLink: ""
     },
     {
-      name: "Circle CI",
+      name: "CircleCI",
       slug: "circleci",
-      image: "Circle CI.png",
+      image: "CircleCI.png",
       isAvailable: true,
       type: "pat",
       clientId: "",
@@ -334,7 +338,7 @@ export const getIntegrationOptions = async () => {
       docsLink: ""
     },
     {
-      name: "BitBucket",
+      name: "Bitbucket",
       slug: "bitbucket",
       image: "BitBucket.png",
       isAvailable: true,
@@ -413,8 +417,22 @@ export const getIntegrationOptions = async () => {
       type: "pat",
       clientId: "",
       docsLink: ""
+    },
+    {
+      name: "Octopus Deploy",
+      slug: "octopus-deploy",
+      image: "Octopus Deploy.png",
+      isAvailable: true,
+      type: "sat",
+      clientId: "",
+      docsLink: ""
     }
   ];
 
   return INTEGRATION_OPTIONS;
 };
+
+export enum IntegrationMetadataSyncMode {
+  CUSTOM = "custom",
+  SECRET_METADATA = "secret-metadata"
+}

@@ -50,7 +50,7 @@ const getIntegrationSecretsV2 = async (
   }
 
   // process secrets in current folder
-  const secrets = await secretV2BridgeDAL.findByFolderId(dto.folderId);
+  const secrets = await secretV2BridgeDAL.findByFolderId({ folderId: dto.folderId });
 
   secrets.forEach((secret) => {
     const secretKey = secret.key;
@@ -68,7 +68,8 @@ const getIntegrationSecretsV2 = async (
     secretDAL: secretV2BridgeDAL,
     secretImportDAL,
     secretImports,
-    hasSecretAccess: () => true
+    hasSecretAccess: () => true,
+    viewSecretValue: true
   });
 
   for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {

@@ -30,12 +30,51 @@ Used to configure platform-specific security and operational settings
 </ParamField>
 
 <ParamField query="TELEMETRY_ENABLED" type="string" default="true" optional>
-  Telemetry helps us improve Infisical but if you want to dsiable it you may set this to `false`.
+  Telemetry helps us improve Infisical but if you want to disable it you may set
+  this to `false`.
+</ParamField>
+
+<ParamField
+  query="ALLOW_INTERNAL_IP_CONNECTIONS"
+  type="bool"
+  default="false"
+  optional
+>
+  Determines whether App Connections and Dynamic Secrets are permitted to
+  connect with internal/private IP addresses.
+</ParamField>
+
+## CORS
+
+Cross-Origin Resource Sharing (CORS) is a security feature that allows web applications running on one domain to access resources from another domain.
+The following environment variables can be used to configure the Infisical Rest API to allow or restrict access to resources from different origins.
+
+<ParamField query="CORS_ALLOWED_ORIGINS" type="string" optional>
+
+Specify a list of origins that are allowed to access the Infisical API.
+
+An example value would be `CORS_ALLOWED_ORIGINS=["https://example.com"]`.
+
+Defaults to the same value as your `SITE_URL` environment variable.
+
+</ParamField>
+
+<ParamField query="CORS_ALLOWED_METHODS" type="string" optional>
+  Array of HTTP methods allowed for CORS requests.
+
+Defaults to reflecting the headers specified in the request's Access-Control-Request-Headers header.
+
 </ParamField>
 
 ## Data Layer
 
 The platform utilizes Postgres to persist all of its data and Redis for caching and backgroud tasks
+
+### PostgreSQL
+
+<Info>
+  Please note that the database user must have **CREATE** privileges along with ability to create and modify tables. This is needed for Infisical to run schema migrations.
+</Info>
 
 <ParamField query="DB_CONNECTION_URI" type="string" default="" required>
   Postgres database connection string.
@@ -45,10 +84,6 @@ The platform utilizes Postgres to persist all of its data and Redis for caching 
   Configure the SSL certificate for securing a Postgres connection by first encoding it in base64. 
   Use the command below to encode your certificate:
   `echo "<certificate>" | base64`
-</ParamField>
-
-<ParamField query="REDIS_URL" type="string" default="none" required>
-  Redis connection string.
 </ParamField>
 
 <ParamField query="DB_READ_REPLICAS" type="string" default="" optional>
@@ -65,12 +100,19 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
 	    Use the command below to encode your certificate:
       `echo "<certificate>" | base64`
 
-			If not provided it will use master SSL certificate.
+    		If not provided it will use master SSL certificate.
     </ParamField>
+
   </Expandable>
 </ParamField>
 
-## Email service
+### Redis
+
+<ParamField query="REDIS_URL" type="string" default="none" required>
+  Redis connection string.
+</ParamField>
+
+## Email Service
 
 Without email configuration, Infisical's core functions like sign-up/login and secret operations work, but this disables multi-factor authentication, email invites for projects, alerts for suspicious logins, and all other email-dependent features.
 
@@ -350,8 +392,9 @@ Optional (for TLS/SSL):
 
 TLS: Available on the same ports (2525, 80, 25, 8025, or 587)
 SSL: Available on ports 465, 8465, and 443
+
 </Note>
-</Accordion> 
+</Accordion>
 
 ## Authentication
 
@@ -415,7 +458,56 @@ When set, all visits to the Infisical login page will automatically redirect use
   information.
 </Accordion>
 
-## Native secret integrations
+## App Connections
+
+You can configure third-party app connections for re-use across Infisical Projects.
+
+<Accordion title="AWS Assume Role Connection">
+    <ParamField query="INF_APP_CONNECTION_AWS_ACCESS_KEY_ID" type="string" default="none" optional>
+        The AWS IAM User access key ID for assuming roles
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY" type="string" default="none" optional>
+        The AWS IAM User secret key for assuming roles
+    </ParamField>
+
+</Accordion>
+
+<Accordion title="GitHub App Connection">
+    <ParamField query="INF_APP_CONNECTION_GITHUB_APP_ID" type="string" default="none" optional>
+        The ID of the GitHub App
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_APP_SLUG" type="string" default="none" optional>
+        The slug of the GitHub App
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID" type="string" default="none" optional>
+        The client ID for the GitHub App
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET" type="string" default="none" optional>
+        The client secret for the GitHub App
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY" type="string" default="none" optional>
+        The private key for the GitHub App
+    </ParamField>
+
+</Accordion>
+
+<Accordion title="GitHub OAuth Connection">
+    <ParamField query="INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID" type="string" default="none" optional>
+        The OAuth2 client ID for GitHub OAuth Connection
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET" type="string" default="none" optional>
+        The OAuth2 client secret for GitHub OAuth Connection
+    </ParamField>
+
+</Accordion>
+
+## Native Secret Integrations
 
 To help you sync secrets from Infisical to services such as Github and Gitlab, Infisical provides native integrations out of the box.
 
@@ -489,7 +581,7 @@ To help you sync secrets from Infisical to services such as Github and Gitlab, I
   </ParamField>
 </Accordion>
 
-<Accordion title="AWS">
+<Accordion title="AWS Integration">
   <ParamField query="CLIENT_ID_AWS_INTEGRATION" type="string" default="none" optional>
 	  The AWS IAM User access key for assuming roles.
   </ParamField>
@@ -518,3 +610,36 @@ To help you sync secrets from Infisical to services such as Github and Gitlab, I
     OAuth2 client secret for Gitlab integration
   </ParamField>
 </Accordion>
+
+## Observability
+
+You can configure Infisical to collect and expose telemetry data for analytics and monitoring.
+
+<ParamField
+  query="OTEL_TELEMETRY_COLLECTION_ENABLED"
+  type="string"
+  default="false"
+>
+  Whether or not to collect and expose telemetry data.
+</ParamField>
+
+<ParamField query="OTEL_EXPORT_TYPE" type="enum" optional>
+  Supported types are `prometheus` and `otlp`.
+
+If export type is set to `prometheus`, metric data will be exposed in port 9464 in the `/metrics` path.
+
+If export type is set to `otlp`, you will have to configure a value for `OTEL_EXPORT_OTLP_ENDPOINT`.
+
+</ParamField>
+
+<ParamField query="OTEL_EXPORT_OTLP_ENDPOINT" type="string">
+  Where telemetry data would be pushed to for collection. This is only
+  applicable when `OTEL_EXPORT_TYPE` is set to `otlp`.
+</ParamField>
+
+<ParamField query="OTEL_COLLECTOR_BASIC_AUTH_USERNAME" type="string">
+  The username for authenticating with the telemetry collector.
+</ParamField>
+<ParamField query="OTEL_COLLECTOR_BASIC_AUTH_PASSWORD" type="string">
+  The password for authenticating with the telemetry collector.
+</ParamField>

@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import picomatch from "picomatch";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -11,6 +12,8 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { ApproverType } from "../access-approval-policy/access-approval-policy-types";
 import { TLicenseServiceFactory } from "../license/license-service";
+import { TSecretApprovalRequestDALFactory } from "../secret-approval-request/secret-approval-request-dal";
+import { RequestState } from "../secret-approval-request/secret-approval-request-types";
 import { TSecretApprovalPolicyApproverDALFactory } from "./secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "./secret-approval-policy-dal";
 import {
@@ -34,6 +37,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "update">;
 };
 
 export type TSecretApprovalPolicyServiceFactory = ReturnType<typeof secretApprovalPolicyServiceFactory>;
@@ -44,7 +48,8 @@ export const secretApprovalPolicyServiceFactory = ({
   secretApprovalPolicyApproverDAL,
   projectEnvDAL,
   userDAL,
-  licenseService
+  licenseService,
+  secretApprovalRequestDAL
 }: TSecretApprovalPolicyServiceFactoryDep) => {
   const createSecretApprovalPolicy = async ({
     name,
@@ -57,7 +62,8 @@ export const secretApprovalPolicyServiceFactory = ({
     projectId,
     secretPath,
     environment,
-    enforcementLevel
+    enforcementLevel,
+    allowedSelfApprovals
   }: TCreateSapDTO) => {
     const groupApprovers = approvers
       ?.filter((approver) => approver.type === ApproverType.Group)
@@ -74,13 +80,14 @@ export const secretApprovalPolicyServiceFactory = ({
     if (!groupApprovers.length && approvals > approvers.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretApproval
@@ -107,7 +114,8 @@ export const secretApprovalPolicyServiceFactory = ({
           approvals,
           secretPath,
           name,
-          enforcementLevel
+          enforcementLevel,
+          allowedSelfApprovals
         },
         tx
       );
@@ -166,7 +174,8 @@ export const secretApprovalPolicyServiceFactory = ({
     actorAuthMethod,
     approvals,
     secretPolicyId,
-    enforcementLevel
+    enforcementLevel,
+    allowedSelfApprovals
   }: TUpdateSapDTO) => {
     const groupApprovers = approvers
       ?.filter((approver) => approver.type === ApproverType.Group)
@@ -187,13 +196,14 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      secretApprovalPolicy.projectId,
+      projectId: secretApprovalPolicy.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -211,7 +221,8 @@ export const secretApprovalPolicyServiceFactory = ({
           approvals,
           secretPath,
           name,
-          enforcementLevel
+          enforcementLevel,
+          allowedSelfApprovals
         },
         tx
       );
@@ -281,13 +292,14 @@ export const secretApprovalPolicyServiceFactory = ({
     if (!sapPolicy)
       throw new NotFoundError({ message: `Secret approval policy with ID '${secretPolicyId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      sapPolicy.projectId,
+      projectId: sapPolicy.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SecretApproval
@@ -301,8 +313,16 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
-    await secretApprovalPolicyDAL.deleteById(secretPolicyId);
-    return sapPolicy;
+    const deletedPolicy = await secretApprovalPolicyDAL.transaction(async (tx) => {
+      await secretApprovalRequestDAL.update(
+        { policyId: secretPolicyId, status: RequestState.Open },
+        { status: RequestState.Closed },
+        tx
+      );
+      const updatedPolicy = await secretApprovalPolicyDAL.softDeleteById(secretPolicyId, tx);
+      return updatedPolicy;
+    });
+    return { ...deletedPolicy, projectId: sapPolicy.projectId, environment: sapPolicy.environment };
   };
 
   const getSecretApprovalPolicyByProjectId = async ({
@@ -312,16 +332,17 @@ export const secretApprovalPolicyServiceFactory = ({
     actorAuthMethod,
     projectId
   }: TListSapDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 
-    const sapPolicies = await secretApprovalPolicyDAL.find({ projectId });
+    const sapPolicies = await secretApprovalPolicyDAL.find({ projectId, deletedAt: null });
     return sapPolicies;
   };
 
@@ -334,7 +355,7 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
-    const policies = await secretApprovalPolicyDAL.find({ envId: env.id });
+    const policies = await secretApprovalPolicyDAL.find({ envId: env.id, deletedAt: null });
     if (!policies.length) return;
     // this will filter policies either without scoped to secret path or the one that matches with secret path
     const policiesFilteredByPath = policies.filter(
@@ -356,7 +377,14 @@ export const secretApprovalPolicyServiceFactory = ({
     environment,
     secretPath
   }: TGetBoardSapDTO) => {
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     return getSecretApprovalPolicy(projectId, environment, secretPath);
   };
@@ -376,13 +404,14 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      sapPolicy.projectId,
+      projectId: sapPolicy.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 

@@ -1,5 +1,10 @@
+import {
+  APP_CONNECTION_REGISTER_ROUTER_MAP,
+  registerAppConnectionRouter
+} from "@app/server/routes/v1/app-connection-routers";
 import { registerCmekRouter } from "@app/server/routes/v1/cmek-router";
 import { registerDashboardRouter } from "@app/server/routes/v1/dashboard-router";
+import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/server/routes/v1/secret-sync-routers";
 
 import { registerAdminRouter } from "./admin-router";
 import { registerAuthRoutes } from "./auth-router";
@@ -12,6 +17,7 @@ import { registerIdentityAccessTokenRouter } from "./identity-access-token-route
 import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
 import { registerIdentityAzureAuthRouter } from "./identity-azure-auth-router";
 import { registerIdentityGcpAuthRouter } from "./identity-gcp-auth-router";
+import { registerIdentityJwtAuthRouter } from "./identity-jwt-auth-router";
 import { registerIdentityKubernetesRouter } from "./identity-kubernetes-auth-router";
 import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
 import { registerIdentityRouter } from "./identity-router";
@@ -31,6 +37,7 @@ import { registerProjectMembershipRouter } from "./project-membership-router";
 import { registerProjectRouter } from "./project-router";
 import { registerSecretFolderRouter } from "./secret-folder-router";
 import { registerSecretImportRouter } from "./secret-import-router";
+import { registerSecretRequestsRouter } from "./secret-requests-router";
 import { registerSecretSharingRouter } from "./secret-sharing-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
 import { registerSlackRouter } from "./slack-router";
@@ -54,6 +61,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await authRouter.register(registerIdentityAwsAuthRouter);
       await authRouter.register(registerIdentityAzureAuthRouter);
       await authRouter.register(registerIdentityOidcAuthRouter);
+      await authRouter.register(registerIdentityJwtAuthRouter);
     },
     { prefix: "/auth" }
   );
@@ -83,7 +91,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await projectRouter.register(registerProjectMembershipRouter);
       await projectRouter.register(registerSecretTagRouter);
     },
-
     { prefix: "/workspace" }
   );
 
@@ -103,9 +110,43 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerIntegrationAuthRouter, { prefix: "/integration-auth" });
   await server.register(registerWebhookRouter, { prefix: "/webhooks" });
   await server.register(registerIdentityRouter, { prefix: "/identities" });
-  await server.register(registerSecretSharingRouter, { prefix: "/secret-sharing" });
+
+  await server.register(
+    async (secretSharingRouter) => {
+      await secretSharingRouter.register(registerSecretSharingRouter, { prefix: "/shared" });
+      await secretSharingRouter.register(registerSecretRequestsRouter, { prefix: "/requests" });
+    },
+    { prefix: "/secret-sharing" }
+  );
+
   await server.register(registerUserEngagementRouter, { prefix: "/user-engagement" });
   await server.register(registerDashboardRouter, { prefix: "/dashboard" });
   await server.register(registerCmekRouter, { prefix: "/kms" });
   await server.register(registerExternalGroupOrgRoleMappingRouter, { prefix: "/external-group-mappings" });
+
+  await server.register(
+    async (appConnectionRouter) => {
+      // register generic app connection endpoints
+      await appConnectionRouter.register(registerAppConnectionRouter);
+
+      // register service specific endpoints (app-connections/aws, app-connections/github, etc.)
+      for await (const [app, router] of Object.entries(APP_CONNECTION_REGISTER_ROUTER_MAP)) {
+        await appConnectionRouter.register(router, { prefix: `/${app}` });
+      }
+    },
+    { prefix: "/app-connections" }
+  );
+
+  await server.register(
+    async (secretSyncRouter) => {
+      // register generic secret sync endpoints
+      await secretSyncRouter.register(registerSecretSyncRouter);
+
+      // register service specific secret sync endpoints (secret-syncs/aws-parameter-store, secret-syncs/github, etc.)
+      for await (const [destination, router] of Object.entries(SECRET_SYNC_REGISTER_ROUTER_MAP)) {
+        await secretSyncRouter.register(router, { prefix: `/${destination}` });
+      }
+    },
+    { prefix: "/secret-syncs" }
+  );
 };

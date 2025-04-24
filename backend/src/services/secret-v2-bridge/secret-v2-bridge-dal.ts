@@ -1,8 +1,12 @@
+import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { validate as uuidValidate } from "uuid";
 
 import { TDbClient } from "@app/db";
-import { SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecretsV2Update } from "@app/db/schemas";
+import { ProjectType, SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecretsV2Update } from "@app/db/schemas";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
+import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import {
   buildFindFilter,
@@ -14,12 +18,47 @@ import {
 } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
-import { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import type {
+  TFindSecretsByFolderIdsFilter,
+  TGetSecretsDTO
+} from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+
+export const SecretServiceCacheKeys = {
+  get productKey() {
+    const { INFISICAL_PLATFORM_VERSION } = getConfig();
+    return `${ProjectType.SecretManager}:${INFISICAL_PLATFORM_VERSION || 0}`;
+  },
+  getSecretDalVersion: (projectId: string) => {
+    return `${SecretServiceCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal-version`;
+  },
+  getSecretsOfServiceLayer: (
+    projectId: string,
+    version: number,
+    dto: TGetSecretsDTO & { permissionRules: MongoAbility["rules"] }
+  ) => {
+    return `${SecretServiceCacheKeys.productKey}:${projectId}:${
+      TableName.SecretV2
+    }-dal:v${version}:get-secrets-service-layer:${dto.actorId}-${generateCacheKeyFromData(dto)}`;
+  }
+};
 
 export type TSecretV2BridgeDALFactory = ReturnType<typeof secretV2BridgeDALFactory>;
+interface TSecretV2DalArg {
+  db: TDbClient;
+  keyStore: TKeyStoreFactory;
+}
 
-export const secretV2BridgeDALFactory = (db: TDbClient) => {
+export const SECRET_DAL_TTL = 5 * 60;
+export const SECRET_DAL_VERSION_TTL = 15 * 60;
+export const MAX_SECRET_CACHE_BYTES = 25 * 1024 * 1024;
+export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const secretOrm = ormify(db, TableName.SecretV2);
+
+  const invalidateSecretCacheByProjectId = async (projectId: string) => {
+    const secretDalVersionKey = SecretServiceCacheKeys.getSecretDalVersion(projectId);
+    await keyStore.incrementBy(secretDalVersionKey, 1);
+    await keyStore.setExpiry(secretDalVersionKey, SECRET_DAL_VERSION_TTL);
+  };
 
   const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
     try {
@@ -35,15 +74,25 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
+        .leftJoin(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretRotationV2SecretMapping}.secretId`
+        )
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
-        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
-
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
       const data = sqlNestRelationships({
         data: docs,
         key: "id",
-        parentMapper: (el) => ({ _id: el.id, ...SecretsV2Schema.parse(el) }),
+        parentMapper: (el) => ({
+          _id: el.id,
+          ...SecretsV2Schema.parse(el),
+          isRotatedSecret: Boolean(el.rotationId),
+          rotationId: el.rotationId
+        }),
         childrenMapper: [
           {
             key: "tagId",
@@ -63,7 +112,8 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     }
   };
 
-  const find = async (filter: TFindFilter<TSecretsV2>, { offset, limit, sort, tx }: TFindOpt<TSecretsV2> = {}) => {
+  const find = async (filter: TFindFilter<TSecretsV2>, opts: TFindOpt<TSecretsV2> = {}) => {
+    const { offset, limit, sort, tx } = opts;
     try {
       const query = (tx || db)(TableName.SecretV2)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -78,10 +128,22 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
+        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
+        .leftJoin(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretRotationV2SecretMapping}.secretId`
+        )
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+        )
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
-        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {
@@ -92,7 +154,12 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
       const data = sqlNestRelationships({
         data: docs,
         key: "id",
-        parentMapper: (el) => ({ _id: el.id, ...SecretsV2Schema.parse(el) }),
+        parentMapper: (el) => ({
+          _id: el.id,
+          ...SecretsV2Schema.parse(el),
+          rotationId: el.rotationId,
+          isRotatedSecret: Boolean(el.rotationId)
+        }),
         childrenMapper: [
           {
             key: "tagId",
@@ -103,9 +170,19 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
               slug,
               name: slug
             })
+          },
+          {
+            key: "metadataId",
+            label: "secretMetadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
+            })
           }
         ]
       });
+
       return data;
     } catch (error) {
       throw new DatabaseError({ error, name: `${TableName.SecretV2}: Find` });
@@ -210,9 +287,11 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByFolderId = async (folderId: string, userId?: string, tx?: Knex) => {
+  const findByFolderId = async (dto: { folderId: string; userId?: string; tx?: Knex }) => {
     try {
-      // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo)
+      const { folderId, tx } = dto;
+      let { userId } = dto;
+      // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo
       if (userId && !uuidValidate(userId)) {
         // eslint-disable-next-line
         userId = undefined;
@@ -221,7 +300,9 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
       const secs = await (tx || db.replicaNode())(TableName.SecretV2)
         .where({ folderId })
         .where((bd) => {
-          void bd.whereNull("userId").orWhere({ userId: userId || null });
+          void bd
+            .whereNull(`${TableName.SecretV2}.userId`)
+            .orWhere({ [`${TableName.SecretV2}.userId` as "userId"]: userId || null });
         })
         .leftJoin(
           TableName.SecretV2JnTag,
@@ -233,10 +314,16 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
+        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+        )
         .orderBy("id", "asc");
 
       const data = sqlNestRelationships({
@@ -252,6 +339,15 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
               color,
               slug,
               name: slug
+            })
+          },
+          {
+            key: "metadataId",
+            label: "secretMetadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
             })
           }
         ]
@@ -300,6 +396,11 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
       }
 
       const query = (tx || db.replicaNode())(TableName.SecretV2)
+        .leftJoin(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretRotationV2SecretMapping}.secretId`
+        )
         .whereIn("folderId", folderIds)
         .where((bd) => {
           if (filters?.search) {
@@ -336,12 +437,14 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByFolderIds = async (
-    folderIds: string[],
-    userId?: string,
-    tx?: Knex,
-    filters?: TFindSecretsByFolderIdsFilter
-  ) => {
+  const findByFolderIds = async (dto: {
+    folderIds: string[];
+    userId?: string;
+    tx?: Knex;
+    filters?: TFindSecretsByFolderIdsFilter;
+  }) => {
+    const { folderIds, tx, filters } = dto;
+    let { userId } = dto;
     try {
       // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo)
       if (userId && !uuidValidate(userId)) {
@@ -361,9 +464,15 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
               void bd.whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`);
             }
           }
+
+          if (filters?.keys) {
+            void bd.whereIn(`${TableName.SecretV2}.key`, filters.keys);
+          }
         })
         .where((bd) => {
-          void bd.whereNull(`${TableName.SecretV2}.userId`).orWhere({ userId: userId || null });
+          void bd
+            .whereNull(`${TableName.SecretV2}.userId`)
+            .orWhere({ [`${TableName.SecretV2}.userId` as "userId"]: userId || null });
         })
         .leftJoin(
           TableName.SecretV2JnTag,
@@ -375,13 +484,43 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
+        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
+        .leftJoin(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretRotationV2SecretMapping}.secretId`
+        )
+        .where((qb) => {
+          if (filters?.metadataFilter && filters.metadataFilter.length > 0) {
+            filters.metadataFilter.forEach((meta) => {
+              void qb.whereExists((subQuery) => {
+                void subQuery
+                  .select("secretId")
+                  .from(TableName.ResourceMetadata)
+                  .whereRaw(`"${TableName.ResourceMetadata}"."secretId" = "${TableName.SecretV2}"."id"`)
+                  .where(`${TableName.ResourceMetadata}.key`, meta.key)
+                  .where(`${TableName.ResourceMetadata}.value`, meta.value);
+              });
+            });
+          }
+        })
         .select(
           selectAllTableCols(TableName.SecretV2),
-          db.raw(`DENSE_RANK() OVER (ORDER BY "key" ${filters?.orderDirection ?? OrderByDirection.ASC}) as rank`)
+          db.raw(
+            `DENSE_RANK() OVER (ORDER BY "${TableName.SecretV2}".key ${
+              filters?.orderDirection ?? OrderByDirection.ASC
+            }) as rank`
+          )
         )
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+        )
+        .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping))
         .where((bd) => {
           const slugs = filters?.tagSlugs?.filter(Boolean);
           if (slugs && slugs.length > 0) {
@@ -410,7 +549,12 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
       const data = sqlNestRelationships({
         data: secs,
         key: "id",
-        parentMapper: (el) => ({ _id: el.id, ...SecretsV2Schema.parse(el) }),
+        parentMapper: (el) => ({
+          _id: el.id,
+          ...SecretsV2Schema.parse(el),
+          rotationId: el.rotationId,
+          isRotatedSecret: Boolean(el.rotationId)
+        }),
         childrenMapper: [
           {
             key: "tagId",
@@ -421,9 +565,19 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
               slug,
               name: slug
             })
+          },
+          {
+            key: "metadataId",
+            label: "secretMetadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
+            })
           }
         ]
       });
+
       return data;
     } catch (error) {
       throw new DatabaseError({ error, name: "get all secret" });
@@ -439,6 +593,7 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     try {
       const secrets = await (tx || db.replicaNode())(TableName.SecretV2)
         .where({ folderId })
+
         .where((bd) => {
           query.forEach((el) => {
             if (el.type === SecretType.Personal && !el.userId) {
@@ -450,10 +605,20 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
               userId: el.type === SecretType.Personal ? el.userId : null
             });
           });
-        });
-      return secrets;
+        })
+        .leftJoin(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretRotationV2SecretMapping}.secretId`
+        )
+        .select(selectAllTableCols(TableName.SecretV2))
+        .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
+      return secrets.map((secret) => ({
+        ...secret,
+        isRotatedSecret: Boolean(secret.rotationId)
+      }));
     } catch (error) {
-      throw new DatabaseError({ error, name: "find by blind indexes" });
+      throw new DatabaseError({ error, name: "find by secret keys" });
     }
   };
 
@@ -541,14 +706,25 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
+
+        .leftJoin(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
-        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+        )
+        .select(db.ref("projectId").withSchema(TableName.Environment).as("projectId"));
+
       const docs = sqlNestRelationships({
         data: rawDocs,
         key: "id",
-        parentMapper: (el) => ({ _id: el.id, ...SecretsV2Schema.parse(el) }),
+        parentMapper: (el) => ({ _id: el.id, projectId: el.projectId, ...SecretsV2Schema.parse(el) }),
         childrenMapper: [
           {
             key: "tagId",
@@ -558,6 +734,15 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
               color,
               slug,
               name: slug
+            })
+          },
+          {
+            key: "metadataId",
+            label: "secretMetadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
             })
           }
         ]
@@ -584,6 +769,7 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     findAllProjectSecretValues,
     countByFolderIds,
     findOne,
-    find
+    find,
+    invalidateSecretCacheByProjectId
   };
 };

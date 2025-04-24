@@ -18,6 +18,7 @@ import { TGroupProjectDALFactory } from "@app/services/group-project/group-proje
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { deleteOrgMembershipFn } from "@app/services/org/org-fns";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
+import { OrgAuthMethod } from "@app/services/org/org-types";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -71,6 +72,7 @@ type TScimServiceFactoryDep = {
     | "deleteMembershipById"
     | "transaction"
     | "updateMembershipById"
+    | "findOrgById"
   >;
   orgMembershipDAL: Pick<
     TOrgMembershipDALFactory,
@@ -288,8 +290,7 @@ export const scimServiceFactory = ({
   const createScimUser = async ({ externalId, email, firstName, lastName, orgId }: TCreateScimUserDTO) => {
     if (!email) throw new ScimRequestError({ detail: "Invalid request. Missing email.", status: 400 });
 
-    const org = await orgDAL.findById(orgId);
-
+    const org = await orgDAL.findOrgById(orgId);
     if (!org)
       throw new ScimRequestError({
         detail: "Organization not found",
@@ -302,13 +303,24 @@ export const scimServiceFactory = ({
         status: 403
       });
 
+    if (!org.orgAuthMethod) {
+      throw new ScimRequestError({
+        detail: "Neither SAML or OIDC SSO is configured",
+        status: 400
+      });
+    }
+
     const appCfg = getConfig();
     const serverCfg = await getServerCfg();
+
+    const aliasType = org.orgAuthMethod === OrgAuthMethod.OIDC ? UserAliasType.OIDC : UserAliasType.SAML;
+    const trustScimEmails =
+      org.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails;
 
     const userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
-      aliasType: UserAliasType.SAML
+      aliasType
     });
 
     const { user: createdUser, orgMembership: createdOrgMembership } = await userDAL.transaction(async (tx) => {
@@ -349,7 +361,7 @@ export const scimServiceFactory = ({
           );
         }
       } else {
-        if (serverCfg.trustSamlEmails) {
+        if (trustScimEmails) {
           user = await userDAL.findOne(
             {
               email,
@@ -367,9 +379,9 @@ export const scimServiceFactory = ({
           );
           user = await userDAL.create(
             {
-              username: serverCfg.trustSamlEmails ? email : uniqueUsername,
+              username: trustScimEmails ? email : uniqueUsername,
               email,
-              isEmailVerified: serverCfg.trustSamlEmails,
+              isEmailVerified: trustScimEmails,
               firstName,
               lastName,
               authMethods: [],
@@ -382,7 +394,7 @@ export const scimServiceFactory = ({
         await userAliasDAL.create(
           {
             userId: user.id,
-            aliasType: UserAliasType.SAML,
+            aliasType,
             externalId,
             emails: email ? [email] : [],
             orgId
@@ -437,7 +449,7 @@ export const scimServiceFactory = ({
         recipients: [email],
         substitutions: {
           organizationName: org.name,
-          callback_url: `${appCfg.SITE_URL}/api/v1/sso/redirect/saml2/organizations/${org.slug}`
+          callback_url: `${appCfg.SITE_URL}/api/v1/sso/redirect/organizations/${org.slug}`
         }
       });
     }
@@ -456,6 +468,14 @@ export const scimServiceFactory = ({
 
   // partial
   const updateScimUser = async ({ orgMembershipId, orgId, operations }: TUpdateScimUserDTO) => {
+    const org = await orgDAL.findOrgById(orgId);
+    if (!org.orgAuthMethod) {
+      throw new ScimRequestError({
+        detail: "Neither SAML or OIDC SSO is configured",
+        status: 400
+      });
+    }
+
     const [membership] = await orgDAL
       .findMembership({
         [`${TableName.OrgMembership}.id` as "id"]: orgMembershipId,
@@ -493,6 +513,9 @@ export const scimServiceFactory = ({
     scimPatch(scimUser, operations);
 
     const serverCfg = await getServerCfg();
+    const trustScimEmails =
+      org.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails;
+
     await userDAL.transaction(async (tx) => {
       await orgMembershipDAL.updateById(
         membership.id,
@@ -508,7 +531,7 @@ export const scimServiceFactory = ({
           firstName: scimUser.name.givenName,
           email: scimUser.emails[0].value,
           lastName: scimUser.name.familyName,
-          isEmailVerified: hasEmailChanged ? serverCfg.trustSamlEmails : true
+          isEmailVerified: hasEmailChanged ? trustScimEmails : undefined
         },
         tx
       );
@@ -526,6 +549,14 @@ export const scimServiceFactory = ({
     email,
     externalId
   }: TReplaceScimUserDTO) => {
+    const org = await orgDAL.findOrgById(orgId);
+    if (!org.orgAuthMethod) {
+      throw new ScimRequestError({
+        detail: "Neither SAML or OIDC SSO is configured",
+        status: 400
+      });
+    }
+
     const [membership] = await orgDAL
       .findMembership({
         [`${TableName.OrgMembership}.id` as "id"]: orgMembershipId,
@@ -555,7 +586,7 @@ export const scimServiceFactory = ({
       await userAliasDAL.update(
         {
           orgId,
-          aliasType: UserAliasType.SAML,
+          aliasType: org.orgAuthMethod === OrgAuthMethod.OIDC ? UserAliasType.OIDC : UserAliasType.SAML,
           userId: membership.userId
         },
         {
@@ -563,6 +594,7 @@ export const scimServiceFactory = ({
         },
         tx
       );
+
       await orgMembershipDAL.updateById(
         membership.id,
         {
@@ -576,7 +608,8 @@ export const scimServiceFactory = ({
           firstName,
           email,
           lastName,
-          isEmailVerified: serverCfg.trustSamlEmails
+          isEmailVerified:
+            org.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails
         },
         tx
       );
@@ -758,6 +791,21 @@ export const scimServiceFactory = ({
       });
 
     const newGroup = await groupDAL.transaction(async (tx) => {
+      const conflictingGroup = await groupDAL.findOne(
+        {
+          name: displayName,
+          orgId
+        },
+        tx
+      );
+
+      if (conflictingGroup) {
+        throw new ScimRequestError({
+          detail: `Group with name '${displayName}' already exists in the organization`,
+          status: 409
+        });
+      }
+
       const group = await groupDAL.create(
         {
           name: displayName,

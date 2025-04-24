@@ -1,14 +1,16 @@
-import { ForbiddenError } from "@casl/ability";
-import ms from "ms";
+import { ForbiddenError, subject } from "@casl/ability";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { ms } from "@app/lib/ms";
 
-import { ActorType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { ProjectUserMembershipTemporaryMode } from "../project-membership/project-membership-types";
@@ -19,6 +21,7 @@ import {
   TCreateProjectIdentityDTO,
   TDeleteProjectIdentityDTO,
   TGetProjectIdentityByIdentityIdDTO,
+  TGetProjectIdentityByMembershipIdDTO,
   TListProjectIdentityDTO,
   TUpdateProjectIdentityDTO
 } from "./identity-project-types";
@@ -54,14 +57,20 @@ export const identityProjectServiceFactory = ({
     projectId,
     roles
   }: TCreateProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Create,
+      subject(ProjectPermissionSub.Identity, {
+        identityId
+      })
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Identity);
 
     const existingIdentity = await identityProjectDAL.findOne({ identityId, projectId });
     if (existingIdentity)
@@ -85,11 +94,23 @@ export const identityProjectServiceFactory = ({
         projectId
       );
 
-      const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
-
-      if (!hasRequiredPriviledges) {
-        throw new ForbiddenRequestError({ message: "Failed to change to a more privileged role" });
-      }
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
+        ProjectPermissionIdentityActions.GrantPrivileges,
+        ProjectPermissionSub.Identity,
+        permission,
+        rolePermission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to assign to role",
+            membership.shouldUseNewPrivilegeSystem,
+            ProjectPermissionIdentityActions.GrantPrivileges,
+            ProjectPermissionSub.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     // validate custom roles input
@@ -154,14 +175,18 @@ export const identityProjectServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TUpdateProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Edit,
+      subject(ProjectPermissionSub.Identity, { identityId })
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
 
     const projectIdentity = await identityProjectDAL.findOne({ identityId, projectId });
     if (!projectIdentity)
@@ -175,14 +200,34 @@ export const identityProjectServiceFactory = ({
         projectId
       );
 
-      if (!isAtLeastAsPrivileged(permission, rolePermission)) {
-        throw new ForbiddenRequestError({ message: "Failed to change to a more privileged role" });
-      }
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
+        ProjectPermissionIdentityActions.GrantPrivileges,
+        ProjectPermissionSub.Identity,
+        permission,
+        rolePermission
+      );
+
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to change role",
+            membership.shouldUseNewPrivilegeSystem,
+            ProjectPermissionIdentityActions.GrantPrivileges,
+            ProjectPermissionSub.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     // validate custom roles input
     const customInputRoles = roles.filter(
-      ({ role }) => !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
+      ({ role }) =>
+        !Object.values(ProjectMembershipRole)
+          // we don't want to include custom in this check;
+          // this unintentionally enables setting slug to custom which is reserved
+          .filter((r) => r !== ProjectMembershipRole.Custom)
+          .includes(role as ProjectMembershipRole)
     );
     const hasCustomRole = Boolean(customInputRoles.length);
     const customRoles = hasCustomRole
@@ -241,23 +286,18 @@ export const identityProjectServiceFactory = ({
       throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      identityProjectMembership.projectId,
+      projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Delete,
+      subject(ProjectPermissionSub.Identity, { identityId })
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Identity);
-    const { permission: identityRolePermission } = await permissionService.getProjectPermission(
-      ActorType.IDENTITY,
-      identityId,
-      identityProjectMembership.projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    if (!isAtLeastAsPrivileged(permission, identityRolePermission))
-      throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
 
     const [deletedIdentity] = await identityProjectDAL.delete({ identityId, projectId });
     return deletedIdentity;
@@ -275,14 +315,18 @@ export const identityProjectServiceFactory = ({
     orderDirection,
     search
   }: TListProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionSub.Identity
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
 
     const identityMemberships = await identityProjectDAL.findByProjectId(projectId, {
       limit,
@@ -305,14 +349,19 @@ export const identityProjectServiceFactory = ({
     actorOrgId,
     identityId
   }: TGetProjectIdentityByIdentityIdDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Read,
+      subject(ProjectPermissionSub.Identity, { identityId })
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
 
     const [identityMembership] = await identityProjectDAL.findByProjectId(projectId, { identityId });
     if (!identityMembership)
@@ -322,11 +371,48 @@ export const identityProjectServiceFactory = ({
     return identityMembership;
   };
 
+  const getProjectIdentityByMembershipId = async ({
+    identityMembershipId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetProjectIdentityByMembershipIdDTO) => {
+    const membership = await identityProjectDAL.findOne({ id: identityMembershipId });
+
+    if (!membership) {
+      throw new NotFoundError({
+        message: `Project membership with ID '${identityMembershipId}' not found`
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: membership.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Read,
+      subject(ProjectPermissionSub.Identity, { identityId: membership.identityId })
+    );
+
+    const [identityMembership] = await identityProjectDAL.findByProjectId(membership.projectId, {
+      identityId: membership.identityId
+    });
+
+    return identityMembership;
+  };
+
   return {
     createProjectIdentity,
     updateProjectIdentity,
     deleteProjectIdentity,
     listProjectIdentities,
-    getProjectIdentityByIdentityId
+    getProjectIdentityByIdentityId,
+    getProjectIdentityByMembershipId
   };
 };

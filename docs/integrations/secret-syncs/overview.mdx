@@ -1,0 +1,96 @@
+---
+sidebarTitle: "Overview"
+description: "Learn how to sync secrets to third-party services with Infisical."
+---
+
+Secret Syncs enable you to sync secrets from Infisical to third-party services using [App Connections](/integrations/app-connections/overview).
+
+<Note>
+    Secret Syncs will gradually replace Native Integrations as they become available. Native Integrations will be deprecated in the future, so opt for configuring a Secret Sync when available.
+</Note>
+
+## Concept
+
+Secret Syncs are a project-level resource used to sync secrets, via an [App Connection](/integrations/app-connections/overview), from a particular project environment and folder path (source)
+to a third-party service (destination). Changes to the source will automatically be propagated to the destination, ensuring
+your secrets are always up-to-date.
+
+<br />
+
+<div align="center">
+
+    ```mermaid
+    %%{init: {'flowchart': {'curve': 'linear'} } }%%
+    graph LR
+    A[App Connection]
+    B[Secret Sync]
+    C[Secret 1]
+    D[Secret 2]
+    E[Secret 3]
+    F[Third-Party Service]
+    G[Secret 1]
+    H[Secret 2]
+    I[Secret 3]
+    J[Project Source]
+
+    B --> A
+    C --> J
+    D --> J
+    E --> J
+    A --> F
+    F --> G
+    F --> H
+    F --> I
+    J --> B
+
+    classDef default fill:#ffffff,stroke:#666,stroke-width:2px,rx:10px,color:black
+    classDef connection fill:#FFF2B2,stroke:#E6C34A,stroke-width:2px,color:black,rx:15px
+    classDef secret fill:#E6F4FF,stroke:#0096D6,stroke-width:2px,color:black,rx:15px
+    classDef sync fill:#F4FFE6,stroke:#96D600,stroke-width:2px,color:black,rx:15px
+    classDef service fill:#E6E6FF,stroke:#6B4E96,stroke-width:2px,color:black,rx:15px
+    classDef project fill:#FFE6E6,stroke:#D63F3F,stroke-width:2px,color:black,rx:15px
+
+    class A connection
+    class B sync
+    class C,D,E,G,H,I secret
+    class F project
+    class J service
+    ```
+
+</div>
+
+## Workflow
+
+Configuring a Secret Sync requires three components: a <strong>source</strong> location to retrieve secrets from,
+a <strong>destination</strong> endpoint to deploy secrets to, and <strong>configuration options</strong> to determine how your secrets
+should be synced. Follow these steps to start syncing:
+
+<Note>
+    For step-by-step guides on syncing to a particular third-party service, refer to the Secret Syncs section in the Navigation Bar.
+</Note>
+
+1. <strong>Create App Connection:</strong> If you have not already done so, create an [App Connection](/integrations/app-connections/overview)
+via the UI or API for the third-party service you intend to sync secrets to.
+
+2. <strong>Create Secret Sync:</strong> Configure a Secret Sync in the desired project by specifying the following parameters via the UI or API:
+    - <strong>Source:</strong> The project environment and folder path you wish to retrieve secrets from.
+    - <strong>Destination:</strong> The App Connection to utilize and the destination endpoint to deploy secrets to. These can vary between services.
+    - <strong>Options:</strong> Customize how secrets should be synced, such as whether or not secrets should be imported from the destination on the initial sync.
+
+<Note>
+    Secret Syncs are the source of truth for connected third-party services. Any secret,
+    including associated data, not present or imported in Infisical before syncing will be
+    overwritten, and changes made directly in the connected service outside of infisical may also
+    be overwritten by future syncs.
+</Note>
+
+<Info>
+    Some third-party services do not support importing secrets.
+</Info>
+
+3. <strong>Utilize Sync:</strong> Any changes to the source location will now automatically be propagated to the destination endpoint.
+
+<Note>
+    Infisical is continuously expanding it's Secret Sync third-party service support. If the service you need isn't available,
+    you can still use our Native Integrations in the interim, or contact us at team@infisical.com to make a request .
+</Note>
