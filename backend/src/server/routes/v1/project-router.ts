@@ -78,7 +78,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         includeGroupMembers: z
           .enum(["true", "false"])
           .default("false")
-          .transform((value) => value === "true")
+          .transform((value) => value === "true"),
+        roles: z.string().trim().transform(decodeURIComponent).optional()
       }),
       params: z.object({
         workspaceId: z.string().trim()
@@ -117,13 +118,15 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      const roles = req.query.roles?.split(",") ?? [];
       const users = await server.services.projectMembership.getProjectMemberships({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         includeGroupMembers: req.query.includeGroupMembers,
         projectId: req.params.workspaceId,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        roles
       });
 
       return { users };

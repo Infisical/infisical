@@ -13,7 +13,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
   // special query
   const findAllProjectMembers = async (
     projectId: string,
-    filter: { usernames?: string[]; username?: string; id?: string } = {}
+    filter: { usernames?: string[]; username?: string; id?: string; roles?: string[] } = {}
   ) => {
     try {
       const docs = await db
@@ -126,6 +126,11 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           }
         ]
       });
+      if (filter.roles && filter.roles.length > 0) {
+        return members.filter((member) =>
+          member.roles.some((role) => filter.roles?.includes(role.role) || filter.roles?.includes(role.customRoleSlug))
+        );
+      }
       return members;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all project members" });
