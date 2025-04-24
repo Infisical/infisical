@@ -87,6 +87,7 @@ export const SecretEditRow = ({
   const { permission } = useProjectPermission();
 
   const [isDeleting, setIsDeleting] = useToggle();
+  const [isSecretBlurFocus, setIsSecretBlurFocus] = useToggle(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   const toggleModal = useCallback(() => {
@@ -124,13 +125,36 @@ export const SecretEditRow = ({
         );
       }
     }
-    reset({ value });
+    if (secretValueHidden) {
+      setTimeout(() => {
+        reset({ value: defaultValue || null });
+      }, 0);
+      setIsSecretBlurFocus.off();
+    } else {
+      reset({ value });
+    }
   };
 
   const canReadSecretValue = hasSecretReadValueOrDescribePermission(
     permission,
     ProjectPermissionSecretActions.ReadValue
   );
+
+  const canEditSecretValue = permission.can(
+    ProjectPermissionSecretActions.Edit,
+    subject(ProjectPermissionSub.Secrets, {
+      environment,
+      secretPath,
+      secretName,
+      secretTags: ["*"]
+    })
+  );
+
+  const handleSecretBlurClick = () => {
+    if (canEditSecretValue) {
+      setIsSecretBlurFocus.toggle();
+    }
+  };
 
   const handleDeleteSecret = useCallback(async () => {
     setIsDeleting.on();
@@ -155,8 +179,17 @@ export const SecretEditRow = ({
       />
 
       <div className="flex-grow border-r border-r-mineshaft-600 pl-1 pr-2">
-        {secretValueHidden ? (
-          <Blur tooltipText="You do not have permission to read the value of this secret." />
+        {secretValueHidden && !isSecretBlurFocus ? (
+          // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+          <div
+            className="flex flex-grow"
+            onClick={handleSecretBlurClick}
+            onBlur={() => setIsSecretBlurFocus.off()}
+          >
+            <Blur
+              tooltipText={`You do not have permission to read the value of this secret.${canEditSecretValue ? " But you have permission to edit it." : ""}`}
+            />
+          </div>
         ) : (
           <Controller
             disabled={isImportedSecret && !defaultValue}
@@ -172,6 +205,7 @@ export const SecretEditRow = ({
                 secretPath={secretPath}
                 environment={environment}
                 isImport={isImportedSecret}
+                defaultValue={secretValueHidden ? "" : undefined}
               />
             )}
           />

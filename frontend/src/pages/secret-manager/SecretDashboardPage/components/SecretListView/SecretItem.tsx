@@ -94,6 +94,24 @@ export const SecretItem = memo(
     const { currentWorkspace } = useWorkspace();
     const { permission } = useProjectPermission();
     const { isRotatedSecret } = secret;
+    const [isSecretBlurFocus, setIsSecretBlurFocus] = useToggle(false);
+
+    const canEditSecretValue = permission.can(
+      ProjectPermissionSecretActions.Edit,
+      subject(ProjectPermissionSub.Secrets, {
+        environment,
+        secretPath,
+        secretName: secret.key,
+        secretTags: ["*"]
+      })
+    );
+
+    const getDefaultValue = () => {
+      if (secret.secretValueHidden) {
+        return canEditSecretValue ? "<hidden-by-infisical>" : "";
+      }
+      return secret.valueOverride || secret.value || "";
+    };
 
     const {
       handleSubmit,
@@ -108,11 +126,11 @@ export const SecretItem = memo(
     } = useForm<TFormSchema>({
       defaultValues: {
         ...secret,
-        value: secret.secretValueHidden ? "" : secret.value
+        value: getDefaultValue()
       },
       values: {
         ...secret,
-        value: secret.secretValueHidden ? "" : secret.value
+        value: getDefaultValue()
       },
       resolver: zodResolver(formSchema)
     });
@@ -154,6 +172,7 @@ export const SecretItem = memo(
           secretTags: selectedTagSlugs
         })
       );
+
     const { secretValueHidden } = secret;
 
     const [isSecValueCopied, setIsSecValueCopied] = useToggle(false);
@@ -168,6 +187,12 @@ export const SecretItem = memo(
     const isOverriden =
       overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
     const hasTagsApplied = Boolean(fields.length);
+
+    const handleSecretBlurClick = () => {
+      if (canEditSecretValue) {
+        setIsSecretBlurFocus.toggle();
+      }
+    };
 
     const handleOverrideClick = () => {
       if (isOverriden) {
@@ -301,8 +326,17 @@ export const SecretItem = memo(
                     />
                   )}
                 />
-              ) : secretValueHidden ? (
-                <Blur tooltipText="You do not have permission to read the value of this secret." />
+              ) : secretValueHidden && !isSecretBlurFocus ? (
+                // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+                <div
+                  className="flex flex-grow"
+                  onClick={handleSecretBlurClick}
+                  onBlur={() => setIsSecretBlurFocus.off()}
+                >
+                  <Blur
+                    tooltipText={`You do not have permission to read the value of this secret.${canEditSecretValue ? " But you have permission to edit it." : ""}`}
+                  />
+                </div>
               ) : (
                 <Controller
                   name="value"
@@ -316,7 +350,7 @@ export const SecretItem = memo(
                       environment={environment}
                       secretPath={secretPath}
                       {...field}
-                      defaultValue={secretValueHidden ? "" : undefined}
+                      defaultValue={secretValueHidden ? "<hidden-by-infisical>" : undefined}
                       containerClassName="py-1.5 rounded-md transition-all"
                     />
                   )}
