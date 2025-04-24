@@ -87,7 +87,7 @@ export const SecretOverviewTableRow = ({
     );
 
     if (secret?.secretValueHidden) {
-      return canEditSecretValue ? "<hidden-by-infisical>" : "";
+      return canEditSecretValue ? "******" : "";
     }
     return secret?.valueOverride || secret?.value || importedSecret?.secret?.value || "";
   };

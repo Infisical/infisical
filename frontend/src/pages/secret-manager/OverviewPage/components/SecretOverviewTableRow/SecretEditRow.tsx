@@ -179,7 +179,7 @@ export const SecretEditRow = ({
       />
       {secretValueHidden && (
         <Tooltip
-          content={`You do not have permission to read the value of this secret.${canEditSecretValue ? " But you can edit this secret" : ""}`}
+          content={`You do not have access to view the current value${canEditSecretValue ? ", but you can set a new one" : "."}`}
         >
           <FontAwesomeIcon className="pl-1" icon={faEyeSlash} />
         </Tooltip>
@@ -190,7 +190,7 @@ export const SecretEditRow = ({
           <div className="flex flex-grow items-center gap-2" onClick={handleSecretBlurClick}>
             <span className="flex flex-row items-center">
               <div style={{ fontFamily: "monospace" }} className="h-full w-full">
-                *********************
+                ******
               </div>
             </span>
           </div>

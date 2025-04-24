@@ -56,6 +56,8 @@ import {
   TFormSchema
 } from "./SecretListView.utils";
 
+const hiddenValue = "******";
+
 type Props = {
   secret: SecretV3RawSanitized;
   onSaveSecret: (
@@ -107,7 +109,7 @@ export const SecretItem = memo(
 
     const getDefaultValue = () => {
       if (secret.secretValueHidden) {
-        return canEditSecretValue ? "<hidden-by-infisical>" : "";
+        return canEditSecretValue ? hiddenValue : "";
       }
       return secret.valueOverride || secret.value || "";
     };
@@ -312,7 +314,7 @@ export const SecretItem = memo(
             >
               {secretValueHidden && (
                 <Tooltip
-                  content={`You do not have permission to read the value of this secret.${canEditSecretValue ? " But you can edit this secret" : ""}`}
+                  content={`You do not have access to view the current value${canEditSecretValue ? ", but you can set a new one" : "."}`}
                 >
                   <FontAwesomeIcon className="pr-2" icon={faEyeSlash} />
                 </Tooltip>
@@ -337,7 +339,7 @@ export const SecretItem = memo(
                 <div className="flex flex-grow items-center gap-2" onClick={handleSecretBlurClick}>
                   <span className="flex flex-row items-center">
                     <div style={{ fontFamily: "monospace" }} className="h-full w-full">
-                      *********************
+                      {hiddenValue}
                     </div>
                   </span>
                 </div>
@@ -354,7 +356,7 @@ export const SecretItem = memo(
                       environment={environment}
                       secretPath={secretPath}
                       {...field}
-                      defaultValue={secretValueHidden ? "<hidden-by-infisical>" : undefined}
+                      defaultValue={secretValueHidden ? hiddenValue : undefined}
                       containerClassName="py-1.5 rounded-md transition-all"
                     />
                   )}
