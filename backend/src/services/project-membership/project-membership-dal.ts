@@ -31,6 +31,26 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           if (filter.id) {
             void qb.where(`${TableName.ProjectMembership}.id`, filter.id);
           }
+          if (filter.roles && filter.roles.length > 0) {
+            void qb.whereExists((subQuery) => {
+              void subQuery
+                .select("role")
+                .from(TableName.ProjectUserMembershipRole)
+                .leftJoin(
+                  TableName.ProjectRoles,
+                  `${TableName.ProjectRoles}.id`,
+                  `${TableName.ProjectUserMembershipRole}.customRoleId`
+                )
+                .whereRaw(
+                  `"${TableName.ProjectUserMembershipRole}"."projectMembershipId" = "${TableName.ProjectMembership}"."id"`
+                )
+                .where((subQb) => {
+                  void subQb
+                    .whereIn(`${TableName.ProjectUserMembershipRole}.role`, filter.roles as string[])
+                    .orWhereIn(`${TableName.ProjectRoles}.slug`, filter.roles as string[]);
+                });
+            });
+          }
         })
         .join<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
@@ -126,11 +146,6 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      if (filter.roles && filter.roles.length > 0) {
-        return members.filter((member) =>
-          member.roles.some((role) => filter.roles?.includes(role.role) || filter.roles?.includes(role.customRoleSlug))
-        );
-      }
       return members;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all project members" });

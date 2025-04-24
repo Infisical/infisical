@@ -173,7 +173,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
-  const isTableFiltered = Boolean(Object.values(filter.roles).length);
+  const isTableFiltered = Boolean(filter.roles.length);
 
   const handleRoleToggle = useCallback(
     (roleSlug: string) =>

@@ -445,7 +445,10 @@ export const useGetWorkspaceUsers = (
         {
           params: {
             includeGroupMembers,
-            roles: roles && roles.length > 0 ? encodeURIComponent(roles.join(",")) : undefined
+            roles:
+              roles && roles.length > 0
+                ? roles.map((role) => encodeURIComponent(role)).join(",")
+                : undefined
           }
         }
       );

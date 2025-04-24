@@ -1,3 +1,4 @@
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
@@ -79,7 +80,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .enum(["true", "false"])
           .default("false")
           .transform((value) => value === "true"),
-        roles: z.string().trim().transform(decodeURIComponent).optional()
+        roles: z
+          .string()
+          .trim()
+          .transform(decodeURIComponent)
+          .refine((value) => {
+            if (!value) return true;
+            const slugs = value.split(",");
+            return slugs.every((slug) => slugify(slug.trim(), { lowercase: true }) === slug.trim());
+          })
+          .optional()
       }),
       params: z.object({
         workspaceId: z.string().trim()
@@ -118,7 +128,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const roles = req.query.roles?.split(",") ?? [];
+      const roles = (req.query.roles?.split(",") || []).filter(Boolean);
       const users = await server.services.projectMembership.getProjectMemberships({
         actorId: req.permission.id,
         actor: req.permission.type,
