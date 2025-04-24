@@ -126,9 +126,10 @@ export const SecretEditRow = ({
       }
     }
     if (secretValueHidden) {
-      setTimeout(() => {
+      const resetTimeout = setTimeout(() => {
         reset({ value: defaultValue || null });
-      }, 0);
+      }, 50);
+      clearTimeout(resetTimeout);
       setIsSecretBlurFocus.off();
     } else {
       reset({ value });
