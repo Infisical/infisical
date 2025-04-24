@@ -8,6 +8,7 @@ import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
+import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
@@ -32,5 +33,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.MsSql]: registerMsSqlConnectionRouter,
     [AppConnection.Camunda]: registerCamundaConnectionRouter,
     [AppConnection.Windmill]: registerWindmillConnectionRouter,
-    [AppConnection.Auth0]: registerAuth0ConnectionRouter
+    [AppConnection.Auth0]: registerAuth0ConnectionRouter,
+    [AppConnection.HCVault]: registerHCVaultConnectionRouter
   };

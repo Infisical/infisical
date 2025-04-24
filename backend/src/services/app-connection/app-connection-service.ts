@@ -41,6 +41,8 @@ import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
 import { ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
+import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
+import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
@@ -74,7 +76,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.MsSql]: ValidateMsSqlConnectionCredentialsSchema,
   [AppConnection.Camunda]: ValidateCamundaConnectionCredentialsSchema,
   [AppConnection.Windmill]: ValidateWindmillConnectionCredentialsSchema,
-  [AppConnection.Auth0]: ValidateAuth0ConnectionCredentialsSchema
+  [AppConnection.Auth0]: ValidateAuth0ConnectionCredentialsSchema,
+  [AppConnection.HCVault]: ValidateHCVaultConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -450,6 +453,7 @@ export const appConnectionServiceFactory = ({
     camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     vercel: vercelConnectionService(connectAppConnectionById),
     windmill: windmillConnectionService(connectAppConnectionById),
-    auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
+    auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    hcvault: hcVaultConnectionService(connectAppConnectionById)
   };
 };

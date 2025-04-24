@@ -37,6 +37,11 @@ import {
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
 import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
 import {
+  getHCVaultConnectionListItem,
+  HCVaultConnectionMethod,
+  validateHCVaultConnectionCredentials
+} from "./hc-vault";
+import {
   getHumanitecConnectionListItem,
   HumanitecConnectionMethod,
   validateHumanitecConnectionCredentials
@@ -71,7 +76,8 @@ export const listAppConnectionOptions = () => {
     getMsSqlConnectionListItem(),
     getCamundaConnectionListItem(),
     getWindmillConnectionListItem(),
-    getAuth0ConnectionListItem()
+    getAuth0ConnectionListItem(),
+    getHCVaultConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -135,7 +141,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Vercel]: validateVercelConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TerraformCloud]: validateTerraformCloudConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Auth0]: validateAuth0ConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Windmill]: validateWindmillConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Windmill]: validateWindmillConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.HCVault]: validateHCVaultConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -167,9 +174,12 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case MsSqlConnectionMethod.UsernameAndPassword:
       return "Username & Password";
     case WindmillConnectionMethod.AccessToken:
+    case HCVaultConnectionMethod.AccessToken:
       return "Access Token";
     case Auth0ConnectionMethod.ClientCredentials:
       return "Client Credentials";
+    case HCVaultConnectionMethod.AppRole:
+      return "App Role";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -214,5 +224,6 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Camunda]: platformManagedCredentialsNotSupported,
   [AppConnection.Vercel]: platformManagedCredentialsNotSupported,
   [AppConnection.Windmill]: platformManagedCredentialsNotSupported,
-  [AppConnection.Auth0]: platformManagedCredentialsNotSupported
+  [AppConnection.Auth0]: platformManagedCredentialsNotSupported,
+  [AppConnection.HCVault]: platformManagedCredentialsNotSupported
 };

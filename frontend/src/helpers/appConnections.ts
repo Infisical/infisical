@@ -17,7 +17,8 @@ import {
   TAppConnection,
   TerraformCloudConnectionMethod,
   VercelConnectionMethod,
-  WindmillConnectionMethod
+  WindmillConnectionMethod,
+  HCVaultConnectionMethod
 } from "@app/hooks/api/appConnections/types";
 
 export const APP_CONNECTION_MAP: Record<
@@ -43,7 +44,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.MsSql]: { name: "Microsoft SQL Server", image: "MsSql.png" },
   [AppConnection.Camunda]: { name: "Camunda", image: "Camunda.png" },
   [AppConnection.Windmill]: { name: "Windmill", image: "Windmill.png" },
-  [AppConnection.Auth0]: { name: "Auth0", image: "Auth0.png", size: 40 }
+  [AppConnection.Auth0]: { name: "Auth0", image: "Auth0.png", size: 40 },
+  [AppConnection.HCVault]: { name: "Hashicorp Vault", image: "Vault.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -71,10 +73,13 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
+    case HCVaultConnectionMethod.AccessToken:
     case WindmillConnectionMethod.AccessToken:
       return { name: "Access Token", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:
       return { name: "Client Credentials", icon: faServer };
+    case HCVaultConnectionMethod.AppRole:
+      return { name: "App Role", icon: faUser };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

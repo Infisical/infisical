@@ -8,6 +8,7 @@ import { TCamundaConnection } from "./camunda-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
+import { THCVaultConnection } from "./hc-vault-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TPostgresConnection } from "./postgres-connection";
@@ -29,6 +30,7 @@ export * from "./postgres-connection";
 export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
+export * from "./hc-vault-connection";
 
 export type TAppConnection =
   | TAwsConnection
@@ -44,7 +46,8 @@ export type TAppConnection =
   | TMsSqlConnection
   | TCamundaConnection
   | TWindmillConnection
-  | TAuth0Connection;
+  | TAuth0Connection
+  | THCVaultConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -86,4 +89,5 @@ export type TAppConnectionMap = {
   [AppConnection.Camunda]: TCamundaConnection;
   [AppConnection.Windmill]: TWindmillConnection;
   [AppConnection.Auth0]: TAuth0Connection;
+  [AppConnection.HCVault]: THCVaultConnection;
 };

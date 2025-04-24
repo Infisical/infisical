@@ -52,6 +52,12 @@ import {
   TValidateGitHubConnectionCredentialsSchema
 } from "./github";
 import {
+  THCVaultConnection,
+  THCVaultConnectionConfig,
+  THCVaultConnectionInput,
+  TValidateHCVaultConnectionCredentialsSchema
+} from "./hc-vault";
+import {
   THumanitecConnection,
   THumanitecConnectionConfig,
   THumanitecConnectionInput,
@@ -97,6 +103,7 @@ export type TAppConnection = { id: string } & (
   | TCamundaConnection
   | TWindmillConnection
   | TAuth0Connection
+  | THCVaultConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -118,6 +125,7 @@ export type TAppConnectionInput = { id: string } & (
   | TCamundaConnectionInput
   | TWindmillConnectionInput
   | TAuth0ConnectionInput
+  | THCVaultConnectionInput
 );
 
 export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput;
@@ -144,7 +152,8 @@ export type TAppConnectionConfig =
   | TSqlConnectionConfig
   | TCamundaConnectionConfig
   | TWindmillConnectionConfig
-  | TAuth0ConnectionConfig;
+  | TAuth0ConnectionConfig
+  | THCVaultConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -160,7 +169,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateTerraformCloudConnectionCredentialsSchema
   | TValidateVercelConnectionCredentialsSchema
   | TValidateWindmillConnectionCredentialsSchema
-  | TValidateAuth0ConnectionCredentialsSchema;
+  | TValidateAuth0ConnectionCredentialsSchema
+  | TValidateHCVaultConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

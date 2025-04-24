@@ -23,6 +23,7 @@ import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";
+import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 
 type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;
@@ -89,6 +90,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <WindmillConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Auth0:
       return <Auth0ConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.HCVault:
+      return <HCVaultConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -153,6 +156,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <WindmillConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Auth0:
       return <Auth0ConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.HCVault:
+      return <HCVaultConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

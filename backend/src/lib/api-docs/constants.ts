@@ -1857,6 +1857,12 @@ export const AppConnections = {
     WINDMILL: {
       instanceUrl: "The Windmill instance URL to connect with (defaults to https://app.windmill.dev).",
       accessToken: "The access token to use to connect with Windmill."
+    },
+    HC_VAULT: {
+      instanceUrl: "The Hashicrop Vault instance URL to connect with.",
+      accessToken: "The access token used to connect with Hashicorp Vault.",
+      roleId: "The Role ID used to connect with Hashicorp Vault.",
+      secretId: "The Secret ID used to connect with Hashicorp Vault."
     }
   }
 };
