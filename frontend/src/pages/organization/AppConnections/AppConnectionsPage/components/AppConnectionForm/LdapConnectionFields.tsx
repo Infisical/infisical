@@ -19,6 +19,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { DistinguishedNameRegex } from "@app/helpers/string";
 import {
   LdapConnectionMethod,
   LdapConnectionProvider,
@@ -51,7 +52,11 @@ const formSchema = z.discriminatedUnion("method", [
         .url()
         .trim()
         .min(1, "LDAP URL required"),
-      dn: z.string().trim().min(1, "Distinguished Name (DN) required"),
+      dn: z
+        .string()
+        .trim()
+        .regex(DistinguishedNameRegex, "Invalid Distinguished Name format")
+        .min(1, "Distinguished Name (DN) required"),
       password: z.string().trim().min(1, "Password required"),
       sslRejectUnauthorized: z.boolean(),
       sslCertificate: z
