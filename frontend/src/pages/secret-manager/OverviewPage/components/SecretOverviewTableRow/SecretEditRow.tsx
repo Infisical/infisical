@@ -4,6 +4,7 @@ import { subject } from "@casl/ability";
 import {
   faCheck,
   faCopy,
+  faEyeSlash,
   faProjectDiagram,
   faTrash,
   faXmark
@@ -25,7 +26,6 @@ import {
   ModalTrigger,
   Tooltip
 } from "@app/components/v2";
-import { Blur } from "@app/components/v2/Blur";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
@@ -177,18 +177,22 @@ export const SecretEditRow = ({
         deleteKey={secretName}
         onDeleteApproved={handleDeleteSecret}
       />
-
+      {secretValueHidden && (
+        <Tooltip
+          content={`You do not have permission to read the value of this secret.${canEditSecretValue ? " But you can edit this secret" : ""}`}
+        >
+          <FontAwesomeIcon className="pl-1" icon={faEyeSlash} />
+        </Tooltip>
+      )}
       <div className="flex-grow border-r border-r-mineshaft-600 pl-1 pr-2">
         {secretValueHidden && !isSecretBlurFocus ? (
           // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-          <div
-            className="flex flex-grow"
-            onClick={handleSecretBlurClick}
-            onBlur={() => setIsSecretBlurFocus.off()}
-          >
-            <Blur
-              tooltipText={`You do not have permission to read the value of this secret.${canEditSecretValue ? " But you have permission to edit it." : ""}`}
-            />
+          <div className="flex flex-grow items-center gap-2" onClick={handleSecretBlurClick}>
+            <span className="flex flex-row items-center">
+              <div style={{ fontFamily: "monospace" }} className="h-full w-full">
+                *********************
+              </div>
+            </span>
           </div>
         ) : (
           <Controller
@@ -201,7 +205,7 @@ export const SecretEditRow = ({
                 isReadOnly={isImportedSecret || isRotatedSecret}
                 value={field.value as string}
                 key="secret-input"
-                isVisible={isVisible}
+                isVisible={isVisible && !secretValueHidden}
                 secretPath={secretPath}
                 environment={environment}
                 isImport={isImportedSecret}

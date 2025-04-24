@@ -46,10 +46,9 @@ import {
 } from "@app/components/secrets/SecretReferenceDetails";
 
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
-import { Blur } from "@app/components/v2/Blur";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faKey, faRotate } from "@fortawesome/free-solid-svg-icons";
+import { faEyeSlash, faKey, faRotate } from "@fortawesome/free-solid-svg-icons";
 import {
   FontAwesomeSpriteName,
   formSchema,
@@ -311,6 +310,13 @@ export const SecretItem = memo(
               tabIndex={0}
               role="button"
             >
+              {secretValueHidden && (
+                <Tooltip
+                  content={`You do not have permission to read the value of this secret.${canEditSecretValue ? " But you can edit this secret" : ""}`}
+                >
+                  <FontAwesomeIcon className="pr-2" icon={faEyeSlash} />
+                </Tooltip>
+              )}
               {isOverriden ? (
                 <Controller
                   name="valueOverride"
@@ -328,14 +334,12 @@ export const SecretItem = memo(
                 />
               ) : secretValueHidden && !isSecretBlurFocus ? (
                 // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-                <div
-                  className="flex flex-grow"
-                  onClick={handleSecretBlurClick}
-                  onBlur={() => setIsSecretBlurFocus.off()}
-                >
-                  <Blur
-                    tooltipText={`You do not have permission to read the value of this secret.${canEditSecretValue ? " But you have permission to edit it." : ""}`}
-                  />
+                <div className="flex flex-grow items-center gap-2" onClick={handleSecretBlurClick}>
+                  <span className="flex flex-row items-center">
+                    <div style={{ fontFamily: "monospace" }} className="h-full w-full">
+                      *********************
+                    </div>
+                  </span>
                 </div>
               ) : (
                 <Controller
@@ -346,7 +350,7 @@ export const SecretItem = memo(
                     <InfisicalSecretInput
                       isReadOnly={isReadOnly || isRotatedSecret}
                       key="secret-value"
-                      isVisible={isVisible}
+                      isVisible={isVisible && !secretValueHidden}
                       environment={environment}
                       secretPath={secretPath}
                       {...field}
