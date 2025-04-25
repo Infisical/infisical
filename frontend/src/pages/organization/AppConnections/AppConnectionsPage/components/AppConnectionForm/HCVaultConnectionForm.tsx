@@ -122,7 +122,7 @@ export const HCVaultConnectionForm = ({ appConnection, onSubmit }: Props) => {
               tooltipClassName="max-w-sm"
               tooltipText="The URL at which your Hashicorp Vault instance is hosted."
             >
-              <Input {...field} placeholder="https://vault.mycompany.com" />
+              <Input {...field} placeholder="https://vault.example.com" />
             </FormControl>
           )}
         />

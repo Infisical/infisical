@@ -29,6 +29,7 @@ export const HCVaultSyncFields = () => {
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.mount", "");
+          setValue("destinationConfig.path", "");
         }}
       />
 

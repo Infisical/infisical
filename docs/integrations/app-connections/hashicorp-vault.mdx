@@ -101,7 +101,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
 
 <Tabs>
     <Tab title="Self Hosted">
-        On self-hosted instances, simply copy your vault's base URL. (Ex. `https://vault.mycompany.com`)
+        On self-hosted instances, simply copy your vault's base URL. (Ex. `https://vault.example.com`)
 
         Save this value for later steps.
     </Tab>
@@ -159,7 +159,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
                     "name": "my-vault-connection",
                     "method": "app-role",
                     "credentials": {
-                        "instanceUrl": "https://vault.mycompany.com",
+                        "instanceUrl": "https://vault.example.com",
                         "roleId": "4797c4fa-7794-71f0-c8b1-7c87759df5bf",
                         "secretId": "ad24df93-19c8-c865-9997-6b8513253d3a"
                     }
@@ -180,7 +180,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
                 "app": "hashicorp-vault",
                 "method": "app-role",
                 "credentials": {
-                    "instanceUrl": "https://vault.mycompany.com",
+                    "instanceUrl": "https://vault.example.com",
                     "roleId": "4797c4fa-7794-71f0-c8b1-7c87759df5bf"
                 }
             }

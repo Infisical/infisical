@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { SecretSyncs } from "@app/lib/api-docs";
@@ -20,8 +21,8 @@ const HCVaultSyncDestinationConfigSchema = z.object({
     .string()
     .trim()
     .min(1, "Path required")
-    .transform((val) => val.trim().replace(/^\/+|\/+$/g, "")) // removes leading/trailing slashes
-    .refine((val) => /^([a-zA-Z0-9._-]+\/)*[a-zA-Z0-9._-]+$/.test(val), {
+    .transform((val) => val.replace(/^\/+|\/+$/g, "")) // removes leading/trailing slashes
+    .refine((val) => new RE2("^([a-zA-Z0-9._-]+/)*[a-zA-Z0-9._-]+$").test(val), {
       message:
         "Invalid Vault path format. Use alphanumerics, dots, dashes, underscores, and single slashes between segments."
     })

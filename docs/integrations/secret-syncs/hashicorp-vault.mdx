@@ -36,8 +36,8 @@ description: "Learn how to configure a Hashicorp Vault Sync for Infisical."
                 ![Configure Destination](/images/secret-syncs/hashicorp-vault/sync-destination.png)
 
                 - **Hashicorp Vault Connection**: The Vault Connection to authenticate with.
-                - **Secrets Engine Mount**: The Secrets Engine Mount to sync secrets to.
-                - **Path**: The Secrets Engine Mount path to sync secrets to.
+                - **Secrets Engine Mount**: The type of secrets engine to use (e.g., 'secret', 'kv').
+                - **Path**: The specific path within the secrets engine where secrets will be stored.
 
                 After configuring these parameters, click the **Next** button to continue to the Sync Options step.
             </Step>
@@ -80,24 +80,24 @@ description: "Learn how to configure a Hashicorp Vault Sync for Infisical."
 
         ```bash Request
         curl    --request POST \
-        --url https://app.infisical.com/api/v1/secret-syncs/hashicorp-vault \
-        --header 'Content-Type: application/json' \
-        --data '{
-            "name": "my-vault-sync",
-            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-            "description": "an example sync",
-            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-            "environment": "dev",
-            "secretPath": "/",
-            "isEnabled": true,
-            "syncOptions": {
-                "initialSyncBehavior": "overwrite-destination"
-            },
-            "destinationConfig": {
-                "mount": "secret",
-                "path": "dev/nested"
-            }
-        }'
+                --url https://app.infisical.com/api/v1/secret-syncs/hashicorp-vault \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-vault-sync",
+                    "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "description": "an example sync",
+                    "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "environment": "dev",
+                    "secretPath": "/",
+                    "isEnabled": true,
+                    "syncOptions": {
+                        "initialSyncBehavior": "overwrite-destination"
+                    },
+                    "destinationConfig": {
+                        "mount": "secret",
+                        "path": "dev/nested"
+                    }
+                }'
         ```
 
         ### Sample response

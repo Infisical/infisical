@@ -52,7 +52,7 @@ export const HCVaultSyncFns = {
     const variables = await listHCVaultVariables({ instanceUrl, accessToken, mount, path });
     let tainted = false;
 
-    for await (const entry of Object.entries(secretMap)) {
+    for (const entry of Object.entries(secretMap)) {
       const [key, { value }] = entry;
       if (value !== variables[key]) {
         variables[key] = value;
