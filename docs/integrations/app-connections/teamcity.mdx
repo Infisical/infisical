@@ -18,17 +18,28 @@ Infisical supports connecting to TeamCity using an Access Token to securely sync
     </Step>
     <Step title="Create the Access Token">
         Click the **Create access token** button and provide a name for your token (e.g., "Infisical Integration"). You may set an expiration date or leave it blank for no expiry.
-        The permission scope can either be **Same as current user** or **Limit per project**. If you're choosing **Limit per project**, make sure you select the relevant project and enable the **View build configuration settings** and **Edit project** permissions.
+        The permission scope can either be **Same as current user** or **Limit per project**.
+
+        If you're choosing **Limit per project**, make sure you select the relevant project and enable the permissions relevant to your use case:
+
+        <Tabs>
+            <Tab title="Secret Sync Permissions">
+                - View build configuration settings
+                - Edit project
+            </Tab>
+        </Tabs>
+
+        ![TeamCity Token Popup](/images/app-connections/teamcity/teamcity-token-popup.png)
+
         <Note>
             Setting your permission scope to **Same as current user** will allow your integration to access multiple projects as long as the current user has read and write access to them.
         </Note>
         <Note>
-            Setting your permission scope to **Limit per project** requires the **View build configuration settings** and **Edit project** permissions.
+            If you configure an expiry date for your access token, you must manually rotate to a new token before the expiration date to prevent service interruption.
         </Note>
-        ![TeamCity Token Popup](/images/app-connections/teamcity/teamcity-token-popup.png)
     </Step>
     <Step title="Copy the Access Token">
-        After creation, a modal with the API token will be displayed. Copy this token immediately and store it securely, as you won't be able to view it again after closing this dialog.
+        After creation, a modal with the Access Token will be displayed. Copy this token immediately and store it securely, as you won't be able to view it again after closing this dialog.
         ![TeamCity Token Copy Popup](/images/app-connections/teamcity/teamcity-token-copy.png)
     </Step>
     <Step title="Token Created">

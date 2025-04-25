@@ -1,5 +1,5 @@
 import { request } from "@app/lib/config/request";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { getTeamCityInstanceUrl } from "@app/services/app-connection/teamcity";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 import {
@@ -89,7 +89,7 @@ export const TeamCitySyncFns = {
       destinationConfig: { project, buildConfig }
     } = secretSync;
 
-    const instanceUrl = removeTrailingSlash(connection.credentials.instanceUrl);
+    const instanceUrl = await getTeamCityInstanceUrl(connection);
     const { accessToken } = connection.credentials;
 
     for await (const entry of Object.entries(secretMap)) {
@@ -145,7 +145,7 @@ export const TeamCitySyncFns = {
       destinationConfig: { project, buildConfig }
     } = secretSync;
 
-    const instanceUrl = removeTrailingSlash(connection.credentials.instanceUrl);
+    const instanceUrl = await getTeamCityInstanceUrl(connection);
     const { accessToken } = connection.credentials;
 
     const variables = await listTeamCityVariables({ instanceUrl, accessToken, project, buildConfig });
@@ -175,7 +175,7 @@ export const TeamCitySyncFns = {
       destinationConfig: { project, buildConfig }
     } = secretSync;
 
-    const instanceUrl = removeTrailingSlash(connection.credentials.instanceUrl);
+    const instanceUrl = await getTeamCityInstanceUrl(connection);
     const { accessToken } = connection.credentials;
 
     return listTeamCityVariables({ instanceUrl, accessToken, project, buildConfig });

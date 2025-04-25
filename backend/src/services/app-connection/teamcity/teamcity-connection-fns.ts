@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { TeamCityConnectionMethod } from "./teamcity-connection-enums";
@@ -11,6 +12,14 @@ import {
   TTeamCityConnectionConfig,
   TTeamCityListProjectsResponse
 } from "./teamcity-connection-types";
+
+export const getTeamCityInstanceUrl = async (config: TTeamCityConnectionConfig) => {
+  const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
+
+  await blockLocalAndPrivateIpAddresses(instanceUrl);
+
+  return instanceUrl;
+};
 
 export const getTeamCityConnectionListItem = () => {
   return {
@@ -21,7 +30,8 @@ export const getTeamCityConnectionListItem = () => {
 };
 
 export const validateTeamCityConnectionCredentials = async (config: TTeamCityConnectionConfig) => {
-  const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
+  const instanceUrl = await getTeamCityInstanceUrl(config);
+
   const { accessToken } = config.credentials;
 
   try {
@@ -46,7 +56,7 @@ export const validateTeamCityConnectionCredentials = async (config: TTeamCityCon
 };
 
 export const listTeamCityProjects = async (appConnection: TTeamCityConnection) => {
-  const instanceUrl = removeTrailingSlash(appConnection.credentials.instanceUrl);
+  const instanceUrl = await getTeamCityInstanceUrl(appConnection);
   const { accessToken } = appConnection.credentials;
 
   const resp = await request.get<TTeamCityListProjectsResponse>(

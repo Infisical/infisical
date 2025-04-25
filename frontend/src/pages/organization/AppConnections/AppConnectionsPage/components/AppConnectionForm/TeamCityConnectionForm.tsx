@@ -34,14 +34,7 @@ const formSchema = z.discriminatedUnion("method", [
     method: z.literal(TeamCityConnectionMethod.AccessToken),
     credentials: z.object({
       accessToken: z.string().trim().min(1, "Access Token required"),
-      instanceUrl: z
-        .string()
-        .trim()
-        .transform((value) => value || undefined)
-        .refine((value) => (!value ? true : z.string().url().safeParse(value).success), {
-          message: "Invalid instance URL"
-        })
-        .optional()
+      instanceUrl: z.string().trim().url("Invalid Instance URL")
     })
   })
 ]);

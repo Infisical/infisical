@@ -90,9 +90,15 @@ export const TeamCitySyncFields = () => {
             isOptional
             label="Build Configuration"
             helperText={
-              <span>
-                Not selecting a Build Configuration will sync your secrets with the entire project.
-              </span>
+              <Tooltip
+                className="max-w-md"
+                content='Ensure the configuration exists in the selected project and that your Access Token has the "View build configuration settings" permission.'
+              >
+                <div>
+                  <span>Don&#39;t see the configuration you&#39;re looking for?</span>{" "}
+                  <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                </div>
+              </Tooltip>
             }
           >
             <FilterableSelect
@@ -113,6 +119,10 @@ export const TeamCitySyncFields = () => {
           </FormControl>
         )}
       />
+
+      <span className="text-sm text-bunker-300">
+        Not selecting a Build Configuration will sync your secrets to the entire project.
+      </span>
     </>
   );
 };

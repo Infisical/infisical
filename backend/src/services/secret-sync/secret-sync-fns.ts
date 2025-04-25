@@ -145,7 +145,9 @@ export const SecretSyncFns = {
       case SecretSync.TeamCity:
         return TeamCitySyncFns.syncSecrets(secretSync, secretMap);
       default:
-        throw new Error(`Unhandled sync destination for sync secrets fns: ${secretSync.destination}`);
+        throw new Error(
+          `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
+        );
     }
   },
   getSecrets: async (
@@ -205,7 +207,9 @@ export const SecretSyncFns = {
         secretMap = await TeamCitySyncFns.getSecrets(secretSync);
         break;
       default:
-        throw new Error(`Unhandled sync destination for get secrets fns: ${secretSync.destination}`);
+        throw new Error(
+          `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
+        );
     }
 
     return secretMap;
@@ -258,7 +262,9 @@ export const SecretSyncFns = {
       case SecretSync.TeamCity:
         return TeamCitySyncFns.removeSecrets(secretSync, secretMap);
       default:
-        throw new Error(`Unhandled sync destination for remove secrets fns: ${secretSync.destination}`);
+        throw new Error(
+          `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
+        );
     }
   }
 };

@@ -9,6 +9,6 @@ export type TTeamCityConnection = TRootAppConnection & { app: AppConnection.Team
   method: TeamCityConnectionMethod.AccessToken;
   credentials: {
     accessToken: string;
-    instanceUrl?: string;
+    instanceUrl: string;
   };
 };
