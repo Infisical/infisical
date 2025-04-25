@@ -313,6 +313,13 @@
             "self-hosting/deployment-options/kubernetes-helm"
           ]
         },
+        {
+          "group": "Linux Package",
+          "pages": [
+            "self-hosting/deployment-options/native/linux-package/installation",
+            "self-hosting/deployment-options/native/linux-package/commands-configuration"
+          ]
+        },
         "self-hosting/guides/upgrading-infisical",
         "self-hosting/configuration/envars",
         "self-hosting/configuration/requirements",

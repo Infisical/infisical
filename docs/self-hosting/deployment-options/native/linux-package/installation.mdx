@@ -1,0 +1,122 @@
+---
+title: "Installation"
+description: "Learn how to deploy Infisical using the Linux package"
+---
+
+Infisical can be deployed on Linux virtual machines without the need for containers using our standalone Linux packages. 
+These packages are available in both .deb (for Debian-based systems) and .rpm (for RHEL-based systems) formats.
+The installation includes the Infisical service, along with a CLI tool (infisical-ctl) to help you manage configurations, startup, and application logging. 
+This approach is ideal for environments where containerization isn't desired, while still providing a lightweight deployment option.
+
+## Prerequisites
+
+This installation method only provides the Infisical application. You are responsible for configuring both PostgreSQL and Redis, either by using managed services (e.g., AWS RDS, Azure Database, GCP Cloud SQL/Memorystore) or by deploying them manually in your on-prem environment. 
+Please ensure you have the following before beginning installation of Infisical:
+
+- A Linux server running a Debian/Ubuntu or RHEL-based distribution
+- A running PostgreSQL database instance (version 14 and up)
+- A running Redis database instance (versions 6.x or 7.x)
+
+## Installation Steps
+
+<Steps>
+
+  <Step title="Install the Infisical Package">
+  Select your Linux distribution to get started. Only AMD64-based systems are supported at this time, ARM support is coming soon.
+
+  <Tabs>
+
+  <Tab title="Debian/Ubuntu">
+  Add the Infisical repository:
+  ```bash
+  curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-core/setup.deb.sh' | sudo -E bash
+  ```
+
+  Install Infisical:
+  ```bash
+  sudo apt-get update && sudo apt-get install -y infisical-core
+  ```
+
+  > **Note**: For production use, we recommend locking to a specific version to ensure consistency. [View available versions](https://cloudsmith.io/~infisical/repos/infisical-core/packages/).
+  </Tab>
+
+  <Tab title="RedHat/CentOS/Amazon Linux">
+  Add the Infisical repository:
+  ```bash
+  curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-core/setup.rpm.sh' | sudo -E bash
+  ```
+
+  Install Infisical:
+  ```bash
+  sudo yum install infisical-core
+  ```
+
+  > **Note**: For production use, we recommend locking to a specific version to ensure consistency. [View available versions](https://cloudsmith.io/~infisical/repos/infisical-core/packages/).
+  </Tab>
+
+  </Tabs>
+
+  Verify the installation:
+  ```bash
+  infisical-ctl help
+  ```
+  </Step>
+
+  <Step title="Create the Configuration File">
+  Create an `infisical.rb` file at `/etc/infisical`. This file contains your database connection strings and other runtime settings.
+
+  ```ruby
+  # Important: Replace with secure values in production
+  infisical_core['ENCRYPTION_KEY'] = '6c1fe4e407b8911c104518103505b218'
+  infisical_core['AUTH_SECRET'] = '5lrMXKKWCVocS/uerPsl7V+TX/aaUaI7iDkgl3tSmLE='
+
+  # Example database connection strings
+  infisical_core['DB_CONNECTION_URI'] = 'postgres://<db-username>:<db-password>@<db-host>:<db-port>/<db-name>'
+  infisical_core['REDIS_URL'] = 'redis://<redis-host>:<redis-port>'
+  ```
+
+  See the full list of options in our [configuration documentation](/self-hosting/configuration/envars).
+  </Step>
+
+  <Step title="Start Infisical">
+  1. Start the Infisical service:
+    ```bash
+    infisical-ctl reconfigure
+    ```
+    The server runs on port `8080` by default (customizable in `infisical.rb`).
+
+  2. Check the service status:
+      ```bash
+      infisical-ctl status
+      ```
+
+    View the service logs in real-time:
+      ```bash
+      infisical-ctl tail
+      ```
+  </Step>
+
+</Steps>
+
+## Platform Support
+
+### Microsoft Windows
+Infisical is built for Linux-based systems. It is not supported on Microsoft Windows, and we do not plan to support it in the near future. For Windows users, consider running Infisical in a virtual machine or WSL2 environment.
+
+### Unsupported Linux Distributions and Unix-like Systems
+Infisical is not tested or officially supported on the following:
+
+- Arch Linux  
+- Fedora  
+- FreeBSD  
+- Gentoo  
+- macOS  
+
+We recommend sticking to officially supported distributions for the best experience.
+
+## Linux vs Containerized Deployments
+
+Infisical is a stateless application, which means it can be easily scaled and redeployed without maintaining internal state between instances.
+
+If your use case requires rolling updates, self-healing, or auto-scaling, we recommend deploying Infisical in a containerized environment such as Kubernetes/OpenShift, or using managed container orchestration services like AWS ECS or Google Cloud Run. 
+These platforms offer built-in capabilities for high availability and help simplify operational overhead for your deployment.
