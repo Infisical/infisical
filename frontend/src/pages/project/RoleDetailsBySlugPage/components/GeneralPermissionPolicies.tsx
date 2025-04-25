@@ -47,7 +47,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
 
   if (!fields.length) return <div />;
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
+  const handleDragStart = (_: React.DragEvent, index: number) => {
     setDraggedItem(index);
   };
 
