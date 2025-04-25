@@ -48,7 +48,7 @@ export const SelectionPanel = ({
   selectedEntries,
   importedBy,
   secretsToDeleteKeys,
-  usedBySecretSyncs
+  usedBySecretSyncs = []
 }: Props) => {
   const { permission } = useProjectPermission();
 
@@ -86,7 +86,7 @@ export const SelectionPanel = ({
   );
 
   const usedBySecretSyncsFiltered = useMemo(() => {
-    if (selectedKeysCount === 0 || !usedBySecretSyncs) return null;
+    if (selectedKeysCount === 0 || usedBySecretSyncs.length === 0) return null;
     const envs = Object.values(selectedEntries.secret).flatMap((entries) => Object.keys(entries));
     return usedBySecretSyncs.filter((syncItem) => envs.includes(syncItem.environment));
   }, [selectedEntries, usedBySecretSyncs, selectedKeysCount]);

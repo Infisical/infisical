@@ -66,7 +66,8 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
     if (item.type === ItemType.SecretSync) {
       window.open(
         `/secret-manager/${currentWorkspace.id}/integrations?selectedTab=secret-syncs`,
-        "_blank"
+        "_blank",
+        "noopener,noreferrer"
       );
       return;
     }

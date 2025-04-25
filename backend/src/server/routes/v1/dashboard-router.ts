@@ -939,7 +939,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const usedBySecretSyncs = secretSyncs.map((sync) => ({
         name: sync.name,
         destination: sync.destination,
-        environment: environment
+        environment
       }));
 
       if (secrets?.length || secretRotations?.length) {

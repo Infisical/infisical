@@ -1073,8 +1073,8 @@ export const ActionBar = ({
         onChange={(isOpen) => handlePopUpToggle("bulkDeleteSecrets", isOpen)}
         onDeleteApproved={handleSecretBulkDelete}
         formContent={
-          importedBy &&
-          importedBy.length > 0 && (
+          ((importedBy && importedBy.length > 0) ||
+            (usedBySecretSyncs && usedBySecretSyncs?.length > 0)) && (
             <CollapsibleSecretImports
               importedBy={importedBy}
               secretsToDelete={Object.values(selectedSecrets).map((s) => s.key)}

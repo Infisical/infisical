@@ -208,14 +208,14 @@ export const SecretItem = memo(
     };
 
     const handleFormSubmit = async (data: TFormSchema) => {
-      if (
+      const hasDirectReferences =
         importedBy &&
         importedBy.some(({ folders }) =>
           folders?.some(({ secrets }) =>
             secrets?.some(({ referencedSecretId }) => referencedSecretId === secret.id)
           )
-        )
-      ) {
+        );
+      if (hasDirectReferences) {
         handlePopUpOpen("editSecret", data);
         return;
       }
