@@ -5,10 +5,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TNotification, TriggerFeature } from "@app/lib/workflow-integrations/types";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
-import { TProjectDALFactory } from "../project/project-dal";
-import { TProjectSlackConfigDALFactory } from "./project-slack-config-dal";
 import { TSendSlackNotificationDTO } from "./slack-types";
 
 export const fetchSlackChannels = async (botKey: string) => {

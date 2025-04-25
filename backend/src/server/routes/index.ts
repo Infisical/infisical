@@ -1134,7 +1134,9 @@ export const registerRoutes = async (
     userDAL,
     licenseService,
     projectSlackConfigDAL,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    projectMicrosoftTeamsConfigDAL,
+    microsoftTeamsService
   });
 
   const secretService = secretServiceFactory({
