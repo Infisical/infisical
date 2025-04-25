@@ -11,17 +11,7 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import {
-  AwsConnectionMethod,
-  getAwsConnectionConfig,
-  validateAwsConnectionCredentials
-} from "@app/services/app-connection/aws";
-
-const sleep = async () =>
-  new Promise((resolve) => {
-    setTimeout(resolve, 10000);
-  });
+import { getAwsConnectionConfig } from "@app/services/app-connection/aws";
 
 const getCreateDate = (key: AWS.IAM.AccessKeyMetadata): number => {
   return key.CreateDate ? new Date(key.CreateDate).getTime() : 0;
@@ -62,18 +52,6 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
     }
 
     const { AccessKey } = await iam.createAccessKey({ UserName: userName }).promise();
-
-    await sleep();
-
-    await validateAwsConnectionCredentials({
-      app: AppConnection.AWS,
-      orgId: connection.orgId,
-      method: AwsConnectionMethod.AccessKey,
-      credentials: {
-        accessKeyId: AccessKey.AccessKeyId,
-        secretAccessKey: AccessKey.SecretAccessKey
-      }
-    });
 
     return {
       accessKeyId: AccessKey.AccessKeyId,
