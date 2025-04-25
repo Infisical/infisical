@@ -72,7 +72,7 @@ we will register a remote host with Infisical through a [machine identity](/docu
     Next, use the `infisical ssh add-host` command to register the remote host with Infisical. As part of this command, input the ID of the Infisical SSH project you created in step 1 for the `--projectId` flag and the hostname of the remote host for the `--hostname` flag.
 
     ```bash
-    sudo infisical ssh add-host --projectId=<project-id> --hostname=<hostname> --token="$INFISICAL_TOKEN" --writeUserCaToFile --writeHostCertToFile --configureSshd
+    sudo infisical ssh add-host --projectId=<project-id> --hostname=<hostname> --token="$INFISICAL_TOKEN" --write-user-ca-to-file --write-host-cert-to-file --configure-sshd
     ```
 
     <Tip>
@@ -184,8 +184,8 @@ Once Infisical SSH is configured by an administrator, users can SSH to the remot
                 ```bash
                 infisical ssh connect \
                   --hostname ec2-12-345-678-910.ap-northeast-1.compute.amazonaws.com \
-                  --loginUser ec2-user \
-                  --outFilePath ~/.ssh/id_rsa-cert.pub \
+                  --login-user ec2-user \
+                  --out-file-path ~/.ssh/id_rsa-cert.pub \
                   --token <your-infisical-token>
                 ```
 
