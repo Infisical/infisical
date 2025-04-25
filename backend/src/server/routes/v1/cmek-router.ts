@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { InternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { KMS } from "@app/lib/api-docs";
+import { ApiDocsTags, KMS } from "@app/lib/api-docs";
 import { getBase64SizeInBytes, isBase64 } from "@app/lib/base64";
 import { AllowedEncryptionKeyAlgorithms, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
@@ -46,6 +46,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsKeys],
       description: "Create KMS key",
       body: z
         .object({
@@ -138,6 +140,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsKeys],
       description: "Update KMS key",
       params: z.object({
         keyId: z.string().uuid().describe(KMS.UPDATE_KEY.keyId)
@@ -187,6 +191,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsKeys],
       description: "Delete KMS key",
       params: z.object({
         keyId: z.string().uuid().describe(KMS.DELETE_KEY.keyId)
@@ -229,6 +235,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsKeys],
       description: "List KMS keys",
       querystring: z.object({
         projectId: z.string().describe(KMS.LIST_KEYS.projectId),
@@ -280,6 +288,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsKeys],
       description: "Get KMS key by ID",
       params: z.object({
         keyId: z.string().uuid().describe(KMS.GET_KEY_BY_ID.keyId)
@@ -321,6 +331,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsKeys],
       description: "Get KMS key by name",
       params: z.object({
         keyName: slugSchema({ field: "Key name" }).describe(KMS.GET_KEY_BY_NAME.keyName)
@@ -367,6 +379,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsEncryption],
       description: "Encrypt data with KMS key",
       params: z.object({
         keyId: z.string().uuid().describe(KMS.ENCRYPT.keyId)
@@ -412,6 +426,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsSigning],
       description:
         "Get the public key for a KMS key that is used for signing and verifying data. This endpoint is only available for asymmetric keys.",
       params: z.object({
@@ -454,6 +470,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsSigning],
       description: "List all available signing algorithms for a KMS key",
       params: z.object({
         keyId: z.string().uuid().describe(KMS.LIST_SIGNING_ALGORITHMS.keyId)
@@ -495,6 +513,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsSigning],
       description: "Sign data with a KMS key.",
       params: z.object({
         keyId: z.string().uuid().describe(KMS.SIGN.keyId)
@@ -548,6 +568,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsSigning],
       description: "Verify data signatures with a KMS key.",
       params: z.object({
         keyId: z.string().uuid().describe(KMS.VERIFY.keyId)
@@ -604,6 +626,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsEncryption],
       description: "Decrypt data with KMS key",
       params: z.object({
         keyId: z.string().uuid().describe(KMS.DECRYPT.keyId)

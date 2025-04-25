@@ -20,9 +20,9 @@ import { useDeleteCa, useGetCaById } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { CaInstallCertModal } from "../CertificatesPage/components/CaTab/components/CaInstallCertModal";
-import { CaModal } from "../CertificatesPage/components/CaTab/components/CaModal";
-import { CertificateTemplatesSection } from "../CertificatesPage/components/CertificatesTab/components/CertificateTemplatesSection";
+import { CaInstallCertModal } from "../CertificateAuthoritiesPage/components/CaInstallCertModal";
+import { CaModal } from "../CertificateAuthoritiesPage/components/CaModal";
+import { CertificateTemplatesSection } from "../CertificatesPage/components/CertificateTemplatesSection";
 import {
   CaCertificatesSection,
   CaCrlsSection,

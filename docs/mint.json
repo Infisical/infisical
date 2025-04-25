@@ -314,6 +314,13 @@
             "self-hosting/deployment-options/kubernetes-helm"
           ]
         },
+        {
+          "group": "Linux Package",
+          "pages": [
+            "self-hosting/deployment-options/native/linux-package/installation",
+            "self-hosting/deployment-options/native/linux-package/commands-configuration"
+          ]
+        },
         "self-hosting/guides/upgrading-infisical",
         "self-hosting/configuration/envars",
         "self-hosting/configuration/requirements",
@@ -330,7 +337,8 @@
           "pages": [
             "self-hosting/reference-architectures/aws-ecs",
             "self-hosting/reference-architectures/linux-deployment-ha",
-            "self-hosting/reference-architectures/on-prem-k8s-ha"
+            "self-hosting/reference-architectures/on-prem-k8s-ha",
+            "self-hosting/reference-architectures/google-cloud-run"
           ]
         },
         "self-hosting/ee",

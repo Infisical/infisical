@@ -41,3 +41,16 @@ Dynamic secrets are particularly useful in environments with stringent security 
 4. [Oracle](./oracle)
 6. [Redis](./redis)
 5. [AWS IAM](./aws-iam)
+
+**FAQ**
+
+<AccordionGroup>
+<Accordion title="Why is my SQL dynamic secret failing when I generate a lease?">
+  This usually happens when the SQL statements defined for creating or revoking the secret are not compatible with your database provider.
+
+  Different SQL engines have different expectations for quoting identifiers and values. For example, some use backticks (`` `username` ``), others use single quotes (`'username'`), and some expect double quotes (`"username"`). A statement that works on one provider might fail on another.
+
+  **Recommendation:**  
+  Make sure to adjust your SQL statements to follow the syntax required by your specific database provider. Always test them directly on your target database to ensure they execute without errors.
+</Accordion>
+</AccordionGroup>

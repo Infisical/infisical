@@ -698,7 +698,6 @@ export const secretImportServiceFactory = ({
         projectId
       });
       const importedSecrets = await fnSecretsV2FromImports({
-        projectId,
         secretImports,
         folderDAL,
         viewSecretValue: true,

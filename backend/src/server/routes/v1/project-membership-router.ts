@@ -8,7 +8,7 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PROJECT_USERS } from "@app/lib/api-docs";
+import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -23,6 +23,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectUsers],
       description: "Return project user memberships",
       security: [
         {
@@ -141,6 +143,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectUsers],
       description: "Return project user memberships",
       security: [
         {
@@ -255,6 +259,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectUsers],
       description: "Update project user membership",
       security: [
         {

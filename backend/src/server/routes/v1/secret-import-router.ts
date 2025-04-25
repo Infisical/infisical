@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { SecretImportsSchema, SecretsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { SECRET_IMPORTS } from "@app/lib/api-docs";
+import { ApiDocsTags, SECRET_IMPORTS } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -18,6 +18,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretImports],
       description: "Create secret imports",
       security: [
         {
@@ -83,6 +85,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretImports],
       description: "Update secret imports",
       security: [
         {
@@ -157,6 +161,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretImports],
       description: "Delete secret imports",
       security: [
         {
@@ -263,6 +269,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretImports],
       description: "Get secret imports",
       security: [
         {
@@ -319,6 +327,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretImports],
       description: "Get single secret import",
       security: [
         {
@@ -421,6 +431,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       rateLimit: secretsLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretImports],
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),

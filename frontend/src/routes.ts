@@ -282,6 +282,8 @@ const secretManagerIntegrationsRedirect = route("/integrations", [
 const certManagerRoutes = route("/cert-manager/$projectId", [
   layout("cert-manager-layout", "cert-manager/layout.tsx", [
     route("/overview", "cert-manager/CertificatesPage/route.tsx"),
+    route("/certificate-authorities", "cert-manager/CertificateAuthoritiesPage/route.tsx"),
+    route("/alerting", "cert-manager/AlertingPage/route.tsx"),
     route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
     route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
     route("/settings", "cert-manager/SettingsPage/route.tsx"),

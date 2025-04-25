@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { PkiAlertsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ALERTS } from "@app/lib/api-docs";
+import { ALERTS, ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -16,6 +16,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiAlerting],
       description: "Create PKI alert",
       body: z.object({
         projectId: z.string().trim().describe(ALERTS.CREATE.projectId),
@@ -68,6 +70,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiAlerting],
       description: "Get PKI alert",
       params: z.object({
         alertId: z.string().trim().describe(ALERTS.GET.alertId)
@@ -108,6 +112,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiAlerting],
       description: "Update PKI alert",
       params: z.object({
         alertId: z.string().trim().describe(ALERTS.UPDATE.alertId)
@@ -164,6 +170,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiAlerting],
       description: "Delete PKI alert",
       params: z.object({
         alertId: z.string().trim().describe(ALERTS.DELETE.alertId)
