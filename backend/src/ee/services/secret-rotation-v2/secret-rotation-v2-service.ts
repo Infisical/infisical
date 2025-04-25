@@ -815,14 +815,6 @@ export const secretRotationV2ServiceFactory = ({
     return expandSecretRotation(secretRotation, kmsService);
   };
 
-  const getMaxGeneratedCredentialsLength = (rotationType: SecretRotation): number => {
-    if (rotationType === SecretRotation.AzureClientSecret) {
-      return 1;
-    }
-
-    return MAX_GENERATED_CREDENTIALS_LENGTH;
-  };
-
   const rotateGeneratedCredentials = async (
     secretRotation: TSecretRotationV2Raw,
     {
@@ -866,7 +858,7 @@ export const secretRotationV2ServiceFactory = ({
         kmsService
       });
 
-      const inactiveIndex = (activeIndex + 1) % getMaxGeneratedCredentialsLength(type as SecretRotation);
+      const inactiveIndex = (activeIndex + 1) % MAX_GENERATED_CREDENTIALS_LENGTH;
 
       const inactiveCredentials = generatedCredentials[inactiveIndex];
 

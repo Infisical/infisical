@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { ViewAuth0ClientSecretRotationGeneratedCredentials } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewAuth0ClientSecretRotationGeneratedCredentials";
+import { ViewAzureClientSecretRotationGeneratedCredentials } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewAzureClientSecretRotationGeneratedCredentials";
 import { Modal, ModalContent, Spinner } from "@app/components/v2";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import {
@@ -63,6 +64,13 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.Auth0ClientSecret:
       Component = (
         <ViewAuth0ClientSecretRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.AzureClientSecret:
+      Component = (
+        <ViewAzureClientSecretRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );
