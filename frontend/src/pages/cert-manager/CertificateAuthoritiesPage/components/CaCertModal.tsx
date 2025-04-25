@@ -2,7 +2,7 @@ import { Modal, ModalContent } from "@app/components/v2";
 import { useGetCaCert } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { CertificateContent } from "../../CertificatesTab/components/CertificateContent";
+import { CertificateContent } from "../../CertificatesPage/components/CertificateContent";
 
 type Props = {
   popUp: UsePopUpState<["caCert"]>;

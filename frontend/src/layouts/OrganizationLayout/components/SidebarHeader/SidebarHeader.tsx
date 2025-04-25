@@ -2,7 +2,7 @@ import { useOrganization, useSubscription } from "@app/context";
 import { SubscriptionPlan } from "@app/hooks/api/types";
 
 const getPlan = (subscription: SubscriptionPlan) => {
-  if (subscription.dynamicSecret) return "Enterprise Plan";
+  if (subscription.groups) return "Enterprise Plan";
   if (subscription.pitRecovery) return "Pro Plan";
   return "Free Plan";
 };

@@ -90,6 +90,7 @@ export enum EventType {
   ADD_PKI_COLLECTION_ITEM = "add-pki-collection-item",
   DELETE_PKI_COLLECTION_ITEM = "delete-pki-collection-item",
   ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project",
+  ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
   CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",

@@ -719,6 +719,11 @@ interface OrgAdminAccessProjectEvent {
   }; // no metadata yet
 }
 
+interface OrgAdminBypassSSOEvent {
+  type: EventType.ORG_ADMIN_BYPASS_SSO;
+  metadata: Record<string, string>; // no metadata yet
+}
+
 interface CreateCertificateTemplate {
   type: EventType.CREATE_CERTIFICATE_TEMPLATE;
   metadata: {
@@ -888,6 +893,7 @@ export type Event =
   | AddPkiCollectionItem
   | DeletePkiCollectionItem
   | OrgAdminAccessProjectEvent
+  | OrgAdminBypassSSOEvent
   | CreateCertificateTemplate
   | UpdateCertificateTemplate
   | GetCertificateTemplate

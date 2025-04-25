@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { IdentityAzureAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { AZURE_AUTH } from "@app/lib/api-docs";
+import { ApiDocsTags, AZURE_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -18,6 +18,8 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AzureAuth],
       description: "Login with Azure Auth",
       body: z.object({
         identityId: z.string().trim().describe(AZURE_AUTH.LOGIN.identityId),
@@ -66,6 +68,8 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AzureAuth],
       description: "Attach Azure Auth configuration onto identity",
       security: [
         {
@@ -159,6 +163,8 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AzureAuth],
       description: "Update Azure Auth configuration on identity",
       security: [
         {
@@ -247,6 +253,8 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AzureAuth],
       description: "Retrieve Azure Auth configuration on identity",
       security: [
         {
@@ -294,6 +302,8 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AzureAuth],
       description: "Delete Azure Auth configuration on identity",
       security: [
         {

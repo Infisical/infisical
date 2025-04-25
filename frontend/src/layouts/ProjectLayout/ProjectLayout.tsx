@@ -1,10 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { faMobile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import {
   BreadcrumbContainer,
   Menu,
@@ -33,18 +32,6 @@ export const ProjectLayout = () => {
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
   const { subscription } = useSubscription();
-  const navigate = useNavigate();
-  const hasIdentityLimitCrossed =
-    subscription?.identityLimit && subscription?.identitiesUsed > subscription.identityLimit + 10;
-  const hasUserLimitCrossed =
-    subscription?.memberLimit && subscription?.membersUsed > subscription.memberLimit + 10;
-  const shouldUpgrade = Boolean(hasUserLimitCrossed || hasIdentityLimitCrossed);
-  let upgradeText = "";
-  if (hasUserLimitCrossed) {
-    upgradeText = `You've reached the maximum number of organisation users (${subscription?.memberLimit}).`;
-  } else if (hasIdentityLimitCrossed) {
-    upgradeText = `You've reached the maximum number of organisation identities (${subscription?.identityLimit}).`;
-  }
 
   const isSecretManager = currentWorkspace?.type === ProjectType.SecretManager;
   const isCertManager = currentWorkspace?.type === ProjectType.CertificateManager;
@@ -105,18 +92,46 @@ export const ProjectLayout = () => {
                         </Link>
                       )}
                       {isCertManager && (
-                        <Link
-                          to={`/${ProjectType.CertificateManager}/$projectId/overview` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="lock-closed">
-                              Overview
-                            </MenuItem>
-                          )}
-                        </Link>
+                        <>
+                          <Link
+                            to={`/${ProjectType.CertificateManager}/$projectId/overview` as const}
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="certificate">
+                                Certificates
+                              </MenuItem>
+                            )}
+                          </Link>
+                          <Link
+                            to={
+                              `/${ProjectType.CertificateManager}/$projectId/certificate-authorities` as const
+                            }
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="certificate-authority">
+                                Certificate Authorities
+                              </MenuItem>
+                            )}
+                          </Link>
+                          <Link
+                            to={`/${ProjectType.CertificateManager}/$projectId/alerting` as const}
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="notification-bell">
+                                Alerting
+                              </MenuItem>
+                            )}
+                          </Link>
+                        </>
                       )}
                       {isCmek && (
                         <Link
@@ -280,17 +295,6 @@ export const ProjectLayout = () => {
           </div>
         </div>
       </div>
-      {shouldUpgrade && (
-        <UpgradePlanModal
-          isOpen={shouldUpgrade}
-          text={upgradeText}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) {
-              navigate({ to: "/organization/access-management" });
-            }
-          }}
-        />
-      )}
       <div className="z-[200] flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">

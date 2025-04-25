@@ -68,17 +68,14 @@ const awsRegionFromHeader = (authorizationHeader: string): string | null => {
   return null;
 };
 
-
-
-function isValidAwsRegion(region: (string | null)): boolean {
-  const validRegionPattern = new RE2('^[a-z0-9-]+$');
-  if (typeof region !== 'string' || region.length === 0 || region.length > 20) {
+function isValidAwsRegion(region: string | null): boolean {
+  const validRegionPattern = new RE2("^[a-z0-9-]+$");
+  if (typeof region !== "string" || region.length === 0 || region.length > 20) {
     return false;
   }
-  
+
   return validRegionPattern.test(region);
 }
-
 
 export const identityAwsAuthServiceFactory = ({
   identityAccessTokenDAL,
@@ -100,7 +97,7 @@ export const identityAwsAuthServiceFactory = ({
     const region = headers.Authorization ? awsRegionFromHeader(headers.Authorization) : null;
 
     if (!isValidAwsRegion(region)) {
-      throw new BadRequestError({message: "Invalid AWS region"});
+      throw new BadRequestError({ message: "Invalid AWS region" });
     }
 
     const url = region ? `https://sts.${region}.amazonaws.com` : identityAwsAuth.stsEndpoint;

@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
 import { OrgMembershipRole, TUsers, UserDeviceSchema } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -11,6 +13,7 @@ import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
@@ -28,7 +31,15 @@ import {
   TOauthTokenExchangeDTO,
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
-import { AuthMethod, AuthModeJwtTokenPayload, AuthModeMfaJwtTokenPayload, AuthTokenType, MfaMethod } from "./auth-type";
+import {
+  ActorType,
+  AuthMethod,
+  AuthModeJwtTokenPayload,
+  AuthModeMfaJwtTokenPayload,
+  AuthTokenType,
+  MfaMethod
+} from "./auth-type";
+import { removeTrailingSlash } from "@app/lib/fn";
 
 type TAuthLoginServiceFactoryDep = {
   userDAL: TUserDALFactory;
@@ -36,6 +47,7 @@ type TAuthLoginServiceFactoryDep = {
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
   totpService: Pick<TTotpServiceFactory, "verifyUserTotp" | "verifyWithUserRecoveryCode">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
@@ -44,7 +56,8 @@ export const authLoginServiceFactory = ({
   tokenService,
   smtpService,
   orgDAL,
-  totpService
+  totpService,
+  auditLogService
 }: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
@@ -411,6 +424,55 @@ export const authLoginServiceFactory = ({
       isMfaVerified: decodedToken.isMfaVerified,
       mfaMethod: decodedToken.mfaMethod
     });
+
+    // In the event of this being a break-glass request (non-saml / non-oidc, when either is enforced)
+    if (
+      selectedOrg.authEnforced &&
+      selectedOrg.bypassOrgAuthEnabled &&
+      !isAuthMethodSaml(decodedToken.authMethod) &&
+      decodedToken.authMethod !== AuthMethod.OIDC
+    ) {
+      await auditLogService.createAuditLog({
+        orgId: organizationId,
+        ipAddress,
+        userAgent,
+        userAgentType: getUserAgentType(userAgent),
+        actor: {
+          type: ActorType.USER,
+          metadata: {
+            email: user.email,
+            userId: user.id,
+            username: user.username
+          }
+        },
+        event: {
+          type: EventType.ORG_ADMIN_BYPASS_SSO,
+          metadata: {}
+        }
+      });
+
+      // Notify all admins via email (besides the actor)
+      const orgAdmins = await orgDAL.findOrgMembersByRole(organizationId, OrgMembershipRole.Admin);
+      const adminEmails = orgAdmins
+        .filter((admin) => admin.user.id !== user.id)
+        .map((admin) => admin.user.email)
+        .filter(Boolean) as string[];
+
+      if (adminEmails.length > 0) {
+        await smtpService.sendMail({
+          recipients: adminEmails,
+          subjectLine: "Security Alert: Admin SSO Bypass",
+          substitutions: {
+            email: user.email,
+            timestamp: new Date().toISOString(),
+            ip: ipAddress,
+            userAgent,
+            siteUrl: removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com")
+          },
+          template: SmtpTemplates.OrgAdminBreakglassAccess
+        });
+      }
+    }
 
     return {
       ...tokens,

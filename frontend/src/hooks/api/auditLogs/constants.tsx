@@ -84,6 +84,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.ADD_PKI_COLLECTION_ITEM]: "Add PKI collection item",
   [EventType.DELETE_PKI_COLLECTION_ITEM]: "Delete PKI collection item",
   [EventType.ORG_ADMIN_ACCESS_PROJECT]: "Org admin accessed project",
+  [EventType.ORG_ADMIN_BYPASS_SSO]: "Org admin bypassed SSO enforcement",
   [EventType.CREATE_CERTIFICATE_TEMPLATE]: "Create certificate template",
   [EventType.UPDATE_CERTIFICATE_TEMPLATE]: "Update certificate template",
   [EventType.DELETE_CERTIFICATE_TEMPLATE]: "Delete certificate template",

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { INTEGRATION_AUTH } from "@app/lib/api-docs";
+import { ApiDocsTags, INTEGRATION_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -19,6 +19,8 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "List of integrations available.",
       security: [
         {
@@ -57,6 +59,8 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Get details of an integration authorization by auth object id.",
       security: [
         {
@@ -92,6 +96,8 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Update the integration authentication object required for syncing secrets.",
       security: [
         {
@@ -153,6 +159,8 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Remove all integration's auth object from the project.",
       security: [
         {
@@ -202,6 +210,8 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Remove an integration auth object by object id.",
       security: [
         {
@@ -294,6 +304,8 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "Create the integration authentication object required for syncing secrets.",
       security: [
         {

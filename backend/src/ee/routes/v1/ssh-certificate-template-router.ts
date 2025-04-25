@@ -8,7 +8,7 @@ import {
   isValidHostPattern,
   isValidUserPattern
 } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-validators";
-import { SSH_CERTIFICATE_TEMPLATES } from "@app/lib/api-docs";
+import { ApiDocsTags, SSH_CERTIFICATE_TEMPLATES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -22,6 +22,8 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateTemplates],
       params: z.object({
         certificateTemplateId: z.string().describe(SSH_CERTIFICATE_TEMPLATES.GET.certificateTemplateId)
       }),
@@ -61,6 +63,8 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateTemplates],
       body: z
         .object({
           sshCaId: z.string().describe(SSH_CERTIFICATE_TEMPLATES.CREATE.sshCaId),
@@ -141,6 +145,8 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateTemplates],
       body: z.object({
         status: z.nativeEnum(SshCertTemplateStatus).optional(),
         name: z
@@ -224,6 +230,8 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateTemplates],
       params: z.object({
         certificateTemplateId: z.string().describe(SSH_CERTIFICATE_TEMPLATES.DELETE.certificateTemplateId)
       }),

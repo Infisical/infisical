@@ -8,6 +8,51 @@ import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connec
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
+export enum ApiDocsTags {
+  Identities = "Identities",
+  TokenAuth = "Token Auth",
+  UniversalAuth = "Universal Auth",
+  GcpAuth = "GCP Auth",
+  AwsAuth = "AWS Auth",
+  AzureAuth = "Azure Auth",
+  KubernetesAuth = "Kubernetes Auth",
+  JwtAuth = "JWT Auth",
+  OidcAuth = "OIDC Auth",
+  Groups = "Groups",
+  Organizations = "Organizations",
+  Projects = "Projects",
+  ProjectUsers = "Project Users",
+  ProjectGroups = "Project Groups",
+  ProjectIdentities = "Project Identities",
+  ProjectRoles = "Project Roles",
+  ProjectTemplates = "Project Templates",
+  Environments = "Environments",
+  Folders = "Folders",
+  SecretTags = "Secret Tags",
+  Secrets = "Secrets",
+  DynamicSecrets = "Dynamic Secrets",
+  SecretImports = "Secret Imports",
+  SecretRotations = "Secret Rotations",
+  IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
+  IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
+  AppConnections = "App Connections",
+  SecretSyncs = "Secret Syncs",
+  Integrations = "Integrations",
+  ServiceTokens = "Service Tokens",
+  AuditLogs = "Audit Logs",
+  PkiCertificateAuthorities = "PKI Certificate Authorities",
+  PkiCertificates = "PKI Certificates",
+  PkiCertificateTemplates = "PKI Certificate Templates",
+  PkiCertificateCollections = "PKI Certificate Collections",
+  PkiAlerting = "PKI Alerting",
+  SshCertificates = "SSH Certificates",
+  SshCertificateAuthorities = "SSH Certificate Authorities",
+  SshCertificateTemplates = "SSH Certificate Templates",
+  KmsKeys = "KMS Keys",
+  KmsEncryption = "KMS Encryption",
+  KmsSigning = "KMS Signing"
+}
+
 export const GROUPS = {
   CREATE: {
     name: "The name of the group to create.",
@@ -888,7 +933,7 @@ export const DYNAMIC_SECRETS = {
     environmentSlug: "The slug of the environment to list folders from.",
     path: "The path to list folders from."
   },
-  LIST_LEAES_BY_NAME: {
+  LIST_LEASES_BY_NAME: {
     projectSlug: "The slug of the project to create dynamic secret in.",
     environmentSlug: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
