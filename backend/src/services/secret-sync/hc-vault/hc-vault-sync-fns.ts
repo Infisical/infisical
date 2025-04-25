@@ -1,6 +1,6 @@
 import { request } from "@app/lib/config/request";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { getHCVaultAccessToken } from "@app/services/app-connection/hc-vault";
+import { getHCVaultAccessToken, getHCVaultInstanceUrl } from "@app/services/app-connection/hc-vault";
 import {
   THCVaultListVariables,
   THCVaultListVariablesResponse,
@@ -47,7 +47,7 @@ export const HCVaultSyncFns = {
     } = secretSync;
 
     const accessToken = await getHCVaultAccessToken(connection);
-    const { instanceUrl } = connection.credentials;
+    const instanceUrl = await getHCVaultInstanceUrl(connection);
 
     const variables = await listHCVaultVariables({ instanceUrl, accessToken, mount, path });
     let tainted = false;
@@ -87,7 +87,7 @@ export const HCVaultSyncFns = {
     } = secretSync;
 
     const accessToken = await getHCVaultAccessToken(connection);
-    const { instanceUrl } = connection.credentials;
+    const instanceUrl = await getHCVaultInstanceUrl(connection);
 
     const variables = await listHCVaultVariables({ instanceUrl, accessToken, mount, path });
 
@@ -112,7 +112,7 @@ export const HCVaultSyncFns = {
     } = secretSync;
 
     const accessToken = await getHCVaultAccessToken(connection);
-    const { instanceUrl } = connection.credentials;
+    const instanceUrl = await getHCVaultInstanceUrl(connection);
 
     const variables = await listHCVaultVariables({
       instanceUrl,

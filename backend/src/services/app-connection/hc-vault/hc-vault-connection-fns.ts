@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { HCVaultConnectionMethod } from "./hc-vault-connection-enums";
@@ -12,6 +13,14 @@ import {
   THCVaultMountResponse,
   TValidateHCVaultConnectionCredentials
 } from "./hc-vault-connection-types";
+
+export const getHCVaultInstanceUrl = async (config: THCVaultConnectionConfig) => {
+  const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
+
+  await blockLocalAndPrivateIpAddresses(instanceUrl);
+
+  return instanceUrl;
+};
 
 export const getHCVaultConnectionListItem = () => ({
   name: "HCVault" as const,
@@ -58,7 +67,7 @@ export const getHCVaultAccessToken = async (connection: TValidateHCVaultConnecti
 };
 
 export const validateHCVaultConnectionCredentials = async (config: THCVaultConnectionConfig) => {
-  const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
+  const instanceUrl = await getHCVaultInstanceUrl(config);
 
   try {
     const accessToken = await getHCVaultAccessToken(config);
@@ -82,7 +91,7 @@ export const validateHCVaultConnectionCredentials = async (config: THCVaultConne
 };
 
 export const listHCVaultMounts = async (appConnection: THCVaultConnection) => {
-  const instanceUrl = removeTrailingSlash(appConnection.credentials.instanceUrl);
+  const instanceUrl = await getHCVaultInstanceUrl(appConnection);
   const accessToken = await getHCVaultAccessToken(appConnection);
 
   const { data } = await request.get<THCVaultMountResponse>(`${instanceUrl}/v1/sys/mounts`, {
