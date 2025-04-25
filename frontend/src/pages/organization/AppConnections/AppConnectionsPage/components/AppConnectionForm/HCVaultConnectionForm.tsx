@@ -34,6 +34,7 @@ const InstanceUrlSchema = z
   .trim()
   .min(1, "Instance URL required")
   .url("Invalid Instance URL");
+
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
     method: z.literal(HCVaultConnectionMethod.AccessToken),
