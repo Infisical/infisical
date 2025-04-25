@@ -168,6 +168,10 @@ export type TListAwsConnectionKmsKeys = {
   destination: SecretSync.AWSParameterStore | SecretSync.AWSSecretsManager;
 };
 
+export type TListAwsConnectionIamUsers = {
+  connectionId: string;
+};
+
 export type TAppConnectionCredentialsValidator = (
   appConnection: TAppConnectionConfig
 ) => Promise<TAppConnection["credentials"]>;
