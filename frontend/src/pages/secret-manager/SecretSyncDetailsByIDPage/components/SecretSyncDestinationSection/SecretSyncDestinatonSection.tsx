@@ -35,7 +35,7 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
   const app = APP_CONNECTION_MAP[connection.app].name;
 
   let DestinationComponents: ReactNode;
-  switch (secretSync.destination) {
+  switch (destination) {
     case SecretSync.AWSParameterStore:
       DestinationComponents = <AwsParameterStoreSyncDestinationSection secretSync={secretSync} />;
       break;
