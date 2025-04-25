@@ -125,7 +125,7 @@ export const SecretEditRow = ({
         );
       }
     }
-    if (secretValueHidden) {
+    if (secretValueHidden && !isOverride) {
       setTimeout(() => {
         reset({ value: defaultValue || null });
       }, 50);

@@ -86,7 +86,7 @@ export const SecretOverviewTableRow = ({
       })
     );
 
-    if (secret?.secretValueHidden) {
+    if (secret?.secretValueHidden && !secret?.valueOverride) {
       return canEditSecretValue ? "******" : "";
     }
     return secret?.valueOverride || secret?.value || importedSecret?.secret?.value || "";
