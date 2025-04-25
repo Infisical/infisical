@@ -44,6 +44,7 @@ export const getLdapConnectionClient = async ({
 
     client.on("error", (err: Error) => {
       logger.error(err, "LDAP Error");
+      client.destroy();
       reject(new Error(`Provider Error - ${err.message}`));
     });
 

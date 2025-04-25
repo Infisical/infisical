@@ -18,7 +18,7 @@ import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
-import { LdapConnectionForm } from "./LdapConnectionFields";
+import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
