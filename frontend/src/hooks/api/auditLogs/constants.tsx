@@ -93,8 +93,10 @@ export const eventToNameMap: { [K in EventType]: string } = {
     "Create certificate template EST configuration",
   [EventType.UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG]:
     "Update certificate template EST configuration",
-  [EventType.UPDATE_PROJECT_SLACK_CONFIG]: "Update project slack configuration",
-  [EventType.GET_PROJECT_SLACK_CONFIG]: "Get project slack configuration",
+  [EventType.UPDATE_PROJECT_WORKFLOW_INTEGRATION_CONFIG]:
+    "Update project workflow integration configuration",
+  [EventType.GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG]:
+    "Get project workflow integration configuration",
   [EventType.INTEGRATION_SYNCED]: "Integration sync",
   [EventType.CREATE_SHARED_SECRET]: "Create shared secret",
   [EventType.DELETE_SHARED_SECRET]: "Delete shared secret",

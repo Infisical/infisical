@@ -43,6 +43,9 @@ import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { MicrosoftTeamsChannelsSchema } from "../microsoft-teams/microsoft-teams-fns";
+import { TMicrosoftTeamsIntegrationDALFactory } from "../microsoft-teams/microsoft-teams-integration-dal";
+import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/project-microsoft-teams-config-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TPkiAlertDALFactory } from "../pki-alert/pki-alert-dal";
@@ -60,9 +63,11 @@ import { fnDeleteProjectSecretReminders } from "../secret/secret-fns";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
+import { validateSlackChannelsField } from "../slack/slack-auth-validators";
 import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
+import { WorkflowIntegration } from "../workflow-integration/workflow-integration-types";
 import { TProjectDALFactory } from "./project-dal";
 import { assignWorkspaceKeysToMembers, bootstrapSshProject, createProjectKey } from "./project-fns";
 import { TProjectQueueFactory } from "./project-queue";
@@ -70,9 +75,10 @@ import { TProjectSshConfigDALFactory } from "./project-ssh-config-dal";
 import {
   TCreateProjectDTO,
   TDeleteProjectDTO,
+  TDeleteProjectWorkflowIntegration,
   TGetProjectDTO,
   TGetProjectKmsKey,
-  TGetProjectSlackConfig,
+  TGetProjectWorkflowIntegrationConfig,
   TListProjectAlertsDTO,
   TListProjectCasDTO,
   TListProjectCertificateTemplatesDTO,
@@ -91,8 +97,8 @@ import {
   TUpdateProjectDTO,
   TUpdateProjectKmsDTO,
   TUpdateProjectNameDTO,
-  TUpdateProjectSlackConfig,
   TUpdateProjectVersionLimitDTO,
+  TUpdateProjectWorkflowIntegration,
   TUpgradeProjectDTO
 } from "./project-types";
 
@@ -121,8 +127,19 @@ type TProjectServiceFactoryDep = {
     "create" | "findProjectGhostUser" | "findOne" | "delete" | "findAllProjectMembers"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "delete">;
-  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "findOne" | "transaction" | "updateById" | "create">;
+  projectSlackConfigDAL: Pick<
+    TProjectSlackConfigDALFactory,
+    "findOne" | "transaction" | "updateById" | "create" | "delete"
+  >;
+  projectMicrosoftTeamsConfigDAL: Pick<
+    TProjectMicrosoftTeamsConfigDALFactory,
+    "findOne" | "transaction" | "updateById" | "create" | "delete"
+  >;
   slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findById" | "findByIdWithWorkflowIntegrationDetails">;
+  microsoftTeamsIntegrationDAL: Pick<
+    TMicrosoftTeamsIntegrationDALFactory,
+    "findById" | "findByIdWithWorkflowIntegrationDetails"
+  >;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
@@ -195,7 +212,9 @@ export const projectServiceFactory = ({
   kmsService,
   projectBotDAL,
   projectSlackConfigDAL,
+  projectMicrosoftTeamsConfigDAL,
   slackIntegrationDAL,
+  microsoftTeamsIntegrationDAL,
   projectTemplateService,
   groupProjectDAL,
   smtpService
@@ -1327,13 +1346,14 @@ export const projectServiceFactory = ({
     return { secretManagerKmsKey: kmsKey };
   };
 
-  const getProjectSlackConfig = async ({
+  const getProjectWorkflowIntegrationConfig = async ({
     actorId,
     actor,
     actorOrgId,
     actorAuthMethod,
-    projectId
-  }: TGetProjectSlackConfig) => {
+    projectId,
+    integration
+  }: TGetProjectWorkflowIntegrationConfig) => {
     const project = await projectDAL.findById(projectId);
     if (!project) {
       throw new NotFoundError({
@@ -1352,23 +1372,56 @@ export const projectServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
 
-    return projectSlackConfigDAL.findOne({
-      projectId: project.id
-    });
+    if (integration === WorkflowIntegration.SLACK) {
+      const config = await projectSlackConfigDAL.findOne({
+        projectId: project.id
+      });
+
+      if (!config) {
+        throw new NotFoundError({
+          message: `Workflow integration config for project '${projectId}' and integration '${integration}' not found`
+        });
+      }
+
+      return {
+        ...config,
+        integration,
+        integrationId: config.slackIntegrationId
+      };
+    }
+
+    if (integration === WorkflowIntegration.MICROSOFT_TEAMS) {
+      const config = await projectMicrosoftTeamsConfigDAL.findOne({
+        projectId: project.id
+      });
+
+      if (!config) {
+        throw new NotFoundError({
+          message: `Workflow integration config for project '${projectId}' and integration '${integration}' not found`
+        });
+      }
+
+      return {
+        ...config,
+        integration,
+        integrationId: config.microsoftTeamsIntegrationId
+      };
+    }
   };
 
-  const updateProjectSlackConfig = async ({
+  const updateProjectWorkflowIntegration = async ({
     actorId,
     actor,
     actorOrgId,
     actorAuthMethod,
     projectId,
-    slackIntegrationId,
+    integration,
+    integrationId,
     isAccessRequestNotificationEnabled,
     accessRequestChannels,
     isSecretRequestNotificationEnabled,
     secretRequestChannels
-  }: TUpdateProjectSlackConfig) => {
+  }: TUpdateProjectWorkflowIntegration) => {
     const project = await projectDAL.findById(projectId);
     if (!project) {
       throw new NotFoundError({
@@ -1376,17 +1429,177 @@ export const projectServiceFactory = ({
       });
     }
 
-    const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(slackIntegrationId);
+    if (integration === WorkflowIntegration.SLACK) {
+      const sanitizedAccessRequestChannels = validateSlackChannelsField.parse(accessRequestChannels);
+      const sanitizedSecretRequestChannels = validateSlackChannelsField.parse(secretRequestChannels);
 
-    if (!slackIntegration) {
-      throw new NotFoundError({
-        message: `Slack integration with ID '${slackIntegrationId}' not found`
+      const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(integrationId);
+
+      if (!slackIntegration) {
+        throw new NotFoundError({
+          message: `Slack integration with ID '${integrationId}' not found`
+        });
+      }
+
+      if (slackIntegration.orgId !== actorOrgId) {
+        throw new ForbiddenRequestError({
+          message: "Selected slack integration is not in the same organization"
+        });
+      }
+
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.Any
       });
+
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+      if (slackIntegration.orgId !== project.orgId) {
+        throw new ForbiddenRequestError({
+          message: "Selected slack integration is not in the same organization"
+        });
+      }
+
+      const updatedWorkflowIntegration = await projectSlackConfigDAL.transaction(async (tx) => {
+        const slackConfig = await projectSlackConfigDAL.findOne(
+          {
+            projectId
+          },
+          tx
+        );
+
+        if (slackConfig) {
+          return projectSlackConfigDAL.updateById(
+            slackConfig.id,
+            {
+              slackIntegrationId: integrationId,
+              isAccessRequestNotificationEnabled,
+              accessRequestChannels: sanitizedAccessRequestChannels,
+              isSecretRequestNotificationEnabled,
+              secretRequestChannels: sanitizedSecretRequestChannels
+            },
+            tx
+          );
+        }
+
+        return projectSlackConfigDAL.create(
+          {
+            projectId,
+            slackIntegrationId: integrationId,
+            isAccessRequestNotificationEnabled,
+            accessRequestChannels: sanitizedAccessRequestChannels,
+            isSecretRequestNotificationEnabled,
+            secretRequestChannels: sanitizedSecretRequestChannels
+          },
+          tx
+        );
+      });
+
+      return {
+        ...updatedWorkflowIntegration,
+        accessRequestChannels: sanitizedAccessRequestChannels,
+        secretRequestChannels: sanitizedSecretRequestChannels,
+        integrationId: slackIntegration.id,
+        integration: WorkflowIntegration.SLACK
+      } as const;
+    }
+    if (integration === WorkflowIntegration.MICROSOFT_TEAMS) {
+      if (isAccessRequestNotificationEnabled && !accessRequestChannels) {
+        throw new BadRequestError({
+          message: "Access request channels are required when access request notifications are enabled"
+        });
+      }
+
+      if (isSecretRequestNotificationEnabled && !secretRequestChannels) {
+        throw new BadRequestError({
+          message: "Secret request channels are required when secret request notifications are enabled"
+        });
+      }
+
+      if (!secretRequestChannels && !accessRequestChannels) {
+        throw new BadRequestError({
+          message: "At least one of access request channels or secret request channels is required"
+        });
+      }
+
+      const sanitizedAccessRequestChannels = MicrosoftTeamsChannelsSchema.parse(accessRequestChannels);
+      const sanitizedSecretRequestChannels = MicrosoftTeamsChannelsSchema.parse(secretRequestChannels);
+
+      const microsoftTeamsIntegration =
+        await microsoftTeamsIntegrationDAL.findByIdWithWorkflowIntegrationDetails(integrationId);
+
+      if (!microsoftTeamsIntegration) {
+        throw new NotFoundError({
+          message: `Microsoft Teams integration with ID '${integrationId}' not found`
+        });
+      }
+
+      const updatedWorkflowIntegration = await projectMicrosoftTeamsConfigDAL.transaction(async (tx) => {
+        const microsoftTeamsConfig = await projectMicrosoftTeamsConfigDAL.findOne(
+          {
+            projectId
+          },
+          tx
+        );
+
+        if (microsoftTeamsConfig) {
+          return projectMicrosoftTeamsConfigDAL.updateById(
+            microsoftTeamsConfig.id,
+            {
+              microsoftTeamsIntegrationId: integrationId,
+              isAccessRequestNotificationEnabled,
+              accessRequestChannels: sanitizedAccessRequestChannels || {},
+              isSecretRequestNotificationEnabled,
+              secretRequestChannels: sanitizedSecretRequestChannels || {}
+            },
+            tx
+          );
+        }
+
+        return projectMicrosoftTeamsConfigDAL.create(
+          {
+            projectId,
+            microsoftTeamsIntegrationId: integrationId,
+            isAccessRequestNotificationEnabled,
+            accessRequestChannels: sanitizedAccessRequestChannels || {},
+            isSecretRequestNotificationEnabled,
+            secretRequestChannels: sanitizedSecretRequestChannels || {}
+          },
+          tx
+        );
+      });
+
+      return {
+        ...updatedWorkflowIntegration,
+        accessRequestChannels: sanitizedAccessRequestChannels,
+        secretRequestChannels: sanitizedSecretRequestChannels,
+        integrationId: microsoftTeamsIntegration.id,
+        integration: WorkflowIntegration.MICROSOFT_TEAMS
+      } as const;
     }
 
-    if (slackIntegration.orgId !== actorOrgId) {
-      throw new ForbiddenRequestError({
-        message: "Selected slack integration is not in the same organization"
+    throw new BadRequestError({
+      message: `Integration type '${integration as string}' not supported`
+    });
+  };
+
+  const deleteProjectWorkflowIntegration = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    integrationId,
+    integration
+  }: TDeleteProjectWorkflowIntegration) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new NotFoundError({
+        message: `Project with ID '${projectId}' not found`
       });
     }
 
@@ -1399,47 +1612,28 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Settings);
 
-    if (slackIntegration.orgId !== project.orgId) {
-      throw new ForbiddenRequestError({
-        message: "Selected slack integration is not in the same organization"
+    if (integration === WorkflowIntegration.SLACK) {
+      const [deletedIntegration] = await projectSlackConfigDAL.delete({
+        projectId,
+        slackIntegrationId: integrationId
       });
+
+      return deletedIntegration;
     }
 
-    return projectSlackConfigDAL.transaction(async (tx) => {
-      const slackConfig = await projectSlackConfigDAL.findOne(
-        {
-          projectId
-        },
-        tx
-      );
+    if (integration === WorkflowIntegration.MICROSOFT_TEAMS) {
+      const [deletedIntegration] = await projectMicrosoftTeamsConfigDAL.delete({
+        projectId,
+        microsoftTeamsIntegrationId: integrationId
+      });
 
-      if (slackConfig) {
-        return projectSlackConfigDAL.updateById(
-          slackConfig.id,
-          {
-            slackIntegrationId,
-            isAccessRequestNotificationEnabled,
-            accessRequestChannels,
-            isSecretRequestNotificationEnabled,
-            secretRequestChannels
-          },
-          tx
-        );
-      }
+      return deletedIntegration;
+    }
 
-      return projectSlackConfigDAL.create(
-        {
-          projectId,
-          slackIntegrationId,
-          isAccessRequestNotificationEnabled,
-          accessRequestChannels,
-          isSecretRequestNotificationEnabled,
-          secretRequestChannels
-        },
-        tx
-      );
+    throw new BadRequestError({
+      message: `Integration with ID '${integrationId}' not found`
     });
   };
 
@@ -1548,8 +1742,9 @@ export const projectServiceFactory = ({
     getProjectKmsBackup,
     loadProjectKmsBackup,
     getProjectKmsKeys,
-    getProjectSlackConfig,
-    updateProjectSlackConfig,
+    getProjectWorkflowIntegrationConfig,
+    updateProjectWorkflowIntegration,
+    deleteProjectWorkflowIntegration,
     requestProjectAccess,
     searchProjects
   };

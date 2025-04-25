@@ -27,7 +27,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             createdAt: true,
             updatedAt: true,
             encryptedSlackClientId: true,
-            encryptedSlackClientSecret: true
+            encryptedSlackClientSecret: true,
+            encryptedMicrosoftTeamsAppId: true,
+            encryptedMicrosoftTeamsClientSecret: true,
+            encryptedMicrosoftTeamsBotId: true
           }).extend({
             isMigrationModeOn: z.boolean(),
             defaultAuthOrgSlug: z.string().nullable(),
@@ -74,6 +77,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           }),
         slackClientId: z.string().optional(),
         slackClientSecret: z.string().optional(),
+        microsoftTeamsAppId: z.string().optional(),
+        microsoftTeamsClientSecret: z.string().optional(),
+        microsoftTeamsBotId: z.string().optional(),
         authConsentContent: z
           .string()
           .trim()
@@ -197,15 +203,22 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/integrations/slack/config",
+    url: "/integrations",
     config: {
       rateLimit: readLimit
     },
     schema: {
       response: {
         200: z.object({
-          clientId: z.string(),
-          clientSecret: z.string()
+          slack: z.object({
+            clientId: z.string(),
+            clientSecret: z.string()
+          }),
+          microsoftTeams: z.object({
+            appId: z.string(),
+            clientSecret: z.string(),
+            botId: z.string()
+          })
         })
       }
     },
@@ -215,9 +228,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async () => {
-      const adminSlackConfig = await server.services.superAdmin.getAdminSlackConfig();
+      const adminIntegrationsConfig = await server.services.superAdmin.getAdminIntegrationsConfig();
 
-      return adminSlackConfig;
+      return adminIntegrationsConfig;
     }
   });
 

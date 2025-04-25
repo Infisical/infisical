@@ -57,6 +57,7 @@ export * from "./kms-keys";
 export * from "./kms-root-config";
 export * from "./ldap-configs";
 export * from "./ldap-group-maps";
+export * from "./microsoft-teams-integrations";
 export * from "./models";
 export * from "./oidc-configs";
 export * from "./org-bots";

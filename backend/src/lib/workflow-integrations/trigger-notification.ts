@@ -1,0 +1,94 @@
+import { MicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
+import { sendSlackNotification } from "@app/services/slack/slack-fns";
+
+import { logger } from "../logger";
+import { TriggerFeature, TTriggerWorkflowNotificationDTO } from "./types";
+
+export const triggerWorkflowIntegrationNotification = async (dto: TTriggerWorkflowNotificationDTO) => {
+  try {
+    const { projectId, notification } = dto.input;
+    const { projectDAL, projectSlackConfigDAL, kmsService, projectMicrosoftTeamsConfigDAL, microsoftTeamsService } =
+      dto.dependencies;
+
+    const project = await projectDAL.findById(projectId);
+
+    if (!project) {
+      return;
+    }
+
+    const microsoftTeamsConfig = await projectMicrosoftTeamsConfigDAL.getIntegrationDetailsByProject(projectId);
+    const slackConfig = await projectSlackConfigDAL.getIntegrationDetailsByProject(projectId);
+
+    if (slackConfig) {
+      if (notification.type === TriggerFeature.ACCESS_REQUEST) {
+        const targetChannelIds = slackConfig.accessRequestChannels?.split(", ") || [];
+        if (targetChannelIds.length && slackConfig.isAccessRequestNotificationEnabled) {
+          await sendSlackNotification({
+            orgId: project.orgId,
+            notification,
+            kmsService,
+            targetChannelIds,
+            slackIntegration: slackConfig
+          }).catch((error) => {
+            logger.error(error, "Error sending Slack notification");
+          });
+        }
+      } else if (notification.type === TriggerFeature.SECRET_APPROVAL) {
+        const targetChannelIds = slackConfig.secretRequestChannels?.split(", ") || [];
+        if (targetChannelIds.length && slackConfig.isSecretRequestNotificationEnabled) {
+          await sendSlackNotification({
+            orgId: project.orgId,
+            notification,
+            kmsService,
+            targetChannelIds,
+            slackIntegration: slackConfig
+          }).catch((error) => {
+            logger.error(error, "Error sending Slack notification");
+          });
+        }
+      }
+    }
+
+    console.log("microsoftTeamsConfig", microsoftTeamsConfig);
+    if (microsoftTeamsConfig) {
+      if (notification.type === TriggerFeature.ACCESS_REQUEST) {
+        if (microsoftTeamsConfig.isAccessRequestNotificationEnabled && microsoftTeamsConfig.accessRequestChannels) {
+          const { success, data } = MicrosoftTeamsChannelsSchema.safeParse(microsoftTeamsConfig.accessRequestChannels);
+
+          console.log("success", success);
+          console.log("data", data);
+
+          if (success && data) {
+            await microsoftTeamsService
+              .sendNotification({
+                notification,
+                target: data,
+                tenantId: microsoftTeamsConfig.tenantId
+              })
+              .catch((error) => {
+                logger.error(error, "Error sending Microsoft Teams notification");
+              });
+          }
+        }
+      } else if (notification.type === TriggerFeature.SECRET_APPROVAL) {
+        if (microsoftTeamsConfig.isSecretRequestNotificationEnabled && microsoftTeamsConfig.secretRequestChannels) {
+          const { success, data } = MicrosoftTeamsChannelsSchema.safeParse(microsoftTeamsConfig.secretRequestChannels);
+
+          if (success && data) {
+            await microsoftTeamsService
+              .sendNotification({
+                notification,
+                target: data,
+                tenantId: microsoftTeamsConfig.tenantId
+              })
+              .catch((error) => {
+                logger.error(error, "Error sending Microsoft Teams notification");
+              });
+          }
+        }
+      }
+    }
+  } catch (error) {
+    logger.error(error, "Error triggering workflow integration notification");
+  }
+};

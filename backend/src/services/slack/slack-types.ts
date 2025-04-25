@@ -1,4 +1,8 @@
+import { TSlackIntegrations } from "@app/db/schemas";
 import { TOrgPermission } from "@app/lib/types";
+import { TNotification } from "@app/lib/workflow-integrations/types";
+
+import { TKmsServiceFactory } from "../kms/kms-service";
 
 export type TGetSlackInstallUrlDTO = {
   slug: string;
@@ -48,34 +52,10 @@ export type TReinstallSlackIntegrationDTO = {
   slackBotUserId: string;
 };
 
-export enum SlackTriggerFeature {
-  SECRET_APPROVAL = "secret-approval",
-  ACCESS_REQUEST = "access-request"
-}
-
-export type TSlackNotification =
-  | {
-      type: SlackTriggerFeature.SECRET_APPROVAL;
-      payload: {
-        userEmail: string;
-        environment: string;
-        secretPath: string;
-        requestId: string;
-        projectId: string;
-        secretKeys: string[];
-      };
-    }
-  | {
-      type: SlackTriggerFeature.ACCESS_REQUEST;
-      payload: {
-        requesterFullName: string;
-        requesterEmail: string;
-        isTemporary: boolean;
-        secretPath: string;
-        environment: string;
-        projectName: string;
-        permissions: string[];
-        approvalUrl: string;
-        note?: string;
-      };
-    };
+export type TSendSlackNotificationDTO = {
+  orgId: string;
+  notification: TNotification;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  targetChannelIds: string[];
+  slackIntegration: TSlackIntegrations;
+};

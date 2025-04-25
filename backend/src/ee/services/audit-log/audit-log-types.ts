@@ -29,6 +29,7 @@ import {
   TSecretSyncRaw,
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
+import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import { KmipPermission } from "../kmip/kmip-enum";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
@@ -246,8 +247,9 @@ export enum EventType {
   GET_SLACK_INTEGRATION = "get-slack-integration",
   UPDATE_SLACK_INTEGRATION = "update-slack-integration",
   DELETE_SLACK_INTEGRATION = "delete-slack-integration",
-  GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
-  UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config",
+  GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG = "get-project-workflow-integration-config",
+
+  UPDATE_PROJECT_WORKFLOW_INTEGRATION_CONFIG = "update-project-workflow-integration-config",
   INTEGRATION_SYNCED = "integration-synced",
   CREATE_CMEK = "create-cmek",
   UPDATE_CMEK = "update-cmek",
@@ -1968,22 +1970,24 @@ interface GetSlackIntegration {
   };
 }
 
-interface UpdateProjectSlackConfig {
-  type: EventType.UPDATE_PROJECT_SLACK_CONFIG;
+interface UpdateProjectWorkflowIntegrationConfig {
+  type: EventType.UPDATE_PROJECT_WORKFLOW_INTEGRATION_CONFIG;
   metadata: {
     id: string;
-    slackIntegrationId: string;
+    integrationId: string;
+    integration: WorkflowIntegration;
     isAccessRequestNotificationEnabled: boolean;
-    accessRequestChannels: string;
+    accessRequestChannels?: string | { teamId: string; channelIds: string[] };
     isSecretRequestNotificationEnabled: boolean;
-    secretRequestChannels: string;
+    secretRequestChannels?: string | { teamId: string; channelIds: string[] };
   };
 }
 
-interface GetProjectSlackConfig {
-  type: EventType.GET_PROJECT_SLACK_CONFIG;
+interface GetProjectWorkflowIntegrationConfig {
+  type: EventType.GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG;
   metadata: {
     id: string;
+    integration: WorkflowIntegration;
   };
 }
 interface IntegrationSyncedEvent {
@@ -2668,8 +2672,8 @@ export type Event =
   | UpdateSlackIntegration
   | DeleteSlackIntegration
   | GetSlackIntegration
-  | UpdateProjectSlackConfig
-  | GetProjectSlackConfig
+  | UpdateProjectWorkflowIntegrationConfig
+  | GetProjectWorkflowIntegrationConfig
   | IntegrationSyncedEvent
   | CreateCmekEvent
   | UpdateCmekEvent

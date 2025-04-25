@@ -8,6 +8,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectSshConfigDALFactory } from "@app/services/project/project-ssh-config-dal";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { WorkflowIntegration } from "../workflow-integration/workflow-integration-types";
 
 enum KmsType {
   External = "external",
@@ -159,14 +160,22 @@ export type TListProjectSshCertificatesDTO = {
   limit: number;
 } & TProjectPermission;
 
-export type TGetProjectSlackConfig = TProjectPermission;
+export type TGetProjectWorkflowIntegrationConfig = TProjectPermission & {
+  integration: WorkflowIntegration;
+};
 
-export type TUpdateProjectSlackConfig = {
-  slackIntegrationId: string;
+export type TUpdateProjectWorkflowIntegration = {
+  integrationId: string;
+  integration: WorkflowIntegration;
   isAccessRequestNotificationEnabled: boolean;
-  accessRequestChannels: string;
+  accessRequestChannels?: string | { teamId: string; channelIds: string[] };
   isSecretRequestNotificationEnabled: boolean;
-  secretRequestChannels: string;
+  secretRequestChannels?: string | { teamId: string; channelIds: string[] };
+} & TProjectPermission;
+
+export type TDeleteProjectWorkflowIntegration = {
+  integrationId: string;
+  integration: WorkflowIntegration;
 } & TProjectPermission;
 
 export type TBootstrapSshProjectDTO = {

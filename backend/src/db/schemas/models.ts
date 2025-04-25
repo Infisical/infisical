@@ -146,7 +146,9 @@ export enum TableName {
   KmipOrgServerCertificates = "kmip_org_server_certificates",
   KmipClientCertificates = "kmip_client_certificates",
   SecretRotationV2 = "secret_rotations_v2",
-  SecretRotationV2SecretMapping = "secret_rotation_v2_secret_mappings"
+  SecretRotationV2SecretMapping = "secret_rotation_v2_secret_mappings",
+  MicrosoftTeamsIntegrations = "microsoft_teams_integrations",
+  ProjectMicrosoftTeamsConfigs = "project_microsoft_teams_configs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";

@@ -47,6 +47,7 @@ import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
 import { registerWorkflowIntegrationRouter } from "./workflow-integration-router";
+import { registerMicrosoftTeamsRouter } from "./microsoft-teams-router";
 
 export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });
@@ -79,6 +80,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     async (workflowIntegrationRouter) => {
       await workflowIntegrationRouter.register(registerWorkflowIntegrationRouter);
       await workflowIntegrationRouter.register(registerSlackRouter, { prefix: "/slack" });
+      await workflowIntegrationRouter.register(registerMicrosoftTeamsRouter, { prefix: "/microsoft-teams" });
     },
     { prefix: "/workflow-integrations" }
   );

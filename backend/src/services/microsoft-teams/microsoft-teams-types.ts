@@ -1,0 +1,36 @@
+import { TOrgPermission } from "@app/lib/types";
+import { TNotification } from "@app/lib/workflow-integrations/types";
+
+export type TGetMicrosoftTeamsIntegrationByOrgDTO = Omit<TOrgPermission, "orgId">;
+
+export type TCreateMicrosoftTeamsIntegrationDTO = Omit<TOrgPermission, "orgId"> & {
+  slug: string;
+  description?: string;
+  tenantId: string;
+};
+
+export type TCheckInstallationStatusDTO = { workflowIntegrationId: string } & Omit<TOrgPermission, "orgId">;
+
+export type TGetMicrosoftTeamsIntegrationByIdDTO = { id: string } & Omit<TOrgPermission, "orgId">;
+
+export type TUpdateMicrosoftTeamsIntegrationDTO = { id: string; slug?: string; description?: string } & Omit<
+  TOrgPermission,
+  "orgId"
+>;
+
+export type TGetTeamsDTO = Omit<TOrgPermission, "orgId"> & {
+  workflowIntegrationId: string;
+};
+
+export type TDeleteMicrosoftTeamsIntegrationIntegrationDTO = {
+  id: string;
+} & Omit<TOrgPermission, "orgId">;
+
+export type TSendNotificationDTO = {
+  tenantId: string;
+  target: {
+    teamId: string;
+    channelIds: string[];
+  };
+  notification: TNotification;
+};

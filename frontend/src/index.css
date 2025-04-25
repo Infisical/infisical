@@ -198,3 +198,19 @@ html {
   top: 0.5rem;
   @apply text-sm text-gray-500 opacity-50;
 }
+
+.accordion {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  transition: grid-template-rows 200ms ease !important;
+  animation: unset;
+}
+
+.accordion[data-state="open"] {
+  grid-template-rows: 1fr;
+}
+
+.accordion > div {
+  min-height: 0px;
+}
