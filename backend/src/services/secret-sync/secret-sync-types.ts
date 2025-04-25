@@ -68,6 +68,12 @@ import {
   THumanitecSyncWithCredentials
 } from "./humanitec";
 import {
+  TTeamCitySync,
+  TTeamCitySyncInput,
+  TTeamCitySyncListItem,
+  TTeamCitySyncWithCredentials
+} from "./teamcity/teamcity-sync-types";
+import {
   TTerraformCloudSync,
   TTerraformCloudSyncInput,
   TTerraformCloudSyncListItem,
@@ -88,7 +94,8 @@ export type TSecretSync =
   | TCamundaSync
   | TVercelSync
   | TWindmillSync
-  | THCVaultSync;
+  | THCVaultSync
+  | TTeamCitySync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -103,7 +110,8 @@ export type TSecretSyncWithCredentials =
   | TCamundaSyncWithCredentials
   | TVercelSyncWithCredentials
   | TWindmillSyncWithCredentials
-  | THCVaultSyncWithCredentials;
+  | THCVaultSyncWithCredentials
+  | TTeamCitySyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -118,7 +126,8 @@ export type TSecretSyncInput =
   | TCamundaSyncInput
   | TVercelSyncInput
   | TWindmillSyncInput
-  | THCVaultSyncInput;
+  | THCVaultSyncInput
+  | TTeamCitySyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -133,7 +142,8 @@ export type TSecretSyncListItem =
   | TCamundaSyncListItem
   | TVercelSyncListItem
   | TWindmillSyncListItem
-  | THCVaultSyncListItem;
+  | THCVaultSyncListItem
+  | TTeamCitySyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

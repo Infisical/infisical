@@ -13,7 +13,8 @@ export enum AppConnection {
   Camunda = "camunda",
   Windmill = "windmill",
   Auth0 = "auth0",
-  HCVault = "hashicorp-vault"
+  HCVault = "hashicorp-vault",
+  TeamCity = "teamcity"
 }
 
 export enum AWSRegion {

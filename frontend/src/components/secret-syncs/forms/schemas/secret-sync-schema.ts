@@ -10,6 +10,7 @@ import { GcpSyncDestinationSchema } from "./gcp-sync-destination-schema";
 import { GitHubSyncDestinationSchema } from "./github-sync-destination-schema";
 import { HCVaultSyncDestinationSchema } from "./hc-vault-sync-destination-schema";
 import { HumanitecSyncDestinationSchema } from "./humanitec-sync-destination-schema";
+import { TeamCitySyncDestinationSchema } from "./teamcity-sync-destination-schema";
 import { TerraformCloudSyncDestinationSchema } from "./terraform-cloud-destination-schema";
 import { VercelSyncDestinationSchema } from "./vercel-sync-destination-schema";
 import { WindmillSyncDestinationSchema } from "./windmill-sync-destination-schema";
@@ -27,7 +28,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   CamundaSyncDestinationSchema,
   VercelSyncDestinationSchema,
   WindmillSyncDestinationSchema,
-  HCVaultSyncDestinationSchema
+  HCVaultSyncDestinationSchema,
+  TeamCitySyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

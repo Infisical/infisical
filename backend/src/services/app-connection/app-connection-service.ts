@@ -47,6 +47,8 @@ import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
+import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
+import { teamcityConnectionService } from "./teamcity/teamcity-connection-service";
 import { ValidateTerraformCloudConnectionCredentialsSchema } from "./terraform-cloud";
 import { terraformCloudConnectionService } from "./terraform-cloud/terraform-cloud-connection-service";
 import { ValidateVercelConnectionCredentialsSchema } from "./vercel";
@@ -77,7 +79,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Camunda]: ValidateCamundaConnectionCredentialsSchema,
   [AppConnection.Windmill]: ValidateWindmillConnectionCredentialsSchema,
   [AppConnection.Auth0]: ValidateAuth0ConnectionCredentialsSchema,
-  [AppConnection.HCVault]: ValidateHCVaultConnectionCredentialsSchema
+  [AppConnection.HCVault]: ValidateHCVaultConnectionCredentialsSchema,
+  [AppConnection.TeamCity]: ValidateTeamCityConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -454,6 +457,7 @@ export const appConnectionServiceFactory = ({
     vercel: vercelConnectionService(connectAppConnectionById),
     windmill: windmillConnectionService(connectAppConnectionById),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
-    hcvault: hcVaultConnectionService(connectAppConnectionById)
+    hcvault: hcVaultConnectionService(connectAppConnectionById),
+    teamcity: teamcityConnectionService(connectAppConnectionById)
   };
 };

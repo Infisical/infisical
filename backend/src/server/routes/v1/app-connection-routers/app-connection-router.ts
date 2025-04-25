@@ -38,6 +38,10 @@ import {
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
 import {
+  SanitizedTeamCityConnectionSchema,
+  TeamCityConnectionListItemSchema
+} from "@app/services/app-connection/teamcity";
+import {
   SanitizedTerraformCloudConnectionSchema,
   TerraformCloudConnectionListItemSchema
 } from "@app/services/app-connection/terraform-cloud";
@@ -64,7 +68,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedCamundaConnectionSchema.options,
   ...SanitizedWindmillConnectionSchema.options,
   ...SanitizedAuth0ConnectionSchema.options,
-  ...SanitizedHCVaultConnectionSchema.options
+  ...SanitizedHCVaultConnectionSchema.options,
+  ...SanitizedTeamCityConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -82,7 +87,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   CamundaConnectionListItemSchema,
   WindmillConnectionListItemSchema,
   Auth0ConnectionListItemSchema,
-  HCVaultConnectionListItemSchema
+  HCVaultConnectionListItemSchema,
+  TeamCityConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

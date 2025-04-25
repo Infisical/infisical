@@ -71,6 +71,10 @@ export type THCVaultConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.HCVault;
 };
 
+export type TTeamCityConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.TeamCity;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -86,7 +90,8 @@ export type TAppConnectionOption =
   | TCamundaConnectionOption
   | TWindmillConnectionOption
   | TAuth0ConnectionOption
-  | THCVaultConnectionOption;
+  | THCVaultConnectionOption
+  | TTeamCityConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -104,4 +109,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Windmill]: TWindmillConnectionOption;
   [AppConnection.Auth0]: TAuth0ConnectionOption;
   [AppConnection.HCVault]: THCVaultConnectionOption;
+  [AppConnection.TeamCity]: TTeamCityConnectionOption;
 };

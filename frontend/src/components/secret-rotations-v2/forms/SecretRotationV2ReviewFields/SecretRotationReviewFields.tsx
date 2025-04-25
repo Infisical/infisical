@@ -7,12 +7,14 @@ import { getRotateAtLocal } from "@app/helpers/secretRotationsV2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { Auth0ClientSecretRotationReviewFields } from "./Auth0ClientSecretRotationReviewFields";
+import { AwsIamUserSecretRotationReviewFields } from "./AwsIamUserSecretRotationReviewFields";
 import { SqlCredentialsRotationReviewFields } from "./shared";
 
 const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.PostgresCredentials]: SqlCredentialsRotationReviewFields,
   [SecretRotation.MsSqlCredentials]: SqlCredentialsRotationReviewFields,
-  [SecretRotation.Auth0ClientSecret]: Auth0ClientSecretRotationReviewFields
+  [SecretRotation.Auth0ClientSecret]: Auth0ClientSecretRotationReviewFields,
+  [SecretRotation.AwsIamUserSecret]: AwsIamUserSecretRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {

@@ -11,7 +11,8 @@ export enum SecretSync {
   Camunda = "camunda",
   Vercel = "vercel",
   Windmill = "windmill",
-  HCVault = "hashicorp-vault"
+  HCVault = "hashicorp-vault",
+  TeamCity = "teamcity"
 }
 
 export enum SecretSyncInitialSyncBehavior {

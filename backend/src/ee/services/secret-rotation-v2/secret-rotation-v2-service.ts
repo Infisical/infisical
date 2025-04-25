@@ -77,6 +77,7 @@ import {
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 
+import { awsIamUserSecretRotationFactory } from "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 
 export type TSecretRotationV2ServiceFactoryDep = {
@@ -114,7 +115,8 @@ type TRotationFactoryImplementation = TRotationFactory<
 const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplementation> = {
   [SecretRotation.PostgresCredentials]: sqlCredentialsRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.MsSqlCredentials]: sqlCredentialsRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.Auth0ClientSecret]: auth0ClientSecretRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.Auth0ClientSecret]: auth0ClientSecretRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.AwsIamUserSecret]: awsIamUserSecretRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({

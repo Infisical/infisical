@@ -23,6 +23,7 @@ import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
@@ -91,6 +92,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.HCVault:
       DestinationFieldsComponent = <HCVaultSyncReviewFields />;
+      break;
+    case SecretSync.TeamCity:
+      DestinationFieldsComponent = <TeamCitySyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

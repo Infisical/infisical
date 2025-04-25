@@ -70,6 +70,12 @@ import {
   TValidatePostgresConnectionCredentialsSchema
 } from "./postgres";
 import {
+  TTeamCityConnection,
+  TTeamCityConnectionConfig,
+  TTeamCityConnectionInput,
+  TValidateTeamCityConnectionCredentialsSchema
+} from "./teamcity";
+import {
   TTerraformCloudConnection,
   TTerraformCloudConnectionConfig,
   TTerraformCloudConnectionInput,
@@ -104,6 +110,7 @@ export type TAppConnection = { id: string } & (
   | TWindmillConnection
   | TAuth0Connection
   | THCVaultConnection
+  | TTeamCityConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -126,6 +133,7 @@ export type TAppConnectionInput = { id: string } & (
   | TWindmillConnectionInput
   | TAuth0ConnectionInput
   | THCVaultConnectionInput
+  | TTeamCityConnectionInput
 );
 
 export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput;
@@ -153,7 +161,8 @@ export type TAppConnectionConfig =
   | TCamundaConnectionConfig
   | TWindmillConnectionConfig
   | TAuth0ConnectionConfig
-  | THCVaultConnectionConfig;
+  | THCVaultConnectionConfig
+  | TTeamCityConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -170,12 +179,17 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateVercelConnectionCredentialsSchema
   | TValidateWindmillConnectionCredentialsSchema
   | TValidateAuth0ConnectionCredentialsSchema
-  | TValidateHCVaultConnectionCredentialsSchema;
+  | TValidateHCVaultConnectionCredentialsSchema
+  | TValidateTeamCityConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
   region: AWSRegion;
   destination: SecretSync.AWSParameterStore | SecretSync.AWSSecretsManager;
+};
+
+export type TListAwsConnectionIamUsers = {
+  connectionId: string;
 };
 
 export type TAppConnectionCredentialsValidator = (

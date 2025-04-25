@@ -53,6 +53,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Vercel:
     case SecretSync.Windmill:
     case SecretSync.HCVault:
+    case SecretSync.TeamCity:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

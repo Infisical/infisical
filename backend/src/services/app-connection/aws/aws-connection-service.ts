@@ -2,7 +2,10 @@ import AWS from "aws-sdk";
 
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { TListAwsConnectionKmsKeys } from "@app/services/app-connection/app-connection-types";
+import {
+  TListAwsConnectionIamUsers,
+  TListAwsConnectionKmsKeys
+} from "@app/services/app-connection/app-connection-types";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
@@ -70,6 +73,23 @@ const listAwsKmsKeys = async (
   return kmsKeys;
 };
 
+const listAwsIamUsers = async (appConnection: TAwsConnection) => {
+  const { credentials } = await getAwsConnectionConfig(appConnection);
+
+  const iam = new AWS.IAM({ credentials });
+
+  const userEntries: AWS.IAM.User[] = [];
+  let userMarker: string | undefined;
+  do {
+    // eslint-disable-next-line no-await-in-loop
+    const response = await iam.listUsers({ MaxItems: 100, Marker: userMarker }).promise();
+    userEntries.push(...(response.Users || []));
+    userMarker = response.Marker;
+  } while (userMarker);
+
+  return userEntries;
+};
+
 export const awsConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
   const listKmsKeys = async (
     { connectionId, region, destination }: TListAwsConnectionKmsKeys,
@@ -82,7 +102,16 @@ export const awsConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
     return kmsKeys;
   };
 
+  const listIamUsers = async ({ connectionId }: TListAwsConnectionIamUsers, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.AWS, connectionId, actor);
+
+    const iamUsers = await listAwsIamUsers(appConnection);
+
+    return iamUsers;
+  };
+
   return {
-    listKmsKeys
+    listKmsKeys,
+    listIamUsers
   };
 };

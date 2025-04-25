@@ -1,11 +1,12 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 
 import { ProjectGeneralTab } from "./components/ProjectGeneralTab";
-
-const tabs = [{ name: "General", key: "tab-project-general", Component: ProjectGeneralTab }];
+import { ProjectSshTab } from "./components/ProjectSshTab";
 
 export const SettingsPage = () => {
   const { t } = useTranslation();
@@ -17,19 +18,28 @@ export const SettingsPage = () => {
       </Helmet>
       <div className="w-full max-w-7xl">
         <PageHeader title={t("settings.project.title")} />
-        <Tabs defaultValue={tabs[0].key}>
+        <Tabs defaultValue="tab-project-general">
           <TabList>
-            {tabs.map((tab) => (
-              <Tab value={tab.key} key={tab.key}>
-                {tab.name}
-              </Tab>
-            ))}
+            <Tab value="tab-project-general">General</Tab>
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Edit}
+              a={ProjectPermissionSub.Project}
+            >
+              {(isAllowed) => isAllowed && <Tab value="tab-project-ssh">SSH Settings</Tab>}
+            </ProjectPermissionCan>
           </TabList>
-          {tabs.map(({ key, Component }) => (
-            <TabPanel value={key} key={key}>
-              <Component />
-            </TabPanel>
-          ))}
+          <TabPanel value="tab-project-general">
+            <ProjectGeneralTab />
+          </TabPanel>
+          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Project}>
+            {(isAllowed) =>
+              isAllowed && (
+                <TabPanel value="tab-project-ssh">
+                  <ProjectSshTab />
+                </TabPanel>
+              )
+            }
+          </ProjectPermissionCan>
         </Tabs>
       </div>
     </div>
