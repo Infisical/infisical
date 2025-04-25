@@ -3,39 +3,6 @@ title: "Windmill"
 description: "How to sync secrets from Infisical to Windmill"
 ---
 
-Prerequisites:
-
-- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
-
-<Steps>
-  <Step title="Authorize Infisical for Windmill">
-    Obtain a [Windmill](https://www.windmill.dev/) access token in Access Tokens
-
-    ![integrations windmill dashboard](../../images/integrations/windmill/integrations-windmill-dashboard.png)
-    ![integrations windmill token](../../images/integrations/windmill/integrations-windmill-token.png)
-
-    Navigate to your project's integrations tab in Infisical.
-
-    ![integrations](../../images/integrations.png)
-
-    Press on the Windmill tile and input your Windmill access token to grant Infisical access to your Windmill account.
-
-    ![integrations windmill authorization](../../images/integrations/windmill/integrations-windmill-auth.png)
-
-  </Step>
-  <Step title="Start integration">
-    Select which Infisical environment secrets you want to sync to which Windmill workspace and press create integration to start syncing secrets to Windmill.
-
-    ![integrations windmill](../../images/integrations/windmill/integrations-windmill-create.png)
-    ![integrations windmill](../../images/integrations/windmill/integrations-windmill.png)
-
-    <Warning>
-      Secrets synced to Windmill are subject to the [ownership path
-      prefix](https://www.windmill.dev/docs/core_concepts/roles_and_permissions)
-      convention of Windmill. Accordingly, all secrets must be prefixed with either
-      `u/` or `f/` for user-based and folder-based secret along with the name of the
-      secret. Put differently, you must use the full path of the secret as its name
-      in Infisical to be considered valid such as `u/user/FOO/BAR`.
-    </Warning>
-  </Step>
-</Steps>
+<Note>
+    The Windmill Native Integration will be deprecated in 2026. Please migrate to our new [Windmill Sync](../secret-syncs/windmill).
+</Note>
