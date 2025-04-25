@@ -312,9 +312,9 @@ export const SecretItem = memo(
               tabIndex={0}
               role="button"
             >
-              {secretValueHidden && (
+              {secretValueHidden && !isOverriden && (
                 <Tooltip
-                  content={`You do not have access to view the current value${canEditSecretValue ? ", but you can set a new one" : "."}`}
+                  content={`You do not have access to view the current value${canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}`}
                 >
                   <FontAwesomeIcon className="pr-2" size="sm" icon={faEyeSlash} />
                 </Tooltip>

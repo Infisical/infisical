@@ -177,9 +177,9 @@ export const SecretEditRow = ({
         deleteKey={secretName}
         onDeleteApproved={handleDeleteSecret}
       />
-      {secretValueHidden && (
+      {secretValueHidden && !isOverride && (
         <Tooltip
-          content={`You do not have access to view the current value${canEditSecretValue ? ", but you can set a new one" : "."}`}
+          content={`You do not have access to view the current value${canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}`}
         >
           <FontAwesomeIcon className="pl-2" size="sm" icon={faEyeSlash} />
         </Tooltip>
