@@ -7,8 +7,7 @@ export enum WorkflowIntegration {
 
 export enum WorkflowIntegrationStatus {
   PENDING = "pending",
-  INSTALLED = "installed",
-  FAILED = "failed"
+  INSTALLED = "installed"
 }
 
 export type TGetWorkflowIntegrationsByOrg = Omit<TOrgPermission, "orgId">;

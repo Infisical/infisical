@@ -3,34 +3,34 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
-const encryptedMicrosoftTeamsAppIdColumn = "encryptedMicrosoftTeamsAppId";
-const encryptedMicrosoftTeamsClientSecretColumn = "encryptedMicrosoftTeamsClientSecret";
-const encryptedMicrosoftTeamsBotIdColumn = "encryptedMicrosoftTeamsBotId";
-
 export async function up(knex: Knex): Promise<void> {
   const superAdminHasEncryptedMicrosoftTeamsClientIdColumn = await knex.schema.hasColumn(
     TableName.SuperAdmin,
-    encryptedMicrosoftTeamsAppIdColumn
+    "encryptedMicrosoftTeamsAppId"
   );
-  const superAdminHasEncryptedMicrosoftTeamsClientSecretColumn = await knex.schema.hasColumn(
+  const superAdminHasEncryptedMicrosoftTeamsClientSecret = await knex.schema.hasColumn(
     TableName.SuperAdmin,
-    encryptedMicrosoftTeamsClientSecretColumn
+    "encryptedMicrosoftTeamsClientSecret"
   );
-  const superAdminHasEncryptedMicrosoftTeamsBotIdColumn = await knex.schema.hasColumn(
+  const superAdminHasEncryptedMicrosoftTeamsBotId = await knex.schema.hasColumn(
     TableName.SuperAdmin,
-    encryptedMicrosoftTeamsBotIdColumn
+    "encryptedMicrosoftTeamsBotId"
   );
 
-  if (!superAdminHasEncryptedMicrosoftTeamsClientIdColumn || !superAdminHasEncryptedMicrosoftTeamsClientSecretColumn) {
+  if (
+    !superAdminHasEncryptedMicrosoftTeamsClientIdColumn ||
+    !superAdminHasEncryptedMicrosoftTeamsClientSecret ||
+    !superAdminHasEncryptedMicrosoftTeamsBotId
+  ) {
     await knex.schema.alterTable(TableName.SuperAdmin, (table) => {
       if (!superAdminHasEncryptedMicrosoftTeamsClientIdColumn) {
-        table.binary(encryptedMicrosoftTeamsAppIdColumn).nullable();
+        table.binary("encryptedMicrosoftTeamsAppId").nullable();
       }
-      if (!superAdminHasEncryptedMicrosoftTeamsClientSecretColumn) {
-        table.binary(encryptedMicrosoftTeamsClientSecretColumn).nullable();
+      if (!superAdminHasEncryptedMicrosoftTeamsClientSecret) {
+        table.binary("encryptedMicrosoftTeamsClientSecret").nullable();
       }
-      if (!superAdminHasEncryptedMicrosoftTeamsBotIdColumn) {
-        table.binary(encryptedMicrosoftTeamsBotIdColumn).nullable();
+      if (!superAdminHasEncryptedMicrosoftTeamsBotId) {
+        table.binary("encryptedMicrosoftTeamsBotId").nullable();
       }
     });
   }
@@ -82,27 +82,31 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   const hasEncryptedMicrosoftTeamsClientIdColumn = await knex.schema.hasColumn(
     TableName.SuperAdmin,
-    encryptedMicrosoftTeamsAppIdColumn
+    "encryptedMicrosoftTeamsAppId"
   );
-  const hasEncryptedMicrosoftTeamsClientSecretColumn = await knex.schema.hasColumn(
+  const hasEncryptedMicrosoftTeamsClientSecret = await knex.schema.hasColumn(
     TableName.SuperAdmin,
-    encryptedMicrosoftTeamsClientSecretColumn
+    "encryptedMicrosoftTeamsClientSecret"
   );
-  const hasEncryptedMicrosoftTeamsBotIdColumn = await knex.schema.hasColumn(
+  const hasEncryptedMicrosoftTeamsBotId = await knex.schema.hasColumn(
     TableName.SuperAdmin,
-    encryptedMicrosoftTeamsBotIdColumn
+    "encryptedMicrosoftTeamsBotId"
   );
 
-  if (hasEncryptedMicrosoftTeamsClientIdColumn || hasEncryptedMicrosoftTeamsClientSecretColumn) {
+  if (
+    hasEncryptedMicrosoftTeamsClientIdColumn ||
+    hasEncryptedMicrosoftTeamsClientSecret ||
+    hasEncryptedMicrosoftTeamsBotId
+  ) {
     await knex.schema.alterTable(TableName.SuperAdmin, (table) => {
       if (hasEncryptedMicrosoftTeamsClientIdColumn) {
-        table.dropColumn(encryptedMicrosoftTeamsAppIdColumn);
+        table.dropColumn("encryptedMicrosoftTeamsAppId");
       }
-      if (hasEncryptedMicrosoftTeamsClientSecretColumn) {
-        table.dropColumn(encryptedMicrosoftTeamsClientSecretColumn);
+      if (hasEncryptedMicrosoftTeamsClientSecret) {
+        table.dropColumn("encryptedMicrosoftTeamsClientSecret");
       }
-      if (hasEncryptedMicrosoftTeamsBotIdColumn) {
-        table.dropColumn(encryptedMicrosoftTeamsBotIdColumn);
+      if (hasEncryptedMicrosoftTeamsBotId) {
+        table.dropColumn("encryptedMicrosoftTeamsBotId");
       }
     });
   }
