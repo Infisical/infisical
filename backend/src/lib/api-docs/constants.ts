@@ -1857,6 +1857,10 @@ export const AppConnections = {
     WINDMILL: {
       instanceUrl: "The Windmill instance URL to connect with (defaults to https://app.windmill.dev).",
       accessToken: "The access token to use to connect with Windmill."
+    },
+    TEAMCITY: {
+      instanceUrl: "The TeamCity instance URL to connect with.",
+      accessToken: "The access token to use to connect with TeamCity."
     }
   }
 };
@@ -1996,6 +2000,10 @@ export const SecretSyncs = {
     WINDMILL: {
       workspace: "The Windmill workspace to sync secrets to.",
       path: "The Windmill workspace path to sync secrets to."
+    },
+    TEAMCITY: {
+      project: "The TeamCity project to sync secrets to.",
+      buildConfig: "The TeamCity build configuration to sync secrets to."
     }
   }
 };
