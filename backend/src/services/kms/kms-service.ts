@@ -788,7 +788,10 @@ export const kmsServiceFactory = ({
           }
         }
       } catch (error) {
-        logger.error(error, `Failed to get project data key for [projectId=${projectId}]`);
+        logger.error(
+          error,
+          `getProjectSecretManagerKmsDataKey: Failed to get project data key for [projectId=${projectId}]`
+        );
         throw error;
       } finally {
         await lock?.release();
