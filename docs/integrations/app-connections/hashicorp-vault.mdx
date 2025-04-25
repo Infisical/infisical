@@ -39,19 +39,28 @@ Infisical supports two methods for connecting to Hashicorp Vault.
             <Step title="Create Policy">
                 You may name your policy whatever you want, but remember the name as it will be used in future steps.
 
-                <Note>
-                    Ensure that you replace the policy path so that it matches with an existing KV Secrets Engine mount and path.
-                </Note>
+                Depending on your use case, you may have different policy configurations:
 
-                ```hcl
-                path "demo_mount/data/demo_path/demo_subpath" {
-                  capabilities = [ "create", "read", "update" ]
-                }
+                <Tabs>
+                    <Tab title="Secret Sync">
+                        ```hcl
+                        path "demo_mount/data/demo_path/demo_subpath" {
+                          capabilities = [ "create", "read", "update" ]
+                        }
 
-                path "sys/mounts" {
-                  capabilities = ["read"]
-                }
-                ```
+                        path "sys/mounts" {
+                          capabilities = ["read"]
+                        }
+                        ```
+
+                        - **demo_mount**: The name of the target secrets engine (e.g., 'secret', 'kv').
+                        - **demo_path/demo_subpath**: The specific path within the secrets engine where secrets are stored.
+
+                        <Note>
+                            Ensure that you replace the policy path so that it matches with an existing KV Secrets Engine mount and path.
+                        </Note>
+                    </Tab>
+                </Tabs>
 
                 ![Vault Create Policy](/images/app-connections/hashicorp-vault/vault-create-policy.png)
             </Step>
