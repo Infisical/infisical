@@ -99,7 +99,7 @@ export const validateAwsConnectionCredentials = async (appConnection: TAwsConnec
 
     if (error instanceof AxiosError) {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      message = (error.response?.data?.message as string) || error.message;
+      message = (error.response?.data?.message as string) || error.message || "verify credentials";
     } else {
       message = (error as Error)?.message || "verify credentials";
     }
