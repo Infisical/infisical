@@ -69,10 +69,11 @@ export const AwsIamUserSecretRotationParametersFields = () => {
         name="parameters.region"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
+            isOptional
             isError={Boolean(error)}
             errorText={error?.message}
             label="Region"
-            helperText="Required only if no global scope is set."
+            tooltipText="Required only if no global scope is set."
           >
             <AwsRegionSelect value={value ?? ""} onChange={onChange} />
           </FormControl>
