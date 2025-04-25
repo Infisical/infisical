@@ -15,8 +15,8 @@ import {
 const listTeamCityVariables = async ({ instanceUrl, accessToken, project, buildConfig }: TTeamCityListVariables) => {
   const { data } = await request.get<TTeamCityListVariablesResponse>(
     buildConfig
-      ? `${instanceUrl}/app/rest/buildTypes/${buildConfig}/parameters`
-      : `${instanceUrl}/app/rest/projects/id:${project}/parameters`,
+      ? `${instanceUrl}/app/rest/buildTypes/${encodeURIComponent(buildConfig)}/parameters`
+      : `${instanceUrl}/app/rest/projects/id:${encodeURIComponent(project)}/parameters`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -45,8 +45,8 @@ const updateTeamCityVariable = async ({
 }: TPostTeamCityVariable) => {
   return request.post(
     buildConfig
-      ? `${instanceUrl}/app/rest/buildTypes/${buildConfig}/parameters`
-      : `${instanceUrl}/app/rest/projects/id:${project}/parameters`,
+      ? `${instanceUrl}/app/rest/buildTypes/${encodeURIComponent(buildConfig)}/parameters`
+      : `${instanceUrl}/app/rest/projects/id:${encodeURIComponent(project)}/parameters`,
     {
       name: key,
       value,
@@ -72,8 +72,8 @@ const deleteTeamCityVariable = async ({
 }: TDeleteTeamCityVariable) => {
   return request.delete(
     buildConfig
-      ? `${instanceUrl}/app/rest/buildTypes/${buildConfig}/parameters/${key}`
-      : `${instanceUrl}/app/rest/projects/id:${project}/parameters/${key}`,
+      ? `${instanceUrl}/app/rest/buildTypes/${encodeURIComponent(buildConfig)}/parameters/${encodeURIComponent(key)}`
+      : `${instanceUrl}/app/rest/projects/id:${encodeURIComponent(project)}/parameters/${encodeURIComponent(key)}`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`
