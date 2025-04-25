@@ -65,7 +65,7 @@ export const SessionsTable = () => {
         onChange={(isOpen) => handlePopUpToggle("deleteSession", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>
-          handleSignOut((popUp?.deleteSession?.data as { sessionId: string }).sessionId)
+          handleSignOut((popUp?.deleteSession?.data as { sessionId: string })?.sessionId)
         }
       />
       <TableContainer className="mt-4">
