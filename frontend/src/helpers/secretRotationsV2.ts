@@ -23,7 +23,7 @@ export const SECRET_ROTATION_MAP: Record<
   [SecretRotation.AwsIamUserSecret]: {
     name: "AWS IAM User Secret",
     image: "Amazon Web Services.png",
-    size: 35
+    size: 50
   }
 };
 

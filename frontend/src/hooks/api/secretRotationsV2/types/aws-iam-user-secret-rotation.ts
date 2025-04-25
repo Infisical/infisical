@@ -8,7 +8,7 @@ import {
 export type TAwsIamUserSecretRotation = TSecretRotationV2Base & {
   type: SecretRotation.AwsIamUserSecret;
   parameters: {
-    region: string;
+    region?: string;
     userName: string;
   };
   secretsMapping: {

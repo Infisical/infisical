@@ -8,7 +8,7 @@ export const AwsIamUserSecretRotationSchema = z
     type: z.literal(SecretRotation.AwsIamUserSecret),
     parameters: z.object({
       userName: z.string().trim().min(1, "User Name required"),
-      region: z.string().trim().min(1, "Region required")
+      region: z.string().trim().optional()
     }),
     secretsMapping: z.object({
       accessKeyId: z.string().trim().min(1, "Access Key ID required"),

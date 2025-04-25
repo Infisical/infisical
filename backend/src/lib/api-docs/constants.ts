@@ -2018,7 +2018,7 @@ export const SecretRotations = {
     },
     AWS_IAM_USER_SECRET: {
       userName: "The name of the client to rotate credentials for.",
-      region: "The AWS region to rotate credentials for."
+      region: "The AWS region the client is present in."
     }
   },
   SECRETS_MAPPING: {

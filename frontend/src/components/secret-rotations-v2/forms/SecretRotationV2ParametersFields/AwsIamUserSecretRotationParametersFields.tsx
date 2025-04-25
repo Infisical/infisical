@@ -35,12 +35,7 @@ export const AwsIamUserSecretRotationParametersFields = () => {
             helperText={
               <Tooltip
                 className="max-w-md"
-                content={
-                  <>
-                    Ensure that your connection has the correct permissions and the IAM user exists
-                    in the connection&#39;s audience.
-                  </>
-                }
+                content={<>Ensure that your connection has the correct permissions.</>}
               >
                 <div>
                   <span>Don&#39;t see the IAM user you&#39;re looking for?</span>{" "}
@@ -73,8 +68,13 @@ export const AwsIamUserSecretRotationParametersFields = () => {
         control={control}
         name="parameters.region"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="Region">
-            <AwsRegionSelect value={value} onChange={onChange} />
+          <FormControl
+            isError={Boolean(error)}
+            errorText={error?.message}
+            label="Region"
+            helperText="Required only if no global scope is set."
+          >
+            <AwsRegionSelect value={value ?? ""} onChange={onChange} />
           </FormControl>
         )}
       />

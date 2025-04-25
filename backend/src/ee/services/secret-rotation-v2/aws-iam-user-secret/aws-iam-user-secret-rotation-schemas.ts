@@ -25,7 +25,7 @@ const AwsIamUserSecretRotationParametersSchema = z.object({
     .trim()
     .min(1, "Client Name Required")
     .describe(SecretRotations.PARAMETERS.AWS_IAM_USER_SECRET.userName),
-  region: z.nativeEnum(AWSRegion).describe(SecretRotations.PARAMETERS.AWS_IAM_USER_SECRET.region)
+  region: z.nativeEnum(AWSRegion).describe(SecretRotations.PARAMETERS.AWS_IAM_USER_SECRET.region).optional()
 });
 
 const AwsIamUserSecretRotationSecretsMappingSchema = z.object({
