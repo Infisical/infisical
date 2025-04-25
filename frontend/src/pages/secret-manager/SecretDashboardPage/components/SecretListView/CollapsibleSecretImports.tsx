@@ -26,7 +26,7 @@ interface CollapsibleSecretImportsProps {
     environment: { name: string; slug: string };
     folders: {
       name: string;
-      secrets?: { secretId: string; referencedSecretKey: string }[];
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretId: string }[];
       isImported: boolean;
     }[];
   }[];
@@ -38,12 +38,14 @@ interface CollapsibleSecretImportsProps {
       }[]
     | null;
   secretsToDelete: string[];
+  onlyReferences?: boolean;
 }
 
 export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> = ({
   importedBy = [],
   usedBySecretSyncs = [],
-  secretsToDelete
+  secretsToDelete,
+  onlyReferences
 }) => {
   const { currentWorkspace } = useWorkspace();
 
@@ -88,7 +90,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
 
     importedBy.forEach((env) => {
       env.folders.forEach((folder) => {
-        if (folder.isImported) {
+        if (folder.isImported && !onlyReferences) {
           items.push({
             type: ItemType.Folder,
             path: folder.name,

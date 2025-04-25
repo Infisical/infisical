@@ -154,7 +154,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                       secrets: z
                         .object({
                           secretId: z.string(),
-                          referencedSecretKey: z.string()
+                          referencedSecretKey: z.string(),
+                          referencedSecretId: z.string()
                         })
                         .array()
                         .optional()
@@ -650,7 +651,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                   secrets: z
                     .object({
                       secretId: z.string(),
-                      referencedSecretKey: z.string()
+                      referencedSecretKey: z.string(),
+                      referencedSecretId: z.string()
                     })
                     .array()
                     .optional()

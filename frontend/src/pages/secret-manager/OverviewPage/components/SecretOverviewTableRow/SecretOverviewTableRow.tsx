@@ -44,6 +44,14 @@ type Props = {
     secretName: string
   ) => { secret?: SecretV3RawSanitized; environmentInfo?: WorkspaceEnv } | undefined;
   scrollOffset: number;
+  importedBy?: {
+    environment: { name: string; slug: string };
+    folders: {
+      name: string;
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretId: string }[];
+      isImported: boolean;
+    }[];
+  }[];
 };
 
 export const SecretOverviewTableRow = ({
@@ -58,7 +66,8 @@ export const SecretOverviewTableRow = ({
   getImportedSecretByKey,
   scrollOffset,
   onToggleSecretSelect,
-  isSelected
+  isSelected,
+  importedBy
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 1; // secret key row
@@ -244,6 +253,7 @@ export const SecretOverviewTableRow = ({
                               onSecretUpdate={onSecretUpdate}
                               environment={slug}
                               isRotatedSecret={secret?.isRotatedSecret}
+                              importedBy={importedBy}
                             />
                           </td>
                         </tr>

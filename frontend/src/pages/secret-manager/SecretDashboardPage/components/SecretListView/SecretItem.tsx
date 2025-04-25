@@ -4,6 +4,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   Checkbox,
+  DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -31,7 +32,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { useToggle } from "@app/hooks";
+import { usePopUp, useToggle } from "@app/hooks";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { WsTag } from "@app/hooks/api/types";
 import { subject } from "@casl/ability";
@@ -56,6 +57,7 @@ import {
   SecretActionType,
   TFormSchema
 } from "./SecretListView.utils";
+import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 
 type Props = {
   secret: SecretV3RawSanitized;
@@ -74,6 +76,14 @@ type Props = {
   environment: string;
   secretPath: string;
   handleSecretShare: () => void;
+  importedBy?: {
+    environment: { name: string; slug: string };
+    folders: {
+      name: string;
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretId: string }[];
+      isImported: boolean;
+    }[];
+  }[];
 };
 
 export const SecretItem = memo(
@@ -89,8 +99,12 @@ export const SecretItem = memo(
     onToggleSecretSelect,
     environment,
     secretPath,
-    handleSecretShare
+    handleSecretShare,
+    importedBy
   }: Props) => {
+    const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
+      "editSecret"
+    ] as const);
     const { currentWorkspace } = useWorkspace();
     const { permission } = useProjectPermission();
     const { isRotatedSecret } = secret;
@@ -194,7 +208,23 @@ export const SecretItem = memo(
     };
 
     const handleFormSubmit = async (data: TFormSchema) => {
+      if (
+        importedBy &&
+        importedBy.some(({ folders }) =>
+          folders?.some(({ secrets }) =>
+            secrets?.some(({ referencedSecretId }) => referencedSecretId === secret.id)
+          )
+        )
+      ) {
+        handlePopUpOpen("editSecret", data);
+        return;
+      }
       await onSaveSecret(secret, { ...secret, ...data }, () => reset());
+    };
+
+    const handleEditSecret = async (data: TFormSchema) => {
+      await onSaveSecret(secret, { ...secret, ...data }, () => reset());
+      handlePopUpClose("editSecret");
     };
 
     const handleTagSelect = (tag: WsTag) => {
@@ -682,6 +712,26 @@ export const SecretItem = memo(
             </AnimatePresence>
           </div>
         </div>
+        <DeleteActionModal
+          isOpen={popUp.editSecret.isOpen}
+          deleteKey="confirm"
+          buttonColorSchema="secondary"
+          buttonText="Save"
+          subTitle=""
+          title="Do you want to edit this secret?"
+          onChange={(isOpen) => handlePopUpToggle("editSecret", isOpen)}
+          onDeleteApproved={() => handleEditSecret(popUp?.editSecret?.data)}
+          formContent={
+            importedBy &&
+            importedBy.length > 0 && (
+              <CollapsibleSecretImports
+                importedBy={importedBy}
+                secretsToDelete={[secret.key]}
+                onlyReferences
+              />
+            )
+          }
+        />
       </form>
     );
   }

@@ -203,7 +203,8 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Environment).as("envName"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("id").withSchema(TableName.SecretFolder).as("folderId"),
-          db.ref("secretKey").withSchema(TableName.SecretReferenceV2).as("referencedSecretKey")
+          db.ref("secretKey").withSchema(TableName.SecretReferenceV2).as("referencedSecretKey"),
+          db.ref("id").withSchema(TableName.SecretV2).as("referencedSecretId")
         );
 
       const folderResults = folderImports.map(({ envName, envSlug, folderName, folderId }) => ({
@@ -214,13 +215,14 @@ export const secretImportDALFactory = (db: TDbClient) => {
       }));
 
       const secretResults = secretReferences.map(
-        ({ envName, envSlug, secretId, folderName, folderId, referencedSecretKey }) => ({
+        ({ envName, envSlug, secretId, folderName, folderId, referencedSecretKey, referencedSecretId }) => ({
           envName,
           envSlug,
           secretId,
           folderName,
           folderId,
-          referencedSecretKey
+          referencedSecretKey,
+          referencedSecretId
         })
       );
 
@@ -235,6 +237,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
               secrets: {
                 secretId: string;
                 referencedSecretKey: string;
+                referencedSecretId: string;
               }[];
               folderId: string;
               folderImported: boolean;
@@ -264,7 +267,11 @@ export const secretImportDALFactory = (db: TDbClient) => {
         if ("secretId" in item && item.secretId) {
           updatedAcc[env].folders[folder].secrets = [
             ...updatedAcc[env].folders[folder].secrets,
-            { secretId: item.secretId, referencedSecretKey: item.referencedSecretKey }
+            {
+              secretId: item.secretId,
+              referencedSecretKey: item.referencedSecretKey,
+              referencedSecretId: item.referencedSecretId
+            }
           ];
         } else {
           updatedAcc[env].folders[folder].folderImported = true;

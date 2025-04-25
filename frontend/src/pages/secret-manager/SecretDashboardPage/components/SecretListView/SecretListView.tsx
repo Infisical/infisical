@@ -34,7 +34,7 @@ type Props = {
     environment: { name: string; slug: string };
     folders: {
       name: string;
-      secrets?: { secretId: string; referencedSecretKey: string }[];
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretId: string }[];
       isImported: boolean;
     }[];
   }[];
@@ -354,6 +354,7 @@ export const SecretListView = ({
           onSaveSecret={handleSaveSecret}
           onDeleteSecret={onDeleteSecret}
           onDetailViewSecret={onDetailViewSecret}
+          importedBy={importedBy}
           onCreateTag={onCreateTag}
           handleSecretShare={() =>
             handlePopUpOpen("createSharedSecret", {
