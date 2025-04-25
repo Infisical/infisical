@@ -1,6 +1,7 @@
 export {
   useAddUserToWsE2EE,
   useAddUserToWsNonE2EE,
+  useRevokeMySessionById,
   useSendEmailVerificationCode,
   useVerifyEmailVerificationCode
 } from "./mutation";
