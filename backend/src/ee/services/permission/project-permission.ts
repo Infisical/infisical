@@ -965,7 +965,6 @@ const buildMemberPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiAlerts);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiCollections);
 
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificateAuthorities);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificates);
   can([ProjectPermissionActions.Create], ProjectPermissionSub.SshCertificates);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificateTemplates);
@@ -1031,7 +1030,6 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
   can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateAuthorities);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
   can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);

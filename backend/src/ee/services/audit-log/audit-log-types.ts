@@ -249,6 +249,8 @@ export enum EventType {
   DELETE_SLACK_INTEGRATION = "delete-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
   UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config",
+  GET_PROJECT_SSH_CONFIG = "get-project-ssh-config",
+  UPDATE_PROJECT_SSH_CONFIG = "update-project-ssh-config",
   INTEGRATION_SYNCED = "integration-synced",
   CREATE_CMEK = "create-cmek",
   UPDATE_CMEK = "update-cmek",
@@ -1992,6 +1994,25 @@ interface GetProjectSlackConfig {
     id: string;
   };
 }
+
+interface GetProjectSshConfig {
+  type: EventType.GET_PROJECT_SSH_CONFIG;
+  metadata: {
+    id: string;
+    projectId: string;
+  };
+}
+
+interface UpdateProjectSshConfig {
+  type: EventType.UPDATE_PROJECT_SSH_CONFIG;
+  metadata: {
+    id: string;
+    projectId: string;
+    defaultUserSshCaId?: string | null;
+    defaultHostSshCaId?: string | null;
+  };
+}
+
 interface IntegrationSyncedEvent {
   type: EventType.INTEGRATION_SYNCED;
   metadata: {
@@ -2677,6 +2698,8 @@ export type Event =
   | GetSlackIntegration
   | UpdateProjectSlackConfig
   | GetProjectSlackConfig
+  | GetProjectSshConfig
+  | UpdateProjectSshConfig
   | IntegrationSyncedEvent
   | CreateCmekEvent
   | UpdateCmekEvent

@@ -73,6 +73,7 @@ import {
   TGetProjectDTO,
   TGetProjectKmsKey,
   TGetProjectSlackConfig,
+  TGetProjectSshConfig,
   TListProjectAlertsDTO,
   TListProjectCasDTO,
   TListProjectCertificateTemplatesDTO,
@@ -92,6 +93,7 @@ import {
   TUpdateProjectKmsDTO,
   TUpdateProjectNameDTO,
   TUpdateProjectSlackConfig,
+  TUpdateProjectSshConfig,
   TUpdateProjectVersionLimitDTO,
   TUpgradeProjectDTO
 } from "./project-types";
@@ -104,7 +106,7 @@ export const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
-  projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "create">;
+  projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "transaction" | "create" | "findOne" | "updateById">;
   projectQueue: TProjectQueueFactory;
   userDAL: TUserDALFactory;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
@@ -129,7 +131,7 @@ type TProjectServiceFactoryDep = {
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
-  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "find" | "create" | "transaction">;
+  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "find" | "findOne" | "create" | "transaction">;
   sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "create">;
   sshCertificateDAL: Pick<TSshCertificateDALFactory, "find" | "countSshCertificatesInProject">;
   sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find">;
@@ -1327,6 +1329,129 @@ export const projectServiceFactory = ({
     return { secretManagerKmsKey: kmsKey };
   };
 
+  const getProjectSshConfig = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TGetProjectSshConfig) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new NotFoundError({
+        message: `Project with ID '${projectId}' not found`
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
+
+    const projectSshConfig = await projectSshConfigDAL.findOne({
+      projectId: project.id
+    });
+
+    if (!projectSshConfig) {
+      throw new NotFoundError({
+        message: `Project SSH config with ID '${project.id}' not found`
+      });
+    }
+
+    return projectSshConfig;
+  };
+
+  const updateProjectSshConfig = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    defaultUserSshCaId,
+    defaultHostSshCaId
+  }: TUpdateProjectSshConfig) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new NotFoundError({
+        message: `Project with ID '${projectId}' not found`
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    let projectSshConfig = await projectSshConfigDAL.findOne({
+      projectId: project.id
+    });
+
+    if (!projectSshConfig) {
+      throw new NotFoundError({
+        message: `Project SSH config with ID '${project.id}' not found`
+      });
+    }
+
+    projectSshConfig = await projectSshConfigDAL.transaction(async (tx) => {
+      if (defaultUserSshCaId) {
+        const userSshCa = await sshCertificateAuthorityDAL.findOne(
+          {
+            id: defaultUserSshCaId,
+            projectId: project.id
+          },
+          tx
+        );
+
+        if (!userSshCa) {
+          throw new NotFoundError({
+            message: "User SSH CA must exist and belong to this project"
+          });
+        }
+      }
+
+      if (defaultHostSshCaId) {
+        const hostSshCa = await sshCertificateAuthorityDAL.findOne(
+          {
+            id: defaultHostSshCaId,
+            projectId: project.id
+          },
+          tx
+        );
+
+        if (!hostSshCa) {
+          throw new NotFoundError({
+            message: "Host SSH CA must exist and belong to this project"
+          });
+        }
+      }
+
+      const updatedProjectSshConfig = await projectSshConfigDAL.updateById(
+        projectSshConfig.id,
+        {
+          defaultUserSshCaId,
+          defaultHostSshCaId
+        },
+        tx
+      );
+
+      return updatedProjectSshConfig;
+    });
+
+    return projectSshConfig;
+  };
+
   const getProjectSlackConfig = async ({
     actorId,
     actor,
@@ -1548,6 +1673,8 @@ export const projectServiceFactory = ({
     getProjectKmsBackup,
     loadProjectKmsBackup,
     getProjectKmsKeys,
+    getProjectSshConfig,
+    updateProjectSshConfig,
     getProjectSlackConfig,
     updateProjectSlackConfig,
     requestProjectAccess,
