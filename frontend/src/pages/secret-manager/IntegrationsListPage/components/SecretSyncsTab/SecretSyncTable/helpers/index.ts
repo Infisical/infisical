@@ -90,6 +90,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.appName || destinationConfig.app;
       secondaryText = destinationConfig.env;
       break;
+    case SecretSync.Windmill:
+      primaryText = destinationConfig.workspace;
+      secondaryText = destinationConfig.path;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

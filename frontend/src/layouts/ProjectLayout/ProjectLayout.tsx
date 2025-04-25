@@ -37,6 +37,7 @@ export const ProjectLayout = () => {
   const { t } = useTranslation();
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
+  const { subscription } = useSubscription();
 
   const isSecretManager = currentWorkspace?.type === ProjectType.SecretManager;
   const isCertManager = currentWorkspace?.type === ProjectType.CertificateManager;
@@ -53,7 +54,6 @@ export const ProjectLayout = () => {
   });
 
   // we only show the secret rotations v1 tab if they have existing rotations
-  const { subscription } = useSubscription();
   const { data: secretRotations } = useGetSecretRotations({
     workspaceId,
     options: {
@@ -98,18 +98,46 @@ export const ProjectLayout = () => {
                         </Link>
                       )}
                       {isCertManager && (
-                        <Link
-                          to={`/${ProjectType.CertificateManager}/$projectId/overview` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="lock-closed">
-                              Overview
-                            </MenuItem>
-                          )}
-                        </Link>
+                        <>
+                          <Link
+                            to={`/${ProjectType.CertificateManager}/$projectId/overview` as const}
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="certificate">
+                                Certificates
+                              </MenuItem>
+                            )}
+                          </Link>
+                          <Link
+                            to={
+                              `/${ProjectType.CertificateManager}/$projectId/certificate-authorities` as const
+                            }
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="certificate-authority">
+                                Certificate Authorities
+                              </MenuItem>
+                            )}
+                          </Link>
+                          <Link
+                            to={`/${ProjectType.CertificateManager}/$projectId/alerting` as const}
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="notification-bell">
+                                Alerting
+                              </MenuItem>
+                            )}
+                          </Link>
+                        </>
                       )}
                       {isCmek && (
                         <Link

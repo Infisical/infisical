@@ -11,6 +11,7 @@ import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
 import { TerraformCloudSyncDestinationCol } from "./TerraformCloudSyncDestinationCol";
 import { VercelSyncDestinationCol } from "./VercelSyncDestinationCol";
+import { WindmillSyncDestinationCol } from "./WindmillSyncDestinationCol";
 
 type Props = {
   secretSync: TSecretSync;
@@ -40,6 +41,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <CamundaSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Vercel:
       return <VercelSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Windmill:
+      return <WindmillSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

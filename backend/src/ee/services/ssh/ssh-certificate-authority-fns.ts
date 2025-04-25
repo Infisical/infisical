@@ -4,6 +4,7 @@ import { promises as fs } from "fs";
 import { Knex } from "knex";
 import os from "os";
 import path from "path";
+import RE2 from "re2";
 import { promisify } from "util";
 
 import { TSshCertificateTemplates } from "@app/db/schemas";
@@ -156,14 +157,14 @@ export const validateSshCertificatePrincipals = (
       });
     }
 
-    if (/\r|\n|\t|\0/.test(sanitized)) {
+    if (new RE2(/\r|\n|\t|\0/).test(sanitized)) {
       throw new BadRequestError({
         message: `Principal '${sanitized}' contains invalid whitespace or control characters.`
       });
     }
 
     // disallow whitespace anywhere
-    if (/\s/.test(sanitized)) {
+    if (new RE2(/\s/).test(sanitized)) {
       throw new BadRequestError({
         message: `Principal '${sanitized}' cannot contain whitespace.`
       });

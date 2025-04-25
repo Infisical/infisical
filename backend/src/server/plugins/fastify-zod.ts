@@ -49,14 +49,17 @@ function resolveSchema(maybeSchema: ZodAny | { properties: ZodAny }): Pick<ZodAn
 }
 
 export const createJsonSchemaTransform = ({ skipList }: { skipList: readonly string[] }) => {
-  return ({ schema, url }: { schema: Schema; url: string }) => {
+  return ({ schema = {}, url }: { schema: Schema; url: string }) => {
     if (!schema) {
       return {
-        schema,
+        schema: { hide: true },
         url
       };
     }
 
+    if (typeof schema.hide === "undefined") {
+      schema.hide = true;
+    }
     const { response, headers, querystring, body, params, hide, ...rest } = schema;
 
     const transformed: FreeformRecord = {};

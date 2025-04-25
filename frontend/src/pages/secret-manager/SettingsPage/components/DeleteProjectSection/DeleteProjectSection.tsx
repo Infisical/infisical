@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
+import { Button, DeleteActionModal, Tooltip } from "@app/components/v2";
 import { LeaveProjectModal } from "@app/components/v2/LeaveProjectModal";
 import {
   ProjectPermissionActions,
@@ -142,16 +142,22 @@ export const DeleteProjectSection = () => {
       <div className="space-x-4">
         <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Project}>
           {(isAllowed) => (
-            <Button
-              isLoading={isDeleting}
-              isDisabled={!isAllowed || isDeleting || currentWorkspace?.hasDeleteProtection}
-              colorSchema="danger"
-              variant="outline_bg"
-              type="submit"
-              onClick={() => handlePopUpOpen("deleteWorkspace")}
+            <Tooltip
+              className="max-w-sm"
+              content="This project is protected from deletion. To delete it, disable delete protection first."
+              isDisabled={!currentWorkspace?.hasDeleteProtection}
             >
-              {`Delete ${currentWorkspace?.name}`}
-            </Button>
+              <Button
+                isLoading={isDeleting}
+                isDisabled={!isAllowed || isDeleting || currentWorkspace?.hasDeleteProtection}
+                colorSchema="danger"
+                variant="outline_bg"
+                type="submit"
+                onClick={() => handlePopUpOpen("deleteWorkspace")}
+              >
+                {`Delete ${currentWorkspace?.name}`}
+              </Button>
+            </Tooltip>
           )}
         </ProjectPermissionCan>
         {!isOnlyAdminMember && (

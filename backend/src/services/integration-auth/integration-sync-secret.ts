@@ -27,6 +27,7 @@ import { randomUUID } from "crypto";
 import https from "https";
 import sodium from "libsodium-wrappers";
 import isEqual from "lodash.isequal";
+import RE2 from "re2";
 import { z } from "zod";
 
 import { SecretType, TIntegrationAuths, TIntegrations } from "@app/db/schemas";
@@ -4151,7 +4152,7 @@ const syncSecretsWindmill = async ({
   );
 
   // eslint-disable-next-line
-  const pattern = new RegExp("^(u/|f/)[a-zA-Z0-9_-]+/([a-zA-Z0-9_-]+/)*[a-zA-Z0-9_-]*[^/]$");
+  const pattern = new RE2("^(u/|f/)[a-zA-Z0-9_-]+/([a-zA-Z0-9_-]+/)*[a-zA-Z0-9_-]*[^/]$");
   for await (const key of Object.keys(secrets)) {
     if ((key.startsWith("u/") || key.startsWith("f/")) && pattern.test(key)) {
       if (!(key in res)) {

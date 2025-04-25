@@ -136,7 +136,7 @@ declare module "fastify" {
     rateLimits: RateLimitConfiguration;
     // passport data
     passportUser: {
-      isUserCompleted: string;
+      isUserCompleted: boolean;
       providerAuthToken: string;
     };
     kmipUser: {

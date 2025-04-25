@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { AxiosError, AxiosResponse } from "axios";
+import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
@@ -27,10 +27,8 @@ export const getVercelConnectionListItem = () => {
 export const validateVercelConnectionCredentials = async (config: TVercelConnectionConfig) => {
   const { credentials: inputCredentials } = config;
 
-  let response: AxiosResponse<VercelApp[]> | null = null;
-
   try {
-    response = await request.get<VercelApp[]>(`${IntegrationUrls.VERCEL_API_URL}/v9/projects`, {
+    await request.get(`${IntegrationUrls.VERCEL_API_URL}/v2/user`, {
       headers: {
         Authorization: `Bearer ${inputCredentials.apiToken}`
       }
@@ -38,17 +36,14 @@ export const validateVercelConnectionCredentials = async (config: TVercelConnect
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       throw new BadRequestError({
-        message: `Failed to validate credentials: ${error.message || "Unknown error"}`
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        message: `Failed to validate credentials: ${
+          error.response?.data ? JSON.stringify(error.response?.data) : error.message || "Unknown error"
+        }`
       });
     }
     throw new BadRequestError({
-      message: "Unable to validate connection - verify credentials"
-    });
-  }
-
-  if (!response?.data) {
-    throw new InternalServerError({
-      message: "Failed to get organizations: Response was empty"
+      message: `Unable to validate connection: ${(error as Error).message || "Verify credentials"}`
     });
   }
 

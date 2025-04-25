@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 export enum CharacterType {
@@ -92,7 +93,7 @@ export const characterValidator = (allowedCharacters: CharacterType[]) => {
   const combinedPattern = allowedCharacters.map((char) => patternMap[char]).join("");
 
   // Create a regex that matches only the allowed characters
-  const regex = new RegExp(`^[${combinedPattern}]+$`);
+  const regex = new RE2(`^[${combinedPattern}]+$`);
 
   /**
    * Validates if the input string contains only the allowed character types

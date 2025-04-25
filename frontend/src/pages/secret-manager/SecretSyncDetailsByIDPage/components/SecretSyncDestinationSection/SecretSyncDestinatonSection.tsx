@@ -9,18 +9,19 @@ import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
-import { AwsParameterStoreSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/AwsParameterStoreSyncDestinationSection";
-import { AwsSecretsManagerSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/AwsSecretsManagerSyncDestinationSection";
-import { DatabricksSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/DatabricksSyncDestinationSection";
-import { GitHubSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/GitHubSyncDestinationSection";
 
+import { AwsParameterStoreSyncDestinationSection } from "./AwsParameterStoreSyncDestinationSection";
+import { AwsSecretsManagerSyncDestinationSection } from "./AwsSecretsManagerSyncDestinationSection";
 import { AzureAppConfigurationSyncDestinationSection } from "./AzureAppConfigurationSyncDestinationSection";
 import { AzureKeyVaultSyncDestinationSection } from "./AzureKeyVaultSyncDestinationSection";
 import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
+import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
+import { GitHubSyncDestinationSection } from "./GitHubSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
+import { WindmillSyncDestinationSection } from "./WindmillSyncDestinationSection";
 
 type Props = {
   secretSync: TSecretSync;
@@ -68,6 +69,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.Vercel:
       DestinationComponents = <VercelSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Windmill:
+      DestinationComponents = <WindmillSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

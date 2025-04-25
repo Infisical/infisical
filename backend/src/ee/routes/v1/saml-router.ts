@@ -223,12 +223,18 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         samlConfigId: z.string().trim()
       })
     },
-    preValidation: passport.authenticate("saml", {
-      session: false,
-      failureFlash: true,
-      failureRedirect: "/login/provider/error"
-      // this is due to zod type difference
-    }) as any,
+    preValidation: passport.authenticate(
+      "saml",
+      {
+        session: false
+      },
+      async (req, res, err, user) => {
+        if (err) {
+          throw new BadRequestError({ message: `Saml authentication failed. ${err?.message}`, error: err });
+        }
+        req.passportUser = user as { isUserCompleted: boolean; providerAuthToken: string };
+      }
+    ) as any, // this is due to zod type difference
     handler: (req, res) => {
       if (req.passportUser.isUserCompleted) {
         return res.redirect(

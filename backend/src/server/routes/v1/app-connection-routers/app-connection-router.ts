@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { Auth0ConnectionListItemSchema, SanitizedAuth0ConnectionSchema } from "@app/services/app-connection/auth0";
@@ -37,6 +38,10 @@ import {
   TerraformCloudConnectionListItemSchema
 } from "@app/services/app-connection/terraform-cloud";
 import { SanitizedVercelConnectionSchema, VercelConnectionListItemSchema } from "@app/services/app-connection/vercel";
+import {
+  SanitizedWindmillConnectionSchema,
+  WindmillConnectionListItemSchema
+} from "@app/services/app-connection/windmill";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps
@@ -53,6 +58,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedPostgresConnectionSchema.options,
   ...SanitizedMsSqlConnectionSchema.options,
   ...SanitizedCamundaConnectionSchema.options,
+  ...SanitizedWindmillConnectionSchema.options,
   ...SanitizedAuth0ConnectionSchema.options
 ]);
 
@@ -69,6 +75,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   PostgresConnectionListItemSchema,
   MsSqlConnectionListItemSchema,
   CamundaConnectionListItemSchema,
+  WindmillConnectionListItemSchema,
   Auth0ConnectionListItemSchema
 ]);
 
@@ -80,6 +87,8 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: "List the available App Connection Options.",
       response: {
         200: z.object({
@@ -101,6 +110,8 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: "List all the App Connections for the current organization.",
       response: {
         200: z.object({ appConnections: SanitizedAppConnectionSchema.array() })

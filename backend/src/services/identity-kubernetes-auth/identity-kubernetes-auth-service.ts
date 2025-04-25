@@ -435,12 +435,16 @@ export const identityKubernetesAuthServiceFactory = ({
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
+    const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
+    if (!identityKubernetesAuth) {
+      throw new NotFoundError({ message: `Failed to find Kubernetes Auth for identity with ID ${identityId}` });
+    }
+
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.KUBERNETES_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have Kubernetes Auth attached"
       });
     }
-    const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,

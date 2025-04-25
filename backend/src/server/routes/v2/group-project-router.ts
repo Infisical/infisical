@@ -6,7 +6,7 @@ import {
   ProjectMembershipRole,
   ProjectUserMembershipRolesSchema
 } from "@app/db/schemas";
-import { PROJECTS } from "@app/lib/api-docs";
+import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -22,6 +22,8 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectGroups],
       description: "Add group to project",
       security: [
         {
@@ -88,6 +90,8 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     url: "/:projectId/groups/:groupId",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectGroups],
       description: "Update group in project",
       security: [
         {
@@ -147,6 +151,8 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectGroups],
       description: "Remove group from project",
       security: [
         {
@@ -185,6 +191,8 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectGroups],
       description: "Return list of groups in project",
       security: [
         {
@@ -243,6 +251,8 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectGroups],
       description: "Return project group",
       security: [
         {

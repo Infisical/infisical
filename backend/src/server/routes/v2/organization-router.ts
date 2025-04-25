@@ -8,7 +8,7 @@ import {
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { ORGANIZATIONS } from "@app/lib/api-docs";
+import { ApiDocsTags, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
@@ -24,6 +24,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Organizations],
       description: "Return organization user memberships",
       security: [
         {
@@ -72,6 +74,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Organizations],
       description: "Return projects in organization that user is apart of",
       security: [
         {
@@ -179,6 +183,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Organizations],
       description: "Update organization user memberships",
       security: [
         {
@@ -229,6 +235,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Organizations],
       description: "Delete organization user memberships",
       security: [
         {

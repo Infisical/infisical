@@ -51,6 +51,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.TerraformCloud:
     case SecretSync.Camunda:
     case SecretSync.Vercel:
+    case SecretSync.Windmill:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

@@ -50,6 +50,11 @@ import {
 } from "./terraform-cloud";
 import { VercelConnectionMethod } from "./vercel";
 import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
+import {
+  getWindmillConnectionListItem,
+  validateWindmillConnectionCredentials,
+  WindmillConnectionMethod
+} from "./windmill";
 
 export const listAppConnectionOptions = () => {
   return [
@@ -65,6 +70,7 @@ export const listAppConnectionOptions = () => {
     getPostgresConnectionListItem(),
     getMsSqlConnectionListItem(),
     getCamundaConnectionListItem(),
+    getWindmillConnectionListItem(),
     getAuth0ConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -128,7 +134,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Camunda]: validateCamundaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Vercel]: validateVercelConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TerraformCloud]: validateTerraformCloudConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Auth0]: validateAuth0ConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Auth0]: validateAuth0ConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Windmill]: validateWindmillConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -159,6 +166,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
       return "Username & Password";
+    case WindmillConnectionMethod.AccessToken:
+      return "Access Token";
     case Auth0ConnectionMethod.ClientCredentials:
       return "Client Credentials";
     default:
@@ -204,5 +213,6 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.TerraformCloud]: platformManagedCredentialsNotSupported,
   [AppConnection.Camunda]: platformManagedCredentialsNotSupported,
   [AppConnection.Vercel]: platformManagedCredentialsNotSupported,
+  [AppConnection.Windmill]: platformManagedCredentialsNotSupported,
   [AppConnection.Auth0]: platformManagedCredentialsNotSupported
 };

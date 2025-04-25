@@ -151,6 +151,9 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
 
   const revokeAllMySessions = async (userId: string) => tokenDAL.deleteTokenSession({ userId });
 
+  const revokeMySessionById = async (userId: string, sessionId: string) =>
+    tokenDAL.deleteTokenSession({ userId, id: sessionId });
+
   const validateRefreshToken = async (refreshToken?: string) => {
     const appCfg = getConfig();
     if (!refreshToken)
@@ -223,6 +226,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
     clearTokenSessionById,
     getTokenSessionByUser,
     revokeAllMySessions,
+    revokeMySessionById,
     validateRefreshToken,
     fnValidateJwtIdentity,
     getUserTokenSessionById

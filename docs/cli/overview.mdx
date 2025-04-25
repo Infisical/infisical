@@ -28,21 +28,32 @@ You can use it across various environments, whether it's local development, CI/C
     	```
   </Tab>
   <Tab title="Windows">
-      Use [Scoop](https://scoop.sh/) package manager
 
-    		```bash
-    		scoop bucket add org https://github.com/Infisical/scoop-infisical.git
-    		```
+	<Accordion title="Scoop package manager">
+		Use [Scoop](https://scoop.sh/) package manager
 
-    			```bash
-    			scoop install infisical
-    			```
+		```bash
+		scoop bucket add org https://github.com/Infisical/scoop-infisical.git
+		```
 
-    		### Updates
+			```bash
+			scoop install infisical
+			```
 
-    		```bash
-    		scoop update infisical
-    		```
+		### Updates
+
+		```bash
+		scoop update infisical
+		```
+	</Accordion>
+
+	<Accordion title="Winget package manager">
+		Use [Winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/) package manager
+
+		```bash
+		winget install infisical
+		```
+	</Accordion>
 
   </Tab>
   <Tab title="NPM">

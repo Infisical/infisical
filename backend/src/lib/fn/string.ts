@@ -1,4 +1,5 @@
 import path from "path";
+import RE2 from "re2";
 
 // given two paths irrespective of ending with / or not
 // this will return true if its equal
@@ -15,4 +16,6 @@ export const prefixWithSlash = (str: string) => {
   return `/${str}`;
 };
 
-export const startsWithVowel = (str: string) => /^[aeiou]/i.test(str);
+const vowelRegex = new RE2(/^[aeiou]/i);
+
+export const startsWithVowel = (str: string) => vowelRegex.test(str);

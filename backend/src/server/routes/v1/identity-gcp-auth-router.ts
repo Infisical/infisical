@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { IdentityGcpAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { GCP_AUTH } from "@app/lib/api-docs";
+import { ApiDocsTags, GCP_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -18,9 +18,11 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.GcpAuth],
       description: "Login with GCP Auth",
       body: z.object({
-        identityId: z.string().trim().describe(GCP_AUTH.LOGIN.identityId).trim(),
+        identityId: z.string().trim().describe(GCP_AUTH.LOGIN.identityId),
         jwt: z.string()
       }),
       response: {
@@ -66,6 +68,8 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.GcpAuth],
       description: "Attach GCP Auth configuration onto identity",
       security: [
         {
@@ -157,6 +161,8 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.GcpAuth],
       description: "Update GCP Auth configuration on identity",
       security: [
         {
@@ -241,6 +247,8 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.GcpAuth],
       description: "Retrieve GCP Auth configuration on identity",
       security: [
         {
@@ -288,6 +296,8 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.GcpAuth],
       description: "Delete GCP Auth configuration on identity",
       security: [
         {

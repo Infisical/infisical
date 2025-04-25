@@ -14,6 +14,7 @@ import { GitHubSyncFields } from "./GitHubSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
+import { WindmillSyncFields } from "./WindmillSyncFields";
 
 export const SecretSyncDestinationFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -43,6 +44,8 @@ export const SecretSyncDestinationFields = () => {
       return <CamundaSyncFields />;
     case SecretSync.Vercel:
       return <VercelSyncFields />;
+    case SecretSync.Windmill:
+      return <WindmillSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

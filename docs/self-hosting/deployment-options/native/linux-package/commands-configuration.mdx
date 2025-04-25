@@ -1,0 +1,38 @@
+---
+title: "Configurations"
+description: "Learn how to configure and manage the Infisical Linux package"
+---
+
+## Configuration Overview
+
+All configuration for the Infisical Linux package is managed through a single file called `infisical.rb`, located in the `/etc/infisical` directory. 
+This file defines all necessary settings, including encryption keys, database connections, and environment-specific settings.
+
+<Info> After making any changes to the `infisical.rb` file, always run `infisical-ctl reconfigure` to apply them. </Info>
+
+### Example Configuration
+
+```ruby infisical.rb
+# Important: Replace these values with secure keys in production
+infisical_core['ENCRYPTION_KEY'] = '6c1fe4e407b8911c104518103505b218'
+infisical_core['AUTH_SECRET'] = '5lrMXKKWCVocS/uerPsl7V+TX/aaUaI7iDkgl3tSmLE='
+
+# Database connection strings
+infisical_core['DB_CONNECTION_URI'] = 'postgres://<username>:<password>@<host>:5432/<database>'
+infisical_core['REDIS_URL'] = 'redis://<host>:6379'
+```
+
+For a full list of supported configuration variables, refer to the [configuration variables documentation](/self-hosting/configuration/envars).
+
+## All `infisical-ctl` Commands
+
+The Infisical Linux package includes the `infisical-ctl` command-line tool, which allows you to manage your deployment. 
+The available commands are listed below.
+
+| Command                      | Description                                                                 |
+|-----------------------------|-----------------------------------------------------------------------------|
+| `infisical-ctl reconfigure` | Applies changes from `infisical.rb` and restarts the Infisical services.   |
+| `infisical-ctl start`       | Starts the Infisical services.                                             |
+| `infisical-ctl stop`        | Stops all running Infisical services.                                      |
+| `infisical-ctl status`      | Displays the current status of the Infisical services.                     |
+| `infisical-ctl tail`        | Streams real-time logs from the Infisical application.                     |

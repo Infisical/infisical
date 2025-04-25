@@ -14,7 +14,7 @@ import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-s
 import { sanitizedSshCertificate } from "@app/ee/services/ssh-certificate/ssh-certificate-schema";
 import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-schema";
 import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
-import { PROJECTS } from "@app/lib/api-docs";
+import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -29,7 +29,8 @@ import { SanitizedProjectSchema } from "../sanitizedSchemas";
 
 const projectWithEnv = SanitizedProjectSchema.extend({
   _id: z.string(),
-  environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
+  environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array(),
+  kmsSecretManagerKeyId: z.string().nullable().optional()
 });
 
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
@@ -150,6 +151,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
       description: "Create a new project",
       security: [
         {
@@ -224,6 +227,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
       description: "Delete project",
       security: [
         {
@@ -342,6 +347,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
         slug: slugSchema({ min: 5, max: 36 }).describe(PROJECTS.LIST_CAS.slug)
       }),
@@ -383,6 +390,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
       params: z.object({
         slug: slugSchema({ min: 5, max: 36 }).describe(PROJECTS.LIST_CERTIFICATES.slug)
       }),
@@ -551,6 +560,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateTemplates],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CERTIFICATE_TEMPLATES.projectId)
       }),
@@ -581,6 +592,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateAuthorities],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CAS.projectId)
       }),

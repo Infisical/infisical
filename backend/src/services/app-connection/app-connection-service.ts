@@ -49,6 +49,8 @@ import { ValidateTerraformCloudConnectionCredentialsSchema } from "./terraform-c
 import { terraformCloudConnectionService } from "./terraform-cloud/terraform-cloud-connection-service";
 import { ValidateVercelConnectionCredentialsSchema } from "./vercel";
 import { vercelConnectionService } from "./vercel/vercel-connection-service";
+import { ValidateWindmillConnectionCredentialsSchema } from "./windmill";
+import { windmillConnectionService } from "./windmill/windmill-connection-service";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -71,6 +73,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Postgres]: ValidatePostgresConnectionCredentialsSchema,
   [AppConnection.MsSql]: ValidateMsSqlConnectionCredentialsSchema,
   [AppConnection.Camunda]: ValidateCamundaConnectionCredentialsSchema,
+  [AppConnection.Windmill]: ValidateWindmillConnectionCredentialsSchema,
   [AppConnection.Auth0]: ValidateAuth0ConnectionCredentialsSchema
 };
 
@@ -446,6 +449,7 @@ export const appConnectionServiceFactory = ({
     terraformCloud: terraformCloudConnectionService(connectAppConnectionById),
     camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     vercel: vercelConnectionService(connectAppConnectionById),
+    windmill: windmillConnectionService(connectAppConnectionById),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
   };
 };
