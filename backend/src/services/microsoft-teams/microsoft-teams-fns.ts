@@ -303,9 +303,7 @@ export class TeamsBot extends TeamsActivityHandler {
   }
 
   async run(context: TurnContext) {
-    console.log("Running Microsoft Teams bot", {
-      context
-    });
+    logger.info(context, "Processing Microsoft Teams context");
     await super.run(context);
   }
 

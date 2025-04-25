@@ -47,8 +47,6 @@ export const SlackConfigRow = ({ handlePopUpOpen }: Props) => {
     return null;
   }
 
-  console.log("after slakc");
-
   return (
     <Tr>
       <Td className="flex max-w-xs items-center overflow-hidden text-ellipsis">

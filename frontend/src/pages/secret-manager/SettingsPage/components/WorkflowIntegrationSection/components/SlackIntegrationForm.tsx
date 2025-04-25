@@ -166,7 +166,6 @@ export const SlackIntegrationForm = ({ onClose }: Props) => {
                     isDisabled={!isAllowed}
                     placeholder="None"
                     onValueChange={(val) => {
-                      console.log("Selecting ", val);
                       onChange(val);
                     }}
                     className="w-full"

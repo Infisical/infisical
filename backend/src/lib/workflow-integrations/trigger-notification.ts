@@ -49,14 +49,10 @@ export const triggerWorkflowIntegrationNotification = async (dto: TTriggerWorkfl
       }
     }
 
-    console.log("microsoftTeamsConfig", microsoftTeamsConfig);
     if (microsoftTeamsConfig) {
       if (notification.type === TriggerFeature.ACCESS_REQUEST) {
         if (microsoftTeamsConfig.isAccessRequestNotificationEnabled && microsoftTeamsConfig.accessRequestChannels) {
           const { success, data } = MicrosoftTeamsChannelsSchema.safeParse(microsoftTeamsConfig.accessRequestChannels);
-
-          console.log("success", success);
-          console.log("data", data);
 
           if (success && data) {
             await microsoftTeamsService

@@ -225,7 +225,6 @@ export const accessApprovalRequestServiceFactory = ({
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const approvalUrl = `${cfg.SITE_URL}/secret-manager/${project.id}/approval`;
 
-      console.log("triggering workflow integration notification");
       await triggerWorkflowIntegrationNotification({
         input: {
           notification: {

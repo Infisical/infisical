@@ -162,9 +162,6 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
   const selectedAccessRequestTeamId = watch("accessRequestChannels.teamId");
   const selectedSecretRequestTeamId = watch("secretRequestChannels.teamId");
 
-  console.log("selectedAccessRequestTeamId", selectedAccessRequestTeamId);
-  console.log("selectedSecretRequestTeamId", selectedSecretRequestTeamId);
-
   const selectedMicrosoftTeamsIntegrationId = watch("microsoftTeamsIntegrationId");
 
   const accessRequestNotificationsEnabled = watch("isAccessRequestNotificationEnabled");
@@ -187,9 +184,6 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
     ?.filter((team) => team.teamId === selectedSecretRequestTeamId)
     .map((team) => team.channels)
     .flat();
-
-  console.log("selectableAccessRequestChannelIds", selectableAccessRequestChannelIds);
-  console.log("selectableSecretRequestChannelIds", selectableSecretRequestChannelIds);
 
   const channelIdToName = [
     ...(selectableAccessRequestChannelIds || []),
