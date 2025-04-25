@@ -276,23 +276,27 @@ export class TeamsBot extends TeamsActivityHandler {
       const botWasAdded = membersAdded.some((member) => member.id === context.activity.recipient.id);
 
       if (botWasAdded && context.activity.conversation.tenantId) {
-        const microsoftTeamIntegration = await this.microsoftTeamsIntegrationDAL.findOne({
-          tenantId: context.activity.conversation.tenantId
-        });
+        const microsoftTeamIntegration = await this.microsoftTeamsIntegrationDAL
+          .findOne({
+            tenantId: context.activity.conversation.tenantId
+          })
+          .catch(() => null);
 
-        await this.workflowIntegrationDAL
-          .update(
-            {
-              id: microsoftTeamIntegration.id,
-              status: WorkflowIntegrationStatus.PENDING
-            },
-            {
-              status: WorkflowIntegrationStatus.INSTALLED
-            }
-          )
-          .catch((error) => {
-            logger.error(error, "Microsoft Teams Workflow Integration: Failed to update workflow integration");
-          });
+        if (microsoftTeamIntegration) {
+          await this.workflowIntegrationDAL
+            .update(
+              {
+                id: microsoftTeamIntegration.id,
+                status: WorkflowIntegrationStatus.PENDING
+              },
+              {
+                status: WorkflowIntegrationStatus.INSTALLED
+              }
+            )
+            .catch((error) => {
+              logger.error(error, "Microsoft Teams Workflow Integration: Failed to update workflow integration");
+            });
+        }
 
         // This is required in order for the bot to send proactive messages, which is required for the bot to pass the bot release validation step.
         await context.sendActivity(
@@ -308,47 +312,55 @@ export class TeamsBot extends TeamsActivityHandler {
   }
 
   async sendMessageToChannel(tenantId: string, channelId: string, teamId: string, notification: TNotification) {
-    const { adaptiveCard } = buildTeamsPayload(notification);
+    try {
+      const { adaptiveCard } = buildTeamsPayload(notification);
 
-    const botToken = await getMicrosoftTeamsAccessToken({
-      tenantId,
-      clientId: this.botAppId,
-      clientSecret: this.botAppPassword,
-      getBotFrameworkToken: true
-    });
+      const botToken = await getMicrosoftTeamsAccessToken({
+        tenantId,
+        clientId: this.botAppId,
+        clientSecret: this.botAppPassword,
+        getBotFrameworkToken: true
+      });
 
-    const adaptiveCardActivity = {
-      type: "message",
-      attachments: [
-        {
-          contentType: "application/vnd.microsoft.card.adaptive",
-          content: adaptiveCard
-        }
-      ],
-      conversation: {
-        id: channelId,
-        isGroup: true
-      },
-      channelData: {
-        channel: {
-          id: channelId
+      const adaptiveCardActivity = {
+        type: "message",
+        attachments: [
+          {
+            contentType: "application/vnd.microsoft.card.adaptive",
+            content: adaptiveCard
+          }
+        ],
+        conversation: {
+          id: channelId,
+          isGroup: true
         },
-        team: {
-          id: teamId
+        channelData: {
+          channel: {
+            id: channelId
+          },
+          team: {
+            id: teamId
+          }
         }
-      }
-    };
+      };
 
-    await axios.post(
-      `https://smba.trafficmanager.net/amer/v3/conversations/${channelId}/activities`,
-      adaptiveCardActivity,
-      {
-        headers: {
-          Authorization: `Bearer ${botToken}`,
-          "Content-Type": "application/json"
+      await axios.post(
+        `https://smba.trafficmanager.net/amer/v3/conversations/${channelId}/activities`,
+        adaptiveCardActivity,
+        {
+          headers: {
+            Authorization: `Bearer ${botToken}`,
+            "Content-Type": "application/json"
+          }
         }
-      }
-    );
+      );
+    } catch (error) {
+      logger.error(
+        error,
+        `sendMessageToChannel: Microsoft Teams Workflow Integration: Failed to send message to channel [channelId=${channelId}] [teamId=${teamId}] [tenantId=${tenantId}]`
+      );
+      throw error;
+    }
   }
 
   // todo: filter out teams that the bot is not a member of
@@ -429,7 +441,7 @@ export class TeamsBot extends TeamsActivityHandler {
   }
 }
 
-export const MicrosoftTeamsChannelsSchema = z
+export const validateMicrosoftTeamsChannelsSchema = z
   .object({
     teamId: z.string(),
     channelIds: z.array(z.string()).min(1)

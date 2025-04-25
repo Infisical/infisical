@@ -78,7 +78,7 @@ export const MicrosoftTeamsConfigRow = ({ handlePopUpOpen }: Props) => {
           <Spinner size="xs" />
         ) : (
           <Badge>
-            {microsoftTeamsConfig.accessRequestChannels?.channelIds
+            {(microsoftTeamsConfig.accessRequestChannels?.channelIds || [])
               ?.map((channel) => microsoftTeamsChannelIdToName[channel])
               .join(", ")}
           </Badge>
@@ -89,7 +89,7 @@ export const MicrosoftTeamsConfigRow = ({ handlePopUpOpen }: Props) => {
           <Spinner size="xs" />
         ) : (
           <Badge>
-            {microsoftTeamsConfig.secretRequestChannels?.channelIds
+            {(microsoftTeamsConfig.secretRequestChannels?.channelIds || [])
               ?.map((channel) => microsoftTeamsChannelIdToName[channel])
               .join(", ")}
           </Badge>

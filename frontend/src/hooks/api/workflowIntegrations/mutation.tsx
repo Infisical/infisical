@@ -7,7 +7,7 @@ import { workflowIntegrationKeys } from "./queries";
 import {
   TCheckMicrosoftTeamsIntegrationInstallationStatusDTO,
   TCreateMicrosoftTeamsIntegrationDTO,
-  TDeleteMicrosoftTeamsIntegrationIntegrationDTO,
+  TDeleteMicrosoftTeamsIntegrationDTO,
   TDeleteProjectWorkflowIntegrationDTO,
   TDeleteSlackIntegrationDTO,
   TUpdateMicrosoftTeamsIntegrationDTO,
@@ -93,7 +93,7 @@ export const useDeleteSlackIntegration = () => {
 export const useDeleteMicrosoftTeamsIntegration = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<object, object, TDeleteMicrosoftTeamsIntegrationIntegrationDTO>({
+  return useMutation<object, object, TDeleteMicrosoftTeamsIntegrationDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.delete(
         `/api/v1/workflow-integrations/microsoft-teams/${dto.id}`
@@ -118,7 +118,7 @@ export const useUpdateProjectWorkflowIntegrationConfig = () => {
   return useMutation({
     mutationFn: async (dto: TUpdateProjectWorkflowIntegrationConfigDTO) => {
       const { data } = await apiRequest.put(
-        `/api/v1/workspace/${dto.workspaceId}/workflow-integration/${dto.integration}`,
+        `/api/v1/workspace/${dto.workspaceId}/workflow-integration`,
         dto
       );
 
@@ -138,7 +138,7 @@ export const useDeleteProjectWorkflowIntegration = () => {
   return useMutation({
     mutationFn: async (dto: TDeleteProjectWorkflowIntegrationDTO) => {
       const { data } = await apiRequest.delete(
-        `/api/v1/workspace/${dto.projectId}/workflow-integrations/${dto.integration}/${dto.integrationId}`
+        `/api/v1/workspace/${dto.projectId}/workflow-integration/${dto.integration}/${dto.integrationId}`
       );
 
       return data;

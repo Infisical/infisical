@@ -43,7 +43,7 @@ import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
-import { MicrosoftTeamsChannelsSchema } from "../microsoft-teams/microsoft-teams-fns";
+import { validateMicrosoftTeamsChannelsSchema } from "../microsoft-teams/microsoft-teams-fns";
 import { TMicrosoftTeamsIntegrationDALFactory } from "../microsoft-teams/microsoft-teams-integration-dal";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/project-microsoft-teams-config-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -1407,6 +1407,10 @@ export const projectServiceFactory = ({
         integrationId: config.microsoftTeamsIntegrationId
       };
     }
+
+    throw new BadRequestError({
+      message: `Integration type '${integration as string}' not supported`
+    });
   };
 
   const updateProjectWorkflowIntegration = async ({
@@ -1526,9 +1530,6 @@ export const projectServiceFactory = ({
         });
       }
 
-      const sanitizedAccessRequestChannels = MicrosoftTeamsChannelsSchema.parse(accessRequestChannels);
-      const sanitizedSecretRequestChannels = MicrosoftTeamsChannelsSchema.parse(secretRequestChannels);
-
       const microsoftTeamsIntegration =
         await microsoftTeamsIntegrationDAL.findByIdWithWorkflowIntegrationDetails(integrationId);
 
@@ -1537,6 +1538,32 @@ export const projectServiceFactory = ({
           message: `Microsoft Teams integration with ID '${integrationId}' not found`
         });
       }
+
+      if (microsoftTeamsIntegration.orgId !== actorOrgId) {
+        throw new ForbiddenRequestError({
+          message: "Selected Microsoft Teams integration is not in the same organization"
+        });
+      }
+
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.Any
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+      if (microsoftTeamsIntegration.orgId !== project.orgId) {
+        throw new ForbiddenRequestError({
+          message: "Selected Microsoft Teams integration is not in the same organization"
+        });
+      }
+
+      const sanitizedAccessRequestChannels = validateMicrosoftTeamsChannelsSchema.parse(accessRequestChannels);
+      const sanitizedSecretRequestChannels = validateMicrosoftTeamsChannelsSchema.parse(secretRequestChannels);
 
       const updatedWorkflowIntegration = await projectMicrosoftTeamsConfigDAL.transaction(async (tx) => {
         const microsoftTeamsConfig = await projectMicrosoftTeamsConfigDAL.findOne(

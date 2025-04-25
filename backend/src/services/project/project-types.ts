@@ -164,14 +164,25 @@ export type TGetProjectWorkflowIntegrationConfig = TProjectPermission & {
   integration: WorkflowIntegration;
 };
 
-export type TUpdateProjectWorkflowIntegration = {
-  integrationId: string;
-  integration: WorkflowIntegration;
-  isAccessRequestNotificationEnabled: boolean;
-  accessRequestChannels?: string | { teamId: string; channelIds: string[] };
-  isSecretRequestNotificationEnabled: boolean;
-  secretRequestChannels?: string | { teamId: string; channelIds: string[] };
-} & TProjectPermission;
+export type TUpdateProjectWorkflowIntegration = (
+  | {
+      integrationId: string;
+      integration: WorkflowIntegration.SLACK;
+      isAccessRequestNotificationEnabled: boolean;
+      isSecretRequestNotificationEnabled: boolean;
+      accessRequestChannels?: string;
+      secretRequestChannels?: string;
+    }
+  | {
+      integrationId: string;
+      integration: WorkflowIntegration.MICROSOFT_TEAMS;
+      isAccessRequestNotificationEnabled: boolean;
+      isSecretRequestNotificationEnabled: boolean;
+      accessRequestChannels?: { teamId: string; channelIds: string[] };
+      secretRequestChannels?: { teamId: string; channelIds: string[] };
+    }
+) &
+  TProjectPermission;
 
 export type TDeleteProjectWorkflowIntegration = {
   integrationId: string;

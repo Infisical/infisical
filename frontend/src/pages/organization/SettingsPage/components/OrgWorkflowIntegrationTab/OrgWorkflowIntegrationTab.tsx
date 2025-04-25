@@ -214,7 +214,7 @@ export const OrgWorkflowIntegrationTab = withPermission(
                                 onClick={async (e) => {
                                   e.stopPropagation();
 
-                                  await triggerSlackReinstall(workflowIntegration.integration);
+                                  await triggerSlackReinstall(workflowIntegration.id);
                                 }}
                               >
                                 Reinstall

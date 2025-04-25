@@ -70,7 +70,7 @@ export type TDeleteSlackIntegrationDTO = {
   orgId: string;
 };
 
-export type TDeleteMicrosoftTeamsIntegrationIntegrationDTO = {
+export type TDeleteMicrosoftTeamsIntegrationDTO = {
   id: string;
   orgId: string;
 };

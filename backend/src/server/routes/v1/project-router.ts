@@ -20,8 +20,9 @@ import { re2Validator } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-import { MicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
+import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
 import { ProjectFilterType, SearchProjectSortBy } from "@app/services/project/project-types";
+import { validateSlackChannelsField } from "@app/services/slack/slack-auth-validators";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import { integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
@@ -666,19 +667,17 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         integration: req.params.integration
       });
 
-      if (config) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          projectId: req.params.workspaceId,
-          event: {
-            type: EventType.GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG,
-            metadata: {
-              id: config.id,
-              integration: config.integration
-            }
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG,
+          metadata: {
+            id: config.id,
+            integration: config.integration
           }
-        });
-      }
+        }
+      });
 
       return config;
     }
@@ -686,7 +685,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "DELETE",
-    url: "/:projectId/workflow-integrations/:integration/:integrationId",
+    url: "/:projectId/workflow-integration/:integration/:integrationId",
     config: {
       rateLimit: writeLimit
     },
@@ -695,7 +694,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim(),
         integration: z.nativeEnum(WorkflowIntegration),
         integrationId: z.string()
-      })
+      }),
+      response: {
+        200: z.object({
+          integrationConfig: z.object({
+            id: z.string()
+          })
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -709,42 +715,41 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         integrationId: req.params.integrationId
       });
 
-      return deletedIntegration;
+      return {
+        integrationConfig: deletedIntegration
+      };
     }
   });
 
   server.route({
     method: "PUT",
-    url: "/:workspaceId/workflow-integration/:integration",
+    url: "/:workspaceId/workflow-integration",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        workspaceId: z.string().trim(),
-        integration: z.nativeEnum(WorkflowIntegration)
+        workspaceId: z.string().trim()
       }),
-      body: z.object({
-        integrationId: z.string(),
-        isAccessRequestNotificationEnabled: z.boolean(),
-        accessRequestChannels: z.string().or(
-          z
-            .object({
-              teamId: z.string(),
-              channelIds: z.string().array()
-            })
-            .optional()
-        ),
-        isSecretRequestNotificationEnabled: z.boolean(),
-        secretRequestChannels: z.string().or(
-          z
-            .object({
-              teamId: z.string(),
-              channelIds: z.string().array()
-            })
-            .optional()
-        )
-      }),
+
+      body: z.discriminatedUnion("integration", [
+        z.object({
+          integration: z.literal(WorkflowIntegration.SLACK),
+          integrationId: z.string(),
+          accessRequestChannels: validateSlackChannelsField,
+          secretRequestChannels: validateSlackChannelsField,
+          isAccessRequestNotificationEnabled: z.boolean(),
+          isSecretRequestNotificationEnabled: z.boolean()
+        }),
+        z.object({
+          integration: z.literal(WorkflowIntegration.MICROSOFT_TEAMS),
+          integrationId: z.string(),
+          accessRequestChannels: validateMicrosoftTeamsChannelsSchema,
+          secretRequestChannels: validateMicrosoftTeamsChannelsSchema,
+          isAccessRequestNotificationEnabled: z.boolean(),
+          isSecretRequestNotificationEnabled: z.boolean()
+        })
+      ]),
       response: {
         200: z.discriminatedUnion("integration", [
           ProjectSlackConfigsSchema.pick({
@@ -767,8 +772,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             z.object({
               integration: z.literal(WorkflowIntegration.MICROSOFT_TEAMS),
               integrationId: z.string(),
-              accessRequestChannels: MicrosoftTeamsChannelsSchema,
-              secretRequestChannels: MicrosoftTeamsChannelsSchema
+              accessRequestChannels: validateMicrosoftTeamsChannelsSchema,
+              secretRequestChannels: validateMicrosoftTeamsChannelsSchema
             })
           )
         ])
@@ -782,7 +787,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
-        integration: req.params.integration,
         ...req.body
       });
 

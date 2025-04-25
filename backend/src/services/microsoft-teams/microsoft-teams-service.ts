@@ -23,7 +23,7 @@ import { TMicrosoftTeamsIntegrationDALFactory } from "./microsoft-teams-integrat
 import {
   TCheckInstallationStatusDTO,
   TCreateMicrosoftTeamsIntegrationDTO,
-  TDeleteMicrosoftTeamsIntegrationIntegrationDTO,
+  TDeleteMicrosoftTeamsIntegrationDTO,
   TGetMicrosoftTeamsIntegrationByIdDTO,
   TGetMicrosoftTeamsIntegrationByOrgDTO,
   TGetTeamsDTO,
@@ -424,7 +424,7 @@ export const microsoftTeamsServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     id
-  }: TDeleteMicrosoftTeamsIntegrationIntegrationDTO) => {
+  }: TDeleteMicrosoftTeamsIntegrationDTO) => {
     const microsoftTeamsIntegration = await microsoftTeamsIntegrationDAL.findByIdWithWorkflowIntegrationDetails(id);
     if (!microsoftTeamsIntegration) {
       throw new NotFoundError({

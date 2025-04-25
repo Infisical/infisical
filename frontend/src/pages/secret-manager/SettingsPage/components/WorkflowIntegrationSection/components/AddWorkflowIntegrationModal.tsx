@@ -84,7 +84,7 @@ export const AddWorkflowIntegrationModal = ({ isOpen, onToggle }: Props) => {
                     (platform === WorkflowIntegrationPlatform.SLACK && slackConfigured);
 
                   return (
-                    <div className="relative">
+                    <div className="relative" key={platform}>
                       <div
                         key={platform}
                         className={twMerge(

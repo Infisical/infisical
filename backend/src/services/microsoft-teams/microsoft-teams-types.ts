@@ -22,7 +22,7 @@ export type TGetTeamsDTO = Omit<TOrgPermission, "orgId"> & {
   workflowIntegrationId: string;
 };
 
-export type TDeleteMicrosoftTeamsIntegrationIntegrationDTO = {
+export type TDeleteMicrosoftTeamsIntegrationDTO = {
   id: string;
 } & Omit<TOrgPermission, "orgId">;
 

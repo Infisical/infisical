@@ -1,4 +1,4 @@
-import { MicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
+import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
 import { sendSlackNotification } from "@app/services/slack/slack-fns";
 
 import { logger } from "../logger";
@@ -52,7 +52,9 @@ export const triggerWorkflowIntegrationNotification = async (dto: TTriggerWorkfl
     if (microsoftTeamsConfig) {
       if (notification.type === TriggerFeature.ACCESS_REQUEST) {
         if (microsoftTeamsConfig.isAccessRequestNotificationEnabled && microsoftTeamsConfig.accessRequestChannels) {
-          const { success, data } = MicrosoftTeamsChannelsSchema.safeParse(microsoftTeamsConfig.accessRequestChannels);
+          const { success, data } = validateMicrosoftTeamsChannelsSchema.safeParse(
+            microsoftTeamsConfig.accessRequestChannels
+          );
 
           if (success && data) {
             await microsoftTeamsService
@@ -68,7 +70,9 @@ export const triggerWorkflowIntegrationNotification = async (dto: TTriggerWorkfl
         }
       } else if (notification.type === TriggerFeature.SECRET_APPROVAL) {
         if (microsoftTeamsConfig.isSecretRequestNotificationEnabled && microsoftTeamsConfig.secretRequestChannels) {
-          const { success, data } = MicrosoftTeamsChannelsSchema.safeParse(microsoftTeamsConfig.secretRequestChannels);
+          const { success, data } = validateMicrosoftTeamsChannelsSchema.safeParse(
+            microsoftTeamsConfig.secretRequestChannels
+          );
 
           if (success && data) {
             await microsoftTeamsService

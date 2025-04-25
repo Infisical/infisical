@@ -141,7 +141,7 @@ export const MicrosoftTeamsIntegrationForm = ({ adminIntegrationsConfig }: Props
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label="Bot ID"
-                    tooltipClassName="You can find the bot ID in your bot's manifest.json file as the `id` field."
+                    tooltipText="You can find the bot ID in your bot's manifest.json file as the `id` field."
                     className="w-96"
                     isError={Boolean(error)}
                     errorText={error?.message}

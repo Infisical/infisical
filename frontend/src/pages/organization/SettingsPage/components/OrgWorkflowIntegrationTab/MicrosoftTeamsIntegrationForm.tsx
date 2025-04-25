@@ -49,7 +49,7 @@ export const MicrosoftTeamsIntegrationForm = ({ id, onClose }: Props) => {
     }
   }, [microsoftTeamsIntegration]);
 
-  const handleSlackFormSubmit = async ({
+  const handleMicrosoftTeamsFormSubmit = async ({
     slug,
     description,
     tenantId
@@ -97,7 +97,7 @@ export const MicrosoftTeamsIntegrationForm = ({ id, onClose }: Props) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(handleSlackFormSubmit)} autoComplete="off">
+    <form onSubmit={handleSubmit(handleMicrosoftTeamsFormSubmit)} autoComplete="off">
       <Controller
         control={control}
         name="slug"
