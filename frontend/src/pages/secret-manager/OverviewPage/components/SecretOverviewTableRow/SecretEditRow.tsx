@@ -126,10 +126,9 @@ export const SecretEditRow = ({
       }
     }
     if (secretValueHidden) {
-      const resetTimeout = setTimeout(() => {
+      setTimeout(() => {
         reset({ value: defaultValue || null });
       }, 50);
-      clearTimeout(resetTimeout);
       setIsSecretBlurFocus.off();
     } else {
       reset({ value });
@@ -182,7 +181,7 @@ export const SecretEditRow = ({
         <Tooltip
           content={`You do not have access to view the current value${canEditSecretValue ? ", but you can set a new one" : "."}`}
         >
-          <FontAwesomeIcon className="pl-1" icon={faEyeSlash} />
+          <FontAwesomeIcon className="pl-2" size="sm" icon={faEyeSlash} />
         </Tooltip>
       )}
       <div className="flex-grow border-r border-r-mineshaft-600 pl-1 pr-2">

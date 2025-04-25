@@ -316,7 +316,7 @@ export const SecretItem = memo(
                 <Tooltip
                   content={`You do not have access to view the current value${canEditSecretValue ? ", but you can set a new one" : "."}`}
                 >
-                  <FontAwesomeIcon className="pr-2" icon={faEyeSlash} />
+                  <FontAwesomeIcon className="pr-2" size="sm" icon={faEyeSlash} />
                 </Tooltip>
               )}
               {isOverriden ? (
