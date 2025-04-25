@@ -1,5 +1,6 @@
+/* eslint-disable no-nested-ternary */
 import React, { useMemo } from "react";
-import { faFileImport, faKey, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport, faKey, faSync, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Table, TBody, Td, Th, THead, Tr } from "@app/components/v2";
@@ -7,7 +8,8 @@ import { useWorkspace } from "@app/context";
 
 enum ItemType {
   Folder = "Folder",
-  Secret = "Secret"
+  Secret = "Secret",
+  SecretSync = "SecretSync"
 }
 
 interface FlatItem {
@@ -28,11 +30,19 @@ interface CollapsibleSecretImportsProps {
       isImported: boolean;
     }[];
   }[];
+  usedBySecretSyncs?:
+    | {
+        name: string;
+        destination: string;
+        environment: string;
+      }[]
+    | null;
   secretsToDelete: string[];
 }
 
 export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> = ({
   importedBy = [],
+  usedBySecretSyncs = [],
   secretsToDelete
 }) => {
   const { currentWorkspace } = useWorkspace();
@@ -51,6 +61,14 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
   };
 
   const handlePathClick = (item: FlatItem) => {
+    if (item.type === ItemType.SecretSync) {
+      window.open(
+        `/secret-manager/${currentWorkspace.id}/integrations?selectedTab=secret-syncs`,
+        "_blank"
+      );
+      return;
+    }
+
     let pathToNavigate;
     if (item.type === ItemType.Folder) {
       pathToNavigate = item.path;
@@ -103,7 +121,24 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
       });
     });
 
+    // Add secret sync items
+    usedBySecretSyncs?.forEach((syncItem) => {
+      items.push({
+        type: ItemType.SecretSync,
+        path: syncItem.destination,
+        id: `secret-sync-${syncItem.name}-${syncItem.destination}`,
+        reference: "Secret Sync",
+        environment: { name: syncItem.environment, slug: "" }
+      });
+    });
+
     return items.sort((a, b) => {
+      if (a.type === ItemType.SecretSync && b.type !== ItemType.SecretSync) return 1;
+      if (a.type !== ItemType.SecretSync && b.type === ItemType.SecretSync) return -1;
+
+      if (a.type === ItemType.SecretSync && b.type === ItemType.SecretSync) {
+        return a.path.localeCompare(b.path);
+      }
       const envCompare = a.environment.name.localeCompare(b.environment.name);
       if (envCompare !== 0) return envCompare;
 
@@ -119,7 +154,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
 
       return aPath.localeCompare(bPath);
     });
-  }, [importedBy]);
+  }, [importedBy, usedBySecretSyncs, secretsToDelete]);
 
   const hasImportedItems = importedBy.some((element) => {
     if (element.folders && element.folders.length > 0) {
@@ -135,7 +170,9 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
     return false;
   });
 
-  if (!hasImportedItems) {
+  const hasSecretSyncItems = usedBySecretSyncs && usedBySecretSyncs.length > 0;
+
+  if (!hasImportedItems && !hasSecretSyncItems) {
     return null;
   }
 
@@ -168,12 +205,28 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
                 key={item.id}
                 onClick={() => handlePathClick(item)}
                 className="cursor-pointer hover:bg-mineshaft-700"
-                title={`Navigate to ${item.path}`}
+                title={
+                  item.type === ItemType.SecretSync
+                    ? "Navigate to Secret Syncs"
+                    : `Navigate to ${item.path}`
+                }
               >
                 <Td>
                   <FontAwesomeIcon
-                    icon={item.type === ItemType.Secret ? faKey : faFileImport}
-                    className={`h-4 w-4 ${item.type === ItemType.Secret ? "text-gray-400" : "text-green-700"}`}
+                    icon={
+                      item.type === ItemType.Secret
+                        ? faKey
+                        : item.type === ItemType.Folder
+                          ? faFileImport
+                          : faSync
+                    }
+                    className={`h-4 w-4 ${
+                      item.type === ItemType.Secret
+                        ? "text-gray-400"
+                        : item.type === ItemType.Folder
+                          ? "text-green-700"
+                          : "text-blue-500"
+                    }`}
                     aria-hidden="true"
                   />
                 </Td>

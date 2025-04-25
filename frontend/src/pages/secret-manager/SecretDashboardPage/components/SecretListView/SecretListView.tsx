@@ -29,6 +29,7 @@ type Props = {
   tags?: WsTag[];
   isVisible?: boolean;
   isProtectedBranch?: boolean;
+  usedBySecretSyncs?: { environment: string; name: string; destination: string }[];
   importedBy?: {
     environment: { name: string; slug: string };
     folders: {
@@ -47,6 +48,7 @@ export const SecretListView = ({
   tags: wsTags = [],
   isVisible,
   isProtectedBranch = false,
+  usedBySecretSyncs,
   importedBy
 }: Props) => {
   const queryClient = useQueryClient();
@@ -372,6 +374,7 @@ export const SecretListView = ({
           importedBy.length > 0 && (
             <CollapsibleSecretImports
               importedBy={importedBy}
+              usedBySecretSyncs={usedBySecretSyncs}
               secretsToDelete={[(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key || ""]}
             />
           )

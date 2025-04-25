@@ -274,7 +274,8 @@ export const OverviewPage = () => {
     totalUniqueSecretImportsInPage,
     totalUniqueDynamicSecretsInPage,
     totalUniqueSecretRotationsInPage,
-    importedByEnvs
+    importedByEnvs,
+    usedBySecretSyncs
   } = overview ?? {};
 
   const secretImportsShaped = secretImports
@@ -1045,6 +1046,7 @@ export const OverviewPage = () => {
           selectedEntries={selectedEntries}
           resetSelectedEntries={resetSelectedEntries}
           importedByEnvs={importedByEnvs}
+          usedBySecretSyncs={usedBySecretSyncs}
         />
         <div className="thin-scrollbar mt-4">
           <TableContainer

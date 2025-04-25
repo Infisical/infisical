@@ -38,13 +38,15 @@ type Props = {
     [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
   };
   importedByEnvs?: { environment: string; importedBy: ProjectSecretsImportedBy[] }[];
+  usedBySecretSyncs?: { name: string; destination: string; environment: string }[];
 };
 
 export const SelectionPanel = ({
   secretPath,
   resetSelectedEntries,
   selectedEntries,
-  importedByEnvs
+  importedByEnvs,
+  usedBySecretSyncs
 }: Props) => {
   const { permission } = useProjectPermission();
 
@@ -155,6 +157,12 @@ export const SelectionPanel = ({
       importedByEnvs
     );
   }, [importedByEnvs, selectedEntries, selectedKeysCount]);
+
+  const usedBySecretSyncsFiltered = useMemo(() => {
+    if (selectedKeysCount === 0 || !usedBySecretSyncs) return null;
+    const envs = Object.values(selectedEntries.secret).flatMap((entries) => Object.keys(entries));
+    return usedBySecretSyncs.filter((syncItem) => envs.includes(syncItem.environment));
+  }, [selectedEntries, usedBySecretSyncs, selectedKeysCount]);
 
   const getDeleteModalTitle = () => {
     if (selectedFolderCount > 0 && selectedKeysCount > 0) {
@@ -331,6 +339,7 @@ export const SelectionPanel = ({
             <CollapsibleSecretImports
               importedBy={importedBy}
               secretsToDelete={secretsToDeleteKeys}
+              usedBySecretSyncs={usedBySecretSyncsFiltered}
             />
           )
         }

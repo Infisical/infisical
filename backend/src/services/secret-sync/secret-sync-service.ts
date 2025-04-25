@@ -23,6 +23,7 @@ import {
   TDeleteSecretSyncDTO,
   TFindSecretSyncByIdDTO,
   TFindSecretSyncByNameDTO,
+  TListSecretSyncsByFolderId,
   TListSecretSyncsByProjectId,
   TSecretSync,
   TTriggerSecretSyncImportSecretsByIdDTO,
@@ -80,6 +81,34 @@ export const secretSyncServiceFactory = ({
     const secretSyncs = await secretSyncDAL.find({
       ...(destination && { destination }),
       projectId
+    });
+
+    return secretSyncs as TSecretSync[];
+  };
+
+  const listSecretSyncsBySecretPath = async (
+    { projectId, secretPath, environment, destination }: TListSecretSyncsByFolderId,
+    actor: OrgServiceActor
+  ) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    if (permission.cannot(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs)) {
+      return [];
+    }
+
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    if (!folder) return [];
+
+    const secretSyncs = await secretSyncDAL.find({
+      ...(destination && { destination }),
+      folderId: folder.id
     });
 
     return secretSyncs as TSecretSync[];
@@ -518,6 +547,7 @@ export const secretSyncServiceFactory = ({
   return {
     listSecretSyncOptions,
     listSecretSyncsByProjectId,
+    listSecretSyncsBySecretPath,
     findSecretSyncById,
     findSecretSyncByName,
     createSecretSync,

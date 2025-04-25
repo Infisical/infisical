@@ -113,6 +113,7 @@ type Props = {
   onVisibilityToggle: () => void;
   onToggleRowType: (rowType: RowType) => void;
   onClickRollbackMode: () => void;
+  usedBySecretSyncs?: { environment: string; name: string; destination: string }[];
   importedBy?: {
     environment: { name: string; slug: string };
     folders: {
@@ -139,7 +140,8 @@ export const ActionBar = ({
   onClickRollbackMode,
   onToggleRowType,
   protectedBranchPolicyName,
-  importedBy
+  importedBy,
+  usedBySecretSyncs
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addFolder",
@@ -1076,6 +1078,7 @@ export const ActionBar = ({
             <CollapsibleSecretImports
               importedBy={importedBy}
               secretsToDelete={Object.values(selectedSecrets).map((s) => s.key)}
+              usedBySecretSyncs={usedBySecretSyncs}
             />
           )
         }
