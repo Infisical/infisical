@@ -86,7 +86,6 @@ export const AddWorkflowIntegrationModal = ({ isOpen, onToggle }: Props) => {
                   return (
                     <div className="relative" key={platform}>
                       <div
-                        key={platform}
                         className={twMerge(
                           "flex h-32 w-36 cursor-pointer flex-col items-center space-y-4 rounded border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white",
                           isConfigured && "border-primary/50 opacity-60"
@@ -110,7 +109,7 @@ export const AddWorkflowIntegrationModal = ({ isOpen, onToggle }: Props) => {
                       {isConfigured && (
                         <div className="absolute bottom-0 left-0 right-0 z-30 h-full">
                           <div className="relative h-full">
-                            <div className="absolute bottom-0 right-0 w-full flex-row items-center overflow-hidden whitespace-nowrap rounded-b-md bg-primary px-2 py-0.5 text-center text-xs text-black transition-all duration-300 group-hover:w-0 group-hover:p-0">
+                            <div className="absolute bottom-0 right-0 w-full flex-row items-center overflow-hidden whitespace-nowrap rounded-b-md bg-primary px-2 py-0.5 text-center text-xs text-black">
                               Already Configured
                             </div>
                           </div>
@@ -126,7 +125,7 @@ export const AddWorkflowIntegrationModal = ({ isOpen, onToggle }: Props) => {
           {wizardStep === WizardSteps.PlatformInputs &&
             selectedPlatform === WorkflowIntegrationPlatform.SLACK && (
               <motion.div
-                key="platform-inputs-step"
+                key="platform-inputs-step-slack"
                 transition={{ duration: 0.1 }}
                 initial={{ opacity: 0, translateX: 30 }}
                 animate={{ opacity: 1, translateX: 0 }}
@@ -138,7 +137,7 @@ export const AddWorkflowIntegrationModal = ({ isOpen, onToggle }: Props) => {
           {wizardStep === WizardSteps.PlatformInputs &&
             selectedPlatform === WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
               <motion.div
-                key="platform-inputs-step"
+                key="platform-inputs-step-ms-teams"
                 transition={{ duration: 0.1 }}
                 initial={{ opacity: 0, translateX: 30 }}
                 animate={{ opacity: 1, translateX: 0 }}

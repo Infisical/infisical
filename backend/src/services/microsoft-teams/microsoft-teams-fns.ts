@@ -1,6 +1,7 @@
 /* eslint-disable class-methods-use-this */
 import axios from "axios";
 import { TeamsActivityHandler, TurnContext } from "botbuilder";
+import { Knex } from "knex";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
@@ -8,68 +9,218 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TNotification, TriggerFeature } from "@app/lib/workflow-integrations/types";
 
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TWorkflowIntegrationDALFactory } from "../workflow-integration/workflow-integration-dal";
 import { WorkflowIntegrationStatus } from "../workflow-integration/workflow-integration-types";
 import { TMicrosoftTeamsIntegrationDALFactory } from "./microsoft-teams-integration-dal";
 
-export const getMicrosoftTeamsAccessToken = async ({
-  tenantId,
-  clientId,
-  clientSecret,
-  getBotFrameworkToken = false
-}: {
-  tenantId: string;
-  clientId: string;
-  clientSecret: string;
-  getBotFrameworkToken?: boolean;
-}) => {
-  const details = getBotFrameworkToken
-    ? {
-        uri: "https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token",
-        scope: "https://api.botframework.com/.default"
+export const getMicrosoftTeamsAccessToken = async (
+  {
+    orgId,
+    microsoftTeamsIntegrationId,
+    tenantId,
+    clientId,
+    clientSecret,
+    kmsService,
+    microsoftTeamsIntegrationDAL,
+    getBotFrameworkToken
+  }: {
+    microsoftTeamsIntegrationId: string;
+    orgId: string;
+    tenantId: string;
+    clientId: string;
+    clientSecret: string;
+    kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+    microsoftTeamsIntegrationDAL: Pick<TMicrosoftTeamsIntegrationDALFactory, "findOne" | "update">;
+    getBotFrameworkToken?: boolean;
+  },
+  tx?: Knex
+) => {
+  try {
+    const details = getBotFrameworkToken
+      ? {
+          uri: "https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token",
+          scope: "https://api.botframework.com/.default"
+        }
+      : {
+          uri: `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+          scope: "https://graph.microsoft.com/.default"
+        };
+
+    const integration = await microsoftTeamsIntegrationDAL.findOne(
+      {
+        id: microsoftTeamsIntegrationId
+      },
+      tx
+    );
+
+    if (!integration) {
+      throw new BadRequestError({ message: "Microsoft Teams integration not found" });
+    }
+
+    if (getBotFrameworkToken) {
+      const currentTime = new Date(new Date().getTime() + 5 * 60 * 1000);
+
+      if (
+        integration.encryptedBotAccessToken &&
+        integration.botAccessTokenExpiresAt &&
+        integration.botAccessTokenExpiresAt > currentTime
+      ) {
+        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+          orgId,
+          type: KmsDataKey.Organization
+        });
+
+        const botAccessToken = decryptor({
+          cipherTextBlob: integration.encryptedBotAccessToken
+        });
+
+        return botAccessToken.toString();
       }
-    : {
-        uri: `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
-        scope: "https://graph.microsoft.com/.default"
-      };
+    } else {
+      const currentTime = new Date(new Date().getTime() + 5 * 60 * 1000);
 
-  const tokenResponse = await axios.post<{ access_token: string }>(
-    details.uri,
-    new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      scope: details.scope,
-      grant_type: "client_credentials"
-    })
-  );
+      if (
+        integration.encryptedAccessToken &&
+        integration.accessTokenExpiresAt &&
+        integration.accessTokenExpiresAt > currentTime
+      ) {
+        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+          orgId,
+          type: KmsDataKey.Organization
+        });
 
-  return tokenResponse.data.access_token;
+        const accessToken = decryptor({
+          cipherTextBlob: integration.encryptedAccessToken
+        });
+
+        return accessToken.toString();
+      }
+    }
+
+    const tokenResponse = await axios.post<{ access_token: string; expires_in: number }>(
+      details.uri,
+      new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        scope: details.scope,
+        grant_type: "client_credentials"
+      })
+    );
+
+    if (getBotFrameworkToken) {
+      const { encryptor } = await kmsService.createCipherPairWithDataKey({
+        orgId,
+        type: KmsDataKey.Organization
+      });
+
+      const { cipherTextBlob: encryptedBotAccessToken } = encryptor({
+        plainText: Buffer.from(tokenResponse.data.access_token)
+      });
+
+      const expiresAt = new Date(new Date().getTime() + tokenResponse.data.expires_in * 1000);
+
+      await microsoftTeamsIntegrationDAL.update(
+        {
+          id: microsoftTeamsIntegrationId
+        },
+        {
+          botAccessTokenExpiresAt: expiresAt,
+          encryptedBotAccessToken
+        },
+        tx
+      );
+    } else {
+      const { encryptor } = await kmsService.createCipherPairWithDataKey({
+        orgId,
+        type: KmsDataKey.Organization
+      });
+
+      const { cipherTextBlob: encryptedAccessToken } = encryptor({
+        plainText: Buffer.from(tokenResponse.data.access_token)
+      });
+
+      const expiresAt = new Date(new Date().getTime() + tokenResponse.data.expires_in * 1000);
+
+      await microsoftTeamsIntegrationDAL.update(
+        {
+          id: microsoftTeamsIntegrationId
+        },
+        {
+          accessTokenExpiresAt: expiresAt,
+          encryptedAccessToken
+        },
+        tx
+      );
+    }
+
+    return tokenResponse.data.access_token;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      logger.error(
+        error.response?.data,
+        `getMicrosoftTeamsAccessToken: Error fetching Microsoft Teams access token [status-code=${error.response?.status}]`
+      );
+    } else {
+      logger.error(error, "getMicrosoftTeamsAccessToken: Error fetching Microsoft Teams access token");
+    }
+    throw error;
+  }
 };
 
-export const isBotInstalledInTenant = async ({
-  tenantId,
-  botAppId,
-  botAppPassword,
-  botId
-}: {
-  tenantId: string;
-  botAppId: string;
-  botAppPassword: string;
-  botId: string;
-}) => {
+export const isBotInstalledInTenant = async (
+  {
+    tenantId,
+    botAppId,
+    botAppPassword,
+    botId,
+    orgId,
+    kmsService,
+    microsoftTeamsIntegrationDAL,
+    microsoftTeamsIntegrationId
+  }: {
+    tenantId: string;
+    botAppId: string;
+    botAppPassword: string;
+    botId: string;
+    orgId: string;
+    kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+    microsoftTeamsIntegrationDAL: Pick<TMicrosoftTeamsIntegrationDALFactory, "findOne" | "update">;
+    microsoftTeamsIntegrationId: string;
+  },
+  tx?: Knex
+) => {
   try {
-    const botAccessToken = await getMicrosoftTeamsAccessToken({
-      tenantId,
-      clientId: botAppId.toString(),
-      clientSecret: botAppPassword.toString(),
-      getBotFrameworkToken: true
-    }).catch(() => null);
+    const botAccessToken = await getMicrosoftTeamsAccessToken(
+      {
+        tenantId,
+        clientId: botAppId.toString(),
+        clientSecret: botAppPassword.toString(),
+        getBotFrameworkToken: true,
+        orgId,
+        kmsService,
+        microsoftTeamsIntegrationDAL,
+        microsoftTeamsIntegrationId
+      },
+      tx
+    ).catch(() => null);
 
-    const accessToken = await getMicrosoftTeamsAccessToken({
-      tenantId,
-      clientId: botAppId.toString(),
-      clientSecret: botAppPassword.toString()
-    }).catch(() => null);
+    const accessToken = await getMicrosoftTeamsAccessToken(
+      {
+        orgId,
+        tenantId,
+        clientId: botAppId.toString(),
+        clientSecret: botAppPassword.toString(),
+        kmsService,
+        microsoftTeamsIntegrationDAL,
+        microsoftTeamsIntegrationId
+      },
+      tx
+    ).catch(() => null);
+
+    console.log("botAccessToken", botAccessToken);
+    console.log("accessToken", accessToken);
 
     if (!botAccessToken || !accessToken) {
       return {
@@ -104,6 +255,12 @@ export const isBotInstalledInTenant = async ({
     }
 
     const botInstalledInTenant = appsResponse.data.value.find((a) => a.externalId === botId);
+
+    for (const app of appsResponse.data.value) {
+      if (app.displayName.toLowerCase().includes("infisical")) {
+        console.log(`${app.displayName} - ${app.externalId}`);
+      }
+    }
 
     if (!botInstalledInTenant) {
       return {
@@ -311,16 +468,15 @@ export class TeamsBot extends TeamsActivityHandler {
     await super.run(context);
   }
 
-  async sendMessageToChannel(tenantId: string, channelId: string, teamId: string, notification: TNotification) {
+  async sendMessageToChannel(
+    botAccessToken: string,
+    tenantId: string,
+    channelId: string,
+    teamId: string,
+    notification: TNotification
+  ) {
     try {
       const { adaptiveCard } = buildTeamsPayload(notification);
-
-      const botToken = await getMicrosoftTeamsAccessToken({
-        tenantId,
-        clientId: this.botAppId,
-        clientSecret: this.botAppPassword,
-        getBotFrameworkToken: true
-      });
 
       const adaptiveCardActivity = {
         type: "message",
@@ -349,7 +505,7 @@ export class TeamsBot extends TeamsActivityHandler {
         adaptiveCardActivity,
         {
           headers: {
-            Authorization: `Bearer ${botToken}`,
+            Authorization: `Bearer ${botAccessToken}`,
             "Content-Type": "application/json"
           }
         }
@@ -364,18 +520,12 @@ export class TeamsBot extends TeamsActivityHandler {
   }
 
   // todo: filter out teams that the bot is not a member of
-  async getTeamsAndChannels(tenantId: string, internalAppId: string) {
+  async getTeamsAndChannels(accessToken: string, tenantId: string, internalAppId: string) {
     try {
-      const token = await getMicrosoftTeamsAccessToken({
-        tenantId,
-        clientId: this.botAppId,
-        clientSecret: this.botAppPassword
-      });
-
       const teamsResponse = await axios
         .get<{ value: { displayName: string; id: string }[] }>(`https://graph.microsoft.com/v1.0/teams`, {
           headers: {
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${accessToken}`
           }
         })
         .catch((error) => {
@@ -393,7 +543,7 @@ export class TeamsBot extends TeamsActivityHandler {
             `https://graph.microsoft.com/v1.0/teams/${team.id}/installedApps?$expand=teamsAppDefinition`,
             {
               headers: {
-                Authorization: `Bearer ${token}`
+                Authorization: `Bearer ${accessToken}`
               }
             }
           );
@@ -412,7 +562,7 @@ export class TeamsBot extends TeamsActivityHandler {
             `https://graph.microsoft.com/v1.0/teams/${team.id}/channels`,
             {
               headers: {
-                Authorization: `Bearer ${token}`
+                Authorization: `Bearer ${accessToken}`
               }
             }
           )

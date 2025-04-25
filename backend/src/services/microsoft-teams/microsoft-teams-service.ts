@@ -18,7 +18,7 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TSuperAdminDALFactory } from "../super-admin/super-admin-dal";
 import { TWorkflowIntegrationDALFactory } from "../workflow-integration/workflow-integration-dal";
 import { WorkflowIntegration, WorkflowIntegrationStatus } from "../workflow-integration/workflow-integration-types";
-import { isBotInstalledInTenant, TeamsBot } from "./microsoft-teams-fns";
+import { getMicrosoftTeamsAccessToken, isBotInstalledInTenant, TeamsBot } from "./microsoft-teams-fns";
 import { TMicrosoftTeamsIntegrationDALFactory } from "./microsoft-teams-integration-dal";
 import {
   TCheckInstallationStatusDTO,
@@ -56,6 +56,7 @@ type TMicrosoftTeamsServiceFactoryDep = {
     | "findById"
     | "findByIdWithWorkflowIntegrationDetails"
     | "findWithWorkflowIntegrationDetails"
+    | "update"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithRootKey" | "decryptWithRootKey">;
@@ -131,16 +132,6 @@ export const microsoftTeamsServiceFactory = ({
     actorAuthMethod,
     workflowIntegrationId
   }: TCheckInstallationStatusDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
-
     const microsoftTeamsIntegration =
       await microsoftTeamsIntegrationDAL.findByIdWithWorkflowIntegrationDetails(workflowIntegrationId);
 
@@ -149,6 +140,16 @@ export const microsoftTeamsServiceFactory = ({
         message: `Microsoft Teams integration with ID ${workflowIntegrationId} not found`
       });
     }
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      microsoftTeamsIntegration.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
     const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
     if (!serverCfg) {
@@ -175,7 +176,11 @@ export const microsoftTeamsServiceFactory = ({
       tenantId: microsoftTeamsIntegration.tenantId,
       botAppId: decryptedAppId.toString(),
       botAppPassword: decryptedAppPassword.toString(),
-      botId: decryptedBotId.toString()
+      botId: decryptedBotId.toString(),
+      orgId: microsoftTeamsIntegration.orgId,
+      kmsService,
+      microsoftTeamsIntegrationDAL,
+      microsoftTeamsIntegrationId: microsoftTeamsIntegration.id
     });
 
     if (!teamsBotInfo.installed) {
@@ -258,12 +263,20 @@ export const microsoftTeamsServiceFactory = ({
       const botAppPassword = decryptWithRoot(encryptedMicrosoftTeamsClientSecret);
       const botId = decryptWithRoot(encryptedMicrosoftTeamsBotId);
 
-      const teamsBotInfo = await isBotInstalledInTenant({
-        tenantId: microsoftTeamsIntegration.tenantId,
-        botAppId: botAppId.toString(),
-        botAppPassword: botAppPassword.toString(),
-        botId: botId.toString()
-      });
+      const teamsBotInfo = await isBotInstalledInTenant(
+        {
+          tenantId: microsoftTeamsIntegration.tenantId,
+          botAppId: botAppId.toString(),
+          botAppPassword: botAppPassword.toString(),
+          botId: botId.toString(),
+          orgId: workflowIntegration.orgId,
+          kmsService,
+          microsoftTeamsIntegrationDAL,
+          microsoftTeamsIntegrationId: microsoftTeamsIntegration.id
+        },
+        tx
+      );
+
       if (teamsBotInfo.installed) {
         const { encryptor: orgDataKeyEncryptor } = await kmsService.createCipherPairWithDataKey({
           orgId: workflowIntegration.orgId,
@@ -451,16 +464,6 @@ export const microsoftTeamsServiceFactory = ({
   };
 
   const getTeams = async ({ actorId, actor, actorOrgId, actorAuthMethod, workflowIntegrationId }: TGetTeamsDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
-
     const microsoftTeamsIntegration =
       await microsoftTeamsIntegrationDAL.findByIdWithWorkflowIntegrationDetails(workflowIntegrationId);
 
@@ -469,6 +472,16 @@ export const microsoftTeamsServiceFactory = ({
         message: `Microsoft Teams integration with ID ${workflowIntegrationId} not found`
       });
     }
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      microsoftTeamsIntegration.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 
     if (!teamsBot || !adapter) {
       throw new BadRequestError({
@@ -498,11 +511,15 @@ export const microsoftTeamsServiceFactory = ({
     const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
     const decryptedBotId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsBotId);
 
-    const { installed, internalId } = await isBotInstalledInTenant({
+    const { installed, internalId, accessToken } = await isBotInstalledInTenant({
       tenantId: microsoftTeamsIntegration.tenantId,
       botAppId: decryptedAppId.toString(),
       botAppPassword: decryptedAppPassword.toString(),
-      botId: decryptedBotId.toString()
+      botId: decryptedBotId.toString(),
+      orgId: actorOrgId,
+      kmsService,
+      microsoftTeamsIntegrationDAL,
+      microsoftTeamsIntegrationId: microsoftTeamsIntegration.id
     });
 
     if (!installed) {
@@ -511,7 +528,7 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const teams = await teamsBot.getTeamsAndChannels(microsoftTeamsIntegration.tenantId, internalId);
+    const teams = await teamsBot.getTeamsAndChannels(accessToken, microsoftTeamsIntegration.tenantId, internalId);
 
     return teams;
   };
@@ -580,15 +597,53 @@ export const microsoftTeamsServiceFactory = ({
     });
   };
 
-  const sendNotification = async ({ tenantId, target, notification }: TSendNotificationDTO) => {
+  const sendNotification = async ({
+    tenantId,
+    target,
+    notification,
+    orgId,
+    microsoftTeamsIntegrationId
+  }: TSendNotificationDTO) => {
     if (!teamsBot || !adapter) {
       throw new BadRequestError({
         message: "Unable to send notification because the Microsoft Teams bot is uninitialized"
       });
     }
 
+    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+    if (!serverCfg) {
+      throw new BadRequestError({
+        message: "Failed to get server configuration."
+      });
+    }
+
+    if (
+      !serverCfg.encryptedMicrosoftTeamsAppId ||
+      !serverCfg.encryptedMicrosoftTeamsClientSecret ||
+      !serverCfg.encryptedMicrosoftTeamsBotId
+    ) {
+      throw new BadRequestError({
+        message: "Microsoft Teams app ID, client secret, or bot ID is not set"
+      });
+    }
+
+    const decryptWithRoot = kmsService.decryptWithRootKey();
+    const botAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
+    const botAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
+
+    const botAccessToken = await getMicrosoftTeamsAccessToken({
+      tenantId,
+      clientId: botAppId.toString(),
+      clientSecret: botAppPassword.toString(),
+      getBotFrameworkToken: true,
+      orgId,
+      kmsService,
+      microsoftTeamsIntegrationDAL,
+      microsoftTeamsIntegrationId
+    });
+
     for await (const channelId of target.channelIds) {
-      await teamsBot.sendMessageToChannel(tenantId, channelId, target.teamId, notification);
+      await teamsBot.sendMessageToChannel(botAccessToken, tenantId, channelId, target.teamId, notification);
     }
   };
 

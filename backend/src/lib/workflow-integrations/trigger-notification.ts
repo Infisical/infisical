@@ -61,7 +61,9 @@ export const triggerWorkflowIntegrationNotification = async (dto: TTriggerWorkfl
               .sendNotification({
                 notification,
                 target: data,
-                tenantId: microsoftTeamsConfig.tenantId
+                tenantId: microsoftTeamsConfig.tenantId,
+                microsoftTeamsIntegrationId: microsoftTeamsConfig.id,
+                orgId: project.orgId
               })
               .catch((error) => {
                 logger.error(error, "Error sending Microsoft Teams notification");
@@ -79,7 +81,9 @@ export const triggerWorkflowIntegrationNotification = async (dto: TTriggerWorkfl
               .sendNotification({
                 notification,
                 target: data,
-                tenantId: microsoftTeamsConfig.tenantId
+                tenantId: microsoftTeamsConfig.tenantId,
+                microsoftTeamsIntegrationId: microsoftTeamsConfig.id,
+                orgId: project.orgId
               })
               .catch((error) => {
                 logger.error(error, "Error sending Microsoft Teams notification");

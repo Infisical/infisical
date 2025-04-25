@@ -28,6 +28,8 @@ export type TDeleteMicrosoftTeamsIntegrationDTO = {
 
 export type TSendNotificationDTO = {
   tenantId: string;
+  microsoftTeamsIntegrationId: string;
+  orgId: string;
   target: {
     teamId: string;
     channelIds: string[];

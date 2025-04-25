@@ -84,7 +84,7 @@ const formSchema = z
     }
   });
 
-type TSlackConfigForm = z.infer<typeof formSchema>;
+type TMicrosoftTeamsConfigForm = z.infer<typeof formSchema>;
 
 type Props = {
   onClose: () => void;
@@ -109,7 +109,7 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
     handleSubmit,
     setValue,
     formState: { isDirty, isSubmitting }
-  } = useForm<TSlackConfigForm>({
+  } = useForm<TMicrosoftTeamsConfigForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       isAccessRequestNotificationEnabled: false,
@@ -125,7 +125,7 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
     }
   });
 
-  const handleIntegrationSave = async (data: TSlackConfigForm) => {
+  const handleIntegrationSave = async (data: TMicrosoftTeamsConfigForm) => {
     try {
       if (!currentWorkspace) {
         return;
@@ -374,7 +374,7 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
                                     : [...(value || []), channel.channelId]
                                 );
                               }}
-                              key={`secret-requests-slack-channel-${channel.channelId}`}
+                              key={`secret-requests-microsoft-teams-channel-${channel.channelId}`}
                               iconPos="right"
                               icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
                             >

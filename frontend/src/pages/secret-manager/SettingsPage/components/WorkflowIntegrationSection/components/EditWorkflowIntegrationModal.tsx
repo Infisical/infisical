@@ -2,6 +2,7 @@ import { Modal, ModalContent } from "@app/components/v2";
 import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
 
 import { SlackIntegrationForm } from "./SlackIntegrationForm";
+import { MicrosoftTeamsIntegrationForm } from "./MicrosoftTeamsIntegrationForm";
 
 type Props = {
   isOpen?: boolean;
@@ -22,6 +23,9 @@ export const EditWorkflowIntegrationModal = ({ isOpen, onClose, integration }: P
       >
         {integration === WorkflowIntegrationPlatform.SLACK && (
           <SlackIntegrationForm onClose={handleFormReset} />
+        )}
+        {integration === WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
+          <MicrosoftTeamsIntegrationForm onClose={handleFormReset} />
         )}
       </ModalContent>
     </Modal>

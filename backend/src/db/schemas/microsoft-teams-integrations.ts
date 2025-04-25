@@ -15,6 +15,8 @@ export const MicrosoftTeamsIntegrationsSchema = z.object({
   tenantId: z.string(),
   encryptedAccessToken: zodBuffer.nullable().optional(),
   encryptedBotAccessToken: zodBuffer.nullable().optional(),
+  accessTokenExpiresAt: z.date().nullable().optional(),
+  botAccessTokenExpiresAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

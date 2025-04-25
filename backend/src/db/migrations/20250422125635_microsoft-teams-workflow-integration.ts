@@ -51,6 +51,9 @@ export async function up(knex: Knex): Promise<void> {
       table.binary("encryptedAccessToken").nullable();
       table.binary("encryptedBotAccessToken").nullable();
 
+      table.timestamp("accessTokenExpiresAt").nullable();
+      table.timestamp("botAccessTokenExpiresAt").nullable();
+
       table.timestamps(true, true, true);
     });
 
