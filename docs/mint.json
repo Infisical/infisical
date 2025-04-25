@@ -429,7 +429,8 @@
             "integrations/app-connections/postgres",
             "integrations/app-connections/terraform-cloud",
             "integrations/app-connections/vercel",
-            "integrations/app-connections/windmill"
+            "integrations/app-connections/windmill",
+            "integrations/app-connections/hashicorp-vault"
           ]
         }
       ]
@@ -452,7 +453,8 @@
             "integrations/secret-syncs/humanitec",
             "integrations/secret-syncs/terraform-cloud",
             "integrations/secret-syncs/vercel",
-            "integrations/secret-syncs/windmill"
+            "integrations/secret-syncs/windmill",
+            "integrations/secret-syncs/hashicorp-vault"
           ]
         }
       ]
@@ -559,9 +561,7 @@
     },
     {
       "group": "Others",
-      "pages": [
-        "integrations/external/backstage"
-      ]
+      "pages": ["integrations/external/backstage"]
     },
     {
       "group": "",
@@ -1073,6 +1073,18 @@
                 "api-reference/endpoints/app-connections/windmill/update",
                 "api-reference/endpoints/app-connections/windmill/delete"
               ]
+            },
+            {
+              "group": "Hashicorp Vault",
+              "pages": [
+                "api-reference/endpoints/app-connections/hashicorp-vault/list",
+                "api-reference/endpoints/app-connections/hashicorp-vault/available",
+                "api-reference/endpoints/app-connections/hashicorp-vault/get-by-id",
+                "api-reference/endpoints/app-connections/hashicorp-vault/get-by-name",
+                "api-reference/endpoints/app-connections/hashicorp-vault/create",
+                "api-reference/endpoints/app-connections/hashicorp-vault/update",
+                "api-reference/endpoints/app-connections/hashicorp-vault/delete"
+              ]
             }
           ]
         },
@@ -1242,6 +1254,20 @@
                 "api-reference/endpoints/secret-syncs/windmill/sync-secrets",
                 "api-reference/endpoints/secret-syncs/windmill/import-secrets",
                 "api-reference/endpoints/secret-syncs/windmill/remove-secrets"
+              ]
+            },
+            {
+              "group": "Hashicorp Vault",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/hashicorp-vault/list",
+                "api-reference/endpoints/secret-syncs/hashicorp-vault/get-by-id",
+                "api-reference/endpoints/secret-syncs/hashicorp-vault/get-by-name",
+                "api-reference/endpoints/secret-syncs/hashicorp-vault/create",
+                "api-reference/endpoints/secret-syncs/hashicorp-vault/update",
+                "api-reference/endpoints/secret-syncs/hashicorp-vault/delete",
+                "api-reference/endpoints/secret-syncs/hashicorp-vault/sync-secrets",
+                "api-reference/endpoints/secret-syncs/hashicorp-vault/import-secrets",
+                "api-reference/endpoints/secret-syncs/hashicorp-vault/remove-secrets"
               ]
             }
           ]
