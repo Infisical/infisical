@@ -11,7 +11,21 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { getAwsConnectionConfig } from "@app/services/app-connection/aws";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import {
+  AwsConnectionMethod,
+  getAwsConnectionConfig,
+  validateAwsConnectionCredentials
+} from "@app/services/app-connection/aws";
+
+const sleep = async () =>
+  new Promise((resolve) => {
+    setTimeout(resolve, 10000);
+  });
+
+const getCreateDate = (key: AWS.IAM.AccessKeyMetadata): number => {
+  return key.CreateDate ? new Date(key.CreateDate).getTime() : 0;
+};
 
 export const awsIamUserSecretRotationFactory: TRotationFactory<
   TAwsIamUserSecretRotationWithConnection,
@@ -30,34 +44,36 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
     const { AccessKeyMetadata } = await iam.listAccessKeys({ UserName: userName }).promise();
 
     if (AccessKeyMetadata && AccessKeyMetadata.length > 0) {
-      // Delete inactive keys
-      await Promise.all(
-        AccessKeyMetadata.map((key) => {
-          if (key.Status === "Inactive" && key.AccessKeyId) {
-            return iam
-              .deleteAccessKey({
-                UserName: userName,
-                AccessKeyId: key.AccessKeyId
-              })
-              .promise();
-          }
-          return Promise.resolve();
-        })
-      );
+      // Sort keys by creation date (oldest first)
+      const sortedKeys = [...AccessKeyMetadata].sort((a, b) => getCreateDate(a) - getCreateDate(b));
 
-      const activeKey = AccessKeyMetadata.find((k) => k.Status === "Active");
-      if (activeKey && activeKey.AccessKeyId) {
-        await iam
-          .updateAccessKey({
-            UserName: userName,
-            AccessKeyId: activeKey.AccessKeyId,
-            Status: "Inactive"
-          })
-          .promise();
+      // If we already have 2 keys, delete the oldest one
+      if (sortedKeys.length >= 2) {
+        const accessId = sortedKeys[0].AccessKeyId || sortedKeys[1].AccessKeyId;
+        if (accessId) {
+          await iam
+            .deleteAccessKey({
+              UserName: userName,
+              AccessKeyId: accessId
+            })
+            .promise();
+        }
       }
     }
 
     const { AccessKey } = await iam.createAccessKey({ UserName: userName }).promise();
+
+    await sleep();
+
+    await validateAwsConnectionCredentials({
+      app: AppConnection.AWS,
+      orgId: connection.orgId,
+      method: AwsConnectionMethod.AccessKey,
+      credentials: {
+        accessKeyId: AccessKey.AccessKeyId,
+        secretAccessKey: AccessKey.SecretAccessKey
+      }
+    });
 
     return {
       accessKeyId: AccessKey.AccessKeyId,
