@@ -688,7 +688,11 @@ export const oidcConfigServiceFactory = ({
     const strategy = new OpenIdStrategy(
       {
         client,
-        passReqToCallback: true
+        passReqToCallback: true,
+        usePKCE: true,
+        params: {
+          code_challenge_method: "S256"
+        }
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (_req: any, tokenSet: TokenSet, cb: any) => {
