@@ -82,9 +82,10 @@ export const CreateHCVaultConnectionSchema = ValidateHCVaultConnectionCredential
 
 export const UpdateHCVaultConnectionSchema = z
   .object({
-    credentials: HCVaultConnectionAccessTokenCredentialsSchema.optional().describe(
-      AppConnections.UPDATE(AppConnection.HCVault).credentials
-    )
+    credentials: z
+      .union([HCVaultConnectionAccessTokenCredentialsSchema, HCVaultConnectionAppRoleCredentialsSchema])
+      .optional()
+      .describe(AppConnections.UPDATE(AppConnection.HCVault).credentials)
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.HCVault));
 
