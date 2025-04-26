@@ -1,4 +1,4 @@
-import { faSlack } from "@fortawesome/free-brands-svg-icons";
+import { BsMicrosoftTeams, BsSlack } from "react-icons/bs";
 import { faEllipsis, faGear, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import axios from "axios";
@@ -174,8 +174,14 @@ export const OrgWorkflowIntegrationTab = withPermission(
               {workflowIntegrations?.map((workflowIntegration) => (
                 <Tr key={workflowIntegration.id}>
                   <Td className="flex max-w-xs items-center overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
-                    <FontAwesomeIcon icon={faSlack} />
-                    <div className="ml-2">{workflowIntegration.integration.toUpperCase()}</div>
+                    {workflowIntegration.integration === WorkflowIntegrationPlatform.SLACK ? (
+                      <BsSlack />
+                    ) : (
+                      <BsMicrosoftTeams />
+                    )}
+                    <div className="ml-2 capitalize">
+                      {workflowIntegration.integration.replaceAll("-", " ")}
+                    </div>
                   </Td>
                   <Td>{workflowIntegration.slug}</Td>
                   <Td>{renderStatus(workflowIntegration.status)}</Td>
