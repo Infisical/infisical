@@ -379,7 +379,7 @@ export type TFnSecretBulkDelete = {
   tx?: Knex;
   secretDAL: Pick<TSecretDALFactory, "deleteMany">;
   secretQueueService: {
-    removeSecretReminder: (data: TRemoveSecretReminderDTO) => Promise<void>;
+    removeSecretReminder: (data: TRemoveSecretReminderDTO, tx?: Knex) => Promise<void>;
   };
 };
 
@@ -410,12 +410,14 @@ export type TCreateSecretReminderDTO = {
   oldSecret: TPartialSecret;
   newSecret: TPartialSecret;
   projectId: string;
-  recipients?: string[] | null;
+
+  deleteRecipients?: boolean;
 };
 
 export type TRemoveSecretReminderDTO = {
   secretId: string;
   repeatDays: number;
+  deleteRecipients?: boolean;
 };
 
 export type TBackFillSecretReferencesDTO = TProjectPermission;

@@ -221,7 +221,7 @@ export type TFnSecretBulkDelete = {
   tx?: Knex;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "deleteMany">;
   secretQueueService: {
-    removeSecretReminder: (data: TRemoveSecretReminderDTO) => Promise<void>;
+    removeSecretReminder: (data: TRemoveSecretReminderDTO, tx?: Knex) => Promise<void>;
   };
 };
 

@@ -737,7 +737,7 @@ export const fnSecretBulkDelete = async ({
     deletedSecrets
       .filter(({ secretReminderRepeatDays }) => Boolean(secretReminderRepeatDays))
       .map(({ id, secretReminderRepeatDays }) =>
-        secretQueueService.removeSecretReminder({ secretId: id, repeatDays: secretReminderRepeatDays as number })
+        secretQueueService.removeSecretReminder({ secretId: id, repeatDays: secretReminderRepeatDays as number }, tx)
       )
   );
 

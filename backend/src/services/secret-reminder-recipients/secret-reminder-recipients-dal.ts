@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
@@ -7,9 +9,8 @@ export type TSecretReminderRecipientsDALFactory = ReturnType<typeof secretRemind
 export const secretReminderRecipientsDALFactory = (db: TDbClient) => {
   const secretReminderRecipientsOrm = ormify(db, TableName.SecretReminderRecipients);
 
-  const findUsersBySecretId = async (secretId: string) => {
-    const res = await db
-      .replicaNode()(TableName.SecretReminderRecipients)
+  const findUsersBySecretId = async (secretId: string, tx?: Knex) => {
+    const res = await (tx || db.replicaNode())(TableName.SecretReminderRecipients)
       .where({ secretId })
       .leftJoin(TableName.Users, `${TableName.SecretReminderRecipients}.userId`, `${TableName.Users}.id`)
       .leftJoin(TableName.Project, `${TableName.SecretReminderRecipients}.projectId`, `${TableName.Project}.id`)

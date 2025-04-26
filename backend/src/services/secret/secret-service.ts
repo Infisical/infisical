@@ -546,10 +546,13 @@ export const secretServiceFactory = ({
 
       for await (const secret of secrets) {
         if (secret.secretReminderRepeatDays !== null && secret.secretReminderRepeatDays !== undefined) {
-          await secretQueueService.removeSecretReminder({
-            repeatDays: secret.secretReminderRepeatDays,
-            secretId: secret.id
-          });
+          await secretQueueService.removeSecretReminder(
+            {
+              repeatDays: secret.secretReminderRepeatDays,
+              secretId: secret.id
+            },
+            tx
+          );
         }
       }
 
@@ -1074,10 +1077,13 @@ export const secretServiceFactory = ({
 
       for await (const secret of secrets) {
         if (secret.secretReminderRepeatDays !== null && secret.secretReminderRepeatDays !== undefined) {
-          await secretQueueService.removeSecretReminder({
-            repeatDays: secret.secretReminderRepeatDays,
-            secretId: secret.id
-          });
+          await secretQueueService.removeSecretReminder(
+            {
+              repeatDays: secret.secretReminderRepeatDays,
+              secretId: secret.id
+            },
+            tx
+          );
         }
       }
       const secretValueHidden = !hasSecretReadValueOrDescribePermission(
