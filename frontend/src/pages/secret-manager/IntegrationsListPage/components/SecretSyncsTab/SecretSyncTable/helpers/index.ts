@@ -94,6 +94,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.workspace;
       secondaryText = destinationConfig.path;
       break;
+    case SecretSync.TeamCity:
+      primaryText = destinationConfig.project;
+      secondaryText = destinationConfig.buildConfig;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

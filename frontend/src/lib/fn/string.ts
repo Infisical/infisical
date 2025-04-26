@@ -11,3 +11,65 @@ export const formatReservedPaths = (secretPath: string) => {
 export const camelCaseToSpaces = (input: string) => {
   return input.replace(/([a-z])([A-Z])/g, "$1 $2");
 };
+
+export const formatSessionUserAgent = (userAgent: string) => {
+  const result = {
+    os: "Unknown",
+    browser: "Unknown",
+    device: "Desktop"
+  };
+
+  // Operating System detection
+  if (userAgent.includes("Windows")) {
+    result.os = "Windows";
+  } else if (
+    userAgent.includes("Mac OS") ||
+    userAgent.includes("Macintosh") ||
+    userAgent.includes("macOS")
+  ) {
+    result.os = "macOS";
+  } else if (userAgent.includes("Linux") && !userAgent.includes("Android")) {
+    result.os = "Linux";
+  } else if (userAgent.includes("Android")) {
+    result.os = "Android";
+    result.device = "Mobile";
+  } else if (
+    userAgent.includes("iOS") ||
+    userAgent.includes("iPhone") ||
+    userAgent.includes("iPad")
+  ) {
+    result.os = "iOS";
+    result.device = userAgent.includes("iPad") ? "Tablet" : "Mobile";
+  }
+
+  // Browser detection
+  if (userAgent.includes("Firefox/")) {
+    result.browser = "Firefox";
+  } else if (userAgent.includes("Edge/") || userAgent.includes("Edg/")) {
+    result.browser = "Edge";
+  } else if (userAgent.includes("Brave/") || userAgent.includes("Brave ")) {
+    result.browser = "Brave";
+  } else if (
+    userAgent.includes("Chrome/") &&
+    !userAgent.includes("Chromium/") &&
+    !userAgent.includes("Edg/")
+  ) {
+    result.browser = "Chrome";
+  } else if (
+    userAgent.includes("Safari/") &&
+    !userAgent.includes("Chrome/") &&
+    !userAgent.includes("Chromium/")
+  ) {
+    result.browser = "Safari";
+  } else if (userAgent.includes("Opera/") || userAgent.includes("OPR/")) {
+    result.browser = "Opera";
+  } else if (userAgent.includes("Trident/") || userAgent.includes("MSIE")) {
+    result.browser = "Internet Explorer";
+  }
+
+  if (userAgent.toLowerCase() === "cli") {
+    result.browser = "CLI";
+  }
+
+  return result;
+};

@@ -1867,6 +1867,10 @@ export const AppConnections = {
         "Whether or not to reject unauthorized SSL certificates (true/false) when using ldaps://. Set to false only in test environments.",
       sslCertificate:
         "The SSL certificate (PEM format) to use for secure connection when using ldaps:// with a self-signed certificate."
+    },
+    TEAMCITY: {
+      instanceUrl: "The TeamCity instance URL to connect with.",
+      accessToken: "The access token to use to connect with TeamCity."
     }
   }
 };
@@ -2006,6 +2010,10 @@ export const SecretSyncs = {
     WINDMILL: {
       workspace: "The Windmill workspace to sync secrets to.",
       path: "The Windmill workspace path to sync secrets to."
+    },
+    TEAMCITY: {
+      project: "The TeamCity project to sync secrets to.",
+      buildConfig: "The TeamCity build configuration to sync secrets to."
     }
   }
 };
@@ -2086,6 +2094,10 @@ export const SecretRotations = {
         },
         allowedSymbols: 'The allowed symbols to use in the generated password (defaults to "-_.~!*").'
       }
+    },
+    AWS_IAM_USER_SECRET: {
+      userName: "The name of the client to rotate credentials for.",
+      region: "The AWS region the client is present in."
     }
   },
   SECRETS_MAPPING: {
@@ -2100,6 +2112,10 @@ export const SecretRotations = {
     LDAP_PASSWORD: {
       dn: "The name of the secret that the Distinguished Name (DN) of the principal will be mapped to.",
       password: "The name of the secret that the rotated password will be mapped to."
+    },
+    AWS_IAM_USER_SECRET: {
+      accessKeyId: "The name of the secret that the access key ID will be mapped to.",
+      secretAccessKey: "The name of the secret that the rotated secret access key will be mapped to."
     }
   }
 };

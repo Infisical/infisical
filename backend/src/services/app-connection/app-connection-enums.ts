@@ -13,7 +13,8 @@ export enum AppConnection {
   Camunda = "camunda",
   Windmill = "windmill",
   Auth0 = "auth0",
-  LDAP = "ldap"
+  LDAP = "ldap",
+  TeamCity = "teamcity"
 }
 
 export enum AWSRegion {

@@ -2,7 +2,8 @@ export enum SecretRotation {
   PostgresCredentials = "postgres-credentials",
   MsSqlCredentials = "mssql-credentials",
   Auth0ClientSecret = "auth0-client-secret",
-  LdapPassword = "ldap-password"
+  LdapPassword = "ldap-password",
+  AwsIamUserSecret = "aws-iam-user-secret"
 }
 
 export enum SecretRotationStatus {

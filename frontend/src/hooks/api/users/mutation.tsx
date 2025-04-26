@@ -171,3 +171,16 @@ export const useResendOrgMemberInvitation = () => {
     }
   });
 };
+
+export const useRevokeMySessionById = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (sessionId: string) => {
+      const { data } = await apiRequest.delete(`/api/v2/users/me/sessions/${sessionId}`);
+      return data;
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: userKeys.mySessions });
+    }
+  });
+};

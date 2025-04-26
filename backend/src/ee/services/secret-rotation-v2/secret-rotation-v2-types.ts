@@ -13,6 +13,13 @@ import {
   TAuth0ClientSecretRotationWithConnection
 } from "./auth0-client-secret";
 import {
+  TAwsIamUserSecretRotation,
+  TAwsIamUserSecretRotationGeneratedCredentials,
+  TAwsIamUserSecretRotationInput,
+  TAwsIamUserSecretRotationListItem,
+  TAwsIamUserSecretRotationWithConnection
+} from "./aws-iam-user-secret";
+import {
   TLdapPasswordRotation,
   TLdapPasswordRotationGeneratedCredentials,
   TLdapPasswordRotationInput,
@@ -38,30 +45,35 @@ export type TSecretRotationV2 =
   | TPostgresCredentialsRotation
   | TMsSqlCredentialsRotation
   | TAuth0ClientSecretRotation
-  | TLdapPasswordRotation;
+  | TLdapPasswordRotation
+  | TAwsIamUserSecretRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
   | TMsSqlCredentialsRotationWithConnection
   | TAuth0ClientSecretRotationWithConnection
-  | TLdapPasswordRotationWithConnection;
+  | TLdapPasswordRotationWithConnection
+  | TAwsIamUserSecretRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
   | TAuth0ClientSecretRotationGeneratedCredentials
-  | TLdapPasswordRotationGeneratedCredentials;
+  | TLdapPasswordRotationGeneratedCredentials
+  | TAwsIamUserSecretRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
   | TMsSqlCredentialsRotationInput
   | TAuth0ClientSecretRotationInput
-  | TLdapPasswordRotationInput;
+  | TLdapPasswordRotationInput
+  | TAwsIamUserSecretRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
   | TMsSqlCredentialsRotationListItem
   | TAuth0ClientSecretRotationListItem
-  | TLdapPasswordRotationListItem;
+  | TLdapPasswordRotationListItem
+  | TAwsIamUserSecretRotationListItem;
 
 export type TSecretRotationV2Raw = NonNullable<Awaited<ReturnType<TSecretRotationV2DALFactory["findById"]>>>;
 

@@ -12,6 +12,7 @@ import { THumanitecConnection } from "./humanitec-connection";
 import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TPostgresConnection } from "./postgres-connection";
+import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVercelConnection } from "./vercel-connection";
 import { TWindmillConnection } from "./windmill-connection";
@@ -28,6 +29,7 @@ export * from "./humanitec-connection";
 export * from "./ldap-connection";
 export * from "./mssql-connection";
 export * from "./postgres-connection";
+export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
@@ -47,7 +49,8 @@ export type TAppConnection =
   | TCamundaConnection
   | TWindmillConnection
   | TAuth0Connection
-  | TLdapConnection;
+  | TLdapConnection
+  | TTeamCityConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -90,4 +93,5 @@ export type TAppConnectionMap = {
   [AppConnection.Windmill]: TWindmillConnection;
   [AppConnection.Auth0]: TAuth0Connection;
   [AppConnection.LDAP]: TLdapConnection;
+  [AppConnection.TeamCity]: TTeamCityConnection;
 };

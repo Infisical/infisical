@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
@@ -82,6 +85,57 @@ var switchCmd = &cobra.Command{
 		}
 
 		Telemetry.CaptureEvent("cli-command:user switch", posthog.NewProperties().Set("numberOfLoggedInProfiles", len(loggedInProfiles)).Set("version", util.CLI_VERSION))
+	},
+}
+
+var userGetCmd = &cobra.Command{
+	Use:                   "get",
+	Short:                 "Used to get properties of an Infisical profile",
+	DisableFlagsInUseLine: true,
+	Example:               "infisical user get",
+	Args:                  cobra.ExactArgs(0),
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
+}
+
+var userGetTokenCmd = &cobra.Command{
+	Use:                   "token",
+	Short:                 "Used to get the access token of an Infisical user",
+	DisableFlagsInUseLine: true,
+	Example:               "infisical user get token",
+	Args:                  cobra.ExactArgs(0),
+	PreRun: func(cmd *cobra.Command, args []string) {
+		util.RequireLogin()
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
+		if loggedInUserDetails.LoginExpired {
+			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+		}
+		if err != nil {
+			util.HandleError(err, "[infisical user get token]: Unable to get logged in user token")
+		}
+
+		tokenParts := strings.Split(loggedInUserDetails.UserCredentials.JTWToken, ".")
+		if len(tokenParts) != 3 {
+			util.HandleError(errors.New("invalid token format"), "[infisical user get token]: Invalid token format")
+		}
+
+		payload, err := base64.RawURLEncoding.DecodeString(tokenParts[1])
+		if err != nil {
+			util.HandleError(err, "[infisical user get token]: Unable to decode token payload")
+		}
+
+		var tokenPayload struct {
+			TokenVersionId string `json:"tokenVersionId"`
+		}
+		if err := json.Unmarshal(payload, &tokenPayload); err != nil {
+			util.HandleError(err, "[infisical user get token]: Unable to parse token payload")
+		}
+
+		fmt.Println("Session ID:", tokenPayload.TokenVersionId)
+		fmt.Println("Token:", loggedInUserDetails.UserCredentials.JTWToken)
 	},
 }
 
@@ -185,6 +239,8 @@ var domainCmd = &cobra.Command{
 func init() {
 	updateCmd.AddCommand(domainCmd)
 	userCmd.AddCommand(updateCmd)
+	userGetCmd.AddCommand(userGetTokenCmd)
+	userCmd.AddCommand(userGetCmd)
 	userCmd.AddCommand(switchCmd)
 	rootCmd.AddCommand(userCmd)
 }

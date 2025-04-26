@@ -22,7 +22,7 @@ import { PkiItemType } from "@app/hooks/api/pkiCollections/constants";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { PkiCollectionModal } from "../CertificatesPage/components/PkiAlertsTab/components/PkiCollectionModal";
+import { PkiCollectionModal } from "../AlertingPage/components/PkiCollectionModal";
 import { PkiCollectionDetailsSection, PkiCollectionItemsSection } from "./components";
 
 export const PkiCollectionPage = () => {

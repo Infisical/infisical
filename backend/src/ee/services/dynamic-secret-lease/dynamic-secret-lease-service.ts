@@ -130,7 +130,17 @@ export const dynamicSecretLeaseServiceFactory = ({
       if (expireAt > maxExpiryDate) throw new BadRequestError({ message: "TTL cannot be larger than max TTL" });
     }
 
-    const { entityId, data } = await selectedProvider.create(decryptedStoredInput, expireAt.getTime());
+    let result;
+    try {
+      result = await selectedProvider.create(decryptedStoredInput, expireAt.getTime());
+    } catch (error: unknown) {
+      if (error && typeof error === "object" && error !== null && "sqlMessage" in error) {
+        throw new BadRequestError({ message: error.sqlMessage as string });
+      }
+      throw error;
+    }
+    const { entityId, data } = result;
+
     const dynamicSecretLease = await dynamicSecretLeaseDAL.create({
       expireAt,
       version: 1,

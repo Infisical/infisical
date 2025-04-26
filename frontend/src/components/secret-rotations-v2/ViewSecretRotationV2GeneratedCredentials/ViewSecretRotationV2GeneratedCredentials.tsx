@@ -20,6 +20,7 @@ import {
 } from "@app/hooks/api/secretRotationsV2";
 
 import { ViewSqlCredentialsRotationGeneratedCredentials } from "./shared";
+import { ViewAwsIamUserSecretRotationGeneratedCredentials } from "./ViewAwsIamUserSecretRotationGeneratedCredentials";
 
 type Props = {
   secretRotation?: TSecretRotationV2;
@@ -77,6 +78,13 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.LdapPassword:
       Component = (
         <ViewLdapPasswordRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.AwsIamUserSecret:
+      Component = (
+        <ViewAwsIamUserSecretRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );
