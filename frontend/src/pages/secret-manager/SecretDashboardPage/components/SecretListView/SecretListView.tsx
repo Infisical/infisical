@@ -49,6 +49,8 @@ export const SecretListView = ({
   isProtectedBranch = false,
   importedBy
 }: Props) => {
+  console.log("secretssssss", secrets);
+
   const queryClient = useQueryClient();
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",
@@ -184,6 +186,12 @@ export const SecretListView = ({
       const tagIds = tags?.map(({ id }) => id);
       const oldTagIds = (orgSecret?.tags || []).map(({ id }) => id);
       const isSameTags = JSON.stringify(tagIds) === JSON.stringify(oldTagIds);
+
+      const isSameRecipients =
+        !reminderRecipients?.some(
+          (newId) => !orgSecret.secretReminderRecipients?.find((oldId) => newId === oldId.user.id)
+        ) && reminderRecipients?.length === orgSecret.secretReminderRecipients?.length;
+
       const isSharedSecUnchanged =
         (
           [
@@ -196,7 +204,9 @@ export const SecretListView = ({
             "reminderRecipients",
             "secretMetadata"
           ] as const
-        ).every((el) => orgSecret[el] === modSecret[el]) && isSameTags;
+        ).every((el) => orgSecret[el] === modSecret[el]) &&
+        isSameTags &&
+        isSameRecipients;
 
       try {
         // personal secret change

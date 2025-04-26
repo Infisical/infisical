@@ -396,6 +396,7 @@ export const decryptSecretRaw = (
     id: secret.id,
     user: secret.userId,
     tags: secret.tags?.map((el) => ({ ...el, name: el.slug })),
+    secretReminderRecipients: [],
     skipMultilineEncoding: secret.skipMultilineEncoding,
     secretReminderRepeatDays: secret.secretReminderRepeatDays,
     secretReminderNote: secret.secretReminderNote,

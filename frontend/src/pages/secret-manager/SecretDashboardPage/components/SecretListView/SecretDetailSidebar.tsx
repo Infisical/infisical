@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { faCircleQuestion, faEye } from "@fortawesome/free-regular-svg-icons";
@@ -235,6 +236,16 @@ export const SecretDetailSidebar = ({
   const secretReminderRepeatDays = watch("reminderRepeatDays");
   const secretReminderNote = watch("reminderNote");
   const secretReminderRecipients = watch("reminderRecipients");
+  useEffect(() => {
+    setValue(
+      "reminderRecipients",
+      secret?.secretReminderRecipients?.map((el) => el.user.id),
+      {
+        shouldDirty: false
+      }
+    );
+  }, [secret?.secretReminderRecipients]);
+
   const getModifiedByIcon = (userType: string | undefined | null) => {
     switch (userType) {
       case ActorType.USER:

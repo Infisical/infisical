@@ -58,7 +58,6 @@ export const CreateReminderForm = ({
   const {
     register,
     control,
-    reset,
     setValue,
     handleSubmit,
     formState: { isSubmitting }
@@ -75,18 +74,9 @@ export const CreateReminderForm = ({
   };
 
   useEffect(() => {
-    if (isOpen) {
-      reset({
-        days: repeatDays || undefined,
-        note: note || ""
-      });
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
     // On initial load, filter the members to only include the recipients
     if (members.length) {
-      const filteredMembers = members.filter((m) => recipients?.includes(m.id));
+      const filteredMembers = members.filter((m) => recipients?.find((r) => r === m.user.id));
       setValue(
         "recipients",
         filteredMembers.map((m) => ({
@@ -95,7 +85,7 @@ export const CreateReminderForm = ({
         }))
       );
     }
-  }, [members, isOpen]);
+  }, [members, isOpen, recipients]);
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -122,6 +112,7 @@ export const CreateReminderForm = ({
                         onChange={(el) => setValue("days", parseInt(el.target.value, 10))}
                         type="number"
                         placeholder="31"
+                        defaultValue={repeatDays || undefined}
                         value={field.value || undefined}
                       />
                     </FormControl>
@@ -144,6 +135,7 @@ export const CreateReminderForm = ({
                 placeholder="Remember to rotate the AWS secret every month."
                 className="border border-mineshaft-600 text-sm"
                 rows={8}
+                defaultValue={note || ""}
                 reSize="none"
                 cols={30}
                 {...register("note")}

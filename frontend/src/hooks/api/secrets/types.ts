@@ -7,6 +7,14 @@ export enum SecretType {
   Personal = "personal"
 }
 
+export type SecretReminderRecipient = {
+  user: {
+    id: string;
+    username: string;
+    email: string;
+  };
+  id: string;
+};
 export type EncryptedSecret = {
   id: string;
   version: number;
@@ -56,6 +64,7 @@ export type SecretV3RawSanitized = {
   secretMetadata?: { key: string; value: string }[];
   isReminderEvent?: boolean;
   isRotatedSecret?: boolean;
+  secretReminderRecipients?: SecretReminderRecipient[];
   rotationId?: string;
 };
 
@@ -81,6 +90,7 @@ export type SecretV3Raw = {
   updatedAt: string;
   isRotatedSecret?: boolean;
   rotationId?: string;
+  secretReminderRecipients?: SecretReminderRecipient[];
 };
 
 export type SecretV3RawResponse = {

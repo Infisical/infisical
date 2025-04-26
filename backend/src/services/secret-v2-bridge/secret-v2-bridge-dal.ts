@@ -95,7 +95,17 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2}.id`,
           `${TableName.SecretRotationV2SecretMapping}.secretId`
         )
+        .leftJoin(
+          TableName.SecretReminderRecipients,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretReminderRecipients}.secretId`
+        )
+        .leftJoin(TableName.Users, `${TableName.SecretReminderRecipients}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.SecretV2))
+        .select(db.ref("id").withSchema(TableName.SecretReminderRecipients).as("reminderRecipientId"))
+        .select(db.ref("username").withSchema(TableName.Users).as("reminderRecipientUsername"))
+        .select(db.ref("email").withSchema(TableName.Users).as("reminderRecipientEmail"))
+        .select(db.ref("id").withSchema(TableName.Users).as("reminderRecipientUserId"))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
@@ -118,6 +128,23 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
               color,
               slug,
               name: slug
+            })
+          },
+          {
+            key: "reminderRecipientId",
+            label: "secretReminderRecipients" as const,
+            mapper: ({
+              reminderRecipientId,
+              reminderRecipientUsername,
+              reminderRecipientEmail,
+              reminderRecipientUserId
+            }) => ({
+              user: {
+                id: reminderRecipientUserId,
+                username: reminderRecipientUsername,
+                email: reminderRecipientEmail
+              },
+              id: reminderRecipientId
             })
           }
         ]
@@ -607,6 +634,12 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
+        .leftJoin(
+          TableName.SecretReminderRecipients,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretReminderRecipients}.secretId`
+        )
+        .leftJoin(TableName.Users, `${TableName.SecretReminderRecipients}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
         .leftJoin(
           TableName.SecretRotationV2SecretMapping,
@@ -635,6 +668,10 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             }) as rank`
           )
         )
+        .select(db.ref("id").withSchema(TableName.SecretReminderRecipients).as("reminderRecipientId"))
+        .select(db.ref("username").withSchema(TableName.Users).as("reminderRecipientUsername"))
+        .select(db.ref("email").withSchema(TableName.Users).as("reminderRecipientEmail"))
+        .select(db.ref("id").withSchema(TableName.Users).as("reminderRecipientUserId"))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
@@ -679,6 +716,23 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           isRotatedSecret: Boolean(el.rotationId)
         }),
         childrenMapper: [
+          {
+            key: "reminderRecipientId",
+            label: "secretReminderRecipients" as const,
+            mapper: ({
+              reminderRecipientId,
+              reminderRecipientUsername,
+              reminderRecipientEmail,
+              reminderRecipientUserId
+            }) => ({
+              user: {
+                id: reminderRecipientUserId,
+                username: reminderRecipientUsername,
+                email: reminderRecipientEmail
+              },
+              id: reminderRecipientId
+            })
+          },
           {
             key: "tagId",
             label: "tags" as const,

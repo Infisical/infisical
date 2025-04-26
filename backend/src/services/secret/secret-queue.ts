@@ -259,6 +259,8 @@ export const secretQueueFactory = ({
         });
       }
 
+      const existingRecipients = await secretReminderRecipientsDAL.findUsersBySecretId(newSecret.id);
+
       if (recipients?.length) {
         await secretReminderRecipientsDAL.transaction(async (tx) => {
           await secretReminderRecipientsDAL.delete({ secretId: newSecret.id }, tx);
@@ -271,6 +273,8 @@ export const secretQueueFactory = ({
             tx
           );
         });
+      } else if (existingRecipients) {
+        await secretReminderRecipientsDAL.delete({ secretId: newSecret.id });
       }
 
       await queueService.queue(
@@ -306,12 +310,20 @@ export const secretQueueFactory = ({
   };
 
   const handleSecretReminder = async ({ newSecret, oldSecret, projectId }: THandleReminderDTO) => {
-    const { secretReminderRepeatDays, secretReminderNote } = newSecret;
+    const { secretReminderRepeatDays, secretReminderNote, secretReminderRecipients } = newSecret;
+
+    const recipientsUpdated =
+      secretReminderRecipients?.some(
+        (newId) => !oldSecret.secretReminderRecipients?.find((oldId) => newId === oldId)
+      ) ||
+      (secretReminderRecipients?.length !== oldSecret.secretReminderRecipients?.length &&
+        secretReminderRepeatDays !== null);
 
     if (newSecret.type !== SecretType.Personal && secretReminderRepeatDays !== undefined) {
       if (
         (secretReminderRepeatDays && oldSecret.secretReminderRepeatDays !== secretReminderRepeatDays) ||
-        (secretReminderNote && oldSecret.secretReminderNote !== secretReminderNote)
+        (secretReminderNote && oldSecret.secretReminderNote !== secretReminderNote) ||
+        recipientsUpdated
       ) {
         await addSecretReminder({
           oldSecret,
