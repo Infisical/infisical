@@ -43,6 +43,7 @@ import { ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
+import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
@@ -77,6 +78,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Camunda]: ValidateCamundaConnectionCredentialsSchema,
   [AppConnection.Windmill]: ValidateWindmillConnectionCredentialsSchema,
   [AppConnection.Auth0]: ValidateAuth0ConnectionCredentialsSchema,
+  [AppConnection.LDAP]: ValidateLdapConnectionCredentialsSchema,
   [AppConnection.TeamCity]: ValidateTeamCityConnectionCredentialsSchema
 };
 

@@ -1,13 +1,13 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { AxiosError } from "axios";
+import { addSeconds, formatISO } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
+import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { userKeys } from "@app/hooks/api";
 import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { clearSession, fetchUserDetails, logoutUser } from "@app/hooks/api/users/queries";
-import { SessionStorageKeys } from "@app/const";
-import { addSeconds, formatISO } from "date-fns";
 
 export const Route = createFileRoute("/_authenticate")({
   beforeLoad: async ({ context, location }) => {

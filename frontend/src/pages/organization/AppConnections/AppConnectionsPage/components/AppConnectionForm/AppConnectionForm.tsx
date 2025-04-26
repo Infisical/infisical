@@ -18,6 +18,7 @@ import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
+import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
@@ -90,6 +91,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <WindmillConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Auth0:
       return <Auth0ConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.LDAP:
+      return <LdapConnectionForm onSubmit={onSubmit} />;
     case AppConnection.TeamCity:
       return <TeamCityConnectionForm onSubmit={onSubmit} />;
     default:
@@ -156,8 +159,11 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <WindmillConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Auth0:
       return <Auth0ConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.LDAP:
+      return <LdapConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.TeamCity:
       return <TeamCityConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

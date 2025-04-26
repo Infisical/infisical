@@ -13,5 +13,6 @@ export enum AppConnection {
   Camunda = "camunda",
   Windmill = "windmill",
   Auth0 = "auth0",
+  LDAP = "ldap",
   TeamCity = "teamcity"
 }

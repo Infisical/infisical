@@ -28,6 +28,7 @@ import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
+import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
 import {
   PostgresConnectionListItemSchema,
@@ -64,6 +65,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedCamundaConnectionSchema.options,
   ...SanitizedWindmillConnectionSchema.options,
   ...SanitizedAuth0ConnectionSchema.options,
+  ...SanitizedLdapConnectionSchema.options,
   ...SanitizedTeamCityConnectionSchema.options
 ]);
 
@@ -82,6 +84,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   CamundaConnectionListItemSchema,
   WindmillConnectionListItemSchema,
   Auth0ConnectionListItemSchema,
+  LdapConnectionListItemSchema,
   TeamCityConnectionListItemSchema
 ]);
 

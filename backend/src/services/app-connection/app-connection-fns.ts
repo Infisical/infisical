@@ -41,6 +41,7 @@ import {
   HumanitecConnectionMethod,
   validateHumanitecConnectionCredentials
 } from "./humanitec";
+import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnectionCredentials } from "./ldap";
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import {
@@ -77,6 +78,7 @@ export const listAppConnectionOptions = () => {
     getCamundaConnectionListItem(),
     getWindmillConnectionListItem(),
     getAuth0ConnectionListItem(),
+    getLdapConnectionListItem(),
     getTeamCityConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -142,6 +144,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.TerraformCloud]: validateTerraformCloudConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Auth0]: validateAuth0ConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Windmill]: validateWindmillConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.LDAP]: validateLdapConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TeamCity]: validateTeamCityConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
@@ -178,6 +181,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Access Token";
     case Auth0ConnectionMethod.ClientCredentials:
       return "Client Credentials";
+    case LdapConnectionMethod.SimpleBind:
+      return "Simple Bind";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -223,5 +228,6 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Vercel]: platformManagedCredentialsNotSupported,
   [AppConnection.Windmill]: platformManagedCredentialsNotSupported,
   [AppConnection.Auth0]: platformManagedCredentialsNotSupported,
+  [AppConnection.LDAP]: platformManagedCredentialsNotSupported, // we could support this in the future
   [AppConnection.TeamCity]: platformManagedCredentialsNotSupported
 };

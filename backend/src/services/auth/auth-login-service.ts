@@ -12,6 +12,7 @@ import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -39,7 +40,6 @@ import {
   AuthTokenType,
   MfaMethod
 } from "./auth-type";
-import { removeTrailingSlash } from "@app/lib/fn";
 
 type TAuthLoginServiceFactoryDep = {
   userDAL: TUserDALFactory;

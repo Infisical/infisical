@@ -1,0 +1,96 @@
+---
+title: "LDAP Connection"
+description: "Learn how to configure an LDAP Connection for Infisical."
+---
+
+Infisical supports the use of [Simple Binding](https://ldap.com/the-ldap-bind-operation) to connect with your LDAP provider.
+
+## Prerequisites
+
+You will need the following information to establish an LDAP connection:
+
+- **LDAP URL** - The LDAP/LDAPS URL to connect to (e.g., ldap://domain-or-ip:389 or ldaps://domain-or-ip:636)
+- **Binding DN** - The Distinguished Name (DN) of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com')
+- **Binding Password** - The password to bind with for authentication
+- **CA Certificate** - The SSL certificate (PEM format) to use for secure connection when using ldaps:// with a self-signed certificate
+
+Depending on how you intend to use your LDAP connection, there may be additional requirements:
+
+<Tabs>
+    <Tab title="Secret Rotation">
+        <Note>
+            For Password Rotation, the following requirements must additionally be met:
+            - You must use an LDAPS connection
+            - The binding user must either have:
+                - Permission to change other users passwords if rotating directory users' passwords
+                - Permission to update their own password if rotating their personal password
+        </Note>
+    </Tab>
+</Tabs>
+
+
+## Setup LDAP Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to the App Connections tab on the Organization Settings page.
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+
+        2. Select the **LDAP Connection** option.
+        ![Select LDAP Connection](/images/app-connections/ldap/select-ldap-connection.png)
+
+        3. Select the **Simple Bind** method option and provide the details obtained from the previous section and press **Connect to Provider**.
+        ![Create LDAP Connection](/images/app-connections/ldap/create-simple-bind-method.png)
+
+        4. Your **LDAP Connection** is now available for use.
+        ![Assume Role LDAP Connection](/images/app-connections/ldap/simple-bind-connection.png)
+    </Tab>
+    <Tab title="API">
+        To create an LDAP Connection, make an API request to the [Create LDAP
+        Connection](/api-reference/endpoints/app-connections/ldap/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+            --url https://app.infisical.com/api/v1/app-connections/ldap \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-ldap-connection",
+                "method": "simple-bind",
+                "credentials": {
+                    "provider": "active-directory",
+                    "url": "ldaps://domain-or-ip:636",
+                    "dn": "CN=John,CN=Users,DC=example,DC=com",
+                    "password": "<your-secure-password>",
+                    "sslRejectUnauthorized": true,
+                    "sslCertificate": "..."
+                }
+            }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "appConnection": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-ldap-connection",
+                "version": 1,
+                "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "app": "ldap",
+                "method": "simple-bind",
+                "credentials": {
+                    "provider": "active-directory",
+                    "url": "ldaps://domain-or-ip:636",
+                    "dn": "CN=John,CN=Users,DC=example,DC=com",
+                    "sslRejectUnauthorized": true,
+                    "sslCertificate": "..."
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>
