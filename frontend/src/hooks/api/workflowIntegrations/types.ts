@@ -59,10 +59,11 @@ export type TUpdateMicrosoftTeamsIntegrationDTO = {
 };
 
 export type TCreateMicrosoftTeamsIntegrationDTO = {
-  orgId: string;
   tenantId: string;
   slug: string;
   description?: string;
+  redirectUri: string;
+  orgId: string;
 };
 
 export type TDeleteSlackIntegrationDTO = {

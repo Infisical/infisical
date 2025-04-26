@@ -22,33 +22,63 @@ const sanitizedMicrosoftTeamsIntegrationSchema = WorkflowIntegrationsSchema.pick
 
 export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) => {
   server.route({
-    method: "POST",
-    url: "/",
+    method: "GET",
+    url: "/client-id",
     config: {
-      rateLimit: writeLimit
+      rateLimit: readLimit
     },
     schema: {
-      body: z.object({
-        tenantId: z.string(),
-        slug: slugSchema({ max: 64 })
-      }),
       response: {
-        200: sanitizedMicrosoftTeamsIntegrationSchema
+        200: z.object({
+          clientId: z.string()
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const microsoftTeamsIntegration = await server.services.microsoftTeams.createMicrosoftTeamsIntegration({
+      const clientId = await server.services.microsoftTeams.getClientId({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.body
+        actorOrgId: req.permission.orgId
       });
 
-      return microsoftTeamsIntegration;
+      return {
+        clientId
+      };
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      body: z.object({
+        redirectUri: z.string(),
+        tenantId: z.string(),
+        slug: z.string(),
+        description: z.string().optional()
+      })
+    },
+
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.microsoftTeams.completeMicrosoftTeamsIntegration({
+        tenantId: req.body.tenantId,
+        slug: req.body.slug,
+        description: req.body.description,
+        redirectUri: req.body.redirectUri,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/",

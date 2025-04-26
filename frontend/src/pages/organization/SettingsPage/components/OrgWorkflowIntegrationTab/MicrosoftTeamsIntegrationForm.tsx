@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +9,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import {
-  useCreateMicrosoftTeamsIntegration,
+  useGetMicrosoftTeamsClientId,
   useGetMicrosoftTeamsIntegrationById,
   useUpdateMicrosoftTeamsIntegration
 } from "@app/hooks/api";
@@ -38,8 +40,8 @@ export const MicrosoftTeamsIntegrationForm = ({ id, onClose }: Props) => {
 
   const { currentOrg } = useOrganization();
   const { data: microsoftTeamsIntegration } = useGetMicrosoftTeamsIntegrationById(id);
-  const { mutateAsync: createMicrosoftTeamsIntegration } = useCreateMicrosoftTeamsIntegration();
   const { mutateAsync: updateMicrosoftTeamsIntegration } = useUpdateMicrosoftTeamsIntegration();
+  const { data: microsoftTeamsClientId } = useGetMicrosoftTeamsClientId();
 
   useEffect(() => {
     if (microsoftTeamsIntegration) {
@@ -54,6 +56,14 @@ export const MicrosoftTeamsIntegrationForm = ({ id, onClose }: Props) => {
     description,
     tenantId
   }: TMicrosoftTeamsFormData) => {
+    if (!microsoftTeamsClientId) {
+      createNotification({
+        text: "Microsoft Teams client ID is not set. Please contact your instance administrator.",
+        type: "error"
+      });
+      return;
+    }
+
     if (id && microsoftTeamsIntegration) {
       if (!currentOrg) {
         return;
@@ -81,23 +91,37 @@ export const MicrosoftTeamsIntegrationForm = ({ id, onClose }: Props) => {
 
       onClose();
     } else {
-      await createMicrosoftTeamsIntegration({
-        orgId: currentOrg.id,
+      const csrfToken = crypto.randomBytes(32).toString("hex");
+      localStorage.setItem("latestCSRFToken", csrfToken);
+
+      const state = {
+        redirectUri: `${window.location.origin}/organization/settings/oauth/callback`,
         tenantId,
         slug,
-        description
-      });
+        description,
+        csrfToken
+      };
 
-      onClose();
-      createNotification({
-        text: "Successfully created Microsoft Teams integration",
-        type: "success"
-      });
+      const url = `https://login.microsoftonline.com/${tenantId}/adminconsent?client_id=${microsoftTeamsClientId.clientId}&redirect_uri=${state.redirectUri}&state=${encodeURIComponent(JSON.stringify(state))}`;
+      window.location.href = url;
     }
   };
 
   return (
     <form onSubmit={handleSubmit(handleMicrosoftTeamsFormSubmit)} autoComplete="off">
+      <div className="mb-4 text-xs text-mineshaft-200">
+        For seamless installations, ensure that the Infisical bot is already installed in your
+        Microsoft Teams tenant. For more information, please refer to the{" "}
+        <a
+          className="text-primary-500"
+          href="https://infisical.com/docs/documentation/platform/workflow-integrations/microsoft-teams-integration"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Microsoft Teams Workflow Integration Documentation
+        </a>
+        , which will guide you through the download and installation process.
+      </div>
       <Controller
         control={control}
         name="slug"

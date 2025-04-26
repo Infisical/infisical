@@ -67,7 +67,7 @@ import { validateSlackChannelsField } from "../slack/slack-auth-validators";
 import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
-import { WorkflowIntegration } from "../workflow-integration/workflow-integration-types";
+import { WorkflowIntegration, WorkflowIntegrationStatus } from "../workflow-integration/workflow-integration-types";
 import { TProjectDALFactory } from "./project-dal";
 import { assignWorkspaceKeysToMembers, bootstrapSshProject, createProjectKey } from "./project-fns";
 import { TProjectQueueFactory } from "./project-queue";
@@ -1536,6 +1536,12 @@ export const projectServiceFactory = ({
       if (!microsoftTeamsIntegration) {
         throw new NotFoundError({
           message: `Microsoft Teams integration with ID '${integrationId}' not found`
+        });
+      }
+
+      if (microsoftTeamsIntegration.status !== WorkflowIntegrationStatus.INSTALLED) {
+        throw new BadRequestError({
+          message: "Microsoft Teams integration is not properly installed in your tenant."
         });
       }
 

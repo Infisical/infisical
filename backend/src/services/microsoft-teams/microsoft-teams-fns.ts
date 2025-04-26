@@ -15,6 +15,51 @@ import { TWorkflowIntegrationDALFactory } from "../workflow-integration/workflow
 import { WorkflowIntegrationStatus } from "../workflow-integration/workflow-integration-types";
 import { TMicrosoftTeamsIntegrationDALFactory } from "./microsoft-teams-integration-dal";
 
+export const verifyTenantFromCode = async (
+  tenantId: string,
+  redirectUri: string,
+  clientId: string,
+  clientSecret: string
+) => {
+  const tokenEndpoint = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    scope: "https://graph.microsoft.com/.default",
+    redirect_uri: redirectUri,
+    grant_type: "client_credentials"
+  });
+
+  const response = await axios
+    .post<{ access_token: string }>(tokenEndpoint, params, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      }
+    })
+    .catch((err) => {
+      if (axios.isAxiosError(err)) {
+        logger.error(err.response?.data, "Error fetching Microsoft Teams access token");
+      }
+      throw err;
+    });
+
+  const accessToken = response.data.access_token;
+  const tokenParts = accessToken.split(".");
+  const tokenPayload = JSON.parse(Buffer.from(tokenParts[1], "base64").toString()) as { tid: string };
+
+  // the 'tid' claim in the token contains the tenant ID
+  const tenantIdFromToken = tokenPayload.tid;
+
+  if (tenantIdFromToken !== tenantId) {
+    throw new BadRequestError({
+      message: `Invalid tenant state ID. Expected ${tenantId}, got ${tenantIdFromToken}`
+    });
+  }
+
+  return tenantIdFromToken;
+};
+
 export const getMicrosoftTeamsAccessToken = async (
   {
     orgId,
@@ -219,9 +264,6 @@ export const isBotInstalledInTenant = async (
       tx
     ).catch(() => null);
 
-    console.log("botAccessToken", botAccessToken);
-    console.log("accessToken", accessToken);
-
     if (!botAccessToken || !accessToken) {
       return {
         accessToken: null,
@@ -255,12 +297,6 @@ export const isBotInstalledInTenant = async (
     }
 
     const botInstalledInTenant = appsResponse.data.value.find((a) => a.externalId === botId);
-
-    for (const app of appsResponse.data.value) {
-      if (app.displayName.toLowerCase().includes("infisical")) {
-        console.log(`${app.displayName} - ${app.externalId}`);
-      }
-    }
 
     if (!botInstalledInTenant) {
       return {

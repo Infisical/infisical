@@ -3,10 +3,13 @@ import { TNotification } from "@app/lib/workflow-integrations/types";
 
 export type TGetMicrosoftTeamsIntegrationByOrgDTO = Omit<TOrgPermission, "orgId">;
 
+export type TGetClientIdDTO = Omit<TOrgPermission, "orgId">;
+
 export type TCreateMicrosoftTeamsIntegrationDTO = Omit<TOrgPermission, "orgId"> & {
-  slug: string;
-  description?: string;
   tenantId: string;
+  slug: string;
+  redirectUri: string;
+  description?: string;
 };
 
 export type TCheckInstallationStatusDTO = { workflowIntegrationId: string } & Omit<TOrgPermission, "orgId">;

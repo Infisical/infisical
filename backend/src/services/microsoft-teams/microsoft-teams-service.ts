@@ -10,7 +10,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -18,12 +18,18 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TSuperAdminDALFactory } from "../super-admin/super-admin-dal";
 import { TWorkflowIntegrationDALFactory } from "../workflow-integration/workflow-integration-dal";
 import { WorkflowIntegration, WorkflowIntegrationStatus } from "../workflow-integration/workflow-integration-types";
-import { getMicrosoftTeamsAccessToken, isBotInstalledInTenant, TeamsBot } from "./microsoft-teams-fns";
+import {
+  getMicrosoftTeamsAccessToken,
+  isBotInstalledInTenant,
+  TeamsBot,
+  verifyTenantFromCode
+} from "./microsoft-teams-fns";
 import { TMicrosoftTeamsIntegrationDALFactory } from "./microsoft-teams-integration-dal";
 import {
   TCheckInstallationStatusDTO,
   TCreateMicrosoftTeamsIntegrationDTO,
   TDeleteMicrosoftTeamsIntegrationDTO,
+  TGetClientIdDTO,
   TGetMicrosoftTeamsIntegrationByIdDTO,
   TGetMicrosoftTeamsIntegrationByOrgDTO,
   TGetTeamsDTO,
@@ -202,14 +208,15 @@ export const microsoftTeamsServiceFactory = ({
     }
   };
 
-  const createMicrosoftTeamsIntegration = async ({
-    actorId,
+  const completeMicrosoftTeamsIntegration = async ({
     actor,
+    actorId,
     actorOrgId,
     actorAuthMethod,
+    tenantId,
     slug,
     description,
-    tenantId
+    redirectUri
   }: TCreateMicrosoftTeamsIntegrationDTO) => {
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -237,7 +244,14 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const integration = await workflowIntegrationDAL.transaction(async (tx) => {
+    const decryptWithRoot = kmsService.decryptWithRootKey();
+    const botAppId = decryptWithRoot(encryptedMicrosoftTeamsAppId);
+    const botAppPassword = decryptWithRoot(encryptedMicrosoftTeamsClientSecret);
+    const botId = decryptWithRoot(encryptedMicrosoftTeamsBotId);
+
+    await verifyTenantFromCode(tenantId, redirectUri, botAppId.toString(), botAppPassword.toString());
+
+    await workflowIntegrationDAL.transaction(async (tx) => {
       const workflowIntegration = await workflowIntegrationDAL.create(
         {
           description,
@@ -249,19 +263,24 @@ export const microsoftTeamsServiceFactory = ({
         tx
       );
 
-      const microsoftTeamsIntegration = await microsoftTeamsIntegrationDAL.create(
-        {
-          // @ts-expect-error id is kept as fixed because it is always equal to the workflow integration ID
-          id: workflowIntegration.id,
-          tenantId
-        },
-        tx
-      );
-
-      const decryptWithRoot = kmsService.decryptWithRootKey();
-      const botAppId = decryptWithRoot(encryptedMicrosoftTeamsAppId);
-      const botAppPassword = decryptWithRoot(encryptedMicrosoftTeamsClientSecret);
-      const botId = decryptWithRoot(encryptedMicrosoftTeamsBotId);
+      const microsoftTeamsIntegration = await microsoftTeamsIntegrationDAL
+        .create(
+          {
+            // @ts-expect-error id is kept as fixed because it is always equal to the workflow integration ID
+            id: workflowIntegration.id,
+            tenantId
+          },
+          tx
+        )
+        .catch((err) => {
+          if (err instanceof DatabaseError) {
+            if ((err.error as Error)?.stack?.includes("duplicate key value violates unique constraint"))
+              throw new BadRequestError({
+                message: "Microsoft Teams integration with the same Tenant ID already exists."
+              });
+          }
+          throw err;
+        });
 
       const teamsBotInfo = await isBotInstalledInTenant(
         {
@@ -307,17 +326,37 @@ export const microsoftTeamsServiceFactory = ({
           tx
         );
       }
-
-      return {
-        ...workflowIntegration,
-        status: workflowIntegration.status as WorkflowIntegrationStatus,
-        tenantId: microsoftTeamsIntegration.tenantId
-      };
     });
-
-    return integration;
   };
+  const getClientId = async ({ actorId, actor, actorOrgId, actorAuthMethod }: TGetClientIdDTO) => {
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+
+    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+    if (!serverCfg) {
+      throw new BadRequestError({
+        message: "Failed to get server configuration."
+      });
+    }
+
+    if (!serverCfg.encryptedMicrosoftTeamsAppId) {
+      throw new BadRequestError({
+        message: "Microsoft Teams app ID is not set"
+      });
+    }
+
+    const decryptWithRoot = kmsService.decryptWithRootKey();
+    const clientId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
+
+    return clientId.toString();
+  };
   const getMicrosoftTeamsIntegrationsByOrg = async ({
     actorId,
     actor,
@@ -335,7 +374,8 @@ export const microsoftTeamsServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
     const microsoftTeamsIntegrations = await microsoftTeamsIntegrationDAL.findWithWorkflowIntegrationDetails({
-      orgId: actorOrgId
+      orgId: actorOrgId,
+      status: WorkflowIntegrationStatus.INSTALLED
     });
 
     return microsoftTeamsIntegrations.map((integration) => ({
@@ -652,12 +692,13 @@ export const microsoftTeamsServiceFactory = ({
     getMicrosoftTeamsIntegrationById,
     updateMicrosoftTeamsIntegration,
     deleteMicrosoftTeamsIntegration,
-    createMicrosoftTeamsIntegration,
+    completeMicrosoftTeamsIntegration,
     initializeTeamsBot,
     getTeams,
     handleMessageEndpoint,
     start,
     sendNotification,
-    checkInstallationStatus
+    checkInstallationStatus,
+    getClientId
   };
 };

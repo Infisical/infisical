@@ -1,8 +1,8 @@
 import { Modal, ModalContent } from "@app/components/v2";
 import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
 
-import { SlackIntegrationForm } from "./SlackIntegrationForm";
 import { MicrosoftTeamsIntegrationForm } from "./MicrosoftTeamsIntegrationForm";
+import { SlackIntegrationForm } from "./SlackIntegrationForm";
 
 type Props = {
   isOpen?: boolean;

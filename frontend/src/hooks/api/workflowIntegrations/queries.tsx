@@ -23,7 +23,8 @@ export const workflowIntegrationKeys = {
     { id },
     "microsoft-teams-workflow-integration-teams"
   ],
-  getSlackIntegrationChannels: (id?: string) => [{ id }, "slack-workflow-integration-channels"]
+  getSlackIntegrationChannels: (id?: string) => [{ id }, "slack-workflow-integration-channels"],
+  getMicrosoftTeamsClientId: () => ["microsoft-teams-client-id"]
 };
 
 export const fetchSlackInstallUrl = async ({
@@ -104,6 +105,14 @@ export const fetchMicrosoftTeamsIntegrationTeams = async (id?: string) => {
   return data;
 };
 
+export const fetchMicrosoftTeamsClientId = async () => {
+  const { data } = await apiRequest.get<{ clientId: string }>(
+    "/api/v1/workflow-integrations/microsoft-teams/client-id"
+  );
+
+  return data;
+};
+
 export const useGetMicrosoftTeamsIntegrations = (orgId?: string) =>
   useQuery({
     queryKey: workflowIntegrationKeys.getMicrosoftTeamsIntegrations(orgId),
@@ -144,4 +153,11 @@ export const useGetWorkflowIntegrations = (id?: string) =>
     queryKey: workflowIntegrationKeys.getIntegrations(id),
     queryFn: () => fetchWorkflowIntegrations(),
     enabled: Boolean(id)
+  });
+
+export const useGetMicrosoftTeamsClientId = () =>
+  useQuery({
+    queryKey: workflowIntegrationKeys.getMicrosoftTeamsClientId(),
+    queryFn: () => fetchMicrosoftTeamsClientId(),
+    enabled: true
   });
