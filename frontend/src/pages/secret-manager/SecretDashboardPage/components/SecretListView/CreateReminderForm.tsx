@@ -88,12 +88,8 @@ export const CreateReminderForm = ({
   }, [members, isOpen, recipients]);
 
   useEffect(() => {
-    if (repeatDays) {
-      setValue("days", repeatDays);
-    }
-    if (note) {
-      setValue("note", note);
-    }
+    if (repeatDays) setValue("days", repeatDays);
+    if (note) setValue("note", note);
   }, [repeatDays, note]);
 
   return (
