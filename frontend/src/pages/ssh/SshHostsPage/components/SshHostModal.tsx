@@ -36,6 +36,7 @@ type Props = {
 const schema = z
   .object({
     hostname: z.string(),
+    alias: z.string(),
     userCertTtl: z
       .string()
       .trim()
@@ -81,6 +82,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
     resolver: zodResolver(schema),
     defaultValues: {
       hostname: "",
+      alias: "",
       userCertTtl: "8h",
       loginMappings: []
     }
@@ -95,6 +97,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (sshHost) {
       reset({
         hostname: sshHost.hostname,
+        alias: sshHost.alias ?? "",
         userCertTtl: sshHost.userCertTtl,
         loginMappings: sshHost.loginMappings.map(({ loginUser, allowedPrincipals }) => ({
           loginUser,
@@ -108,13 +111,14 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
     } else {
       reset({
         hostname: "",
+        alias: "",
         userCertTtl: "8h",
         loginMappings: []
       });
     }
   }, [sshHost]);
 
-  const onFormSubmit = async ({ hostname, userCertTtl, loginMappings }: FormData) => {
+  const onFormSubmit = async ({ hostname, alias, userCertTtl, loginMappings }: FormData) => {
     try {
       if (!projectId) return;
 
@@ -122,7 +126,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
       const existingHostnames =
         sshHosts?.filter((h) => h.id !== sshHost?.id).map((h) => h.hostname) || [];
 
-      if (existingHostnames.includes(hostname)) {
+      if (existingHostnames.includes(hostname.trim())) {
         createNotification({
           text: "A host with this hostname already exists.",
           type: "error"
@@ -130,10 +134,28 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
         return;
       }
 
+      const processedAlias = alias.trim() || null;
+
+      // check if there is already a different host with the same non-null alias
+      if (processedAlias) {
+        const existingAliases =
+          sshHosts?.filter((h) => h.id !== sshHost?.id && h.alias !== null).map((h) => h.alias) ||
+          [];
+
+        if (existingAliases.includes(processedAlias)) {
+          createNotification({
+            text: "A host with this alias already exists.",
+            type: "error"
+          });
+          return;
+        }
+      }
+
       if (sshHost) {
         await updateMutateAsync({
           sshHostId: sshHost.id,
           hostname,
+          alias: processedAlias,
           userCertTtl,
           loginMappings: loginMappings.map(({ loginUser, allowedPrincipals }) => ({
             loginUser,
@@ -146,6 +168,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
         await createMutateAsync({
           projectId,
           hostname,
+          alias: processedAlias,
           userCertTtl,
           loginMappings: loginMappings.map(({ loginUser, allowedPrincipals }) => ({
             loginUser,
@@ -206,6 +229,16 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                 isRequired
               >
                 <Input {...field} placeholder="host.example.com" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue=""
+            name="alias"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Alias" isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="host" />
               </FormControl>
             )}
           />

@@ -1,3 +1,4 @@
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -96,10 +97,20 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
         hostname: z
           .string()
           .min(1)
+          .trim()
           .refine((v) => isValidHostname(v), {
             message: "Hostname must be a valid hostname"
           })
           .describe(SSH_HOSTS.CREATE.hostname),
+        alias: z
+          .string()
+          .trim()
+          .nullable()
+          .default(null)
+          .refine((v) => v == null || slugify(v) === v, {
+            message: "Alias must be a valid slug"
+          })
+          .describe(SSH_HOSTS.CREATE.alias),
         userCertTtl: z
           .string()
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
@@ -138,6 +149,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
           metadata: {
             sshHostId: host.id,
             hostname: host.hostname,
+            alias: host.alias ?? null,
             userCertTtl: host.userCertTtl,
             hostCertTtl: host.hostCertTtl,
             loginMappings: host.loginMappings,
@@ -166,12 +178,22 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         hostname: z
           .string()
+          .trim()
           .min(1)
           .refine((v) => isValidHostname(v), {
             message: "Hostname must be a valid hostname"
           })
           .optional()
           .describe(SSH_HOSTS.UPDATE.hostname),
+        alias: z
+          .string()
+          .trim()
+          .nullable()
+          .refine((v) => v == null || slugify(v) === v, {
+            message: "Alias must be a valid slug"
+          })
+          .optional()
+          .describe(SSH_HOSTS.CREATE.alias),
         userCertTtl: z
           .string()
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
@@ -208,6 +230,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
           metadata: {
             sshHostId: host.id,
             hostname: host.hostname,
+            alias: host.alias,
             userCertTtl: host.userCertTtl,
             hostCertTtl: host.hostCertTtl,
             loginMappings: host.loginMappings,
