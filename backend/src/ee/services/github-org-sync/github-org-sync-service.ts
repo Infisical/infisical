@@ -79,7 +79,7 @@ export const githubOrgSyncServiceFactory = ({
     const { data } = await octokit.rest.orgs.get({
       org: githubOrgName
     });
-    if (data.login.toLowerCase() !== githubOrgName)
+    if (data.login.toLowerCase() !== githubOrgName.toLowerCase())
       throw new BadRequestError({ message: "Invalid GitHub organisation" });
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
@@ -152,7 +152,7 @@ export const githubOrgSyncServiceFactory = ({
         org: newData.githubOrgName
       });
 
-      if (data.login.toLowerCase() !== newData.githubOrgName)
+      if (data.login.toLowerCase() !== newData.githubOrgName.toLowerCase())
         throw new BadRequestError({ message: "Invalid GitHub organisation" });
     }
 
@@ -280,7 +280,7 @@ export const githubOrgSyncServiceFactory = ({
     const {
       organization: { teams }
     } = data;
-    const githubUserTeams = teams?.edges?.map((el) => el.node.name.toLowerCase());
+    const githubUserTeams = teams?.edges?.map((el) => el.node.name.toLowerCase()) || [];
     const githubUserTeamSet = new Set(githubUserTeams);
     const githubUserTeamOnInfisical = await groupDAL.find({ orgId, $in: { name: githubUserTeams } });
     const githubUserTeamOnInfisicalGroupByName = groupBy(githubUserTeamOnInfisical, (i) => i.name);

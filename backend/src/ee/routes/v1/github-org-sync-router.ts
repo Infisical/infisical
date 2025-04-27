@@ -1,11 +1,12 @@
 import { z } from "zod";
 
 import { GithubOrgSyncConfigsSchema } from "@app/db/schemas";
+import { CharacterType, zodValidateCharacters } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const SanitiziedGithubOrgSyncSchema = GithubOrgSyncConfigsSchema.pick({
+const SanitizedGithubOrgSyncSchema = GithubOrgSyncConfigsSchema.pick({
   isActive: true,
   id: true,
   createdAt: true,
@@ -14,6 +15,7 @@ const SanitiziedGithubOrgSyncSchema = GithubOrgSyncConfigsSchema.pick({
   githubOrgName: true
 });
 
+const githubOrgNameValidator = zodValidateCharacters([CharacterType.AlphaNumeric, CharacterType.Hyphen]);
 export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
@@ -24,13 +26,13 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
-        githubOrgName: z.string().trim(),
+        githubOrgName: githubOrgNameValidator(z.string().trim(), "GitHub Org Name"),
         githubOrgAccessToken: z.string().trim().max(1000).optional(),
         isActive: z.boolean().default(false)
       }),
       response: {
         200: z.object({
-          githubOrgSyncConfig: SanitiziedGithubOrgSyncSchema
+          githubOrgSyncConfig: SanitizedGithubOrgSyncSchema
         })
       }
     },
@@ -56,14 +58,14 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     schema: {
       body: z
         .object({
-          githubOrgName: z.string().trim(),
+          githubOrgName: githubOrgNameValidator(z.string().trim(), "GitHub Org Name"),
           githubOrgAccessToken: z.string().trim().max(1000),
           isActive: z.boolean().default(false)
         })
         .partial(),
       response: {
         200: z.object({
-          githubOrgSyncConfig: SanitiziedGithubOrgSyncSchema
+          githubOrgSyncConfig: SanitizedGithubOrgSyncSchema
         })
       }
     },
@@ -89,7 +91,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     schema: {
       response: {
         200: z.object({
-          githubOrgSyncConfig: SanitiziedGithubOrgSyncSchema
+          githubOrgSyncConfig: SanitizedGithubOrgSyncSchema
         })
       }
     },
@@ -112,7 +114,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     schema: {
       response: {
         200: z.object({
-          githubOrgSyncConfig: SanitiziedGithubOrgSyncSchema
+          githubOrgSyncConfig: SanitizedGithubOrgSyncSchema
         })
       }
     },

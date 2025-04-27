@@ -1,7 +1,7 @@
 export type TGithubOrgSyncConfig = {
   id: string;
   orgId: string;
-  githubAccessToken: string;
+  githubOrgAccessToken?: string;
   githubOrgName: string;
   createdAt: string;
   isActive?: boolean;

@@ -145,7 +145,7 @@ export const GithubOrgSyncConfigModal = ({
           <Button
             variant="plain"
             colorSchema="secondary"
-            onClick={() => handlePopUpToggle("deleteGithubOrgSyncConfig", false)}
+            onClick={() => handlePopUpToggle("githubOrgSyncConfig", false)}
           >
             Cancel
           </Button>
@@ -163,7 +163,7 @@ export const GithubOrgSyncConfigModal = ({
       <DeleteActionModal
         isOpen={popUp.deleteGithubOrgSyncConfig.isOpen}
         title="Are you sure want to remove GitHub organization sync?"
-        onChange={(isOpen) => handlePopUpToggle("githubOrgSyncConfig", isOpen)}
+        onChange={(isOpen) => handlePopUpToggle("deleteGithubOrgSyncConfig", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={onDelete}
       />

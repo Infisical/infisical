@@ -110,6 +110,7 @@ export const formSchema = z.object({
       "secret-scanning": generalPermissionSchema,
       sso: generalPermissionSchema,
       scim: generalPermissionSchema,
+      [OrgPermissionSubjects.GithubOrgSync]: generalPermissionSchema,
       ldap: generalPermissionSchema,
       billing: generalPermissionSchema,
       identity: identityPermissionSchema,
