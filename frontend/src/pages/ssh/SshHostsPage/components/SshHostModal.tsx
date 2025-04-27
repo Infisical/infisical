@@ -134,15 +134,15 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
         return;
       }
 
-      const processedAlias = alias.trim() || null;
+      const trimmedAlias = alias.trim();
 
       // check if there is already a different host with the same non-null alias
-      if (processedAlias) {
+      if (trimmedAlias) {
         const existingAliases =
           sshHosts?.filter((h) => h.id !== sshHost?.id && h.alias !== null).map((h) => h.alias) ||
           [];
 
-        if (existingAliases.includes(processedAlias)) {
+        if (existingAliases.includes(trimmedAlias)) {
           createNotification({
             text: "A host with this alias already exists.",
             type: "error"
@@ -155,7 +155,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
         await updateMutateAsync({
           sshHostId: sshHost.id,
           hostname,
-          alias: processedAlias,
+          alias: trimmedAlias,
           userCertTtl,
           loginMappings: loginMappings.map(({ loginUser, allowedPrincipals }) => ({
             loginUser,
@@ -168,7 +168,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
         await createMutateAsync({
           projectId,
           hostname,
-          alias: processedAlias,
+          alias: trimmedAlias,
           userCertTtl,
           loginMappings: loginMappings.map(({ loginUser, allowedPrincipals }) => ({
             loginUser,

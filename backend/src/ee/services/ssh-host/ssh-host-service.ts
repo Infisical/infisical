@@ -193,7 +193,7 @@ export const sshHostServiceFactory = ({
         {
           projectId,
           hostname,
-          alias,
+          alias: alias === "" ? null : alias,
           userCertTtl,
           hostCertTtl,
           userSshCaId,
@@ -300,7 +300,7 @@ export const sshHostServiceFactory = ({
         sshHostId,
         {
           hostname,
-          alias,
+          alias: alias === "" ? null : alias,
           userCertTtl,
           hostCertTtl
         },

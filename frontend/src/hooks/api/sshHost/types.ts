@@ -16,7 +16,7 @@ export type TSshHost = {
 export type TCreateSshHostDTO = {
   projectId: string;
   hostname: string;
-  alias: string | null;
+  alias?: string;
   userCertTtl?: string;
   hostCertTtl?: string;
   loginMappings: {
@@ -30,7 +30,7 @@ export type TCreateSshHostDTO = {
 export type TUpdateSshHostDTO = {
   sshHostId: string;
   hostname?: string;
-  alias?: string | null;
+  alias?: string;
   userCertTtl?: string;
   hostCertTtl?: string;
   loginMappings?: {
