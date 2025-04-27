@@ -12,6 +12,7 @@ export * from "./certificateTemplates";
 export * from "./dynamicSecret";
 export * from "./dynamicSecretLease";
 export * from "./gateways";
+export * from "./githubOrgSyncConfig";
 export * from "./groups";
 export * from "./identities";
 export * from "./identityProjectAdditionalPrivilege";

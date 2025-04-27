@@ -14,9 +14,11 @@ import { Strategy as GitLabStrategy } from "passport-gitlab2";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { z } from "zod";
 
+import { INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { ms } from "@app/lib/ms";
 import { fetchGithubEmails } from "@app/lib/requests/github";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { AuthMethod } from "@app/services/auth/auth-type";
@@ -95,7 +97,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           clientID: appCfg.CLIENT_ID_GITHUB_LOGIN as string,
           clientSecret: appCfg.CLIENT_SECRET_GITHUB_LOGIN as string,
           callbackURL: `${appCfg.SITE_URL}/api/v1/sso/github`,
-          scope: ["user:email"],
+          scope: ["user:email", "read:org"],
           // akhilmhdh: because the ts type for this is outdated by the maintainer
           state: true as unknown as string
         },
@@ -113,7 +115,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
               authMethod: AuthMethod.GITHUB,
               callbackPort
             });
-            return cb(null, { isUserCompleted, providerAuthToken });
+            return cb(null, { isUserCompleted, providerAuthToken, externalProviderAccessToken: accessToken });
           } catch (error) {
             logger.error(error);
             cb(error as Error, false);
@@ -290,6 +292,17 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     }) as any,
     handler: async (req, res) => {
       await req.session.destroy();
+
+      if (req.passportUser.externalProviderAccessToken) {
+        void res.cookie(INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN, req.passportUser.externalProviderAccessToken, {
+          httpOnly: true,
+          path: "/",
+          sameSite: "strict",
+          secure: appCfg.HTTPS_ENABLED,
+          expires: new Date(Date.now() + ms(appCfg.JWT_PROVIDER_AUTH_LIFETIME))
+        });
+      }
+
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
           `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`

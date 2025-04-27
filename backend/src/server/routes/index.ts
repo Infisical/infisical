@@ -33,6 +33,8 @@ import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { gatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { orgGatewayConfigDALFactory } from "@app/ee/services/gateway/org-gateway-config-dal";
 import { projectGatewayDALFactory } from "@app/ee/services/gateway/project-gateway-dal";
+import { githubOrgSyncDALFactory } from "@app/ee/services/github-org-sync/github-org-sync-dal";
+import { githubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -421,6 +423,7 @@ export const registerRoutes = async (
   const gatewayDAL = gatewayDALFactory(db);
   const projectGatewayDAL = projectGatewayDALFactory(db);
   const secretReminderRecipientsDAL = secretReminderRecipientsDALFactory(db);
+  const githubOrgSyncDAL = githubOrgSyncDALFactory(db);
 
   const secretRotationV2DAL = secretRotationV2DALFactory(db, folderDAL);
 
@@ -556,6 +559,15 @@ export const registerRoutes = async (
     permissionService,
     smtpService,
     externalGroupOrgRoleMappingDAL
+  });
+
+  const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
+    licenseService,
+    githubOrgSyncDAL,
+    kmsService,
+    permissionService,
+    groupDAL,
+    userGroupMembershipDAL
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -1689,7 +1701,8 @@ export const registerRoutes = async (
     kmipOperation: kmipOperationService,
     gateway: gatewayService,
     secretRotationV2: secretRotationV2Service,
-    assumePrivileges: assumePrivilegeService
+    assumePrivileges: assumePrivilegeService,
+    githubOrgSync: githubOrgSyncConfigService
   });
 
   const cronJobs: CronJob[] = [];
@@ -1749,30 +1762,6 @@ export const registerRoutes = async (
       );
 
       logger.info(`Raw event loop stats: ${JSON.stringify(histogram, null, 2)}`);
-
-      // try {
-      //   await db.raw("SELECT NOW()");
-      // } catch (err) {
-      //   logger.error("Health check: database connection failed", err);
-      //   return reply.code(503).send({
-      //     date: new Date(),
-      //     message: "Service unavailable"
-      //   });
-      // }
-
-      // if (cfg.isRedisConfigured) {
-      //   const redis = new Redis(cfg.REDIS_URL);
-      //   try {
-      //     await redis.ping();
-      //     redis.disconnect();
-      //   } catch (err) {
-      //     logger.error("Health check: redis connection failed", err);
-      //     return reply.code(503).send({
-      //       date: new Date(),
-      //       message: "Service unavailable"
-      //     });
-      //   }
-      // }
 
       return {
         date: new Date(),
