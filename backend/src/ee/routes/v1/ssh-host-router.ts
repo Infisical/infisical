@@ -193,7 +193,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
             message: "Alias must be a valid slug"
           })
           .optional()
-          .describe(SSH_HOSTS.CREATE.alias),
+          .describe(SSH_HOSTS.UPDATE.alias),
         userCertTtl: z
           .string()
           .refine((val) => ms(val) > 0, "TTL must be a positive number")

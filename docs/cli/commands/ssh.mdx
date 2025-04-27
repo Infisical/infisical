@@ -34,7 +34,7 @@ This command enables you to obtain SSH credentials used to access a remote host.
         The path to write the SSH credentials to such as `~/.ssh`, `./some_folder`, `./some_folder/id_rsa-cert.pub`. If not provided, the credentials will be added to the SSH agent and used to establish an interactive SSH connection.
     </Accordion>
     <Accordion title="--token">
-        An authenticated token to use to authenticate with Infisical.
+        Use a machine identity access token
     </Accordion>
 
 </Accordion>
@@ -55,6 +55,9 @@ This command enables you to obtain SSH credentials used to access a remote host.
     </Accordion>
     <Accordion title="--hostname">
         Hostname of the SSH host (required)
+    </Accordion>
+    <Accordion title="--alias">
+        Alias for the SSH host (optional)
     </Accordion>
     <Accordion title="--write-user-ca-to-file">
         Write User CA public key to `/etc/ssh/infisical_user_ca.pub`

@@ -35,8 +35,8 @@ type Props = {
 
 const schema = z
   .object({
-    hostname: z.string(),
-    alias: z.string(),
+    hostname: z.string().trim(),
+    alias: z.string().trim(),
     userCertTtl: z
       .string()
       .trim()
