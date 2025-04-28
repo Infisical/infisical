@@ -95,7 +95,6 @@ export const SecretItem = memo(
     const { currentWorkspace } = useWorkspace();
     const { permission } = useProjectPermission();
     const { isRotatedSecret } = secret;
-    const [isSecretBlurFocus, setIsSecretBlurFocus] = useToggle(false);
 
     const canEditSecretValue = permission.can(
       ProjectPermissionSecretActions.Edit,
@@ -188,12 +187,6 @@ export const SecretItem = memo(
     const isOverriden =
       overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
     const hasTagsApplied = Boolean(fields.length);
-
-    const handleSecretBlurClick = () => {
-      if (canEditSecretValue) {
-        setIsSecretBlurFocus.toggle();
-      }
-    };
 
     const handleOverrideClick = () => {
       if (isOverriden) {
@@ -334,15 +327,6 @@ export const SecretItem = memo(
                     />
                   )}
                 />
-              ) : secretValueHidden && !isSecretBlurFocus ? (
-                // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-                <div className="flex flex-grow items-center gap-2" onClick={handleSecretBlurClick}>
-                  <span className="flex flex-row items-center">
-                    <div style={{ fontFamily: "monospace" }} className="h-full w-full">
-                      {hiddenValue}
-                    </div>
-                  </span>
-                </div>
               ) : (
                 <Controller
                   name="value"

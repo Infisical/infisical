@@ -87,7 +87,6 @@ export const SecretEditRow = ({
   const { permission } = useProjectPermission();
 
   const [isDeleting, setIsDeleting] = useToggle();
-  const [isSecretBlurFocus, setIsSecretBlurFocus] = useToggle(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   const toggleModal = useCallback(() => {
@@ -129,7 +128,6 @@ export const SecretEditRow = ({
       setTimeout(() => {
         reset({ value: defaultValue || null });
       }, 50);
-      setIsSecretBlurFocus.off();
     } else {
       reset({ value });
     }
@@ -149,12 +147,6 @@ export const SecretEditRow = ({
       secretTags: ["*"]
     })
   );
-
-  const handleSecretBlurClick = () => {
-    if (canEditSecretValue) {
-      setIsSecretBlurFocus.toggle();
-    }
-  };
 
   const handleDeleteSecret = useCallback(async () => {
     setIsDeleting.on();
@@ -185,35 +177,24 @@ export const SecretEditRow = ({
         </Tooltip>
       )}
       <div className="flex-grow border-r border-r-mineshaft-600 pl-1 pr-2">
-        {secretValueHidden && !isSecretBlurFocus ? (
-          // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-          <div className="flex flex-grow items-center gap-2" onClick={handleSecretBlurClick}>
-            <span className="flex flex-row items-center">
-              <div style={{ fontFamily: "monospace" }} className="h-full w-full">
-                ******
-              </div>
-            </span>
-          </div>
-        ) : (
-          <Controller
-            disabled={isImportedSecret && !defaultValue}
-            control={control}
-            name="value"
-            render={({ field }) => (
-              <InfisicalSecretInput
-                {...field}
-                isReadOnly={isImportedSecret || isRotatedSecret}
-                value={field.value as string}
-                key="secret-input"
-                isVisible={isVisible && !secretValueHidden}
-                secretPath={secretPath}
-                environment={environment}
-                isImport={isImportedSecret}
-                defaultValue={secretValueHidden ? "" : undefined}
-              />
-            )}
-          />
-        )}
+        <Controller
+          disabled={isImportedSecret && !defaultValue}
+          control={control}
+          name="value"
+          render={({ field }) => (
+            <InfisicalSecretInput
+              {...field}
+              isReadOnly={isImportedSecret || isRotatedSecret}
+              value={field.value as string}
+              key="secret-input"
+              isVisible={isVisible && !secretValueHidden}
+              secretPath={secretPath}
+              environment={environment}
+              isImport={isImportedSecret}
+              defaultValue={secretValueHidden ? "" : undefined}
+            />
+          )}
+        />
       </div>
 
       <div
