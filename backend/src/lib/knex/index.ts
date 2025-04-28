@@ -2,6 +2,8 @@
 import { Knex } from "knex";
 import { Tables } from "knex/types/tables";
 
+import { TableName } from "@app/db/schemas";
+
 import { DatabaseError } from "../errors";
 import { buildDynamicKnexQuery, TKnexDynamicOperator } from "./dynamic";
 
@@ -25,6 +27,51 @@ export type TFindFilter<R extends object = object> = Partial<R> & {
   $search?: Partial<{ [k in keyof R]: R[k] }>;
   $complex?: TKnexDynamicOperator<R>;
 };
+
+export const buildStrictFindFilter =
+  <R extends object = object>(
+    { $in, $notNull, $search, $complex, ...filter }: TFindFilter<R>,
+    tableName: TableName,
+    excludeKeys?: Array<keyof R>
+  ) =>
+  (bd: Knex.QueryBuilder<R, R>) => {
+    const strictFilter = Object.fromEntries(
+      Object.entries(filter)
+        .filter(([key]) => !excludeKeys || !excludeKeys.includes(key as keyof R))
+        .map(([key, value]) => [`${tableName}.${key}`, value])
+    );
+
+    void bd.where(strictFilter);
+    if ($in) {
+      Object.entries($in).forEach(([key, val]) => {
+        if (val) {
+          void bd.whereIn([`${tableName}.${key}`] as never, val as never);
+        }
+      });
+    }
+
+    if ($notNull?.length) {
+      $notNull.forEach((key) => {
+        void bd.whereNotNull([`${tableName}.${key as string}`] as never);
+      });
+    }
+
+    if ($search) {
+      Object.entries($search).forEach(([key, val]) => {
+        if (val) {
+          void bd.whereILike([`${tableName}.${key}`] as never, val as never);
+        }
+      });
+    }
+    if ($complex) {
+      return buildDynamicKnexQuery(bd, $complex);
+    }
+    return bd;
+  };
+
+/**
+ * @deprecated Use `buildStrictFindFilter` instead
+ */
 export const buildFindFilter =
   <R extends object = object>({ $in, $notNull, $search, $complex, ...filter }: TFindFilter<R>) =>
   (bd: Knex.QueryBuilder<R, R>) => {

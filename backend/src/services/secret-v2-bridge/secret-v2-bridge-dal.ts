@@ -10,6 +10,7 @@ import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import {
   buildFindFilter,
+  buildStrictFindFilter,
   ormify,
   selectAllTableCols,
   sqlNestRelationships,
@@ -63,7 +64,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
     try {
       const docs = await (tx || db)(TableName.SecretV2)
-        .where(filter)
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildStrictFindFilter(filter, TableName.SecretV2))
         .leftJoin(
           TableName.SecretV2JnTag,
           `${TableName.SecretV2}.id`,
@@ -142,9 +144,14 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const find = async (filter: TFindFilter<TSecretsV2>, opts: TFindOpt<TSecretsV2> = {}) => {
     const { offset, limit, sort, tx } = opts;
     try {
+      const qualifiedFilter = { ...filter };
+      if ("userId" in qualifiedFilter) {
+        delete qualifiedFilter.userId;
+      }
+
       const query = (tx || db)(TableName.SecretV2)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        .where(buildFindFilter(filter))
+        .where(buildFindFilter(qualifiedFilter))
         .leftJoin(
           TableName.SecretV2JnTag,
           `${TableName.SecretV2}.id`,
