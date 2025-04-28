@@ -48,10 +48,8 @@ export const GcpKmsProviderFactory = async ({ inputs }: GcpKmsProviderArgs): Pro
   const cleanup = async () => {
     try {
       await gcpKmsClient.close();
-      return true;
     } catch (error) {
-      logger.error(error, "cleanup: failed to close GCP KMS client");
-      return false;
+      throw new Error("Failed to cleanup GCP KMS client", { cause: error });
     }
   };
 

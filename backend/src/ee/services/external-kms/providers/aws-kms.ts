@@ -107,10 +107,8 @@ export const AwsKmsProviderFactory = async ({ inputs }: AwsKmsProviderArgs): Pro
   const cleanup = async () => {
     try {
       awsClient.destroy();
-      return true;
     } catch (error) {
-      logger.error(error, "cleanup: failed to destroy AWS KMS client");
-      return false;
+      throw new Error("Failed to cleanup AWS KMS client", { cause: error });
     }
   };
 
