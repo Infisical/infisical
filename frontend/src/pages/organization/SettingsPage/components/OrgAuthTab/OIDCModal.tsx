@@ -387,6 +387,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                     <SelectItem value={OIDCJWTSignatureAlgorithm.RS256}>RS256</SelectItem>
                     <SelectItem value={OIDCJWTSignatureAlgorithm.RS512}>RS512</SelectItem>
                     <SelectItem value={OIDCJWTSignatureAlgorithm.HS256}>HS256</SelectItem>
+                    <SelectItem value={OIDCJWTSignatureAlgorithm.EDDSA}>EdDSA</SelectItem>
                   </Select>
                 </FormControl>
               )}
