@@ -10,6 +10,7 @@ import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext/type
 import { groupBy } from "@app/lib/fn/array";
 import { omit } from "@app/lib/fn/object";
 
+import { ActorType } from "../auditLogs/enums";
 import { OrgUser, TProjectMembership } from "../users/types";
 import {
   TGetUserOrgPermissionsDTO,
@@ -137,6 +138,12 @@ export const fetchUserProjectPermissions = async ({
     data: {
       permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[];
       membership: Omit<TProjectMembership, "roles"> & { roles: { role: string }[] };
+      assumedPrivilegeDetails?: {
+        actorId: string;
+        actorType: ActorType;
+        actorEmail: string;
+        actorName: string;
+      };
     };
   }>(`/api/v1/workspace/${workspaceId}/permissions`, {});
 

@@ -14,6 +14,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { auth0ClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/auth0-client-secret/auth0-client-secret-rotation-fns";
+import { ldapPasswordRotationFactory } from "@app/ee/services/secret-rotation-v2/ldap-password/ldap-password-rotation-fns";
 import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   calculateNextRotationAt,
@@ -116,6 +117,7 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.PostgresCredentials]: sqlCredentialsRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.MsSqlCredentials]: sqlCredentialsRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.Auth0ClientSecret]: auth0ClientSecretRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.LdapPassword]: ldapPasswordRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.AwsIamUserSecret]: awsIamUserSecretRotationFactory as TRotationFactoryImplementation
 };
 
@@ -450,6 +452,18 @@ export const secretRotationV2ServiceFactory = ({
       appConnectionDAL,
       kmsService
     );
+
+    // even though we have a db constraint we want to check before any rotation of credentials is attempted
+    // to prevent creation failure after external credentials have been modified
+    const conflictingRotation = await secretRotationV2DAL.findOne({
+      name: payload.name,
+      folderId: folder.id
+    });
+
+    if (conflictingRotation)
+      throw new BadRequestError({
+        message: `A Secret Rotation with the name "${payload.name}" already exists at the secret path "${secretPath}"`
+      });
 
     try {
       const currentTime = new Date();

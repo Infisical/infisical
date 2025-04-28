@@ -1,8 +1,9 @@
-import { cloneElement } from "react";
+import { cloneElement, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import {
   faChevronDown,
   faChevronRight,
+  faGripVertical,
   faInfoCircle,
   faPlus,
   faTrash
@@ -36,14 +37,44 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   isDisabled
 }: Props<T>) => {
   const { control, watch } = useFormContext<TFormSchema>();
-  const items = useFieldArray({
+  const { fields, remove, insert, move } = useFieldArray({
     control,
     name: `permissions.${subject}`
   });
   const [isOpen, setIsOpen] = useToggle();
-  // const [hideFullReadAccess, setHideFullReadAccess] = useState(false);
+  const [draggedItem, setDraggedItem] = useState<number | null>(null);
+  const [dragOverItem, setDragOverItem] = useState<number | null>(null);
 
-  if (!items.fields.length) return <div />;
+  if (!fields.length) return <div />;
+
+  const handleDragStart = (_: React.DragEvent, index: number) => {
+    setDraggedItem(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverItem(index);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+
+    if (draggedItem === null || dragOverItem === null || draggedItem === dragOverItem) {
+      setDraggedItem(null);
+      setDragOverItem(null);
+      return;
+    }
+
+    move(draggedItem, dragOverItem);
+
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
 
   return (
     <div className="border border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md">
@@ -62,17 +93,17 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
           <FontAwesomeIcon icon={isOpen ? faChevronDown : faChevronRight} />
         </div>
         <div className="flex-grow">{title}</div>
-        {items.fields.length > 1 && (
+        {fields.length > 1 && (
           <div>
             <Tag size="xs" className="px-2">
-              {items.fields.length} rules
+              {fields.length} rules
             </Tag>
           </div>
         )}
       </div>
       {isOpen && (
         <div key={`select-${subject}-type`} className="flex flex-col space-y-4 bg-bunker-800 p-6">
-          {items.fields.map((el, rootIndex) => {
+          {fields.map((el, rootIndex) => {
             let isFullReadAccessEnabled = false;
 
             if (subject === ProjectPermissionSub.Secrets) {
@@ -82,47 +113,72 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
             return (
               <div
                 key={el.id}
-                className="bg-mineshaft-800 p-5 first:rounded-t-md last:rounded-b-md"
-              >
-                {isConditionalSubjects(subject) && (
-                  <div className="mb-6 mt-4 flex w-full items-center text-gray-300">
-                    <div className="w-1/4">Permission</div>
-                    <div className="mr-4 w-1/4">
-                      <Controller
-                        defaultValue={false as any}
-                        name={`permissions.${subject}.${rootIndex}.inverted`}
-                        render={({ field }) => (
-                          <Select
-                            value={String(field.value)}
-                            onValueChange={(val) => field.onChange(val === "true")}
-                            containerClassName="w-full"
-                            className="w-full"
-                            isDisabled={isDisabled}
-                          >
-                            <SelectItem value="false">Allow</SelectItem>
-                            <SelectItem value="true">Forbid</SelectItem>
-                          </Select>
-                        )}
-                      />
-                    </div>
-                    <div>
-                      <Tooltip
-                        asChild
-                        content={
-                          <>
-                            <p>
-                              Whether to allow or forbid the selected actions when the following
-                              conditions (if any) are met.
-                            </p>
-                            <p className="mt-2">Forbid rules must come after allow rules.</p>
-                          </>
-                        }
-                      >
-                        <FontAwesomeIcon icon={faInfoCircle} size="sm" className="text-gray-400" />
-                      </Tooltip>
-                    </div>
-                  </div>
+                className={twMerge(
+                  "relative bg-mineshaft-800 p-5 first:rounded-t-md last:rounded-b-md",
+                  dragOverItem === rootIndex ? "border-2 border-blue-400" : "",
+                  draggedItem === rootIndex ? "opacity-50" : ""
                 )}
+                onDragOver={(e) => handleDragOver(e, rootIndex)}
+                onDrop={handleDrop}
+              >
+                {!isDisabled && (
+                  <Tooltip position="left" content="Drag to reorder permission">
+                    <div
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, rootIndex)}
+                      onDragEnd={handleDragEnd}
+                      className="absolute right-3 top-2 cursor-move rounded-md bg-mineshaft-700 p-2 text-gray-400 hover:text-gray-200"
+                    >
+                      <FontAwesomeIcon icon={faGripVertical} />
+                    </div>
+                  </Tooltip>
+                )}
+
+                <div className="mb-4 flex items-center">
+                  {isConditionalSubjects(subject) && (
+                    <div className="flex w-full items-center text-gray-300">
+                      <div className="w-1/4">Permission</div>
+                      <div className="mr-4 w-1/4">
+                        <Controller
+                          defaultValue={false as any}
+                          name={`permissions.${subject}.${rootIndex}.inverted`}
+                          render={({ field }) => (
+                            <Select
+                              value={String(field.value)}
+                              onValueChange={(val) => field.onChange(val === "true")}
+                              containerClassName="w-full"
+                              className="w-full"
+                              isDisabled={isDisabled}
+                            >
+                              <SelectItem value="false">Allow</SelectItem>
+                              <SelectItem value="true">Forbid</SelectItem>
+                            </Select>
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <Tooltip
+                          asChild
+                          content={
+                            <>
+                              <p>
+                                Whether to allow or forbid the selected actions when the following
+                                conditions (if any) are met.
+                              </p>
+                              <p className="mt-2">Forbid rules must come after allow rules.</p>
+                            </>
+                          }
+                        >
+                          <FontAwesomeIcon
+                            icon={faInfoCircle}
+                            size="sm"
+                            className="text-gray-400"
+                          />
+                        </Tooltip>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="flex text-gray-300">
                   <div className="w-1/4">Actions</div>
                   <div className="flex flex-grow flex-wrap justify-start gap-8">
@@ -179,7 +235,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                       size="xs"
                       className="mt-2"
                       onClick={() => {
-                        items.insert(rootIndex + 1, [
+                        insert(rootIndex + 1, [
                           { read: false, edit: false, create: false, delete: false } as any
                         ]);
                       }}
@@ -194,7 +250,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                       variant="outline_bg"
                       size="xs"
                       className="mt-2 hover:border-red"
-                      onClick={() => items.remove(rootIndex)}
+                      onClick={() => remove(rootIndex)}
                       isDisabled={isDisabled}
                     >
                       Remove policy

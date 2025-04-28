@@ -8,7 +8,8 @@ export enum OIDCConfigurationType {
 export enum OIDCJWTSignatureAlgorithm {
   RS256 = "RS256",
   HS256 = "HS256",
-  RS512 = "RS512"
+  RS512 = "RS512",
+  EDDSA = "EdDSA"
 }
 
 export type TOidcLoginDTO = {

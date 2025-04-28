@@ -45,6 +45,7 @@ import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
+import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
@@ -80,6 +81,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Windmill]: ValidateWindmillConnectionCredentialsSchema,
   [AppConnection.Auth0]: ValidateAuth0ConnectionCredentialsSchema,
   [AppConnection.HCVault]: ValidateHCVaultConnectionCredentialsSchema,
+  [AppConnection.LDAP]: ValidateLdapConnectionCredentialsSchema,
   [AppConnection.TeamCity]: ValidateTeamCityConnectionCredentialsSchema
 };
 

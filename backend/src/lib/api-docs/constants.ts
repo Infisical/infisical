@@ -807,6 +807,8 @@ export const RAW_SECRETS = {
     tagIds: "The ID of the tags to be attached to the updated secret.",
     secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days.",
     secretReminderNote: "Note to be attached in notification email.",
+    secretReminderRecipients:
+      "An array of user IDs that will receive the reminder email. If not specified, all project members will receive the reminder email.",
     newSecretName: "The new name for the secret."
   },
   DELETE: {
@@ -1387,6 +1389,7 @@ export const SSH_HOSTS = {
   CREATE: {
     projectId: "The ID of the project to create the SSH host in.",
     hostname: "The hostname of the SSH host.",
+    alias: "The alias for the SSH host.",
     userCertTtl: "The time to live for user certificates issued under this host.",
     hostCertTtl: "The time to live for host certificates issued under this host.",
     loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
@@ -1401,6 +1404,7 @@ export const SSH_HOSTS = {
   UPDATE: {
     sshHostId: "The ID of the SSH host to update.",
     hostname: "The hostname of the SSH host to update to.",
+    alias: "The alias for the SSH host to update to.",
     userCertTtl: "The time to live for user certificates issued under this host to update to.",
     hostCertTtl: "The time to live for host certificates issued under this host to update to.",
     loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
@@ -1865,6 +1869,16 @@ export const AppConnections = {
       roleId: "The Role ID used to connect with Hashicorp Vault.",
       secretId: "The Secret ID used to connect with Hashicorp Vault."
     },
+    LDAP: {
+      provider: "The type of LDAP provider. Determines provider-specific behaviors.",
+      url: "The LDAP/LDAPS URL to connect to (e.g., 'ldap://domain-or-ip:389' or 'ldaps://domain-or-ip:636').",
+      dn: "The Distinguished Name (DN) of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com').",
+      password: "The password to bind with for authentication.",
+      sslRejectUnauthorized:
+        "Whether or not to reject unauthorized SSL certificates (true/false) when using ldaps://. Set to false only in test environments.",
+      sslCertificate:
+        "The SSL certificate (PEM format) to use for secure connection when using ldaps:// with a self-signed certificate."
+    },
     TEAMCITY: {
       instanceUrl: "The TeamCity instance URL to connect with.",
       accessToken: "The access token to use to connect with TeamCity."
@@ -2080,6 +2094,22 @@ export const SecretRotations = {
     AUTH0_CLIENT_SECRET: {
       clientId: "The client ID of the Auth0 Application to rotate the client secret for."
     },
+    LDAP_PASSWORD: {
+      dn: "The Distinguished Name (DN) of the principal to rotate the password for."
+    },
+    GENERAL: {
+      PASSWORD_REQUIREMENTS: {
+        base: "The password requirements to use when generating the new password.",
+        length: "The length of the password to generate.",
+        required: {
+          digits: "The amount of digits to require in the generated password.",
+          lowercase: "The amount of lowercase characters to require in the generated password.",
+          uppercase: "The amount of uppercase characters to require in the generated password.",
+          symbols: "The amount of symbols to require in the generated password."
+        },
+        allowedSymbols: 'The allowed symbols to use in the generated password (defaults to "-_.~!*").'
+      }
+    },
     AWS_IAM_USER_SECRET: {
       userName: "The name of the client to rotate credentials for.",
       region: "The AWS region the client is present in."
@@ -2093,6 +2123,10 @@ export const SecretRotations = {
     AUTH0_CLIENT_SECRET: {
       clientId: "The name of the secret that the client ID will be mapped to.",
       clientSecret: "The name of the secret that the rotated client secret will be mapped to."
+    },
+    LDAP_PASSWORD: {
+      dn: "The name of the secret that the Distinguished Name (DN) of the principal will be mapped to.",
+      password: "The name of the secret that the rotated password will be mapped to."
     },
     AWS_IAM_USER_SECRET: {
       accessKeyId: "The name of the secret that the access key ID will be mapped to.",

@@ -71,6 +71,10 @@ export type THCVaultConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.HCVault;
 };
 
+export type TLdapConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.LDAP;
+};
+
 export type TTeamCityConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.TeamCity;
 };
@@ -109,5 +113,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Windmill]: TWindmillConnectionOption;
   [AppConnection.Auth0]: TAuth0ConnectionOption;
   [AppConnection.HCVault]: THCVaultConnectionOption;
+  [AppConnection.LDAP]: TLdapConnectionOption;
   [AppConnection.TeamCity]: TTeamCityConnectionOption;
 };

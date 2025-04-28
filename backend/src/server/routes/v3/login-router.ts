@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 
@@ -70,11 +71,34 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         };
       }
 
+      const githubOauthAccessToken = req.cookies[INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN];
+      if (githubOauthAccessToken) {
+        await server.services.githubOrgSync
+          .syncUserGroups(req.body.organizationId, tokens.user.userId, githubOauthAccessToken)
+          .finally(() => {
+            void res.setCookie(INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN, "", {
+              httpOnly: true,
+              path: "/",
+              sameSite: "strict",
+              secure: cfg.HTTPS_ENABLED,
+              maxAge: 0
+            });
+          });
+      }
+
       void res.setCookie("jid", tokens.refresh, {
         httpOnly: true,
         path: "/",
         sameSite: "strict",
         secure: cfg.HTTPS_ENABLED
+      });
+
+      void res.cookie("infisical-project-assume-privileges", "", {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: cfg.HTTPS_ENABLED,
+        maxAge: 0
       });
 
       return { token: tokens.access, isMfaEnabled: false };
@@ -129,6 +153,14 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         path: "/",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED
+      });
+
+      void res.cookie("infisical-project-assume-privileges", "", {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: appCfg.HTTPS_ENABLED,
+        maxAge: 0
       });
 
       return {

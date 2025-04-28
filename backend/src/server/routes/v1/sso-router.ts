@@ -9,15 +9,17 @@
 import { Authenticator } from "@fastify/passport";
 import fastifySession from "@fastify/session";
 import RedisStore from "connect-redis";
-import { Strategy as GitHubStrategy } from "passport-github";
 import { Strategy as GitLabStrategy } from "passport-gitlab2";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { Strategy as OAuth2Strategy } from "passport-oauth2";
 import { z } from "zod";
 
+import { INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { fetchGithubEmails } from "@app/lib/requests/github";
+import { ms } from "@app/lib/ms";
+import { fetchGithubEmails, fetchGithubUser } from "@app/lib/requests/github";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { OrgAuthMethod } from "@app/services/org/org-types";
@@ -42,6 +44,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   });
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
+
   // passport oauth strategy for Google
   const isGoogleOauthActive = Boolean(appCfg.CLIENT_ID_GOOGLE_LOGIN && appCfg.CLIENT_SECRET_GOOGLE_LOGIN);
   if (isGoogleOauthActive) {
@@ -52,8 +55,9 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           clientID: appCfg.CLIENT_ID_GOOGLE_LOGIN as string,
           clientSecret: appCfg.CLIENT_SECRET_GOOGLE_LOGIN as string,
           callbackURL: `${appCfg.SITE_URL}/api/v1/sso/google`,
-          scope: ["profile", " email"],
-          state: true
+          scope: ["profile", "email"],
+          state: true,
+          pkce: true
         },
         // eslint-disable-next-line
         async (req, _accessToken, _refreshToken, profile, cb) => {
@@ -89,34 +93,44 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   const isGithubOauthActive = Boolean(appCfg.CLIENT_SECRET_GITHUB_LOGIN && appCfg.CLIENT_ID_GITHUB_LOGIN);
   if (isGithubOauthActive) {
     passport.use(
-      new GitHubStrategy(
+      "github",
+      new OAuth2Strategy(
         {
-          passReqToCallback: true,
-          clientID: appCfg.CLIENT_ID_GITHUB_LOGIN as string,
-          clientSecret: appCfg.CLIENT_SECRET_GITHUB_LOGIN as string,
+          authorizationURL: "https://github.com/login/oauth/authorize",
+          tokenURL: "https://github.com/login/oauth/access_token",
+          clientID: appCfg.CLIENT_ID_GITHUB_LOGIN!,
+          clientSecret: appCfg.CLIENT_SECRET_GITHUB_LOGIN!,
           callbackURL: `${appCfg.SITE_URL}/api/v1/sso/github`,
-          scope: ["user:email"],
-          // akhilmhdh: because the ts type for this is outdated by the maintainer
-          state: true as unknown as string
+          scope: ["user:email", "read:org"],
+          state: true,
+          pkce: true,
+          passReqToCallback: true
         },
         // eslint-disable-next-line
-        async (req, accessToken, _refreshToken, profile, cb) => {
-          // @ts-expect-error this is because this is express type and not fastify
-          const callbackPort = req.session.get("callbackPort");
+        async (req: any, accessToken: string, _refreshToken: string, _profile: any, done: Function) => {
           try {
             const ghEmails = await fetchGithubEmails(accessToken);
             const { email } = ghEmails.filter((gitHubEmail) => gitHubEmail.primary)[0];
+
+            if (!email) throw new Error("No primary email found");
+
+            // profile does not get automatically populated so we need to manually fetch user info
+            const user = await fetchGithubUser(accessToken);
+
+            const callbackPort = req.session.get("callbackPort");
+
             const { isUserCompleted, providerAuthToken } = await server.services.login.oauth2Login({
               email,
-              firstName: profile.displayName || profile.username || "",
+              firstName: user.name || user.login,
               lastName: "",
               authMethod: AuthMethod.GITHUB,
               callbackPort
             });
-            return cb(null, { isUserCompleted, providerAuthToken });
-          } catch (error) {
-            logger.error(error);
-            cb(error as Error, false);
+
+            done(null, { isUserCompleted, providerAuthToken, externalProviderAccessToken: accessToken });
+          } catch (err) {
+            logger.error(err);
+            done(err as Error, false);
           }
         }
       )
@@ -136,7 +150,8 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           clientSecret: appCfg.CLIENT_SECRET_GITLAB_LOGIN,
           callbackURL: `${appCfg.SITE_URL}/api/v1/sso/gitlab`,
           baseURL: appCfg.CLIENT_GITLAB_LOGIN_URL,
-          state: true
+          state: true,
+          pkce: true
         },
         async (req: any, _accessToken: string, _refreshToken: string, profile: any, cb: any) => {
           try {
@@ -166,16 +181,23 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     schema: {
       querystring: z.object({
-        callback_port: z.string().optional()
+        callback_port: z.string().optional(),
+        is_admin_login: z
+          .string()
+          .optional()
+          .transform((val) => val === "true")
       })
     },
     preValidation: [
       async (req, res) => {
-        const { callback_port: callbackPort } = req.query;
+        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query;
         // ensure fresh session state per login attempt
         await req.session.regenerate();
         if (callbackPort) {
           req.session.set("callbackPort", callbackPort);
+        }
+        if (isAdminLogin) {
+          req.session.set("isAdminLogin", isAdminLogin);
         }
         return (
           passport.authenticate("google", {
@@ -200,10 +222,13 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       // this is due to zod type difference
     }) as never,
     handler: async (req, res) => {
+      const isAdminLogin = req.session.get("isAdminLogin");
       await req.session.destroy();
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}${
+            isAdminLogin ? `&isAdminLogin=${isAdminLogin}` : ""
+          }`
         );
       }
       return res.redirect(
@@ -217,16 +242,24 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     schema: {
       querystring: z.object({
-        callback_port: z.string().optional()
+        callback_port: z.string().optional(),
+        is_admin_login: z
+          .string()
+          .optional()
+          .transform((val) => val === "true")
       })
     },
     preValidation: [
       async (req, res) => {
-        const { callback_port: callbackPort } = req.query;
+        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query;
         // ensure fresh session state per login attempt
         await req.session.regenerate();
         if (callbackPort) {
           req.session.set("callbackPort", callbackPort);
+        }
+
+        if (isAdminLogin) {
+          req.session.set("isAdminLogin", isAdminLogin);
         }
 
         return (
@@ -289,10 +322,24 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       // this is due to zod type difference
     }) as any,
     handler: async (req, res) => {
+      const isAdminLogin = req.session.get("isAdminLogin");
       await req.session.destroy();
+
+      if (req.passportUser.externalProviderAccessToken) {
+        void res.cookie(INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN, req.passportUser.externalProviderAccessToken, {
+          httpOnly: true,
+          path: "/",
+          sameSite: "strict",
+          secure: appCfg.HTTPS_ENABLED,
+          expires: new Date(Date.now() + ms(appCfg.JWT_PROVIDER_AUTH_LIFETIME))
+        });
+      }
+
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}${
+            isAdminLogin ? `&isAdminLogin=${isAdminLogin}` : ""
+          }`
         );
       }
       return res.redirect(
@@ -306,16 +353,24 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     schema: {
       querystring: z.object({
-        callback_port: z.string().optional()
+        callback_port: z.string().optional(),
+        is_admin_login: z
+          .string()
+          .optional()
+          .transform((val) => val === "true")
       })
     },
     preValidation: [
       async (req, res) => {
-        const { callback_port: callbackPort } = req.query;
+        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query;
         // ensure fresh session state per login attempt
         await req.session.regenerate();
         if (callbackPort) {
           req.session.set("callbackPort", callbackPort);
+        }
+
+        if (isAdminLogin) {
+          req.session.set("isAdminLogin", isAdminLogin);
         }
 
         return (
@@ -342,10 +397,13 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any,
     handler: async (req, res) => {
+      const isAdminLogin = req.session.get("isAdminLogin");
       await req.session.destroy();
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}${
+            isAdminLogin ? `&isAdminLogin=${isAdminLogin}` : ""
+          }`
         );
       }
       return res.redirect(

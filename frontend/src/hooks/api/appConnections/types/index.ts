@@ -10,6 +10,7 @@ import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THumanitecConnection } from "./humanitec-connection";
+import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
@@ -27,6 +28,7 @@ export * from "./gcp-connection";
 export * from "./github-connection";
 export * from "./hc-vault-connection";
 export * from "./humanitec-connection";
+export * from "./ldap-connection";
 export * from "./mssql-connection";
 export * from "./postgres-connection";
 export * from "./teamcity-connection";
@@ -50,6 +52,7 @@ export type TAppConnection =
   | TWindmillConnection
   | TAuth0Connection
   | THCVaultConnection
+  | TLdapConnection
   | TTeamCityConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
@@ -93,5 +96,6 @@ export type TAppConnectionMap = {
   [AppConnection.Windmill]: TWindmillConnection;
   [AppConnection.Auth0]: TAuth0Connection;
   [AppConnection.HCVault]: THCVaultConnection;
+  [AppConnection.LDAP]: TLdapConnection;
   [AppConnection.TeamCity]: TTeamCityConnection;
 };

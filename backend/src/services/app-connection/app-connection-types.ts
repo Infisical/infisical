@@ -63,6 +63,12 @@ import {
   THumanitecConnectionInput,
   TValidateHumanitecConnectionCredentialsSchema
 } from "./humanitec";
+import {
+  TLdapConnection,
+  TLdapConnectionConfig,
+  TLdapConnectionInput,
+  TValidateLdapConnectionCredentialsSchema
+} from "./ldap";
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import {
   TPostgresConnection,
@@ -110,6 +116,7 @@ export type TAppConnection = { id: string } & (
   | TWindmillConnection
   | TAuth0Connection
   | THCVaultConnection
+  | TLdapConnection
   | TTeamCityConnection
 );
 
@@ -133,6 +140,7 @@ export type TAppConnectionInput = { id: string } & (
   | TWindmillConnectionInput
   | TAuth0ConnectionInput
   | THCVaultConnectionInput
+  | TLdapConnectionInput
   | TTeamCityConnectionInput
 );
 
@@ -162,6 +170,7 @@ export type TAppConnectionConfig =
   | TWindmillConnectionConfig
   | TAuth0ConnectionConfig
   | THCVaultConnectionConfig
+  | TLdapConnectionConfig
   | TTeamCityConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -180,6 +189,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateWindmillConnectionCredentialsSchema
   | TValidateAuth0ConnectionCredentialsSchema
   | TValidateHCVaultConnectionCredentialsSchema
+  | TValidateLdapConnectionCredentialsSchema
   | TValidateTeamCityConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

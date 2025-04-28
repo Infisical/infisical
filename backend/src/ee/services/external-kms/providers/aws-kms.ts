@@ -102,10 +102,19 @@ export const AwsKmsProviderFactory = async ({ inputs }: AwsKmsProviderArgs): Pro
     return { data: Buffer.from(decryptionCommand.Plaintext) };
   };
 
+  const cleanup = async () => {
+    try {
+      awsClient.destroy();
+    } catch (error) {
+      throw new Error("Failed to cleanup AWS KMS client", { cause: error });
+    }
+  };
+
   return {
     generateInputKmsKey,
     validateConnection,
     encrypt,
-    decrypt
+    decrypt,
+    cleanup
   };
 };

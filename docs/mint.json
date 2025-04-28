@@ -180,8 +180,9 @@
             "documentation/platform/secret-rotation/overview",
             "documentation/platform/secret-rotation/auth0-client-secret",
             "documentation/platform/secret-rotation/aws-iam-user-secret",
-            "documentation/platform/secret-rotation/postgres-credentials",
-            "documentation/platform/secret-rotation/mssql-credentials"
+            "documentation/platform/secret-rotation/ldap-password",
+            "documentation/platform/secret-rotation/mssql-credentials",
+            "documentation/platform/secret-rotation/postgres-credentials"
           ]
         },
         {
@@ -298,7 +299,8 @@
             "documentation/platform/scim/jumpcloud",
             "documentation/platform/scim/group-mappings"
           ]
-        }
+        },
+        "documentation/platform/github-org-sync"
       ]
     },
     {
@@ -434,6 +436,7 @@
             "integrations/app-connections/github",
             "integrations/app-connections/hashicorp-vault",
             "integrations/app-connections/humanitec",
+            "integrations/app-connections/ldap",
             "integrations/app-connections/mssql",
             "integrations/app-connections/postgres",
             "integrations/app-connections/teamcity",
@@ -886,6 +889,19 @@
               ]
             },
             {
+            "group": "LDAP Password",
+            "pages": [
+                "api-reference/endpoints/secret-rotations/ldap-password/create",
+                "api-reference/endpoints/secret-rotations/ldap-password/delete",
+                "api-reference/endpoints/secret-rotations/ldap-password/get-by-id",
+                "api-reference/endpoints/secret-rotations/ldap-password/get-by-name",
+                "api-reference/endpoints/secret-rotations/ldap-password/get-generated-credentials-by-id",
+                "api-reference/endpoints/secret-rotations/ldap-password/list",
+                "api-reference/endpoints/secret-rotations/ldap-password/rotate-secrets",
+                "api-reference/endpoints/secret-rotations/ldap-password/update"
+              ]
+            },
+            {
               "group": "Microsoft SQL Server Credentials",
               "pages": [
                 "api-reference/endpoints/secret-rotations/mssql-credentials/create",
@@ -1047,6 +1063,18 @@
                 "api-reference/endpoints/app-connections/humanitec/create",
                 "api-reference/endpoints/app-connections/humanitec/update",
                 "api-reference/endpoints/app-connections/humanitec/delete"
+              ]
+            },
+            {
+              "group": "LDAP",
+              "pages": [
+                "api-reference/endpoints/app-connections/ldap/list",
+                "api-reference/endpoints/app-connections/ldap/available",
+                "api-reference/endpoints/app-connections/ldap/get-by-id",
+                "api-reference/endpoints/app-connections/ldap/get-by-name",
+                "api-reference/endpoints/app-connections/ldap/create",
+                "api-reference/endpoints/app-connections/ldap/update",
+                "api-reference/endpoints/app-connections/ldap/delete"
               ]
             },
             {

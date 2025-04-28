@@ -320,7 +320,9 @@ export enum EventType {
   DELETE_SECRET_ROTATION = "delete-secret-rotation",
   SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
 
-  PROJECT_ACCESS_REQUEST = "project-access-request"
+  PROJECT_ACCESS_REQUEST = "project-access-request",
+  PROJECT_ASSUME_PRIVILEGE_SESSION_START = "project-assume-privileges-session-start",
+  PROJECT_ASSUME_PRIVILEGE_SESSION_END = "project-assume-privileges-session-end"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -1494,6 +1496,7 @@ interface CreateSshHost {
   metadata: {
     sshHostId: string;
     hostname: string;
+    alias: string | null;
     userCertTtl: string;
     hostCertTtl: string;
     loginMappings: {
@@ -1512,6 +1515,7 @@ interface UpdateSshHost {
   metadata: {
     sshHostId: string;
     hostname?: string;
+    alias?: string | null;
     userCertTtl?: string;
     hostCertTtl?: string;
     loginMappings?: {
@@ -2452,6 +2456,29 @@ interface ProjectAccessRequestEvent {
   };
 }
 
+interface ProjectAssumePrivilegesEvent {
+  type: EventType.PROJECT_ASSUME_PRIVILEGE_SESSION_START;
+  metadata: {
+    projectId: string;
+    requesterId: string;
+    requesterEmail: string;
+    targetActorType: ActorType;
+    targetActorId: string;
+    duration: string;
+  };
+}
+
+interface ProjectAssumePrivilegesExitEvent {
+  type: EventType.PROJECT_ASSUME_PRIVILEGE_SESSION_END;
+  metadata: {
+    projectId: string;
+    requesterId: string;
+    requesterEmail: string;
+    targetActorType: ActorType;
+    targetActorId: string;
+  };
+}
+
 interface SetupKmipEvent {
   type: EventType.SETUP_KMIP;
   metadata: {
@@ -2757,6 +2784,8 @@ export type Event =
   | KmipOperationLocateEvent
   | KmipOperationRegisterEvent
   | ProjectAccessRequestEvent
+  | ProjectAssumePrivilegesEvent
+  | ProjectAssumePrivilegesExitEvent
   | CreateSecretRequestEvent
   | SecretApprovalRequestReview
   | GetSecretRotationsEvent

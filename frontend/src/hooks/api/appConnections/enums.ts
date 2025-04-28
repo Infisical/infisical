@@ -14,5 +14,6 @@ export enum AppConnection {
   Windmill = "windmill",
   Auth0 = "auth0",
   HCVault = "hashicorp-vault",
+  LDAP = "ldap",
   TeamCity = "teamcity"
 }

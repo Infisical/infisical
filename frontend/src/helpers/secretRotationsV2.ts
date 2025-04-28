@@ -20,6 +20,11 @@ export const SECRET_ROTATION_MAP: Record<
     image: "Auth0.png",
     size: 35
   },
+  [SecretRotation.LdapPassword]: {
+    name: "LDAP Password",
+    image: "LDAP.png",
+    size: 65
+  },
   [SecretRotation.AwsIamUserSecret]: {
     name: "AWS IAM User Secret",
     image: "Amazon Web Services.png",
@@ -31,6 +36,7 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.PostgresCredentials]: AppConnection.Postgres,
   [SecretRotation.MsSqlCredentials]: AppConnection.MsSql,
   [SecretRotation.Auth0ClientSecret]: AppConnection.Auth0,
+  [SecretRotation.LdapPassword]: AppConnection.LDAP,
   [SecretRotation.AwsIamUserSecret]: AppConnection.AWS
 };
 
@@ -39,6 +45,7 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.PostgresCredentials]: true,
   [SecretRotation.MsSqlCredentials]: true,
   [SecretRotation.Auth0ClientSecret]: false,
+  [SecretRotation.LdapPassword]: false,
   [SecretRotation.AwsIamUserSecret]: true
 };
 

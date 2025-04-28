@@ -19,6 +19,7 @@ import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
 import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
+import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
@@ -93,6 +94,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <Auth0ConnectionForm onSubmit={onSubmit} />;
     case AppConnection.HCVault:
       return <HCVaultConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.LDAP:
+      return <LdapConnectionForm onSubmit={onSubmit} />;
     case AppConnection.TeamCity:
       return <TeamCityConnectionForm onSubmit={onSubmit} />;
     default:
@@ -161,8 +164,11 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <Auth0ConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.HCVault:
       return <HCVaultConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.LDAP:
+      return <LdapConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.TeamCity:
       return <TeamCityConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

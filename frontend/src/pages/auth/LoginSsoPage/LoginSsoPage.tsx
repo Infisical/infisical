@@ -34,6 +34,7 @@ export const LoginSsoPage = () => {
             email={username}
             password={password}
             setPassword={setPassword}
+            isAdminLogin={search.isAdminLogin}
           />
         );
       default:

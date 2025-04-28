@@ -1,5 +1,12 @@
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
-import { faKey, faLock, faPassport, faServer, faUser } from "@fortawesome/free-solid-svg-icons";
+import {
+  faKey,
+  faLink,
+  faLock,
+  faPassport,
+  faServer,
+  faUser
+} from "@fortawesome/free-solid-svg-icons";
 
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -13,6 +20,7 @@ import {
   GitHubConnectionMethod,
   HCVaultConnectionMethod,
   HumanitecConnectionMethod,
+  LdapConnectionMethod,
   MsSqlConnectionMethod,
   PostgresConnectionMethod,
   TAppConnection,
@@ -47,6 +55,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Windmill]: { name: "Windmill", image: "Windmill.png" },
   [AppConnection.Auth0]: { name: "Auth0", image: "Auth0.png", size: 40 },
   [AppConnection.HCVault]: { name: "Hashicorp Vault", image: "Vault.png" },
+  [AppConnection.LDAP]: { name: "LDAP", image: "LDAP.png", size: 65 },
   [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" }
 };
 
@@ -83,6 +92,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Client Credentials", icon: faServer };
     case HCVaultConnectionMethod.AppRole:
       return { name: "App Role", icon: faUser };
+    case LdapConnectionMethod.SimpleBind:
+      return { name: "Simple Bind", icon: faLink };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
