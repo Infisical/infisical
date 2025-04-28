@@ -1494,6 +1494,7 @@ interface CreateSshHost {
   metadata: {
     sshHostId: string;
     hostname: string;
+    alias: string | null;
     userCertTtl: string;
     hostCertTtl: string;
     loginMappings: {
@@ -1512,6 +1513,7 @@ interface UpdateSshHost {
   metadata: {
     sshHostId: string;
     hostname?: string;
+    alias?: string | null;
     userCertTtl?: string;
     hostCertTtl?: string;
     loginMappings?: {

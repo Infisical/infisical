@@ -1387,6 +1387,7 @@ export const SSH_HOSTS = {
   CREATE: {
     projectId: "The ID of the project to create the SSH host in.",
     hostname: "The hostname of the SSH host.",
+    alias: "The alias for the SSH host.",
     userCertTtl: "The time to live for user certificates issued under this host.",
     hostCertTtl: "The time to live for host certificates issued under this host.",
     loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
@@ -1401,6 +1402,7 @@ export const SSH_HOSTS = {
   UPDATE: {
     sshHostId: "The ID of the SSH host to update.",
     hostname: "The hostname of the SSH host to update to.",
+    alias: "The alias for the SSH host to update to.",
     userCertTtl: "The time to live for user certificates issued under this host to update to.",
     hostCertTtl: "The time to live for host certificates issued under this host to update to.",
     loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
