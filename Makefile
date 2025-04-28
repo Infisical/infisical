@@ -38,20 +38,20 @@ up-dev-sso:
 # To see every file type in docs, run: find ./docs -type f -name "*.*" | grep -o '\.[^./]*$' | sort -u
 clean-docs-images:
 	cd docs && \
-	find . -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.gif" -o -name "*.svg" \) | \
-	while read img; do \
-		img_name=$$(basename "$$img"); \
-		img_path=$${img#./}; \
-		if ! grep -r --include="*.md" --include="*.mdx" --include="*.json" -e "$$img_name" -e "$$img_path" . > /dev/null; then \
-			echo "Removing unused image: $$img"; \
-			rm "$$img"; \
-		fi; \
-	done
+	find . -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.gif" -o -iname "*.svg" \) -print0 | \
+	while IFS= read -r -d '' img; do \
+ 		img_name=$$(basename "$$img"); \
+ 		img_path=$${img#./}; \
+ 		if ! grep -r --include="*.md" --include="*.mdx" --include="*.json" -e "$$img_name" -e "$$img_path" . > /dev/null; then \
+ 			echo "Removing unused image: $$img"; \
+ 			rm "$$img"; \
+ 		fi; \
+ 	done
 
 # Verifies that any images referenced in any ./docs files actually exist
 verify-image-refs:
 	cd docs && \
-	find . -type f \( -name "*.mdx" -o -name "*.json" \) -print0 | \
+	find . -type f \( -iname "*.md" -o -iname "*.mdx" -o -iname "*.json" \) -print0 | \
 	xargs -0 -I{} grep -o -E "\([^()\"']*\.(png|jpg|jpeg|gif|svg)[^()\"']*\)" {} 2>/dev/null | \
 	sort -u | while read -r img_ref; do \
 		img_ref=$$(echo "$$img_ref" | sed 's/^(\(.*\))$$/\1/'); \
