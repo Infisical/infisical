@@ -3,8 +3,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
 
 const formSchema = z.object({
@@ -93,66 +94,78 @@ export const OrgUserAccessTokenLimitSection = () => {
         This defines the maximum time a user token will be valid. After this time, the user will
         need to re-authenticate.
       </p>
-      <form onSubmit={handleSubmit(handleUserTokenExpirationSubmit)} autoComplete="off">
-        <div className="flex max-w-md gap-4">
-          <div className="flex-1">
-            <Controller
-              control={control}
-              name="expirationValue"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  label="Expiration value"
-                >
-                  <Input
-                    {...field}
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={field.value}
-                    onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 1)}
-                  />
-                </FormControl>
-              )}
-            />
-          </div>
-          <div className="flex-1">
-            <Controller
-              control={control}
-              name="expirationUnit"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl isError={Boolean(error)} errorText={error?.message} label="Time unit">
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    placeholder="Select time unit"
-                  >
-                    {timeUnits.map(({ value, label }) => (
-                      <SelectItem
-                        key={value}
-                        value={value}
-                        className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
+      <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+        {(isAllowed) => (
+          <form onSubmit={handleSubmit(handleUserTokenExpirationSubmit)} autoComplete="off">
+            <div className="flex max-w-md gap-4">
+              <div className="flex-1">
+                <Controller
+                  control={control}
+                  name="expirationValue"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                      label="Expiration value"
+                    >
+                      <Input
+                        {...field}
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={field.value}
+                        onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
+                        disabled={!isAllowed}
+                      />
+                    </FormControl>
+                  )}
+                />
+              </div>
+              <div className="flex-1">
+                <Controller
+                  control={control}
+                  name="expirationUnit"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                      label="Time unit"
+                    >
+                      <Select
+                        value={field.value}
+                        className="pr-2"
+                        onValueChange={field.onChange}
+                        placeholder="Select time unit"
+                        isDisabled={!isAllowed}
                       >
-                        <div className="ml-3 font-medium">{label}</div>
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-            />
-          </div>
-        </div>
-        <Button
-          colorSchema="secondary"
-          type="submit"
-          isLoading={isSubmitting}
-          disabled={!isDirty}
-          className="mt-4"
-        >
-          Save
-        </Button>
-      </form>
+                        {timeUnits.map(({ value, label }) => (
+                          <SelectItem
+                            key={value}
+                            value={value}
+                            className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
+                          >
+                            <div className="ml-3 font-medium">{label}</div>
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+              </div>
+            </div>
+            <Button
+              colorSchema="secondary"
+              type="submit"
+              isLoading={isSubmitting}
+              disabled={!isDirty}
+              className="mt-4"
+              isDisabled={!isAllowed}
+            >
+              Save
+            </Button>
+          </form>
+        )}
+      </OrgPermissionCan>
     </div>
   );
 };
