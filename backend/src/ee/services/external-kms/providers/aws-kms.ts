@@ -2,6 +2,8 @@ import { CreateKeyCommand, DecryptCommand, DescribeKeyCommand, EncryptCommand, K
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { randomUUID } from "crypto";
 
+import { logger } from "@app/lib/logger";
+
 import { ExternalKmsAwsSchema, KmsAwsCredentialType, TExternalKmsAwsSchema, TExternalKmsProviderFns } from "./model";
 
 const getAwsKmsClient = async (providerInputs: TExternalKmsAwsSchema) => {
@@ -102,10 +104,21 @@ export const AwsKmsProviderFactory = async ({ inputs }: AwsKmsProviderArgs): Pro
     return { data: Buffer.from(decryptionCommand.Plaintext) };
   };
 
+  const cleanup = async () => {
+    try {
+      awsClient.destroy();
+      return true;
+    } catch (error) {
+      logger.error(error, "cleanup: failed to destroy AWS KMS client");
+      return false;
+    }
+  };
+
   return {
     generateInputKmsKey,
     validateConnection,
     encrypt,
-    decrypt
+    decrypt,
+    cleanup
   };
 };
