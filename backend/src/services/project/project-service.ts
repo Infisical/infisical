@@ -1559,6 +1559,17 @@ export const projectServiceFactory = ({
     }
 
     if (integration === WorkflowIntegration.SLACK) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.Any
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
       const sanitizedAccessRequestChannels = validateSlackChannelsField.parse(accessRequestChannels);
       const sanitizedSecretRequestChannels = validateSlackChannelsField.parse(secretRequestChannels);
 
@@ -1575,17 +1586,6 @@ export const projectServiceFactory = ({
           message: "Selected slack integration is not in the same organization"
         });
       }
-
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.Any
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
       if (slackIntegration.orgId !== project.orgId) {
         throw new ForbiddenRequestError({
@@ -1637,6 +1637,17 @@ export const projectServiceFactory = ({
       } as const;
     }
     if (integration === WorkflowIntegration.MICROSOFT_TEAMS) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.Any
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
       if (isAccessRequestNotificationEnabled && !accessRequestChannels) {
         throw new BadRequestError({
           message: "Access request channels are required when access request notifications are enabled"
@@ -1675,17 +1686,6 @@ export const projectServiceFactory = ({
           message: "Selected Microsoft Teams integration is not in the same organization"
         });
       }
-
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.Any
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
       if (microsoftTeamsIntegration.orgId !== project.orgId) {
         throw new ForbiddenRequestError({
