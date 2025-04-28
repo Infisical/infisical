@@ -547,10 +547,17 @@ export class TeamsBot extends TeamsActivityHandler {
         }
       );
     } catch (error) {
-      logger.error(
-        error,
-        `sendMessageToChannel: Microsoft Teams Workflow Integration: Failed to send message to channel [channelId=${channelId}] [teamId=${teamId}] [tenantId=${tenantId}]`
-      );
+      if (axios.isAxiosError(error)) {
+        logger.error(
+          error.response?.data,
+          `sendMessageToChannel: Axios Error, Microsoft Teams Workflow Integration: Failed to send message to channel [channelId=${channelId}] [teamId=${teamId}] [tenantId=${tenantId}]`
+        );
+      } else {
+        logger.error(
+          error,
+          `sendMessageToChannel: Microsoft Teams Workflow Integration: Failed to send message to channel [channelId=${channelId}] [teamId=${teamId}] [tenantId=${tenantId}]`
+        );
+      }
       throw error;
     }
   }
