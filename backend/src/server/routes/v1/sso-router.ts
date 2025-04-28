@@ -55,7 +55,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           clientID: appCfg.CLIENT_ID_GOOGLE_LOGIN as string,
           clientSecret: appCfg.CLIENT_SECRET_GOOGLE_LOGIN as string,
           callbackURL: `${appCfg.SITE_URL}/api/v1/sso/google`,
-          scope: ["profile", " email"],
+          scope: ["profile", "email"],
           state: true,
           pkce: true
         },
