@@ -97,7 +97,7 @@ export const WorkflowIntegrationTab = () => {
               <Td>Secret Request Notifications</Td>
               <Td>Access Request Notifications Destination</Td>
               <Td>Secret Request Notifications Destination</Td>
-              <Td>Actions</Td>
+              <Td />
             </Tr>
           </THead>
           <TBody>

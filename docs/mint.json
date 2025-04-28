@@ -218,7 +218,8 @@
         {
           "group": "Workflow Integrations",
           "pages": [
-            "documentation/platform/workflow-integrations/slack-integration"
+            "documentation/platform/workflow-integrations/slack-integration",
+            "documentation/platform/workflow-integrations/microsoft-teams-integration"
           ]
         },
         {
