@@ -111,7 +111,7 @@ export const TeamCitySyncFields = () => {
                 onChange(selectedOption?.id ?? "");
               }}
               options={buildTypes}
-              isClearable={true}
+              isClearable
               placeholder="Select a build configuration..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}

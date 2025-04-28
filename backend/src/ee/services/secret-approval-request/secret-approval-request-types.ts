@@ -33,6 +33,7 @@ export type TApprovalCreateSecretV2Bridge = {
   secretComment?: string;
   reminderNote?: string | null;
   reminderRepeatDays?: number | null;
+  secretReminderRecipients?: string[] | null;
   skipMultilineEncoding?: boolean;
   metadata?: Record<string, string>;
   secretMetadata?: ResourceMetadataDTO;

@@ -407,6 +407,7 @@ export const decryptSecretRaw = (
     id: secret.id,
     user: secret.userId,
     tags: secret.tags?.map((el) => ({ ...el, name: el.slug })),
+    secretReminderRecipients: [],
     skipMultilineEncoding: secret.skipMultilineEncoding,
     secretReminderRepeatDays: secret.secretReminderRepeatDays,
     secretReminderNote: secret.secretReminderNote,
@@ -758,7 +759,7 @@ export const fnSecretBulkDelete = async ({
     deletedSecrets
       .filter(({ secretReminderRepeatDays }) => Boolean(secretReminderRepeatDays))
       .map(({ id, secretReminderRepeatDays }) =>
-        secretQueueService.removeSecretReminder({ secretId: id, repeatDays: secretReminderRepeatDays as number })
+        secretQueueService.removeSecretReminder({ secretId: id, repeatDays: secretReminderRepeatDays as number }, tx)
       )
   );
 

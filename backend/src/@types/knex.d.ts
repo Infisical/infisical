@@ -83,6 +83,9 @@ import {
   TGitAppOrg,
   TGitAppOrgInsert,
   TGitAppOrgUpdate,
+  TGithubOrgSyncConfigs,
+  TGithubOrgSyncConfigsInsert,
+  TGithubOrgSyncConfigsUpdate,
   TGroupProjectMembershipRoles,
   TGroupProjectMembershipRolesInsert,
   TGroupProjectMembershipRolesUpdate,
@@ -423,6 +426,11 @@ import {
   TWorkflowIntegrationsInsert,
   TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
+import {
+  TSecretReminderRecipients,
+  TSecretReminderRecipientsInsert,
+  TSecretReminderRecipientsUpdate
+} from "@app/db/schemas/secret-reminder-recipients";
 
 declare module "knex" {
   namespace Knex {
@@ -993,6 +1001,16 @@ declare module "knex/types/tables" {
       TSecretRotationV2SecretMappings,
       TSecretRotationV2SecretMappingsInsert,
       TSecretRotationV2SecretMappingsUpdate
+    >;
+    [TableName.SecretReminderRecipients]: KnexOriginal.CompositeTableType<
+      TSecretReminderRecipients,
+      TSecretReminderRecipientsInsert,
+      TSecretReminderRecipientsUpdate
+    >;
+    [TableName.GithubOrgSyncConfig]: KnexOriginal.CompositeTableType<
+      TGithubOrgSyncConfigs,
+      TGithubOrgSyncConfigsInsert,
+      TGithubOrgSyncConfigsUpdate
     >;
   }
 }

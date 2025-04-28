@@ -66,6 +66,7 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
         <Table>
           <THead>
             <Tr>
+              <Th>Alias</Th>
               <Th>Hostname</Th>
               <Th>Login User - Authorized Principals Mapping</Th>
               <Th />
@@ -83,6 +84,7 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                     className="h-10"
                     key={`ssh-host-${host.id}`}
                   >
+                    <Td>{host.alias ?? "-"}</Td>
                     <Td>{host.hostname}</Td>
                     <Td>
                       {host.loginMappings.length === 0 ? (

@@ -58,7 +58,8 @@ export enum ProjectPermissionIdentityActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  GrantPrivileges = "grant-privileges"
+  GrantPrivileges = "grant-privileges",
+  AssumePrivileges = "assume-privileges"
 }
 
 export enum ProjectPermissionMemberActions {
@@ -66,7 +67,8 @@ export enum ProjectPermissionMemberActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  GrantPrivileges = "grant-privileges"
+  GrantPrivileges = "grant-privileges",
+  AssumePrivileges = "assume-privileges"
 }
 
 export enum ProjectPermissionGroupActions {
@@ -247,7 +249,7 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
-  | [ProjectPermissionActions, ProjectPermissionSub.Member]
+  | [ProjectPermissionMemberActions, ProjectPermissionSub.Member]
   | [ProjectPermissionActions, ProjectPermissionSub.Groups]
   | [ProjectPermissionActions, ProjectPermissionSub.Integrations]
   | [ProjectPermissionActions, ProjectPermissionSub.Webhooks]
@@ -258,7 +260,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [
-      ProjectPermissionActions,
+      ProjectPermissionIdentityActions,
       (
         | ProjectPermissionSub.Identity
         | (ForcedSubject<ProjectPermissionSub.Identity> & IdentityManagementSubjectFields)

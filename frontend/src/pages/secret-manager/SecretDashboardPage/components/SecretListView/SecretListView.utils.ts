@@ -47,6 +47,7 @@ export const formSchema = z.object({
     .nullable()
     .optional(),
   reminderNote: z.string().trim().nullable().optional(),
+  reminderRecipients: z.array(z.string().uuid()).optional(),
   secretMetadata: z
     .object({
       key: z.string().trim().min(1),

@@ -125,7 +125,7 @@ export const AppConnectionRow = ({
                   <FontAwesomeIcon icon={faEllipsisV} />
                 </IconButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent sideOffset={2} align="end">
                 <DropdownMenuItem
                   icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
                   onClick={() => handleCopyId()}

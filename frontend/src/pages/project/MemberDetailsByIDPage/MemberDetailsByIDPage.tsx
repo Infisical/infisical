@@ -6,15 +6,28 @@ import { formatRelative } from "date-fns";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal, EmptyState, PageHeader, Spinner } from "@app/components/v2";
+import {
+  Button,
+  ConfirmActionModal,
+  DeleteActionModal,
+  EmptyState,
+  PageHeader,
+  Spinner
+} from "@app/components/v2";
 import {
   ProjectPermissionActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useOrganization,
   useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hooks/api";
+import {
+  useAssumeProjectPrivileges,
+  useDeleteUserFromWorkspace,
+  useGetWorkspaceUserDetails
+} from "@app/hooks/api";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 
 import { MemberProjectAdditionalPrivilegeSection } from "./components/MemberProjectAdditionalPrivilegeSection";
 import { MemberRoleDetailsSection } from "./components/MemberRoleDetailsSection";
@@ -35,11 +48,33 @@ export const Page = () => {
 
   const { mutateAsync: removeUserFromWorkspace, isPending: isRemovingUserFromWorkspace } =
     useDeleteUserFromWorkspace();
+  const assumePrivileges = useAssumeProjectPrivileges();
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeMember",
-    "upgradePlan"
+    "upgradePlan",
+    "assumePrivileges"
   ] as const);
+
+  const handleAssumePrivileges = async () => {
+    const { userId } = popUp?.assumePrivileges?.data as { userId: string };
+    assumePrivileges.mutate(
+      {
+        actorId: userId,
+        actorType: ActorType.USER,
+        projectId: workspaceId
+      },
+      {
+        onSuccess: () => {
+          createNotification({
+            type: "success",
+            text: "User privilege assumption has started"
+          });
+          window.location.href = `/${currentWorkspace.type}/${currentWorkspace.id}/overview`;
+        }
+      }
+    );
+  };
 
   const handleRemoveUser = async () => {
     if (!currentOrg?.id || !currentWorkspace?.id || !membershipDetails?.user?.username) return;
@@ -91,7 +126,29 @@ export const Page = () => {
             description={`User joined on ${membershipDetails?.createdAt && formatRelative(new Date(membershipDetails?.createdAt || ""), new Date())}`}
           >
             <ProjectPermissionCan
-              I={ProjectPermissionActions.Delete}
+              I={ProjectPermissionMemberActions.AssumePrivileges}
+              a={ProjectPermissionSub.Member}
+              renderTooltip
+              allowedLabel="Assume privileges of the user"
+              passThrough={false}
+            >
+              {(isAllowed) => (
+                <Button
+                  variant="outline_bg"
+                  size="xs"
+                  isDisabled={!isAllowed}
+                  isLoading={assumePrivileges.isPending}
+                  onClick={() =>
+                    handlePopUpOpen("assumePrivileges", { userId: membershipDetails?.user?.id })
+                  }
+                >
+                  Assume Privileges
+                </Button>
+              )}
+            </ProjectPermissionCan>
+
+            <ProjectPermissionCan
+              I={ProjectPermissionMemberActions.Delete}
               a={ProjectPermissionSub.Member}
               renderTooltip
               allowedLabel="Remove from project"
@@ -127,6 +184,15 @@ export const Page = () => {
             title="Do you want to remove this user from the project?"
             onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
             onDeleteApproved={handleRemoveUser}
+          />
+          <ConfirmActionModal
+            isOpen={popUp.assumePrivileges.isOpen}
+            confirmKey="assume"
+            title="Do you want to assume privileges of this user?"
+            subTitle="This will set your privileges to those of the user for the next hour."
+            onChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
+            onConfirmed={handleAssumePrivileges}
+            buttonText="Confirm"
           />
           <UpgradePlanModal
             isOpen={popUp.upgradePlan.isOpen}
