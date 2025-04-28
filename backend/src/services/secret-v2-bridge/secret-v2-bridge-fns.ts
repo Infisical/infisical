@@ -2,7 +2,7 @@ import path from "node:path";
 
 import RE2 from "re2";
 
-import { TableName, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
+import { SecretType, TableName, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -720,7 +720,7 @@ export const reshapeBridgeSecret = (
   secretReminderRecipients: secret.secretReminderRecipients || [],
   ...(secretValueHidden
     ? {
-        secretValue: INFISICAL_SECRET_VALUE_HIDDEN_MASK,
+        secretValue: secret.type === SecretType.Personal ? secret.value : INFISICAL_SECRET_VALUE_HIDDEN_MASK,
         secretValueHidden: true
       }
     : {
