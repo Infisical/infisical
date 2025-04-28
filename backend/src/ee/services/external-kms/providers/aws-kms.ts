@@ -2,8 +2,6 @@ import { CreateKeyCommand, DecryptCommand, DescribeKeyCommand, EncryptCommand, K
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { randomUUID } from "crypto";
 
-import { logger } from "@app/lib/logger";
-
 import { ExternalKmsAwsSchema, KmsAwsCredentialType, TExternalKmsAwsSchema, TExternalKmsProviderFns } from "./model";
 
 const getAwsKmsClient = async (providerInputs: TExternalKmsAwsSchema) => {
