@@ -37,7 +37,7 @@ export const ROUTE_PATHS = Object.freeze({
     ),
     SettingsPage: setRoute(
       "/organization/settings",
-      "/_authenticate/_inject-org-details/_org-layout/organization/settings"
+      "/_authenticate/_inject-org-details/_org-layout/organization/settings/"
     ),
     GroupDetailsByIDPage: setRoute(
       "/organization/groups/$groupId",
