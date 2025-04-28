@@ -39,6 +39,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.Windmill]: {
     name: "Windmill",
     image: "Windmill.png"
+  },
+  [SecretSync.TeamCity]: {
+    name: "TeamCity",
+    image: "TeamCity.png"
   }
 };
 
@@ -54,7 +58,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.TerraformCloud]: AppConnection.TerraformCloud,
   [SecretSync.Camunda]: AppConnection.Camunda,
   [SecretSync.Vercel]: AppConnection.Vercel,
-  [SecretSync.Windmill]: AppConnection.Windmill
+  [SecretSync.Windmill]: AppConnection.Windmill,
+  [SecretSync.TeamCity]: AppConnection.TeamCity
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

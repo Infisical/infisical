@@ -1,6 +1,7 @@
 export * from "./accessApproval";
 export * from "./admin";
 export * from "./apiKeys";
+export * from "./assumePrivileges";
 export * from "./auditLogs";
 export * from "./auditLogStreams";
 export * from "./auth";

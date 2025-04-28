@@ -184,3 +184,18 @@ export type TSearchProjectsDTO = {
   orderBy?: ProjectIdentityOrderBy;
   orderDirection?: OrderByDirection;
 };
+
+export type TProjectSshConfig = {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  projectId: string;
+  defaultUserSshCaId: string | null;
+  defaultHostSshCaId: string | null;
+};
+
+export type TUpdateProjectSshConfigDTO = {
+  projectId: string;
+  defaultUserSshCaId?: string;
+  defaultHostSshCaId?: string;
+};

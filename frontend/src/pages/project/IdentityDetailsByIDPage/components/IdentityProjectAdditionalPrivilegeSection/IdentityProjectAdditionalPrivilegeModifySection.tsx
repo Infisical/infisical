@@ -32,7 +32,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import {
-  ProjectPermissionActions,
+  ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useProjectPermission,
   useWorkspace
@@ -97,7 +97,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
   });
   const { permission } = useProjectPermission();
   const isIdentityEditDisabled = permission.cannot(
-    ProjectPermissionActions.Edit,
+    ProjectPermissionIdentityActions.Edit,
     subject(ProjectPermissionSub.Identity, { identityId })
   );
 

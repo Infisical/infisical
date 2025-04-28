@@ -45,6 +45,14 @@ export const GcpKmsProviderFactory = async ({ inputs }: GcpKmsProviderArgs): Pro
     }
   };
 
+  const cleanup = async () => {
+    try {
+      await gcpKmsClient.close();
+    } catch (error) {
+      throw new Error("Failed to cleanup GCP KMS client", { cause: error });
+    }
+  };
+
   // Used when adding the KMS to fetch the list of keys in specified region
   const getKeysList = async () => {
     try {
@@ -108,6 +116,7 @@ export const GcpKmsProviderFactory = async ({ inputs }: GcpKmsProviderArgs): Pro
     validateConnection,
     getKeysList,
     encrypt,
-    decrypt
+    decrypt,
+    cleanup
   };
 };

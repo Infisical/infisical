@@ -1,7 +1,7 @@
 import { packRules } from "@casl/ability/extra";
 import { z } from "zod";
 
-import { ProjectMembershipRole, ProjectMembershipsSchema, ProjectRolesSchema } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
 import {
   backfillPermissionV1SchemaToV2Schema,
   ProjectPermissionV1Schema
@@ -245,13 +245,22 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           data: z.object({
-            membership: ProjectMembershipsSchema.extend({
+            membership: z.object({
+              id: z.string(),
               roles: z
                 .object({
                   role: z.string()
                 })
                 .array()
             }),
+            assumedPrivilegeDetails: z
+              .object({
+                actorId: z.string(),
+                actorType: z.string(),
+                actorName: z.string(),
+                actorEmail: z.string().optional()
+              })
+              .optional(),
             permissions: z.any().array()
           })
         })
@@ -259,14 +268,20 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { permissions, membership } = await server.services.projectRole.getUserPermission(
+      const { permissions, membership, assumedPrivilegeDetails } = await server.services.projectRole.getUserPermission(
         req.permission.id,
         req.params.projectId,
         req.permission.authMethod,
         req.permission.orgId
       );
 
-      return { data: { permissions, membership } };
+      return {
+        data: {
+          permissions,
+          membership,
+          assumedPrivilegeDetails
+        }
+      };
     }
   });
 };

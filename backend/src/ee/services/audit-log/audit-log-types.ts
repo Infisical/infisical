@@ -234,6 +234,7 @@ export enum EventType {
   GET_PROJECT_KMS_BACKUP = "get-project-kms-backup",
   LOAD_PROJECT_KMS_BACKUP = "load-project-kms-backup",
   ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project",
+  ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
   CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
@@ -248,6 +249,8 @@ export enum EventType {
   DELETE_SLACK_INTEGRATION = "delete-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
   UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config",
+  GET_PROJECT_SSH_CONFIG = "get-project-ssh-config",
+  UPDATE_PROJECT_SSH_CONFIG = "update-project-ssh-config",
   INTEGRATION_SYNCED = "integration-synced",
   CREATE_CMEK = "create-cmek",
   UPDATE_CMEK = "update-cmek",
@@ -317,7 +320,9 @@ export enum EventType {
   DELETE_SECRET_ROTATION = "delete-secret-rotation",
   SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
 
-  PROJECT_ACCESS_REQUEST = "project-access-request"
+  PROJECT_ACCESS_REQUEST = "project-access-request",
+  PROJECT_ASSUME_PRIVILEGE_SESSION_START = "project-assume-privileges-session-start",
+  PROJECT_ASSUME_PRIVILEGE_SESSION_END = "project-assume-privileges-session-end"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -1491,6 +1496,7 @@ interface CreateSshHost {
   metadata: {
     sshHostId: string;
     hostname: string;
+    alias: string | null;
     userCertTtl: string;
     hostCertTtl: string;
     loginMappings: {
@@ -1509,6 +1515,7 @@ interface UpdateSshHost {
   metadata: {
     sshHostId: string;
     hostname?: string;
+    alias?: string | null;
     userCertTtl?: string;
     hostCertTtl?: string;
     loginMappings?: {
@@ -1907,6 +1914,11 @@ interface OrgAdminAccessProjectEvent {
   }; // no metadata yet
 }
 
+interface OrgAdminBypassSSOEvent {
+  type: EventType.ORG_ADMIN_BYPASS_SSO;
+  metadata: Record<string, string>; // no metadata yet
+}
+
 interface CreateCertificateTemplateEstConfig {
   type: EventType.CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG;
   metadata: {
@@ -1986,6 +1998,25 @@ interface GetProjectSlackConfig {
     id: string;
   };
 }
+
+interface GetProjectSshConfig {
+  type: EventType.GET_PROJECT_SSH_CONFIG;
+  metadata: {
+    id: string;
+    projectId: string;
+  };
+}
+
+interface UpdateProjectSshConfig {
+  type: EventType.UPDATE_PROJECT_SSH_CONFIG;
+  metadata: {
+    id: string;
+    projectId: string;
+    defaultUserSshCaId?: string | null;
+    defaultHostSshCaId?: string | null;
+  };
+}
+
 interface IntegrationSyncedEvent {
   type: EventType.INTEGRATION_SYNCED;
   metadata: {
@@ -2425,6 +2456,29 @@ interface ProjectAccessRequestEvent {
   };
 }
 
+interface ProjectAssumePrivilegesEvent {
+  type: EventType.PROJECT_ASSUME_PRIVILEGE_SESSION_START;
+  metadata: {
+    projectId: string;
+    requesterId: string;
+    requesterEmail: string;
+    targetActorType: ActorType;
+    targetActorId: string;
+    duration: string;
+  };
+}
+
+interface ProjectAssumePrivilegesExitEvent {
+  type: EventType.PROJECT_ASSUME_PRIVILEGE_SESSION_END;
+  metadata: {
+    projectId: string;
+    requesterId: string;
+    requesterEmail: string;
+    targetActorType: ActorType;
+    targetActorId: string;
+  };
+}
+
 interface SetupKmipEvent {
   type: EventType.SETUP_KMIP;
   metadata: {
@@ -2656,6 +2710,7 @@ export type Event =
   | GetProjectKmsBackupEvent
   | LoadProjectKmsBackupEvent
   | OrgAdminAccessProjectEvent
+  | OrgAdminBypassSSOEvent
   | CreateCertificateTemplate
   | UpdateCertificateTemplate
   | GetCertificateTemplate
@@ -2670,6 +2725,8 @@ export type Event =
   | GetSlackIntegration
   | UpdateProjectSlackConfig
   | GetProjectSlackConfig
+  | GetProjectSshConfig
+  | UpdateProjectSshConfig
   | IntegrationSyncedEvent
   | CreateCmekEvent
   | UpdateCmekEvent
@@ -2727,6 +2784,8 @@ export type Event =
   | KmipOperationLocateEvent
   | KmipOperationRegisterEvent
   | ProjectAccessRequestEvent
+  | ProjectAssumePrivilegesEvent
+  | ProjectAssumePrivilegesExitEvent
   | CreateSecretRequestEvent
   | SecretApprovalRequestReview
   | GetSecretRotationsEvent

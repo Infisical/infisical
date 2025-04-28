@@ -119,6 +119,7 @@ export const sshHostServiceFactory = ({
   const createSshHost = async ({
     projectId,
     hostname,
+    alias,
     userCertTtl,
     hostCertTtl,
     loginMappings,
@@ -192,6 +193,7 @@ export const sshHostServiceFactory = ({
         {
           projectId,
           hostname,
+          alias: alias === "" ? null : alias,
           userCertTtl,
           hostCertTtl,
           userSshCaId,
@@ -265,6 +267,7 @@ export const sshHostServiceFactory = ({
   const updateSshHost = async ({
     sshHostId,
     hostname,
+    alias,
     userCertTtl,
     hostCertTtl,
     loginMappings,
@@ -297,6 +300,7 @@ export const sshHostServiceFactory = ({
         sshHostId,
         {
           hostname,
+          alias: alias === "" ? null : alias,
           userCertTtl,
           hostCertTtl
         },

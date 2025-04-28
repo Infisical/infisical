@@ -37,6 +37,7 @@ import {
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import {
   ProjectPermissionActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProjectPermission,
   useWorkspace
@@ -88,7 +89,8 @@ export const SpecificPrivilegeSecretForm = ({
   ] as const);
   const { permission } = useProjectPermission();
   const isMemberEditDisabled =
-    permission.cannot(ProjectPermissionActions.Edit, ProjectPermissionSub.Member) && !!privilege;
+    permission.cannot(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member) &&
+    Boolean(privilege);
 
   const deleteUserPrivilege = useDeleteProjectUserAdditionalPrivilege();
   const requestAccess = useCreateAccessRequest();

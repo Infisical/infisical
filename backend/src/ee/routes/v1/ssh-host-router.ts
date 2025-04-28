@@ -7,6 +7,7 @@ import { isValidHostname } from "@app/ee/services/ssh-host/ssh-host-validators";
 import { SSH_HOSTS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { publicSshCaLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -96,10 +97,12 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
         hostname: z
           .string()
           .min(1)
+          .trim()
           .refine((v) => isValidHostname(v), {
             message: "Hostname must be a valid hostname"
           })
           .describe(SSH_HOSTS.CREATE.hostname),
+        alias: slugSchema({ min: 0, max: 64, field: "alias" }).describe(SSH_HOSTS.CREATE.alias).default(""),
         userCertTtl: z
           .string()
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
@@ -138,6 +141,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
           metadata: {
             sshHostId: host.id,
             hostname: host.hostname,
+            alias: host.alias ?? null,
             userCertTtl: host.userCertTtl,
             hostCertTtl: host.hostCertTtl,
             loginMappings: host.loginMappings,
@@ -166,12 +170,14 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         hostname: z
           .string()
+          .trim()
           .min(1)
           .refine((v) => isValidHostname(v), {
             message: "Hostname must be a valid hostname"
           })
           .optional()
           .describe(SSH_HOSTS.UPDATE.hostname),
+        alias: slugSchema({ min: 0, max: 64, field: "alias" }).describe(SSH_HOSTS.UPDATE.alias).optional(),
         userCertTtl: z
           .string()
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
@@ -208,6 +214,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
           metadata: {
             sshHostId: host.id,
             hostname: host.hostname,
+            alias: host.alias,
             userCertTtl: host.userCertTtl,
             hostCertTtl: host.hostCertTtl,
             loginMappings: host.loginMappings,

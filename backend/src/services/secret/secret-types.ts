@@ -22,9 +22,13 @@ import { SecretUpdateMode } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 
-type TPartialSecret = Pick<TSecrets, "id" | "secretReminderRepeatDays" | "secretReminderNote">;
+type TPartialSecret = Pick<TSecrets, "id" | "secretReminderRepeatDays" | "secretReminderNote"> & {
+  secretReminderRecipients?: string[] | null;
+};
 
-type TPartialInputSecret = Pick<TSecrets, "type" | "secretReminderNote" | "secretReminderRepeatDays" | "id">;
+type TPartialInputSecret = Pick<TSecrets, "type" | "secretReminderNote" | "secretReminderRepeatDays" | "id"> & {
+  secretReminderRecipients?: string[] | null;
+};
 
 export const FailedIntegrationSyncEmailsPayloadSchema = z.object({
   projectId: z.string(),
@@ -258,6 +262,7 @@ export type TUpdateSecretRawDTO = TProjectPermission & {
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
+  secretReminderRecipients?: string[] | null;
   metadata?: {
     source?: string;
   };
@@ -374,7 +379,7 @@ export type TFnSecretBulkDelete = {
   tx?: Knex;
   secretDAL: Pick<TSecretDALFactory, "deleteMany">;
   secretQueueService: {
-    removeSecretReminder: (data: TRemoveSecretReminderDTO) => Promise<void>;
+    removeSecretReminder: (data: TRemoveSecretReminderDTO, tx?: Knex) => Promise<void>;
   };
 };
 
@@ -405,11 +410,14 @@ export type TCreateSecretReminderDTO = {
   oldSecret: TPartialSecret;
   newSecret: TPartialSecret;
   projectId: string;
+
+  deleteRecipients?: boolean;
 };
 
 export type TRemoveSecretReminderDTO = {
   secretId: string;
   repeatDays: number;
+  deleteRecipients?: boolean;
 };
 
 export type TBackFillSecretReferencesDTO = TProjectPermission;

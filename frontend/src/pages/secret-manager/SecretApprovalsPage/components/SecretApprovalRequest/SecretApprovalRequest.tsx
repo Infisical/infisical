@@ -22,7 +22,7 @@ import {
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
-  ProjectPermissionActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProjectPermission,
   useUser,
@@ -171,7 +171,10 @@ export const SecretApprovalRequest = () => {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              {!!permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Member) && (
+              {!!permission.can(
+                ProjectPermissionMemberActions.Read,
+                ProjectPermissionSub.Member
+              ) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger>
                     <Button

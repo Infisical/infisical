@@ -16,7 +16,8 @@ export const SshHostsSchema = z.object({
   userCertTtl: z.string(),
   hostCertTtl: z.string(),
   userSshCaId: z.string().uuid(),
-  hostSshCaId: z.string().uuid()
+  hostSshCaId: z.string().uuid(),
+  alias: z.string().nullable().optional()
 });
 
 export type TSshHosts = z.infer<typeof SshHostsSchema>;

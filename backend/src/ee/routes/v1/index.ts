@@ -2,6 +2,7 @@ import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-templat
 
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
+import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { registerAuditLogStreamRouter } from "./audit-log-stream-router";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
@@ -45,6 +46,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await projectRouter.register(registerProjectRoleRouter);
       await projectRouter.register(registerProjectRouter);
       await projectRouter.register(registerTrustedIpRouter);
+      await projectRouter.register(registerAssumePrivilegeRouter);
     },
     { prefix: "/workspace" }
   );

@@ -12,6 +12,7 @@ import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-appr
 import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
 import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
 import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
+import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
@@ -214,6 +215,7 @@ import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-f
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
+import { secretReminderRecipientsDALFactory } from "@app/services/secret-reminder-recipients/secret-reminder-recipients-dal";
 import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sharing-dal";
 import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { secretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
@@ -248,6 +250,7 @@ import { workflowIntegrationDALFactory } from "@app/services/workflow-integratio
 import { workflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
 import { injectAuditLogInfo } from "../plugins/audit-log";
+import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
@@ -417,6 +420,7 @@ export const registerRoutes = async (
   const orgGatewayConfigDAL = orgGatewayConfigDALFactory(db);
   const gatewayDAL = gatewayDALFactory(db);
   const projectGatewayDAL = projectGatewayDALFactory(db);
+  const secretReminderRecipientsDAL = secretReminderRecipientsDALFactory(db);
 
   const secretRotationV2DAL = secretRotationV2DALFactory(db, folderDAL);
 
@@ -427,6 +431,11 @@ export const registerRoutes = async (
     serviceTokenDAL,
     projectDAL
   });
+  const assumePrivilegeService = assumePrivilegeServiceFactory({
+    projectDAL,
+    permissionService
+  });
+
   const licenseService = licenseServiceFactory({
     permissionService,
     orgDAL,
@@ -596,7 +605,14 @@ export const registerRoutes = async (
     kmsService
   });
 
-  const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL, totpService });
+  const loginService = authLoginServiceFactory({
+    userDAL,
+    smtpService,
+    tokenService,
+    orgDAL,
+    totpService,
+    auditLogService
+  });
   const passwordService = authPaswordServiceFactory({
     tokenService,
     smtpService,
@@ -721,6 +737,7 @@ export const registerRoutes = async (
     projectKeyDAL,
     projectRoleDAL,
     groupProjectDAL,
+    secretReminderRecipientsDAL,
     licenseService
   });
   const projectUserAdditionalPrivilegeService = projectUserAdditionalPrivilegeServiceFactory({
@@ -954,6 +971,7 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     projectKeyDAL,
     projectUserMembershipRoleDAL,
+    secretReminderRecipientsDAL,
     orgService,
     resourceMetadataDAL,
     secretSyncQueue
@@ -1015,7 +1033,9 @@ export const registerRoutes = async (
     projectRoleDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
-    projectDAL
+    projectDAL,
+    identityDAL,
+    userDAL
   });
 
   const snapshotService = secretSnapshotServiceFactory({
@@ -1668,7 +1688,8 @@ export const registerRoutes = async (
     kmip: kmipService,
     kmipOperation: kmipOperationService,
     gateway: gatewayService,
-    secretRotationV2: secretRotationV2Service
+    secretRotationV2: secretRotationV2Service,
+    assumePrivileges: assumePrivilegeService
   });
 
   const cronJobs: CronJob[] = [];
@@ -1689,6 +1710,7 @@ export const registerRoutes = async (
   });
 
   await server.register(injectIdentity, { userDAL, serviceTokenDAL });
+  await server.register(injectAssumePrivilege);
   await server.register(injectPermission);
   await server.register(injectRateLimits);
   await server.register(injectAuditLogInfo);

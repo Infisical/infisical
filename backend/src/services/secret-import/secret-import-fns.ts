@@ -207,7 +207,10 @@ export const fnSecretsV2FromImports = async ({
     );
     if (!importedFolders.length) continue;
 
-    const importedFolderIds = importedFolders.map((el) => el?.id) as string[];
+    const importedFolderIds = importedFolders.filter(Boolean).map((el) => el?.id) as string[];
+
+    if (!importedFolderIds.length) continue;
+
     const importedFolderGroupBySourceImport = groupBy(importedFolders, (i) => `${i?.envId}-${i?.path}`);
 
     const importedSecrets = await secretDAL.find(

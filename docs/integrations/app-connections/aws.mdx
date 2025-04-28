@@ -55,7 +55,7 @@ Infisical supports two methods for connecting to AWS.
                 ![IAM Role Creation](/images/integrations/aws/integration-aws-iam-assume-role.png)
 
                 2. Select **AWS Account** as the **Trusted Entity Type**.
-                3. Choose **Another AWS Account** and enter **381492033652** (Infisical AWS Account ID). This restricts the role to be assumed only by Infisical. If self-hosting, provide your AWS account number instead.
+                3. Select **Another AWS Account** and provide the appropriate Infisical AWS Account ID: use **381492033652** for the **US region**, and **345594589636** for the **EU region**. This restricts the role to be assumed only by Infisical. If self-hosting, provide your AWS account number instead.
                 4. (Recommended) <strong>Enable "Require external ID"</strong> and input your **Organization ID** to strengthen security and mitigate the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html).
 
                 <Warning type="warning" title="Security Best Practice: Use External ID to Prevent Confused Deputy Attacks">
@@ -143,6 +143,34 @@ Infisical supports two methods for connecting to AWS.
                                 }
                                 ```
                                 <Note>If using a custom KMS key, be sure to add the IAM user or role as a key user. ![KMS Key IAM Role User](/images/app-connections/aws/kms-key-user.png)</Note>
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
+                    <Tab title="Secret Rotation">
+                        <AccordionGroup>
+                            <Accordion title="AWS IAM">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to rotate secrets to AWS Access Keys:
+
+                                ![IAM Role Secret Rotation Permissions](/images/app-connections/aws/iam-role-secret-rotation-permissions.png)
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "iam:ListAccessKeys",
+                                                "iam:CreateAccessKey",
+                                                "iam:UpdateAccessKey",
+                                                "iam:DeleteAccessKey",
+                                                "iam:ListUsers"
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
                             </Accordion>
                         </AccordionGroup>
                     </Tab>
@@ -293,6 +321,34 @@ Infisical supports two methods for connecting to AWS.
                             </Accordion>
                         </AccordionGroup>
                     </Tab>
+                    <Tab title="Secret Rotation">
+                        <AccordionGroup>
+                            <Accordion title="AWS IAM">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to rotate secrets to AWS Access Keys:
+
+                                ![IAM Role Secret Rotation Permissions](/images/app-connections/aws/iam-role-secret-rotation-permissions.png)
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "iam:ListAccessKeys",
+                                                "iam:CreateAccessKey",
+                                                "iam:UpdateAccessKey",
+                                                "iam:DeleteAccessKey",
+                                                "iam:ListUsers"
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
                 </Tabs>
             </Step>
             <Step title="Obtain Access Key ID and Secret Access Key">
@@ -362,4 +418,5 @@ Infisical supports two methods for connecting to AWS.
         </Steps>
 
     </Tab>
+
 </Tabs>

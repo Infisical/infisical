@@ -14,7 +14,7 @@ export const PageHeader = ({ title, description, children, className }: Props) =
       <div className="w-full">
         <h1 className="mr-4 text-3xl font-semibold capitalize text-white">{title}</h1>
       </div>
-      <div className="flex items-center">{children}</div>
+      <div className="flex items-center gap-2">{children}</div>
     </div>
     <div className="mt-2 text-gray-400">{description}</div>
   </div>

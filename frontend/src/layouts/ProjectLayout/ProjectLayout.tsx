@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   BreadcrumbContainer,
   Menu,
@@ -11,7 +12,13 @@ import {
   MenuItem,
   TBreadcrumbFormat
 } from "@app/components/v2";
-import { useSubscription, useWorkspace } from "@app/context";
+import {
+  useProjectPermission,
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useSubscription,
+  useWorkspace
+} from "@app/context";
 import {
   useGetAccessRequestsCount,
   useGetSecretApprovalRequestCount,
@@ -19,6 +26,7 @@ import {
 } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
+import { AssumePrivilegeModeBanner } from "./components/AssumePrivilegeModeBanner";
 import { ProjectSelect } from "./components/ProjectSelect";
 
 // This is a generic layout shared by all types of projects.
@@ -29,6 +37,7 @@ export const ProjectLayout = () => {
   const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
   const { t } = useTranslation();
+  const { assumedPrivilegeDetails } = useProjectPermission();
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
   const { subscription } = useSubscription();
@@ -62,6 +71,7 @@ export const ProjectLayout = () => {
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
+        {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <motion.div
             key="menu-project-items"
@@ -187,22 +197,31 @@ export const ProjectLayout = () => {
                               </MenuItem>
                             )}
                           </Link> */}
-                          {/* <Link
-                            to={`/${ProjectType.SSH}/$projectId/cas` as const}
-                            params={{
-                              projectId: currentWorkspace.id
-                            }}
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Read}
+                            a={ProjectPermissionSub.SshCertificateAuthorities}
                           >
-                            {({ isActive }) => (
-                              <MenuItem
-                                isSelected={isActive}
-                                icon="certificate-authority"
-                                iconMode="reverse"
-                              >
-                                Certificate Authorities
-                              </MenuItem>
-                            )}
-                          </Link> */}
+                            {(isAllowed) =>
+                              isAllowed && (
+                                <Link
+                                  to={`/${ProjectType.SSH}/$projectId/cas` as const}
+                                  params={{
+                                    projectId: currentWorkspace.id
+                                  }}
+                                >
+                                  {({ isActive }) => (
+                                    <MenuItem
+                                      isSelected={isActive}
+                                      icon="certificate-authority"
+                                      iconMode="reverse"
+                                    >
+                                      Certificate Authorities
+                                    </MenuItem>
+                                  )}
+                                </Link>
+                              )
+                            }
+                          </ProjectPermissionCan>
                         </>
                       )}
                       {isSecretManager && (

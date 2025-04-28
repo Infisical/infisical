@@ -23,6 +23,7 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
+import { TSecretReminderRecipientsDALFactory } from "../secret-reminder-recipients/secret-reminder-recipients-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectMembershipDALFactory } from "./project-membership-dal";
@@ -53,6 +54,7 @@ type TProjectMembershipServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
+  secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
   groupProjectDAL: TGroupProjectDALFactory;
 };
 
@@ -71,6 +73,7 @@ export const projectMembershipServiceFactory = ({
   groupProjectDAL,
   projectDAL,
   projectKeyDAL,
+  secretReminderRecipientsDAL,
   licenseService
 }: TProjectMembershipServiceFactoryDep) => {
   const getProjectMemberships = async ({
@@ -79,7 +82,8 @@ export const projectMembershipServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     includeGroupMembers,
-    projectId
+    projectId,
+    roles
   }: TGetProjectMembershipDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -91,7 +95,7 @@ export const projectMembershipServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
-    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
+    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId, { roles });
 
     // projectMembers[0].project
     if (includeGroupMembers) {
@@ -388,6 +392,13 @@ export const projectMembershipServiceFactory = ({
     const membership = await projectMembershipDAL.transaction(async (tx) => {
       const [deletedMembership] = await projectMembershipDAL.delete({ projectId, id: membershipId }, tx);
       await projectKeyDAL.delete({ receiverId: deletedMembership.userId, projectId }, tx);
+      await secretReminderRecipientsDAL.delete(
+        {
+          projectId,
+          userId: deletedMembership.userId
+        },
+        tx
+      );
       return deletedMembership;
     });
     return membership;
@@ -465,6 +476,16 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
+      await secretReminderRecipientsDAL.delete(
+        {
+          projectId,
+          $in: {
+            userId: projectMembers.map(({ user }) => user.id)
+          }
+        },
+        tx
+      );
+
       // delete project keys belonging to users that are not part of any other groups in the project
       await projectKeyDAL.delete(
         {
@@ -525,6 +546,15 @@ export const projectMembershipServiceFactory = ({
         },
         tx
       );
+
+      await secretReminderRecipientsDAL.delete(
+        {
+          projectId,
+          userId: actorId
+        },
+        tx
+      );
+
       const membership = (
         await projectMembershipDAL.delete(
           {
