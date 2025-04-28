@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { AppConnections } from "@app/lib/api-docs";
+import { ApiDocsTags, AppConnections } from "@app/lib/api-docs";
 import { startsWithVowel } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -43,6 +43,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: `List the ${appName} Connections for the current organization.`,
       response: {
         200: z.object({ appConnections: sanitizedResponseSchema.array() })
@@ -76,6 +78,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: `List the ${appName} Connections the current user has permission to establish connections with.`,
       response: {
         200: z.object({
@@ -120,6 +124,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: `Get the specified ${appName} Connection by ID.`,
       params: z.object({
         connectionId: z.string().uuid().describe(AppConnections.GET_BY_ID(app).connectionId)
@@ -160,6 +166,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: `Get the specified ${appName} Connection by name.`,
       params: z.object({
         connectionName: z
@@ -204,6 +212,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: `Create ${
         startsWithVowel(appName) ? "an" : "a"
       } ${appName} Connection for the current organization.`,
@@ -247,6 +257,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: `Update the specified ${appName} Connection.`,
       params: z.object({
         connectionId: z.string().uuid().describe(AppConnections.UPDATE(app).connectionId)
@@ -292,6 +304,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: `Delete the specified ${appName} Connection.`,
       params: z.object({
         connectionId: z.string().uuid().describe(AppConnections.DELETE(app).connectionId)

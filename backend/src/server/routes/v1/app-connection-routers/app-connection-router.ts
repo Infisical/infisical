@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { Auth0ConnectionListItemSchema, SanitizedAuth0ConnectionSchema } from "@app/services/app-connection/auth0";
@@ -27,11 +28,16 @@ import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
+import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
 import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
+import {
+  SanitizedTeamCityConnectionSchema,
+  TeamCityConnectionListItemSchema
+} from "@app/services/app-connection/teamcity";
 import {
   SanitizedTerraformCloudConnectionSchema,
   TerraformCloudConnectionListItemSchema
@@ -58,7 +64,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedMsSqlConnectionSchema.options,
   ...SanitizedCamundaConnectionSchema.options,
   ...SanitizedWindmillConnectionSchema.options,
-  ...SanitizedAuth0ConnectionSchema.options
+  ...SanitizedAuth0ConnectionSchema.options,
+  ...SanitizedLdapConnectionSchema.options,
+  ...SanitizedTeamCityConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -75,7 +83,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   MsSqlConnectionListItemSchema,
   CamundaConnectionListItemSchema,
   WindmillConnectionListItemSchema,
-  Auth0ConnectionListItemSchema
+  Auth0ConnectionListItemSchema,
+  LdapConnectionListItemSchema,
+  TeamCityConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {
@@ -86,6 +96,8 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: "List the available App Connection Options.",
       response: {
         200: z.object({
@@ -107,6 +119,8 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.AppConnections],
       description: "List all the App Connections for the current organization.",
       response: {
         200: z.object({ appConnections: SanitizedAppConnectionSchema.array() })

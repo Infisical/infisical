@@ -92,6 +92,8 @@ import { Route as kmsOverviewPageRouteImport } from './pages/kms/OverviewPage/ro
 import { Route as kmsKmipPageRouteImport } from './pages/kms/KmipPage/route'
 import { Route as certManagerSettingsPageRouteImport } from './pages/cert-manager/SettingsPage/route'
 import { Route as certManagerCertificatesPageRouteImport } from './pages/cert-manager/CertificatesPage/route'
+import { Route as certManagerCertificateAuthoritiesPageRouteImport } from './pages/cert-manager/CertificateAuthoritiesPage/route'
+import { Route as certManagerAlertingPageRouteImport } from './pages/cert-manager/AlertingPage/route'
 import { Route as projectRoleDetailsBySlugPageRouteSshImport } from './pages/project/RoleDetailsBySlugPage/route-ssh'
 import { Route as projectMemberDetailsByIDPageRouteSshImport } from './pages/project/MemberDetailsByIDPage/route-ssh'
 import { Route as projectIdentityDetailsByIDPageRouteSshImport } from './pages/project/IdentityDetailsByIDPage/route-ssh'
@@ -891,6 +893,20 @@ const certManagerCertificatesPageRouteRoute =
   certManagerCertificatesPageRouteImport.update({
     id: '/overview',
     path: '/overview',
+    getParentRoute: () => certManagerLayoutRoute,
+  } as any)
+
+const certManagerCertificateAuthoritiesPageRouteRoute =
+  certManagerCertificateAuthoritiesPageRouteImport.update({
+    id: '/certificate-authorities',
+    path: '/certificate-authorities',
+    getParentRoute: () => certManagerLayoutRoute,
+  } as any)
+
+const certManagerAlertingPageRouteRoute =
+  certManagerAlertingPageRouteImport.update({
+    id: '/alerting',
+    path: '/alerting',
     getParentRoute: () => certManagerLayoutRoute,
   } as any)
 
@@ -2104,6 +2120,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof sshLayoutImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutSshProjectIdImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/alerting': {
+      id: '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/alerting'
+      path: '/alerting'
+      fullPath: '/cert-manager/$projectId/alerting'
+      preLoaderRoute: typeof certManagerAlertingPageRouteImport
+      parentRoute: typeof certManagerLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificate-authorities': {
+      id: '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificate-authorities'
+      path: '/certificate-authorities'
+      fullPath: '/cert-manager/$projectId/certificate-authorities'
+      preLoaderRoute: typeof certManagerCertificateAuthoritiesPageRouteImport
+      parentRoute: typeof certManagerLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/overview': {
       id: '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/overview'
       path: '/overview'
@@ -3119,6 +3149,8 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteWithChildren =
   )
 
 interface certManagerLayoutRouteChildren {
+  certManagerAlertingPageRouteRoute: typeof certManagerAlertingPageRouteRoute
+  certManagerCertificateAuthoritiesPageRouteRoute: typeof certManagerCertificateAuthoritiesPageRouteRoute
   certManagerCertificatesPageRouteRoute: typeof certManagerCertificatesPageRouteRoute
   certManagerSettingsPageRouteRoute: typeof certManagerSettingsPageRouteRoute
   projectAccessControlPageRouteCertManagerRoute: typeof projectAccessControlPageRouteCertManagerRoute
@@ -3130,6 +3162,9 @@ interface certManagerLayoutRouteChildren {
 }
 
 const certManagerLayoutRouteChildren: certManagerLayoutRouteChildren = {
+  certManagerAlertingPageRouteRoute: certManagerAlertingPageRouteRoute,
+  certManagerCertificateAuthoritiesPageRouteRoute:
+    certManagerCertificateAuthoritiesPageRouteRoute,
   certManagerCertificatesPageRouteRoute: certManagerCertificatesPageRouteRoute,
   certManagerSettingsPageRouteRoute: certManagerSettingsPageRouteRoute,
   projectAccessControlPageRouteCertManagerRoute:
@@ -3794,6 +3829,8 @@ export interface FileRoutesByFullPath {
   '/organization/secret-manager/overview': typeof organizationSecretManagerOverviewPageRouteRoute
   '/organization/secret-sharing/settings': typeof organizationSecretSharingSettingsPageRouteRoute
   '/organization/ssh/overview': typeof organizationSshOverviewPageRouteRoute
+  '/cert-manager/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
+  '/cert-manager/$projectId/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/cert-manager/$projectId/overview': typeof certManagerCertificatesPageRouteRoute
   '/cert-manager/$projectId/settings': typeof certManagerSettingsPageRouteRoute
   '/kms/$projectId/kmip': typeof kmsKmipPageRouteRoute
@@ -3969,6 +4006,8 @@ export interface FileRoutesByTo {
   '/organization/secret-manager/overview': typeof organizationSecretManagerOverviewPageRouteRoute
   '/organization/secret-sharing/settings': typeof organizationSecretSharingSettingsPageRouteRoute
   '/organization/ssh/overview': typeof organizationSshOverviewPageRouteRoute
+  '/cert-manager/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
+  '/cert-manager/$projectId/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/cert-manager/$projectId/overview': typeof certManagerCertificatesPageRouteRoute
   '/cert-manager/$projectId/settings': typeof certManagerSettingsPageRouteRoute
   '/kms/$projectId/kmip': typeof kmsKmipPageRouteRoute
@@ -4160,6 +4199,8 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout': typeof kmsLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout': typeof secretManagerLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout': typeof sshLayoutRouteWithChildren
+  '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/alerting': typeof certManagerAlertingPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/overview': typeof certManagerCertificatesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/settings': typeof certManagerSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/kmip': typeof kmsKmipPageRouteRoute
@@ -4344,6 +4385,8 @@ export interface FileRouteTypes {
     | '/organization/secret-manager/overview'
     | '/organization/secret-sharing/settings'
     | '/organization/ssh/overview'
+    | '/cert-manager/$projectId/alerting'
+    | '/cert-manager/$projectId/certificate-authorities'
     | '/cert-manager/$projectId/overview'
     | '/cert-manager/$projectId/settings'
     | '/kms/$projectId/kmip'
@@ -4518,6 +4561,8 @@ export interface FileRouteTypes {
     | '/organization/secret-manager/overview'
     | '/organization/secret-sharing/settings'
     | '/organization/ssh/overview'
+    | '/cert-manager/$projectId/alerting'
+    | '/cert-manager/$projectId/certificate-authorities'
     | '/cert-manager/$projectId/overview'
     | '/cert-manager/$projectId/settings'
     | '/kms/$projectId/kmip'
@@ -4707,6 +4752,8 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout'
     | '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout'
+    | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/alerting'
+    | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificate-authorities'
     | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/kmip'
@@ -5222,6 +5269,8 @@ export const routeTree = rootRoute
       "filePath": "cert-manager/layout.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId",
       "children": [
+        "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/alerting",
+        "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificate-authorities",
         "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/overview",
         "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/settings",
         "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/access-management",
@@ -5276,6 +5325,14 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/members/$membershipId",
         "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/roles/$roleSlug"
       ]
+    },
+    "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/alerting": {
+      "filePath": "cert-manager/AlertingPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificate-authorities": {
+      "filePath": "cert-manager/CertificateAuthoritiesPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/overview": {
       "filePath": "cert-manager/CertificatesPage/route.tsx",

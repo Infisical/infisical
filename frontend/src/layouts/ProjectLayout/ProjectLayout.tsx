@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   BreadcrumbContainer,
   Menu,
@@ -11,7 +12,13 @@ import {
   MenuItem,
   TBreadcrumbFormat
 } from "@app/components/v2";
-import { useProjectPermission, useSubscription, useWorkspace } from "@app/context";
+import {
+  useProjectPermission
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useSubscription,
+  useWorkspace
+} from "@app/context";
 import {
   useGetAccessRequestsCount,
   useGetSecretApprovalRequestCount,
@@ -33,6 +40,7 @@ export const ProjectLayout = () => {
   const { assumedPrivilegeDetails } = useProjectPermission();
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
+  const { subscription } = useSubscription();
 
   const isSecretManager = currentWorkspace?.type === ProjectType.SecretManager;
   const isCertManager = currentWorkspace?.type === ProjectType.CertificateManager;
@@ -49,7 +57,6 @@ export const ProjectLayout = () => {
   });
 
   // we only show the secret rotations v1 tab if they have existing rotations
-  const { subscription } = useSubscription();
   const { data: secretRotations } = useGetSecretRotations({
     workspaceId,
     options: {
@@ -95,18 +102,46 @@ export const ProjectLayout = () => {
                         </Link>
                       )}
                       {isCertManager && (
-                        <Link
-                          to={`/${ProjectType.CertificateManager}/$projectId/overview` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="lock-closed">
-                              Overview
-                            </MenuItem>
-                          )}
-                        </Link>
+                        <>
+                          <Link
+                            to={`/${ProjectType.CertificateManager}/$projectId/overview` as const}
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="certificate">
+                                Certificates
+                              </MenuItem>
+                            )}
+                          </Link>
+                          <Link
+                            to={
+                              `/${ProjectType.CertificateManager}/$projectId/certificate-authorities` as const
+                            }
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="certificate-authority">
+                                Certificate Authorities
+                              </MenuItem>
+                            )}
+                          </Link>
+                          <Link
+                            to={`/${ProjectType.CertificateManager}/$projectId/alerting` as const}
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="notification-bell">
+                                Alerting
+                              </MenuItem>
+                            )}
+                          </Link>
+                        </>
                       )}
                       {isCmek && (
                         <Link
@@ -162,22 +197,31 @@ export const ProjectLayout = () => {
                               </MenuItem>
                             )}
                           </Link> */}
-                          {/* <Link
-                            to={`/${ProjectType.SSH}/$projectId/cas` as const}
-                            params={{
-                              projectId: currentWorkspace.id
-                            }}
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Read}
+                            a={ProjectPermissionSub.SshCertificateAuthorities}
                           >
-                            {({ isActive }) => (
-                              <MenuItem
-                                isSelected={isActive}
-                                icon="certificate-authority"
-                                iconMode="reverse"
-                              >
-                                Certificate Authorities
-                              </MenuItem>
-                            )}
-                          </Link> */}
+                            {(isAllowed) =>
+                              isAllowed && (
+                                <Link
+                                  to={`/${ProjectType.SSH}/$projectId/cas` as const}
+                                  params={{
+                                    projectId: currentWorkspace.id
+                                  }}
+                                >
+                                  {({ isActive }) => (
+                                    <MenuItem
+                                      isSelected={isActive}
+                                      icon="certificate-authority"
+                                      iconMode="reverse"
+                                    >
+                                      Certificate Authorities
+                                    </MenuItem>
+                                  )}
+                                </Link>
+                              )
+                            }
+                          </ProjectPermissionCan>
                         </>
                       )}
                       {isSecretManager && (

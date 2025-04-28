@@ -2,6 +2,7 @@
 import { ForbiddenError } from "@casl/ability";
 import axios from "axios";
 import jwt from "jsonwebtoken";
+import RE2 from "re2";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -67,6 +68,15 @@ const awsRegionFromHeader = (authorizationHeader: string): string | null => {
   return null;
 };
 
+function isValidAwsRegion(region: string | null): boolean {
+  const validRegionPattern = new RE2("^[a-z0-9-]+$");
+  if (typeof region !== "string" || region.length === 0 || region.length > 20) {
+    return false;
+  }
+
+  return validRegionPattern.test(region);
+}
+
 export const identityAwsAuthServiceFactory = ({
   identityAccessTokenDAL,
   identityAwsAuthDAL,
@@ -84,8 +94,12 @@ export const identityAwsAuthServiceFactory = ({
 
     const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
     const body: string = Buffer.from(iamRequestBody, "base64").toString();
-
     const region = headers.Authorization ? awsRegionFromHeader(headers.Authorization) : null;
+
+    if (!isValidAwsRegion(region)) {
+      throw new BadRequestError({ message: "Invalid AWS region" });
+    }
+
     const url = region ? `https://sts.${region}.amazonaws.com` : identityAwsAuth.stsEndpoint;
 
     const {
@@ -125,7 +139,7 @@ export const identityAwsAuthServiceFactory = ({
           // convert wildcard ARN to a regular expression: "arn:aws:iam::123456789012:*" -> "^arn:aws:iam::123456789012:.*$"
           // considers exact matches + wildcard matches
           // heavily validated in router
-          const regex = new RegExp(`^${principalArn.replaceAll("*", ".*")}$`);
+          const regex = new RE2(`^${principalArn.replaceAll("*", ".*")}$`);
           return regex.test(extractPrincipalArn(Arn));
         });
 

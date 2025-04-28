@@ -8,6 +8,51 @@ import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connec
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
+export enum ApiDocsTags {
+  Identities = "Identities",
+  TokenAuth = "Token Auth",
+  UniversalAuth = "Universal Auth",
+  GcpAuth = "GCP Auth",
+  AwsAuth = "AWS Auth",
+  AzureAuth = "Azure Auth",
+  KubernetesAuth = "Kubernetes Auth",
+  JwtAuth = "JWT Auth",
+  OidcAuth = "OIDC Auth",
+  Groups = "Groups",
+  Organizations = "Organizations",
+  Projects = "Projects",
+  ProjectUsers = "Project Users",
+  ProjectGroups = "Project Groups",
+  ProjectIdentities = "Project Identities",
+  ProjectRoles = "Project Roles",
+  ProjectTemplates = "Project Templates",
+  Environments = "Environments",
+  Folders = "Folders",
+  SecretTags = "Secret Tags",
+  Secrets = "Secrets",
+  DynamicSecrets = "Dynamic Secrets",
+  SecretImports = "Secret Imports",
+  SecretRotations = "Secret Rotations",
+  IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
+  IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
+  AppConnections = "App Connections",
+  SecretSyncs = "Secret Syncs",
+  Integrations = "Integrations",
+  ServiceTokens = "Service Tokens",
+  AuditLogs = "Audit Logs",
+  PkiCertificateAuthorities = "PKI Certificate Authorities",
+  PkiCertificates = "PKI Certificates",
+  PkiCertificateTemplates = "PKI Certificate Templates",
+  PkiCertificateCollections = "PKI Certificate Collections",
+  PkiAlerting = "PKI Alerting",
+  SshCertificates = "SSH Certificates",
+  SshCertificateAuthorities = "SSH Certificate Authorities",
+  SshCertificateTemplates = "SSH Certificate Templates",
+  KmsKeys = "KMS Keys",
+  KmsEncryption = "KMS Encryption",
+  KmsSigning = "KMS Signing"
+}
+
 export const GROUPS = {
   CREATE: {
     name: "The name of the group to create.",
@@ -888,7 +933,7 @@ export const DYNAMIC_SECRETS = {
     environmentSlug: "The slug of the environment to list folders from.",
     path: "The path to list folders from."
   },
-  LIST_LEAES_BY_NAME: {
+  LIST_LEASES_BY_NAME: {
     projectSlug: "The slug of the project to create dynamic secret in.",
     environmentSlug: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
@@ -1812,6 +1857,20 @@ export const AppConnections = {
     WINDMILL: {
       instanceUrl: "The Windmill instance URL to connect with (defaults to https://app.windmill.dev).",
       accessToken: "The access token to use to connect with Windmill."
+    },
+    LDAP: {
+      provider: "The type of LDAP provider. Determines provider-specific behaviors.",
+      url: "The LDAP/LDAPS URL to connect to (e.g., 'ldap://domain-or-ip:389' or 'ldaps://domain-or-ip:636').",
+      dn: "The Distinguished Name (DN) of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com').",
+      password: "The password to bind with for authentication.",
+      sslRejectUnauthorized:
+        "Whether or not to reject unauthorized SSL certificates (true/false) when using ldaps://. Set to false only in test environments.",
+      sslCertificate:
+        "The SSL certificate (PEM format) to use for secure connection when using ldaps:// with a self-signed certificate."
+    },
+    TEAMCITY: {
+      instanceUrl: "The TeamCity instance URL to connect with.",
+      accessToken: "The access token to use to connect with TeamCity."
     }
   }
 };
@@ -1951,6 +2010,10 @@ export const SecretSyncs = {
     WINDMILL: {
       workspace: "The Windmill workspace to sync secrets to.",
       path: "The Windmill workspace path to sync secrets to."
+    },
+    TEAMCITY: {
+      project: "The TeamCity project to sync secrets to.",
+      buildConfig: "The TeamCity build configuration to sync secrets to."
     }
   }
 };
@@ -2015,6 +2078,26 @@ export const SecretRotations = {
     },
     AUTH0_CLIENT_SECRET: {
       clientId: "The client ID of the Auth0 Application to rotate the client secret for."
+    },
+    LDAP_PASSWORD: {
+      dn: "The Distinguished Name (DN) of the principal to rotate the password for."
+    },
+    GENERAL: {
+      PASSWORD_REQUIREMENTS: {
+        base: "The password requirements to use when generating the new password.",
+        length: "The length of the password to generate.",
+        required: {
+          digits: "The amount of digits to require in the generated password.",
+          lowercase: "The amount of lowercase characters to require in the generated password.",
+          uppercase: "The amount of uppercase characters to require in the generated password.",
+          symbols: "The amount of symbols to require in the generated password."
+        },
+        allowedSymbols: 'The allowed symbols to use in the generated password (defaults to "-_.~!*").'
+      }
+    },
+    AWS_IAM_USER_SECRET: {
+      userName: "The name of the client to rotate credentials for.",
+      region: "The AWS region the client is present in."
     }
   },
   SECRETS_MAPPING: {
@@ -2025,6 +2108,14 @@ export const SecretRotations = {
     AUTH0_CLIENT_SECRET: {
       clientId: "The name of the secret that the client ID will be mapped to.",
       clientSecret: "The name of the secret that the rotated client secret will be mapped to."
+    },
+    LDAP_PASSWORD: {
+      dn: "The name of the secret that the Distinguished Name (DN) of the principal will be mapped to.",
+      password: "The name of the secret that the rotated password will be mapped to."
+    },
+    AWS_IAM_USER_SECRET: {
+      accessKeyId: "The name of the secret that the access key ID will be mapped to.",
+      secretAccessKey: "The name of the secret that the rotated secret access key will be mapped to."
     }
   }
 };

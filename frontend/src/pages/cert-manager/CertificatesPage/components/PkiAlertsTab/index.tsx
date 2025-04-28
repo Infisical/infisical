@@ -1,1 +1,0 @@
-export { PkiAlertsTab } from "./PkiAlertsTab";

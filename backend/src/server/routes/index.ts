@@ -603,7 +603,14 @@ export const registerRoutes = async (
     kmsService
   });
 
-  const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL, totpService });
+  const loginService = authLoginServiceFactory({
+    userDAL,
+    smtpService,
+    tokenService,
+    orgDAL,
+    totpService,
+    auditLogService
+  });
   const passwordService = authPaswordServiceFactory({
     tokenService,
     smtpService,
@@ -1098,7 +1105,8 @@ export const registerRoutes = async (
     secretApprovalRequestSecretDAL,
     kmsService,
     snapshotService,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    keyStore
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({

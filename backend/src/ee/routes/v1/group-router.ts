@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { GroupsSchema, OrgMembershipRole, UsersSchema } from "@app/db/schemas";
 import { EFilterReturnedUsers } from "@app/ee/services/group/group-types";
-import { GROUPS } from "@app/lib/api-docs";
+import { ApiDocsTags, GROUPS } from "@app/lib/api-docs";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -13,6 +13,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Groups],
       body: z.object({
         name: z.string().trim().min(1).max(50).describe(GROUPS.CREATE.name),
         slug: slugSchema({ min: 5, max: 36 }).optional().describe(GROUPS.CREATE.slug),
@@ -40,6 +42,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Groups],
       params: z.object({
         id: z.string().trim().describe(GROUPS.GET_BY_ID.id)
       }),
@@ -65,6 +69,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Groups],
       response: {
         200: GroupsSchema.array()
       }
@@ -87,6 +93,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Groups],
       params: z.object({
         id: z.string().trim().describe(GROUPS.UPDATE.id)
       }),
@@ -120,6 +128,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     method: "DELETE",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Groups],
       params: z.object({
         id: z.string().trim().describe(GROUPS.DELETE.id)
       }),
@@ -145,6 +155,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     url: "/:id/users",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Groups],
       params: z.object({
         id: z.string().trim().describe(GROUPS.LIST_USERS.id)
       }),
@@ -194,6 +206,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     url: "/:id/users/:username",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Groups],
       params: z.object({
         id: z.string().trim().describe(GROUPS.ADD_USER.id),
         username: z.string().trim().describe(GROUPS.ADD_USER.username)
@@ -227,6 +241,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     url: "/:id/users/:username",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Groups],
       params: z.object({
         id: z.string().trim().describe(GROUPS.DELETE_USER.id),
         username: z.string().trim().describe(GROUPS.DELETE_USER.username)

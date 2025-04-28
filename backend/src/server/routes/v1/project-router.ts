@@ -1,3 +1,4 @@
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
@@ -6,6 +7,7 @@ import {
   ProjectMembershipsSchema,
   ProjectRolesSchema,
   ProjectSlackConfigsSchema,
+  ProjectSshConfigsSchema,
   ProjectType,
   SecretFoldersSchema,
   SortDirection,
@@ -13,8 +15,9 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PROJECTS } from "@app/lib/api-docs";
+import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
+import { re2Validator } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -77,7 +80,17 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         includeGroupMembers: z
           .enum(["true", "false"])
           .default("false")
-          .transform((value) => value === "true")
+          .transform((value) => value === "true"),
+        roles: z
+          .string()
+          .trim()
+          .transform(decodeURIComponent)
+          .refine((value) => {
+            if (!value) return true;
+            const slugs = value.split(",");
+            return slugs.every((slug) => slugify(slug.trim(), { lowercase: true }) === slug.trim());
+          })
+          .optional()
       }),
       params: z.object({
         workspaceId: z.string().trim()
@@ -116,13 +129,15 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      const roles = (req.query.roles?.split(",") || []).filter(Boolean);
       const users = await server.services.projectMembership.getProjectMemberships({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         includeGroupMembers: req.query.includeGroupMembers,
         projectId: req.params.workspaceId,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        roles
       });
 
       return { users };
@@ -176,6 +191,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
       description: "Get project",
       security: [
         {
@@ -214,6 +231,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
       description: "Delete project",
       security: [
         {
@@ -289,6 +308,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
       description: "Update project",
       security: [
         {
@@ -316,11 +337,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         slug: z
           .string()
           .trim()
-          .regex(
-            /^[a-z0-9]+(?:[_-][a-z0-9]+)*$/,
-            "Project slug can only contain lowercase letters and numbers, with optional single hyphens (-) or underscores (_) between words. Cannot start or end with a hyphen or underscore."
-          )
           .max(64, { message: "Slug must be 64 characters or fewer" })
+          .refine(re2Validator(/^[a-z0-9]+(?:[_-][a-z0-9]+)*$/), {
+            message:
+              "Project slug can only contain lowercase letters and numbers, with optional single hyphens (-) or underscores (_) between words. Cannot start or end with a hyphen or underscore."
+          })
           .optional()
           .describe(PROJECTS.UPDATE.slug)
       }),
@@ -512,6 +533,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "List integrations for a project.",
       security: [
         {
@@ -555,6 +578,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Integrations],
       description: "List integration auth objects for a workspace.",
       security: [
         {
@@ -609,6 +634,107 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId
       });
       return { serviceTokenData };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:workspaceId/ssh-config",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: ProjectSshConfigsSchema.pick({
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          projectId: true,
+          defaultUserSshCaId: true,
+          defaultHostSshCaId: true
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const sshConfig = await server.services.project.getProjectSshConfig({
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: sshConfig.projectId,
+        event: {
+          type: EventType.GET_PROJECT_SSH_CONFIG,
+          metadata: {
+            id: sshConfig.id,
+            projectId: sshConfig.projectId
+          }
+        }
+      });
+
+      return sshConfig;
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:workspaceId/ssh-config",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        defaultUserSshCaId: z.string().optional(),
+        defaultHostSshCaId: z.string().optional()
+      }),
+      response: {
+        200: ProjectSshConfigsSchema.pick({
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          projectId: true,
+          defaultUserSshCaId: true,
+          defaultHostSshCaId: true
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const sshConfig = await server.services.project.updateProjectSshConfig({
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: sshConfig.projectId,
+        event: {
+          type: EventType.UPDATE_PROJECT_SSH_CONFIG,
+          metadata: {
+            id: sshConfig.id,
+            projectId: sshConfig.projectId,
+            defaultUserSshCaId: sshConfig.defaultUserSshCaId,
+            defaultHostSshCaId: sshConfig.defaultHostSshCaId
+          }
+        }
+      });
+
+      return sshConfig;
     }
   });
 

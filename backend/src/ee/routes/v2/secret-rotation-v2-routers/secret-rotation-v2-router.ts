@@ -2,10 +2,12 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { Auth0ClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/auth0-client-secret";
+import { AwsIamUserSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/aws-iam-user-secret";
+import { LdapPasswordRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
 import { MsSqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
 import { PostgresCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
-import { SecretRotations } from "@app/lib/api-docs";
+import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -13,7 +15,9 @@ import { AuthMode } from "@app/services/auth/auth-type";
 const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   PostgresCredentialsRotationListItemSchema,
   MsSqlCredentialsRotationListItemSchema,
-  Auth0ClientSecretRotationListItemSchema
+  Auth0ClientSecretRotationListItemSchema,
+  LdapPasswordRotationListItemSchema,
+  AwsIamUserSecretRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {
@@ -24,6 +28,8 @@ export const registerSecretRotationV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretRotations],
       description: "List the available Secret Rotation Options.",
       response: {
         200: z.object({
@@ -45,6 +51,8 @@ export const registerSecretRotationV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretRotations],
       description: "List all the Secret Rotations for the specified project.",
       querystring: z.object({
         projectId: z.string().trim().min(1, "Project ID required").describe(SecretRotations.LIST().projectId)

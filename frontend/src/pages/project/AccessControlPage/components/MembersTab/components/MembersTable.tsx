@@ -1,9 +1,12 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
+  faCheckCircle,
+  faChevronRight,
   faClock,
   faEllipsisV,
+  faFilter,
   faMagnifyingGlass,
   faSearch,
   faTrash,
@@ -15,6 +18,14 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  DropdownSubMenu,
+  DropdownSubMenuContent,
+  DropdownSubMenuTrigger,
   EmptyState,
   HoverCard,
   HoverCardContent,
@@ -40,7 +51,7 @@ import {
   useWorkspace
 } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useGetWorkspaceUsers } from "@app/hooks/api";
+import { useGetProjectRoles, useGetWorkspaceUsers } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -65,13 +76,22 @@ enum MembersOrderBy {
   Email = "email"
 }
 
+type Filter = {
+  roles: string[];
+};
+
 export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const { user } = useUser();
   const navigate = useNavigate();
+  const [filter, setFilter] = useState<Filter>({
+    roles: []
+  });
+  const filterRoles = useMemo(() => filter.roles, [filter.roles]);
 
   const userId = user?.id || "";
   const workspaceId = currentWorkspace?.id || "";
+  const { data: projectRoles } = useGetProjectRoles(workspaceId);
 
   const {
     search,
@@ -86,9 +106,20 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
     setOrderBy,
     setOrderDirection,
     toggleOrderDirection
-  } = usePagination<MembersOrderBy>(MembersOrderBy.Name, { initPerPage: 20 });
+  } = usePagination<MembersOrderBy>(MembersOrderBy.Name, {
+    initPerPage: parseInt(localStorage.getItem("PROJECT_MEMBERS_TABLE_PER_PAGE") || "20", 10)
+  });
 
-  const { data: members = [], isPending: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    localStorage.setItem("PROJECT_MEMBERS_TABLE_PER_PAGE", newPerPage.toString());
+  };
+
+  const { data: members = [], isPending: isMembersLoading } = useGetWorkspaceUsers(
+    workspaceId,
+    undefined,
+    filterRoles
+  );
 
   const filteredUsers = useMemo(
     () =>
@@ -142,14 +173,81 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
+  const isTableFiltered = Boolean(filter.roles.length);
+
+  const handleRoleToggle = useCallback(
+    (roleSlug: string) =>
+      setFilter((state) => {
+        const roles = state.roles || [];
+
+        if (roles.includes(roleSlug)) {
+          return { ...state, roles: roles.filter((role) => role !== roleSlug) };
+        }
+        return { ...state, roles: [...roles, roleSlug] };
+      }),
+    []
+  );
+
   return (
     <div>
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search members..."
-      />
+      <div className="flex gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton
+              ariaLabel="Filter Users"
+              variant="plain"
+              size="sm"
+              className={twMerge(
+                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                isTableFiltered && "border-primary/50 text-primary"
+              )}
+            >
+              <FontAwesomeIcon icon={faFilter} />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="p-0">
+            <DropdownMenuLabel>Filter By</DropdownMenuLabel>
+            <DropdownSubMenu>
+              <DropdownSubMenuTrigger
+                iconPos="right"
+                icon={<FontAwesomeIcon icon={faChevronRight} size="sm" />}
+              >
+                Roles
+              </DropdownSubMenuTrigger>
+              <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
+                <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                  Apply Roles to Filter Users
+                </DropdownMenuLabel>
+                {projectRoles?.map(({ id, slug, name }) => (
+                  <DropdownMenuItem
+                    onClick={(evt) => {
+                      evt.preventDefault();
+                      handleRoleToggle(slug);
+                    }}
+                    key={id}
+                    icon={filter.roles.includes(slug) && <FontAwesomeIcon icon={faCheckCircle} />}
+                    iconPos="right"
+                  >
+                    <div className="flex items-center">
+                      <div
+                        className="mr-2 h-2 w-2 rounded-full"
+                        style={{ background: "#bec2c8" }}
+                      />
+                      {name}
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownSubMenuContent>
+            </DropdownSubMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          placeholder="Search members..."
+        />
+      </div>
       <TableContainer className="mt-4">
         <Table>
           <THead>
@@ -358,7 +456,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
             page={page}
             perPage={perPage}
             onChangePage={setPage}
-            onChangePerPage={setPerPage}
+            onChangePerPage={handlePerPageChange}
           />
         )}
         {!isMembersLoading && !filteredUsers?.length && (

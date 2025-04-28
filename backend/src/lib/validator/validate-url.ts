@@ -1,6 +1,7 @@
 import dns from "node:dns/promises";
 
 import { isIPv4 } from "net";
+import RE2 from "re2";
 
 import { getConfig } from "@app/lib/config/env";
 
@@ -80,42 +81,47 @@ export const isFQDN = (str: string, options: FQDNOptions = {}): boolean => {
 
     if (
       !opts.allow_numeric_tld &&
-      !/^([a-z\u00A1-\u00A8\u00AA-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]{2,}|xn[a-z0-9-]{2,})$/i.test(tld)
+      !new RE2(/^([a-z\u00A1-\u00A8\u00AA-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]{2,}|xn[a-z0-9-]{2,})$/i).test(tld)
     ) {
       return false;
     }
 
     // disallow spaces
-    if (/\s/.test(tld)) {
+    if (new RE2(/\s/).test(tld)) {
       return false;
     }
   }
 
   // reject numeric TLDs
-  if (!opts.allow_numeric_tld && /^\d+$/.test(tld)) {
+  if (!opts.allow_numeric_tld && new RE2(/^\d+$/).test(tld)) {
     return false;
   }
+
+  const partRegex = new RE2(/^[a-z_\u00a1-\uffff0-9-]+$/i);
+  const fullWidthRegex = new RE2(/[\uff01-\uff5e]/);
+  const hyphenRegex = new RE2(/^-|-$/);
+  const underscoreRegex = new RE2(/_/);
 
   return parts.every((part) => {
     if (part.length > 63 && !opts.ignore_max_length) {
       return false;
     }
 
-    if (!/^[a-z_\u00a1-\uffff0-9-]+$/i.test(part)) {
+    if (!partRegex.test(part)) {
       return false;
     }
 
     // disallow full-width chars
-    if (/[\uff01-\uff5e]/.test(part)) {
+    if (fullWidthRegex.test(part)) {
       return false;
     }
 
     // disallow parts starting or ending with hyphen
-    if (/^-|-$/.test(part)) {
+    if (hyphenRegex.test(part)) {
       return false;
     }
 
-    if (!opts.allow_underscores && /_/.test(part)) {
+    if (!opts.allow_underscores && underscoreRegex.test(part)) {
       return false;
     }
 

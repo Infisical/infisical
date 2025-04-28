@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { IdentitiesSchema, IdentityOrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
-import { ORGANIZATIONS } from "@app/lib/api-docs";
+import { ApiDocsTags, ORGANIZATIONS } from "@app/lib/api-docs";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -17,6 +17,8 @@ export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Organizations],
       description: "Return organization identity memberships",
       security: [
         {

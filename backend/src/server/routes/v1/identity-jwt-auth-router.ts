@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { IdentityJwtAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { JWT_AUTH } from "@app/lib/api-docs";
+import { ApiDocsTags, JWT_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -94,6 +94,8 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.JwtAuth],
       description: "Login with JWT Auth",
       body: z.object({
         identityId: z.string().trim().describe(JWT_AUTH.LOGIN.identityId),
@@ -144,6 +146,8 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.JwtAuth],
       description: "Attach JWT Auth configuration onto identity",
       security: [
         {
@@ -211,6 +215,8 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.JwtAuth],
       description: "Update JWT Auth configuration on identity",
       security: [
         {
@@ -275,6 +281,8 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.JwtAuth],
       description: "Retrieve JWT Auth configuration on identity",
       security: [
         {
@@ -322,6 +330,8 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.JwtAuth],
       description: "Delete JWT Auth configuration on identity",
       security: [
         {

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
-import { PROJECT_ROLE } from "@app/lib/api-docs";
+import { ApiDocsTags, PROJECT_ROLE } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -20,6 +20,8 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectRoles],
       description: "Create a project role",
       security: [
         {
@@ -75,6 +77,8 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectRoles],
       description: "Update a project role",
       security: [
         {
@@ -130,6 +134,8 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectRoles],
       description: "Delete a project role",
       security: [
         {
@@ -166,6 +172,8 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectRoles],
       description: "List project role",
       security: [
         {
@@ -204,6 +212,8 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectRoles],
       params: z.object({
         projectId: z.string().trim().describe(PROJECT_ROLE.GET_ROLE_BY_SLUG.projectId),
         roleSlug: z.string().trim().describe(PROJECT_ROLE.GET_ROLE_BY_SLUG.roleSlug)

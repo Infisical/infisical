@@ -79,7 +79,8 @@ export const projectMembershipServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     includeGroupMembers,
-    projectId
+    projectId,
+    roles
   }: TGetProjectMembershipDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -91,7 +92,7 @@ export const projectMembershipServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
-    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
+    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId, { roles });
 
     // projectMembers[0].project
     if (includeGroupMembers) {

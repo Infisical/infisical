@@ -98,4 +98,5 @@ export type TExternalKmsProviderFns = {
   validateConnection: () => Promise<boolean>;
   encrypt: (data: Buffer) => Promise<{ encryptedBlob: Buffer }>;
   decrypt: (encryptedBlob: Buffer) => Promise<{ data: Buffer }>;
+  cleanup: () => Promise<void>;
 };

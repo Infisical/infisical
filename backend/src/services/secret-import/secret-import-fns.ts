@@ -159,8 +159,7 @@ export const fnSecretsV2FromImports = async ({
   decryptor,
   expandSecretReferences,
   hasSecretAccess,
-  viewSecretValue,
-  projectId
+  viewSecretValue
 }: {
   secretImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string };
@@ -177,7 +176,6 @@ export const fnSecretsV2FromImports = async ({
     environment: string;
   }) => Promise<string | undefined>;
   hasSecretAccess: (environment: string, secretPath: string, secretName: string, secretTagSlugs: string[]) => boolean;
-  projectId: string;
 }) => {
   const cyclicDetector = new Set();
   const stack: {
@@ -209,7 +207,10 @@ export const fnSecretsV2FromImports = async ({
     );
     if (!importedFolders.length) continue;
 
-    const importedFolderIds = importedFolders.map((el) => el?.id) as string[];
+    const importedFolderIds = importedFolders.filter(Boolean).map((el) => el?.id) as string[];
+
+    if (!importedFolderIds.length) continue;
+
     const importedFolderGroupBySourceImport = groupBy(importedFolders, (i) => `${i?.envId}-${i?.path}`);
 
     const importedSecrets = await secretDAL.find(
@@ -218,8 +219,7 @@ export const fnSecretsV2FromImports = async ({
         type: SecretType.Shared
       },
       {
-        sort: [["id", "asc"]],
-        useCache: { projectId }
+        sort: [["id", "asc"]]
       }
     );
     const importedSecretsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
