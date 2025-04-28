@@ -38,7 +38,7 @@ up-dev-sso:
 # To see every file type in docs, run: find ./docs -type f -name "*.*" | grep -o '\.[^./]*$' | sort -u
 clean-docs-images:
 	cd docs && \
-	find . -type f -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.gif" -o -name "*.svg" | \
+	find . -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.gif" -o -name "*.svg" \) | \
 	while read img; do \
 		img_name=$$(basename "$$img"); \
 		img_path=$${img#./}; \
@@ -52,14 +52,15 @@ clean-docs-images:
 verify-image-refs:
 	cd docs && \
 	find . -type f \( -name "*.mdx" -o -name "*.json" \) -print0 | \
-	xargs -0 -I{} grep -o -E "(\.\./)+images/[^\"')]*\.(png|jpg|jpeg|gif|svg)" {} 2>/dev/null | \
+	xargs -0 -I{} grep -o -E "\([^()\"']*\.(png|jpg|jpeg|gif|svg)[^()\"']*\)" {} 2>/dev/null | \
 	sort -u | while read -r img_ref; do \
-		base_img_name=$$(basename "$$img_ref"); \
-		if [ -f "$$(echo "$$img_ref" | sed 's|\(\.\./\)*|./|')" ]; then \
-			continue; \
+		img_ref=$$(echo "$$img_ref" | sed 's/^(\(.*\))$$/\1/'); \
+		if [[ "$$img_ref" == /* ]]; then \
+			real_path="./$$img_ref"; \
+		else \
+			real_path=$$(echo "$$img_ref" | sed 's|\(\.\./\)*|./|'); \
 		fi; \
-		img_path=$$(echo "$$img_ref" | sed 's|\(\.\./\)*|../|'); \
-		if [ ! -f "$$img_path" ]; then \
+		if [ ! -f "$$real_path" ]; then \
 			echo "Missing image: $$img_ref"; \
 		fi; \
 	done
