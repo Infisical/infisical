@@ -184,7 +184,7 @@ export const SecretEditRow = ({
           render={({ field }) => (
             <InfisicalSecretInput
               {...field}
-              isReadOnly={isImportedSecret || isRotatedSecret}
+              isReadOnly={isImportedSecret || (isRotatedSecret && !isOverride)}
               value={field.value as string}
               key="secret-input"
               isVisible={isVisible && !secretValueHidden}
