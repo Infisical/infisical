@@ -49,7 +49,12 @@ export const getHCVaultAccessToken = async (connection: TValidateHCVaultConnecti
     const tokenResp = await request.post<TokenRespData>(
       `${removeTrailingSlash(instanceUrl)}/v1/auth/approle/login`,
       { role_id: roleId, secret_id: secretId },
-      { headers: { "Content-Type": "application/json" } }
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...(connection.credentials.namespace ? { "X-Vault-Namespace": connection.credentials.namespace } : {})
+        }
+      }
     );
 
     if (tokenResp.status !== 200) {
@@ -95,7 +100,10 @@ export const listHCVaultMounts = async (appConnection: THCVaultConnection) => {
   const accessToken = await getHCVaultAccessToken(appConnection);
 
   const { data } = await request.get<THCVaultMountResponse>(`${instanceUrl}/v1/sys/mounts`, {
-    headers: { "X-Vault-Token": accessToken }
+    headers: {
+      "X-Vault-Token": accessToken,
+      ...(appConnection.credentials.namespace ? { "X-Vault-Namespace": appConnection.credentials.namespace } : {})
+    }
   });
 
   const mounts: string[] = [];

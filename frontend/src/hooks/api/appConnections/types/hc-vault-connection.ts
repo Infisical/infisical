@@ -11,6 +11,7 @@ export type THCVaultConnection = TRootAppConnection & { app: AppConnection.HCVau
         method: HCVaultConnectionMethod.AccessToken;
         credentials: {
           instanceUrl: string;
+          namespace?: string;
           accessToken: string;
         };
       }
@@ -18,6 +19,7 @@ export type THCVaultConnection = TRootAppConnection & { app: AppConnection.HCVau
         method: HCVaultConnectionMethod.AppRole;
         credentials: {
           instanceUrl: string;
+          namespace?: string;
           roleId: string;
           secretId: string;
         };

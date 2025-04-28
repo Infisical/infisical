@@ -1860,6 +1860,7 @@ export const AppConnections = {
     },
     HC_VAULT: {
       instanceUrl: "The Hashicrop Vault instance URL to connect with.",
+      namespace: "The Hashicrop Vault namespace to connect with.",
       accessToken: "The access token used to connect with Hashicorp Vault.",
       roleId: "The Role ID used to connect with Hashicorp Vault.",
       secretId: "The Secret ID used to connect with Hashicorp Vault."

@@ -25,6 +25,7 @@ export type THCVaultListVariablesResponse = {
 export type THCVaultListVariables = {
   accessToken: string;
   instanceUrl: string;
+  namespace?: string;
   mount: string;
   path: string;
 };

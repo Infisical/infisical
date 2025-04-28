@@ -17,8 +17,11 @@ const InstanceUrlSchema = z
   .url("Invalid Instance URL")
   .describe(AppConnections.CREDENTIALS.HC_VAULT.instanceUrl);
 
+const NamespaceSchema = z.string().trim().optional().describe(AppConnections.CREDENTIALS.HC_VAULT.namespace);
+
 export const HCVaultConnectionAccessTokenCredentialsSchema = z.object({
   instanceUrl: InstanceUrlSchema,
+  namespace: NamespaceSchema,
   accessToken: z
     .string()
     .trim()
@@ -28,6 +31,7 @@ export const HCVaultConnectionAccessTokenCredentialsSchema = z.object({
 
 export const HCVaultConnectionAppRoleCredentialsSchema = z.object({
   instanceUrl: InstanceUrlSchema,
+  namespace: NamespaceSchema,
   roleId: z.string().trim().min(1, "Role ID required").describe(AppConnections.CREDENTIALS.HC_VAULT.roleId),
   secretId: z.string().trim().min(1, "Secret ID required").describe(AppConnections.CREDENTIALS.HC_VAULT.secretId)
 });

@@ -35,11 +35,14 @@ const InstanceUrlSchema = z
   .min(1, "Instance URL required")
   .url("Invalid Instance URL");
 
+const NamespaceSchema = z.string().trim().optional();
+
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
     method: z.literal(HCVaultConnectionMethod.AccessToken),
     credentials: z.object({
       instanceUrl: InstanceUrlSchema,
+      namespace: NamespaceSchema,
       accessToken: z.string().trim().min(1, "Access Token required")
     })
   }),
@@ -47,6 +50,7 @@ const formSchema = z.discriminatedUnion("method", [
     method: z.literal(HCVaultConnectionMethod.AppRole),
     credentials: z.object({
       instanceUrl: InstanceUrlSchema,
+      namespace: NamespaceSchema,
       roleId: z.string().trim().min(1, "Role ID required"),
       secretId: z.string().trim().min(1, "Secret ID required")
     })
@@ -124,6 +128,23 @@ export const HCVaultConnectionForm = ({ appConnection, onSubmit }: Props) => {
               tooltipText="The URL at which your Hashicorp Vault instance is hosted."
             >
               <Input {...field} placeholder="https://vault.example.com" />
+            </FormControl>
+          )}
+        />
+        <Controller
+          name="credentials.namespace"
+          control={control}
+          shouldUnregister
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
+              label="Namespace"
+              isOptional
+              tooltipClassName="max-w-sm"
+              tooltipText="On self-hosted and enterprise clusters there may not be namespaces."
+            >
+              <Input {...field} placeholder="admin" />
             </FormControl>
           )}
         />
