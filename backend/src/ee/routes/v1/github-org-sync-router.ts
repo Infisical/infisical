@@ -60,7 +60,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
         .object({
           githubOrgName: githubOrgNameValidator(z.string().trim(), "GitHub Org Name"),
           githubOrgAccessToken: z.string().trim().max(1000),
-          isActive: z.boolean().default(false)
+          isActive: z.boolean()
         })
         .partial(),
       response: {
