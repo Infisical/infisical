@@ -13,7 +13,7 @@ import {
   TBreadcrumbFormat
 } from "@app/components/v2";
 import {
-  useProjectPermission
+  useProjectPermission,
   ProjectPermissionActions,
   ProjectPermissionSub,
   useSubscription,
