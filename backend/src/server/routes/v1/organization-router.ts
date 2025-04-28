@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import {
@@ -263,7 +264,18 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         enforceMfa: z.boolean().optional(),
         selectedMfaMethod: z.nativeEnum(MfaMethod).optional(),
         allowSecretSharingOutsideOrganization: z.boolean().optional(),
-        bypassOrgAuthEnabled: z.boolean().optional()
+        bypassOrgAuthEnabled: z.boolean().optional(),
+        userTokenExpiration: z
+          .string()
+          .regex(new RE2(/^\d+[mhdw]$/), "Must be a number followed by m, h, d, or w")
+          .refine(
+            (val) => {
+              const numericPart = val.slice(0, -1);
+              return parseInt(numericPart, 10) >= 1;
+            },
+            { message: "Duration value must be at least 1" }
+          )
+          .optional()
       }),
       response: {
         200: z.object({

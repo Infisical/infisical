@@ -22,6 +22,7 @@ import { OrgLDAPSection } from "./OrgLDAPSection";
 import { OrgOIDCSection } from "./OrgOIDCSection";
 import { OrgScimSection } from "./OrgSCIMSection";
 import { OrgSSOSection } from "./OrgSSOSection";
+import { OrgUserAccessTokenLimitSection } from "./OrgUserAccessTokenLimitSection";
 import { SSOModal } from "./SSOModal";
 
 export const OrgAuthTab = withPermission(
@@ -166,6 +167,7 @@ export const OrgAuthTab = withPermission(
     return (
       <>
         <OrgGenericAuthSection />
+        <OrgUserAccessTokenLimitSection />
         {shouldShowCreateIdentityProviderView ? (
           createIdentityProviderView
         ) : (
