@@ -15,6 +15,7 @@ import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dy
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
 import { TIdentityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { TIdentityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-service";
@@ -140,6 +141,7 @@ declare module "fastify" {
     passportUser: {
       isUserCompleted: boolean;
       providerAuthToken: string;
+      externalProviderAccessToken?: string;
     };
     kmipUser: {
       projectId: string;
@@ -244,6 +246,7 @@ declare module "fastify" {
       gateway: TGatewayServiceFactory;
       secretRotationV2: TSecretRotationV2ServiceFactory;
       assumePrivileges: TAssumePrivilegeServiceFactory;
+      githubOrgSync: TGithubOrgSyncServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

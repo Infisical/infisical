@@ -9,6 +9,7 @@ import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router"
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
 import { registerGatewayRouter } from "./gateway-router";
+import { registerGithubOrgSyncRouter } from "./github-org-sync-router";
 import { registerGroupRouter } from "./group-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
 import { registerKmipRouter } from "./kmip-router";
@@ -72,6 +73,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(registerGatewayRouter, { prefix: "/gateways" });
+  await server.register(registerGithubOrgSyncRouter, { prefix: "/github-org-sync-config" });
 
   await server.register(
     async (pkiRouter) => {

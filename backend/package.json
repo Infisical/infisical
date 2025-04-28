@@ -150,6 +150,7 @@
     "@infisical/quic": "^1.0.8",
     "@node-saml/passport-saml": "^5.0.1",
     "@octokit/auth-app": "^7.1.1",
+    "@octokit/plugin-paginate-graphql": "^5.2.4",
     "@octokit/plugin-retry": "^5.0.5",
     "@octokit/rest": "^20.0.2",
     "@octokit/webhooks-types": "^7.3.1",

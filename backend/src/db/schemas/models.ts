@@ -147,7 +147,8 @@ export enum TableName {
   KmipClientCertificates = "kmip_client_certificates",
   SecretRotationV2 = "secret_rotations_v2",
   SecretRotationV2SecretMapping = "secret_rotation_v2_secret_mappings",
-  SecretReminderRecipients = "secret_reminder_recipients"
+  SecretReminderRecipients = "secret_reminder_recipients",
+  GithubOrgSyncConfig = "github_org_sync_configs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
