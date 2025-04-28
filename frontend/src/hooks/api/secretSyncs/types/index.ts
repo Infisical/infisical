@@ -10,6 +10,7 @@ import { TDatabricksSync } from "./databricks-sync";
 import { TGcpSync } from "./gcp-sync";
 import { TGitHubSync } from "./github-sync";
 import { THumanitecSync } from "./humanitec-sync";
+import { TTeamCitySync } from "./teamcity-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
 import { TVercelSync } from "./vercel-sync";
 import { TWindmillSync } from "./windmill-sync";
@@ -32,7 +33,8 @@ export type TSecretSync =
   | TTerraformCloudSync
   | TCamundaSync
   | TVercelSync
-  | TWindmillSync;
+  | TWindmillSync
+  | TTeamCitySync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

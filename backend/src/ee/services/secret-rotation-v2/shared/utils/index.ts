@@ -1,6 +1,17 @@
 import { randomInt } from "crypto";
 
-const DEFAULT_PASSWORD_REQUIREMENTS = {
+type TPasswordRequirements = {
+  length: number;
+  required: {
+    lowercase: number;
+    uppercase: number;
+    digits: number;
+    symbols: number;
+  };
+  allowedSymbols?: string;
+};
+
+const DEFAULT_PASSWORD_REQUIREMENTS: TPasswordRequirements = {
   length: 48,
   required: {
     lowercase: 1,
@@ -11,9 +22,9 @@ const DEFAULT_PASSWORD_REQUIREMENTS = {
   allowedSymbols: "-_.~!*"
 };
 
-export const generatePassword = () => {
+export const generatePassword = (passwordRequirements?: TPasswordRequirements) => {
   try {
-    const { length, required, allowedSymbols } = DEFAULT_PASSWORD_REQUIREMENTS;
+    const { length, required, allowedSymbols } = passwordRequirements ?? DEFAULT_PASSWORD_REQUIREMENTS;
 
     const chars = {
       lowercase: "abcdefghijklmnopqrstuvwxyz",

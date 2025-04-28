@@ -249,8 +249,10 @@ export enum EventType {
   UPDATE_SLACK_INTEGRATION = "update-slack-integration",
   DELETE_SLACK_INTEGRATION = "delete-slack-integration",
   GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG = "get-project-workflow-integration-config",
-
   UPDATE_PROJECT_WORKFLOW_INTEGRATION_CONFIG = "update-project-workflow-integration-config",
+
+  GET_PROJECT_SSH_CONFIG = "get-project-ssh-config",
+  UPDATE_PROJECT_SSH_CONFIG = "update-project-ssh-config",
   INTEGRATION_SYNCED = "integration-synced",
   CREATE_CMEK = "create-cmek",
   UPDATE_CMEK = "update-cmek",
@@ -2004,6 +2006,25 @@ interface GetProjectWorkflowIntegrationConfig {
     integration: WorkflowIntegration;
   };
 }
+
+interface GetProjectSshConfig {
+  type: EventType.GET_PROJECT_SSH_CONFIG;
+  metadata: {
+    id: string;
+    projectId: string;
+  };
+}
+
+interface UpdateProjectSshConfig {
+  type: EventType.UPDATE_PROJECT_SSH_CONFIG;
+  metadata: {
+    id: string;
+    projectId: string;
+    defaultUserSshCaId?: string | null;
+    defaultHostSshCaId?: string | null;
+  };
+}
+
 interface IntegrationSyncedEvent {
   type: EventType.INTEGRATION_SYNCED;
   metadata: {
@@ -2749,6 +2770,8 @@ export type Event =
   | GetSlackIntegration
   | UpdateProjectWorkflowIntegrationConfig
   | GetProjectWorkflowIntegrationConfig
+  | GetProjectSshConfig
+  | UpdateProjectSshConfig
   | IntegrationSyncedEvent
   | CreateCmekEvent
   | UpdateCmekEvent

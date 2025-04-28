@@ -47,7 +47,10 @@ export const tokenDALFactory = (db: TDbClient) => {
 
   const findTokenSessions = async (filter: Partial<TAuthTokenSessions>, tx?: Knex) => {
     try {
-      const sessions = await (tx || db.replicaNode())(TableName.AuthTokenSession).where(filter);
+      const sessions = await (tx || db.replicaNode())(TableName.AuthTokenSession)
+        .where(filter)
+        .orderBy("lastUsed", "desc");
+
       return sessions;
     } catch (error) {
       throw new DatabaseError({ name: "Find all token session", error });

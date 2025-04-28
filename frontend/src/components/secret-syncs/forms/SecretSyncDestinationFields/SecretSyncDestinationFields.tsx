@@ -12,6 +12,7 @@ import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
+import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
 import { WindmillSyncFields } from "./WindmillSyncFields";
@@ -46,6 +47,8 @@ export const SecretSyncDestinationFields = () => {
       return <VercelSyncFields />;
     case SecretSync.Windmill:
       return <WindmillSyncFields />;
+    case SecretSync.TeamCity:
+      return <TeamCitySyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

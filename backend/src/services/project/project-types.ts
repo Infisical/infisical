@@ -160,6 +160,13 @@ export type TListProjectSshCertificatesDTO = {
   limit: number;
 } & TProjectPermission;
 
+export type TUpdateProjectSshConfig = {
+  defaultUserSshCaId?: string;
+  defaultHostSshCaId?: string;
+} & TProjectPermission;
+
+export type TGetProjectSshConfig = TProjectPermission;
+
 export type TGetProjectWorkflowIntegrationConfig = TProjectPermission & {
   integration: WorkflowIntegration;
 };

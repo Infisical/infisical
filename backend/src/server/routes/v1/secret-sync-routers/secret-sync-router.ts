@@ -23,6 +23,7 @@ import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/service
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
 import { HumanitecSyncListItemSchema, HumanitecSyncSchema } from "@app/services/secret-sync/humanitec";
+import { TeamCitySyncListItemSchema, TeamCitySyncSchema } from "@app/services/secret-sync/teamcity";
 import { TerraformCloudSyncListItemSchema, TerraformCloudSyncSchema } from "@app/services/secret-sync/terraform-cloud";
 import { VercelSyncListItemSchema, VercelSyncSchema } from "@app/services/secret-sync/vercel";
 import { WindmillSyncListItemSchema, WindmillSyncSchema } from "@app/services/secret-sync/windmill";
@@ -39,7 +40,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   TerraformCloudSyncSchema,
   CamundaSyncSchema,
   VercelSyncSchema,
-  WindmillSyncSchema
+  WindmillSyncSchema,
+  TeamCitySyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -54,7 +56,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   TerraformCloudSyncListItemSchema,
   CamundaSyncListItemSchema,
   VercelSyncListItemSchema,
-  WindmillSyncListItemSchema
+  WindmillSyncListItemSchema,
+  TeamCitySyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

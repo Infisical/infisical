@@ -23,6 +23,7 @@ import {
   useCreateSshHost,
   useGetSshHostById,
   useGetWorkspaceUsers,
+  useListWorkspaceSshHosts,
   useUpdateSshHost
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -58,6 +59,7 @@ export type FormData = z.infer<typeof schema>;
 export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
+  const { data: sshHosts } = useListWorkspaceSshHosts(currentWorkspace.id);
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const [expandedMappings, setExpandedMappings] = useState<Record<number, boolean>>({});
 
@@ -115,6 +117,18 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({ hostname, userCertTtl, loginMappings }: FormData) => {
     try {
       if (!projectId) return;
+
+      // check if there is already a different host with the same hostname
+      const existingHostnames =
+        sshHosts?.filter((h) => h.id !== sshHost?.id).map((h) => h.hostname) || [];
+
+      if (existingHostnames.includes(hostname)) {
+        createNotification({
+          text: "A host with this hostname already exists.",
+          type: "error"
+        });
+        return;
+      }
 
       if (sshHost) {
         await updateMutateAsync({

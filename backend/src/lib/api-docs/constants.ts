@@ -1857,6 +1857,20 @@ export const AppConnections = {
     WINDMILL: {
       instanceUrl: "The Windmill instance URL to connect with (defaults to https://app.windmill.dev).",
       accessToken: "The access token to use to connect with Windmill."
+    },
+    LDAP: {
+      provider: "The type of LDAP provider. Determines provider-specific behaviors.",
+      url: "The LDAP/LDAPS URL to connect to (e.g., 'ldap://domain-or-ip:389' or 'ldaps://domain-or-ip:636').",
+      dn: "The Distinguished Name (DN) of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com').",
+      password: "The password to bind with for authentication.",
+      sslRejectUnauthorized:
+        "Whether or not to reject unauthorized SSL certificates (true/false) when using ldaps://. Set to false only in test environments.",
+      sslCertificate:
+        "The SSL certificate (PEM format) to use for secure connection when using ldaps:// with a self-signed certificate."
+    },
+    TEAMCITY: {
+      instanceUrl: "The TeamCity instance URL to connect with.",
+      accessToken: "The access token to use to connect with TeamCity."
     }
   }
 };
@@ -1996,6 +2010,10 @@ export const SecretSyncs = {
     WINDMILL: {
       workspace: "The Windmill workspace to sync secrets to.",
       path: "The Windmill workspace path to sync secrets to."
+    },
+    TEAMCITY: {
+      project: "The TeamCity project to sync secrets to.",
+      buildConfig: "The TeamCity build configuration to sync secrets to."
     }
   }
 };
@@ -2060,6 +2078,26 @@ export const SecretRotations = {
     },
     AUTH0_CLIENT_SECRET: {
       clientId: "The client ID of the Auth0 Application to rotate the client secret for."
+    },
+    LDAP_PASSWORD: {
+      dn: "The Distinguished Name (DN) of the principal to rotate the password for."
+    },
+    GENERAL: {
+      PASSWORD_REQUIREMENTS: {
+        base: "The password requirements to use when generating the new password.",
+        length: "The length of the password to generate.",
+        required: {
+          digits: "The amount of digits to require in the generated password.",
+          lowercase: "The amount of lowercase characters to require in the generated password.",
+          uppercase: "The amount of uppercase characters to require in the generated password.",
+          symbols: "The amount of symbols to require in the generated password."
+        },
+        allowedSymbols: 'The allowed symbols to use in the generated password (defaults to "-_.~!*").'
+      }
+    },
+    AWS_IAM_USER_SECRET: {
+      userName: "The name of the client to rotate credentials for.",
+      region: "The AWS region the client is present in."
     }
   },
   SECRETS_MAPPING: {
@@ -2070,6 +2108,14 @@ export const SecretRotations = {
     AUTH0_CLIENT_SECRET: {
       clientId: "The name of the secret that the client ID will be mapped to.",
       clientSecret: "The name of the secret that the rotated client secret will be mapped to."
+    },
+    LDAP_PASSWORD: {
+      dn: "The name of the secret that the Distinguished Name (DN) of the principal will be mapped to.",
+      password: "The name of the secret that the rotated password will be mapped to."
+    },
+    AWS_IAM_USER_SECRET: {
+      accessKeyId: "The name of the secret that the access key ID will be mapped to.",
+      secretAccessKey: "The name of the secret that the rotated secret access key will be mapped to."
     }
   }
 };

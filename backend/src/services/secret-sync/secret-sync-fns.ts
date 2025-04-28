@@ -27,6 +27,7 @@ import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
+import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
@@ -43,7 +44,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.TerraformCloud]: TERRAFORM_CLOUD_SYNC_LIST_OPTION,
   [SecretSync.Camunda]: CAMUNDA_SYNC_LIST_OPTION,
   [SecretSync.Vercel]: VERCEL_SYNC_LIST_OPTION,
-  [SecretSync.Windmill]: WINDMILL_SYNC_LIST_OPTION
+  [SecretSync.Windmill]: WINDMILL_SYNC_LIST_OPTION,
+  [SecretSync.TeamCity]: TEAMCITY_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -140,6 +142,8 @@ export const SecretSyncFns = {
         return VercelSyncFns.syncSecrets(secretSync, secretMap);
       case SecretSync.Windmill:
         return WindmillSyncFns.syncSecrets(secretSync, secretMap);
+      case SecretSync.TeamCity:
+        return TeamCitySyncFns.syncSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -199,6 +203,9 @@ export const SecretSyncFns = {
       case SecretSync.Windmill:
         secretMap = await WindmillSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.TeamCity:
+        secretMap = await TeamCitySyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -252,6 +259,8 @@ export const SecretSyncFns = {
         return VercelSyncFns.removeSecrets(secretSync, secretMap);
       case SecretSync.Windmill:
         return WindmillSyncFns.removeSecrets(secretSync, secretMap);
+      case SecretSync.TeamCity:
+        return TeamCitySyncFns.removeSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

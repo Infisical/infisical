@@ -146,6 +146,34 @@ Infisical supports two methods for connecting to AWS.
                             </Accordion>
                         </AccordionGroup>
                     </Tab>
+                    <Tab title="Secret Rotation">
+                        <AccordionGroup>
+                            <Accordion title="AWS IAM">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to rotate secrets to AWS Access Keys:
+
+                                ![IAM Role Secret Rotation Permissions](/images/app-connections/aws/iam-role-secret-rotation-permissions.png)
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "iam:ListAccessKeys",
+                                                "iam:CreateAccessKey",
+                                                "iam:UpdateAccessKey",
+                                                "iam:DeleteAccessKey",
+                                                "iam:ListUsers"
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
                 </Tabs>
             </Step>
 
@@ -290,6 +318,34 @@ Infisical supports two methods for connecting to AWS.
                                 }
                                 ```
                                 <Note>If using a custom KMS key, be sure to add the IAM user or role as a key user. ![KMS Key IAM Role User](/images/app-connections/aws/kms-key-user.png)</Note>
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
+                    <Tab title="Secret Rotation">
+                        <AccordionGroup>
+                            <Accordion title="AWS IAM">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to rotate secrets to AWS Access Keys:
+
+                                ![IAM Role Secret Rotation Permissions](/images/app-connections/aws/iam-role-secret-rotation-permissions.png)
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "iam:ListAccessKeys",
+                                                "iam:CreateAccessKey",
+                                                "iam:UpdateAccessKey",
+                                                "iam:DeleteAccessKey",
+                                                "iam:ListUsers"
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
                             </Accordion>
                         </AccordionGroup>
                     </Tab>

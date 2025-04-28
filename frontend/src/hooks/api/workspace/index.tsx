@@ -4,7 +4,8 @@ export {
   useLeaveProject,
   useMigrateProjectToV3,
   useRequestProjectAccess,
-  useUpdateGroupWorkspaceRole
+  useUpdateGroupWorkspaceRole,
+  useUpdateProjectSshConfig
 } from "./mutations";
 export {
   useAddIdentityToWorkspace,
@@ -14,6 +15,7 @@ export {
   useDeleteUserFromWorkspace,
   useDeleteWorkspace,
   useDeleteWsEnvironment,
+  useGetProjectSshConfig,
   useGetUpgradeProjectStatus,
   useGetUserWorkspaceMemberships,
   useGetUserWorkspaces,
