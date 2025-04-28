@@ -807,6 +807,8 @@ export const RAW_SECRETS = {
     tagIds: "The ID of the tags to be attached to the updated secret.",
     secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days.",
     secretReminderNote: "Note to be attached in notification email.",
+    secretReminderRecipients:
+      "An array of user IDs that will receive the reminder email. If not specified, all project members will receive the reminder email.",
     newSecretName: "The new name for the secret."
   },
   DELETE: {

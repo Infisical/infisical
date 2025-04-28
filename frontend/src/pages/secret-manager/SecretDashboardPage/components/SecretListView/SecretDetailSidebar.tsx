@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { faCircleQuestion, faEye } from "@fortawesome/free-regular-svg-icons";
@@ -220,11 +221,12 @@ export const SecretDetailSidebar = ({
 
   const handleReminderSubmit = async (
     reminderRepeatDays: number | null | undefined,
-    reminderNote: string | null | undefined
+    reminderNote: string | null | undefined,
+    reminderRecipients: string[] | undefined
   ) => {
     await onSaveSecret(
       secret,
-      { ...secret, reminderRepeatDays, reminderNote, isReminderEvent: true },
+      { ...secret, reminderRepeatDays, reminderNote, isReminderEvent: true, reminderRecipients },
       () => {}
     );
   };
@@ -233,6 +235,16 @@ export const SecretDetailSidebar = ({
 
   const secretReminderRepeatDays = watch("reminderRepeatDays");
   const secretReminderNote = watch("reminderNote");
+  const secretReminderRecipients = watch("reminderRecipients");
+  useEffect(() => {
+    setValue(
+      "reminderRecipients",
+      secret?.secretReminderRecipients?.map((el) => el.user.id),
+      {
+        shouldDirty: false
+      }
+    );
+  }, [secret?.secretReminderRecipients]);
 
   const getModifiedByIcon = (userType: string | undefined | null) => {
     switch (userType) {
@@ -294,14 +306,20 @@ export const SecretDetailSidebar = ({
       <CreateReminderForm
         repeatDays={secretReminderRepeatDays}
         note={secretReminderNote}
+        recipients={secretReminderRecipients}
         isOpen={createReminderFormOpen}
         onOpenChange={(_, data) => {
           setCreateReminderFormOpen.toggle();
 
           if (data) {
+            const recipients = data.recipients?.length
+              ? data.recipients.map((recipient) => recipient.value)
+              : undefined;
+
             setValue("reminderRepeatDays", data.days, { shouldDirty: false });
             setValue("reminderNote", data.note, { shouldDirty: false });
-            handleReminderSubmit(data.days, data.note);
+            setValue("reminderRecipients", recipients, { shouldDirty: false });
+            handleReminderSubmit(data.days, data.note, recipients);
           }
         }}
       />
