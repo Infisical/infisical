@@ -687,8 +687,8 @@ export const oidcConfigServiceFactory = ({
 
     // Check if the OIDC provider supports PKCE
     const codeChallengeMethods = client.issuer.metadata.code_challenge_methods_supported;
-    const supportsPKCE =
-      !codeChallengeMethods || (Array.isArray(codeChallengeMethods) && codeChallengeMethods.includes("S256"));
+    // If codeChallengeMethods is undefined or includes "S256", then the provider supports PKCE
+    const supportsPKCE = Array.isArray(codeChallengeMethods) && codeChallengeMethods.includes("S256");
 
     const strategy = new OpenIdStrategy(
       {
