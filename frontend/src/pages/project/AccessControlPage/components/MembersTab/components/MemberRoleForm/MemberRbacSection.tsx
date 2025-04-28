@@ -27,6 +27,7 @@ import {
 } from "@app/components/v2";
 import {
   ProjectPermissionActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProjectPermission,
   useSubscription,
@@ -68,7 +69,7 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
   const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(workspaceId);
   const { permission } = useProjectPermission();
   const isMemberEditDisabled = permission.cannot(
-    ProjectPermissionActions.Edit,
+    ProjectPermissionMemberActions.Edit,
     ProjectPermissionSub.Member
   );
 

@@ -5,6 +5,7 @@ import { Redis } from "ioredis";
 import { TUsers } from "@app/db/schemas";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
+import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
@@ -109,6 +110,7 @@ declare module "@fastify/request-context" {
       };
     };
     identityPermissionMetadata?: Record<string, unknown>; // filled by permission service
+    assumedPrivilegeDetails?: { requesterId: string; actorId: string; actorType: ActorType; projectId: string };
   }
 }
 
@@ -241,6 +243,7 @@ declare module "fastify" {
       kmipOperation: TKmipOperationServiceFactory;
       gateway: TGatewayServiceFactory;
       secretRotationV2: TSecretRotationV2ServiceFactory;
+      assumePrivileges: TAssumePrivilegeServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer
