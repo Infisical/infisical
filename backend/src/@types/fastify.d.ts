@@ -110,7 +110,7 @@ declare module "@fastify/request-context" {
       };
     };
     identityPermissionMetadata?: Record<string, unknown>; // filled by permission service
-    assumedProjectRole?: { requesterId: string; actorId: string; actorType: ActorType; projectId: string };
+    assumedPrivilegeDetails?: { requesterId: string; actorId: string; actorType: ActorType; projectId: string };
   }
 }
 

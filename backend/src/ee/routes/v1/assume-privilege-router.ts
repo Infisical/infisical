@@ -90,8 +90,8 @@ export const registerAssumePrivilegeRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req, res) => {
-      const assumePrivilege = requestContext.get("assumedProjectRole");
-      if (req.auth.authMode === AuthMode.JWT && assumePrivilege) {
+      const assumedPrivilegeDetails = requestContext.get("assumedPrivilegeDetails");
+      if (req.auth.authMode === AuthMode.JWT && assumedPrivilegeDetails) {
         const appCfg = getConfig();
         void res.setCookie("infisical-project-assume-privileges", "", {
           httpOnly: true,
@@ -110,8 +110,8 @@ export const registerAssumePrivilegeRouter = async (server: FastifyZodProvider) 
               projectId: req.params.projectId,
               requesterEmail: req.auth.user.username,
               requesterId: req.auth.user.id,
-              targetActorId: assumePrivilege.actorId,
-              targetActorType: assumePrivilege.actorType
+              targetActorId: assumedPrivilegeDetails.actorId,
+              targetActorType: assumedPrivilegeDetails.actorType
             }
           }
         });

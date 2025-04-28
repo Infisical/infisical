@@ -238,29 +238,31 @@ export const projectRoleServiceFactory = ({
     // just to satisfy ts
     if (!("roles" in membership)) throw new BadRequestError({ message: "Service token not allowed" });
 
-    const assumedProjectRole = requestContext.get("assumedProjectRole");
-    const isImpersonating = assumedProjectRole?.projectId === projectId;
-    const impersonation = isImpersonating
+    const assumedPrivilegeDetailsCtx = requestContext.get("assumedPrivilegeDetails");
+    const isAssumingPrivilege = assumedPrivilegeDetailsCtx?.projectId === projectId;
+    const assumedPrivilegeDetails = isAssumingPrivilege
       ? {
-          actorId: assumedProjectRole?.actorId,
-          actorType: assumedProjectRole?.actorType,
+          actorId: assumedPrivilegeDetailsCtx?.actorId,
+          actorType: assumedPrivilegeDetailsCtx?.actorType,
           actorName: "",
           actorEmail: ""
         }
       : undefined;
 
-    if (impersonation?.actorType === ActorType.IDENTITY) {
-      const identityDetails = await identityDAL.findById(impersonation.actorId);
-      if (!identityDetails) throw new NotFoundError({ message: `Identity with ID ${impersonation.actorId} not found` });
-      impersonation.actorName = identityDetails.name;
-    } else if (impersonation?.actorType === ActorType.USER) {
-      const userDetails = await userDAL.findById(impersonation?.actorId);
-      if (!userDetails) throw new NotFoundError({ message: `User with ID ${impersonation.actorId} not found` });
-      impersonation.actorName = `${userDetails?.firstName} ${userDetails?.lastName || ""}`;
-      impersonation.actorEmail = userDetails?.email || "";
+    if (assumedPrivilegeDetails?.actorType === ActorType.IDENTITY) {
+      const identityDetails = await identityDAL.findById(assumedPrivilegeDetails.actorId);
+      if (!identityDetails)
+        throw new NotFoundError({ message: `Identity with ID ${assumedPrivilegeDetails.actorId} not found` });
+      assumedPrivilegeDetails.actorName = identityDetails.name;
+    } else if (assumedPrivilegeDetails?.actorType === ActorType.USER) {
+      const userDetails = await userDAL.findById(assumedPrivilegeDetails?.actorId);
+      if (!userDetails)
+        throw new NotFoundError({ message: `User with ID ${assumedPrivilegeDetails.actorId} not found` });
+      assumedPrivilegeDetails.actorName = `${userDetails?.firstName} ${userDetails?.lastName || ""}`;
+      assumedPrivilegeDetails.actorEmail = userDetails?.email || "";
     }
 
-    return { permissions: packRules(permission.rules), membership, impersonation };
+    return { permissions: packRules(permission.rules), membership, assumedPrivilegeDetails };
   };
 
   return { createRole, updateRole, deleteRole, listRoles, getUserPermission, getRoleBySlug };

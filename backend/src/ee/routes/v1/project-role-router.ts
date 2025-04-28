@@ -253,7 +253,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
                 })
                 .array()
             }),
-            impersonation: z
+            assumedPrivilegeDetails: z
               .object({
                 actorId: z.string(),
                 actorType: z.string(),
@@ -268,7 +268,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { permissions, membership, impersonation } = await server.services.projectRole.getUserPermission(
+      const { permissions, membership, assumedPrivilegeDetails } = await server.services.projectRole.getUserPermission(
         req.permission.id,
         req.params.projectId,
         req.permission.authMethod,
@@ -279,7 +279,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         data: {
           permissions,
           membership,
-          impersonation
+          assumedPrivilegeDetails
         }
       };
     }

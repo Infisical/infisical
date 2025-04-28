@@ -560,15 +560,15 @@ export const permissionServiceFactory = ({
   }: TGetProjectPermissionArg): Promise<TProjectPermissionRT<T>> => {
     let actor = inputActor;
     let actorId = inputActorId;
-    const assumedProjectRole = requestContext.get("assumedProjectRole");
+    const assumedPrivilegeDetailsCtx = requestContext.get("assumedPrivilegeDetails");
     if (
-      assumedProjectRole &&
+      assumedPrivilegeDetailsCtx &&
       actor === ActorType.USER &&
-      actorId === assumedProjectRole.requesterId &&
-      projectId === assumedProjectRole.projectId
+      actorId === assumedPrivilegeDetailsCtx.requesterId &&
+      projectId === assumedPrivilegeDetailsCtx.projectId
     ) {
-      actor = assumedProjectRole.actorType;
-      actorId = assumedProjectRole.actorId;
+      actor = assumedPrivilegeDetailsCtx.actorType;
+      actorId = assumedPrivilegeDetailsCtx.actorId;
     }
 
     switch (actor) {

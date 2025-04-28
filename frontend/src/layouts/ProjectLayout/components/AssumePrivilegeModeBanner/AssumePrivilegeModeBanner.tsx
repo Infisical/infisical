@@ -9,9 +9,9 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 export const AssumePrivilegeModeBanner = () => {
   const { currentWorkspace } = useWorkspace();
   const exitAssumePrivilegeMode = useRemoveAssumeProjectPrivilege();
-  const { impersonation } = useProjectPermission();
+  const { assumedPrivilegeDetails } = useProjectPermission();
 
-  if (!impersonation) return null;
+  if (!assumedPrivilegeDetails) return null;
 
   return (
     <div className="z-10 -mx-4 flex items-center justify-center gap-2 rounded border border-mineshaft-600 bg-primary-400 p-2 text-mineshaft-800 shadow">
@@ -19,8 +19,8 @@ export const AssumePrivilegeModeBanner = () => {
         <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
         You are currently viewing the project with privileges of{" "}
         <b>
-          {impersonation?.actorType === ActorType.IDENTITY ? "identity" : "user"}{" "}
-          {impersonation?.actorName}
+          {assumedPrivilegeDetails?.actorType === ActorType.IDENTITY ? "identity" : "user"}{" "}
+          {assumedPrivilegeDetails?.actorName}
         </b>
       </div>
       <div>

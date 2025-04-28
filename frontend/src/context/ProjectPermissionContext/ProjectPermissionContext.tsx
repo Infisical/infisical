@@ -20,7 +20,7 @@ export const useProjectPermission = () => {
   }
 
   const {
-    data: { permission, membership, impersonation }
+    data: { permission, membership, assumedPrivilegeDetails }
   } = useSuspenseQuery({
     queryKey: roleQueryKeys.getUserProjectPermissions({ workspaceId: projectId }),
     queryFn: () => fetchUserProjectPermissions({ workspaceId: projectId }),
@@ -30,7 +30,7 @@ export const useProjectPermission = () => {
       const ability = evaluatePermissionsAbility(rule);
       return {
         permission: ability,
-        impersonation: data.impersonation,
+        assumedPrivilegeDetails: data.assumedPrivilegeDetails,
         membership: {
           ...data.membership,
           roles: data.membership.roles.map(({ role }) => role)
@@ -44,5 +44,5 @@ export const useProjectPermission = () => {
     []
   );
 
-  return { permission, membership, hasProjectRole, impersonation };
+  return { permission, membership, hasProjectRole, assumedPrivilegeDetails };
 };

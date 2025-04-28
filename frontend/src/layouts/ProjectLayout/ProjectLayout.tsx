@@ -30,7 +30,7 @@ export const ProjectLayout = () => {
   const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
   const { t } = useTranslation();
-  const { impersonation } = useProjectPermission();
+  const { assumedPrivilegeDetails } = useProjectPermission();
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
 
@@ -64,7 +64,7 @@ export const ProjectLayout = () => {
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
-        {impersonation && <AssumePrivilegeModeBanner />}
+        {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <motion.div
             key="menu-project-items"

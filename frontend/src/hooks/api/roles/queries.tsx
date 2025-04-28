@@ -138,7 +138,7 @@ export const fetchUserProjectPermissions = async ({
     data: {
       permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[];
       membership: Omit<TProjectMembership, "roles"> & { roles: { role: string }[] };
-      impersonation?: {
+      assumedPrivilegeDetails?: {
         actorId: string;
         actorType: ActorType;
         actorEmail: string;

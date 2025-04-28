@@ -13,7 +13,7 @@ export const injectAssumePrivilege = fp(async (server: FastifyZodProvider) => {
           req.auth.tokenVersionId
         );
         if (decodedToken) {
-          requestContext.set("assumedProjectRole", decodedToken);
+          requestContext.set("assumedPrivilegeDetails", decodedToken);
         }
       }
     } catch (error) {
