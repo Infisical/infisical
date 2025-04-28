@@ -1,0 +1,63 @@
+name: Docs Image Check
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+
+jobs:
+  docs-images:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for unused images (warn only)
+        run: |
+          cd docs
+          unused=0
+          while IFS= read -r -d '' img; do
+            img_name=$(basename "$img")
+            img_path=${img#./}
+            if ! grep -r --include="*.md" --include="*.mdx" --include="*.json" -e "$img_name" -e "$img_path" . > /dev/null; then
+              echo "⚠️  Unused image found: $img"
+              unused=1
+            fi
+          done < <(find . -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.gif" -o -iname "*.svg" \) -print0)
+
+          if [ "$unused" -eq 1 ]; then
+            echo ""
+            echo "⚠️  Some unused images were found."
+            echo "👉 Run 'make clean-docs-images' locally to remove them."
+          else
+            echo "✅ No unused images found."
+          fi
+
+      - name: Verify referenced images exist
+        run: |
+          cd docs
+          missing=0
+          while IFS= read -r -d '' file; do
+            while IFS= read -r img_ref; do
+              img_ref=$(echo "$img_ref" | sed 's/^(\(.*\))$/\1/')
+              if [[ "$img_ref" == /* ]]; then
+                real_path="./$img_ref"
+              else
+                real_path=$(echo "$img_ref" | sed 's|\(\.\./\)*|./|')
+              fi
+              if [ ! -f "$real_path" ]; then
+                echo "❌ Missing image: $img_ref (referenced in $file)"
+                missing=1
+              fi
+            done < <(grep -o -E "\([^()\"']*\.(png|jpg|jpeg|gif|svg)[^()\"']*\)" "$file" || true)
+          done < <(find . -type f \( -iname "*.md" -o -iname "*.mdx" -o -iname "*.json" \) -print0)
+
+          if [ "$missing" -eq 1 ]; then
+            echo ""
+            echo "❌ Some referenced images are missing!"
+            echo "Please fix the broken image references."
+            exit 1
+          else
+            echo "✅ All referenced images exist."
+          fi
