@@ -6,6 +6,7 @@ import { Octokit as OctokitRest } from "@octokit/rest";
 import { OrgMembershipRole } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -231,7 +232,16 @@ export const githubOrgSyncServiceFactory = ({
         signal: AbortSignal.timeout(5000)
       }
     });
-    const { data: userDetails } = await octoRest.rest.users.getAuthenticated();
+    const { data: userOrgMembershipDetails } = await octoRest.rest.orgs
+      .getMembershipForAuthenticatedUser({
+        org: config.githubOrgName
+      })
+      .catch((err) => {
+        logger.error(err, "User not part of GitHub synced organization");
+        throw new BadRequestError({ message: "User not part of GitHub synced organization" });
+      });
+    const username = userOrgMembershipDetails?.user?.login;
+    if (!username) throw new BadRequestError({ message: "User not part of GitHub synced organization" });
 
     const octokit = new OctokitWithPlugin({
       auth: accessToken,
@@ -264,7 +274,7 @@ export const githubOrgSyncServiceFactory = ({
       `,
         {
           org: config.githubOrgName,
-          username: userDetails.login
+          username
         }
       )
       .catch((err) => {
