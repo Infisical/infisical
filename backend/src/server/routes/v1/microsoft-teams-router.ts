@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { MicrosoftTeamsIntegrationsSchema, WorkflowIntegrationsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -76,6 +77,19 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CREATE,
+          metadata: {
+            tenantId: req.body.tenantId,
+            slug: req.body.slug,
+            description: req.body.description
+          }
+        }
+      });
     }
   });
 
@@ -104,6 +118,15 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
         actorOrgId: req.permission.orgId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST,
+          metadata: {}
+        }
+      });
+
       return microsoftTeamsIntegrations;
     }
   });
@@ -121,12 +144,24 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      await server.services.microsoftTeams.checkInstallationStatus({
+      const microsoftTeamsIntegration = await server.services.microsoftTeams.checkInstallationStatus({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         workflowIntegrationId: req.params.id
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS,
+          metadata: {
+            tenantId: microsoftTeamsIntegration.tenantId,
+            slug: microsoftTeamsIntegration.slug
+          }
+        }
       });
     }
   });
@@ -160,6 +195,19 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
         id: req.params.id
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_DELETE,
+          metadata: {
+            tenantId: deletedMicrosoftTeamsIntegration.tenantId,
+            slug: deletedMicrosoftTeamsIntegration.slug,
+            id: deletedMicrosoftTeamsIntegration.id
+          }
+        }
+      });
+
       return deletedMicrosoftTeamsIntegration;
     }
   });
@@ -191,6 +239,19 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         id: req.params.id
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET,
+          metadata: {
+            slug: microsoftTeamsIntegration.slug,
+            id: microsoftTeamsIntegration.id,
+            tenantId: microsoftTeamsIntegration.tenantId
+          }
+        }
       });
 
       return microsoftTeamsIntegration;
@@ -231,6 +292,21 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
         ...req.body
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_UPDATE,
+          metadata: {
+            slug: microsoftTeamsIntegration.slug,
+            id: microsoftTeamsIntegration.id,
+            tenantId: microsoftTeamsIntegration.tenantId,
+            newSlug: req.body.slug,
+            newDescription: req.body.description
+          }
+        }
+      });
+
       return microsoftTeamsIntegration;
     }
   });
@@ -262,7 +338,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const teams = await server.services.microsoftTeams.getTeams({
+      const microsoftTeamsIntegration = await server.services.microsoftTeams.getTeams({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -270,7 +346,20 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
         workflowIntegrationId: req.params.workflowIntegrationId
       });
 
-      return teams;
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS,
+          metadata: {
+            tenantId: microsoftTeamsIntegration.tenantId,
+            slug: microsoftTeamsIntegration.slug,
+            id: microsoftTeamsIntegration.id
+          }
+        }
+      });
+
+      return microsoftTeamsIntegration.teams;
     }
   });
 

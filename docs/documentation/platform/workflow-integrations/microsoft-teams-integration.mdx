@@ -103,11 +103,15 @@ This guide will provide step by step instructions on how to configure Microsoft 
         Next we need to get the application client ID and create a new client secret. **Save these values for later, as they're required to configure the Microsoft Teams integration in Infisical.**
 
 
-        Copy the application client ID from the overview page.
-        ![copy-client-id](/images/platform/workflow-integrations/microsoft-teams-integration/azure-copy-client-id.png)
+          Copy the application client ID from the overview page.
+          ![copy-client-id](/images/platform/workflow-integrations/microsoft-teams-integration/azure-copy-client-id.png)
 
-        Create a new client secret, and save the value. Keep the expiry time in mind when you're creating the secret.
-        ![create-client-secret](/images/platform/workflow-integrations/microsoft-teams-integration/azure-create-client-secret.png)
+          Create a new client secret, and save the value. Keep the expiry time in mind when you're creating the secret.
+          ![create-client-secret](/images/platform/workflow-integrations/microsoft-teams-integration/azure-create-client-secret.png)
+
+          <Warning>
+            Remember to rotate your client secret before it expires. Consider setting up a reminder or automated process to replace the secret and update your Infisical configuration before expiration.
+          </Warning>
         </Step>
 
         <Step title="Create Microsoft Teams Bot">
@@ -135,7 +139,7 @@ This guide will provide step by step instructions on how to configure Microsoft 
             "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.11/MicrosoftTeams.schema.json",
             "version": "3.0.0",
             "manifestVersion": "1.11",
-            "id": "f86bbe9c-b853-4f96-8512-7ceba7d2a620", // Keep your existing ID here, this field cannot be changed.
+            "id": "<your-existing-id-from-your-manifest-file>",
             "name": {
               "short": "Infisical",
               "full": "Infisical Bot"
@@ -157,7 +161,7 @@ This guide will provide step by step instructions on how to configure Microsoft 
             "accentColor": "#FFFFFF",
             "bots": [
               {
-                "botId": "01bad7fb-227b-4ac3-b5f3-41e8cdaf65d7", // Replace the botId with the Client ID of the App Registration from the previous step.
+                "botId": "<replace-with-your-client-id-of-your-app-registration-from-previous-step", 
                 "scopes": [
                   "team",
                   "personal",

@@ -206,6 +206,8 @@ export const microsoftTeamsServiceFactory = ({
         status: WorkflowIntegrationStatus.INSTALLED
       });
     }
+
+    return microsoftTeamsIntegration;
   };
 
   const completeMicrosoftTeamsIntegration = async ({
@@ -556,7 +558,7 @@ export const microsoftTeamsServiceFactory = ({
       botAppId: decryptedAppId.toString(),
       botAppPassword: decryptedAppPassword.toString(),
       botId: decryptedBotId.toString(),
-      orgId: actorOrgId,
+      orgId: microsoftTeamsIntegration.orgId,
       kmsService,
       microsoftTeamsIntegrationDAL,
       microsoftTeamsIntegrationId: microsoftTeamsIntegration.id
@@ -568,9 +570,12 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const teams = await teamsBot.getTeamsAndChannels(accessToken, microsoftTeamsIntegration.tenantId, internalId);
+    const teams = await teamsBot.getTeamsAndChannels(accessToken, internalId);
 
-    return teams;
+    return {
+      ...microsoftTeamsIntegration,
+      teams
+    };
   };
 
   const handleMessageEndpoint = async (req: FastifyRequest, res: FastifyReply) => {

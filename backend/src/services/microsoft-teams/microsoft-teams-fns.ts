@@ -1,6 +1,7 @@
 /* eslint-disable class-methods-use-this */
 import axios from "axios";
 import { TeamsActivityHandler, TurnContext } from "botbuilder";
+import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -45,11 +46,10 @@ export const verifyTenantFromCode = async (
     });
 
   const accessToken = response.data.access_token;
-  const tokenParts = accessToken.split(".");
-  const tokenPayload = JSON.parse(Buffer.from(tokenParts[1], "base64").toString()) as { tid: string };
+  const decodedToken = jwt.decode(accessToken) as { tid: string };
 
   // the 'tid' claim in the token contains the tenant ID
-  const tenantIdFromToken = tokenPayload.tid;
+  const tenantIdFromToken = decodedToken.tid;
 
   if (tenantIdFromToken !== tenantId) {
     throw new BadRequestError({
@@ -562,24 +562,34 @@ export class TeamsBot extends TeamsActivityHandler {
     }
   }
 
-  // todo: filter out teams that the bot is not a member of
-  async getTeamsAndChannels(accessToken: string, tenantId: string, internalAppId: string) {
+  async getTeamsAndChannels(accessToken: string, internalAppId: string) {
     try {
-      const teamsResponse = await axios
-        .get<{ value: { displayName: string; id: string }[] }>(`https://graph.microsoft.com/v1.0/teams`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
-        })
-        .catch((error) => {
+      let teamsNextLink: string = "https://graph.microsoft.com/v1.0/teams";
+
+      let allTeams: { displayName: string; id: string }[] = [];
+      while (teamsNextLink?.length) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const response = await axios.get<{
+            value: { displayName: string; id: string }[];
+            "@odata.nextLink"?: string;
+          }>(teamsNextLink, {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          });
+
+          allTeams = allTeams.concat(response.data.value);
+          teamsNextLink = response.data["@odata.nextLink"] || "";
+        } catch (error) {
           logger.error(error, "Microsoft Teams Workflow Integration: Failed to fetch teams");
           throw error;
-        });
+        }
+      }
 
-      const teams = teamsResponse.data.value;
       const result = [];
 
-      for await (const team of teams) {
+      for await (const team of allTeams) {
         try {
           // Get installed apps for this team
           const installedAppsResponse = await axios.get<{ value: { teamsAppDefinition: { teamsAppId: string } }[] }>(
@@ -600,21 +610,41 @@ export class TeamsBot extends TeamsActivityHandler {
           continue; // skip this team if we can't determine if the bot is installed
         }
 
-        const channelsResponse = await axios
-          .get<{ value: { displayName: string; id: string }[] }>(
-            `https://graph.microsoft.com/v1.0/teams/${team.id}/channels`,
-            {
+        let allChannels: { displayName: string; id: string }[] = [];
+
+        let channelNextLink: string = `https://graph.microsoft.com/v1.0/teams/${team.id}/channels`;
+
+        while (channelNextLink?.length) {
+          // eslint-disable-next-line no-await-in-loop
+          const resp = await axios
+            .get<{
+              value: { displayName: string; id: string }[];
+              "@odata.nextLink"?: string;
+            }>(channelNextLink, {
               headers: {
                 Authorization: `Bearer ${accessToken}`
               }
-            }
-          )
-          .catch((error) => {
-            logger.error(error, "Microsoft Teams Workflow Integration: Failed to fetch channels");
-            throw error;
-          });
+            })
+            .catch((error) => {
+              if (axios.isAxiosError(error)) {
+                logger.error(
+                  error.response?.data,
+                  "getTeamsAndChannels: Axios error, Microsoft Teams Workflow Integration: Failed to fetch channels"
+                );
+              } else {
+                logger.error(
+                  error,
+                  "getTeamsAndChannels: Microsoft Teams Workflow Integration: Failed to fetch channels"
+                );
+              }
+              throw error;
+            });
 
-        const channels = channelsResponse.data.value.map((channel) => ({
+          allChannels = allChannels.concat(resp.data.value);
+          channelNextLink = resp.data["@odata.nextLink"] || "";
+        }
+
+        const channels = allChannels.map((channel) => ({
           channelName: channel.displayName,
           channelId: channel.id
         }));

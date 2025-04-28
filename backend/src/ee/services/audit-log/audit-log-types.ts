@@ -320,7 +320,15 @@ export enum EventType {
   DELETE_SECRET_ROTATION = "delete-secret-rotation",
   SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
 
-  PROJECT_ACCESS_REQUEST = "project-access-request"
+  PROJECT_ACCESS_REQUEST = "project-access-request",
+
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CREATE = "microsoft-teams-workflow-integration-create",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_DELETE = "microsoft-teams-workflow-integration-delete",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_UPDATE = "microsoft-teams-workflow-integration-update",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS = "microsoft-teams-workflow-integration-check-installation-status",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS = "microsoft-teams-workflow-integration-get-teams",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET = "microsoft-teams-workflow-integration-get",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -2517,6 +2525,66 @@ interface RotateSecretRotationEvent {
   };
 }
 
+interface MicrosoftTeamsWorkflowIntegrationCreateEvent {
+  type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CREATE;
+  metadata: {
+    tenantId: string;
+    slug: string;
+    description?: string;
+  };
+}
+
+interface MicrosoftTeamsWorkflowIntegrationDeleteEvent {
+  type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_DELETE;
+  metadata: {
+    tenantId: string;
+    id: string;
+    slug: string;
+  };
+}
+
+interface MicrosoftTeamsWorkflowIntegrationCheckInstallationStatusEvent {
+  type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS;
+  metadata: {
+    tenantId: string;
+    slug: string;
+  };
+}
+
+interface MicrosoftTeamsWorkflowIntegrationGetTeamsEvent {
+  type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS;
+  metadata: {
+    tenantId: string;
+    slug: string;
+    id: string;
+  };
+}
+
+interface MicrosoftTeamsWorkflowIntegrationGetEvent {
+  type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET;
+  metadata: {
+    tenantId: string;
+    slug: string;
+    id: string;
+  };
+}
+
+interface MicrosoftTeamsWorkflowIntegrationListEvent {
+  type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST;
+  metadata: Record<string, string>;
+}
+
+interface MicrosoftTeamsWorkflowIntegrationUpdateEvent {
+  type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_UPDATE;
+  metadata: {
+    tenantId: string;
+    slug: string;
+    id: string;
+    newSlug?: string;
+    newDescription?: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -2746,4 +2814,11 @@ export type Event =
   | CreateSecretRotationEvent
   | UpdateSecretRotationEvent
   | DeleteSecretRotationEvent
-  | RotateSecretRotationEvent;
+  | RotateSecretRotationEvent
+  | MicrosoftTeamsWorkflowIntegrationCreateEvent
+  | MicrosoftTeamsWorkflowIntegrationDeleteEvent
+  | MicrosoftTeamsWorkflowIntegrationCheckInstallationStatusEvent
+  | MicrosoftTeamsWorkflowIntegrationGetTeamsEvent
+  | MicrosoftTeamsWorkflowIntegrationGetEvent
+  | MicrosoftTeamsWorkflowIntegrationListEvent
+  | MicrosoftTeamsWorkflowIntegrationUpdateEvent;
