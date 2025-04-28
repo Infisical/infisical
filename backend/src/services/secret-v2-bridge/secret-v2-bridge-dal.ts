@@ -144,14 +144,9 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const find = async (filter: TFindFilter<TSecretsV2>, opts: TFindOpt<TSecretsV2> = {}) => {
     const { offset, limit, sort, tx } = opts;
     try {
-      const qualifiedFilter = { ...filter };
-      if ("userId" in qualifiedFilter) {
-        delete qualifiedFilter.userId;
-      }
-
       const query = (tx || db)(TableName.SecretV2)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        .where(buildFindFilter(qualifiedFilter))
+        .where(buildFindFilter(filter))
         .leftJoin(
           TableName.SecretV2JnTag,
           `${TableName.SecretV2}.id`,
