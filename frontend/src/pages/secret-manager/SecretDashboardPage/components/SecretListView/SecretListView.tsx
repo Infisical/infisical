@@ -49,8 +49,6 @@ export const SecretListView = ({
   isProtectedBranch = false,
   importedBy
 }: Props) => {
-  console.log("secretssssss", secrets);
-
   const queryClient = useQueryClient();
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",

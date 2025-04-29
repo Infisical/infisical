@@ -46,16 +46,17 @@ import {
 } from "@app/components/secrets/SecretReferenceDetails";
 
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
-import { Blur } from "@app/components/v2/Blur";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faKey, faRotate } from "@fortawesome/free-solid-svg-icons";
+import { faEyeSlash, faKey, faRotate } from "@fortawesome/free-solid-svg-icons";
 import {
   FontAwesomeSpriteName,
   formSchema,
   SecretActionType,
   TFormSchema
 } from "./SecretListView.utils";
+
+const hiddenValue = "******";
 
 type Props = {
   secret: SecretV3RawSanitized;
@@ -95,6 +96,23 @@ export const SecretItem = memo(
     const { permission } = useProjectPermission();
     const { isRotatedSecret } = secret;
 
+    const canEditSecretValue = permission.can(
+      ProjectPermissionSecretActions.Edit,
+      subject(ProjectPermissionSub.Secrets, {
+        environment,
+        secretPath,
+        secretName: secret.key,
+        secretTags: ["*"]
+      })
+    );
+
+    const getDefaultValue = () => {
+      if (secret.secretValueHidden) {
+        return canEditSecretValue ? hiddenValue : "";
+      }
+      return secret.valueOverride || secret.value || "";
+    };
+
     const {
       handleSubmit,
       control,
@@ -108,11 +126,11 @@ export const SecretItem = memo(
     } = useForm<TFormSchema>({
       defaultValues: {
         ...secret,
-        value: secret.secretValueHidden ? "" : secret.value
+        value: getDefaultValue()
       },
       values: {
         ...secret,
-        value: secret.secretValueHidden ? "" : secret.value
+        value: getDefaultValue()
       },
       resolver: zodResolver(formSchema)
     });
@@ -154,6 +172,7 @@ export const SecretItem = memo(
           secretTags: selectedTagSlugs
         })
       );
+
     const { secretValueHidden } = secret;
 
     const [isSecValueCopied, setIsSecValueCopied] = useToggle(false);
@@ -286,6 +305,13 @@ export const SecretItem = memo(
               tabIndex={0}
               role="button"
             >
+              {secretValueHidden && !isOverriden && (
+                <Tooltip
+                  content={`You do not have access to view the current value${canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}`}
+                >
+                  <FontAwesomeIcon className="pr-2" size="sm" icon={faEyeSlash} />
+                </Tooltip>
+              )}
               {isOverriden ? (
                 <Controller
                   name="valueOverride"
@@ -301,8 +327,6 @@ export const SecretItem = memo(
                     />
                   )}
                 />
-              ) : secretValueHidden ? (
-                <Blur tooltipText="You do not have permission to read the value of this secret." />
               ) : (
                 <Controller
                   name="value"
@@ -312,11 +336,11 @@ export const SecretItem = memo(
                     <InfisicalSecretInput
                       isReadOnly={isReadOnly || isRotatedSecret}
                       key="secret-value"
-                      isVisible={isVisible}
+                      isVisible={isVisible && !secretValueHidden}
                       environment={environment}
                       secretPath={secretPath}
                       {...field}
-                      defaultValue={secretValueHidden ? "" : undefined}
+                      defaultValue={secretValueHidden ? hiddenValue : undefined}
                       containerClassName="py-1.5 rounded-md transition-all"
                     />
                   )}
