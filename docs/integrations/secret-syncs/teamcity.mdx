@@ -37,10 +37,6 @@ description: "Learn how to configure a TeamCity Sync for Infisical."
                 Not including a Build Configuration will sync secrets to the project.
             </Note>
 
-            <Note>
-                Infisical only syncs secrets within the target scope, meaning that inherited secrets are ignored.
-            </Note>
-
         5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
         ![Configure Options](/images/secret-syncs/teamcity/teamcity-sync-options.png)
 
@@ -48,6 +44,11 @@ description: "Learn how to configure a TeamCity Sync for Infisical."
                 - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
                 - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over TeamCity when keys conflict.
                 - **Import Secrets (Prioritize TeamCity)**: Imports secrets from the destination endpoint before syncing, prioritizing values from TeamCity over Infisical when keys conflict.
+
+                <Note>
+                    Infisical only syncs secrets from within the target scope; inherited secrets will not be imported.
+                </Note>
+
             - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
             - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
 
