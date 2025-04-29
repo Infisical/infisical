@@ -1,5 +1,12 @@
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
-import { faKey, faLock, faPassport, faServer, faUser } from "@fortawesome/free-solid-svg-icons";
+import {
+  faKey,
+  faLink,
+  faLock,
+  faPassport,
+  faServer,
+  faUser
+} from "@fortawesome/free-solid-svg-icons";
 
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -13,9 +20,11 @@ import {
   GcpConnectionMethod,
   GitHubConnectionMethod,
   HumanitecConnectionMethod,
+  LdapConnectionMethod,
   MsSqlConnectionMethod,
   PostgresConnectionMethod,
   TAppConnection,
+  TeamCityConnectionMethod,
   TerraformCloudConnectionMethod,
   VercelConnectionMethod,
   WindmillConnectionMethod
@@ -48,7 +57,9 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.MsSql]: { name: "Microsoft SQL Server", image: "MsSql.png" },
   [AppConnection.Camunda]: { name: "Camunda", image: "Camunda.png" },
   [AppConnection.Windmill]: { name: "Windmill", image: "Windmill.png" },
-  [AppConnection.Auth0]: { name: "Auth0", image: "Auth0.png", size: 40 }
+  [AppConnection.Auth0]: { name: "Auth0", image: "Auth0.png", size: 40 },
+  [AppConnection.LDAP]: { name: "LDAP", image: "LDAP.png", size: 65 },
+  [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -77,10 +88,13 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
+    case TeamCityConnectionMethod.AccessToken:
     case WindmillConnectionMethod.AccessToken:
       return { name: "Access Token", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:
       return { name: "Client Credentials", icon: faServer };
+    case LdapConnectionMethod.SimpleBind:
+      return { name: "Simple Bind", icon: faLink };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

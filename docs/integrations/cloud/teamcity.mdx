@@ -3,43 +3,6 @@ title: "TeamCity"
 description: "How to sync secrets from Infisical to TeamCity"
 ---
 
-Prerequisites:
-
-- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
-
-<Steps>
-  <Step title="Authorize Infisical for TeamCity">
-    Obtain a TeamCity Access Token in Profile > Access Tokens
-
-    ![integrations teamcity dashboard](../../images/integrations/teamcity/integrations-teamcity-dashboard.png)
-    ![integrations teamcity token](../../images/integrations/teamcity/integrations-teamcity-token.png)
-
-    <Note>
-      For this integration to work, the TeamCity Access Token must either have the
-      **Same as current user** account-wide permission enabled or, if **Limit per project**
-      is selected, then it must at minimum have the **View build configuration settings** and **Edit project** permissions enabled.
-    </Note>
-
-    Navigate to your project's integrations tab in Infisical.
-
-    ![integrations](../../images/integrations.png)
-
-    Press on the TeamCity tile and input your TeamCity Access Token and Server URL to grant Infisical access to your TeamCity account.
-
-    ![integrations teamcity authorization](../../images/integrations/teamcity/integrations-teamcity-auth.png)
-
-  </Step>
-  <Step title="Start integration">
-    Select which Infisical environment secrets you want to sync to which TeamCity project (and optionally build configuration) and press create integration to start syncing secrets to TeamCity.
-
-    ![integrations teamcity](../../images/integrations/teamcity/integrations-teamcity-create.png)
-
-    <Note>
-      Infisical integrates with both TeamCity's project-level and build configuration-level environment variables.
-      
-      To sync secrets to a specific build configuration in a TeamCity project, you can select a build configuration from the **TeamCity Build Config** dropdown; otherwise, leaving it empty will sync secrets to TeamCity at the project-level.
-    </Note>
-
-    ![integrations teamcity](../../images/integrations/teamcity/integrations-teamcity.png)
-  </Step>
-</Steps>
+<Note>
+    The TeamCity Native Integration will be deprecated in 2026. Please migrate to our new [TeamCity Sync](../secret-syncs/teamcity).
+</Note>

@@ -1,9 +1,11 @@
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import AWS from "aws-sdk";
+import { AxiosError } from "axios";
 import { randomUUID } from "crypto";
 
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
 import { AwsConnectionMethod } from "./aws-connection-enums";
@@ -90,9 +92,20 @@ export const validateAwsConnectionCredentials = async (appConnection: TAwsConnec
     const sts = new AWS.STS(awsConfig);
 
     resp = await sts.getCallerIdentity().promise();
-  } catch (e: unknown) {
+  } catch (error: unknown) {
+    logger.error(error, "Error validating AWS connection credentials");
+
+    let message: string;
+
+    if (error instanceof AxiosError) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      message = (error.response?.data?.message as string) || error.message || "verify credentials";
+    } else {
+      message = (error as Error)?.message || "verify credentials";
+    }
+
     throw new BadRequestError({
-      message: `Unable to validate connection: verify credentials`
+      message: `Unable to validate connection: ${message}`
     });
   }
 

@@ -32,11 +32,16 @@ import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
+import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
 import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
+import {
+  SanitizedTeamCityConnectionSchema,
+  TeamCityConnectionListItemSchema
+} from "@app/services/app-connection/teamcity";
 import {
   SanitizedTerraformCloudConnectionSchema,
   TerraformCloudConnectionListItemSchema
@@ -64,7 +69,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedCamundaConnectionSchema.options,
   ...SanitizedAuth0ConnectionSchema.options,
   ...SanitizedAzureClientSecretsConnectionSchema.options,
-  ...SanitizedWindmillConnectionSchema.options
+  ...SanitizedWindmillConnectionSchema.options,
+  ...SanitizedLdapConnectionSchema.options,
+  ...SanitizedTeamCityConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -82,7 +89,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   CamundaConnectionListItemSchema,
   Auth0ConnectionListItemSchema,
   AzureClientSecretsConnectionListItemSchema,
-  WindmillConnectionListItemSchema
+  WindmillConnectionListItemSchema,
+  LdapConnectionListItemSchema,
+  TeamCityConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

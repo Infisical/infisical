@@ -23,6 +23,7 @@ import {
   useCreateSshHost,
   useGetSshHostById,
   useGetWorkspaceUsers,
+  useListWorkspaceSshHosts,
   useUpdateSshHost
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -34,7 +35,8 @@ type Props = {
 
 const schema = z
   .object({
-    hostname: z.string(),
+    hostname: z.string().trim(),
+    alias: z.string().trim(),
     userCertTtl: z
       .string()
       .trim()
@@ -58,6 +60,7 @@ export type FormData = z.infer<typeof schema>;
 export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
+  const { data: sshHosts } = useListWorkspaceSshHosts(currentWorkspace.id);
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const [expandedMappings, setExpandedMappings] = useState<Record<number, boolean>>({});
 
@@ -79,6 +82,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
     resolver: zodResolver(schema),
     defaultValues: {
       hostname: "",
+      alias: "",
       userCertTtl: "8h",
       loginMappings: []
     }
@@ -93,6 +97,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (sshHost) {
       reset({
         hostname: sshHost.hostname,
+        alias: sshHost.alias ?? "",
         userCertTtl: sshHost.userCertTtl,
         loginMappings: sshHost.loginMappings.map(({ loginUser, allowedPrincipals }) => ({
           loginUser,
@@ -106,20 +111,51 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
     } else {
       reset({
         hostname: "",
+        alias: "",
         userCertTtl: "8h",
         loginMappings: []
       });
     }
   }, [sshHost]);
 
-  const onFormSubmit = async ({ hostname, userCertTtl, loginMappings }: FormData) => {
+  const onFormSubmit = async ({ hostname, alias, userCertTtl, loginMappings }: FormData) => {
     try {
       if (!projectId) return;
+
+      // check if there is already a different host with the same hostname
+      const existingHostnames =
+        sshHosts?.filter((h) => h.id !== sshHost?.id).map((h) => h.hostname) || [];
+
+      if (existingHostnames.includes(hostname.trim())) {
+        createNotification({
+          text: "A host with this hostname already exists.",
+          type: "error"
+        });
+        return;
+      }
+
+      const trimmedAlias = alias.trim();
+
+      // check if there is already a different host with the same non-null alias
+      if (trimmedAlias) {
+        const existingAliases =
+          sshHosts?.filter((h) => h.id !== sshHost?.id && h.alias !== null).map((h) => h.alias) ||
+          [];
+
+        if (existingAliases.includes(trimmedAlias)) {
+          createNotification({
+            text: "A host with this alias already exists.",
+            type: "error"
+          });
+          return;
+        }
+      }
 
       if (sshHost) {
         await updateMutateAsync({
           sshHostId: sshHost.id,
           hostname,
+          alias: trimmedAlias,
           userCertTtl,
           loginMappings: loginMappings.map(({ loginUser, allowedPrincipals }) => ({
             loginUser,
@@ -132,6 +168,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
         await createMutateAsync({
           projectId,
           hostname,
+          alias: trimmedAlias,
           userCertTtl,
           loginMappings: loginMappings.map(({ loginUser, allowedPrincipals }) => ({
             loginUser,
@@ -192,6 +229,16 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                 isRequired
               >
                 <Input {...field} placeholder="host.example.com" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue=""
+            name="alias"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Alias" isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="host" />
               </FormControl>
             )}
           />

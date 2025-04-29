@@ -29,7 +29,8 @@ export const SanitizedPostgresConnectionSchema = z.discriminatedUnion("method", 
       port: true,
       username: true,
       sslEnabled: true,
-      sslRejectUnauthorized: true
+      sslRejectUnauthorized: true,
+      sslCertificate: true
     })
   })
 ]);

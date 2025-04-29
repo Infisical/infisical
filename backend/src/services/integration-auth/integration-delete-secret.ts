@@ -177,6 +177,7 @@ export const deleteGithubSecrets = async ({
     selected_repositories_url?: string | undefined;
   }
 
+  // @ts-expect-error just octokit ts compatiability issue
   const OctokitWithRetry = Octokit.plugin(retry);
   let octokit: Octokit;
   const appCfg = getConfig();

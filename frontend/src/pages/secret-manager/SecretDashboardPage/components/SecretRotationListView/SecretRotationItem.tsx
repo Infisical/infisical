@@ -55,7 +55,6 @@ export const SecretRotationItem = ({
               <img
                 src={`/images/integrations/${image}`}
                 style={{
-                  height: "11px",
                   width: "11px"
                 }}
                 alt={`${rotationType} logo`}

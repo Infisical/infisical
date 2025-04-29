@@ -277,8 +277,8 @@ github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6/go.mod h1:
 github.com/ianlancetaylor/demangle v0.0.0-20200824232613-28f6c0f3b639/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/inconshreveable/mousetrap v1.0.1 h1:U3uMjPSQEBMNp1lFxmllqCPM6P5u/Xq7Pgzkat/bFNc=
 github.com/inconshreveable/mousetrap v1.0.1/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/infisical/go-sdk v0.5.8 h1:bCetYLp7HWt8DnU9KPh1n8n3z5pjmunkGDB4bA3lEFs=
-github.com/infisical/go-sdk v0.5.8/go.mod h1:ExjqFLRz7LSpZpGluqDLvFl6dFBLq5LKyLW7GBaMAIs=
+github.com/infisical/go-sdk v0.5.92 h1:PoCnVndrd6Dbkipuxl9fFiwlD5vCKsabtQo09mo8lUE=
+github.com/infisical/go-sdk v0.5.92/go.mod h1:ExjqFLRz7LSpZpGluqDLvFl6dFBLq5LKyLW7GBaMAIs=
 github.com/infisical/infisical-kmip v0.3.5 h1:QM3s0e18B+mYv3a9HQNjNAlbwZJBzXq5BAJM2scIeiE=
 github.com/infisical/infisical-kmip v0.3.5/go.mod h1:bO1M4YtKyutNg1bREPmlyZspC5duSR7hyQ3lPmLzrIs=
 github.com/jedib0t/go-pretty v4.3.0+incompatible h1:CGs8AVhEKg/n9YbUenWmNStRW2PHJzaeDodcfvRAbIo=

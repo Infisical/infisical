@@ -253,6 +253,31 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "DELETE",
+    url: "/me/sessions/:sessionId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        sessionId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.authToken.revokeMySessionById(req.permission.id, req.params.sessionId);
+      return {
+        message: "Successfully revoked session"
+      };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/me",
     config: {

@@ -342,9 +342,12 @@ export const kmsServiceFactory = ({
       }
 
       return async ({ cipherTextBlob }: Pick<TDecryptWithKmsDTO, "cipherTextBlob">) => {
-        const { data } = await externalKms.decrypt(cipherTextBlob);
-
-        return data;
+        try {
+          const { data } = await externalKms.decrypt(cipherTextBlob);
+          return data;
+        } finally {
+          await externalKms.cleanup();
+        }
       };
     }
 
@@ -557,9 +560,12 @@ export const kmsServiceFactory = ({
       }
 
       return async ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
-        const { encryptedBlob } = await externalKms.encrypt(plainText);
-
-        return { cipherTextBlob: encryptedBlob };
+        try {
+          const { encryptedBlob } = await externalKms.encrypt(plainText);
+          return { cipherTextBlob: encryptedBlob };
+        } finally {
+          await externalKms.cleanup();
+        }
       };
     }
 

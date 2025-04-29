@@ -177,7 +177,6 @@ func issueCredentials(cmd *cobra.Command, args []string) {
 		infisicalToken = token.Token
 	} else {
 		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
 
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if err != nil {
@@ -411,7 +410,6 @@ func signKey(cmd *cobra.Command, args []string) {
 		infisicalToken = token.Token
 	} else {
 		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
 
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if err != nil {
@@ -610,23 +608,80 @@ func signKey(cmd *cobra.Command, args []string) {
 }
 
 func sshConnect(cmd *cobra.Command, args []string) {
-	util.RequireLogin()
-	util.RequireLocalWorkspaceFile()
-
-	loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
+	token, err := util.GetInfisicalToken(cmd)
 	if err != nil {
-		util.HandleError(err, "Unable to authenticate")
+		util.HandleError(err, "Unable to parse flag")
+	}
+	
+	var infisicalToken string
+
+	if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
+		infisicalToken = token.Token
+	} else {
+		util.RequireLogin()
+
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
+		if err != nil {
+			util.HandleError(err, "Unable to authenticate")
+		}
+
+		if loggedInUserDetails.LoginExpired {
+			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+		}
+		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
-	if loggedInUserDetails.LoginExpired {
-		util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+	writeHostCaToFile, err := cmd.Flags().GetBool("write-host-ca-to-file")
+	if err != nil {
+		util.HandleError(err, "Unable to parse --write-host-ca-to-file flag")
 	}
 
-	infisicalToken := loggedInUserDetails.UserCredentials.JTWToken
-
-	writeHostCaToFile, err := cmd.Flags().GetBool("writeHostCaToFile")
+	outFilePath, err := cmd.Flags().GetString("out-file-path")
 	if err != nil {
-		util.HandleError(err, "Unable to parse --writeHostCaToFile flag")
+		util.HandleError(err, "Unable to parse flag")
+	}
+	
+	hostname, _ := cmd.Flags().GetString("hostname")
+	loginUser, _ := cmd.Flags().GetString("login-user")
+
+	var outputDir, privateKeyPath, publicKeyPath, signedKeyPath string
+	if outFilePath != "" {
+		if strings.HasPrefix(outFilePath, "~") {
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				util.HandleError(err, "Failed to resolve home directory")
+			}
+			outFilePath = strings.Replace(outFilePath, "~", homeDir, 1)
+		}
+
+		if strings.HasSuffix(outFilePath, "-cert.pub") {
+			signedKeyPath = outFilePath
+			baseName := strings.TrimSuffix(filepath.Base(outFilePath), "-cert.pub")
+			outputDir = filepath.Dir(outFilePath)
+			privateKeyPath = filepath.Join(outputDir, baseName)
+			publicKeyPath = filepath.Join(outputDir, baseName+".pub")
+		} else {
+			outputDir = outFilePath
+			info, err := os.Stat(outputDir)
+			if os.IsNotExist(err) {
+				err = os.MkdirAll(outputDir, 0755)
+				if err != nil {
+					util.HandleError(err, "Failed to create output directory")
+				}
+			} else if err != nil {
+				util.HandleError(err, "Failed to access output directory")
+			} else if !info.IsDir() {
+				util.PrintErrorMessageAndExit("The provided --outFilePath is not a directory")
+			}
+			fileName := "id_ed25519"
+			privateKeyPath = filepath.Join(outputDir, fileName)
+			publicKeyPath = filepath.Join(outputDir, fileName+".pub")
+			signedKeyPath = filepath.Join(outputDir, fileName+"-cert.pub")
+		}
+
+		if privateKeyPath == "" || publicKeyPath == "" || signedKeyPath == "" {
+			util.PrintErrorMessageAndExit("Failed to resolve file paths for writing credentials")
+		}
 	}
 
 	customHeaders, err := util.GetInfisicalCustomHeadersMap()
@@ -651,43 +706,75 @@ func sshConnect(cmd *cobra.Command, args []string) {
 		util.PrintErrorMessageAndExit("You do not have access to any SSH hosts")
 	}
 
-	// Prompt to select host
-	hostNames := make([]string, len(hosts))
-	for i, h := range hosts {
-		hostNames[i] = h.Hostname
+	var selectedHost = hosts[0]
+	if hostname != "" {
+		foundHost := false
+		for _, h := range hosts {
+			if h.Hostname == hostname {
+				selectedHost = h
+				foundHost = true
+				break
+			}
+		}
+		if !foundHost {
+			util.PrintErrorMessageAndExit("Specified --hostname not found or not accessible")
+		}
+	} else {
+		hostNames := make([]string, len(hosts))
+		for i, h := range hosts {
+			if h.Alias != "" {
+				hostNames[i] = h.Alias
+			} else {
+				hostNames[i] = h.Hostname
+			}
+		}
+
+		hostPrompt := promptui.Select{
+			Label: "Select an SSH Host",
+			Items: hostNames,
+			Size:  10,
+		}
+
+		hostIdx, _, err := hostPrompt.Run()
+		if err != nil {
+			util.HandleError(err, "Prompt failed")
+		}
+
+		selectedHost = hosts[hostIdx]
 	}
 
-	hostPrompt := promptui.Select{
-		Label: "Select an SSH Host",
-		Items: hostNames,
-		Size:  10,
+	var selectedLoginUser string
+	if loginUser != "" {
+		foundLoginUser := false
+		for _, m := range selectedHost.LoginMappings {
+			if m.LoginUser == loginUser {
+				selectedLoginUser = loginUser
+				foundLoginUser = true
+				break
+			}
+		}
+		if !foundLoginUser {
+			util.PrintErrorMessageAndExit("Specified --loginUser not valid for selected host")
+		}
+	} else {
+		if len(selectedHost.LoginMappings) == 0 {
+			util.PrintErrorMessageAndExit("No login users available for selected host")
+		}
+		loginUsers := make([]string, len(selectedHost.LoginMappings))
+		for i, m := range selectedHost.LoginMappings {
+			loginUsers[i] = m.LoginUser
+		}
+		loginPrompt := promptui.Select{
+			Label: "Select Login User",
+			Items: loginUsers,
+			Size:  5,
+		}
+		loginIdx, _, err := loginPrompt.Run()
+		if err != nil {
+			util.HandleError(err, "Prompt failed")
+		}
+		selectedLoginUser = selectedHost.LoginMappings[loginIdx].LoginUser
 	}
-	hostIdx, _, err := hostPrompt.Run()
-	if err != nil {
-		util.HandleError(err, "Prompt failed")
-	}
-	selectedHost := hosts[hostIdx]
-
-	// Prompt to select login user
-	if len(selectedHost.LoginMappings) == 0 {
-		util.PrintErrorMessageAndExit("No login users available for selected host")
-	}
-
-	loginUsers := make([]string, len(selectedHost.LoginMappings))
-	for i, m := range selectedHost.LoginMappings {
-		loginUsers[i] = m.LoginUser
-	}
-
-	loginPrompt := promptui.Select{
-		Label: "Select Login User",
-		Items: loginUsers,
-		Size:  5,
-	}
-	loginIdx, _, err := loginPrompt.Run()
-	if err != nil {
-		util.HandleError(err, "Prompt failed")
-	}
-	selectedLoginUser := selectedHost.LoginMappings[loginIdx].LoginUser
 
 	// Issue SSH creds for host
 	creds, err := infisicalClient.Ssh().IssueSshHostUserCert(selectedHost.ID, infisicalSdk.IssueSshHostUserCertOptions{
@@ -731,8 +818,25 @@ func sshConnect(cmd *cobra.Command, args []string) {
 				util.HandleError(err, "Failed to write Host CA to known_hosts")
 			}
 
-			fmt.Printf("📁 Wrote Host CA entry to %s\n", knownHostsPath)
+			fmt.Printf("Successfully wrote Host CA entry to %s\n", knownHostsPath)
 		}
+	}
+
+	if outFilePath != "" {
+		err = writeToFile(privateKeyPath, creds.PrivateKey, 0600)
+		if err != nil {
+			util.HandleError(err, "Failed to write private key")
+		}
+		err = writeToFile(publicKeyPath, creds.PublicKey, 0644)
+		if err != nil {
+			util.HandleError(err, "Failed to write public key")
+		}
+		err = writeToFile(signedKeyPath, creds.SignedKey, 0644)
+		if err != nil {
+			util.HandleError(err, "Failed to write signed cert")
+		}
+		fmt.Printf("Successfully wrote credentials to %s, %s, and %s\n", privateKeyPath, publicKeyPath, signedKeyPath)
+		return
 	}
 
 	// Load credentials into SSH agent
@@ -769,7 +873,6 @@ func sshAddHost(cmd *cobra.Command, args []string) {
 		infisicalToken = token.Token
 	} else {
 		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
 
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if err != nil {
@@ -797,24 +900,33 @@ func sshAddHost(cmd *cobra.Command, args []string) {
 		util.PrintErrorMessageAndExit("You must provide --hostname")
 	}
 
-	writeUserCaToFile, err := cmd.Flags().GetBool("writeUserCaToFile")
+	alias, err := cmd.Flags().GetString("alias")
 	if err != nil {
-		util.HandleError(err, "Unable to parse --writeUserCaToFile flag")
+		util.HandleError(err, "Unable to parse --alias flag")
+	}
+	
+	// if alias == "" {
+	// 	util.PrintErrorMessageAndExit("You must provide --alias")
+	// }
+
+	writeUserCaToFile, err := cmd.Flags().GetBool("write-user-ca-to-file")
+	if err != nil {
+		util.HandleError(err, "Unable to parse --write-user-ca-to-file flag")
 	}
 
-	userCaOutFilePath, err := cmd.Flags().GetString("userCaOutFilePath")
+	userCaOutFilePath, err := cmd.Flags().GetString("user-ca-out-file-path")
 	if err != nil {
-		util.HandleError(err, "Unable to parse --userCaOutFilePath flag")
+		util.HandleError(err, "Unable to parse --user-ca-out-file-path flag")
 	}
 
-	writeHostCertToFile, err := cmd.Flags().GetBool("writeHostCertToFile")
+	writeHostCertToFile, err := cmd.Flags().GetBool("write-host-cert-to-file")
 	if err != nil {
-		util.HandleError(err, "Unable to parse --writeHostCertToFile flag")
+		util.HandleError(err, "Unable to parse --write-host-cert-to-file flag")
 	}
 
-	configureSshd, err := cmd.Flags().GetBool("configureSshd")
+	configureSshd, err := cmd.Flags().GetBool("configure-sshd")
 	if err != nil {
-		util.HandleError(err, "Unable to parse --configureSshd flag")
+		util.HandleError(err, "Unable to parse --configure-sshd flag")
 	}
 
 	forceOverwrite, err := cmd.Flags().GetBool("force")
@@ -823,7 +935,7 @@ func sshAddHost(cmd *cobra.Command, args []string) {
 	}
 
 	if configureSshd && (!writeUserCaToFile || !writeHostCertToFile) {
-		util.PrintErrorMessageAndExit("--configureSshd requires both --writeUserCaToFile and --writeHostCertToFile to also be set")
+		util.PrintErrorMessageAndExit("--configure-sshd requires both --write-user-ca-to-file and --write-host-cert-to-file to also be set")
 	}
 	
 	// Pre-check for file overwrites before proceeding
@@ -831,7 +943,7 @@ func sshAddHost(cmd *cobra.Command, args []string) {
 		if strings.HasPrefix(userCaOutFilePath, "~") {
 			homeDir, err := os.UserHomeDir()
 			if err != nil {
-				util.HandleError(err, "Unable to resolve ~ in userCaOutFilePath")
+				util.HandleError(err, "Unable to resolve ~ in user-ca-out-file-path")
 			}
 			userCaOutFilePath = strings.Replace(userCaOutFilePath, "~", homeDir, 1)
 		}
@@ -902,6 +1014,7 @@ func sshAddHost(cmd *cobra.Command, args []string) {
 	host, err := client.Ssh().AddSshHost(infisicalSdk.AddSshHostOptions{
 		ProjectID: projectId,
 		Hostname:  hostname,
+		Alias:     alias,
 	})
 	if err != nil {
 		util.HandleError(err, "Failed to register SSH host")
@@ -1006,17 +1119,22 @@ func init() {
 	sshIssueCredentialsCmd.Flags().Bool("addToAgent", false, "Whether to add issued SSH credentials to the SSH agent")
 	sshCmd.AddCommand(sshIssueCredentialsCmd)
 
-	sshConnectCmd.Flags().Bool("writeHostCaToFile", true, "Write Host CA public key to ~/.ssh/known_hosts as a separate entry if doesn't already exist")
+	sshConnectCmd.Flags().String("token", "", "Use a machine identity access token")
+	sshConnectCmd.Flags().Bool("write-host-ca-to-file", true, "Write Host CA public key to ~/.ssh/known_hosts as a separate entry if doesn't already exist")
+	sshConnectCmd.Flags().String("hostname", "", "Hostname of the SSH host to connect to")
+	sshConnectCmd.Flags().String("login-user", "", "Login user for the SSH connection")
+	sshConnectCmd.Flags().String("out-file-path", "", "The path to write the SSH credentials to such as ~/.ssh, ./some_folder, ./some_folder/id_rsa-cert.pub. If not provided, the credentials will be added to the SSH agent and used to establish an interactive SSH connection")
 	sshCmd.AddCommand(sshConnectCmd)
 
 	sshAddHostCmd.Flags().String("token", "", "Use a machine identity access token")
 	sshAddHostCmd.Flags().String("projectId", "", "Project ID the host belongs to (required)")
 	sshAddHostCmd.Flags().String("hostname", "", "Hostname of the SSH host (required)")
-	sshAddHostCmd.Flags().Bool("writeUserCaToFile", false, "Write User CA public key to /etc/ssh/infisical_user_ca.pub")
-	sshAddHostCmd.Flags().String("userCaOutFilePath", "/etc/ssh/infisical_user_ca.pub", "Custom file path to write the User CA public key")
-	sshAddHostCmd.Flags().Bool("writeHostCertToFile", false, "Write SSH host certificate to /etc/ssh/ssh_host_<type>_key-cert.pub")
-	sshAddHostCmd.Flags().Bool("configureSshd", false, "Update TrustedUserCAKeys, HostKey, and HostCertificate in the sshd_config file")
-	sshAddHostCmd.Flags().Bool("force", false, "Force overwrite of existing certificate files as part of writeUserCaToFile and writeHostCertToFile")
+	sshAddHostCmd.Flags().String("alias", "", "Alias for the SSH host")
+	sshAddHostCmd.Flags().Bool("write-user-ca-to-file", false, "Write User CA public key to /etc/ssh/infisical_user_ca.pub")
+	sshAddHostCmd.Flags().String("user-ca-out-file-path", "/etc/ssh/infisical_user_ca.pub", "Custom file path to write the User CA public key")
+	sshAddHostCmd.Flags().Bool("write-host-cert-to-file", false, "Write SSH host certificate to /etc/ssh/ssh_host_<type>_key-cert.pub")
+	sshAddHostCmd.Flags().Bool("configure-sshd", false, "Update `TrustedUserCAKeys`, `HostKey`, and `HostCertificate` in the `/etc/ssh/sshd_config` file")
+	sshAddHostCmd.Flags().Bool("force", false, "Force overwrite of existing certificate files as part of `--write-user-ca-to-file` and `--write-host-cert-to-file`")
 
 	sshCmd.AddCommand(sshAddHostCmd)
 

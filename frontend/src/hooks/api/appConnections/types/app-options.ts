@@ -72,6 +72,14 @@ export type TAuth0ConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Auth0;
 };
 
+export type TLdapConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.LDAP;
+};
+
+export type TTeamCityConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.TeamCity;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -87,7 +95,8 @@ export type TAppConnectionOption =
   | TMsSqlConnectionOption
   | TCamundaConnectionOption
   | TWindmillConnectionOption
-  | TAuth0ConnectionOption;
+  | TAuth0ConnectionOption
+  | TTeamCityConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -105,4 +114,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Camunda]: TCamundaConnectionOption;
   [AppConnection.Windmill]: TWindmillConnectionOption;
   [AppConnection.Auth0]: TAuth0ConnectionOption;
+  [AppConnection.LDAP]: TLdapConnectionOption;
+  [AppConnection.TeamCity]: TTeamCityConnectionOption;
 };

@@ -13,12 +13,26 @@ import {
   TAuth0ClientSecretRotationWithConnection
 } from "./auth0-client-secret";
 import {
+  TAwsIamUserSecretRotation,
+  TAwsIamUserSecretRotationGeneratedCredentials,
+  TAwsIamUserSecretRotationInput,
+  TAwsIamUserSecretRotationListItem,
+  TAwsIamUserSecretRotationWithConnection
+} from "./aws-iam-user-secret";
+import {
   TAzureClientSecretRotation,
   TAzureClientSecretRotationGeneratedCredentials,
   TAzureClientSecretRotationInput,
   TAzureClientSecretRotationListItem,
   TAzureClientSecretRotationWithConnection
 } from "./azure-client-secret";
+import {
+  TLdapPasswordRotation,
+  TLdapPasswordRotationGeneratedCredentials,
+  TLdapPasswordRotationInput,
+  TLdapPasswordRotationListItem,
+  TLdapPasswordRotationWithConnection
+} from "./ldap-password";
 import {
   TMsSqlCredentialsRotation,
   TMsSqlCredentialsRotationInput,
@@ -38,30 +52,40 @@ export type TSecretRotationV2 =
   | TPostgresCredentialsRotation
   | TMsSqlCredentialsRotation
   | TAuth0ClientSecretRotation
-  | TAzureClientSecretRotation;
+  | TAzureClientSecretRotation
+  | TLdapPasswordRotation
+  | TAwsIamUserSecretRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
   | TMsSqlCredentialsRotationWithConnection
   | TAuth0ClientSecretRotationWithConnection
-  | TAzureClientSecretRotationWithConnection;
+  | TAzureClientSecretRotationWithConnection
+  | TLdapPasswordRotationWithConnection
+  | TAwsIamUserSecretRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
   | TAuth0ClientSecretRotationGeneratedCredentials
-  | TAzureClientSecretRotationGeneratedCredentials;
+  | TAzureClientSecretRotationGeneratedCredentials
+  | TLdapPasswordRotationGeneratedCredentials
+  | TAwsIamUserSecretRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
   | TMsSqlCredentialsRotationInput
   | TAuth0ClientSecretRotationInput
-  | TAzureClientSecretRotationInput;
+  | TAzureClientSecretRotationInput
+  | TLdapPasswordRotationInput
+  | TAwsIamUserSecretRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
   | TMsSqlCredentialsRotationListItem
   | TAuth0ClientSecretRotationListItem
-  | TAzureClientSecretRotationListItem;
+  | TAzureClientSecretRotationListItem
+  | TLdapPasswordRotationListItem
+  | TAwsIamUserSecretRotationListItem;
 
 export type TSecretRotationV2Raw = NonNullable<Awaited<ReturnType<TSecretRotationV2DALFactory["findById"]>>>;
 

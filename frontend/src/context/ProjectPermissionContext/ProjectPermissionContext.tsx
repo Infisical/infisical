@@ -14,12 +14,13 @@ export const useProjectPermission = () => {
     strict: false,
     select: (el) => el?.projectId
   });
+
   if (!projectId) {
     throw new Error("useProjectPermission to be used within <ProjectPermissionContext>");
   }
 
   const {
-    data: { permission, membership }
+    data: { permission, membership, assumedPrivilegeDetails }
   } = useSuspenseQuery({
     queryKey: roleQueryKeys.getUserProjectPermissions({ workspaceId: projectId }),
     queryFn: () => fetchUserProjectPermissions({ workspaceId: projectId }),
@@ -29,6 +30,7 @@ export const useProjectPermission = () => {
       const ability = evaluatePermissionsAbility(rule);
       return {
         permission: ability,
+        assumedPrivilegeDetails: data.assumedPrivilegeDetails,
         membership: {
           ...data.membership,
           roles: data.membership.roles.map(({ role }) => role)
@@ -42,5 +44,5 @@ export const useProjectPermission = () => {
     []
   );
 
-  return { permission, membership, hasProjectRole };
+  return { permission, membership, hasProjectRole, assumedPrivilegeDetails };
 };
