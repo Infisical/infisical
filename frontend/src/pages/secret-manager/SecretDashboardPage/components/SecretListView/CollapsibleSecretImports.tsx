@@ -244,7 +244,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
                           ? "text-gray-400"
                           : item.type === ItemType.Folder
                             ? "text-green-700"
-                            : "text-blue-500"
+                            : "text-mineshaft-300"
                       }`}
                       aria-hidden="true"
                     />
