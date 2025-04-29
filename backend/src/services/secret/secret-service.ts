@@ -546,10 +546,13 @@ export const secretServiceFactory = ({
 
       for await (const secret of secrets) {
         if (secret.secretReminderRepeatDays !== null && secret.secretReminderRepeatDays !== undefined) {
-          await secretQueueService.removeSecretReminder({
-            repeatDays: secret.secretReminderRepeatDays,
-            secretId: secret.id
-          });
+          await secretQueueService.removeSecretReminder(
+            {
+              repeatDays: secret.secretReminderRepeatDays,
+              secretId: secret.id
+            },
+            tx
+          );
         }
       }
 
@@ -685,6 +688,7 @@ export const secretServiceFactory = ({
         ...secret,
         workspace: projectId,
         environment,
+        secretReminderRecipients: [],
         secretPath: groupedPaths[secret.folderId][0].path
       }))
     };
@@ -1073,10 +1077,13 @@ export const secretServiceFactory = ({
 
       for await (const secret of secrets) {
         if (secret.secretReminderRepeatDays !== null && secret.secretReminderRepeatDays !== undefined) {
-          await secretQueueService.removeSecretReminder({
-            repeatDays: secret.secretReminderRepeatDays,
-            secretId: secret.id
-          });
+          await secretQueueService.removeSecretReminder(
+            {
+              repeatDays: secret.secretReminderRepeatDays,
+              secretId: secret.id
+            },
+            tx
+          );
         }
       }
       const secretValueHidden = !hasSecretReadValueOrDescribePermission(
@@ -1786,6 +1793,7 @@ export const secretServiceFactory = ({
     tagIds,
     secretReminderNote,
     secretReminderRepeatDays,
+    secretReminderRecipients,
     metadata,
     secretComment,
     newSecretName,
@@ -1828,6 +1836,7 @@ export const secretServiceFactory = ({
                 tagIds,
                 reminderNote: secretReminderNote,
                 reminderRepeatDays: secretReminderRepeatDays,
+                secretReminderRecipients,
                 secretMetadata
               }
             ]
@@ -1837,8 +1846,9 @@ export const secretServiceFactory = ({
       }
       const secret = await secretV2BridgeService.updateSecret({
         secretReminderRepeatDays,
-        skipMultilineEncoding,
         secretReminderNote,
+        secretReminderRecipients,
+        skipMultilineEncoding,
         tagIds,
         secretComment,
         secretPath,

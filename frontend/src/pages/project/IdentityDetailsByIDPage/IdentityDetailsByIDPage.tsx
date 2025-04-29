@@ -6,13 +6,27 @@ import { formatRelative } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal, EmptyState, PageHeader, Spinner } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import {
+  Button,
+  ConfirmActionModal,
+  DeleteActionModal,
+  EmptyState,
+  PageHeader,
+  Spinner
+} from "@app/components/v2";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub,
+  useWorkspace
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
+  useAssumeProjectPrivileges,
   useDeleteIdentityFromWorkspace,
   useGetWorkspaceIdentityMembershipDetails
 } from "@app/hooks/api";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 
 import { IdentityProjectAdditionalPrivilegeSection } from "./components/IdentityProjectAdditionalPrivilegeSection";
 import { IdentityRoleDetailsSection } from "./components/IdentityRoleDetailsSection";
@@ -35,8 +49,28 @@ const Page = () => {
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteIdentity",
-    "upgradePlan"
+    "assumePrivileges"
   ] as const);
+  const assumePrivileges = useAssumeProjectPrivileges();
+
+  const handleAssumePrivileges = async () => {
+    assumePrivileges.mutate(
+      {
+        actorId: identityId,
+        actorType: ActorType.IDENTITY,
+        projectId: workspaceId
+      },
+      {
+        onSuccess: () => {
+          createNotification({
+            type: "success",
+            text: "Identity privilege assumption has started"
+          });
+          window.location.href = `/${currentWorkspace.type}/${currentWorkspace.id}/overview`;
+        }
+      }
+    );
+  };
 
   const onRemoveIdentitySubmit = async () => {
     try {
@@ -101,6 +135,24 @@ const Page = () => {
                 Copy Membership ID
               </Button>
               <ProjectPermissionCan
+                I={ProjectPermissionIdentityActions.AssumePrivileges}
+                a={ProjectPermissionSub.Identity}
+                renderTooltip
+                allowedLabel="Assume privileges of the user"
+                passThrough={false}
+              >
+                {(isAllowed) => (
+                  <Button
+                    variant="outline_bg"
+                    size="xs"
+                    isDisabled={!isAllowed}
+                    onClick={() => handlePopUpOpen("assumePrivileges")}
+                  >
+                    Assume Privileges
+                  </Button>
+                )}
+              </ProjectPermissionCan>
+              <ProjectPermissionCan
                 I={ProjectPermissionActions.Delete}
                 a={subject(ProjectPermissionSub.Identity, {
                   identityId: identityMembershipDetails?.identity?.id
@@ -136,6 +188,15 @@ const Page = () => {
             onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
             deleteKey="remove"
             onDeleteApproved={() => onRemoveIdentitySubmit()}
+          />
+          <ConfirmActionModal
+            isOpen={popUp.assumePrivileges.isOpen}
+            confirmKey="assume"
+            title="Do you want to assume privileges of this identity?"
+            subTitle="This will set your privileges to those of the identity for the next hour."
+            onChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
+            onConfirmed={handleAssumePrivileges}
+            buttonText="Confirm"
           />
         </>
       ) : (

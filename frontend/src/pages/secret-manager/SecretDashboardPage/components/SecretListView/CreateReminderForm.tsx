@@ -6,10 +6,28 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
-import { Button, FormControl, Input, Modal, ModalContent, TextArea } from "@app/components/v2";
+import {
+  Button,
+  FilterableSelect,
+  FormControl,
+  Input,
+  Modal,
+  ModalContent,
+  TextArea
+} from "@app/components/v2";
+import { useWorkspace } from "@app/context";
+import { useGetWorkspaceUsers } from "@app/hooks/api";
 
 const ReminderFormSchema = z.object({
   note: z.string().optional().nullable(),
+  recipients: z
+    .array(
+      z.object({
+        label: z.string(),
+        value: z.string().uuid()
+      })
+    )
+    .optional(),
   days: z
     .number()
     .min(1, { message: "Must be at least 1 day" })
@@ -22,6 +40,7 @@ interface ReminderFormProps {
   isOpen: boolean;
   repeatDays?: number | null;
   note?: string | null;
+  recipients?: string[] | null;
   onOpenChange: (isOpen: boolean, data?: TReminderFormSchema) => void;
 }
 
@@ -29,12 +48,16 @@ export const CreateReminderForm = ({
   isOpen,
   onOpenChange,
   repeatDays,
-  note
+  note,
+  recipients
 }: ReminderFormProps) => {
+  const { currentWorkspace } = useWorkspace();
+
+  const { data: members = [] } = useGetWorkspaceUsers(currentWorkspace?.id);
+
   const {
     register,
     control,
-    reset,
     setValue,
     handleSubmit,
     formState: { isSubmitting }
@@ -51,13 +74,23 @@ export const CreateReminderForm = ({
   };
 
   useEffect(() => {
-    if (isOpen) {
-      reset({
-        days: repeatDays || undefined,
-        note: note || ""
-      });
+    // On initial load, filter the members to only include the recipients
+    if (members.length) {
+      const filteredMembers = members.filter((m) => recipients?.find((r) => r === m.user.id));
+      setValue(
+        "recipients",
+        filteredMembers.map((m) => ({
+          label: m.user.username || m.user.email,
+          value: m.user.id
+        }))
+      );
     }
-  }, [isOpen]);
+  }, [members, isOpen, recipients]);
+
+  useEffect(() => {
+    if (repeatDays) setValue("days", repeatDays);
+    if (note) setValue("note", note);
+  }, [repeatDays, note]);
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -74,6 +107,7 @@ export const CreateReminderForm = ({
                 render={({ field, fieldState }) => (
                   <>
                     <FormControl
+                      isRequired
                       className="mb-0"
                       label="Reminder Interval (in days)"
                       isError={Boolean(fieldState.error)}
@@ -83,6 +117,7 @@ export const CreateReminderForm = ({
                         onChange={(el) => setValue("days", parseInt(el.target.value, 10))}
                         type="number"
                         placeholder="31"
+                        defaultValue={repeatDays || undefined}
                         value={field.value || undefined}
                       />
                     </FormControl>
@@ -105,11 +140,43 @@ export const CreateReminderForm = ({
                 placeholder="Remember to rotate the AWS secret every month."
                 className="border border-mineshaft-600 text-sm"
                 rows={8}
+                defaultValue={note || ""}
                 reSize="none"
                 cols={30}
                 {...register("note")}
               />
             </FormControl>
+
+            <Controller
+              control={control}
+              name="recipients"
+              render={({ field }) => (
+                <FormControl
+                  tooltipText={
+                    <div>
+                      Select users to receive reminders.
+                      <br />
+                      <br /> If none are selected, all project members will receive the reminder.
+                    </div>
+                  }
+                  label="Recipients"
+                  className="mb-0"
+                >
+                  <FilterableSelect
+                    className="w-full"
+                    placeholder="Select reminder recipients..."
+                    isMulti
+                    name="recipients"
+                    options={members.map((member) => ({
+                      label: member.user.username || member.user.email,
+                      value: member.user.id
+                    }))}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+              )}
+            />
           </div>
           <div className="mt-7 flex items-center space-x-4">
             <Button

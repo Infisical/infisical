@@ -25,6 +25,7 @@ export * from "./external-kms";
 export * from "./gateways";
 export * from "./git-app-install-sessions";
 export * from "./git-app-org";
+export * from "./github-org-sync-configs";
 export * from "./group-project-membership-roles";
 export * from "./group-project-memberships";
 export * from "./groups";

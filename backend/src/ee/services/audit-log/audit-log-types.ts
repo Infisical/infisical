@@ -332,7 +332,10 @@ export enum EventType {
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS = "microsoft-teams-workflow-integration-check-installation-status",
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS = "microsoft-teams-workflow-integration-get-teams",
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET = "microsoft-teams-workflow-integration-get",
-  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list"
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list",
+
+  PROJECT_ASSUME_PRIVILEGE_SESSION_START = "project-assume-privileges-session-start",
+  PROJECT_ASSUME_PRIVILEGE_SESSION_END = "project-assume-privileges-session-end"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -1506,6 +1509,7 @@ interface CreateSshHost {
   metadata: {
     sshHostId: string;
     hostname: string;
+    alias: string | null;
     userCertTtl: string;
     hostCertTtl: string;
     loginMappings: {
@@ -1524,6 +1528,7 @@ interface UpdateSshHost {
   metadata: {
     sshHostId: string;
     hostname?: string;
+    alias?: string | null;
     userCertTtl?: string;
     hostCertTtl?: string;
     loginMappings?: {
@@ -2466,6 +2471,29 @@ interface ProjectAccessRequestEvent {
   };
 }
 
+interface ProjectAssumePrivilegesEvent {
+  type: EventType.PROJECT_ASSUME_PRIVILEGE_SESSION_START;
+  metadata: {
+    projectId: string;
+    requesterId: string;
+    requesterEmail: string;
+    targetActorType: ActorType;
+    targetActorId: string;
+    duration: string;
+  };
+}
+
+interface ProjectAssumePrivilegesExitEvent {
+  type: EventType.PROJECT_ASSUME_PRIVILEGE_SESSION_END;
+  metadata: {
+    projectId: string;
+    requesterId: string;
+    requesterEmail: string;
+    targetActorType: ActorType;
+    targetActorId: string;
+  };
+}
+
 interface SetupKmipEvent {
   type: EventType.SETUP_KMIP;
   metadata: {
@@ -2831,6 +2859,8 @@ export type Event =
   | KmipOperationLocateEvent
   | KmipOperationRegisterEvent
   | ProjectAccessRequestEvent
+  | ProjectAssumePrivilegesEvent
+  | ProjectAssumePrivilegesExitEvent
   | CreateSecretRequestEvent
   | SecretApprovalRequestReview
   | GetSecretRotationsEvent

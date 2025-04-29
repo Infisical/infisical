@@ -27,6 +27,7 @@ import {
 } from "@app/components/v2";
 import {
   ProjectPermissionActions,
+  ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useProjectPermission,
   useWorkspace
@@ -66,7 +67,7 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
   const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(workspaceId);
   const { permission } = useProjectPermission();
   const isIdentityEditDisabled = permission.cannot(
-    ProjectPermissionActions.Edit,
+    ProjectPermissionIdentityActions.Edit,
     ProjectPermissionSub.Identity
   );
 

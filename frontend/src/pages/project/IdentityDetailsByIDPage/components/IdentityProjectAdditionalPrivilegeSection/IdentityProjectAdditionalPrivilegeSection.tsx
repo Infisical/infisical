@@ -22,7 +22,12 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub,
+  useProjectPermission
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteIdentityProjectAdditionalPrivilege } from "@app/hooks/api";
 import { IdentityMembership } from "@app/hooks/api/identities/types";
@@ -83,7 +88,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
               identityId={identityId}
               privilegeId={(popUp?.modifyPrivilege?.data as { id: string })?.id}
               isDisabled={permission.cannot(
-                ProjectPermissionActions.Edit,
+                ProjectPermissionIdentityActions.Edit,
                 subject(ProjectPermissionSub.Identity, {
                   identityId
                 })

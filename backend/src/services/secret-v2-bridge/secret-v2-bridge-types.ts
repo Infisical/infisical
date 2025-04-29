@@ -94,6 +94,7 @@ export type TUpdateSecretDTO = TProjectPermission & {
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
+  secretReminderRecipients?: string[] | null;
   metadata?: {
     source?: string;
   };
@@ -220,7 +221,7 @@ export type TFnSecretBulkDelete = {
   tx?: Knex;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "deleteMany">;
   secretQueueService: {
-    removeSecretReminder: (data: TRemoveSecretReminderDTO) => Promise<void>;
+    removeSecretReminder: (data: TRemoveSecretReminderDTO, tx?: Knex) => Promise<void>;
   };
 };
 

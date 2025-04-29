@@ -148,7 +148,9 @@ export enum TableName {
   SecretRotationV2 = "secret_rotations_v2",
   SecretRotationV2SecretMapping = "secret_rotation_v2_secret_mappings",
   MicrosoftTeamsIntegrations = "microsoft_teams_integrations",
-  ProjectMicrosoftTeamsConfigs = "project_microsoft_teams_configs"
+  ProjectMicrosoftTeamsConfigs = "project_microsoft_teams_configs",
+  SecretReminderRecipients = "secret_reminder_recipients",
+  GithubOrgSyncConfig = "github_org_sync_configs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";

@@ -83,18 +83,26 @@ export const externalKmsServiceFactory = ({
             throw error;
           });
 
-          // if missing kms key this generate a new kms key id and returns new provider input
-          const newProviderInput = await externalKms.generateInputKmsKey();
-          sanitizedProviderInput = JSON.stringify(newProviderInput);
+          try {
+            // if missing kms key this generate a new kms key id and returns new provider input
+            const newProviderInput = await externalKms.generateInputKmsKey();
+            sanitizedProviderInput = JSON.stringify(newProviderInput);
 
-          await externalKms.validateConnection();
+            await externalKms.validateConnection();
+          } finally {
+            await externalKms.cleanup();
+          }
         }
         break;
       case KmsProviders.Gcp:
         {
           const externalKms = await GcpKmsProviderFactory({ inputs: provider.inputs });
-          await externalKms.validateConnection();
-          sanitizedProviderInput = JSON.stringify(provider.inputs);
+          try {
+            await externalKms.validateConnection();
+            sanitizedProviderInput = JSON.stringify(provider.inputs);
+          } finally {
+            await externalKms.cleanup();
+          }
         }
         break;
       default:
@@ -186,8 +194,12 @@ export const externalKmsServiceFactory = ({
             );
             const updatedProviderInput = { ...decryptedProviderInput, ...provider.inputs };
             const externalKms = await AwsKmsProviderFactory({ inputs: updatedProviderInput });
-            await externalKms.validateConnection();
-            sanitizedProviderInput = JSON.stringify(updatedProviderInput);
+            try {
+              await externalKms.validateConnection();
+              sanitizedProviderInput = JSON.stringify(updatedProviderInput);
+            } finally {
+              await externalKms.cleanup();
+            }
           }
           break;
         case KmsProviders.Gcp:
@@ -197,8 +209,12 @@ export const externalKmsServiceFactory = ({
             );
             const updatedProviderInput = { ...decryptedProviderInput, ...provider.inputs };
             const externalKms = await GcpKmsProviderFactory({ inputs: updatedProviderInput });
-            await externalKms.validateConnection();
-            sanitizedProviderInput = JSON.stringify(updatedProviderInput);
+            try {
+              await externalKms.validateConnection();
+              sanitizedProviderInput = JSON.stringify(updatedProviderInput);
+            } finally {
+              await externalKms.cleanup();
+            }
           }
           break;
         default:
@@ -368,7 +384,11 @@ export const externalKmsServiceFactory = ({
 
   const fetchGcpKeys = async ({ credential, gcpRegion }: Pick<TExternalKmsGcpSchema, "credential" | "gcpRegion">) => {
     const externalKms = await GcpKmsProviderFactory({ inputs: { credential, gcpRegion, keyName: "" } });
-    return externalKms.getKeysList();
+    try {
+      return await externalKms.getKeysList();
+    } finally {
+      await externalKms.cleanup();
+    }
   };
 
   return {

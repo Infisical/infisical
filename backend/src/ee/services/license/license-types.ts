@@ -45,6 +45,7 @@ export type TFeatureSet = {
   auditLogsRetentionDays: 0;
   auditLogStreams: false;
   auditLogStreamLimit: 3;
+  githubOrgSync: false;
   samlSSO: false;
   hsm: false;
   oidcSSO: false;

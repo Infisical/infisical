@@ -5,7 +5,8 @@ import { z } from "zod";
 import { LoginSsoPage } from "./LoginSsoPage";
 
 const LoginSSOQueryParamsSchema = z.object({
-  token: z.string()
+  token: z.string(),
+  isAdminLogin: z.boolean().optional().catch(false)
 });
 
 export const Route = createFileRoute("/_restrict-login-signup/login/sso")({

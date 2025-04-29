@@ -13,6 +13,7 @@ import {
   TBreadcrumbFormat
 } from "@app/components/v2";
 import {
+  useProjectPermission,
   ProjectPermissionActions,
   ProjectPermissionSub,
   useSubscription,
@@ -25,6 +26,7 @@ import {
 } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
+import { AssumePrivilegeModeBanner } from "./components/AssumePrivilegeModeBanner";
 import { ProjectSelect } from "./components/ProjectSelect";
 
 // This is a generic layout shared by all types of projects.
@@ -35,6 +37,7 @@ export const ProjectLayout = () => {
   const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
   const { t } = useTranslation();
+  const { assumedPrivilegeDetails } = useProjectPermission();
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
   const { subscription } = useSubscription();
@@ -68,6 +71,7 @@ export const ProjectLayout = () => {
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
+        {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <motion.div
             key="menu-project-items"
