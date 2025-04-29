@@ -170,8 +170,12 @@ export const orgServiceFactory = ({
     actorOrgId: string | undefined
   ) => {
     await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
+    const appCfg = getConfig();
     const org = await orgDAL.findOrgById(orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+    if (!org.userTokenExpiration) {
+      return { ...org, userTokenExpiration: appCfg.JWT_REFRESH_LIFETIME };
+    }
     return org;
   };
   /*

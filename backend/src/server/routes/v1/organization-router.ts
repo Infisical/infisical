@@ -267,7 +267,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         bypassOrgAuthEnabled: z.boolean().optional(),
         userTokenExpiration: z
           .string()
-          .regex(new RE2(/^\d+[mhdw]$/), "Must be a number followed by m, h, d, or w")
+          .refine((val) => new RE2(/^\d+[mhdw]$/).test(val), "Must be a number followed by m, h, d, or w")
           .refine(
             (val) => {
               const numericPart = val.slice(0, -1);

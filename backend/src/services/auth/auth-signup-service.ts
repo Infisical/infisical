@@ -10,6 +10,7 @@ import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { generateUserSrpKeys, getUserPrivateKey } from "@app/lib/crypto/srp";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { getMinExpiresIn } from "@app/lib/fn";
 import { isDisposableEmail } from "@app/lib/validator";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -46,7 +47,7 @@ type TAuthSignupDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findProjectById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
-  orgService: Pick<TOrgServiceFactory, "createOrganization">;
+  orgService: Pick<TOrgServiceFactory, "createOrganization" | "findOrganizationById">;
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
@@ -320,6 +321,17 @@ export const authSignupServiceFactory = ({
       projectBotDAL
     });
 
+    let tokenSessionExpiresIn: string | number = appCfg.JWT_AUTH_LIFETIME;
+    let refreshTokenExpiresIn: string | number = appCfg.JWT_REFRESH_LIFETIME;
+
+    if (organizationId) {
+      const org = await orgService.findOrganizationById(user.id, organizationId, authMethod, organizationId);
+      if (org && org.userTokenExpiration) {
+        tokenSessionExpiresIn = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
+        refreshTokenExpiresIn = org.userTokenExpiration;
+      }
+    }
+
     const tokenSession = await tokenService.getUserTokenSession({
       userAgent,
       ip,
@@ -337,7 +349,7 @@ export const authSignupServiceFactory = ({
         organizationId
       },
       appCfg.AUTH_SECRET,
-      { expiresIn: appCfg.JWT_AUTH_LIFETIME }
+      { expiresIn: tokenSessionExpiresIn }
     );
 
     const refreshToken = jwt.sign(
@@ -350,7 +362,7 @@ export const authSignupServiceFactory = ({
         organizationId
       },
       appCfg.AUTH_SECRET,
-      { expiresIn: appCfg.JWT_REFRESH_LIFETIME }
+      { expiresIn: refreshTokenExpiresIn }
     );
 
     return { user: updateduser.info, accessToken, refreshToken, organizationId };

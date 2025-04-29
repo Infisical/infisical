@@ -12,7 +12,7 @@ import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -143,6 +143,17 @@ export const authLoginServiceFactory = ({
     );
     if (!tokenSession) throw new Error("Failed to create token");
 
+    let tokenSessionExpiresIn: string | number = cfg.JWT_AUTH_LIFETIME;
+    let refreshTokenExpiresIn: string | number = cfg.JWT_REFRESH_LIFETIME;
+
+    if (organizationId) {
+      const org = await orgDAL.findById(organizationId);
+      if (org && org.userTokenExpiration) {
+        tokenSessionExpiresIn = getMinExpiresIn(cfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
+        refreshTokenExpiresIn = org.userTokenExpiration;
+      }
+    }
+
     const accessToken = jwt.sign(
       {
         authMethod,
@@ -155,7 +166,7 @@ export const authLoginServiceFactory = ({
         mfaMethod
       },
       cfg.AUTH_SECRET,
-      { expiresIn: cfg.JWT_AUTH_LIFETIME }
+      { expiresIn: tokenSessionExpiresIn }
     );
 
     const refreshToken = jwt.sign(
@@ -170,7 +181,7 @@ export const authLoginServiceFactory = ({
         mfaMethod
       },
       cfg.AUTH_SECRET,
-      { expiresIn: cfg.JWT_REFRESH_LIFETIME }
+      { expiresIn: refreshTokenExpiresIn }
     );
 
     return { access: accessToken, refresh: refreshToken };
