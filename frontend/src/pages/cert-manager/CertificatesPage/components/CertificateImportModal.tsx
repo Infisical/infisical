@@ -11,7 +11,8 @@ import {
   Modal,
   ModalContent,
   Select,
-  SelectItem
+  SelectItem,
+  TextArea
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useImportCertificate, useGetCert, useListWorkspacePkiCollections } from "@app/hooks/api";
@@ -104,7 +105,6 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
 
       const { serialNumber, certificate, certificateChain, privateKey } = await importCertificate({
         projectSlug: currentWorkspace.slug,
-        projectSlug: currentWorkspace.slug,
 
         certificatePem,
         privateKeyPem,
@@ -153,9 +153,10 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
               name="collectionId"
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <FormControl
-                  label="Certificate Collection (Optional)"
+                  label="Certificate Collection"
                   errorText={error?.message}
                   isError={Boolean(error)}
+                  isOptional
                   className="mt-4"
                 >
                   <Select
@@ -185,6 +186,63 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
                   errorText={error?.message}
                 >
                   <Input {...field} placeholder="My Certificate" isDisabled={Boolean(cert)} />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue=""
+              name="certificatePem"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Certificate PEM"
+                  isError={Boolean(error)}
+                  isRequired
+                  errorText={error?.message}
+                >
+                  <TextArea
+                    {...field}
+                    placeholder="TODO(andrey): Pem placeholder"
+                    isDisabled={Boolean(cert)}
+                  />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue=""
+              name="chainPem"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Certificate Chain PEM"
+                  isError={Boolean(error)}
+                  isOptional
+                  errorText={error?.message}
+                >
+                  <TextArea
+                    {...field}
+                    placeholder="TODO(andrey): Pem placeholder"
+                    isDisabled={Boolean(cert)}
+                  />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue=""
+              name="privateKeyPem"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Private Key PEM"
+                  isError={Boolean(error)}
+                  isOptional
+                  errorText={error?.message}
+                >
+                  <TextArea
+                    {...field}
+                    placeholder="TODO(andrey): Pem placeholder"
+                    isDisabled={Boolean(cert)}
+                  />
                 </FormControl>
               )}
             />
