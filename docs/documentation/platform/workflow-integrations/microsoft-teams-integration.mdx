@@ -19,192 +19,136 @@ This guide will provide step by step instructions on how to configure Microsoft 
     To create a Microsoft Teams bot, you must first create an Azure Bot from the Azure Marketplace, an app registration, and a Microsoft Teams app. The steps below document in detail how to create and configure these resources.
 
     <Steps>
-      <Step title="Create Azure Bot resource">
 
-        When creating the Azure Bot resource, it's important that you set the `Type of App` to `Multi Tenant`. Additionally, you must set the `Creation Type` to `Create new Microsoft App ID`.
+      <Step title="Create Microsoft Teams app">
+        Navigate to the [Microsoft Teams Developer Portal](https://dev.teams.microsoft.com/).
 
-        ![azure-bot-marketplace](/images/platform/workflow-integrations/microsoft-teams-integration/azure-bot-marketplace.png)
-        ![azure-bot-create](/images/platform/workflow-integrations/microsoft-teams-integration/azure-bot-create.png)
+        Once you're on the Microsoft Teams Developer Portal, press the "Create a new app" button on the overview page. Give the bot a name and press the "Add" button.
 
-        Click the "Review + create" button and complete the creation process.
-
-        Once this is completed, an Azure Bot **and** an app registration will be created. We will need to configure both to work with Microsoft Teams.
-
-      </Step>
-      <Step title="Configure Azure Bot resource">
-        After creating the Azure Bot resource, you will be redirected to the Azure Bot resource overview page. Here we can configure the bot's settings.
-
-        **Enable Microsoft Teams Channel**
-
-        This will allow the bot to be used in Microsoft Teams.
-
-        ![azure-bot-teams-channel](/images/platform/workflow-integrations/microsoft-teams-integration/microsoft-teams-channel.png)
-
-        ![azure-bot-teams-channel-enable](/images/platform/workflow-integrations/microsoft-teams-integration/microsoft-teams-channel-configuration.png)
-
-        Press the "Apply" button to enable the Microsoft Teams channel.
-
-        **Configure Messaging Endpoint**
-
-        You must configure the messaging endpoint for the Azure Bot resource. This allows events to be handled by the Infisical Microsoft Teams integration.
-
-        The endpoint must be reachable from the internet, or Infisical won't be notified of events.
-        
-        Configure the endpoint to be:<br/>
-        **`https://<your-infisical-instance-url>/api/v1/workflow-integrations/microsoft-teams/message-endpoint`**.<br/>Replace `<your-infisical-instance-url>` with the URL of your Infisical instance.
-
-        Once completed, press the "Apply" button to save your changes.
-
-        ![azure-bot-messaging-endpoint](/images/platform/workflow-integrations/microsoft-teams-integration/azure-bot-messaging-endpoint.png)
-      </Step>
-      <Step title="Configure Azure App Registration">
-        When you created the Azure Bot resource, an app registration associated with the bot was also created. We need to configure the app registration to integrate with Microsoft Teams.
-
-        You can find the app registration in the Azure Portal by navigating to the "App registrations" section, and selecting the app registration with the same name as the Azure Bot resource.
-
-        ![app-registration-search](/images/platform/workflow-integrations/microsoft-teams-integration/azure-app-registration-search.png)
-        ![app-registration-overview](/images/platform/workflow-integrations/microsoft-teams-integration/azure-app-registration.png)
-
-        **Configure Redirect URIs**
-
-        Configure a redirect URI to be:<br/>
-        `https://<your-infisical-instance-url>/organization/settings/oauth/callback`. Replace `<your-infisical-instance-url>` with the URL of your Infisical instance.
-
-        ![app-registration-redirect-uri-step-1](/images/platform/workflow-integrations/microsoft-teams-integration/azure-app-registration-redirect-uri-step-1.png)
-        ![app-registration-redirect-uri-step-2](/images/platform/workflow-integrations/microsoft-teams-integration/azure-app-registration-redirect-uri-step-2.png)
-        ![app-registration-redirect-uri-step-3](/images/platform/workflow-integrations/microsoft-teams-integration/azure-app-registration-redirect-uri-step-3.png)
-
-
-        **Configure API Permissions**
-
-        Next, configure the API permissions for the app registration.
-
-        Add the following permissions:
-        - `AppCatalog.Read.All`
-        - `ChannelSettings.Read.All`
-        - `MultiTenantOrganization.Read.All`
-        - `Organization.Read.All`
-        - `Team.ReadBasic.All`
-        - `TeamsAppInstallation.Read.All`
-
-        <Note>
-          Please keep in mind that these permissions have to be configured as **Application** permissions, not delegated permissions.
-        </Note>
-
-        Once you've added the permissions, press the **Grant admin consent for [your-organization]** button to grant the permissions.
-
-        ![api-permissions-overview](/images/platform/workflow-integrations/microsoft-teams-integration/azure-api-permissions-overview.png)
-        ![api-permissions-configure](/images/platform/workflow-integrations/microsoft-teams-integration/azure-api-permissions-configure.png)
-
-
+        ![microsoft-dev-portal](/images/platform/workflow-integrations/microsoft-teams-integration/teams-dev-portal-create-app.png)
       </Step>
 
-      <Step title="Get App Registration Client ID and Client Secret">
-        Next we need to get the application client ID and create a new client secret. **Save these values for later, as they're required to configure the Microsoft Teams integration in Infisical.**
+      <Step title="Create a Microsoft Teams bot">
+        After creating the Microsoft Teams app, you'll need to create a Microsoft Teams bot.
+
+        Navigate to the app's bot settings page and click "Create a new bot".
+
+        ![microsoft-dev-portal-create-bot](/images/platform/workflow-integrations/microsoft-teams-integration/teams-dev-portal-bot-app-feature.png)
+        ![microsoft-dev-portal-create-bot-2](/images/platform/workflow-integrations/microsoft-teams-integration/teams-dev-portal-create-a-new-bot.png)
+
+        After clicking the "Create a new bot" button, you'll be navigated to the Teams Developer Portal for bot management. Press the "New bot" button, and enter the name of the bot.
+        Please keep in mind that the name of the bot can only contain alphanumeric characters, dashes, and underscores.
+
+        ![microsoft-dev-portal-create-bot-3](/images/platform/workflow-integrations/microsoft-teams-integration/teams-dev-portal-create-bot.png)
+        </Step>
+
+        <Step title="Add a message endpoint to the bot">
+          After creating the bot, you'll need to add a message endpoint to the bot. Navigate to the "Configure" tab, and input the following endpoint under "Endpoint address":
+          `https://<your-infisical-instance-url>/api/v1/workflow-integrations/microsoft-teams/message-endpoint`
+          Replace `<your-infisical-instance-url>` with the URL of your Infisical instance.
+
+          Press the "Save" button to save the changes.
+
+          ![microsoft-dev-portal-create-bot-4](/images/platform/workflow-integrations/microsoft-teams-integration/teams-dev-portal-add-bot-endpoint.png)
+        </Step>
+
+        <Step title="Find the bot in Azure App Registrations">
+          When you create a bot through the Teams Developer Portal, an Azure App Registration is also created.
+
+          Open your [Azure Portal](https://portal.azure.com/) and navigate to the "App Registrations" section to find the newly created app registration.
+          The name of the app registration will be the same as the name of the bot you created in the previous step.
 
 
-          Copy the application client ID from the overview page.
-          ![copy-client-id](/images/platform/workflow-integrations/microsoft-teams-integration/azure-copy-client-id.png)
+          Press the app registration to open the app registration overview page.
+          ![azure-app-registrations](/images/platform/workflow-integrations/microsoft-teams-integration/azure-app-registrations-bot.png)
+        </Step>
 
-          Create a new client secret, and save the value. Keep the expiry time in mind when you're creating the secret.
-          ![create-client-secret](/images/platform/workflow-integrations/microsoft-teams-integration/azure-create-client-secret.png)
+        <Step title="Add API Permissions to the App Registration">
+          Navigate to the "API Permissions" section of the app registration, and add the following permissions:
+          - `AppCatalog.Read.All`
+          - `ChannelSettings.Read.All`
+          - `MultiTenantOrganization.Read.All`
+          - `Organization.Read.All`
+          - `Team.ReadBasic.All`
+          - `TeamsAppInstallation.Read.All`
+
+          After adding the API permissions, press the "Grant admin consent" button to grant the permissions.
+
+          ![azure-app-registration-api-permissions](/images/platform/workflow-integrations/microsoft-teams-integration/azure-app-registration-api-permissions.png)
+        </Step>
+
+        <Step title="App new web application to the App Registration">
+          Navigate to the "Authentication" section of the App Registration, and press the "Add a platform" button. Select the "Web" platform and enter the following redirect URI:
+          `https://<your-infisical-instance-url>/organization/settings/oauth/callback`. Replace `<your-infisical-instance-url>` with the URL of your Infisical instance.
+
+          ![azure-app-registration-register-callback](/images/platform/workflow-integrations/microsoft-teams-integration/azure-app-registration-register-callback.png)
+        </Step>
+
+        <Step title="Get App Registration Client ID and Client Secret">
+          Next we need to get the application client ID and create a new client secret. **Save these values for later, as they're required to configure the Microsoft Teams integration in Infisical.**
+
+          **Get the Application (Client) ID**
+
+          To get the Application (Client) ID, press the "Copy" button next to the "Application (client) ID" field.
+
+          ![copy-client-id](/images/platform/workflow-integrations/microsoft-teams-integration/azure-app-registration-copy-client-id.png)
+
+          **Create a new client secret**
+
+          Create a new client secret within the app registration. Navigate to the "Certificates & Secrets" section of the app registration, and press the "New client secret" button.
+
+          ![create-client-secret](/images/platform/workflow-integrations/microsoft-teams-integration/azure-app-registration-create-client-secret.png)
 
           <Warning>
             Remember to rotate your client secret before it expires. Consider setting up a reminder or automated process to replace the secret and update your Infisical configuration before expiration.
           </Warning>
         </Step>
 
-        <Step title="Create Microsoft Teams Bot">
-          Finally we're ready to create the Microsoft Teams bot itself. This step takes place on the [Microsoft Teams Developer Portal](https://dev.teams.microsoft.com/).
+        <Step title="Get the Microsoft Teams App ID">
+         Navigate back to the [Microsoft Teams Developer Portal](https://dev.teams.microsoft.com/), and press the "Apps" tab and select the app you created earlier.
+         Here you can find the Microsoft Teams App ID in the overview page, which you need to copy and save for later.
 
-          - Navigate to the [Microsoft Teams Developer Portal](https://dev.teams.microsoft.com/).
-          - Make sure you're logged in with the same Microsoft account as you used to create the Azure Bot resource.
+         ![microsoft-teams-app-id](/images/platform/workflow-integrations/microsoft-teams-integration/teams-dev-portal-copy-app-id.png)
 
-          ![microsoft-dev-portal](/images/platform/workflow-integrations/microsoft-teams-integration/microsoft-dev-portal.png)
-
-          Once you're on the Microsoft Teams Developer Portal, press the "Create a new app" button on the overview page. Give the bot a name and press the "Add" button.
-
-          **Update Manifest File**
-
-          The only change you need to make to the Microsoft Teams app you've just created, is to update the `manifest.json` file to match what's expected by Infisical.
-
-          Go to the App Package Editor page, and press the `manifest.json` file to open the file editor.
-
-          ![update-manifest](/images/platform/workflow-integrations/microsoft-teams-integration/microsoft-teams-dev-update-manifest.png)
-
-
-          Copy the following JSON into the `manifest.json` file:
-          ```json manifest.json
-          {
-            "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.11/MicrosoftTeams.schema.json",
-            "version": "3.0.0",
-            "manifestVersion": "1.11",
-            "id": "<your-existing-id-from-your-manifest-file>",
-            "name": {
-              "short": "Infisical",
-              "full": "Infisical Bot"
-            },
-            "developer": {
-              "name": "Infisical",
-              "websiteUrl": "https://www.infisical.com",
-              "privacyUrl": "https://www.infisical.com/privacy",
-              "termsOfUseUrl": "https://www.infisical.com/terms"
-            },
-            "description": {
-              "short": "Microsoft Teams bot for Infisical",
-              "full": "Microsoft Teams bot for Infisical. This bot will send notifications as configured in Infisical to your Microsoft Teams channels."
-            },
-            "icons": {
-              "outline": "outline.png",
-              "color": "color.png"
-            },
-            "accentColor": "#FFFFFF",
-            "bots": [
-              {
-                "botId": "<replace-with-your-client-id-of-your-app-registration-from-previous-step", 
-                "scopes": [
-                  "team",
-                  "personal",
-                  "groupchat"
-                ],
-                "isNotificationOnly": true,
-                "supportsCalling": false,
-                "supportsVideo": false,
-                "supportsFiles": false
-              }
-            ],
-            "validDomains": []
-          }
-          ```
-
-          <Note>
-            Please note that it's very important that the `bots[].botId` field matches the Client ID of the App Registration from the previous step.
-          </Note>
-
-          After making the changes to the manifest file, press the "Save" button to save the changes, and confirm the changes by then pressing the "Update" button.
-
-          ![save-manifest](/images/platform/workflow-integrations/microsoft-teams-integration/microsoft-teams-dev-save-manifest.png)
-          ![save-manifest-confirm](/images/platform/workflow-integrations/microsoft-teams-integration/microsoft-teams-dev-save-manifest-confirm.png)
         </Step>
 
-        <Step title="Copy the Bot ID">
-          Once the manifest file is updated, you can copy the Bot ID from the overview page. Save the Bot ID for later, as it's required to configure the Microsoft Teams integration in Infisical, alongside the App Registration Client ID and Client Secret that you saved earlier.
+         <Step title="Link the Microsoft Teams App to the bot">
+          You need to link the Microsoft Teams App with the bot/app registration you created earlier.
+          Inside the [Microsoft Teams Developer Portal](https://dev.teams.microsoft.com/), navigate to the "Bot" tab and select the bot you created earlier. Navigate to the "App Features" section, and press the "Bot" button.
 
-          ![copy-bot-id](/images/platform/workflow-integrations/microsoft-teams-integration/microsoft-teams-dev-copy-bot-id.png)
+          Under the "What can your bot do?" section, enable `Only send notifications (one-way conversations)`.
+
+          Under the "Select the scopes where people can use your bot" section, select `Personal`, `Team`, and `Group Chat`.
+
+          Finally, press the "Save" button to save the changes.
+
+          ![microsoft-teams-app-features](/images/platform/workflow-integrations/microsoft-teams-integration/teams-dev-portal-bot-app-feature.png)
+          ![microsoft-teams-configure-bot](/images/platform/workflow-integrations/microsoft-teams-integration/teams-dev-portal-configure-bot.png)
+        </Step>
+
+        <Step title="Run an app validation test">
+          To ensure that the Microsoft Teams App is working correctly, you can run an app validation test.
+
+          You should expect to see two errors related to sending welcome messages, because we haven't configured the Microsoft Teams App inside Infisical yet, which is required for proactive messages.
+
+          ![microsoft-teams-app-validation-test](/images/platform/workflow-integrations/microsoft-teams-integration/teams-dev-portal-app-validation.png)
+          ![microsoft-teams-app-validation-test-results](/images/platform/workflow-integrations/microsoft-teams-integration/teams-dev-portal-app-validation-result.png)
+
+          <Note>
+            If you see two errors for bot welcome messages, you can ignore them. This is expected until you configure the Microsoft Teams App inside Infisical.
+          </Note>
         </Step>
 
         <Step title="Download the App Package">
-          Once the manifest file is updated, you can download the app package by navigating to the "Publish to Store" page, and pressing the "Download app package" button.
+          Once the Microsoft Teams App is working correctly, you can download the app package by navigating to the "Publish to Store" page, and pressing the "Download app package" button.
 
-          You will need to install the app package into your desired Microsoft Teams tenant(s).
-
-          ![download-package](/images/platform/workflow-integrations/microsoft-teams-integration/microsoft-teams-dev-download-package.png)
+          ![microsoft-teams-download-app-package](/images/platform/workflow-integrations/microsoft-teams-integration/teams-dev-portal-download-app-package.png)
         </Step>
     </Steps>
 
     ### Configure Microsoft Teams Bot in Infisical
 
-    After creating the Microsoft Teams bot and its corresponding Azure resources, you are ready to configure the Microsoft Teams integration in Infisical.
+    After creating the Microsoft Teams App and Bot, you are ready to configure the Microsoft Teams integration in Infisical.
     Please note that you must be an instance admin in order to configure the Microsoft Teams instance-wide settings.
 
     <Steps>
@@ -216,13 +160,12 @@ This guide will provide step by step instructions on how to configure Microsoft 
 
         - **Application (Client) ID**: The Client ID of the App Registration from the previous steps.
         - **Client Secret**: The Client Secret of the App Registration from the previous steps.
-        - **Bot ID**: The App ID of the Microsoft Teams App from the previous steps.
+        - **Microsoft Teams App ID**: The App ID of the Microsoft Teams App from the previous steps.
 
         Once completed, press the "Save" button to save your changes.
 
       </Step>
     </Steps>
-
     <MicrosoftTeamsWorkflowIntegration />
   </Tab>
 </Tabs>
