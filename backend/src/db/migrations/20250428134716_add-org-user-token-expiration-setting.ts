@@ -6,11 +6,15 @@ import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   const appCfg = getConfig();
+  const tokenDuration = appCfg?.JWT_REFRESH_LIFETIME;
+
   if (!(await knex.schema.hasColumn(TableName.Organization, "userTokenExpiration"))) {
     await knex.schema.alterTable(TableName.Organization, (t) => {
       t.string("userTokenExpiration");
     });
-    await knex(TableName.Organization).update({ userTokenExpiration: appCfg.JWT_REFRESH_LIFETIME });
+    if (tokenDuration) {
+      await knex(TableName.Organization).update({ userTokenExpiration: tokenDuration });
+    }
   }
 }
 
