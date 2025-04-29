@@ -28,72 +28,40 @@ export type TFindFilter<R extends object = object> = Partial<R> & {
   $complex?: TKnexDynamicOperator<R>;
 };
 
-export const buildStrictFindFilter =
+export const buildFindFilter =
   <R extends object = object>(
     { $in, $notNull, $search, $complex, ...filter }: TFindFilter<R>,
-    tableName: TableName,
+    tableName?: TableName,
     excludeKeys?: Array<keyof R>
   ) =>
   (bd: Knex.QueryBuilder<R, R>) => {
-    const strictFilter = Object.fromEntries(
-      Object.entries(filter)
-        .filter(([key]) => !excludeKeys || !excludeKeys.includes(key as keyof R))
-        .map(([key, value]) => [`${tableName}.${key}`, value])
-    );
+    const processedFilter = tableName
+      ? Object.fromEntries(
+          Object.entries(filter)
+            .filter(([key]) => !excludeKeys || !excludeKeys.includes(key as keyof R))
+            .map(([key, value]) => [`${tableName}.${key}`, value])
+        )
+      : filter;
 
-    void bd.where(strictFilter);
+    void bd.where(processedFilter);
     if ($in) {
       Object.entries($in).forEach(([key, val]) => {
         if (val) {
-          void bd.whereIn([`${tableName}.${key}`] as never, val as never);
+          void bd.whereIn([`${tableName ? `${tableName}.` : ""}${key}`] as never, val as never);
         }
       });
     }
 
     if ($notNull?.length) {
       $notNull.forEach((key) => {
-        void bd.whereNotNull([`${tableName}.${key as string}`] as never);
+        void bd.whereNotNull([`${tableName ? `${tableName}.` : ""}${key as string}`] as never);
       });
     }
 
     if ($search) {
       Object.entries($search).forEach(([key, val]) => {
         if (val) {
-          void bd.whereILike([`${tableName}.${key}`] as never, val as never);
-        }
-      });
-    }
-    if ($complex) {
-      return buildDynamicKnexQuery(bd, $complex);
-    }
-    return bd;
-  };
-
-/**
- * @deprecated Use `buildStrictFindFilter` instead
- */
-export const buildFindFilter =
-  <R extends object = object>({ $in, $notNull, $search, $complex, ...filter }: TFindFilter<R>) =>
-  (bd: Knex.QueryBuilder<R, R>) => {
-    void bd.where(filter);
-    if ($in) {
-      Object.entries($in).forEach(([key, val]) => {
-        if (val) {
-          void bd.whereIn(key as never, val as never);
-        }
-      });
-    }
-
-    if ($notNull?.length) {
-      $notNull.forEach((key) => {
-        void bd.whereNotNull(key as never);
-      });
-    }
-
-    if ($search) {
-      Object.entries($search).forEach(([key, val]) => {
-        if (val) {
-          void bd.whereILike(key as never, val as never);
+          void bd.whereILike([`${tableName ? `${tableName}.` : ""}${key}`] as never, val as never);
         }
       });
     }

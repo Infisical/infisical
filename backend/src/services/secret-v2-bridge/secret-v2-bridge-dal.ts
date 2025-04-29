@@ -10,7 +10,6 @@ import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import {
   buildFindFilter,
-  buildStrictFindFilter,
   ormify,
   selectAllTableCols,
   sqlNestRelationships,
@@ -65,7 +64,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     try {
       const docs = await (tx || db)(TableName.SecretV2)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        .where(buildStrictFindFilter(filter, TableName.SecretV2))
+        .where(buildFindFilter(filter, TableName.SecretV2))
         .leftJoin(
           TableName.SecretV2JnTag,
           `${TableName.SecretV2}.id`,
