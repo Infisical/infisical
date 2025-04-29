@@ -33,7 +33,7 @@ export const DeleteActionModal = ({
   buttonText = "Delete",
   formContent,
   deletionMessage,
-  buttonColorSchema,
+  buttonColorSchema = "danger",
   children
 }: Props): JSX.Element => {
   const [inputData, setInputData] = useState("");
@@ -69,7 +69,7 @@ export const DeleteActionModal = ({
           <div className="mx-2 flex items-center">
             <Button
               className="mr-4"
-              colorSchema={buttonColorSchema || "danger"}
+              colorSchema={buttonColorSchema}
               isDisabled={!(deleteKey === inputData) || isLoading}
               onClick={onDelete}
               isLoading={isLoading}

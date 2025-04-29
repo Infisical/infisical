@@ -769,7 +769,7 @@ export const OverviewPage = () => {
         const uniqueSecrets: {
           secretId: string;
           referencedSecretKey: string;
-          referencedSecretId: string;
+          referencedSecretEnv: string;
         }[] = [];
         const secretIds = new Set<string>();
 

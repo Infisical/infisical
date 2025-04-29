@@ -59,7 +59,7 @@ type Props = {
     environment: { name: string; slug: string };
     folders: {
       name: string;
-      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretId: string }[];
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
       isImported: boolean;
     }[];
   }[];
@@ -133,7 +133,10 @@ export const SecretEditRow = ({
           importedBy &&
           importedBy.some(({ folders }) =>
             folders?.some(({ secrets }) =>
-              secrets?.some(({ referencedSecretId }) => referencedSecretId === secretId)
+              secrets?.some(
+                ({ referencedSecretKey, referencedSecretEnv }) =>
+                  referencedSecretKey === secretName && referencedSecretEnv === environment
+              )
             )
           )
         ) {

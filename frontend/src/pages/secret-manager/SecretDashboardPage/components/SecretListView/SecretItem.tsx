@@ -81,7 +81,7 @@ type Props = {
     environment: { name: string; slug: string };
     folders: {
       name: string;
-      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretId: string }[];
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
       isImported: boolean;
     }[];
   }[];
@@ -227,13 +227,12 @@ export const SecretItem = memo(
     };
 
     const handleFormSubmit = async (data: TFormSchema) => {
-      const hasDirectReferences =
-        importedBy &&
-        importedBy.some(({ folders }) =>
-          folders?.some(({ secrets }) =>
-            secrets?.some(({ referencedSecretId }) => referencedSecretId === secret.id)
-          )
-        );
+      const hasDirectReferences = importedBy?.some(({ folders }) =>
+        folders?.some(({ secrets }) =>
+          secrets?.some(({ referencedSecretKey }) => referencedSecretKey === secret.key)
+        )
+      );
+
       if (hasDirectReferences) {
         handlePopUpOpen("editSecret", data);
         return;

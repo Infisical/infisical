@@ -51,7 +51,7 @@ export type ProjectSecretsImportedBy = {
   environment: { name: string; slug: string };
   folders: {
     name: string;
-    secrets?: { secretId: string; referencedSecretKey: string; referencedSecretId: string }[];
+    secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
     isImported: boolean;
   }[];
 };

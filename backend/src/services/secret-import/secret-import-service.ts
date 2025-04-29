@@ -878,7 +878,7 @@ export const secretImportServiceFactory = ({
             .map((otherSecret) => ({
               secretId: secret.secretKey,
               referencedSecretKey: otherSecret.secretKey,
-              referencedSecretId: otherSecret.id
+              referencedSecretEnv: environment
             }));
         }) || [];
     if (locallyReferenced.length > 0) {

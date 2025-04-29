@@ -26,7 +26,7 @@ interface CollapsibleSecretImportsProps {
     environment: { name: string; slug: string };
     folders: {
       name: string;
-      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretId: string }[];
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
       isImported: boolean;
     }[];
   }[];
@@ -179,15 +179,27 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
     return null;
   }
 
+  const alertColors = onlyReferences
+    ? {
+        border: "border-yellow-700/30",
+        bg: "bg-yellow-900/20",
+        text: "text-yellow-500"
+      }
+    : {
+        border: "border-red-700/30",
+        bg: "bg-red-900/20",
+        text: "text-red-500"
+      };
+
   return (
     <div className="mb-4 w-full">
-      <div className="mb-4 rounded-md border border-red-700/30 bg-red-900/20">
+      <div className={`mb-4 rounded-md border ${alertColors.border} ${alertColors.bg}`}>
         <div className="flex items-start gap-3 p-4">
-          <div className="mt-0.5 flex-shrink-0 text-red-500">
+          <div className={`mt-0.5 flex-shrink-0 ${alertColors.text}`}>
             <FontAwesomeIcon icon={faWarning} className="h-5 w-5" aria-hidden="true" />
           </div>
           <div className="w-full">
-            <p className="text-sm font-semibold text-red-500">
+            <p className={`text-sm font-semibold ${alertColors.text}`}>
               The following resources will be affected by this change
             </p>
           </div>

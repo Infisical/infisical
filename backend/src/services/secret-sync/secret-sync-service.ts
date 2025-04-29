@@ -32,12 +32,14 @@ import {
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
 
+import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretSyncDALFactory } from "./secret-sync-dal";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "./secret-sync-maps";
 import { TSecretSyncQueueFactory } from "./secret-sync-queue";
 
 type TSecretSyncServiceFactoryDep = {
   secretSyncDAL: TSecretSyncDALFactory;
+  secretImportDAL: TSecretImportDALFactory;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
@@ -54,6 +56,7 @@ export type TSecretSyncServiceFactory = ReturnType<typeof secretSyncServiceFacto
 export const secretSyncServiceFactory = ({
   secretSyncDAL,
   folderDAL,
+  secretImportDAL,
   permissionService,
   appConnectionService,
   projectBotService,
@@ -87,7 +90,7 @@ export const secretSyncServiceFactory = ({
   };
 
   const listSecretSyncsBySecretPath = async (
-    { projectId, secretPath, environment, destination }: TListSecretSyncsByFolderId,
+    { projectId, secretPath, environment }: TListSecretSyncsByFolderId,
     actor: OrgServiceActor
   ) => {
     const { permission } = await permissionService.getProjectPermission({
@@ -106,9 +109,12 @@ export const secretSyncServiceFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) return [];
 
+    const folderImports = await secretImportDAL.getFolderImports(secretPath, folder.envId);
+
     const secretSyncs = await secretSyncDAL.find({
-      ...(destination && { destination }),
-      folderId: folder.id
+      $in: {
+        folderId: folderImports.map((folderImport) => folderImport.folderId).concat(folder.id)
+      }
     });
 
     return secretSyncs as TSecretSync[];
