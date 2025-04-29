@@ -1,15 +1,8 @@
-import {
-  faDownload,
-  faEllipsis,
-  faPencil,
-  faServer,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis, faPencil, faServer, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import FileSaver from "file-saver";
+import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DropdownMenu,
@@ -28,46 +21,29 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { fetchSshHostUserCaPublicKey, useListWorkspaceSshHosts } from "@app/hooks/api";
+import { useListWorkspaceSshHostGroups } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["deleteSshHost", "sshHost"]>,
+    popUpName: keyof UsePopUpState<["deleteSshHostGroup", "sshHostGroup"]>,
     data?: object
   ) => void;
 };
 
-export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
+export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
+  const navigate = useNavigate();
   const { currentWorkspace } = useWorkspace();
-  const { data, isPending } = useListWorkspaceSshHosts(currentWorkspace?.id || "");
-
-  const downloadTxtFile = (filename: string, content: string) => {
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-    FileSaver.saveAs(blob, filename);
-  };
-
-  const handleDownloadUserCaKey = async (sshHostId: string) => {
-    try {
-      const publicKey = await fetchSshHostUserCaPublicKey(sshHostId);
-      downloadTxtFile("infisical_user_ca.pub", publicKey);
-    } catch (err) {
-      console.error("Failed to download User CA public key", err);
-      createNotification({
-        type: "error",
-        text: "Failed to download User CA public key"
-      });
-    }
-  };
-
+  const { data, isPending } = useListWorkspaceSshHostGroups(currentWorkspace?.id || "");
   return (
     <div>
       <TableContainer>
         <Table className="w-full table-fixed">
           <THead>
             <Tr>
-              <Th>Alias</Th>
-              <Th>Hostname</Th>
+              <Th>Name</Th>
+              <Th>Hosts</Th>
               <Th>Login User - Authorized Principals Mapping</Th>
               <Th />
             </Tr>
@@ -77,24 +53,32 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
             {!isPending &&
               data &&
               data.length > 0 &&
-              data.map((host) => {
+              data.map((group) => {
                 return (
                   <Tr
-                    // className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-                    className="h-10"
-                    key={`ssh-host-${host.id}`}
+                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                    key={`ssh-host-group-${group.id}`}
+                    onClick={() =>
+                      navigate({
+                        to: `/${ProjectType.SSH}/$projectId/ssh-groups/$sshGroupId` as const,
+                        params: {
+                          projectId: currentWorkspace.id,
+                          sshGroupId: group.id
+                        }
+                      })
+                    }
                   >
-                    <Td>{host.alias ?? "-"}</Td>
-                    <Td>{host.hostname}</Td>
+                    <Td>{group.name}</Td>
+                    <Td>-</Td>
                     <Td>
-                      {host.loginMappings.length === 0 ? (
+                      {group.loginMappings.length === 0 ? (
                         <span className="italic text-mineshaft-400">None</span>
                       ) : (
-                        host.loginMappings.map(({ loginUser, allowedPrincipals }) => (
-                          <div key={`${host.id}-${loginUser}`} className="mb-2">
+                        group.loginMappings.map(({ loginUser, allowedPrincipals }) => (
+                          <div key={`${group.id}-${loginUser}`} className="mb-2">
                             <div className="text-mineshaft-200">{loginUser}</div>
                             {allowedPrincipals.usernames.map((username) => (
-                              <div key={`${host.id}-${loginUser}-${username}`} className="ml-4">
+                              <div key={`${group.id}-${loginUser}-${username}`} className="ml-4">
                                 └─ {username}
                               </div>
                             ))}
@@ -112,18 +96,9 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                           </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="p-1">
-                          <DropdownMenuItem
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              handleDownloadUserCaKey(host.id);
-                            }}
-                            icon={<FontAwesomeIcon icon={faDownload} />}
-                          >
-                            Download User CA Public Key
-                          </DropdownMenuItem>
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Edit}
-                            a={ProjectPermissionSub.SshHosts}
+                            a={ProjectPermissionSub.SshHostGroups}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
@@ -132,14 +107,14 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                                 )}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handlePopUpOpen("sshHost", {
-                                    sshHostId: host.id
+                                  handlePopUpOpen("sshHostGroup", {
+                                    sshHostGroupId: group.id
                                   });
                                 }}
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faPencil} />}
                               >
-                                Edit SSH host
+                                Edit SSH host group
                               </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
@@ -154,14 +129,14 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                                 )}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handlePopUpOpen("deleteSshHost", {
-                                    sshHostId: host.id
+                                  handlePopUpOpen("deleteSshHostGroup", {
+                                    sshHostGroupId: group.id
                                   });
                                 }}
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faTrash} />}
                               >
-                                Delete SSH host
+                                Delete SSH host group
                               </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
@@ -174,7 +149,7 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
           </TBody>
         </Table>
         {!isPending && data?.length === 0 && (
-          <EmptyState title="No SSH hosts have been added" icon={faServer} />
+          <EmptyState title="No SSH host groups have been created" icon={faServer} />
         )}
       </TableContainer>
     </div>

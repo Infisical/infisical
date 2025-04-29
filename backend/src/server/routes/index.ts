@@ -103,6 +103,9 @@ import { sshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { sshHostLoginUserMappingDALFactory } from "@app/ee/services/ssh-host/ssh-host-login-user-mapping-dal";
 import { sshHostServiceFactory } from "@app/ee/services/ssh-host/ssh-host-service";
 import { sshHostLoginUserDALFactory } from "@app/ee/services/ssh-host/ssh-login-user-dal";
+import { sshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
+import { sshHostGroupMembershipDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-membership-dal";
+import { sshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-service";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -399,6 +402,8 @@ export const registerRoutes = async (
   const sshHostDAL = sshHostDALFactory(db);
   const sshHostLoginUserDAL = sshHostLoginUserDALFactory(db);
   const sshHostLoginUserMappingDAL = sshHostLoginUserMappingDALFactory(db);
+  const sshHostGroupDAL = sshHostGroupDALFactory(db);
+  const sshHostGroupMembershipDAL = sshHostGroupMembershipDALFactory(db);
 
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
@@ -849,6 +854,16 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const sshHostGroupService = sshHostGroupServiceFactory({
+    sshHostDAL,
+    sshHostGroupDAL,
+    sshHostGroupMembershipDAL,
+    sshHostLoginUserDAL,
+    sshHostLoginUserMappingDAL,
+    userDAL,
+    permissionService
+  });
+
   const certificateAuthorityService = certificateAuthorityServiceFactory({
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
@@ -1018,6 +1033,7 @@ export const registerRoutes = async (
     sshCertificateDAL,
     sshCertificateTemplateDAL,
     sshHostDAL,
+    sshHostGroupDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore,
@@ -1668,6 +1684,7 @@ export const registerRoutes = async (
     sshCertificateAuthority: sshCertificateAuthorityService,
     sshCertificateTemplate: sshCertificateTemplateService,
     sshHost: sshHostService,
+    sshHostGroup: sshHostGroupService,
     certificateAuthority: certificateAuthorityService,
     certificateTemplate: certificateTemplateService,
     certificateAuthorityCrl: certificateAuthorityCrlService,

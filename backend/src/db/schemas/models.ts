@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export enum TableName {
   Users = "users",
+  SshHostGroup = "ssh_host_groups",
+  SshHostGroupMembership = "ssh_host_group_memberships",
   SshHost = "ssh_hosts",
   SshHostLoginUser = "ssh_host_login_users",
   SshHostLoginUserMapping = "ssh_host_login_user_mappings",

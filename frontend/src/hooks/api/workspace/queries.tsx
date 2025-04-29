@@ -18,6 +18,7 @@ import { EncryptedSecret } from "../secrets/types";
 import { TSshCertificate, TSshCertificateAuthority } from "../sshCa/types";
 import { TSshCertificateTemplate } from "../sshCertificateTemplates/types";
 import { TSshHost } from "../sshHost/types";
+import { TSshHostGroup } from "../sshHostGroup/types";
 import { userKeys } from "../users/query-keys";
 import { TWorkspaceUser } from "../users/types";
 import { ProjectSlackConfig } from "../workflowIntegrations/types";
@@ -865,6 +866,21 @@ export const useListWorkspaceSshHosts = (projectId: string) => {
         data: { hosts }
       } = await apiRequest.get<{ hosts: TSshHost[] }>(`/api/v2/workspace/${projectId}/ssh-hosts`);
       return hosts;
+    },
+    enabled: Boolean(projectId)
+  });
+};
+
+export const useListWorkspaceSshHostGroups = (projectId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceSshHostGroups(projectId),
+    queryFn: async () => {
+      const {
+        data: { groups }
+      } = await apiRequest.get<{ groups: TSshHostGroup[] }>(
+        `/api/v2/workspace/${projectId}/ssh-host-groups`
+      );
+      return groups;
     },
     enabled: Boolean(projectId)
   });

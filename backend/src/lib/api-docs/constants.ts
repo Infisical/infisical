@@ -568,6 +568,9 @@ export const PROJECTS = {
   LIST_SSH_HOSTS: {
     projectId: "The ID of the project to list SSH hosts for."
   },
+  LIST_SSH_HOST_GROUPS: {
+    projectId: "The ID of the project to list SSH host groups for."
+  },
   LIST_SSH_CERTIFICATES: {
     projectId: "The ID of the project to list SSH certificates for.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th SSH certificate.",
@@ -1379,6 +1382,39 @@ export const SSH_CERTIFICATE_TEMPLATES = {
   },
   DELETE: {
     certificateTemplateId: "The ID of the SSH certificate template to delete."
+  }
+};
+
+export const SSH_HOST_GROUPS = {
+  GET: {
+    sshHostGroupId: "The ID of the SSH host group to get."
+  },
+  CREATE: {
+    projectId: "The ID of the project to create the SSH host group in.",
+    name: "The name of the SSH host group.",
+    loginMappings:
+      "A list of default login mappings to include on each host in the SSH host group. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project."
+  },
+  UPDATE: {
+    sshHostGroupId: "The ID of the SSH host group to update.",
+    name: "The name of the SSH host group to update to.",
+    loginMappings:
+      "A list of default login mappings to include on each host in the SSH host group. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project."
+  },
+  DELETE: {
+    sshHostGroupId: "The ID of the SSH host group to delete."
+  },
+  LIST_HOSTS: {
+    offset: "The offset to start from. If you enter 10, it will start from the 10th host",
+    limit: "The number of hosts to return."
+  },
+  ADD_HOST: {
+    sshHostGroupId: "The ID of the SSH host group to add the host to.",
+    hostId: "The ID of the SSH host to add to the SSH host group."
+  },
+  DELETE_HOST: {
+    sshHostGroupId: "The ID of the SSH host group to delete the host from.",
+    hostId: "The ID of the SSH host to delete from the SSH host group."
   }
 };
 

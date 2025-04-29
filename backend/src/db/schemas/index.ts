@@ -127,6 +127,8 @@ export * from "./ssh-certificate-authority-secrets";
 export * from "./ssh-certificate-bodies";
 export * from "./ssh-certificate-templates";
 export * from "./ssh-certificates";
+export * from "./ssh-host-group-memberships";
+export * from "./ssh-host-groups";
 export * from "./ssh-host-login-user-mappings";
 export * from "./ssh-host-login-users";
 export * from "./ssh-hosts";

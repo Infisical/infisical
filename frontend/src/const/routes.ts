@@ -298,6 +298,10 @@ export const ROUTE_PATHS = Object.freeze({
     SshCaByIDPage: setRoute(
       "/ssh/$projectId/ca/$caId",
       "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/ca/$caId"
+    ),
+    SshGroupDetailsByIDPage: setRoute(
+      "/ssh/$projectId/ssh-groups/$groupId",
+      "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/groups/$groupId"
     )
   },
   Public: {
