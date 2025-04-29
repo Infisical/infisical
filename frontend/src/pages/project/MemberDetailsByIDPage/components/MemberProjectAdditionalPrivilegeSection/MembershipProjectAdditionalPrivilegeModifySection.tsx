@@ -31,7 +31,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import {
-  ProjectPermissionActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProjectPermission,
   useWorkspace
@@ -95,7 +95,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
 
   const { permission } = useProjectPermission();
   const isMemberEditDisabled = permission.cannot(
-    ProjectPermissionActions.Edit,
+    ProjectPermissionMemberActions.Edit,
     ProjectPermissionSub.Member
   );
 

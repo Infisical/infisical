@@ -7,6 +7,14 @@ export enum SecretType {
   Personal = "personal"
 }
 
+export type SecretReminderRecipient = {
+  user: {
+    id: string;
+    username: string;
+    email: string;
+  };
+  id: string;
+};
 export type EncryptedSecret = {
   id: string;
   version: number;
@@ -42,6 +50,7 @@ export type SecretV3RawSanitized = {
   comment?: string;
   reminderRepeatDays?: number | null;
   reminderNote?: string | null;
+  reminderRecipients?: string[];
   tags?: WsTag[];
   createdAt: string;
   updatedAt: string;
@@ -55,6 +64,7 @@ export type SecretV3RawSanitized = {
   secretMetadata?: { key: string; value: string }[];
   isReminderEvent?: boolean;
   isRotatedSecret?: boolean;
+  secretReminderRecipients?: SecretReminderRecipient[];
   rotationId?: string;
 };
 
@@ -80,6 +90,7 @@ export type SecretV3Raw = {
   updatedAt: string;
   isRotatedSecret?: boolean;
   rotationId?: string;
+  secretReminderRecipients?: SecretReminderRecipient[];
 };
 
 export type SecretV3RawResponse = {
@@ -177,6 +188,7 @@ export type TUpdateSecretsV3DTO = {
   secretReminderNote?: string | null;
   tagIds?: string[];
   secretMetadata?: { key: string; value: string }[];
+  secretReminderRecipients?: string[] | null;
 };
 
 export type TDeleteSecretsV3DTO = {

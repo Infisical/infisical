@@ -64,6 +64,10 @@ const SIMPLE_PERMISSION_OPTIONS = [
     formName: "scim"
   },
   {
+    title: "GitHub Organization Sync",
+    formName: OrgPermissionSubjects.GithubOrgSync
+  },
+  {
     title: "External KMS",
     formName: OrgPermissionSubjects.Kms
   },

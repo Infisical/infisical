@@ -5,6 +5,7 @@ import { Redis } from "ioredis";
 import { TUsers } from "@app/db/schemas";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
+import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
@@ -14,6 +15,7 @@ import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dy
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
 import { TIdentityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { TIdentityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-service";
@@ -109,12 +111,14 @@ declare module "@fastify/request-context" {
       };
     };
     identityPermissionMetadata?: Record<string, unknown>; // filled by permission service
+    assumedPrivilegeDetails?: { requesterId: string; actorId: string; actorType: ActorType; projectId: string };
   }
 }
 
 declare module "fastify" {
   interface Session {
     callbackPort: string;
+    isAdminLogin: boolean;
   }
 
   interface FastifyRequest {
@@ -138,6 +142,7 @@ declare module "fastify" {
     passportUser: {
       isUserCompleted: boolean;
       providerAuthToken: string;
+      externalProviderAccessToken?: string;
     };
     kmipUser: {
       projectId: string;
@@ -241,6 +246,8 @@ declare module "fastify" {
       kmipOperation: TKmipOperationServiceFactory;
       gateway: TGatewayServiceFactory;
       secretRotationV2: TSecretRotationV2ServiceFactory;
+      assumePrivileges: TAssumePrivilegeServiceFactory;
+      githubOrgSync: TGithubOrgSyncServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

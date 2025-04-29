@@ -27,9 +27,16 @@ type Props = {
   email: string;
   password: string;
   setPassword: (password: string) => void;
+  isAdminLogin?: boolean;
 };
 
-export const PasswordStep = ({ providerAuthToken, email, password, setPassword }: Props) => {
+export const PasswordStep = ({
+  providerAuthToken,
+  email,
+  password,
+  setPassword,
+  isAdminLogin
+}: Props) => {
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -114,7 +121,7 @@ export const PasswordStep = ({ providerAuthToken, email, password, setPassword }
 
         // case: user has orgs, so we navigate the user to select an org
         if (userOrgs.length > 0) {
-          navigateToSelectOrganization(callbackPort);
+          navigateToSelectOrganization(callbackPort, isAdminLogin);
         }
         // case: no orgs found, so we navigate the user to create an org
         else {
@@ -216,7 +223,7 @@ export const PasswordStep = ({ providerAuthToken, email, password, setPassword }
 
           // case: user has orgs, so we navigate the user to select an org
           if (userOrgs.length > 0) {
-            navigateToSelectOrganization(callbackPort);
+            navigateToSelectOrganization(callbackPort, isAdminLogin);
           }
           // case: no orgs found, so we navigate the user to create an org
           else {
@@ -249,7 +256,7 @@ export const PasswordStep = ({ providerAuthToken, email, password, setPassword }
             const userOrgs = await fetchOrganizations();
 
             if (userOrgs.length > 0) {
-              navigateToSelectOrganization();
+              navigateToSelectOrganization(undefined, isAdminLogin);
             } else {
               await navigateUserToOrg(navigate);
             }

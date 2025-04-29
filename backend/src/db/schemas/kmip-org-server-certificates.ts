@@ -13,7 +13,7 @@ export const KmipOrgServerCertificatesSchema = z.object({
   id: z.string().uuid(),
   orgId: z.string().uuid(),
   commonName: z.string(),
-  altNames: z.string(),
+  altNames: z.string().nullable().optional(),
   serialNumber: z.string(),
   keyAlgorithm: z.string(),
   issuedAt: z.date(),

@@ -25,7 +25,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
 import {
-  ProjectPermissionActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProjectPermission,
   useSubscription,
@@ -289,7 +289,10 @@ export const AccessApprovalRequest = ({
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              {!!permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Member) && (
+              {!!permission.can(
+                ProjectPermissionMemberActions.Read,
+                ProjectPermissionSub.Member
+              ) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger>
                     <Button

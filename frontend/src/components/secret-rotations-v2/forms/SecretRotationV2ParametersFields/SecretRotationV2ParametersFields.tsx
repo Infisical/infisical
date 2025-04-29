@@ -4,12 +4,16 @@ import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { TSecretRotationV2Form } from "../schemas";
 import { Auth0ClientSecretRotationParametersFields } from "./Auth0ClientSecretRotationParametersFields";
+import { AwsIamUserSecretRotationParametersFields } from "./AwsIamUserSecretRotationParametersFields";
+import { LdapPasswordRotationParametersFields } from "./LdapPasswordRotationParametersFields";
 import { SqlCredentialsRotationParametersFields } from "./shared";
 
 const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.PostgresCredentials]: SqlCredentialsRotationParametersFields,
   [SecretRotation.MsSqlCredentials]: SqlCredentialsRotationParametersFields,
-  [SecretRotation.Auth0ClientSecret]: Auth0ClientSecretRotationParametersFields
+  [SecretRotation.Auth0ClientSecret]: Auth0ClientSecretRotationParametersFields,
+  [SecretRotation.LdapPassword]: LdapPasswordRotationParametersFields,
+  [SecretRotation.AwsIamUserSecret]: AwsIamUserSecretRotationParametersFields
 };
 
 export const SecretRotationV2ParametersFields = () => {

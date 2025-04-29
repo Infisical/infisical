@@ -1,7 +1,9 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { AxiosError } from "axios";
+import { addSeconds, formatISO } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
+import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { userKeys } from "@app/hooks/api";
 import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
@@ -24,6 +26,16 @@ export const Route = createFileRoute("/_authenticate")({
           title: "Access Restricted",
           text: " You need to log in to access this page. Please log in to continue."
         });
+
+        // persist current URL in session storage so that we can come back to this after successful login
+        sessionStorage.setItem(
+          SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
+          JSON.stringify({
+            expiry: formatISO(addSeconds(new Date(), 60)),
+            data: window.location.href
+          })
+        );
+
         throw redirect({
           to: "/login"
         });

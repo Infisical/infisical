@@ -1,6 +1,6 @@
 import { TProjectPermission } from "@app/lib/types";
 
-export type TGetProjectMembershipDTO = { includeGroupMembers?: boolean } & TProjectPermission;
+export type TGetProjectMembershipDTO = { includeGroupMembers?: boolean; roles?: string[] } & TProjectPermission;
 export type TLeaveProjectDTO = Omit<TProjectPermission, "actorOrgId" | "actorAuthMethod">;
 export enum ProjectUserMembershipTemporaryMode {
   Relative = "relative"

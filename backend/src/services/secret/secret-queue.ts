@@ -1,11 +1,13 @@
 /* eslint-disable no-await-in-loop */
 import opentelemetry from "@opentelemetry/api";
 import { AxiosError } from "axios";
+import { Knex } from "knex";
 
 import {
   ProjectMembershipRole,
   ProjectUpgradeStatus,
   ProjectVersion,
+  SecretType,
   TSecretSnapshotSecretsV2,
   TSecretVersionsV2
 } from "@app/db/schemas";
@@ -53,6 +55,7 @@ import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-sche
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
+import { TSecretReminderRecipientsDALFactory } from "../secret-reminder-recipients/secret-reminder-recipients-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
@@ -109,6 +112,10 @@ type TSecretQueueFactoryDep = {
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
+  secretReminderRecipientsDAL: Pick<
+    TSecretReminderRecipientsDALFactory,
+    "delete" | "findUsersBySecretId" | "insertMany" | "transaction"
+  >;
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
 };
 
@@ -170,6 +177,7 @@ export const secretQueueFactory = ({
   projectUserMembershipRoleDAL,
   projectKeyDAL,
   resourceMetadataDAL,
+  secretReminderRecipientsDAL,
   secretSyncQueue
 }: TSecretQueueFactoryDep) => {
   const integrationMeter = opentelemetry.metrics.getMeter("Integrations");
@@ -178,7 +186,11 @@ export const secretQueueFactory = ({
     unit: "1"
   });
 
-  const removeSecretReminder = async (dto: TRemoveSecretReminderDTO) => {
+  const removeSecretReminder = async ({ deleteRecipients = true, ...dto }: TRemoveSecretReminderDTO, tx?: Knex) => {
+    if (deleteRecipients) {
+      await secretReminderRecipientsDAL.delete({ secretId: dto.secretId }, tx);
+    }
+
     const appCfg = getConfig();
     await queueService.stopRepeatableJob(
       QueueName.SecretReminder,
@@ -224,7 +236,12 @@ export const secretQueueFactory = ({
       .replace(":", "-");
   };
 
-  const addSecretReminder = async ({ oldSecret, newSecret, projectId }: TCreateSecretReminderDTO) => {
+  const addSecretReminder = async ({
+    oldSecret,
+    newSecret,
+    projectId,
+    deleteRecipients = true
+  }: TCreateSecretReminderDTO) => {
     try {
       const appCfg = getConfig();
 
@@ -246,7 +263,8 @@ export const secretQueueFactory = ({
       if (oldSecret.secretReminderRepeatDays) {
         await removeSecretReminder({
           repeatDays: oldSecret.secretReminderRepeatDays,
-          secretId: oldSecret.id
+          secretId: oldSecret.id,
+          deleteRecipients
         });
       }
 
@@ -283,29 +301,57 @@ export const secretQueueFactory = ({
   };
 
   const handleSecretReminder = async ({ newSecret, oldSecret, projectId }: THandleReminderDTO) => {
-    const { secretReminderRepeatDays, secretReminderNote } = newSecret;
+    const { secretReminderRepeatDays, secretReminderNote, secretReminderRecipients } = newSecret;
 
-    if (newSecret.type !== "personal" && secretReminderRepeatDays !== undefined) {
-      if (
-        (secretReminderRepeatDays && oldSecret.secretReminderRepeatDays !== secretReminderRepeatDays) ||
-        (secretReminderNote && oldSecret.secretReminderNote !== secretReminderNote)
-      ) {
-        await addSecretReminder({
-          oldSecret,
-          newSecret,
-          projectId
-        });
-      } else if (
-        secretReminderRepeatDays === null &&
-        secretReminderNote === null &&
-        oldSecret.secretReminderRepeatDays
-      ) {
-        await removeSecretReminder({
-          secretId: oldSecret.id,
-          repeatDays: oldSecret.secretReminderRepeatDays
-        });
+    const recipientsUpdated =
+      secretReminderRecipients?.some(
+        (newId) => !oldSecret.secretReminderRecipients?.find((oldId) => newId === oldId)
+      ) || secretReminderRecipients?.length !== oldSecret.secretReminderRecipients?.length;
+
+    await secretReminderRecipientsDAL.transaction(async (tx) => {
+      if (newSecret.type !== SecretType.Personal && secretReminderRepeatDays !== undefined) {
+        if (
+          (secretReminderRepeatDays && oldSecret.secretReminderRepeatDays !== secretReminderRepeatDays) ||
+          (secretReminderNote && oldSecret.secretReminderNote !== secretReminderNote)
+        ) {
+          await addSecretReminder({
+            oldSecret,
+            newSecret,
+            projectId,
+            deleteRecipients: false
+          });
+        } else if (
+          secretReminderRepeatDays === null &&
+          secretReminderNote === null &&
+          oldSecret.secretReminderRepeatDays
+        ) {
+          await removeSecretReminder({
+            secretId: oldSecret.id,
+            repeatDays: oldSecret.secretReminderRepeatDays
+          });
+        }
       }
-    }
+
+      if (recipientsUpdated) {
+        // if no recipients, delete all existing recipients
+        if (!secretReminderRecipients?.length) {
+          const existingRecipients = await secretReminderRecipientsDAL.findUsersBySecretId(newSecret.id, tx);
+          if (existingRecipients) {
+            await secretReminderRecipientsDAL.delete({ secretId: newSecret.id }, tx);
+          }
+        } else {
+          await secretReminderRecipientsDAL.delete({ secretId: newSecret.id }, tx);
+          await secretReminderRecipientsDAL.insertMany(
+            secretReminderRecipients.map((r) => ({
+              secretId: newSecret.id,
+              userId: r,
+              projectId
+            })),
+            tx
+          );
+        }
+      }
+    });
   };
   const createManySecretsRawFn = createManySecretsRawFnFactory({
     projectDAL,
@@ -1071,6 +1117,8 @@ export const secretQueueFactory = ({
     const secret = await secretV2BridgeDAL.findById(data.secretId);
     const [folder] = await folderDAL.findSecretPathByFolderIds(project.id, [secret.folderId]);
 
+    const recipients = await secretReminderRecipientsDAL.findUsersBySecretId(data.secretId);
+
     if (!organization) {
       logger.info(`secretReminderQueue.process: [secretDocument=${data.secretId}] no organization found`);
       return;
@@ -1088,10 +1136,14 @@ export const secretQueueFactory = ({
       return;
     }
 
+    const selectedRecipients = recipients?.length
+      ? recipients.map((r) => r.email as string)
+      : projectMembers.map((m) => m.user.email as string);
+
     await smtpService.sendMail({
       template: SmtpTemplates.SecretReminder,
       subjectLine: "Infisical secret reminder",
-      recipients: [...projectMembers.map((m) => m.user.email)].filter((email) => email).map((email) => email as string),
+      recipients: selectedRecipients,
       substitutions: {
         reminderNote: data.note, // May not be present.
         projectName: project.name,

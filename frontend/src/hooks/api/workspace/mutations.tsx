@@ -4,7 +4,11 @@ import { apiRequest } from "@app/config/request";
 
 import { userKeys } from "../users/query-keys";
 import { workspaceKeys } from "./query-keys";
-import { TUpdateWorkspaceGroupRoleDTO } from "./types";
+import {
+  TProjectSshConfig,
+  TUpdateProjectSshConfigDTO,
+  TUpdateWorkspaceGroupRoleDTO
+} from "./types";
 
 export const useAddGroupToWorkspace = () => {
   const queryClient = useQueryClient();
@@ -113,6 +117,23 @@ export const useRequestProjectAccess = () => {
     mutationFn: ({ projectId, comment }) => {
       return apiRequest.post(`/api/v1/workspace/${projectId}/project-access`, {
         comment
+      });
+    }
+  });
+};
+
+export const useUpdateProjectSshConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TProjectSshConfig, object, TUpdateProjectSshConfigDTO>({
+    mutationFn: ({ projectId, defaultUserSshCaId, defaultHostSshCaId }) => {
+      return apiRequest.patch(`/api/v1/workspace/${projectId}/ssh-config`, {
+        defaultUserSshCaId,
+        defaultHostSshCaId
+      });
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getProjectSshConfig(projectId)
       });
     }
   });

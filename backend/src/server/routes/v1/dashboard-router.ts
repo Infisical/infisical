@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { SecretFoldersSchema, SecretImportsSchema } from "@app/db/schemas";
+import { SecretFoldersSchema, SecretImportsSchema, UsersSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
@@ -619,6 +619,12 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .optional(),
           secrets: secretRawSchema
             .extend({
+              secretReminderRecipients: z
+                .object({
+                  user: UsersSchema.pick({ id: true, email: true, username: true }),
+                  id: z.string()
+                })
+                .array(),
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataSchema.optional(),

@@ -2,7 +2,7 @@ import path from "node:path";
 
 import RE2 from "re2";
 
-import { TableName, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
+import { SecretType, TableName, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -12,6 +12,7 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretReminderRecipient } from "../secret-reminder-recipients/secret-reminder-recipients-types";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from "./secret-v2-bridge-types";
 
@@ -353,7 +354,7 @@ export const fnSecretBulkDelete = async ({
     deletedSecrets
       .filter(({ reminderRepeatDays }) => Boolean(reminderRepeatDays))
       .map(({ id, reminderRepeatDays }) =>
-        secretQueueService.removeSecretReminder({ secretId: id, repeatDays: reminderRepeatDays as number })
+        secretQueueService.removeSecretReminder({ secretId: id, repeatDays: reminderRepeatDays as number }, tx)
       )
   );
 
@@ -684,6 +685,7 @@ export const reshapeBridgeSecret = (
     secretMetadata?: ResourceMetadataDTO;
     isRotatedSecret?: boolean;
     rotationId?: string;
+    secretReminderRecipients?: TSecretReminderRecipient[];
   },
   secretValueHidden: boolean
 ) => ({
@@ -715,9 +717,10 @@ export const reshapeBridgeSecret = (
   updatedAt: secret.updatedAt,
   isRotatedSecret: secret.isRotatedSecret,
   rotationId: secret.rotationId,
+  secretReminderRecipients: secret.secretReminderRecipients || [],
   ...(secretValueHidden
     ? {
-        secretValue: INFISICAL_SECRET_VALUE_HIDDEN_MASK,
+        secretValue: secret.type === SecretType.Personal ? secret.value : INFISICAL_SECRET_VALUE_HIDDEN_MASK,
         secretValueHidden: true
       }
     : {

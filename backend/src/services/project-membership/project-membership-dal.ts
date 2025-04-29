@@ -13,7 +13,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
   // special query
   const findAllProjectMembers = async (
     projectId: string,
-    filter: { usernames?: string[]; username?: string; id?: string } = {}
+    filter: { usernames?: string[]; username?: string; id?: string; roles?: string[] } = {}
   ) => {
     try {
       const docs = await db
@@ -30,6 +30,29 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           }
           if (filter.id) {
             void qb.where(`${TableName.ProjectMembership}.id`, filter.id);
+          }
+          if (filter.roles && filter.roles.length > 0) {
+            void qb.whereExists((subQuery) => {
+              void subQuery
+                .select("role")
+                .from(TableName.ProjectUserMembershipRole)
+                .leftJoin(
+                  TableName.ProjectRoles,
+                  `${TableName.ProjectRoles}.id`,
+                  `${TableName.ProjectUserMembershipRole}.customRoleId`
+                )
+                .whereRaw("??.?? = ??.??", [
+                  TableName.ProjectUserMembershipRole,
+                  "projectMembershipId",
+                  TableName.ProjectMembership,
+                  "id"
+                ])
+                .where((subQb) => {
+                  void subQb
+                    .whereIn(`${TableName.ProjectUserMembershipRole}.role`, filter.roles as string[])
+                    .orWhereIn(`${TableName.ProjectRoles}.slug`, filter.roles as string[]);
+                });
+            });
           }
         })
         .join<TUserEncryptionKeys>(

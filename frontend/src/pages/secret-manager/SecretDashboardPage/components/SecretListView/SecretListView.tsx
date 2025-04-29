@@ -87,6 +87,7 @@ export const SecretListView = ({
       comment,
       reminderRepeatDays,
       reminderNote,
+      reminderRecipients,
       tags,
       skipMultilineEncoding,
       newKey,
@@ -98,6 +99,7 @@ export const SecretListView = ({
       comment: string;
       reminderRepeatDays: number | null;
       reminderNote: string | null;
+      reminderRecipients?: string[] | null;
       tags: string[];
       skipMultilineEncoding: boolean;
       newKey: string;
@@ -133,6 +135,7 @@ export const SecretListView = ({
         secretComment: comment,
         secretReminderRepeatDays: reminderRepeatDays,
         secretReminderNote: reminderNote,
+        secretReminderRecipients: reminderRecipients,
         skipMultilineEncoding,
         secretMetadata
       });
@@ -174,6 +177,7 @@ export const SecretListView = ({
         comment,
         reminderRepeatDays,
         reminderNote,
+        reminderRecipients,
         secretMetadata,
         isReminderEvent
       } = modSecret;
@@ -182,6 +186,12 @@ export const SecretListView = ({
       const tagIds = tags?.map(({ id }) => id);
       const oldTagIds = (orgSecret?.tags || []).map(({ id }) => id);
       const isSameTags = JSON.stringify(tagIds) === JSON.stringify(oldTagIds);
+
+      const isSameRecipients =
+        !reminderRecipients?.some(
+          (newId) => !orgSecret.secretReminderRecipients?.find((oldId) => newId === oldId.user.id)
+        ) && reminderRecipients?.length === orgSecret.secretReminderRecipients?.length;
+
       const isSharedSecUnchanged =
         (
           [
@@ -191,9 +201,12 @@ export const SecretListView = ({
             "skipMultilineEncoding",
             "reminderRepeatDays",
             "reminderNote",
+            "reminderRecipients",
             "secretMetadata"
           ] as const
-        ).every((el) => orgSecret[el] === modSecret[el]) && isSameTags;
+        ).every((el) => orgSecret[el] === modSecret[el]) &&
+        isSameTags &&
+        isSameRecipients;
 
       try {
         // personal secret change
@@ -226,6 +239,7 @@ export const SecretListView = ({
             comment,
             reminderRepeatDays,
             reminderNote,
+            reminderRecipients,
             secretId: orgSecret.id,
             newKey: hasKeyChanged ? key : undefined,
             skipMultilineEncoding: modSecret.skipMultilineEncoding,

@@ -33,6 +33,7 @@ export const sshHostDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SshHost).as("sshHostId"),
           db.ref("projectId").withSchema(TableName.SshHost),
           db.ref("hostname").withSchema(TableName.SshHost),
+          db.ref("alias").withSchema(TableName.SshHost),
           db.ref("userCertTtl").withSchema(TableName.SshHost),
           db.ref("hostCertTtl").withSchema(TableName.SshHost),
           db.ref("loginUser").withSchema(TableName.SshHostLoginUser),
@@ -45,7 +46,8 @@ export const sshHostDALFactory = (db: TDbClient) => {
 
       const grouped = groupBy(rows, (r) => r.sshHostId);
       return Object.values(grouped).map((hostRows) => {
-        const { sshHostId, hostname, userCertTtl, hostCertTtl, userSshCaId, hostSshCaId, projectId } = hostRows[0];
+        const { sshHostId, hostname, alias, userCertTtl, hostCertTtl, userSshCaId, hostSshCaId, projectId } =
+          hostRows[0];
 
         const loginMappingGrouped = groupBy(hostRows, (r) => r.loginUser);
 
@@ -59,6 +61,7 @@ export const sshHostDALFactory = (db: TDbClient) => {
         return {
           id: sshHostId,
           hostname,
+          alias,
           projectId,
           userCertTtl,
           hostCertTtl,
@@ -87,6 +90,7 @@ export const sshHostDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SshHost).as("sshHostId"),
           db.ref("projectId").withSchema(TableName.SshHost),
           db.ref("hostname").withSchema(TableName.SshHost),
+          db.ref("alias").withSchema(TableName.SshHost),
           db.ref("userCertTtl").withSchema(TableName.SshHost),
           db.ref("hostCertTtl").withSchema(TableName.SshHost),
           db.ref("loginUser").withSchema(TableName.SshHostLoginUser),
@@ -99,7 +103,7 @@ export const sshHostDALFactory = (db: TDbClient) => {
 
       const hostsGrouped = groupBy(rows, (r) => r.sshHostId);
       return Object.values(hostsGrouped).map((hostRows) => {
-        const { sshHostId, hostname, userCertTtl, hostCertTtl, userSshCaId, hostSshCaId } = hostRows[0];
+        const { sshHostId, hostname, alias, userCertTtl, hostCertTtl, userSshCaId, hostSshCaId } = hostRows[0];
 
         const loginMappingGrouped = groupBy(
           hostRows.filter((r) => r.loginUser),
@@ -116,6 +120,7 @@ export const sshHostDALFactory = (db: TDbClient) => {
         return {
           id: sshHostId,
           hostname,
+          alias,
           projectId,
           userCertTtl,
           hostCertTtl,
@@ -144,6 +149,7 @@ export const sshHostDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SshHost).as("sshHostId"),
           db.ref("projectId").withSchema(TableName.SshHost),
           db.ref("hostname").withSchema(TableName.SshHost),
+          db.ref("alias").withSchema(TableName.SshHost),
           db.ref("userCertTtl").withSchema(TableName.SshHost),
           db.ref("hostCertTtl").withSchema(TableName.SshHost),
           db.ref("loginUser").withSchema(TableName.SshHostLoginUser),
@@ -155,7 +161,7 @@ export const sshHostDALFactory = (db: TDbClient) => {
 
       if (rows.length === 0) return null;
 
-      const { sshHostId: id, projectId, hostname, userCertTtl, hostCertTtl, userSshCaId, hostSshCaId } = rows[0];
+      const { sshHostId: id, projectId, hostname, alias, userCertTtl, hostCertTtl, userSshCaId, hostSshCaId } = rows[0];
 
       const loginMappingGrouped = groupBy(
         rows.filter((r) => r.loginUser),
@@ -173,6 +179,7 @@ export const sshHostDALFactory = (db: TDbClient) => {
         id,
         projectId,
         hostname,
+        alias,
         userCertTtl,
         hostCertTtl,
         loginMappings,
