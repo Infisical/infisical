@@ -34,7 +34,11 @@ description: "Learn how to configure a TeamCity Sync for Infisical."
             - **Build Configuration**: The build configuration to sync secrets to.
 
             <Note>
-                Not including a Build Configuration will sync secrets to the entire project.
+                Not including a Build Configuration will sync secrets to the project.
+            </Note>
+
+            <Note>
+                Infisical only syncs secrets within the target scope, meaning that inherited secrets are ignored.
             </Note>
 
         5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
