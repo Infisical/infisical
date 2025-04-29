@@ -22,7 +22,11 @@ type Props = {
 
 const microsoftTeamsFormSchema = z.object({
   slug: slugSchema({ min: 1, field: "Alias" }),
-  tenantId: z.string().min(1, { message: "Tenant ID is required" }).trim(),
+  tenantId: z
+    .string()
+    .min(1, { message: "Tenant ID is required" })
+    .trim()
+    .uuid("Tenant ID must be a valid UUID"),
   description: z.string().optional()
 });
 

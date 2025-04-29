@@ -105,6 +105,7 @@ export const getMicrosoftTeamsAccessToken = async (
     }
 
     if (getBotFrameworkToken) {
+      // If the token expires within the next 5 minutes, we'll get a new token instead of using the stored one.
       const currentTime = new Date(new Date().getTime() + 5 * 60 * 1000);
 
       if (
@@ -124,6 +125,7 @@ export const getMicrosoftTeamsAccessToken = async (
         return botAccessToken.toString();
       }
     } else {
+      // If the token expires within the next 5 minutes, we'll get a new token instead of using the stored one.
       const currentTime = new Date(new Date().getTime() + 5 * 60 * 1000);
 
       if (
@@ -670,6 +672,6 @@ export const validateMicrosoftTeamsChannelsSchema = z
     channelIds: z.array(z.string()).min(1)
   })
   .optional()
-  .refine((data) => data === undefined || data?.channelIds.length <= 5, {
-    message: "You can only select up to 5 microsoft teams channels"
+  .refine((data) => data === undefined || data?.channelIds.length <= 20, {
+    message: "You can only select up to 20 Microsoft Teams channels"
   });

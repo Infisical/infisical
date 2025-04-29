@@ -201,11 +201,13 @@ export const superAdminServiceFactory = ({
       updatedData.slackClientSecret = undefined;
     }
 
+    let microsoftTeamsSettingsUpdated = false;
     if (data.microsoftTeamsAppId) {
       const encryptedClientId = encryptWithRoot(Buffer.from(data.microsoftTeamsAppId));
 
       updatedData.encryptedMicrosoftTeamsAppId = encryptedClientId;
       updatedData.microsoftTeamsAppId = undefined;
+      microsoftTeamsSettingsUpdated = true;
     }
 
     if (data.microsoftTeamsClientSecret) {
@@ -213,6 +215,7 @@ export const superAdminServiceFactory = ({
 
       updatedData.encryptedMicrosoftTeamsClientSecret = encryptedClientSecret;
       updatedData.microsoftTeamsClientSecret = undefined;
+      microsoftTeamsSettingsUpdated = true;
     }
 
     if (data.microsoftTeamsBotId) {
@@ -220,6 +223,7 @@ export const superAdminServiceFactory = ({
 
       updatedData.encryptedMicrosoftTeamsBotId = encryptedBotId;
       updatedData.microsoftTeamsBotId = undefined;
+      microsoftTeamsSettingsUpdated = true;
     }
     const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, updatedData);
 
@@ -228,7 +232,8 @@ export const superAdminServiceFactory = ({
     if (
       updatedServerCfg.encryptedMicrosoftTeamsAppId &&
       updatedServerCfg.encryptedMicrosoftTeamsClientSecret &&
-      updatedServerCfg.encryptedMicrosoftTeamsBotId
+      updatedServerCfg.encryptedMicrosoftTeamsBotId &&
+      microsoftTeamsSettingsUpdated
     ) {
       const decryptWithRoot = kmsService.decryptWithRootKey();
       decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsBotId); // validate that we're able to decrypt the bot ID

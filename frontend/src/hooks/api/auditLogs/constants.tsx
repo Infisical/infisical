@@ -167,6 +167,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_SECRET_ROTATION]: "Delete Secret Rotation",
   [EventType.SECRET_ROTATION_ROTATE_SECRETS]: "Secret Rotation secrets rotated",
 
+  [EventType.GET_PROJECT_SLACK_CONFIG]: "Get Project Slack Config",
+  [EventType.UPDATE_PROJECT_SLACK_CONFIG]: "Update Project Slack Config",
+
   [EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CREATE]:
     "Create Microsoft Teams Workflow Integration",
   [EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_DELETE]:

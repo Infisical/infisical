@@ -59,7 +59,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
     schema: {
       body: z.object({
         redirectUri: z.string(),
-        tenantId: z.string(),
+        tenantId: z.string().uuid(),
         slug: z.string(),
         description: z.string().optional()
       })
