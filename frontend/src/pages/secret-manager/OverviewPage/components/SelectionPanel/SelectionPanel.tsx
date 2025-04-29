@@ -15,7 +15,7 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useDeleteSecretBatch } from "@app/hooks/api";
-import { ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
+import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import {
   SecretType,
   SecretV3RawSanitized,
@@ -38,7 +38,7 @@ type Props = {
     [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
   };
   importedBy?: ProjectSecretsImportedBy[] | null;
-  usedBySecretSyncs?: { name: string; destination: string; environment: string }[];
+  usedBySecretSyncs?: UsedBySecretSyncs[];
   secretsToDeleteKeys: string[];
 };
 
@@ -261,10 +261,10 @@ export const SelectionPanel = ({
         onChange={(isOpen) => handlePopUpToggle("bulkDeleteEntries", isOpen)}
         onDeleteApproved={handleBulkDelete}
         formContent={
-          importedBy &&
-          importedBy.some((element) => element.folders.length > 0) && (
+          ((usedBySecretSyncsFiltered && usedBySecretSyncsFiltered.length > 0) ||
+            (importedBy && importedBy.some((element) => element.folders.length > 0))) && (
             <CollapsibleSecretImports
-              importedBy={importedBy}
+              importedBy={importedBy || []}
               secretsToDelete={secretsToDeleteKeys}
               usedBySecretSyncs={usedBySecretSyncsFiltered}
             />

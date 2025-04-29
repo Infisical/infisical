@@ -3,8 +3,9 @@ import React, { useMemo } from "react";
 import { faFileImport, faKey, faSync, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Table, TBody, Td, Th, THead, Tr } from "@app/components/v2";
+import { Table, TBody, Td, Th, THead, Tooltip, Tr } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 
 enum ItemType {
   Folder = "Folder",
@@ -19,6 +20,8 @@ interface FlatItem {
   reference: string;
   id: string;
   environment: { name: string; slug: string };
+  tooltipText?: string;
+  destination?: string;
 }
 
 interface CollapsibleSecretImportsProps {
@@ -30,13 +33,7 @@ interface CollapsibleSecretImportsProps {
       isImported: boolean;
     }[];
   }[];
-  usedBySecretSyncs?:
-    | {
-        name: string;
-        destination: string;
-        environment: string;
-      }[]
-    | null;
+  usedBySecretSyncs?: UsedBySecretSyncs[] | null;
   secretsToDelete: string[];
   onlyReferences?: boolean;
 }
@@ -65,7 +62,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
   const handlePathClick = (item: FlatItem) => {
     if (item.type === ItemType.SecretSync) {
       window.open(
-        `/secret-manager/${currentWorkspace.id}/integrations?selectedTab=secret-syncs`,
+        `/secret-manager/${currentWorkspace.id}/integrations/secret-syncs/${item.destination}/${item.id}`,
         "_blank",
         "noopener,noreferrer"
       );
@@ -128,10 +125,12 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
     usedBySecretSyncs?.forEach((syncItem) => {
       items.push({
         type: ItemType.SecretSync,
-        path: syncItem.destination,
-        id: `secret-sync-${syncItem.name}-${syncItem.destination}`,
+        destination: syncItem.destination,
+        path: syncItem.path,
+        id: syncItem.id,
         reference: "Secret Sync",
-        environment: { name: syncItem.environment, slug: "" }
+        environment: { name: syncItem.environment, slug: "" },
+        tooltipText: `Currently used by Secret Sync: ${syncItem.name}`
       });
     });
 
@@ -222,28 +221,34 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
                 className="cursor-pointer hover:bg-mineshaft-700"
                 title={
                   item.type === ItemType.SecretSync
-                    ? "Navigate to Secret Syncs"
+                    ? "Navigate to Secret Sync"
                     : `Navigate to ${item.path}`
                 }
               >
                 <Td>
-                  <FontAwesomeIcon
-                    icon={
-                      item.type === ItemType.Secret
-                        ? faKey
-                        : item.type === ItemType.Folder
-                          ? faFileImport
-                          : faSync
-                    }
-                    className={`h-4 w-4 ${
-                      item.type === ItemType.Secret
-                        ? "text-gray-400"
-                        : item.type === ItemType.Folder
-                          ? "text-green-700"
-                          : "text-blue-500"
-                    }`}
-                    aria-hidden="true"
-                  />
+                  <Tooltip
+                    className="max-w-md"
+                    content={item.tooltipText}
+                    isDisabled={!item.tooltipText}
+                  >
+                    <FontAwesomeIcon
+                      icon={
+                        item.type === ItemType.Secret
+                          ? faKey
+                          : item.type === ItemType.Folder
+                            ? faFileImport
+                            : faSync
+                      }
+                      className={`h-4 w-4 ${
+                        item.type === ItemType.Secret
+                          ? "text-gray-400"
+                          : item.type === ItemType.Folder
+                            ? "text-green-700"
+                            : "text-blue-500"
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </Tooltip>
                 </Td>
                 <Td className="px-4">{item.environment.name}</Td>
                 <Td className="truncate px-4">{truncatePath(item.path)}</Td>

@@ -171,7 +171,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .object({
               name: z.string(),
               destination: z.string(),
-              environment: z.string()
+              environment: z.string(),
+              id: z.string(),
+              path: z.string()
             })
             .array()
             .optional(),
@@ -509,7 +511,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      const usedBySecretSyncs: { name: string; destination: string; environment: string }[] = [];
+      const usedBySecretSyncs: { name: string; destination: string; environment: string; id: string; path: string }[] =
+        [];
       for await (const environment of environments) {
         const secretSyncs = await server.services.secretSync.listSecretSyncsBySecretPath(
           { projectId, secretPath, environment },
@@ -519,7 +522,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           usedBySecretSyncs.push({
             name: sync.name,
             destination: sync.destination,
-            environment
+            environment,
+            id: sync.id,
+            path: sync.folder?.path || "/"
           });
         });
       }
@@ -640,7 +645,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .object({
               name: z.string(),
               destination: z.string(),
-              environment: z.string()
+              environment: z.string(),
+              id: z.string(),
+              path: z.string()
             })
             .array()
             .optional(),
@@ -945,7 +952,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const usedBySecretSyncs = secretSyncs.map((sync) => ({
         name: sync.name,
         destination: sync.destination,
-        environment: sync.environment?.name || environment
+        environment: sync.environment?.name || environment,
+        id: sync.id,
+        path: sync.folder?.path || "/"
       }));
 
       if (secrets?.length || secretRotations?.length) {

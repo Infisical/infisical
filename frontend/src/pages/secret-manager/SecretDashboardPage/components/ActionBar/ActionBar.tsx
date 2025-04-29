@@ -69,6 +69,7 @@ import {
   dashboardKeys,
   fetchDashboardProjectSecretsByKeys
 } from "@app/hooks/api/dashboard/queries";
+import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
 import { ApiErrorTypes, SecretType, TApiErrors, WsTag } from "@app/hooks/api/types";
@@ -113,7 +114,7 @@ type Props = {
   onVisibilityToggle: () => void;
   onToggleRowType: (rowType: RowType) => void;
   onClickRollbackMode: () => void;
-  usedBySecretSyncs?: { environment: string; name: string; destination: string }[];
+  usedBySecretSyncs?: UsedBySecretSyncs[];
   importedBy?: {
     environment: { name: string; slug: string };
     folders: {

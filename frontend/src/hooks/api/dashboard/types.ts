@@ -25,8 +25,16 @@ export type DashboardProjectSecretsOverviewResponse = {
   totalUniqueFoldersInPage: number;
   totalUniqueSecretImportsInPage: number;
   importedByEnvs?: { environment: string; importedBy: ProjectSecretsImportedBy[] }[];
-  usedBySecretSyncs?: { name: string; destination: string; environment: string }[];
+  usedBySecretSyncs?: UsedBySecretSyncs[];
   totalUniqueSecretRotationsInPage: number;
+};
+
+export type UsedBySecretSyncs = {
+  name: string;
+  destination: string;
+  environment: string;
+  id: string;
+  path: string;
 };
 
 export type DashboardProjectSecretsDetailsResponse = {
@@ -44,7 +52,7 @@ export type DashboardProjectSecretsDetailsResponse = {
   totalSecretRotationCount?: number;
   totalCount: number;
   importedBy?: ProjectSecretsImportedBy[];
-  usedBySecretSyncs?: { name: string; destination: string; environment: string }[];
+  usedBySecretSyncs?: UsedBySecretSyncs[];
 };
 
 export type ProjectSecretsImportedBy = {
