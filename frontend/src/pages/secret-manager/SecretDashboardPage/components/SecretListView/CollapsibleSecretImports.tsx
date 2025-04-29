@@ -156,7 +156,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
 
       return aPath.localeCompare(bPath);
     });
-  }, [importedBy, usedBySecretSyncs, secretsToDelete]);
+  }, [importedBy, usedBySecretSyncs, secretsToDelete, onlyReferences]);
 
   const hasImportedItems = importedBy.some((element) => {
     if (element.folders && element.folders.length > 0) {
