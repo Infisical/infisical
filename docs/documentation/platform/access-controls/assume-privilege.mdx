@@ -1,42 +1,40 @@
 ---
-title: "Assume Privileges"
-description: "Learn how to assume privileges of a user or machine identities in a project."
+title: "Assume Privileges"  
+description: "Learn how to temporarily assume the privileges of a user or machine identity within a project."
 ---
 
-## Overview
-
-The Assume Privileges feature allows authorized users to temporarily gain the permissions of another user or identity within the system.
-This capability enables administrators to troubleshoot issues, perform maintenance tasks, or assist users without requiring permanent access to their accounts.
+This feature allows authorized users to temporarily take on the permissions of another user or identity. It helps administrators and access managers test and verify permissions before granting access, ensuring everything is set up correctly.
+It also reduces back-and-forth with end users when troubleshooting permission-related issues.
 
 ## How It Works
 
-When an authorized user activates the Assume Privileges feature, they temporarily inherit the exact permissions of the target user or identity for a limited time period (1 hour).
-During this period, they can perform actions within the system as if they had the same permission level as the target user.
+When an authorized user activates assume privileges mode, they temporarily inherit the target user or identity’s permissions for up to one hour.  
+During this time, they can perform actions within the system with the same level of access as the target user.
 
-- **Permission-based**: Only transfers permissions, not the complete identity
-- **Time-limited**: Access automatically expires after 1 hour
-- **Audited**: All actions performed during the privilege assumption are logged under the original user's credentials
-- **Authorization-required**: Only users with specific **assume privilege** permission can use this feature
+- **Permission-based**: Only permissions are inherited, not the full identity
+- **Time-limited**: Access automatically expires after one hour
+- **Audited**: All actions are logged under the original user's account. This means any action taken during the session will be recorded under the entity assuming the privileges, not the target entity.
+- **Authorization required**: Only users with the specific **assume privilege** permission can use this feature
+- **Scoped to a single project**: You can only assume privileges for one project at a time
 
-### Distinction from Impersonation
+## How to Assume Privileges
 
-Unlike impersonation, Assume Privileges:
+<Steps>
+   <Step title="Go to Project Access">
+   Click on the user or identity you want to assume.
 
-1. Does not change the user's display name or identity in the system
-2. Records all actions under the original user's ID (not the target user)
-3. Only provides access to permissions, not personal settings or data
-4. Is designed for administrative and support purposes within proper authorization boundaries
-
-## Steps
-
-1. Navigate to Project Access and select a user/identity by clicking on their row in the table
    ![Access control page](/images/platform/access-controls/assume-privileges/access-control.png)
-2. Click the Assume Privilege button and type in assume to confirm and start your session
-   ![Access control detail page](/images/platform/access-controls/assume-privileges/access-control-detail.png)
-3. A yellow alert session will appear showing your active assume privilege session; you can exit at any time by clicking the \*\*Exit button
-   ![session start](/images/platform/access-controls/assume-privileges/session-start.png)
+   </Step>
 
-<Info>
-  The assume privilege session is scoped to a single project and will expire
-  after 1 hour. A user can only assume privileges for one project at a time.
-</Info>
+   <Step title="Click Assume Privilege">
+   Click **Assume Privilege**, then type `assume` to confirm and start your session.
+
+   ![Access control detail page](/images/platform/access-controls/assume-privileges/access-control-detail.png)
+   </Step>
+
+   <Step title="Session is Active">
+   You will see a yellow banner indicating that your assume privilege session is active. You can exit at any time by clicking **Exit**.
+
+   ![session start](/images/platform/access-controls/assume-privileges/session-start.png)
+   </Step>
+</Steps>
