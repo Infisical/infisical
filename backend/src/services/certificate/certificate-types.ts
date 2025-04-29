@@ -73,3 +73,14 @@ export type TRevokeCertDTO = {
 export type TGetCertBodyDTO = {
   serialNumber: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TImportCertDTO = {
+  projectSlug: string;
+
+  friendlyName?: string;
+  pkiCollectionId?: string;
+
+  certificatePem: string;
+  privateKeyPem?: string;
+  chainPem?: string;
+} & Omit<TProjectPermission, "projectId">;

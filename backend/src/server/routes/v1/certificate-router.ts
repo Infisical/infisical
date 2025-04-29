@@ -179,6 +179,79 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
+    url: "/import-certificate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Import certificate",
+      body: z.object({
+        projectSlug: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.projectSlug),
+
+        certificatePem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.certificatePem),
+        privateKeyPem: z.string().trim().optional().describe(CERTIFICATES.IMPORT.privateKeyPem),
+        chainPem: z.string().trim().optional().describe(CERTIFICATES.IMPORT.chainPem),
+
+        friendlyName: z.string().trim().optional().describe(CERTIFICATES.IMPORT.friendlyName),
+        pkiCollectionId: z.string().trim().optional().describe(CERTIFICATES.IMPORT.pkiCollectionId)
+      }),
+      response: {
+        200: z.object({
+          certificate: z.string().trim().describe(CERTIFICATES.IMPORT.certificate),
+          certificateChain: z.string().trim().optional().describe(CERTIFICATES.IMPORT.certificateChain),
+          privateKey: z.string().trim().optional().describe(CERTIFICATES.IMPORT.privateKey),
+          serialNumber: z.string().trim().describe(CERTIFICATES.IMPORT.serialNumber)
+        })
+      }
+    },
+    handler: async (req) => {
+      const { certificate, certificateChain, privateKey, serialNumber } = await server.services.certificate.importCert({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
+
+      // TODO(andrey): Add logs
+      // await server.services.auditLog.createAuditLog({
+      //   ...req.auditLogInfo,
+      //   projectId: ca.projectId,
+      //   event: {
+      //     type: EventType.ISSUE_CERT,
+      //     metadata: {
+      //       caId: ca.id,
+      //       dn: ca.dn,
+      //       serialNumber
+      //     }
+      //   }
+      // });
+
+      // await server.services.telemetry.sendPostHogEvents({
+      //   event: PostHogEventTypes.IssueCert,
+      //   distinctId: getTelemetryDistinctId(req),
+      //   properties: {
+      //     caId: req.body.caId,
+      //     certificateTemplateId: req.body.certificateTemplateId,
+      //     commonName: req.body.commonName,
+      //     ...req.auditLogInfo
+      //   }
+      // });
+
+      return {
+        certificate,
+        certificateChain,
+        privateKey,
+        serialNumber
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/sign-certificate",
     config: {
       rateLimit: writeLimit

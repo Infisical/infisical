@@ -1581,6 +1581,19 @@ export const CERTIFICATES = {
     certificate: "The certificate body of the certificate.",
     certificateChain: "The certificate chain of the certificate.",
     serialNumberRes: "The serial number of the certificate."
+  },
+  IMPORT: {
+    projectSlug: "Slug of the project to import the certificate into.",
+    certificatePem: "The PEM-encoded leaf certificate.",
+    privateKeyPem: "The PEM-encoded private key corresponding to the certificate.",
+    chainPem: "The PEM-encoded chain of intermediate certificates.",
+    friendlyName: "A friendly name for the certificate.",
+    pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
+
+    certificate: "The issued certificate.",
+    certificateChain: "The certificate chain of the issued certificate.",
+    privateKey: "The private key of the issued certificate.",
+    serialNumber: "The serial number of the issued certificate."
   }
 };
 

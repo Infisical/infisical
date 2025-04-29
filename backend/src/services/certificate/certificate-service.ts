@@ -1,31 +1,47 @@
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
+import { createPrivateKey, createPublicKey, sign, verify } from "crypto";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
+import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
 import { revocationReasonToCrlCode } from "./certificate-fns";
-import { CertStatus, TDeleteCertDTO, TGetCertBodyDTO, TGetCertDTO, TRevokeCertDTO } from "./certificate-types";
+import {
+  CertStatus,
+  TDeleteCertDTO,
+  TGetCertBodyDTO,
+  TGetCertDTO,
+  TImportCertDTO,
+  TRevokeCertDTO
+} from "./certificate-types";
 
 type TCertificateServiceFactoryDep = {
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find">;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
+  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find" | "transaction" | "create">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction">;
+  pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
+  pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
+  projectDAL: Pick<
+    TProjectDALFactory,
+    "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction" | "getProjectFromSplitId"
+  >;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
@@ -39,6 +55,8 @@ export const certificateServiceFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthorityCrlDAL,
   certificateAuthoritySecretDAL,
+  pkiCollectionDAL,
+  pkiCollectionItemDAL,
   projectDAL,
   kmsService,
   permissionService
@@ -48,7 +66,12 @@ export const certificateServiceFactory = ({
    */
   const getCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
-    const ca = await certificateAuthorityDAL.findById(cert.caId);
+
+    let ca;
+
+    if (cert.caId) {
+      ca = await certificateAuthorityDAL.findById(cert.caId);
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -201,10 +224,171 @@ export const certificateServiceFactory = ({
     };
   };
 
+  /**
+   * Import certificate
+   */
+  const importCert = async ({
+    projectSlug,
+    pkiCollectionId,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId,
+    friendlyName,
+    certificatePem,
+    chainPem,
+    privateKeyPem
+  }: TImportCertDTO) => {
+    const collectionId = pkiCollectionId;
+
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+    let projectId = project.id;
+
+    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
+      projectId,
+      ProjectType.CertificateManager
+    );
+    if (certManagerProjectFromSplit) {
+      projectId = certManagerProjectFromSplit.id;
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
+
+    // Check PKI collection
+    if (collectionId) {
+      const pkiCollection = await pkiCollectionDAL.findById(collectionId);
+      if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+      if (pkiCollection.projectId !== projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
+    }
+
+    // Parse the certificate
+    const certObj = new x509.X509Certificate(certificatePem);
+
+    // Verify the certificate chain
+    if (chainPem) {
+      const chainCert = new x509.X509Certificate(chainPem);
+      if (!(await certObj.verify({ publicKey: chainCert.publicKey }))) {
+        throw new BadRequestError({ message: "Certificate chain verification failed" });
+      }
+    }
+
+    // If private key provided, verify it matches the certificate
+    if (privateKeyPem) {
+      try {
+        const message = Buffer.from("certificate-verification-test");
+
+        const privateKey = createPrivateKey(privateKeyPem);
+        const publicKey = createPublicKey(certificatePem);
+
+        const signature = sign(null, message, privateKey);
+        const isValid = verify(null, message, publicKey, signature);
+
+        if (!isValid) {
+          throw new BadRequestError({ message: "Private key does not match certificate" });
+        }
+      } catch (err) {
+        throw new BadRequestError({ message: "Invalid private key format" });
+      }
+    }
+
+    // Get certificate attributes
+    const commonName = Array.from(certObj.subjectName.getField("CN")?.values() || [])[0] || "";
+
+    let altNames: undefined | string;
+    const sanExtension = certObj.extensions.find((ext) => ext.type === "2.5.29.17");
+    if (sanExtension) {
+      const sanNames = new x509.GeneralNames(sanExtension.value);
+      altNames = sanNames.items.map((name) => name.value).join(", ");
+    }
+
+    const { serialNumber, notBefore, notAfter } = certObj;
+
+    // Encrypt certificate for storage
+    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
+      projectId,
+      projectDAL,
+      kmsService
+    });
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: certificateManagerKeyId
+    });
+
+    const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
+      plainText: Buffer.from(certificatePem)
+    });
+
+    let encryptedCertificateChain: undefined | Buffer;
+    if (chainPem) {
+      const { cipherTextBlob } = await kmsEncryptor({
+        plainText: Buffer.from(chainPem)
+      });
+      encryptedCertificateChain = cipherTextBlob;
+    }
+
+    console.log(friendlyName, commonName, altNames, serialNumber, notBefore, notAfter);
+
+    // Store in database
+    await certificateDAL.transaction(async (tx) => {
+      const cert = await certificateDAL.create(
+        {
+          status: CertStatus.ACTIVE,
+          friendlyName: friendlyName || commonName,
+          commonName,
+          altNames,
+          serialNumber,
+          notBefore,
+          notAfter
+          // keyUsages,
+          // extendedKeyUsages
+        },
+        tx
+      );
+
+      await certificateBodyDAL.create(
+        {
+          certId: cert.id,
+          encryptedCertificate,
+          encryptedCertificateChain
+        },
+        tx
+      );
+
+      if (collectionId) {
+        await pkiCollectionItemDAL.create(
+          {
+            pkiCollectionId: collectionId,
+            certId: cert.id
+          },
+          tx
+        );
+      }
+
+      return cert;
+    });
+
+    return {
+      certificate: certificatePem,
+      certificateChain: chainPem,
+      privateKey: privateKeyPem,
+      serialNumber
+    };
+  };
+
   return {
     getCert,
     deleteCert,
     revokeCert,
-    getCertBody
+    getCertBody,
+    importCert
   };
 };
