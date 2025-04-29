@@ -1875,6 +1875,10 @@ export const AppConnections = {
     TEAMCITY: {
       instanceUrl: "The TeamCity instance URL to connect with.",
       accessToken: "The access token to use to connect with TeamCity."
+    },
+    AZURE_CLIENT_SECRETS: {
+      code: "The OAuth code to use to connect with Azure Client Secrets.",
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets."
     }
   }
 };

@@ -27,7 +27,7 @@ type Props = {
 const formSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.AzureClientSecrets),
   method: z.nativeEnum(AzureClientSecretsConnectionMethod),
-  tenantId: z.string().trim().optional()
+  tenantId: z.string().trim()
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -97,10 +97,9 @@ export const AzureClientSecretsConnectionForm = ({ appConnection }: Props) => {
           control={control}
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              tooltipText="The active Directory (Entra ID) Tenant ID."
+              tooltipText="The Active Directory (Entra ID) Tenant ID."
               isError={Boolean(error?.message)}
               label="Tenant ID"
-              isOptional
               errorText={error?.message}
             >
               <Input {...field} placeholder="e4f34ea5-ad23-4291-8585-66d20d603cc8" />

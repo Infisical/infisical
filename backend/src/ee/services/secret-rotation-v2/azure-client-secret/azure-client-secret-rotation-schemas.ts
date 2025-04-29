@@ -21,11 +21,7 @@ export const AzureClientSecretRotationGeneratedCredentialsSchema = z
 
 const AzureClientSecretRotationParametersSchema = z.object({
   appId: z.string().trim().min(1, "App ID Required").describe(SecretRotations.PARAMETERS.AZURE_CLIENT_SECRET.appId),
-  appName: z
-    .string()
-    .trim()
-    .min(1, "App Name Required")
-    .describe(SecretRotations.PARAMETERS.AZURE_CLIENT_SECRET.appName)
+  appName: z.string().trim().describe(SecretRotations.PARAMETERS.AZURE_CLIENT_SECRET.appName).optional()
 });
 
 const AzureClientSecretRotationSecretsMappingSchema = z.object({

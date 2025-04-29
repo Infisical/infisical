@@ -11,12 +11,16 @@ import {
 import { AzureClientSecretsConnectionMethod } from "./azure-client-secrets-connection-enums";
 
 export const AzureClientSecretsConnectionOAuthInputCredentialsSchema = z.object({
-  code: z.string().trim().min(1, "OAuth code required"),
-  tenantId: z.string().trim().optional()
+  code: z.string().trim().min(1, "OAuth code required").describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.code),
+  tenantId: z
+    .string()
+    .trim()
+    .min(1, "Tenant ID required")
+    .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.tenantId)
 });
 
 export const AzureClientSecretsConnectionOAuthOutputCredentialsSchema = z.object({
-  tenantId: z.string().optional(),
+  tenantId: z.string(),
   accessToken: z.string(),
   refreshToken: z.string(),
   expiresAt: z.number()

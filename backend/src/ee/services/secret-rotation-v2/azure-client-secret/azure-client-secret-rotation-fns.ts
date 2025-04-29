@@ -1,3 +1,5 @@
+import { AxiosError } from "axios";
+
 import {
   AzureAddPasswordResponse,
   TAzureClientSecretRotationGeneratedCredentials,
@@ -11,7 +13,7 @@ import {
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { request } from "@app/lib/config/request";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { BadRequestError } from "@app/lib/errors";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-client-secrets";
 
 const GRAPH_API_BASE = "https://graph.microsoft.com/v1.0";
@@ -23,8 +25,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
   const {
     connection,
     parameters: { appId },
-    secretsMapping,
-    rotationInterval
+    secretsMapping
   } = secretRotation;
 
   /**
@@ -33,11 +34,6 @@ export const azureClientSecretRotationFactory: TRotationFactory<
   const $rotateClientSecret = async () => {
     const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
     const endpoint = `${GRAPH_API_BASE}/applications/${appId}/addPassword`;
-
-    await blockLocalAndPrivateIpAddresses(endpoint);
-
-    const endDateTime = new Date();
-    endDateTime.setDate(endDateTime.getDate() + rotationInterval);
 
     const now = new Date();
     const formattedDate = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(
@@ -50,8 +46,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
         endpoint,
         {
           passwordCredential: {
-            displayName: `Infisical Rotated Secret (${formattedDate})`,
-            endDateTime: endDateTime.toISOString()
+            displayName: `Infisical Rotated Secret (${formattedDate})`
           }
         },
         {
@@ -70,9 +65,15 @@ export const azureClientSecretRotationFactory: TRotationFactory<
         clientSecret: data.secretText,
         clientId: data.keyId
       };
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      throw new Error(`Failed to add client secret to Azure app ${appId}: ${message}`);
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        throw new BadRequestError({
+          message: `Failed to add client secret to Azure app ${appId}: ${error.message || "Unknown error"}`
+        });
+      }
+      throw new BadRequestError({
+        message: "Unable to validate connection: verify credentials"
+      });
     }
   };
 
@@ -82,8 +83,6 @@ export const azureClientSecretRotationFactory: TRotationFactory<
   const revokeCredential = async (clientId: string) => {
     const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
     const endpoint = `${GRAPH_API_BASE}/applications/${appId}/removePassword`;
-
-    await blockLocalAndPrivateIpAddresses(endpoint);
 
     try {
       await request.post(
@@ -96,9 +95,17 @@ export const azureClientSecretRotationFactory: TRotationFactory<
           }
         }
       );
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      throw new Error(`Failed to remove client secret with keyId ${clientId} from app ${appId}: ${message}`);
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        throw new BadRequestError({
+          message: `Failed to remove client secret with keyId ${clientId} from app ${appId}: ${
+            error.message || "Unknown error"
+          }`
+        });
+      }
+      throw new BadRequestError({
+        message: "Unable to validate connection: verify credentials"
+      });
     }
   };
 

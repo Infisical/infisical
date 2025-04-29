@@ -23,7 +23,7 @@ export const SECRET_ROTATION_MAP: Record<
   [SecretRotation.AzureClientSecret]: {
     name: "Azure Client Secret",
     image: "Microsoft Azure.png",
-    size: 35
+    size: 65
   },
   [SecretRotation.LdapPassword]: {
     name: "LDAP Password",

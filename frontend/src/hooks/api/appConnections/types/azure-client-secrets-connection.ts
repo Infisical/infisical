@@ -11,6 +11,6 @@ export type TAzureClientSecretsConnection = TRootAppConnection & {
   method: AzureClientSecretsConnectionMethod.OAuth;
   credentials: {
     code: string;
-    tenantId?: string;
+    tenantId: string;
   };
 };

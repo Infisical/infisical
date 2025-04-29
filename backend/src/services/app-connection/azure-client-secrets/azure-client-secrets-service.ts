@@ -1,6 +1,5 @@
 import { request } from "@app/lib/config/request";
 import { OrgServiceActor } from "@app/lib/types";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-client-secrets/azure-client-secrets-connection-fns";
@@ -26,7 +25,6 @@ const listAzureRegisteredApps = async (
   const accessToken = await getAzureConnectionAccessToken(appConnection.id, appConnectionDAL, kmsService);
 
   const graphEndpoint = `https://graph.microsoft.com/v1.0/applications`;
-  await blockLocalAndPrivateIpAddresses(graphEndpoint);
 
   const apps: TAzureRegisteredApp[] = [];
   let nextLink = graphEndpoint;
