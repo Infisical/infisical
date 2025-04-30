@@ -1388,7 +1388,8 @@ export const certificateAuthorityServiceFactory = ({
           notBefore: notBeforeDate,
           notAfter: notAfterDate,
           keyUsages: selectedKeyUsages,
-          extendedKeyUsages: selectedExtendedKeyUsages
+          extendedKeyUsages: selectedExtendedKeyUsages,
+          projectId: ca.projectId
         },
         tx
       );
@@ -1422,6 +1423,7 @@ export const certificateAuthorityServiceFactory = ({
       kmsService
     });
 
+    // TODO(andrey): Might need tweaks after other PR merge
     return {
       certificate: leafCert.toString("pem"),
       certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
@@ -1779,7 +1781,8 @@ export const certificateAuthorityServiceFactory = ({
           notBefore: notBeforeDate,
           notAfter: notAfterDate,
           keyUsages: selectedKeyUsages,
-          extendedKeyUsages: selectedExtendedKeyUsages
+          extendedKeyUsages: selectedExtendedKeyUsages,
+          projectId: ca.projectId
         },
         tx
       );
@@ -1813,6 +1816,7 @@ export const certificateAuthorityServiceFactory = ({
       kmsService
     });
 
+    // TODO(andrey): Might need tweaks after other PR merge
     return {
       certificate: leafCert,
       certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),

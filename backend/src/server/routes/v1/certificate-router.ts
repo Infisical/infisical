@@ -484,13 +484,13 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATES.GET_CERT.certificate),
-          certificateChain: z.string().trim().describe(CERTIFICATES.GET_CERT.certificateChain),
+          certificateChain: z.string().trim().nullable().describe(CERTIFICATES.GET_CERT.certificateChain),
           serialNumber: z.string().trim().describe(CERTIFICATES.GET_CERT.serialNumberRes)
         })
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, serialNumber, cert, ca } = await server.services.certificate.getCertBody({
+      const { certificate, certificateChain, serialNumber, cert } = await server.services.certificate.getCertBody({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -500,7 +500,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: ca.projectId,
+        projectId: cert.projectId,
         event: {
           type: EventType.DELETE_CERT,
           metadata: {

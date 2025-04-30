@@ -174,17 +174,10 @@ export const certificateServiceFactory = ({
   const getCertBody = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
 
-    // TODO(andrey): Remove this later.
-    if (!cert.caId || !cert.caCertId) {
-      throw new Error("ERROR");
-    }
-
-    const ca = await certificateAuthorityDAL.findById(cert.caId);
-
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId: ca.projectId,
+      projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.CertificateManager
@@ -195,7 +188,7 @@ export const certificateServiceFactory = ({
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
     const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
+      projectId: cert.projectId,
       projectDAL,
       kmsService
     });
@@ -209,20 +202,26 @@ export const certificateServiceFactory = ({
 
     const certObj = new x509.X509Certificate(decryptedCert);
 
-    const { caCert, caCertChain } = await getCaCertChain({
-      caCertId: cert.caCertId,
-      certificateAuthorityDAL,
-      certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
-    });
+    let certificateChain = null;
+
+    // TODO(andrey): Update this after the "store cert chain on cert body" PR gets merged
+    if (cert.caCertId) {
+      const { caCert, caCertChain } = await getCaCertChain({
+        caCertId: cert.caCertId,
+        certificateAuthorityDAL,
+        certificateAuthorityCertDAL,
+        projectDAL,
+        kmsService
+      });
+
+      certificateChain = `${caCert}\n${caCertChain}`.trim();
+    }
 
     return {
       certificate: certObj.toString("pem"),
-      certificateChain: `${caCert}\n${caCertChain}`.trim(),
+      certificateChain,
       serialNumber: certObj.serialNumber,
-      cert,
-      ca
+      cert
     };
   };
 
