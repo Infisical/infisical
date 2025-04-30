@@ -67,16 +67,10 @@ export const certificateServiceFactory = ({
   const getCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
 
-    let ca;
-
-    if (cert.caId) {
-      ca = await certificateAuthorityDAL.findById(cert.caId);
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId: ca.projectId,
+      projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.CertificateManager
@@ -85,8 +79,7 @@ export const certificateServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
 
     return {
-      cert,
-      ca
+      cert
     };
   };
 
@@ -95,12 +88,11 @@ export const certificateServiceFactory = ({
    */
   const deleteCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
-    const ca = await certificateAuthorityDAL.findById(cert.caId);
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId: ca.projectId,
+      projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.CertificateManager
@@ -111,8 +103,7 @@ export const certificateServiceFactory = ({
     const deletedCert = await certificateDAL.deleteById(cert.id);
 
     return {
-      deletedCert,
-      ca
+      deletedCert
     };
   };
 
@@ -130,6 +121,11 @@ export const certificateServiceFactory = ({
     actorOrgId
   }: TRevokeCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
+
+    if (!cert.caId) {
+      throw new Error("Cannot revoke external certificates");
+    }
+
     const ca = await certificateAuthorityDAL.findById(cert.caId);
 
     const { permission } = await permissionService.getProjectPermission({
@@ -177,6 +173,12 @@ export const certificateServiceFactory = ({
    */
   const getCertBody = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
+
+    // TODO(andrey): Remove this later.
+    if (!cert.caId || !cert.caCertId) {
+      throw new Error("ERROR");
+    }
+
     const ca = await certificateAuthorityDAL.findById(cert.caId);
 
     const { permission } = await permissionService.getProjectPermission({
@@ -327,17 +329,6 @@ export const certificateServiceFactory = ({
       plainText: Buffer.from(certificatePem)
     });
 
-    let encryptedCertificateChain: undefined | Buffer;
-    if (chainPem) {
-      const { cipherTextBlob } = await kmsEncryptor({
-        plainText: Buffer.from(chainPem)
-      });
-      encryptedCertificateChain = cipherTextBlob;
-    }
-
-    console.log(friendlyName, commonName, altNames, serialNumber, notBefore, notAfter);
-
-    // Store in database
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
@@ -347,7 +338,9 @@ export const certificateServiceFactory = ({
           altNames,
           serialNumber,
           notBefore,
-          notAfter
+          notAfter,
+          projectId
+          // TODO(andrey): Add keyUsages and extendedKeyUsages
           // keyUsages,
           // extendedKeyUsages
         },
@@ -357,8 +350,7 @@ export const certificateServiceFactory = ({
       await certificateBodyDAL.create(
         {
           certId: cert.id,
-          encryptedCertificate,
-          encryptedCertificateChain
+          encryptedCertificate
         },
         tx
       );

@@ -37,7 +37,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { cert, ca } = await server.services.certificate.getCert({
+      const { cert } = await server.services.certificate.getCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -47,7 +47,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: ca.projectId,
+        projectId: cert.projectId,
         event: {
           type: EventType.GET_CERT,
           metadata: {
@@ -440,7 +440,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { deletedCert, ca } = await server.services.certificate.deleteCert({
+      const { deletedCert } = await server.services.certificate.deleteCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -450,7 +450,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: ca.projectId,
+        projectId: deletedCert.projectId,
         event: {
           type: EventType.DELETE_CERT,
           metadata: {
