@@ -5,6 +5,6 @@ import { ormify } from "@app/lib/knex";
 export type TCertificateSecretDALFactory = ReturnType<typeof certificateSecretDALFactory>;
 
 export const certificateSecretDALFactory = (db: TDbClient) => {
-  const caSecretOrm = ormify(db, TableName.CertificateSecret);
-  return caSecretOrm;
+  const certSecretOrm = ormify(db, TableName.CertificateSecret);
+  return certSecretOrm;
 };

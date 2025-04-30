@@ -72,7 +72,6 @@ export const getCertificateCredentials = async ({
     projectDAL,
     kmsService
   });
-
   const kmsDecryptor = await kmsService.decryptWithKmsKey({
     kmsId: keyId
   });
@@ -80,7 +79,7 @@ export const getCertificateCredentials = async ({
     cipherTextBlob: certificateSecret.encryptedPrivateKey
   });
 
-  const skObj = crypto.createPrivateKey({ key: decryptedPrivateKey, format: "der", type: "pkcs8" });
+  const skObj = crypto.createPrivateKey({ key: decryptedPrivateKey, format: "pem", type: "pkcs8" });
   const certPrivateKey = skObj.export({ format: "pem", type: "pkcs8" }).toString();
 
   const pkObj = crypto.createPublicKey(skObj);

@@ -129,6 +129,7 @@ export enum ProjectPermissionSub {
   Identity = "identity",
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
+  CertificatePrivateKey = "certificate-private-key",
   CertificateTemplates = "certificate-templates",
   SshCertificateAuthorities = "ssh-certificate-authorities",
   SshCertificates = "ssh-certificates",
@@ -232,6 +233,7 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
+  | [ProjectPermissionActions, ProjectPermissionSub.CertificatePrivateKey]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
@@ -481,6 +483,12 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.CertificatePrivateKey).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.CertificateTemplates).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
@@ -681,6 +689,7 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.IpAllowList,
     ProjectPermissionSub.CertificateAuthorities,
     ProjectPermissionSub.Certificates,
+    ProjectPermissionSub.CertificatePrivateKey,
     ProjectPermissionSub.CertificateTemplates,
     ProjectPermissionSub.PkiAlerts,
     ProjectPermissionSub.PkiCollections,

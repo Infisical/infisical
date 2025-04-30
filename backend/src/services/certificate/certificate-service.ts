@@ -17,7 +17,14 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
 import { getCertificateCredentials, revocationReasonToCrlCode } from "./certificate-fns";
 import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
-import { CertStatus, TDeleteCertDTO, TGetCertBodyDTO, TGetCertDTO, TRevokeCertDTO } from "./certificate-types";
+import {
+  CertStatus,
+  TDeleteCertDTO,
+  TGetCertBodyDTO,
+  TGetCertBundleDTO,
+  TGetCertDTO,
+  TRevokeCertDTO
+} from "./certificate-types";
 
 type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find">;
@@ -86,11 +93,13 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    // TODO(andrey): Update permission for privateKey fetching. Should be very strict.
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.CertificatePrivateKey
+    );
 
     const { certPrivateKey } = await getCertificateCredentials({
-      certId: ca.id,
+      certId: cert.id,
       projectId: ca.projectId,
       certificateSecretDAL,
       projectDAL,
@@ -229,10 +238,99 @@ export const certificateServiceFactory = ({
       kmsService
     });
 
+    let certificateChain = `${caCert}\n${caCertChain}`.trim();
+
+    // If the certificate was generated after ~05/01/25 it will have a encryptedCertificateChain attached to it's body
+    if (certBody.encryptedCertificateChain) {
+      const decryptedCertChain = await kmsDecryptor({
+        cipherTextBlob: certBody.encryptedCertificateChain
+      });
+      const certChainObj = new x509.X509Certificate(decryptedCertChain);
+      certificateChain = certChainObj.toString("pem");
+    }
+
     return {
       certificate: certObj.toString("pem"),
-      certificateChain: `${caCert}\n${caCertChain}`.trim(),
+      certificateChain,
       serialNumber: certObj.serialNumber,
+      cert,
+      ca
+    };
+  };
+
+  /**
+   * Return certificate body and certificate chain for certificate with
+   * serial number [serialNumber]
+   */
+  const getCertBundle = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBundleDTO) => {
+    const cert = await certificateDAL.findOne({ serialNumber });
+    const ca = await certificateAuthorityDAL.findById(cert.caId);
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: ca.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.CertificatePrivateKey
+    );
+
+    const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
+
+    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
+      projectId: ca.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKeyId
+    });
+    const decryptedCert = await kmsDecryptor({
+      cipherTextBlob: certBody.encryptedCertificate
+    });
+
+    const certObj = new x509.X509Certificate(decryptedCert);
+    const certificate = certObj.toString("pem");
+
+    const { caCert, caCertChain } = await getCaCertChain({
+      caCertId: cert.caCertId,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
+    });
+
+    let certificateChain = `${caCert}\n${caCertChain}`.trim();
+
+    // If the certificate was generated after ~05/01/25 it will have a encryptedCertificateChain attached to it's body
+    if (certBody.encryptedCertificateChain) {
+      const decryptedCertChain = await kmsDecryptor({
+        cipherTextBlob: certBody.encryptedCertificateChain
+      });
+      const certChainObj = new x509.X509Certificate(decryptedCertChain);
+      certificateChain = certChainObj.toString("pem");
+    }
+
+    const { certPrivateKey } = await getCertificateCredentials({
+      certId: cert.id,
+      projectId: ca.projectId,
+      certificateSecretDAL,
+      projectDAL,
+      kmsService
+    });
+
+    return {
+      certificate,
+      certificateChain,
+      privateKey: certPrivateKey,
+      serialNumber,
       cert,
       ca
     };
@@ -243,6 +341,7 @@ export const certificateServiceFactory = ({
     getCertPrivateKey,
     deleteCert,
     revokeCert,
-    getCertBody
+    getCertBody,
+    getCertBundle
   };
 };

@@ -260,6 +260,7 @@ import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
+import { certificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -791,6 +792,7 @@ export const registerRoutes = async (
 
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
+  const certificateSecretDAL = certificateSecretDALFactory(db);
 
   const pkiAlertDAL = pkiAlertDALFactory(db);
   const pkiCollectionDAL = pkiCollectionDALFactory(db);
@@ -799,6 +801,7 @@ export const registerRoutes = async (
   const certificateService = certificateServiceFactory({
     certificateDAL,
     certificateBodyDAL,
+    certificateSecretDAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     certificateAuthorityCrlDAL,
@@ -858,6 +861,7 @@ export const registerRoutes = async (
     certificateAuthorityQueue,
     certificateDAL,
     certificateBodyDAL,
+    certificateSecretDAL,
     pkiCollectionDAL,
     pkiCollectionItemDAL,
     projectDAL,
