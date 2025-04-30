@@ -1,0 +1,40 @@
+---
+title: "Assume Privileges"  
+description: "Learn how to temporarily assume the privileges of a user or machine identity within a project."
+---
+
+This feature allows authorized users to temporarily take on the permissions of another user or identity. It helps administrators and access managers test and verify permissions before granting access, ensuring everything is set up correctly.
+It also reduces back-and-forth with end users when troubleshooting permission-related issues.
+
+## How It Works
+
+When an authorized user activates assume privileges mode, they temporarily inherit the target user or identity’s permissions for up to one hour.  
+During this time, they can perform actions within the system with the same level of access as the target user.
+
+- **Permission-based**: Only permissions are inherited, not the full identity
+- **Time-limited**: Access automatically expires after one hour
+- **Audited**: All actions are logged under the original user's account. This means any action taken during the session will be recorded under the entity assuming the privileges, not the target entity.
+- **Authorization required**: Only users with the specific **assume privilege** permission can use this feature
+- **Scoped to a single project**: You can only assume privileges for one project at a time
+
+## How to Assume Privileges
+
+<Steps>
+   <Step title="Go to Project Access">
+   Click on the user or identity you want to assume.
+
+   ![Access control page](/images/platform/access-controls/assume-privileges/access-control.png)
+   </Step>
+
+   <Step title="Click Assume Privilege">
+   Click **Assume Privilege**, then type `assume` to confirm and start your session.
+
+   ![Access control detail page](/images/platform/access-controls/assume-privileges/access-control-detail.png)
+   </Step>
+
+   <Step title="Session is Active">
+   You will see a yellow banner indicating that your assume privilege session is active. You can exit at any time by clicking **Exit**.
+
+   ![session start](/images/platform/access-controls/assume-privileges/session-start.png)
+   </Step>
+</Steps>
