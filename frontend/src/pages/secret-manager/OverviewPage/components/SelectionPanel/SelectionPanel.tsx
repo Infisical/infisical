@@ -15,7 +15,7 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useDeleteSecretBatch } from "@app/hooks/api";
-import { ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
+import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import {
   SecretType,
   SecretV3RawSanitized,
@@ -37,14 +37,18 @@ type Props = {
     [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
     [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
   };
-  importedByEnvs?: { environment: string; importedBy: ProjectSecretsImportedBy[] }[];
+  importedBy?: ProjectSecretsImportedBy[] | null;
+  usedBySecretSyncs?: UsedBySecretSyncs[];
+  secretsToDeleteKeys: string[];
 };
 
 export const SelectionPanel = ({
   secretPath,
   resetSelectedEntries,
   selectedEntries,
-  importedByEnvs
+  importedBy,
+  secretsToDeleteKeys,
+  usedBySecretSyncs = []
 }: Props) => {
   const { permission } = useProjectPermission();
 
@@ -81,80 +85,11 @@ export const SelectionPanel = ({
     )
   );
 
-  const secretsToDeleteKeys = useMemo(() => {
-    return Object.values(selectedEntries.secret).flatMap((entries) =>
-      Object.values(entries).map((secret) => secret.key)
-    );
-  }, [selectedEntries]);
-
-  const filterAndMergeEnvironments = (
-    envNames: string[],
-    envs: { environment: string; importedBy: ProjectSecretsImportedBy[] }[]
-  ): ProjectSecretsImportedBy[] => {
-    const filteredEnvs = envs.filter((env) => envNames.includes(env.environment));
-
-    if (filteredEnvs.length === 0) return [];
-
-    const allImportedBy = filteredEnvs.flatMap((env) => env.importedBy);
-    const groupedBySlug: Record<string, ProjectSecretsImportedBy[]> = {};
-
-    allImportedBy.forEach((item) => {
-      const { slug } = item.environment;
-      if (!groupedBySlug[slug]) groupedBySlug[slug] = [];
-      groupedBySlug[slug].push(item);
-    });
-
-    const mergedImportedBy = Object.values(groupedBySlug).map((group) => {
-      const { environment } = group[0];
-      const allFolders = group.flatMap((item) => item.folders);
-
-      const foldersByName: Record<string, (typeof allFolders)[number][]> = {};
-      allFolders.forEach((folder) => {
-        if (!foldersByName[folder.name]) foldersByName[folder.name] = [];
-        foldersByName[folder.name].push(folder);
-      });
-
-      const mergedFolders = Object.entries(foldersByName).map(([name, folders]) => {
-        const isImported = folders.some((folder) => folder.isImported);
-        const allSecrets = folders.flatMap((folder) => folder.secrets || []);
-
-        const uniqueSecrets: { secretId: string; referencedSecretKey: string }[] = [];
-        const secretIds = new Set<string>();
-
-        allSecrets
-          .filter((secret) => secretsToDeleteKeys.includes(secret.referencedSecretKey))
-          .forEach((secret) => {
-            if (!secretIds.has(secret.secretId)) {
-              secretIds.add(secret.secretId);
-              uniqueSecrets.push(secret);
-            }
-          });
-
-        return {
-          name,
-          isImported,
-          ...(uniqueSecrets.length > 0 ? { secrets: uniqueSecrets } : {})
-        };
-      });
-
-      return {
-        environment,
-        folders: mergedFolders.filter(
-          (folder) => folder.isImported || (folder.secrets && folder.secrets.length > 0)
-        )
-      };
-    });
-
-    return mergedImportedBy;
-  };
-
-  const importedBy = useMemo(() => {
-    if (selectedKeysCount === 0 || !importedByEnvs) return null;
-    return filterAndMergeEnvironments(
-      Object.values(selectedEntries.secret).flatMap((entries) => Object.keys(entries)),
-      importedByEnvs
-    );
-  }, [importedByEnvs, selectedEntries, selectedKeysCount]);
+  const usedBySecretSyncsFiltered = useMemo(() => {
+    if (selectedKeysCount === 0 || usedBySecretSyncs.length === 0) return null;
+    const envs = Object.values(selectedEntries.secret).flatMap((entries) => Object.keys(entries));
+    return usedBySecretSyncs.filter((syncItem) => envs.includes(syncItem.environment));
+  }, [selectedEntries, usedBySecretSyncs, selectedKeysCount]);
 
   const getDeleteModalTitle = () => {
     if (selectedFolderCount > 0 && selectedKeysCount > 0) {
@@ -326,11 +261,12 @@ export const SelectionPanel = ({
         onChange={(isOpen) => handlePopUpToggle("bulkDeleteEntries", isOpen)}
         onDeleteApproved={handleBulkDelete}
         formContent={
-          importedBy &&
-          importedBy.some((element) => element.folders.length > 0) && (
+          ((usedBySecretSyncsFiltered && usedBySecretSyncsFiltered.length > 0) ||
+            (importedBy && importedBy.some((element) => element.folders.length > 0))) && (
             <CollapsibleSecretImports
-              importedBy={importedBy}
+              importedBy={importedBy || []}
               secretsToDelete={secretsToDeleteKeys}
+              usedBySecretSyncs={usedBySecretSyncsFiltered}
             />
           )
         }

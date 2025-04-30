@@ -144,6 +144,13 @@ export type TListSecretSyncsByProjectId = {
   destination?: SecretSync;
 };
 
+export type TListSecretSyncsByFolderId = {
+  projectId: string;
+  secretPath: string;
+  environment: string;
+  destination?: SecretSync;
+};
+
 export type TFindSecretSyncByIdDTO = {
   syncId: string;
   destination: SecretSync;

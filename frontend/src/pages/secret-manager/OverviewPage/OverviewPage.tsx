@@ -74,7 +74,7 @@ import {
   useUpdateSecretV3
 } from "@app/hooks/api";
 import { useGetProjectSecretsOverview } from "@app/hooks/api/dashboard/queries";
-import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
+import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
@@ -274,7 +274,8 @@ export const OverviewPage = () => {
     totalUniqueSecretImportsInPage,
     totalUniqueDynamicSecretsInPage,
     totalUniqueSecretRotationsInPage,
-    importedByEnvs
+    importedByEnvs,
+    usedBySecretSyncs
   } = overview ?? {};
 
   const secretImportsShaped = secretImports
@@ -726,6 +727,98 @@ export const OverviewPage = () => {
     }
   }, [routerSearch.search]);
 
+  const selectedKeysCount = Object.keys(selectedEntries.secret).length;
+
+  const secretsToDeleteKeys = useMemo(() => {
+    return Object.values(selectedEntries.secret).flatMap((entries) =>
+      Object.values(entries).map((secret) => secret.key)
+    );
+  }, [selectedEntries]);
+
+  const filterAndMergeEnvironments = (
+    envNames: string[],
+    envs: { environment: string; importedBy: ProjectSecretsImportedBy[] }[]
+  ): ProjectSecretsImportedBy[] => {
+    const filteredEnvs = envs.filter((env) => envNames.includes(env.environment));
+
+    if (filteredEnvs.length === 0) return [];
+
+    const allImportedBy = filteredEnvs.flatMap((env) => env.importedBy);
+    const groupedBySlug: Record<string, ProjectSecretsImportedBy[]> = {};
+
+    allImportedBy.forEach((item) => {
+      const { slug } = item.environment;
+      if (!groupedBySlug[slug]) groupedBySlug[slug] = [];
+      groupedBySlug[slug].push(item);
+    });
+
+    const mergedImportedBy = Object.values(groupedBySlug).map((group) => {
+      const { environment } = group[0];
+      const allFolders = group.flatMap((item) => item.folders);
+
+      const foldersByName: Record<string, (typeof allFolders)[number][]> = {};
+      allFolders.forEach((folder) => {
+        if (!foldersByName[folder.name]) foldersByName[folder.name] = [];
+        foldersByName[folder.name].push(folder);
+      });
+
+      const mergedFolders = Object.entries(foldersByName).map(([name, foldersData]) => {
+        const isImported = foldersData.some((folder) => folder.isImported);
+        const allSecrets = foldersData.flatMap((folder) => folder.secrets || []);
+
+        const uniqueSecrets: {
+          secretId: string;
+          referencedSecretKey: string;
+          referencedSecretEnv: string;
+        }[] = [];
+        const secretIds = new Set<string>();
+
+        allSecrets
+          .filter(
+            (secret) =>
+              !secretsToDeleteKeys ||
+              secretsToDeleteKeys.length === 0 ||
+              secretsToDeleteKeys.includes(secret.referencedSecretKey)
+          )
+          .forEach((secret) => {
+            if (!secretIds.has(secret.secretId)) {
+              secretIds.add(secret.secretId);
+              uniqueSecrets.push(secret);
+            }
+          });
+
+        return {
+          name,
+          isImported,
+          ...(uniqueSecrets.length > 0 ? { secrets: uniqueSecrets } : {})
+        };
+      });
+
+      return {
+        environment,
+        folders: mergedFolders.filter(
+          (folder) => folder.isImported || (folder.secrets && folder.secrets.length > 0)
+        )
+      };
+    });
+
+    return mergedImportedBy;
+  };
+
+  const importedBy = useMemo(() => {
+    if (!importedByEnvs) return [];
+    if (selectedKeysCount === 0) {
+      return filterAndMergeEnvironments(
+        visibleEnvs.map(({ slug }) => slug),
+        importedByEnvs
+      );
+    }
+    return filterAndMergeEnvironments(
+      Object.values(selectedEntries.secret).flatMap((entries) => Object.keys(entries)),
+      importedByEnvs
+    );
+  }, [importedByEnvs, selectedEntries, selectedKeysCount]);
+
   if (isProjectV3 && visibleEnvs.length > 0 && isOverviewLoading) {
     return (
       <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -1044,7 +1137,9 @@ export const OverviewPage = () => {
           secretPath={secretPath}
           selectedEntries={selectedEntries}
           resetSelectedEntries={resetSelectedEntries}
-          importedByEnvs={importedByEnvs}
+          importedBy={importedBy}
+          secretsToDeleteKeys={secretsToDeleteKeys}
+          usedBySecretSyncs={usedBySecretSyncs}
         />
         <div className="thin-scrollbar mt-4">
           <TableContainer
@@ -1261,6 +1356,7 @@ export const OverviewPage = () => {
                         secretKey={key}
                         getSecretByKey={getSecretByKey}
                         scrollOffset={debouncedScrollOffset}
+                        importedBy={importedBy}
                       />
                     ))}
                     <SecretNoAccessOverviewTableRow
