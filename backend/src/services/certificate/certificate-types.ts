@@ -93,3 +93,11 @@ export type TGetCertificateCredentialsDTO = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 };
+
+export type TBuildCertificateChainDTO = {
+  caCert: string;
+  caCertChain: string;
+  encryptedCertificateChain?: Buffer;
+  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey">;
+  kmsId: string;
+};

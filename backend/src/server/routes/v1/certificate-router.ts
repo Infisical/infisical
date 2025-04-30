@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-floating-promises */
 import { z } from "zod";
 
 import { CertificatesSchema } from "@app/db/schemas";
@@ -83,7 +84,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         200: z.string().trim()
       }
     },
-    handler: async (req) => {
+    handler: async (req, reply) => {
       const { ca, cert, certPrivateKey } = await server.services.certificate.getCertPrivateKey({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
@@ -104,6 +105,12 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      // Prevent proxies from caching sensitive data (private key)
+      reply.header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      reply.header("Pragma", "no-cache");
+      reply.header("Expires", "0");
+      reply.header("Surrogate-Control", "no-store");
 
       return certPrivateKey;
     }
@@ -128,12 +135,12 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATES.GET_CERT.certificate),
           certificateChain: z.string().trim().describe(CERTIFICATES.GET_CERT.certificateChain),
-          privateKey: z.string().trim().describe(CERTIFICATES.GET_CERT.certificateChain),
+          privateKey: z.string().trim().describe(CERTIFICATES.GET_CERT.privateKey),
           serialNumber: z.string().trim().describe(CERTIFICATES.GET_CERT.serialNumberRes)
         })
       }
     },
-    handler: async (req) => {
+    handler: async (req, reply) => {
       const { certificate, certificateChain, serialNumber, cert, ca, privateKey } =
         await server.services.certificate.getCertBundle({
           serialNumber: req.params.serialNumber,
@@ -155,6 +162,12 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      // Prevent proxies from caching sensitive data (private key)
+      reply.header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      reply.header("Pragma", "no-cache");
+      reply.header("Expires", "0");
+      reply.header("Surrogate-Control", "no-store");
 
       return {
         certificate,

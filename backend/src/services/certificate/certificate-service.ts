@@ -15,7 +15,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
-import { getCertificateCredentials, revocationReasonToCrlCode } from "./certificate-fns";
+import { buildCertificateChain, getCertificateCredentials, revocationReasonToCrlCode } from "./certificate-fns";
 import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import {
   CertStatus,
@@ -245,16 +245,13 @@ export const certificateServiceFactory = ({
       kmsService
     });
 
-    let certificateChain = `${caCert}\n${caCertChain}`.trim();
-
-    // If the certificate was generated after ~05/01/25 it will have a encryptedCertificateChain attached to it's body
-    if (certBody.encryptedCertificateChain) {
-      const decryptedCertChain = await kmsDecryptor({
-        cipherTextBlob: certBody.encryptedCertificateChain
-      });
-      const certChainObj = new x509.X509Certificate(decryptedCertChain);
-      certificateChain = certChainObj.toString("pem");
-    }
+    const certificateChain = await buildCertificateChain({
+      caCert,
+      caCertChain,
+      kmsId: certificateManagerKeyId,
+      kmsService,
+      encryptedCertificateChain: certBody.encryptedCertificateChain || undefined
+    });
 
     return {
       certificate: certObj.toString("pem"),
@@ -314,16 +311,13 @@ export const certificateServiceFactory = ({
       kmsService
     });
 
-    let certificateChain = `${caCert}\n${caCertChain}`.trim();
-
-    // If the certificate was generated after ~05/01/25 it will have a encryptedCertificateChain attached to it's body
-    if (certBody.encryptedCertificateChain) {
-      const decryptedCertChain = await kmsDecryptor({
-        cipherTextBlob: certBody.encryptedCertificateChain
-      });
-      const certChainObj = new x509.X509Certificate(decryptedCertChain);
-      certificateChain = certChainObj.toString("pem");
-    }
+    const certificateChain = await buildCertificateChain({
+      caCert,
+      caCertChain,
+      kmsId: certificateManagerKeyId,
+      kmsService,
+      encryptedCertificateChain: certBody.encryptedCertificateChain || undefined
+    });
 
     const { certPrivateKey } = await getCertificateCredentials({
       certId: cert.id,

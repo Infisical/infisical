@@ -21,7 +21,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.Certificate)) {
+  if (await knex.schema.hasTable(TableName.CertificateSecret)) {
     await knex.schema.dropTable(TableName.CertificateSecret);
   }
 
