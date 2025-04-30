@@ -27,8 +27,19 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         projectId: z.string().describe(PROJECT_USERS.INVITE_MEMBER.projectId)
       }),
       body: z.object({
-        emails: z.string().email().array().default([]).describe(PROJECT_USERS.INVITE_MEMBER.emails),
-        usernames: z.string().array().default([]).describe(PROJECT_USERS.INVITE_MEMBER.usernames),
+        emails: z
+          .string()
+          .email()
+          .array()
+          .default([])
+          .describe(PROJECT_USERS.INVITE_MEMBER.emails)
+          .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
+        usernames: z
+          .string()
+          .array()
+          .default([])
+          .describe(PROJECT_USERS.INVITE_MEMBER.usernames)
+          .refine((val) => val.every((el) => el === el.toLowerCase()), "Username must be lowercase"),
         roleSlugs: z.string().array().min(1).optional().describe(PROJECT_USERS.INVITE_MEMBER.roleSlugs)
       }),
       response: {
@@ -92,7 +103,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         projectId: z.string().describe(PROJECT_USERS.REMOVE_MEMBER.projectId)
       }),
       body: z.object({
-        emails: z.string().email().array().default([]).describe(PROJECT_USERS.REMOVE_MEMBER.emails),
+        emails: z
+          .string()
+          .email()
+          .array()
+          .default([])
+          .describe(PROJECT_USERS.REMOVE_MEMBER.emails)
+          .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
         usernames: z.string().array().default([]).describe(PROJECT_USERS.REMOVE_MEMBER.usernames)
       }),
       response: {

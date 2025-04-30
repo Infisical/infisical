@@ -21,7 +21,7 @@ type TUserServiceFactoryDep = {
   userDAL: Pick<
     TUserDALFactory,
     | "find"
-    | "findOne"
+    | "findUserByUsername"
     | "findById"
     | "transaction"
     | "updateById"
@@ -54,8 +54,11 @@ export const userServiceFactory = ({
   permissionService
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (username: string) => {
-    const user = await userDAL.findOne({ username });
+    // akhilmhdh: case sensitive email resolution
+    const users = await userDAL.findUserByUsername(username);
+    const user = users?.length > 1 ? users.find((el) => el.username === username) : users?.[0];
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
+
     if (!user.email)
       throw new BadRequestError({ name: "Failed to send email verification code due to no email on user" });
     if (user.isEmailVerified)
@@ -77,7 +80,10 @@ export const userServiceFactory = ({
   };
 
   const verifyEmailVerificationCode = async (username: string, code: string) => {
-    const user = await userDAL.findOne({ username });
+    // akhilmhdh: case sensitive email resolution
+    const usersByusername = await userDAL.findUserByUsername(username);
+    const user =
+      usersByusername?.length > 1 ? usersByusername.find((el) => el.username === username) : usersByusername?.[0];
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
     if (!user.email)
       throw new BadRequestError({ name: "Failed to verify email verification code due to no email on user" });
@@ -104,7 +110,7 @@ export const userServiceFactory = ({
       // check if there are verified users with the same email.
       const users = await userDAL.find(
         {
-          email,
+          email: email.toLowerCase(),
           isEmailVerified: true
         },
         { tx }
@@ -163,7 +169,7 @@ export const userServiceFactory = ({
         await userDAL.updateById(
           user.id,
           {
-            username: email
+            username: email.toLowerCase()
           },
           tx
         );
@@ -210,6 +216,23 @@ export const userServiceFactory = ({
 
     const updatedUser = await userDAL.updateById(userId, { authMethods });
     return updatedUser;
+  };
+
+  const getAllMyAccounts = async (email: string, userId: string) => {
+    const users = await userDAL.find({ email });
+    return users?.map((el) => ({ ...el, isMyAccount: el.id === userId }));
+  };
+
+  const removeMyDuplicateAccounts = async (email: string, userId: string) => {
+    const users = await userDAL.find({ email });
+    const duplicatedAccounts = users?.filter((el) => el.id !== userId);
+    const myAccount = users?.find((el) => el.id === userId);
+    if (duplicatedAccounts.length && myAccount) {
+      await userDAL.transaction(async (tx) => {
+        await userDAL.delete({ $in: { id: duplicatedAccounts?.map((el) => el.id) } }, tx);
+        await userDAL.updateById(userId, { username: myAccount.username.toLowerCase() });
+      });
+    }
   };
 
   const getMe = async (userId: string) => {
@@ -313,9 +336,11 @@ export const userServiceFactory = ({
   };
 
   const listUserGroups = async ({ username, actorOrgId, actor, actorId, actorAuthMethod }: TListUserGroupsDTO) => {
-    const user = await userDAL.findOne({
-      username
-    });
+    // akhilmhdh: case sensitive email resolution
+    const usersByusername = await userDAL.findUserByUsername(username);
+    const user =
+      usersByusername?.length > 1 ? usersByusername.find((el) => el.username === username) : usersByusername?.[0];
+    if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
 
     // This makes it so the user can always read information about themselves, but no one else if they don't have the Members Read permission.
     if (user.id !== actorId) {
@@ -346,7 +371,9 @@ export const userServiceFactory = ({
     getUserAction,
     unlockUser,
     getUserPrivateKey,
+    getAllMyAccounts,
     getUserProjectFavorites,
+    removeMyDuplicateAccounts,
     updateUserProjectFavorites
   };
 };
