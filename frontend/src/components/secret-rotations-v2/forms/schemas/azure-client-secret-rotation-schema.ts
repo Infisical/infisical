@@ -7,7 +7,7 @@ export const AzureClientSecretRotationSchema = z
   .object({
     type: z.literal(SecretRotation.AzureClientSecret),
     parameters: z.object({
-      appId: z.string().trim().min(1, "App ID required"),
+      objectId: z.string().trim().min(1, "Object ID required"),
       appName: z.string().trim().min(1, "App Name required"),
       clientId: z.string().trim().min(1, "Client ID required")
     }),

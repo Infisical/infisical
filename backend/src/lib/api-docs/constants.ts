@@ -2088,7 +2088,7 @@ export const SecretRotations = {
       clientId: "The client ID of the Auth0 Application to rotate the client secret for."
     },
     AZURE_CLIENT_SECRET: {
-      appId: "The ID of the Azure Application to rotate the client secret for.",
+      objectId: "The ID of the Azure Application to rotate the client secret for.",
       appName: "The name of the Azure Application to rotate the client secret for.",
       clientId: "The client ID of the Azure Application to rotate the client secret for."
     },

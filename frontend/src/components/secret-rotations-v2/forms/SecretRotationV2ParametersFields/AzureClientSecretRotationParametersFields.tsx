@@ -25,7 +25,7 @@ export const AzureClientSecretRotationParametersFields = () => {
 
   return (
     <Controller
-      name="parameters.appId"
+      name="parameters.objectId"
       control={control}
       render={({ field: { value, onChange }, fieldState: { error } }) => (
         <FormControl

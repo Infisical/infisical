@@ -180,13 +180,11 @@
           "pages": [
             "documentation/platform/secret-rotation/overview",
             "documentation/platform/secret-rotation/auth0-client-secret",
-            "documentation/platform/secret-rotation/azure-client-secret",
-            "documentation/platform/secret-rotation/postgres-credentials",
-            "documentation/platform/secret-rotation/mssql-credentials",
             "documentation/platform/secret-rotation/aws-iam-user-secret",
+            "documentation/platform/secret-rotation/azure-client-secret",
             "documentation/platform/secret-rotation/ldap-password",
-            "documentation/platform/secret-rotation/mssql-credentials",
-            "documentation/platform/secret-rotation/postgres-credentials"
+            "documentation/platform/secret-rotation/postgres-credentials",
+            "documentation/platform/secret-rotation/mssql-credentials"
           ]
         },
         {
@@ -879,19 +877,6 @@
               ]
             },
             {
-              "group": "Azure Client Secret",
-              "pages": [
-                "api-reference/endpoints/secret-rotations/azure-client-secret/create",
-                "api-reference/endpoints/secret-rotations/azure-client-secret/delete",
-                "api-reference/endpoints/secret-rotations/azure-client-secret/get-by-id",
-                "api-reference/endpoints/secret-rotations/azure-client-secret/get-by-name",
-                "api-reference/endpoints/secret-rotations/azure-client-secret/get-generated-credentials-by-id",
-                "api-reference/endpoints/secret-rotations/azure-client-secret/list",
-                "api-reference/endpoints/secret-rotations/azure-client-secret/rotate-secrets",
-                "api-reference/endpoints/secret-rotations/azure-client-secret/update"
-              ]
-            },
-            {
               "group": "AWS IAM User Secret",
               "pages": [
                 "api-reference/endpoints/secret-rotations/aws-iam-user-secret/create",
@@ -902,6 +887,19 @@
                 "api-reference/endpoints/secret-rotations/aws-iam-user-secret/list",
                 "api-reference/endpoints/secret-rotations/aws-iam-user-secret/rotate-secrets",
                 "api-reference/endpoints/secret-rotations/aws-iam-user-secret/update"
+              ]
+            },
+            {
+              "group": "Azure Client Secret",
+              "pages": [
+                "api-reference/endpoints/secret-rotations/azure-client-secret/create",
+                "api-reference/endpoints/secret-rotations/azure-client-secret/delete",
+                "api-reference/endpoints/secret-rotations/azure-client-secret/get-by-id",
+                "api-reference/endpoints/secret-rotations/azure-client-secret/get-by-name",
+                "api-reference/endpoints/secret-rotations/azure-client-secret/get-generated-credentials-by-id",
+                "api-reference/endpoints/secret-rotations/azure-client-secret/list",
+                "api-reference/endpoints/secret-rotations/azure-client-secret/rotate-secrets",
+                "api-reference/endpoints/secret-rotations/azure-client-secret/update"
               ]
             },
             {

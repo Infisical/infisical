@@ -8,7 +8,7 @@ import {
 export type TAzureClientSecretRotation = TSecretRotationV2Base & {
   type: SecretRotation.AzureClientSecret;
   parameters: {
-    appId: string;
+    objectId: string;
     appName: string;
   };
   secretsMapping: {

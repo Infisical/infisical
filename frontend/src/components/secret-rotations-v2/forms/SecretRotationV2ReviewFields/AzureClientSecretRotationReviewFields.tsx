@@ -19,7 +19,7 @@ export const AzureClientSecretRotationReviewFields = () => {
     <>
       <SecretRotationReviewSection label="Parameters">
         <GenericFieldLabel label="App Name">{parameters.appName}</GenericFieldLabel>
-        <GenericFieldLabel label="App ID">{parameters.appId}</GenericFieldLabel>
+        <GenericFieldLabel label="App ID">{parameters.objectId}</GenericFieldLabel>
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
         <GenericFieldLabel label="Client ID">{clientId}</GenericFieldLabel>

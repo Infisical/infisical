@@ -19,6 +19,8 @@ import { getAzureConnectionAccessToken } from "@app/services/app-connection/azur
 
 const GRAPH_API_BASE = "https://graph.microsoft.com/v1.0";
 
+type AzureErrorResponse = { error: { message: string } };
+
 const sleep = async () =>
   new Promise((resolve) => {
     setTimeout(resolve, 1000);
@@ -30,7 +32,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
 > = (secretRotation, appConnectionDAL, kmsService) => {
   const {
     connection,
-    parameters: { appId, clientId: clientIdParam },
+    parameters: { objectId, clientId: clientIdParam },
     secretsMapping
   } = secretRotation;
 
@@ -39,7 +41,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
    */
   const $rotateClientSecret = async () => {
     const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
-    const endpoint = `${GRAPH_API_BASE}/applications/${appId}/addPassword`;
+    const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/addPassword`;
 
     const now = new Date();
     const formattedDate = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(
@@ -78,8 +80,19 @@ export const azureClientSecretRotationFactory: TRotationFactory<
       };
     } catch (error: unknown) {
       if (error instanceof AxiosError) {
+        let message;
+        if (
+          error.response?.data &&
+          typeof error.response.data === "object" &&
+          "error" in error.response.data &&
+          typeof (error.response.data as AzureErrorResponse).error.message === "string"
+        ) {
+          message = (error.response.data as AzureErrorResponse).error.message;
+        }
         throw new BadRequestError({
-          message: `Failed to add client secret to Azure app ${appId}: ${error.message || "Unknown error"}`
+          message: `Failed to add client secret to Azure app ${objectId}: ${
+            message || error.message || "Unknown error"
+          }`
         });
       }
       throw new BadRequestError({
@@ -93,7 +106,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
    */
   const revokeCredential = async (keyId: string) => {
     const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
-    const endpoint = `${GRAPH_API_BASE}/applications/${appId}/removePassword`;
+    const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/removePassword`;
 
     try {
       await request.post(
@@ -108,9 +121,18 @@ export const azureClientSecretRotationFactory: TRotationFactory<
       );
     } catch (error: unknown) {
       if (error instanceof AxiosError) {
+        let message;
+        if (
+          error.response?.data &&
+          typeof error.response.data === "object" &&
+          "error" in error.response.data &&
+          typeof (error.response.data as AzureErrorResponse).error.message === "string"
+        ) {
+          message = (error.response.data as AzureErrorResponse).error.message;
+        }
         throw new BadRequestError({
-          message: `Failed to remove client secret with keyId ${keyId} from app ${appId}: ${
-            error.message || "Unknown error"
+          message: `Failed to remove client secret with keyId ${keyId} from app ${objectId}: ${
+            message || error.message || "Unknown error"
           }`
         });
       }
