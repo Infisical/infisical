@@ -1,6 +1,7 @@
 export {
   useAddUserToWsE2EE,
   useAddUserToWsNonE2EE,
+  useRemoveMyDuplicateAccounts,
   useRevokeMySessionById,
   useSendEmailVerificationCode,
   useVerifyEmailVerificationCode
@@ -14,6 +15,7 @@ export {
   useDeleteOrgMembership,
   useGetMyAPIKeys,
   useGetMyAPIKeysV2,
+  useGetMyDuplicateAccount,
   useGetMyIp,
   useGetMyOrganizationProjects,
   useGetMySessions,

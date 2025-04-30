@@ -1,33 +1,20 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate } from "@tanstack/react-router";
-import axios from "axios";
-import { addSeconds, formatISO } from "date-fns";
-import { jwtDecode } from "jwt-decode";
+import { format } from "date-fns";
 
-import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
-import { IsCliLoginSuccessful } from "@app/components/utilities/attemptCliLogin";
-import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, Spinner } from "@app/components/v2";
-import { SessionStorageKeys } from "@app/const";
-import { OrgMembershipRole } from "@app/helpers/roles";
-import { useToggle } from "@app/hooks";
+import { Alert, Button, Spinner, Tooltip } from "@app/components/v2";
 import {
-  useGetOrganizations,
-  useGetUser,
+  useGetMyDuplicateAccount,
   useLogoutUser,
-  useSelectOrganization
+  useRemoveMyDuplicateAccounts
 } from "@app/hooks/api";
-import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
-import { getAuthToken, isLoggedIn } from "@app/hooks/api/reactQuery";
-import { Organization } from "@app/hooks/api/types";
-import { AuthMethod } from "@app/hooks/api/users/types";
 
-import { navigateUserToOrg } from "../LoginPage/Login.utils";
+import { SelectOrganizationSection } from "./SelectOrgSection";
 
 const LoadingScreen = () => {
   return (
@@ -39,24 +26,11 @@ const LoadingScreen = () => {
 };
 
 export const SelectOrganizationPage = () => {
-  const navigate = useNavigate();
+  const duplicateAccounts = useGetMyDuplicateAccount();
+  const removeDuplicateEmails = useRemoveMyDuplicateAccounts();
+  const [removeDuplicateLater, setRemoveDuplicateLater] = useState(false);
   const { t } = useTranslation();
-
-  const organizations = useGetOrganizations();
-  const selectOrg = useSelectOrganization();
-  const { data: user, isPending: userLoading } = useGetUser();
-  const [shouldShowMfa, toggleShowMfa] = useToggle(false);
-  const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
-  const [isInitialOrgCheckLoading, setIsInitialOrgCheckLoading] = useState(true);
-
-  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
-
-  const queryParams = new URLSearchParams(window.location.search);
-  const orgId = queryParams.get("org_id");
-  const callbackPort = queryParams.get("callback_port");
-  const isAdminLogin = queryParams.get("is_admin_login") === "true";
-  const defaultSelectedOrg = organizations.data?.find((org) => org.id === orgId);
-
+  const navigate = useNavigate();
   const logout = useLogoutUser(true);
   const handleLogout = useCallback(async () => {
     try {
@@ -68,149 +42,12 @@ export const SelectOrganizationPage = () => {
     }
   }, [logout, navigate]);
 
-  const handleSelectOrganization = useCallback(
-    async (organization: Organization) => {
-      const canBypassOrgAuth =
-        organization.bypassOrgAuthEnabled &&
-        organization.userRole === OrgMembershipRole.Admin &&
-        isAdminLogin;
-
-      if (organization.authEnforced && !canBypassOrgAuth) {
-        // org has an org-level auth method enabled (e.g. SAML)
-        // -> logout + redirect to SAML SSO
-        await logout.mutateAsync();
-        let url = "";
-        if (organization.orgAuthMethod === AuthMethod.OIDC) {
-          url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
-            callbackPort ? `&callbackPort=${callbackPort}` : ""
-          }`;
-        } else {
-          url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
-
-          if (callbackPort) {
-            url += `?callback_port=${callbackPort}`;
-          }
-        }
-
-        window.location.href = url;
-        return;
-      }
-
-      const { token, isMfaEnabled, mfaMethod } = await selectOrg
-        .mutateAsync({
-          organizationId: organization.id,
-          userAgent: callbackPort ? UserAgentType.CLI : undefined
-        })
-        .finally(() => setIsInitialOrgCheckLoading(false));
-
-      if (isMfaEnabled) {
-        SecurityClient.setMfaToken(token);
-        if (mfaMethod) {
-          setRequiredMfaMethod(mfaMethod);
-        }
-        toggleShowMfa.on();
-        setMfaSuccessCallback(() => () => handleSelectOrganization(organization));
-        return;
-      }
-
-      if (callbackPort) {
-        const privateKey = localStorage.getItem("PRIVATE_KEY");
-
-        let error: string | null = null;
-
-        if (!privateKey) error = "Private key not found";
-        if (!user?.email) error = "User email not found";
-        if (!token) error = "No token found";
-
-        if (error) {
-          createNotification({
-            text: error,
-            type: "error"
-          });
-          return;
-        }
-
-        const payload = {
-          JTWToken: token,
-          email: user?.email,
-          privateKey
-        } as IsCliLoginSuccessful["loginResponse"];
-
-        // send request to server endpoint
-        const instance = axios.create();
-        await instance.post(`http://127.0.0.1:${callbackPort}/`, payload).catch(() => {
-          // if error happens to communicate we set the token with an expiry in sessino storage
-          // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
-          sessionStorage.setItem(
-            SessionStorageKeys.CLI_TERMINAL_TOKEN,
-            JSON.stringify({
-              expiry: formatISO(addSeconds(new Date(), 30)),
-              data: window.btoa(JSON.stringify(payload))
-            })
-          );
-        });
-        navigate({ to: "/cli-redirect" });
-        // cli page
-      } else {
-        navigateUserToOrg(navigate, organization.id);
-      }
-    },
-    [selectOrg]
-  );
-
-  const handleCliRedirect = useCallback(() => {
-    const authToken = getAuthToken();
-
-    if (authToken && !callbackPort) {
-      const decodedJwt = jwtDecode(authToken) as any;
-
-      if (decodedJwt?.organizationId) {
-        navigateUserToOrg(navigate, decodedJwt.organizationId);
-      }
-    }
-
-    if (!isLoggedIn()) {
-      navigate({ to: "/login" });
-    }
-  }, []);
-
-  useEffect(() => {
-    if (callbackPort) {
-      handleCliRedirect();
-    }
-  }, [navigate]);
-
-  useEffect(() => {
-    if (organizations.isPending || !organizations.data) return;
-
-    // Case: User has no organizations.
-    // This can happen if the user was previously a member, but the organization was deleted or the user was removed.
-    if (organizations.data.length === 0) {
-      navigate({ to: "/organization/none" });
-    } else if (organizations.data.length === 1) {
-      if (callbackPort) {
-        handleCliRedirect();
-        setIsInitialOrgCheckLoading(false);
-      } else {
-        handleSelectOrganization(organizations.data[0]);
-      }
-    } else {
-      setIsInitialOrgCheckLoading(false);
-    }
-  }, [organizations.isPending, organizations.data]);
-
-  useEffect(() => {
-    if (defaultSelectedOrg) {
-      handleSelectOrganization(defaultSelectedOrg);
-    }
-  }, [defaultSelectedOrg]);
-
-  if (
-    userLoading ||
-    !user ||
-    ((isInitialOrgCheckLoading || defaultSelectedOrg) && !shouldShowMfa)
-  ) {
+  if (duplicateAccounts.isPending) {
     return <LoadingScreen />;
+  }
+
+  if (!duplicateAccounts.data?.duplicateAccounts?.length || removeDuplicateLater) {
+    return <SelectOrganizationSection />;
   }
 
   return (
@@ -222,69 +59,104 @@ export const SelectOrganizationPage = () => {
         <meta property="og:title" content={t("login.og-title") ?? ""} />
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Helmet>
-      {shouldShowMfa ? (
-        <Mfa
-          email={user.email as string}
-          successCallback={mfaSuccessCallback}
-          method={requiredMfaMethod}
-        />
-      ) : (
-        <div className="mx-auto mt-20 w-fit rounded-lg border-2 border-mineshaft-500 p-10 shadow-lg">
-          <Link to="/">
-            <div className="mb-4 flex justify-center">
-              <img
-                src="/images/gradientLogo.svg"
-                style={{
-                  height: "90px",
-                  width: "120px"
-                }}
-                alt="Infisical logo"
-              />
-            </div>
-          </Link>
-          <form className="mx-auto flex w-full flex-col items-center justify-center">
-            <div className="mb-8 space-y-2">
-              <h1 className="bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
-                Choose your organization
-              </h1>
-
-              <div className="space-y-1">
-                <p className="text-md text-center text-gray-500">
-                  You&lsquo;re currently logged in as <strong>{user.username}</strong>
-                </p>
-                <p className="text-md text-center text-gray-500">
-                  Not you?{" "}
-                  <Button variant="link" onClick={handleLogout} className="font-semibold">
-                    Change account
-                  </Button>
-                </p>
-              </div>
-            </div>
-            <div className="mt-2 w-1/4 min-w-[21.2rem] space-y-4 rounded-md text-center md:min-w-[25.1rem] lg:w-1/4">
-              {organizations.isPending ? (
-                <Spinner />
-              ) : (
-                organizations.data?.map((org) => (
-                  // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-                  <div
-                    onClick={() => handleSelectOrganization(org)}
-                    key={org.id}
-                    className="group flex cursor-pointer items-center justify-between rounded-md bg-mineshaft-700 px-4 py-3 capitalize text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600"
-                  >
-                    <p className="truncate transition-colors">{org.name}</p>
-
-                    <FontAwesomeIcon
-                      icon={faArrowRight}
-                      className="text-gray-400 transition-all group-hover:translate-x-2 group-hover:text-primary-500"
-                    />
+      <div className="mx-auto mt-20 w-fit max-w-2xl rounded-lg border-2 border-mineshaft-500 p-10 shadow-lg">
+        <Link to="/">
+          <div className="mb-4 flex justify-center">
+            <img
+              src="/images/gradientLogo.svg"
+              style={{
+                height: "90px",
+                width: "120px"
+              }}
+              alt="Infisical logo"
+            />
+          </div>
+        </Link>
+        <form className="mx-auto flex w-full flex-col items-center justify-center">
+          <div className="mb-6">
+            <h1 className="mb-2 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
+              Multiple Accounts Detected
+            </h1>
+            <p className="text-md mb-4 text-center text-white">
+              <span className="text-slate-300">Your current account is: </span>{" "}
+              <b>{duplicateAccounts?.data?.myAccount?.username}</b>.
+            </p>
+            <Alert variant="warning" hideTitle>
+              We&apos;ve detected multiple accounts using variations of the same email address.
+              Please confirm that this account, {duplicateAccounts?.data?.myAccount?.username}, is
+              the account you wish to retain.
+            </Alert>
+          </div>
+          <div className="thin-scrollbar flex h-full max-h-60 w-full flex-col items-stretch gap-2 overflow-auto rounded-md">
+            {duplicateAccounts?.data?.duplicateAccounts?.map((el) => {
+              const lastSession = el.devices.at(-1);
+              return (
+                <div
+                  key={el.id}
+                  className="flex items-center gap-8 rounded-md bg-mineshaft-700 px-4 py-3 text-gray-200"
+                >
+                  <div className="group flex flex-grow flex-col">
+                    <div className="truncate text-sm transition-colors">{el.username}</div>
+                    <div className="mt-2 text-xs">
+                      Last login: {format(new Date(el.updatedAt), "Pp")}
+                    </div>
                   </div>
-                ))
-              )}
+                  <div>
+                    <Tooltip
+                      className="max-w-lg"
+                      content={
+                        <div className="flex flex-col space-y-1 text-sm">
+                          <div>IP: {lastSession?.ip || "-"}</div>
+                          <div>User Agent: {lastSession?.userAgent || "-"}</div>
+                        </div>
+                      }
+                    >
+                      <FontAwesomeIcon icon={faInfoCircle} />
+                    </Tooltip>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-4 flex w-full flex-col">
+            <div className="flex gap-6">
+              <Button
+                className="flex-grow"
+                isLoading={removeDuplicateEmails.isPending}
+                onClick={() =>
+                  removeDuplicateEmails.mutate(undefined, {
+                    onSuccess: () => {
+                      createNotification({
+                        type: "info",
+                        text: "Removed duplicate accounts"
+                      });
+                      setRemoveDuplicateLater(true);
+                    }
+                  })
+                }
+              >
+                Confirm
+              </Button>
+              <Button
+                variant="outline_bg"
+                onClick={() => setRemoveDuplicateLater(true)}
+                className="flex-grow"
+              >
+                Do This Later
+              </Button>
             </div>
-          </form>
-        </div>
-      )}
-
+            <Button
+              isLoading={logout.isPending}
+              variant="plain"
+              colorSchema="secondary"
+              className="mt-4"
+              onClick={handleLogout}
+            >
+              Change account
+            </Button>
+          </div>
+        </form>
+      </div>
       <div className="pb-28" />
     </div>
   );
