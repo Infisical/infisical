@@ -15,11 +15,13 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
-import { revocationReasonToCrlCode } from "./certificate-fns";
+import { getCertificateCredentials, revocationReasonToCrlCode } from "./certificate-fns";
+import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import { CertStatus, TDeleteCertDTO, TGetCertBodyDTO, TGetCertDTO, TRevokeCertDTO } from "./certificate-types";
 
 type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find">;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
@@ -34,6 +36,7 @@ export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFac
 
 export const certificateServiceFactory = ({
   certificateDAL,
+  certificateSecretDAL,
   certificateBodyDAL,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
@@ -64,6 +67,40 @@ export const certificateServiceFactory = ({
     return {
       cert,
       ca
+    };
+  };
+
+  /**
+   * Get certificate private key.
+   */
+  const getCertPrivateKey = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
+    const cert = await certificateDAL.findOne({ serialNumber });
+    const ca = await certificateAuthorityDAL.findById(cert.caId);
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: ca.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    // TODO(andrey): Update permission for privateKey fetching. Should be very strict.
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+
+    const { certPrivateKey } = await getCertificateCredentials({
+      certId: ca.id,
+      projectId: ca.projectId,
+      certificateSecretDAL,
+      projectDAL,
+      kmsService
+    });
+
+    return {
+      ca,
+      cert,
+      certPrivateKey
     };
   };
 
@@ -203,6 +240,7 @@ export const certificateServiceFactory = ({
 
   return {
     getCert,
+    getCertPrivateKey,
     deleteCert,
     revokeCert,
     getCertBody

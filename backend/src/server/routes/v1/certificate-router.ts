@@ -64,6 +64,51 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // TODO(andrey): In the future add support for other formats outside of PEM. Adding a "format" query param may be best.
+  server.route({
+    method: "GET",
+    url: "/:serialNumber/private-key",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Get certificate private key",
+      params: z.object({
+        serialNumber: z.string().trim().describe(CERTIFICATES.GET.serialNumber)
+      }),
+      response: {
+        200: z.string().trim()
+      }
+    },
+    handler: async (req) => {
+      const { ca, cert, certPrivateKey } = await server.services.certificate.getCertPrivateKey({
+        serialNumber: req.params.serialNumber,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.GET_CERT,
+          metadata: {
+            certId: cert.id,
+            cn: cert.commonName,
+            serialNumber: cert.serialNumber
+          }
+        }
+      });
+
+      return certPrivateKey;
+    }
+  });
+
   server.route({
     method: "POST",
     url: "/issue-certificate",
