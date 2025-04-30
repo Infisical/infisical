@@ -13,7 +13,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 export const AzureClientSecretRotationGeneratedCredentialsSchema = z
   .object({
     clientId: z.string(),
-    clientSecret: z.string()
+    clientSecret: z.string(),
+    keyId: z.string()
   })
   .array()
   .min(1)
@@ -21,7 +22,8 @@ export const AzureClientSecretRotationGeneratedCredentialsSchema = z
 
 const AzureClientSecretRotationParametersSchema = z.object({
   appId: z.string().trim().min(1, "App ID Required").describe(SecretRotations.PARAMETERS.AZURE_CLIENT_SECRET.appId),
-  appName: z.string().trim().describe(SecretRotations.PARAMETERS.AZURE_CLIENT_SECRET.appName).optional()
+  appName: z.string().trim().describe(SecretRotations.PARAMETERS.AZURE_CLIENT_SECRET.appName).optional(),
+  clientId: z.string().trim().describe(SecretRotations.PARAMETERS.AZURE_CLIENT_SECRET.clientId)
 });
 
 const AzureClientSecretRotationSecretsMappingSchema = z.object({

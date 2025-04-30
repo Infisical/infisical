@@ -61,6 +61,7 @@ export const AzureClientSecretRotationParametersFields = () => {
             onChange={(option) => {
               onChange((option as SingleValue<TAzureClient>)?.id ?? null);
               setValue("parameters.appName", (option as SingleValue<TAzureClient>)?.name ?? "");
+              setValue("parameters.clientId", (option as SingleValue<TAzureClient>)?.appId ?? "");
             }}
             options={clients}
             placeholder="Select an application..."

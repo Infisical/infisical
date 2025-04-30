@@ -24,7 +24,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
 > = (secretRotation, appConnectionDAL, kmsService) => {
   const {
     connection,
-    parameters: { appId },
+    parameters: { appId, clientId: clientIdParam },
     secretsMapping
   } = secretRotation;
 
@@ -64,7 +64,8 @@ export const azureClientSecretRotationFactory: TRotationFactory<
 
       return {
         clientSecret: data.secretText,
-        clientId: data.keyId
+        keyId: data.keyId,
+        clientId: clientIdParam
       };
     } catch (error: unknown) {
       if (error instanceof AxiosError) {
@@ -81,14 +82,14 @@ export const azureClientSecretRotationFactory: TRotationFactory<
   /**
    * Revokes a client secret from the Azure app using its keyId.
    */
-  const revokeCredential = async (clientId: string) => {
+  const revokeCredential = async (keyId: string) => {
     const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
     const endpoint = `${GRAPH_API_BASE}/applications/${appId}/removePassword`;
 
     try {
       await request.post(
         endpoint,
-        { keyId: clientId },
+        { keyId },
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -99,7 +100,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
     } catch (error: unknown) {
       if (error instanceof AxiosError) {
         throw new BadRequestError({
-          message: `Failed to remove client secret with keyId ${clientId} from app ${appId}: ${
+          message: `Failed to remove client secret with keyId ${keyId} from app ${appId}: ${
             error.message || "Unknown error"
           }`
         });
@@ -129,7 +130,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
   ) => {
     if (!credentials?.length) return callback();
 
-    await Promise.all(credentials.map(({ clientId }) => revokeCredential(clientId)));
+    await Promise.all(credentials.map(({ keyId }) => revokeCredential(keyId)));
     return callback();
   };
 
@@ -141,9 +142,8 @@ export const azureClientSecretRotationFactory: TRotationFactory<
     callback
   ) => {
     const newCredentials = await $rotateClientSecret();
-
-    if (oldCredentials?.clientId) {
-      await revokeCredential(oldCredentials.clientId);
+    if (oldCredentials?.keyId) {
+      await revokeCredential(oldCredentials.keyId);
     }
 
     return callback(newCredentials);
@@ -154,7 +154,10 @@ export const azureClientSecretRotationFactory: TRotationFactory<
    */
   const getSecretsPayload: TRotationFactoryGetSecretsPayload<TAzureClientSecretRotationGeneratedCredentials> = ({
     clientSecret
-  }) => [{ key: secretsMapping.clientSecret, value: clientSecret }];
+  }) => [
+    { key: secretsMapping.clientSecret, value: clientSecret },
+    { key: secretsMapping.clientId, value: clientIdParam }
+  ];
 
   return {
     issueCredentials,

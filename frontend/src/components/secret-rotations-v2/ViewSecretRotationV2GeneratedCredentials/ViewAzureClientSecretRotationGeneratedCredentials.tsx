@@ -19,7 +19,7 @@ export const ViewAzureClientSecretRotationGeneratedCredentials = ({
     <ViewRotationGeneratedCredentialsDisplay
       activeCredentials={
         <>
-          <CredentialDisplay label="Secret ID">{activeCredentials?.clientId}</CredentialDisplay>
+          <CredentialDisplay label="Client ID">{activeCredentials?.clientId}</CredentialDisplay>
           <CredentialDisplay isSensitive label="Client Secret">
             {activeCredentials?.clientSecret}
           </CredentialDisplay>
@@ -27,7 +27,7 @@ export const ViewAzureClientSecretRotationGeneratedCredentials = ({
       }
       inactiveCredentials={
         <>
-          <CredentialDisplay label="Secret ID">{inactiveCredentials?.clientId}</CredentialDisplay>
+          <CredentialDisplay label="Client ID">{inactiveCredentials?.clientId}</CredentialDisplay>
           <CredentialDisplay isSensitive label="Client Secret">
             {inactiveCredentials?.clientSecret}
           </CredentialDisplay>

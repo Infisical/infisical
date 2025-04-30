@@ -17,6 +17,24 @@ export const AzureClientSecretRotationSecretsMappingFields = () => {
 
   const items = [
     {
+      name: "Client ID",
+      input: (
+        <Controller
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message}>
+              <Input
+                value={value}
+                onChange={onChange}
+                placeholder={rotationOption?.template.secretsMapping.clientId}
+              />
+            </FormControl>
+          )}
+          control={control}
+          name="secretsMapping.clientId"
+        />
+      )
+    },
+    {
       name: "Client Secret",
       input: (
         <Controller

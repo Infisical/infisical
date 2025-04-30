@@ -2089,7 +2089,8 @@ export const SecretRotations = {
     },
     AZURE_CLIENT_SECRET: {
       appId: "The ID of the Azure Application to rotate the client secret for.",
-      appName: "The name of the Azure Application to rotate the client secret for."
+      appName: "The name of the Azure Application to rotate the client secret for.",
+      clientId: "The client ID of the Azure Application to rotate the client secret for."
     },
     LDAP_PASSWORD: {
       dn: "The Distinguished Name (DN) of the principal to rotate the password for."
