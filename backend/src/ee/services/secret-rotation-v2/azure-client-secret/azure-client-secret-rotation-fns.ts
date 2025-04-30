@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import { AxiosError } from "axios";
 
 import {
@@ -17,6 +18,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-client-secrets";
 
 const GRAPH_API_BASE = "https://graph.microsoft.com/v1.0";
+
+const sleep = async () =>
+  new Promise((resolve) => {
+    setTimeout(resolve, 1000);
+  });
 
 export const azureClientSecretRotationFactory: TRotationFactory<
   TAzureClientSecretRotationWithConnection,
@@ -41,13 +47,16 @@ export const azureClientSecretRotationFactory: TRotationFactory<
       "0"
     )}-${now.getFullYear()}`;
 
+    const endDateTime = new Date();
+    endDateTime.setFullYear(now.getFullYear() + 5);
+
     try {
       const { data } = await request.post<AzureAddPasswordResponse>(
         endpoint,
         {
           passwordCredential: {
             displayName: `Infisical Rotated Secret (${formattedDate})`,
-            endDateTime: "2299-12-31T23:59:59Z" // effectively no expiration
+            endDateTime: endDateTime.toISOString()
           }
         },
         {
@@ -130,7 +139,10 @@ export const azureClientSecretRotationFactory: TRotationFactory<
   ) => {
     if (!credentials?.length) return callback();
 
-    await Promise.all(credentials.map(({ keyId }) => revokeCredential(keyId)));
+    for (const { keyId } of credentials) {
+      await revokeCredential(keyId);
+      await sleep();
+    }
     return callback();
   };
 
