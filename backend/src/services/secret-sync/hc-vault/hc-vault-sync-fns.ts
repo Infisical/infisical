@@ -1,5 +1,6 @@
 import { request } from "@app/lib/config/request";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getHCVaultAccessToken, getHCVaultInstanceUrl } from "@app/services/app-connection/hc-vault";
 import {
   THCVaultListVariables,
@@ -11,6 +12,8 @@ import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 const listHCVaultVariables = async ({ instanceUrl, namespace, mount, accessToken, path }: THCVaultListVariables) => {
+  await blockLocalAndPrivateIpAddresses(instanceUrl);
+
   const { data } = await request.get<THCVaultListVariablesResponse>(
     `${instanceUrl}/v1/${removeTrailingSlash(mount)}/data/${path}`,
     {
@@ -32,8 +35,10 @@ const updateHCVaultVariables = async ({
   accessToken,
   mount,
   data
-}: TPostHCVaultVariable) =>
-  request.post(
+}: TPostHCVaultVariable) => {
+  await blockLocalAndPrivateIpAddresses(instanceUrl);
+
+  return request.post(
     `${instanceUrl}/v1/${removeTrailingSlash(mount)}/data/${path}`,
     {
       data
@@ -46,6 +51,7 @@ const updateHCVaultVariables = async ({
       }
     }
   );
+};
 
 export const HCVaultSyncFns = {
   syncSecrets: async (secretSync: THCVaultSyncWithCredentials, secretMap: TSecretMap) => {

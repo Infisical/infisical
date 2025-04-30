@@ -1,3 +1,4 @@
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
@@ -18,6 +19,7 @@ export const hcVaultConnectionService = (getAppConnection: TGetAppConnectionFunc
       const mounts = await listHCVaultMounts(appConnection);
       return mounts;
     } catch (error) {
+      logger.error(error, "Failed to establish connection with Hashicorp Vault");
       return [];
     }
   };

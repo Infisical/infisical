@@ -44,7 +44,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
                 <Tabs>
                     <Tab title="Secret Sync">
                         ```hcl
-                        path "demo_mount/data/demo_path/demo_subpath" {
+                        path "demo_mount/data/*" {
                           capabilities = [ "create", "read", "update" ]
                         }
 
@@ -54,10 +54,10 @@ Infisical supports two methods for connecting to Hashicorp Vault.
                         ```
 
                         - **demo_mount**: The name of the target secrets engine (e.g., 'secret', 'kv').
-                        - **demo_path/demo_subpath**: The specific path within the secrets engine where secrets are stored.
+                        - **data/\***: The path within the secrets engine used for storing secrets. The wildcard (*) grants access to all secrets within this mount point.
 
                         <Note>
-                            Ensure that you replace the policy path so that it matches with an existing KV Secrets Engine mount and path.
+                            Ensure that you replace the policy path so that it matches with an existing KV Secrets Engine mount and path. You may set a specific path instead of using the wildcard (*) for a more granular policy.
                         </Note>
                     </Tab>
                 </Tabs>
@@ -109,11 +109,11 @@ Infisical supports two methods for connecting to Hashicorp Vault.
 ## Getting Vault Instance URL
 
 <Tabs>
-    <Tab title="Self Hosted">
-        On self-hosted instances, simply copy your vault's base URL. (Ex. `https://vault.example.com`)
+<Tab title="Self Hosted">
+    For self-hosted instances, locate and copy your vault's base URL (for example: `https://vault.example.com`).
 
-        Save this value for later steps.
-    </Tab>
+    Save the URL for later steps.
+</Tab>
     <Tab title="Hashicorp Cloud Platform">
         On HCP instances, you may need to navigate to **Cluster Overview** to see your cluster URL. Save this value for later steps.
 
@@ -145,13 +145,23 @@ Infisical supports two methods for connecting to Hashicorp Vault.
 
                 ![Vault Configure Connection](/images/app-connections/hashicorp-vault/vault-infisical-connect-modal.png)
 
-                - **Name**: The name of the connection being created. Must be slug-friendly.
-                - **Description**: An optional description to provide details about this connection.
-                - **Instance URL**: The URL of your Hashicorp Vault instance.
-                - **Namespace (optional)**: The namespace within your vault. Self-hosted and enterprise clusters may not use namespaces.
-                - **Access Token**: The Access Token generated in the steps above (if using Access Token authentication method).
-                - **Role ID**: The Role ID generated in the steps above (if using AppRole authentication method).
-                - **Secret ID**: The Secret ID generated in the steps above (if using AppRole authentication method).
+                <Tabs>
+                    <Tab title="App Role">
+                        - **Name**: The name of the connection being created. Must be slug-friendly.
+                        - **Description**: An optional description to provide details about this connection.
+                        - **Instance URL**: The URL of your Hashicorp Vault instance.
+                        - **Namespace (optional)**: The namespace within your vault. Self-hosted and enterprise clusters may not use namespaces.
+                        - **Role ID**: The Role ID generated in the steps above.
+                        - **Secret ID**: The Secret ID generated in the steps above.
+                    </Tab>
+                    <Tab title="Access Token">
+                        - **Name**: The name of the connection being created. Must be slug-friendly.
+                        - **Description**: An optional description to provide details about this connection.
+                        - **Instance URL**: The URL of your Hashicorp Vault instance.
+                        - **Namespace (optional)**: The namespace within your vault. Self-hosted and enterprise clusters may not use namespaces.
+                        - **Access Token**: The Access Token generated in the steps above.
+                    </Tab>
+                </Tabs>
             </Step>
             <Step title="Connection Created">
                 Your Vault Connection is now available for use.
