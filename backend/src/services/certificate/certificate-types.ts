@@ -95,8 +95,8 @@ export type TGetCertificateCredentialsDTO = {
 };
 
 export type TBuildCertificateChainDTO = {
-  caCert: string;
-  caCertChain: string;
+  caCert?: string;
+  caCertChain?: string;
   encryptedCertificateChain?: Buffer;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey">;
   kmsId: string;

@@ -105,9 +105,12 @@ export const buildCertificateChain = async ({
   kmsService,
   kmsId
 }: TBuildCertificateChainDTO) => {
+  if (!encryptedCertificateChain && (!caCert || !caCertChain)) {
+    return null;
+  }
+
   let certificateChain = `${caCert}\n${caCertChain}`.trim();
 
-  // If the certificate was generated after ~05/01/25 it will have a encryptedCertificateChain attached to it's body
   if (encryptedCertificateChain) {
     const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId });
     const decryptedCertChain = await kmsDecryptor({
