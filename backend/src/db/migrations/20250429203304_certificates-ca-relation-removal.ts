@@ -1,0 +1,46 @@
+import { Knex } from "knex";
+
+import { TableName } from "../schemas";
+
+export async function up(knex: Knex): Promise<void> {
+  if (await knex.schema.hasTable(TableName.Certificate)) {
+    await knex.schema.alterTable(TableName.Certificate, (t) => {
+      t.uuid("caId").nullable().alter();
+      t.uuid("caCertId").nullable().alter();
+    });
+
+    const hasProjectIdColumn = await knex.schema.hasColumn(TableName.Certificate, "projectId");
+    if (!hasProjectIdColumn) {
+      await knex.transaction(async (trx) => {
+        await trx.schema.alterTable(TableName.Certificate, (t) => {
+          t.string("projectId", 36).nullable();
+          t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+        });
+
+        await trx.raw(`
+          UPDATE "${TableName.Certificate}" cert
+          SET "projectId" = ca."projectId"
+          FROM "${TableName.CertificateAuthority}" ca
+          WHERE cert."caId" = ca.id
+        `);
+
+        await trx.schema.alterTable(TableName.Certificate, (t) => {
+          t.string("projectId").notNullable().alter();
+        });
+      });
+    }
+  }
+}
+
+export async function down(knex: Knex): Promise<void> {
+  if (await knex.schema.hasTable(TableName.Certificate)) {
+    if (await knex.schema.hasColumn(TableName.Certificate, "projectId")) {
+      await knex.schema.alterTable(TableName.Certificate, (t) => {
+        t.dropForeign("projectId");
+        t.dropColumn("projectId");
+      });
+    }
+  }
+
+  // Altering back to notNullable for caId and caCertId will fail
+}
