@@ -1545,6 +1545,7 @@ export const registerRoutes = async (
 
   const secretSyncService = secretSyncServiceFactory({
     secretSyncDAL,
+    secretImportDAL,
     permissionService,
     appConnectionService,
     folderDAL,

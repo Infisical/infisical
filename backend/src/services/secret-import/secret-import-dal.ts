@@ -171,6 +171,19 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  const getFolderImports = async (secretPath: string, environmentId: string, tx?: Knex) => {
+    try {
+      const folderImports = await (tx || db.replicaNode())(TableName.SecretImport)
+        .where({ importPath: secretPath, importEnv: environmentId })
+        .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .select(db.ref("id").withSchema(TableName.SecretFolder).as("folderId"));
+      return folderImports;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "get secret imports" });
+    }
+  };
+
   const getFolderIsImportedBy = async (
     secretPath: string,
     environmentId: string,
@@ -203,7 +216,8 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Environment).as("envName"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("id").withSchema(TableName.SecretFolder).as("folderId"),
-          db.ref("secretKey").withSchema(TableName.SecretReferenceV2).as("referencedSecretKey")
+          db.ref("secretKey").withSchema(TableName.SecretReferenceV2).as("referencedSecretKey"),
+          db.ref("environment").withSchema(TableName.SecretReferenceV2).as("referencedSecretEnv")
         );
 
       const folderResults = folderImports.map(({ envName, envSlug, folderName, folderId }) => ({
@@ -214,13 +228,14 @@ export const secretImportDALFactory = (db: TDbClient) => {
       }));
 
       const secretResults = secretReferences.map(
-        ({ envName, envSlug, secretId, folderName, folderId, referencedSecretKey }) => ({
+        ({ envName, envSlug, secretId, folderName, folderId, referencedSecretKey, referencedSecretEnv }) => ({
           envName,
           envSlug,
           secretId,
           folderName,
           folderId,
-          referencedSecretKey
+          referencedSecretKey,
+          referencedSecretEnv
         })
       );
 
@@ -235,6 +250,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
               secrets: {
                 secretId: string;
                 referencedSecretKey: string;
+                referencedSecretEnv: string;
               }[];
               folderId: string;
               folderImported: boolean;
@@ -264,7 +280,11 @@ export const secretImportDALFactory = (db: TDbClient) => {
         if ("secretId" in item && item.secretId) {
           updatedAcc[env].folders[folder].secrets = [
             ...updatedAcc[env].folders[folder].secrets,
-            { secretId: item.secretId, referencedSecretKey: item.referencedSecretKey }
+            {
+              secretId: item.secretId,
+              referencedSecretKey: item.referencedSecretKey,
+              referencedSecretEnv: item.referencedSecretEnv
+            }
           ];
         } else {
           updatedAcc[env].folders[folder].folderImported = true;
@@ -309,6 +329,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     findLastImportPosition,
     updateAllPosition,
     getProjectImportCount,
-    getFolderIsImportedBy
+    getFolderIsImportedBy,
+    getFolderImports
   };
 };
