@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { getMinExpiresIn } from "@app/lib/fn";
 import { authRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode, AuthTokenType } from "@app/services/auth/auth-type";
@@ -79,6 +80,18 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { decodedToken, tokenVersion } = await server.services.authToken.validateRefreshToken(req.cookies.jid);
       const appCfg = getConfig();
+      let expiresIn: string | number = appCfg.JWT_AUTH_LIFETIME;
+      if (decodedToken.organizationId) {
+        const org = await server.services.org.findOrganizationById(
+          decodedToken.userId,
+          decodedToken.organizationId,
+          decodedToken.authMethod,
+          decodedToken.organizationId
+        );
+        if (org && org.userTokenExpiration) {
+          expiresIn = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
+        }
+      }
 
       const token = jwt.sign(
         {
@@ -92,7 +105,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
           mfaMethod: decodedToken.mfaMethod
         },
         appCfg.AUTH_SECRET,
-        { expiresIn: appCfg.JWT_AUTH_LIFETIME }
+        { expiresIn }
       );
 
       return { token, organizationId: decodedToken.organizationId };
