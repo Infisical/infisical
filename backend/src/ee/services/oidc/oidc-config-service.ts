@@ -171,8 +171,8 @@ export const oidcConfigServiceFactory = ({
   };
 
   const oidcLogin = async ({
-    externalId,
     email,
+    externalId,
     firstName,
     lastName,
     orgId,
@@ -181,6 +181,7 @@ export const oidcConfigServiceFactory = ({
     manageGroupMemberships
   }: TOidcLoginDTO) => {
     const serverCfg = await getServerCfg();
+    const sanitizedEmail = email.toLowerCase();
 
     if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.OIDC)) {
       throw new ForbiddenRequestError({
@@ -215,7 +216,7 @@ export const oidcConfigServiceFactory = ({
           await orgMembershipDAL.create(
             {
               userId: userAlias.userId,
-              inviteEmail: email,
+              inviteEmail: sanitizedEmail,
               orgId,
               role,
               roleId,
@@ -245,7 +246,7 @@ export const oidcConfigServiceFactory = ({
           // we prioritize getting the most complete user to create the new alias under
           newUser = await userDAL.findOne(
             {
-              email,
+              email: sanitizedEmail,
               isEmailVerified: true
             },
             tx
@@ -255,7 +256,7 @@ export const oidcConfigServiceFactory = ({
             // this fetches user entries created via invites
             newUser = await userDAL.findOne(
               {
-                username: email
+                username: sanitizedEmail
               },
               tx
             );
@@ -273,10 +274,10 @@ export const oidcConfigServiceFactory = ({
           const uniqueUsername = await normalizeUsername(externalId, userDAL);
           newUser = await userDAL.create(
             {
-              email,
+              email: sanitizedEmail,
               firstName,
               isEmailVerified: serverCfg.trustOidcEmails,
-              username: serverCfg.trustOidcEmails ? email : uniqueUsername,
+              username: serverCfg.trustOidcEmails ? sanitizedEmail : uniqueUsername,
               lastName,
               authMethods: [],
               isGhost: false
@@ -290,7 +291,7 @@ export const oidcConfigServiceFactory = ({
             userId: newUser.id,
             aliasType: UserAliasType.OIDC,
             externalId,
-            emails: email ? [email] : [],
+            emails: sanitizedEmail ? [sanitizedEmail] : [],
             orgId
           },
           tx
@@ -310,7 +311,7 @@ export const oidcConfigServiceFactory = ({
           await orgMembershipDAL.create(
             {
               userId: newUser.id,
-              inviteEmail: email,
+              inviteEmail: sanitizedEmail,
               orgId,
               role,
               roleId,

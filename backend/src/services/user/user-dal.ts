@@ -17,7 +17,8 @@ export type TUserDALFactory = ReturnType<typeof userDALFactory>;
 
 export const userDALFactory = (db: TDbClient) => {
   const userOrm = ormify(db, TableName.Users);
-  const findUserByUsername = async (username: string, tx?: Knex) => userOrm.findOne({ username }, tx);
+  const findUserByUsername = async (username: string, tx?: Knex) =>
+    (tx || db)(TableName.Users).whereRaw('lower("username") = :username', { username: username.toLowerCase() });
 
   const getUsersByFilter = async ({
     limit,
@@ -41,7 +42,7 @@ export const userDALFactory = (db: TDbClient) => {
             .whereILike("email", `%${searchTerm}%`)
             .orWhereILike("firstName", `%${searchTerm}%`)
             .orWhereILike("lastName", `%${searchTerm}%`)
-            .orWhereLike("username", `%${searchTerm}%`);
+            .orWhereRaw('lower("username") like ?', `%${searchTerm}%`);
         });
       }
 
@@ -65,12 +66,11 @@ export const userDALFactory = (db: TDbClient) => {
     try {
       return await db
         .replicaNode()(TableName.Users)
+        .whereRaw('lower("username") = :username', { username: username.toLowerCase() })
         .where({
-          username,
           isGhost: false
         })
-        .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
-        .first();
+        .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find user enc by email" });
     }
