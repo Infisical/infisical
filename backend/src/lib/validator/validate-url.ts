@@ -15,13 +15,13 @@ export const blockLocalAndPrivateIpAddresses = async (url: string) => {
 
   const validUrl = new URL(url);
   const inputHostIps: string[] = [];
-  if (isIPv4(validUrl.host)) {
-    inputHostIps.push(validUrl.host);
+  if (isIPv4(validUrl.hostname)) {
+    inputHostIps.push(validUrl.hostname);
   } else {
-    if (validUrl.host === "localhost" || validUrl.host === "host.docker.internal") {
+    if (validUrl.hostname === "localhost" || validUrl.hostname === "host.docker.internal") {
       throw new BadRequestError({ message: "Local IPs not allowed as URL" });
     }
-    const resolvedIps = await dns.resolve4(validUrl.host);
+    const resolvedIps = await dns.resolve4(validUrl.hostname);
     inputHostIps.push(...resolvedIps);
   }
   const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));

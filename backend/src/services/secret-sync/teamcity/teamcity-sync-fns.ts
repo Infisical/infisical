@@ -10,7 +10,7 @@ import {
   TTeamCitySyncWithCredentials
 } from "@app/services/secret-sync/teamcity/teamcity-sync-types";
 
-// Note: Most variables won't be returned with a value due to them being a "password" type (starting with "env.").
+// Note: Most variables won't be returned with a value due to them being a "password" type.
 // TeamCity API returns empty string for password-type variables for security reasons.
 const listTeamCityVariables = async ({ instanceUrl, accessToken, project, buildConfig }: TTeamCityListVariables) => {
   const { data } = await request.get<TTeamCityListVariablesResponse>(
@@ -25,12 +25,16 @@ const listTeamCityVariables = async ({ instanceUrl, accessToken, project, buildC
     }
   );
 
+  // Filters for only non-inherited environment variables
   // Strips out "env." from map key, but the "name" field still has the original unaltered key.
   return Object.fromEntries(
-    data.property.map((variable) => [
-      variable.name.startsWith("env.") ? variable.name.substring(4) : variable.name,
-      { ...variable, value: variable.value || "" } // Password values will be empty strings from the API for security
-    ])
+    data.property
+      .filter((variable) => !variable.inherited)
+      .filter((variable) => variable.name.startsWith("env."))
+      .map((variable) => [
+        variable.name.substring(4),
+        { ...variable, value: variable.value || "" } // Password values will be empty strings from the API for security
+      ])
   );
 };
 

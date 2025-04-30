@@ -18,6 +18,7 @@ import { LDAPModal } from "./LDAPModal";
 import { OIDCModal } from "./OIDCModal";
 import { OrgGeneralAuthSection } from "./OrgGeneralAuthSection";
 import { OrgGenericAuthSection } from "./OrgGenericAuthSection";
+import { OrgGithubSyncSection } from "./OrgGithubSyncSection";
 import { OrgLDAPSection } from "./OrgLDAPSection";
 import { OrgOIDCSection } from "./OrgOIDCSection";
 import { OrgScimSection } from "./OrgSCIMSection";
@@ -183,6 +184,7 @@ export const OrgAuthTab = withPermission(
           </>
         )}
         <OrgScimSection />
+        <OrgGithubSyncSection />
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}

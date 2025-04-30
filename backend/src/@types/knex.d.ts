@@ -83,6 +83,9 @@ import {
   TGitAppOrg,
   TGitAppOrgInsert,
   TGitAppOrgUpdate,
+  TGithubOrgSyncConfigs,
+  TGithubOrgSyncConfigsInsert,
+  TGithubOrgSyncConfigsUpdate,
   TGroupProjectMembershipRoles,
   TGroupProjectMembershipRolesInsert,
   TGroupProjectMembershipRolesUpdate,
@@ -1003,6 +1006,11 @@ declare module "knex/types/tables" {
       TSecretReminderRecipients,
       TSecretReminderRecipientsInsert,
       TSecretReminderRecipientsUpdate
+    >;
+    [TableName.GithubOrgSyncConfig]: KnexOriginal.CompositeTableType<
+      TGithubOrgSyncConfigs,
+      TGithubOrgSyncConfigsInsert,
+      TGithubOrgSyncConfigsUpdate
     >;
   }
 }

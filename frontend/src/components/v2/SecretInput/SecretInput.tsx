@@ -93,6 +93,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             onFocus={(evt) => {
               onFocus?.(evt);
               setIsSecretFocused.on();
+              evt.currentTarget.select();
             }}
             disabled={isDisabled}
             spellCheck={false}

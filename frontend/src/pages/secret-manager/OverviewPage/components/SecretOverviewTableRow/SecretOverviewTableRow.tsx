@@ -1,3 +1,4 @@
+import { subject } from "@casl/ability";
 import { faCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
@@ -14,6 +15,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { Button, Checkbox, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
+import { useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
@@ -44,6 +50,14 @@ type Props = {
     secretName: string
   ) => { secret?: SecretV3RawSanitized; environmentInfo?: WorkspaceEnv } | undefined;
   scrollOffset: number;
+  importedBy?: {
+    environment: { name: string; slug: string };
+    folders: {
+      name: string;
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
+      isImported: boolean;
+    }[];
+  }[];
 };
 
 export const SecretOverviewTableRow = ({
@@ -58,11 +72,34 @@ export const SecretOverviewTableRow = ({
   getImportedSecretByKey,
   scrollOffset,
   onToggleSecretSelect,
-  isSelected
+  isSelected,
+  importedBy
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 1; // secret key row
   const [isSecretVisible, setIsSecretVisible] = useToggle();
+
+  const { permission } = useProjectPermission();
+
+  const getDefaultValue = (
+    secret: SecretV3RawSanitized | undefined,
+    importedSecret: { secret?: SecretV3RawSanitized } | undefined
+  ) => {
+    const canEditSecretValue = permission.can(
+      ProjectPermissionSecretActions.Edit,
+      subject(ProjectPermissionSub.Secrets, {
+        environment: secret?.env || "",
+        secretPath: secret?.path || "",
+        secretName: secret?.key || "",
+        secretTags: ["*"]
+      })
+    );
+
+    if (secret?.secretValueHidden && !secret?.valueOverride) {
+      return canEditSecretValue ? "******" : "";
+    }
+    return secret?.valueOverride || secret?.value || importedSecret?.secret?.value || "";
+  };
 
   return (
     <>
@@ -228,13 +265,7 @@ export const SecretOverviewTableRow = ({
                               isVisible={isSecretVisible}
                               secretName={secretKey}
                               secretValueHidden={secret?.secretValueHidden || false}
-                              defaultValue={
-                                secret?.secretValueHidden
-                                  ? ""
-                                  : secret?.valueOverride ||
-                                    secret?.value ||
-                                    importedSecret?.secret?.value
-                              }
+                              defaultValue={getDefaultValue(secret, importedSecret)}
                               secretId={secret?.id}
                               isOverride={Boolean(secret?.valueOverride)}
                               isImportedSecret={isImportedSecret}
@@ -244,6 +275,7 @@ export const SecretOverviewTableRow = ({
                               onSecretUpdate={onSecretUpdate}
                               environment={slug}
                               isRotatedSecret={secret?.isRotatedSecret}
+                              importedBy={importedBy}
                             />
                           </td>
                         </tr>

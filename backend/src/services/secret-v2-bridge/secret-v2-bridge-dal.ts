@@ -22,6 +22,7 @@ import type {
   TFindSecretsByFolderIdsFilter,
   TGetSecretsDTO
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { applyJitter } from "@app/lib/dates";
 
 export const SecretServiceCacheKeys = {
   get productKey() {
@@ -48,7 +49,7 @@ interface TSecretV2DalArg {
   keyStore: TKeyStoreFactory;
 }
 
-export const SECRET_DAL_TTL = 5 * 60;
+export const SECRET_DAL_TTL = () => applyJitter(10 * 60, 2 * 60);
 export const SECRET_DAL_VERSION_TTL = 15 * 60;
 export const MAX_SECRET_CACHE_BYTES = 25 * 1024 * 1024;
 export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
@@ -63,7 +64,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
     try {
       const docs = await (tx || db)(TableName.SecretV2)
-        .where(filter)
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter(filter, TableName.SecretV2))
         .leftJoin(
           TableName.SecretV2JnTag,
           `${TableName.SecretV2}.id`,

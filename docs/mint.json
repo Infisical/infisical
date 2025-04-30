@@ -160,6 +160,7 @@
             },
             "documentation/platform/access-controls/additional-privileges",
             "documentation/platform/access-controls/temporary-access",
+            "documentation/platform/access-controls/assume-privilege",
             "documentation/platform/access-controls/access-requests",
             "documentation/platform/access-controls/project-access-requests",
             "documentation/platform/pr-workflows",
@@ -299,7 +300,8 @@
             "documentation/platform/scim/jumpcloud",
             "documentation/platform/scim/group-mappings"
           ]
-        }
+        },
+        "documentation/platform/github-org-sync"
       ]
     },
     {
@@ -886,8 +888,8 @@
               ]
             },
             {
-            "group": "LDAP Password",
-            "pages": [
+              "group": "LDAP Password",
+              "pages": [
                 "api-reference/endpoints/secret-rotations/ldap-password/create",
                 "api-reference/endpoints/secret-rotations/ldap-password/delete",
                 "api-reference/endpoints/secret-rotations/ldap-password/get-by-id",

@@ -962,7 +962,7 @@ export const secretV2BridgeServiceFactory = ({
     const encryptedCachedSecrets = await keyStore.getItem(cacheKey);
     if (encryptedCachedSecrets) {
       try {
-        await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL);
+        await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL());
         const cachedSecrets = secretManagerDecryptor({ cipherTextBlob: Buffer.from(encryptedCachedSecrets, "base64") });
         const { secrets, imports = [] } = JSON.parse(cachedSecrets.toString("utf8")) as {
           secrets: typeof decryptedSecrets;
@@ -1132,7 +1132,7 @@ export const secretV2BridgeServiceFactory = ({
         plainText: Buffer.from(JSON.stringify(payload))
       }).cipherTextBlob;
       if (encryptedUpdatedCachedSecrets.byteLength < MAX_SECRET_CACHE_BYTES) {
-        await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL, encryptedUpdatedCachedSecrets.toString("base64"));
+        await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
       }
       return payload;
     }
@@ -1179,7 +1179,7 @@ export const secretV2BridgeServiceFactory = ({
       plainText: Buffer.from(JSON.stringify(payload))
     }).cipherTextBlob;
     if (encryptedUpdatedCachedSecrets.byteLength < MAX_SECRET_CACHE_BYTES) {
-      await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL, encryptedUpdatedCachedSecrets.toString("base64"));
+      await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
     }
     return payload;
   };

@@ -220,6 +220,7 @@ const Page = () => {
     totalSecretCount = 0,
     totalCount = 0,
     importedBy,
+    usedBySecretSyncs,
     totalSecretRotationCount = 0
   } = data ?? {};
 
@@ -441,6 +442,7 @@ const Page = () => {
             onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
             protectedBranchPolicyName={boardPolicy?.name}
             importedBy={importedBy}
+            usedBySecretSyncs={usedBySecretSyncs}
           />
           <div className="thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md rounded-b-none bg-mineshaft-800 text-left text-sm text-bunker-300">
             <div className="flex flex-col" id="dashboard">
@@ -530,6 +532,7 @@ const Page = () => {
                   secretPath={secretPath}
                   isProtectedBranch={isProtectedBranch}
                   importedBy={importedBy}
+                  usedBySecretSyncs={usedBySecretSyncs}
                 />
               )}
               {noAccessSecretCount > 0 && <SecretNoAccessListView count={noAccessSecretCount} />}

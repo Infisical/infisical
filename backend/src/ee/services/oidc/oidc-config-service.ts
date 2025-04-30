@@ -685,10 +685,16 @@ export const oidcConfigServiceFactory = ({
       id_token_signed_response_alg: oidcCfg.jwtSignatureAlgorithm
     });
 
+    // Check if the OIDC provider supports PKCE
+    const codeChallengeMethods = client.issuer.metadata.code_challenge_methods_supported;
+    const supportsPKCE = Array.isArray(codeChallengeMethods) && codeChallengeMethods.includes("S256");
+
     const strategy = new OpenIdStrategy(
       {
         client,
-        passReqToCallback: true
+        passReqToCallback: true,
+        usePKCE: supportsPKCE,
+        params: supportsPKCE ? { code_challenge_method: "S256" } : undefined
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (_req: any, tokenSet: TokenSet, cb: any) => {

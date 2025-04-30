@@ -487,6 +487,7 @@ export const authLoginServiceFactory = ({
 
     return {
       ...tokens,
+      user,
       isMfaEnabled: false
     };
   };
@@ -795,7 +796,7 @@ export const authLoginServiceFactory = ({
       organizationId
     });
 
-    return { token, isMfaEnabled: false, user: userEnc } as const;
+    return { token, isMfaEnabled: false, user: userEnc, decodedProviderToken } as const;
   };
 
   /*
