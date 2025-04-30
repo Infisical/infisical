@@ -1,6 +1,7 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -20,15 +21,18 @@ import { useDeleteSshHostGroup, useGetSshHostGroupById } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { SshHostGroupModal } from "../SshHostsPage/components/SshHostGroupModal";
+import { SshHostGroupDetailsSection, SshHostGroupHostsSection } from "./components";
+
 const Page = () => {
   const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const projectId = currentWorkspace?.id || "";
-  const groupId = useParams({
-    from: ROUTE_PATHS.Ssh.SshGroupDetailsByIDPage.id,
-    select: (el) => el.groupId
+  const sshHostGroupId = useParams({
+    from: ROUTE_PATHS.Ssh.SshHostGroupDetailsByIDPage.id,
+    select: (el) => el.sshHostGroupId
   });
-  const { data } = useGetSshHostGroupById(groupId);
+  const { data } = useGetSshHostGroupById(sshHostGroupId);
 
   const { mutateAsync: deleteSshHostGroup } = useDeleteSshHostGroup();
 
@@ -105,10 +109,13 @@ const Page = () => {
           </PageHeader>
           <div className="flex">
             <div className="mr-4 w-96">
-              <SshHostGroupDetailsSection groupId={groupId} handlePopUpOpen={handlePopUpOpen} />
+              <SshHostGroupDetailsSection
+                sshHostGroupId={sshHostGroupId}
+                handlePopUpOpen={handlePopUpOpen}
+              />
             </div>
             <div className="w-full">
-              <SshHostsSection groupId={groupId} />
+              <SshHostGroupHostsSection sshHostGroupId={sshHostGroupId} />
             </div>
           </div>
         </div>
@@ -127,7 +134,7 @@ const Page = () => {
   );
 };
 
-export const SshGroupDetailsByIDPage = () => {
+export const SshHostGroupDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>

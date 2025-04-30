@@ -666,7 +666,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           groups: z.array(
             sanitizedSshHostGroup.extend({
-              loginMappings: z.array(loginMappingSchema)
+              loginMappings: z.array(loginMappingSchema),
+              hostCount: z.number()
             })
           )
         })

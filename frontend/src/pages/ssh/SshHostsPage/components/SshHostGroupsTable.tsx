@@ -43,7 +43,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
           <THead>
             <Tr>
               <Th>Name</Th>
-              <Th>Hosts</Th>
+              <Th># Hosts</Th>
               <Th>Login User - Authorized Principals Mapping</Th>
               <Th />
             </Tr>
@@ -60,16 +60,16 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                     key={`ssh-host-group-${group.id}`}
                     onClick={() =>
                       navigate({
-                        to: `/${ProjectType.SSH}/$projectId/ssh-groups/$sshGroupId` as const,
+                        to: `/${ProjectType.SSH}/$projectId/ssh-host-groups/$sshHostGroupId` as const,
                         params: {
                           projectId: currentWorkspace.id,
-                          sshGroupId: group.id
+                          sshHostGroupId: group.id
                         }
                       })
                     }
                   >
                     <Td>{group.name}</Td>
-                    <Td>-</Td>
+                    <Td>{group.hostCount}</Td>
                     <Td>
                       {group.loginMappings.length === 0 ? (
                         <span className="italic text-mineshaft-400">None</span>

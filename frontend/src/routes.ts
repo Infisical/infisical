@@ -312,7 +312,7 @@ const sshRoutes = route("/ssh/$projectId", [
     route("/certificates", "ssh/SshCertsPage/route.tsx"),
     route("/cas", "ssh/SshCasPage/route.tsx"),
     route("/ca/$caId", "ssh/SshCaByIDPage/route.tsx"),
-    route("/ssh-host-groups/$sshHostGroupId", "ssh/SshGroupDetailsByIDPage/route.tsx"),
+    route("/ssh-host-groups/$sshHostGroupId", "ssh/SshHostGroupDetailsByIDPage/route.tsx"),
     route("/settings", "ssh/SettingsPage/route.tsx"),
     route("/access-management", "project/AccessControlPage/route-ssh.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-ssh.tsx"),

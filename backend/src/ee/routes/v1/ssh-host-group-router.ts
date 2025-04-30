@@ -1,7 +1,9 @@
 import { z } from "zod";
 
-import { sanitizedSshHost, loginMappingSchema } from "@app/ee/services/ssh-host/ssh-host-schema";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
 import { sanitizedSshHostGroup } from "@app/ee/services/ssh-host-group/ssh-host-group-schema";
+import { EHostGroupMembershipFilter } from "@app/ee/services/ssh-host-group/ssh-host-group-types";
 import { SSH_HOST_GROUPS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -35,17 +37,17 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId
       });
 
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: host.projectId,
-      //     event: {
-      //       type: EventType.GET_SSH_HOST,
-      //       metadata: {
-      //         sshHostId: host.id,
-      //         hostname: host.hostname
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: sshHostGroup.projectId,
+        event: {
+          type: EventType.GET_SSH_HOST_GROUP,
+          metadata: {
+            sshHostGroupId: sshHostGroup.id,
+            name: sshHostGroup.name
+          }
+        }
+      });
 
       return sshHostGroup;
     }
@@ -80,24 +82,18 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId
       });
 
-      // TODO: audit logs
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: host.projectId,
-      //     event: {
-      //       type: EventType.CREATE_SSH_HOST,
-      //       metadata: {
-      //         sshHostId: host.id,
-      //         hostname: host.hostname,
-      //         alias: host.alias ?? null,
-      //         userCertTtl: host.userCertTtl,
-      //         hostCertTtl: host.hostCertTtl,
-      //         loginMappings: host.loginMappings,
-      //         userSshCaId: host.userSshCaId,
-      //         hostSshCaId: host.hostSshCaId
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: sshHostGroup.projectId,
+        event: {
+          type: EventType.CREATE_SSH_HOST_GROUP,
+          metadata: {
+            sshHostGroupId: sshHostGroup.id,
+            name: sshHostGroup.name,
+            loginMappings: sshHostGroup.loginMappings
+          }
+        }
+      });
 
       return sshHostGroup;
     }
@@ -135,23 +131,18 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId
       });
 
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: host.projectId,
-      //     event: {
-      //       type: EventType.UPDATE_SSH_HOST,
-      //       metadata: {
-      //         sshHostId: host.id,
-      //         hostname: host.hostname,
-      //         alias: host.alias,
-      //         userCertTtl: host.userCertTtl,
-      //         hostCertTtl: host.hostCertTtl,
-      //         loginMappings: host.loginMappings,
-      //         userSshCaId: host.userSshCaId,
-      //         hostSshCaId: host.hostSshCaId
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: sshHostGroup.projectId,
+        event: {
+          type: EventType.UPDATE_SSH_HOST_GROUP,
+          metadata: {
+            sshHostGroupId: sshHostGroup.id,
+            name: sshHostGroup.name,
+            loginMappings: sshHostGroup.loginMappings
+          }
+        }
+      });
 
       return sshHostGroup;
     }
@@ -183,18 +174,17 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId
       });
 
-      // TODO: audit log
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: host.projectId,
-      //     event: {
-      //       type: EventType.DELETE_SSH_HOST,
-      //       metadata: {
-      //         sshHostId: host.id,
-      //         hostname: host.hostname
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: sshHostGroup.projectId,
+        event: {
+          type: EventType.DELETE_SSH_HOST_GROUP,
+          metadata: {
+            sshHostGroupId: sshHostGroup.id,
+            name: sshHostGroup.name
+          }
+        }
+      });
 
       return sshHostGroup;
     }
@@ -211,20 +201,30 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
         sshHostGroupId: z.string().describe(SSH_HOST_GROUPS.GET.sshHostGroupId)
       }),
       querystring: z.object({
-        offset: z.coerce.number().min(0).max(100).default(0).describe(SSH_HOST_GROUPS.LIST_HOSTS.offset),
-        limit: z.coerce.number().min(1).max(100).default(10).describe(SSH_HOST_GROUPS.LIST_HOSTS.limit)
+        filter: z.nativeEnum(EHostGroupMembershipFilter).optional().describe(SSH_HOST_GROUPS.GET.filter)
       }),
       response: {
         200: z.object({
-          hosts: z.array(sanitizedSshHost),
+          hosts: sanitizedSshHost
+            .pick({
+              id: true,
+              hostname: true,
+              alias: true
+            })
+            .merge(
+              z.object({
+                isPartOfGroup: z.boolean(),
+                joinedGroupAt: z.date().nullable()
+              })
+            )
+            .array(),
           totalCount: z.number()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      console.log("list hosts in group pre");
-      const { hosts, totalCount } = await server.services.sshHostGroup.listSshHostGroupHosts({
+      const { sshHostGroup, hosts, totalCount } = await server.services.sshHostGroup.listSshHostGroupHosts({
         sshHostGroupId: req.params.sshHostGroupId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -232,20 +232,17 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId,
         ...req.query
       });
-      console.log("list hosts in group post");
 
-      // TODO: audit logs
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: host.projectId,
-      //     event: {
-      //       type: EventType.GET_SSH_HOST,
-      //       metadata: {
-      //         sshHostId: host.id,
-      //         hostname: host.hostname
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: sshHostGroup.projectId,
+        event: {
+          type: EventType.GET_SSH_HOST_GROUP_HOSTS,
+          metadata: {
+            sshHostGroupId: req.params.sshHostGroupId
+          }
+        }
+      });
 
       return { hosts, totalCount };
     }
@@ -270,9 +267,7 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      console.log("add host to group pre");
-
-      const host = await server.services.sshHostGroup.addHostToSshHostGroup({
+      const { sshHostGroup, sshHost } = await server.services.sshHostGroup.addHostToSshHostGroup({
         sshHostGroupId: req.params.sshHostGroupId,
         hostId: req.params.hostId,
         actor: req.permission.type,
@@ -281,22 +276,20 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId
       });
 
-      console.log("add host to group post");
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: sshHost.projectId,
+        event: {
+          type: EventType.ADD_HOST_TO_SSH_HOST_GROUP,
+          metadata: {
+            sshHostGroupId: sshHostGroup.id,
+            sshHostId: sshHost.id,
+            hostname: sshHost.hostname
+          }
+        }
+      });
 
-      // TODO: audit logs
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: host.projectId,
-      //     event: {
-      //       type: EventType.GET_SSH_HOST,
-      //       metadata: {
-      //         sshHostId: host.id,
-      //         hostname: host.hostname
-      //       }
-      //     }
-      //   });
-
-      return host;
+      return sshHost;
     }
   });
 
@@ -319,9 +312,7 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      console.log("remove host from group pre");
-
-      const host = await server.services.sshHostGroup.removeHostFromSshHostGroup({
+      const { sshHostGroup, sshHost } = await server.services.sshHostGroup.removeHostFromSshHostGroup({
         sshHostGroupId: req.params.sshHostGroupId,
         hostId: req.params.hostId,
         actor: req.permission.type,
@@ -330,22 +321,20 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId
       });
 
-      console.log("remove host from group post");
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: sshHost.projectId,
+        event: {
+          type: EventType.REMOVE_HOST_FROM_SSH_HOST_GROUP,
+          metadata: {
+            sshHostGroupId: sshHostGroup.id,
+            sshHostId: sshHost.id,
+            hostname: sshHost.hostname
+          }
+        }
+      });
 
-      // TODO: audit logs
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: host.projectId,
-      //     event: {
-      //       type: EventType.GET_SSH_HOST,
-      //       metadata: {
-      //         sshHostId: host.id,
-      //         hostname: host.hostname
-      //       }
-      //     }
-      //   });
-
-      return host;
+      return sshHost;
     }
   });
 };

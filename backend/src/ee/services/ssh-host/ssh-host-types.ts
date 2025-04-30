@@ -9,7 +9,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 export type TListSshHostsDTO = Omit<TProjectPermission, "projectId">;
 
-type LoginMapping = {
+export type TLoginMapping = {
   loginUser: string;
   allowedPrincipals: {
     usernames: string[];
@@ -21,7 +21,7 @@ export type TCreateSshHostDTO = {
   alias?: string;
   userCertTtl: string;
   hostCertTtl: string;
-  loginMappings: LoginMapping[];
+  loginMappings: TLoginMapping[];
   userSshCaId?: string;
   hostSshCaId?: string;
 } & TProjectPermission;
@@ -32,7 +32,7 @@ export type TUpdateSshHostDTO = {
   alias?: string;
   userCertTtl?: string;
   hostCertTtl?: string;
-  loginMappings?: LoginMapping[];
+  loginMappings?: TLoginMapping[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetSshHostDTO = {
@@ -54,7 +54,7 @@ export type TIssueSshHostHostCertDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 type BaseCreateSshLoginMappingsDTO = {
-  loginMappings: LoginMapping[];
+  loginMappings: TLoginMapping[];
   sshHostLoginUserDAL: Pick<TSshHostLoginUserDALFactory, "create" | "transaction">;
   sshHostLoginUserMappingDAL: Pick<TSshHostLoginUserMappingDALFactory, "insertMany">;
   userDAL: Pick<TUserDALFactory, "find">;

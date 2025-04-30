@@ -226,7 +226,8 @@ export const sshHostGroupServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    filter
   }: TListSshHostGroupHostsDTO) => {
     const sshHostGroup = await sshHostGroupDAL.findSshHostGroupByIdWithLoginMappings(sshHostGroupId);
     if (!sshHostGroup) throw new NotFoundError({ message: `SSH host group with ID '${sshHostGroupId}' not found` });
@@ -242,10 +243,8 @@ export const sshHostGroupServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshHostGroups);
 
-    // TODO: check
-    const { hosts, totalCount } = await sshHostGroupDAL.findAllSshHostsInGroup({ sshHostGroupId });
-    console.log("hosts: ", hosts);
-    return { hosts, totalCount };
+    const { hosts, totalCount } = await sshHostGroupDAL.findAllSshHostsInGroup({ sshHostGroupId, filter });
+    return { sshHostGroup, hosts, totalCount };
   };
 
   const addHostToSshHostGroup = async ({
@@ -259,14 +258,14 @@ export const sshHostGroupServiceFactory = ({
     const sshHostGroup = await sshHostGroupDAL.findSshHostGroupByIdWithLoginMappings(sshHostGroupId);
     if (!sshHostGroup) throw new NotFoundError({ message: `SSH host group with ID '${sshHostGroupId}' not found` });
 
-    const host = await sshHostDAL.findSshHostByIdWithLoginMappings(hostId);
-    if (!host) {
+    const sshHost = await sshHostDAL.findSshHostByIdWithLoginMappings(hostId);
+    if (!sshHost) {
       throw new NotFoundError({
         message: `SSH host with ID ${hostId} not found`
       });
     }
 
-    if (sshHostGroup.projectId !== host.projectId) {
+    if (sshHostGroup.projectId !== sshHost.projectId) {
       throw new NotFoundError({
         message: `SSH host with ID ${hostId} not found in project ${sshHostGroup.projectId}`
       });
@@ -286,7 +285,7 @@ export const sshHostGroupServiceFactory = ({
 
     await sshHostGroupMembershipDAL.create({ sshHostGroupId, sshHostId: hostId });
 
-    return host;
+    return { sshHostGroup, sshHost };
   };
 
   const removeHostFromSshHostGroup = async ({
@@ -297,17 +296,21 @@ export const sshHostGroupServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TRemoveHostFromSshHostGroupDTO) => {
+    console.log("removeHostFromSshHostGroup args: ", {
+      sshHostGroupId,
+      hostId
+    });
     const sshHostGroup = await sshHostGroupDAL.findSshHostGroupByIdWithLoginMappings(sshHostGroupId);
     if (!sshHostGroup) throw new NotFoundError({ message: `SSH host group with ID '${sshHostGroupId}' not found` });
 
-    const host = await sshHostDAL.findSshHostByIdWithLoginMappings(hostId);
-    if (!host) {
+    const sshHost = await sshHostDAL.findSshHostByIdWithLoginMappings(hostId);
+    if (!sshHost) {
       throw new NotFoundError({
         message: `SSH host with ID ${hostId} not found`
       });
     }
 
-    if (sshHostGroup.projectId !== host.projectId) {
+    if (sshHostGroup.projectId !== sshHost.projectId) {
       throw new NotFoundError({
         message: `SSH host with ID ${hostId} not found in project ${sshHostGroup.projectId}`
       });
@@ -336,9 +339,13 @@ export const sshHostGroupServiceFactory = ({
       });
     }
 
+    console.log("boom: ", {
+      sshHostGroupMembership
+    });
+
     await sshHostGroupMembershipDAL.deleteById(sshHostGroupMembership.id);
 
-    return host;
+    return { sshHostGroup, sshHost };
   };
 
   return {

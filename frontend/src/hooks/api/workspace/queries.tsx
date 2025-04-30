@@ -877,7 +877,7 @@ export const useListWorkspaceSshHostGroups = (projectId: string) => {
     queryFn: async () => {
       const {
         data: { groups }
-      } = await apiRequest.get<{ groups: TSshHostGroup[] }>(
+      } = await apiRequest.get<{ groups: (TSshHostGroup & { hostCount: number })[] }>(
         `/api/v2/workspace/${projectId}/ssh-host-groups`
       );
       return groups;

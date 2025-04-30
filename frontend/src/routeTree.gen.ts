@@ -107,7 +107,7 @@ import { Route as projectRoleDetailsBySlugPageRouteCertManagerImport } from './p
 import { Route as certManagerPkiCollectionDetailsByIDPageRoutesImport } from './pages/cert-manager/PkiCollectionDetailsByIDPage/routes'
 import { Route as projectMemberDetailsByIDPageRouteCertManagerImport } from './pages/project/MemberDetailsByIDPage/route-cert-manager'
 import { Route as projectIdentityDetailsByIDPageRouteCertManagerImport } from './pages/project/IdentityDetailsByIDPage/route-cert-manager'
-import { Route as sshSshGroupDetailsByIDPageRouteImport } from './pages/ssh/SshGroupDetailsByIDPage/route'
+import { Route as sshSshHostGroupDetailsByIDPageRouteImport } from './pages/ssh/SshHostGroupDetailsByIDPage/route'
 import { Route as sshSshCaByIDPageRouteImport } from './pages/ssh/SshCaByIDPage/route'
 import { Route as secretManagerSecretDashboardPageRouteImport } from './pages/secret-manager/SecretDashboardPage/route'
 import { Route as secretManagerIntegrationsSelectIntegrationAuthPageRouteImport } from './pages/secret-manager/integrations/SelectIntegrationAuthPage/route'
@@ -1002,8 +1002,8 @@ const projectIdentityDetailsByIDPageRouteCertManagerRoute =
     getParentRoute: () => certManagerLayoutRoute,
   } as any)
 
-const sshSshGroupDetailsByIDPageRouteRoute =
-  sshSshGroupDetailsByIDPageRouteImport.update({
+const sshSshHostGroupDetailsByIDPageRouteRoute =
+  sshSshHostGroupDetailsByIDPageRouteImport.update({
     id: '/ssh-host-groups/$sshHostGroupId',
     path: '/ssh-host-groups/$sshHostGroupId',
     getParentRoute: () => sshLayoutRoute,
@@ -2391,7 +2391,7 @@ declare module '@tanstack/react-router' {
       id: '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/ssh-host-groups/$sshHostGroupId'
       path: '/ssh-host-groups/$sshHostGroupId'
       fullPath: '/ssh/$projectId/ssh-host-groups/$sshHostGroupId'
-      preLoaderRoute: typeof sshSshGroupDetailsByIDPageRouteImport
+      preLoaderRoute: typeof sshSshHostGroupDetailsByIDPageRouteImport
       parentRoute: typeof sshLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/identities/$identityId': {
@@ -3561,7 +3561,7 @@ interface sshLayoutRouteChildren {
   sshSettingsPageRouteRoute: typeof sshSettingsPageRouteRoute
   projectAccessControlPageRouteSshRoute: typeof projectAccessControlPageRouteSshRoute
   sshSshCaByIDPageRouteRoute: typeof sshSshCaByIDPageRouteRoute
-  sshSshGroupDetailsByIDPageRouteRoute: typeof sshSshGroupDetailsByIDPageRouteRoute
+  sshSshHostGroupDetailsByIDPageRouteRoute: typeof sshSshHostGroupDetailsByIDPageRouteRoute
   projectIdentityDetailsByIDPageRouteSshRoute: typeof projectIdentityDetailsByIDPageRouteSshRoute
   projectMemberDetailsByIDPageRouteSshRoute: typeof projectMemberDetailsByIDPageRouteSshRoute
   projectRoleDetailsBySlugPageRouteSshRoute: typeof projectRoleDetailsBySlugPageRouteSshRoute
@@ -3574,7 +3574,8 @@ const sshLayoutRouteChildren: sshLayoutRouteChildren = {
   sshSettingsPageRouteRoute: sshSettingsPageRouteRoute,
   projectAccessControlPageRouteSshRoute: projectAccessControlPageRouteSshRoute,
   sshSshCaByIDPageRouteRoute: sshSshCaByIDPageRouteRoute,
-  sshSshGroupDetailsByIDPageRouteRoute: sshSshGroupDetailsByIDPageRouteRoute,
+  sshSshHostGroupDetailsByIDPageRouteRoute:
+    sshSshHostGroupDetailsByIDPageRouteRoute,
   projectIdentityDetailsByIDPageRouteSshRoute:
     projectIdentityDetailsByIDPageRouteSshRoute,
   projectMemberDetailsByIDPageRouteSshRoute:
@@ -3883,7 +3884,7 @@ export interface FileRoutesByFullPath {
   '/secret-manager/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/secret-manager/$projectId/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
   '/ssh/$projectId/ca/$caId': typeof sshSshCaByIDPageRouteRoute
-  '/ssh/$projectId/ssh-host-groups/$sshHostGroupId': typeof sshSshGroupDetailsByIDPageRouteRoute
+  '/ssh/$projectId/ssh-host-groups/$sshHostGroupId': typeof sshSshHostGroupDetailsByIDPageRouteRoute
   '/cert-manager/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteCertManagerRoute
   '/cert-manager/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteCertManagerRoute
   '/cert-manager/$projectId/pki-collections/$collectionId': typeof certManagerPkiCollectionDetailsByIDPageRoutesRoute
@@ -4060,7 +4061,7 @@ export interface FileRoutesByTo {
   '/secret-manager/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/secret-manager/$projectId/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
   '/ssh/$projectId/ca/$caId': typeof sshSshCaByIDPageRouteRoute
-  '/ssh/$projectId/ssh-host-groups/$sshHostGroupId': typeof sshSshGroupDetailsByIDPageRouteRoute
+  '/ssh/$projectId/ssh-host-groups/$sshHostGroupId': typeof sshSshHostGroupDetailsByIDPageRouteRoute
   '/cert-manager/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteCertManagerRoute
   '/cert-manager/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteCertManagerRoute
   '/cert-manager/$projectId/pki-collections/$collectionId': typeof certManagerPkiCollectionDetailsByIDPageRoutesRoute
@@ -4255,7 +4256,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/ca/$caId': typeof sshSshCaByIDPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/ssh-host-groups/$sshHostGroupId': typeof sshSshGroupDetailsByIDPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/ssh-host-groups/$sshHostGroupId': typeof sshSshHostGroupDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteCertManagerRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/members/$membershipId': typeof projectMemberDetailsByIDPageRouteCertManagerRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/pki-collections/$collectionId': typeof certManagerPkiCollectionDetailsByIDPageRoutesRoute
@@ -5579,7 +5580,7 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/ssh-host-groups/$sshHostGroupId": {
-      "filePath": "ssh/SshGroupDetailsByIDPage/route.tsx",
+      "filePath": "ssh/SshHostGroupDetailsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/identities/$identityId": {

@@ -299,9 +299,9 @@ export const ROUTE_PATHS = Object.freeze({
       "/ssh/$projectId/ca/$caId",
       "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/ca/$caId"
     ),
-    SshGroupDetailsByIDPage: setRoute(
-      "/ssh/$projectId/ssh-groups/$groupId",
-      "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/groups/$groupId"
+    SshHostGroupDetailsByIDPage: setRoute(
+      "/ssh/$projectId/ssh-host-groups/$sshHostGroupId",
+      "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/ssh-host-groups/$sshHostGroupId"
     )
   },
   Public: {

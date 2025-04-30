@@ -6,6 +6,8 @@ import { DatabaseError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
+import { EHostGroupMembershipFilter } from "./ssh-host-group-types";
+
 export type TSshHostGroupDALFactory = ReturnType<typeof sshHostGroupDALFactory>;
 
 export const sshHostGroupDALFactory = (db: TDbClient) => {
@@ -13,6 +15,7 @@ export const sshHostGroupDALFactory = (db: TDbClient) => {
 
   const findSshHostGroupsWithLoginMappings = async (projectId: string, tx?: Knex) => {
     try {
+      // First, get all the SSH host groups with their login mappings
       const rows = await (tx || db.replicaNode())(TableName.SshHostGroup)
         .leftJoin(
           TableName.SshHostLoginUser,
@@ -38,6 +41,25 @@ export const sshHostGroupDALFactory = (db: TDbClient) => {
 
       const hostsGrouped = groupBy(rows, (r) => r.sshHostGroupId);
 
+      const hostGroupIds = Object.keys(hostsGrouped);
+
+      type HostCountRow = {
+        sshHostGroupId: string;
+        host_count: string;
+      };
+
+      const hostCountsQuery = (await (tx ||
+        db
+          .replicaNode()(TableName.SshHostGroupMembership)
+          .select(`${TableName.SshHostGroupMembership}.sshHostGroupId`, db.raw(`count(*) as host_count`))
+          .whereIn(`${TableName.SshHostGroupMembership}.sshHostGroupId`, hostGroupIds)
+          .groupBy(`${TableName.SshHostGroupMembership}.sshHostGroupId`))) as HostCountRow[];
+
+      const hostCountsMap = hostCountsQuery.reduce<Record<string, number>>((acc, { sshHostGroupId, host_count }) => {
+        acc[sshHostGroupId] = Number(host_count);
+        return acc;
+      }, {});
+
       return Object.values(hostsGrouped).map((hostRows) => {
         const { sshHostGroupId, name } = hostRows[0];
         const loginMappingGrouped = groupBy(
@@ -54,7 +76,8 @@ export const sshHostGroupDALFactory = (db: TDbClient) => {
           id: sshHostGroupId,
           projectId,
           name,
-          loginMappings
+          loginMappings,
+          hostCount: hostCountsMap[sshHostGroupId] ?? 0
         };
       });
     } catch (error) {
@@ -116,21 +139,40 @@ export const sshHostGroupDALFactory = (db: TDbClient) => {
   const findAllSshHostsInGroup = async ({
     sshHostGroupId,
     offset = 0,
-    limit
+    limit,
+    filter
   }: {
     sshHostGroupId: string;
     offset?: number;
     limit?: number;
+    filter?: EHostGroupMembershipFilter;
   }) => {
     try {
+      const sshHostGroup = await db
+        .replicaNode()(TableName.SshHostGroup)
+        .where(`${TableName.SshHostGroup}.id`, sshHostGroupId)
+        .select("projectId")
+        .first();
+
+      if (!sshHostGroup) {
+        throw new Error(`SSH host group with ID ${sshHostGroupId} not found`);
+      }
+
       const query = db
-        .replicaNode()(TableName.SshHostGroupMembership)
-        .where(`${TableName.SshHostGroupMembership}.sshHostGroupId`, sshHostGroupId)
-        .join(TableName.SshHost, `${TableName.SshHostGroupMembership}.sshHostId`, `${TableName.SshHost}.id`)
+        .replicaNode()(TableName.SshHost)
+        .where(`${TableName.SshHost}.projectId`, sshHostGroup.projectId)
+        .leftJoin(TableName.SshHostGroupMembership, (bd) => {
+          bd.on(`${TableName.SshHostGroupMembership}.sshHostId`, "=", `${TableName.SshHost}.id`).andOn(
+            `${TableName.SshHostGroupMembership}.sshHostGroupId`,
+            "=",
+            db.raw("?", [sshHostGroupId])
+          );
+        })
         .select(
           db.ref("id").withSchema(TableName.SshHost),
           db.ref("hostname").withSchema(TableName.SshHost),
           db.ref("alias").withSchema(TableName.SshHost),
+          db.ref("sshHostGroupId").withSchema(TableName.SshHostGroupMembership),
           db.ref("createdAt").withSchema(TableName.SshHostGroupMembership).as("joinedGroupAt"),
           db.raw(`count(*) OVER() as total_count`)
         )
@@ -141,13 +183,28 @@ export const sshHostGroupDALFactory = (db: TDbClient) => {
         void query.limit(limit);
       }
 
+      if (filter) {
+        switch (filter) {
+          case EHostGroupMembershipFilter.GROUP_MEMBERS:
+            void query.andWhere(`${TableName.SshHostGroupMembership}.createdAt`, "is not", null);
+            break;
+          case EHostGroupMembershipFilter.NON_GROUP_MEMBERS:
+            void query.andWhere(`${TableName.SshHostGroupMembership}.createdAt`, "is", null);
+            break;
+          default:
+            break;
+        }
+      }
+
       const hosts = await query;
 
       return {
-        hosts: hosts.map(({ id, hostname, alias }) => ({
+        hosts: hosts.map(({ id, hostname, alias, sshHostGroupId: memberGroupId, joinedGroupAt }) => ({
           id,
           hostname,
-          alias
+          alias,
+          isPartOfGroup: !!memberGroupId,
+          joinedGroupAt
         })),
         // @ts-expect-error col select is raw and not strongly typed
         totalCount: Number(hosts?.[0]?.total_count ?? 0)

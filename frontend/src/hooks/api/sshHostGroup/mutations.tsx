@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace/query-keys";
+import { sshHostGroupKeys } from "./queries";
 import {
   TCreateSshHostGroupDTO,
   TDeleteSshHostGroupDTO,
@@ -17,9 +18,12 @@ export const useCreateSshHostGroup = () => {
       const { data: hostGroup } = await apiRequest.post("/api/v1/ssh/host-groups", body);
       return hostGroup;
     },
-    onSuccess: ({ projectId }) => {
+    onSuccess: ({ projectId, id }) => {
       queryClient.invalidateQueries({
         queryKey: workspaceKeys.getWorkspaceSshHostGroups(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: sshHostGroupKeys.getSshHostGroupById(id)
       });
     }
   });
@@ -35,9 +39,12 @@ export const useUpdateSshHostGroup = () => {
       );
       return hostGroup;
     },
-    onSuccess: ({ projectId }) => {
+    onSuccess: ({ projectId }, { sshHostGroupId }) => {
       queryClient.invalidateQueries({
         queryKey: workspaceKeys.getWorkspaceSshHostGroups(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: sshHostGroupKeys.getSshHostGroupById(sshHostGroupId)
       });
     }
   });
@@ -52,9 +59,40 @@ export const useDeleteSshHostGroup = () => {
       );
       return hostGroup;
     },
-    onSuccess: ({ projectId }) => {
+    onSuccess: ({ projectId }, { sshHostGroupId }) => {
       queryClient.invalidateQueries({
         queryKey: workspaceKeys.getWorkspaceSshHostGroups(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: sshHostGroupKeys.getSshHostGroupById(sshHostGroupId)
+      });
+    }
+  });
+};
+
+export const useAddHostToSshHostGroup = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, object, { sshHostGroupId: string; sshHostId: string }>({
+    mutationFn: async ({ sshHostGroupId, sshHostId }) => {
+      await apiRequest.post(`/api/v1/ssh/host-groups/${sshHostGroupId}/hosts/${sshHostId}`);
+    },
+    onSuccess: (_, { sshHostGroupId }) => {
+      queryClient.invalidateQueries({
+        queryKey: sshHostGroupKeys.forSshHostGroupHosts(sshHostGroupId)
+      });
+    }
+  });
+};
+
+export const useRemoveHostFromSshHostGroup = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, object, { sshHostGroupId: string; sshHostId: string }>({
+    mutationFn: async ({ sshHostGroupId, sshHostId }) => {
+      await apiRequest.delete(`/api/v1/ssh/host-groups/${sshHostGroupId}/hosts/${sshHostId}`);
+    },
+    onSuccess: (_, { sshHostGroupId }) => {
+      queryClient.invalidateQueries({
+        queryKey: sshHostGroupKeys.forSshHostGroupHosts(sshHostGroupId)
       });
     }
   });

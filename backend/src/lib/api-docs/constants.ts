@@ -1387,7 +1387,8 @@ export const SSH_CERTIFICATE_TEMPLATES = {
 
 export const SSH_HOST_GROUPS = {
   GET: {
-    sshHostGroupId: "The ID of the SSH host group to get."
+    sshHostGroupId: "The ID of the SSH host group to get.",
+    filter: "The filter to apply to the SSH hosts in the SSH host group."
   },
   CREATE: {
     projectId: "The ID of the project to create the SSH host group in.",

@@ -1,13 +1,9 @@
+import { TLoginMapping } from "@app/ee/services/ssh-host/ssh-host-types";
 import { TGenericPermission, TProjectPermission } from "@app/lib/types";
 
 export type TCreateSshHostGroupDTO = {
   name: string;
-  loginMappings: {
-    loginUser: string;
-    allowedPrincipals: {
-      usernames: string[];
-    };
-  }[];
+  loginMappings: TLoginMapping[];
 } & TProjectPermission;
 
 export type TUpdateSshHostGroupDTO = {
@@ -30,6 +26,7 @@ export type TDeleteSshHostGroupDTO = {
 } & TGenericPermission;
 export type TListSshHostGroupHostsDTO = {
   sshHostGroupId: string;
+  filter?: EHostGroupMembershipFilter;
 } & TGenericPermission;
 
 export type TAddHostToSshHostGroupDTO = {
@@ -41,3 +38,8 @@ export type TRemoveHostFromSshHostGroupDTO = {
   sshHostGroupId: string;
   hostId: string;
 } & TGenericPermission;
+
+export enum EHostGroupMembershipFilter {
+  GROUP_MEMBERS = "group-members",
+  NON_GROUP_MEMBERS = "non-group-members"
+}

@@ -1,3 +1,5 @@
+import { TSshHost } from "../sshHost/types";
+
 export type TSshHostGroup = {
   id: string;
   projectId: string;
@@ -35,3 +37,13 @@ export type TUpdateSshHostGroupDTO = {
 export type TDeleteSshHostGroupDTO = {
   sshHostGroupId: string;
 };
+
+export type TListSshHostGroupHostsResponse = {
+  hosts: TSshHost[];
+  totalCount: number;
+};
+
+export enum EHostGroupMembershipFilter {
+  GROUP_MEMBERS = "group-members",
+  NON_GROUP_MEMBERS = "non-group-members"
+}
