@@ -31,8 +31,6 @@ export const getAzureClientSecretsConnectionListItem = () => {
   };
 };
 
-const EXPIRATION_TIME = 300000;
-
 export const getAzureConnectionAccessToken = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
@@ -63,13 +61,8 @@ export const getAzureConnectionAccessToken = async (
     encryptedCredentials: appConnection.encryptedCredentials
   })) as TAzureClientSecretsConnectionCredentials;
 
-  const { expiresAt, refreshToken } = credentials;
+  const { refreshToken } = credentials;
   const currentTime = Date.now();
-
-  // get new token if expired or less than 5 minutes until expiry
-  if (currentTime < expiresAt - EXPIRATION_TIME) {
-    return credentials.accessToken;
-  }
 
   const { data } = await request.post<ExchangeCodeAzureResponse>(
     IntegrationUrls.AZURE_TOKEN_URL.replace("common", credentials.tenantId || "common"),

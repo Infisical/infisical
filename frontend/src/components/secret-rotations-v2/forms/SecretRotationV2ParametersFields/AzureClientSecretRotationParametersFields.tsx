@@ -38,8 +38,11 @@ export const AzureClientSecretRotationParametersFields = () => {
               content={
                 <>
                   Ensure that your connection has the{" "}
-                  <span className="font-semibold">Application.ReadWrite.All</span> permission and
-                  the application exists in Azure.
+                  <span className="font-semibold">
+                    Application.ReadWrite.All, Directory.ReadWrite.All,
+                    Application.ReadWrite.OwnedBy, user_impersonation and User.Read
+                  </span>{" "}
+                  permissions and the application exists in Azure.
                 </>
               }
             >

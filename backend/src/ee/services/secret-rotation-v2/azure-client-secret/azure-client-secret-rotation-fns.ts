@@ -153,12 +153,8 @@ export const azureClientSecretRotationFactory: TRotationFactory<
    * Maps the generated credentials into the secret payload format.
    */
   const getSecretsPayload: TRotationFactoryGetSecretsPayload<TAzureClientSecretRotationGeneratedCredentials> = ({
-    clientSecret,
-    clientId
-  }) => [
-    { key: secretsMapping.clientSecret, value: clientSecret },
-    { key: secretsMapping.clientId, value: clientId }
-  ];
+    clientSecret
+  }) => [{ key: secretsMapping.clientSecret, value: clientSecret }];
 
   return {
     issueCredentials,
