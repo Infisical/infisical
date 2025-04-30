@@ -27,7 +27,7 @@ type Props = {
 const formSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.AzureClientSecrets),
   method: z.nativeEnum(AzureClientSecretsConnectionMethod),
-  tenantId: z.string().trim()
+  tenantId: z.string().trim().min(1, "Tenant ID is required")
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -75,7 +75,7 @@ export const AzureClientSecretsConnectionForm = ({ appConnection }: Props) => {
     switch (formData.method) {
       case AzureClientSecretsConnectionMethod.OAuth:
         window.location.assign(
-          `https://login.microsoftonline.com/${formData.tenantId || "common"}/oauth2/v2.0/authorize?client_id=${oauthClientId}&response_type=code&redirect_uri=${window.location.origin}/organization/app-connections/azure-client-secrets/oauth/callback&response_mode=query&scope=https://azconfig.io/.default%20openid%20offline_access&state=${state}<:>azure-client-secrets`
+          `https://login.microsoftonline.com/${formData.tenantId || "common"}/oauth2/v2.0/authorize?client_id=${oauthClientId}&response_type=code&redirect_uri=${window.location.origin}/organization/app-connections/azure/oauth/callback&response_mode=query&scope=https://azconfig.io/.default%20openid%20offline_access&state=${state}<:>azure-client-secrets`
         );
         break;
       default:
@@ -97,7 +97,7 @@ export const AzureClientSecretsConnectionForm = ({ appConnection }: Props) => {
           control={control}
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              tooltipText="The Active Directory (Entra ID) Tenant ID."
+              tooltipText="The Directory (tenant) ID."
               isError={Boolean(error?.message)}
               label="Tenant ID"
               errorText={error?.message}

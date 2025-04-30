@@ -127,7 +127,7 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
         scope: `openid offline_access https://graph.microsoft.com/.default`,
         client_id: INF_APP_CONNECTION_AZURE_CLIENT_ID,
         client_secret: INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
-        redirect_uri: `${SITE_URL}/organization/app-connections/azure-client-secrets/oauth/callback`
+        redirect_uri: `${SITE_URL}/organization/app-connections/azure/oauth/callback`
       })
     );
   } catch (e: unknown) {

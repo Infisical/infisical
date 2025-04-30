@@ -46,7 +46,8 @@ export const azureClientSecretRotationFactory: TRotationFactory<
         endpoint,
         {
           passwordCredential: {
-            displayName: `Infisical Rotated Secret (${formattedDate})`
+            displayName: `Infisical Rotated Secret (${formattedDate})`,
+            endDateTime: "2299-12-31T23:59:59Z" // effectively no expiration
           }
         },
         {
