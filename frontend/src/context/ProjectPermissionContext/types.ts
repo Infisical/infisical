@@ -170,6 +170,7 @@ export enum ProjectPermissionSub {
   Identity = "identity",
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
+  CertificatePrivateKey = "certificate-private-key",
   CertificateTemplates = "certificate-templates",
   SshCertificateAuthorities = "ssh-certificate-authorities",
   SshCertificateTemplates = "ssh-certificate-templates",

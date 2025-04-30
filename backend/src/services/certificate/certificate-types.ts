@@ -78,6 +78,10 @@ export type TGetCertBodyDTO = {
   serialNumber: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TGetCertPrivateKeyDTO = {
+  serialNumber: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TGetCertBundleDTO = {
   serialNumber: string;
 } & Omit<TProjectPermission, "projectId">;

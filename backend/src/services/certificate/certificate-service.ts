@@ -23,6 +23,7 @@ import {
   TGetCertBodyDTO,
   TGetCertBundleDTO,
   TGetCertDTO,
+  TGetCertPrivateKeyDTO,
   TRevokeCertDTO
 } from "./certificate-types";
 
@@ -80,7 +81,13 @@ export const certificateServiceFactory = ({
   /**
    * Get certificate private key.
    */
-  const getCertPrivateKey = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
+  const getCertPrivateKey = async ({
+    serialNumber,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TGetCertPrivateKeyDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
     const ca = await certificateAuthorityDAL.findById(cert.caId);
 
