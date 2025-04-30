@@ -268,11 +268,11 @@ For organizations that work with US government agencies, FIPS compliance is almo
 
         <Steps>
           <Step title="Create HSM client folder">
-            When using Kubernetes, you need to mount the path containing the HSM client files. This section covers how to configure your Infisical instance to use an HSM with Kubernetes.
+            When using Kubernetes, you need to mount the path containing the HSM client files. This section covers how to configure your Infisical instance to use an HSM with Kubernetes. In this example, we are going to be using `/etc/luna-docker`.
 
 
             ```bash
-            mkdir /etc/hsm-client
+            mkdir /etc/luna-docker
             ```
 
             After [setting up your Luna Cloud HSM client](https://thalesdocs.com/gphsm/luna/7/docs/network/Content/install/client_install/add_dpod.htm), you should have a set of files, referred to as the HSM client. You don't need all the files, but for simplicity we recommend copying all the files from the client.
@@ -306,20 +306,60 @@ For organizations that work with US government agencies, FIPS compliance is almo
             The most important parts of the client folder is the `Chrystoki.conf` file, and the `libs`, `plugins`, and `jsp` folders. You need to copy these files to the folder you created in the first step.
 
             ```bash
-            cp -r /<path-to-where-your-hsm-client-is-located> /etc/hsm-client
+              cp -r /<path-to-where-your-luna-client-is-located>/* /etc/luna-docker
             ```
+
+            <Note>
+              The `/*` wildcard will copy all files and folders within the HSM client. The wildcard is important to ensure that the file structure is inline with the rest of this guide.
+            </Note>
+
+            After copying the files, the `/etc/luna-docker` directory should have the following file structure:
+            ```bash
+            $ ls -R /etc/luna-docker
+            Chrystoki.conf etc lock server-certificate.pem
+            Chrystoki.conf.tmp2E jsp partition-ca-certificate.pem setenv
+            lch-support-linux-64bit partition-certificate.pem
+            bin libs plugins
+
+            /etc/luna-docker/bin:
+            64
+
+            /etc/luna-docker/bin/64:
+            ckdemo cmu lunacm multitoken vtl
+
+            /etc/luna-docker/etc:
+            openssl.cnf
+
+            /etc/luna-docker/jsp:
+            64 LunaProvider.jar
+
+            /etc/luna-docker/jsp/64:
+            libLunaAPI.so
+
+            /etc/luna-docker/libs:
+            64
+
+            /etc/luna-docker/libs/64:
+            libCryptoki2.so
+
+            /etc/luna-docker/lock:
+
+            /etc/luna-docker/plugins:
+            libcloud.plugin
+            ```
+
           </Step>
           <Step title="Update Chrystoki.conf">
             The `Chrystoki.conf` file is used to configure the HSM client. You need to update the `Chrystoki.conf` file to point to the correct file paths.
 
-            In this example, we will be mounting the `/etc/hsm-client` folder from the host to containers in our deployment's pods at the path `/hsm-client`. This means the contents of `/etc/hsm-client` on the host will be accessible at `/hsm-client` within the containers.
+            In this example, we will be mounting the `/etc/luna-docker` folder from the host to containers in our deployment's pods at the path `/usr/safenet/lunaclient`. This means the contents of `/etc/luna-docker` on the host will be accessible at `/usr/safenet/lunaclient` within the containers.
 
             An example config file will look like this:
 
             ```Chrystoki.conf
               Chrystoki2 = {
-                # This path points to the mounted path, /hsm-client
-                LibUNIX64 = /hsm-client/libs/64/libCryptoki2.so;
+                # This path points to the mounted path, /usr/safenet/lunaclient
+                LibUNIX64 = /usr/safenet/lunaclient/libs/64/libCryptoki2.so;
               }
 
               Luna = {
@@ -339,8 +379,8 @@ For organizations that work with US government agencies, FIPS compliance is almo
 
               Misc = {
                 # Update the paths to point to the mounted path if your folder structure is different from the one mentioned in the previous step.
-                PluginModuleDir = /hsm-client/plugins;
-                MutexFolder = /hsm-client/lock;
+                PluginModuleDir = /usr/safenet/lunaclient/plugins;
+                MutexFolder = /usr/safenet/lunaclient/lock;
                 PE1746Enabled = 1;
                 ToolsDir = /usr/bin;
 
@@ -353,7 +393,7 @@ For organizations that work with US government agencies, FIPS compliance is almo
               LunaSA Client = {
                 ReceiveTimeout = 20000;
                 # Update the paths to point to the mounted path if your folder structure is different from the one mentioned in the previous step.
-                SSLConfigFile = /hsm-client/etc/openssl.cnf;
+                SSLConfigFile = /usr/safenet/lunaclient/etc/openssl.cnf;
                 ClientPrivKeyFile = ./etc/ClientNameKey.pem;
                 ClientCertFile = ./etc/ClientNameCert.pem;
                 ServerCAFile = ./etc/CAFile.pem;
@@ -441,7 +481,7 @@ For organizations that work with US government agencies, FIPS compliance is almo
 
             ```bash
             kubectl exec hsm-setup-pod -- mkdir -p /data/ # Create the data directory
-            kubectl cp ./hsm-client/ hsm-setup-pod:/data/ # Copy the HSM client files into the PVC
+            kubectl cp /etc/luna-docker/. hsm-setup-pod:/data/ # Copy the HSM client files into the PVC
             kubectl exec hsm-setup-pod -- chmod -R 755 /data/ # Set the correct permissions for the HSM client files
             ```
 
@@ -456,7 +496,7 @@ For organizations that work with US government agencies, FIPS compliance is almo
             Next we need to update the environment variables used for the deployment. If you followed the [setup instructions for Kubernetes deployments](/self-hosting/deployment-options/kubernetes-helm), you should have a Kubernetes secret called `infisical-secrets`.
             We need to update the secret with the following environment variables:
 
-            - `HSM_LIB_PATH` - The path to the HSM client library _(mapped to `/hsm-client/libs/64/libCryptoki2.so`)_
+            - `HSM_LIB_PATH` - The path to the HSM client library _(mapped to `/usr/safenet/lunaclient/libs/64/libCryptoki2.so`)_
             - `HSM_PIN` - The PIN for the HSM device that you created when setting up your Luna Cloud HSM client
             - `HSM_SLOT` - The slot number for the HSM device that you selected when setting up your Luna Cloud HSM client
             - `HSM_KEY_LABEL` - The label for the HSM key. If no key is found with the provided key label, the HSM will create a new key with the provided label.
@@ -471,7 +511,7 @@ For organizations that work with US government agencies, FIPS compliance is almo
             type: Opaque
             stringData:
               # ... Other environment variables ...
-              HSM_LIB_PATH: "/hsm-client/libs/64/libCryptoki2.so" # If you followed this guide, this will be the path of the Luna Cloud HSM client
+              HSM_LIB_PATH: "/usr/safenet/lunaclient/libs/64/libCryptoki2.so" # If you followed this guide, this will be the path of the Luna Cloud HSM client
               HSM_PIN: "<your-hsm-device-pin>"
               HSM_SLOT: "<hsm-device-slot>"
               HSM_KEY_LABEL: "<your-key-label>"
@@ -487,7 +527,7 @@ For organizations that work with US government agencies, FIPS compliance is almo
           <Step title="Updating the Deployment">
             After we've successfully configured the PVC and updated our environment variables, we are ready to update the deployment configuration so that the pods it creates can access the HSM client files.
 
-            We need to update the Docker image of the deployment to use `infisical/infisical-fips`. The `infisical/infisical-fips` image is a functionally identical image to the `infisical/infisical` image, but it is built with support for HSM encryption.
+            We need to update the Docker image of the deployment to use `infisical/infisical-fips`. The `infisical/infisical-fips` image is a functionally identical image to the `infisical/infisical` image, but it is built with HSM support.
 
             ```yaml
               # ... The rest of the values.yaml file ...
@@ -499,8 +539,7 @@ For organizations that work with US government agencies, FIPS compliance is almo
 
               extraVolumeMounts:
                 - name: hsm-data
-                  mountPath: /hsm-client # The path we will mount the HSM client files to
-                  subPath: ./hsm-client
+                  mountPath: /usr/safenet/lunaclient # The path we will mount the HSM client files to
 
               extraVolumes:
                 - name: hsm-data 
