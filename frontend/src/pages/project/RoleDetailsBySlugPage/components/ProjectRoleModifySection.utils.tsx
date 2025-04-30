@@ -223,6 +223,7 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.PkiAlerts]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.PkiCollections]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.CertificateTemplates]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.CertificatePrivateKey]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SshCertificateAuthorities]: GeneralPolicyActionSchema.array().default(
         []
       ),
@@ -374,6 +375,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.PkiAlerts,
         ProjectPermissionSub.PkiCollections,
         ProjectPermissionSub.CertificateTemplates,
+        ProjectPermissionSub.CertificatePrivateKey,
         ProjectPermissionSub.SecretApproval,
         ProjectPermissionSub.Tags,
         ProjectPermissionSub.SecretRotation,
@@ -1011,6 +1013,15 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Certificates]: {
     title: "Certificates",
+    actions: [
+      { label: "Read", value: "read" },
+      { label: "Create", value: "create" },
+      { label: "Modify", value: "edit" },
+      { label: "Remove", value: "delete" }
+    ]
+  },
+  [ProjectPermissionSub.CertificatePrivateKey]: {
+    title: "Certificate Private Key",
     actions: [
       { label: "Read", value: "read" },
       { label: "Create", value: "create" },
