@@ -6,7 +6,11 @@ import { z } from "zod";
 
 import { ActionProjectType, ProjectType, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -1160,7 +1164,10 @@ export const certificateAuthorityServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Create,
+      ProjectPermissionSub.Certificates
+    );
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
     if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
@@ -1508,7 +1515,7 @@ export const certificateAuthorityServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Create,
+        ProjectPermissionCertificateActions.Create,
         ProjectPermissionSub.Certificates
       );
     }

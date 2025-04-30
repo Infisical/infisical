@@ -4,7 +4,10 @@ import * as x509 from "@peculiar/x509";
 import { ActionProjectType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -70,7 +73,10 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
 
     return {
       cert,
@@ -101,8 +107,8 @@ export const certificateServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.CertificatePrivateKey
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionSub.Certificates
     );
 
     const { certPrivateKey } = await getCertificateCredentials({
@@ -136,7 +142,10 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Delete,
+      ProjectPermissionSub.Certificates
+    );
 
     const deletedCert = await certificateDAL.deleteById(cert.id);
 
@@ -171,7 +180,10 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Delete,
+      ProjectPermissionSub.Certificates
+    );
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
 
@@ -218,7 +230,10 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
@@ -279,10 +294,13 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.CertificatePrivateKey
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionSub.Certificates
     );
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });

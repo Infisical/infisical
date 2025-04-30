@@ -4,7 +4,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub,
+  useWorkspace
+} from "@app/context";
 import { useDeleteCert } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -50,7 +54,7 @@ export const CertificatesSection = () => {
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Certificates</p>
         <ProjectPermissionCan
-          I={ProjectPermissionActions.Create}
+          I={ProjectPermissionCertificateActions.Create}
           a={ProjectPermissionSub.Certificates}
         >
           {(isAllowed) => (

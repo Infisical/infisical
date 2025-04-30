@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
+  ProjectPermissionCertificateActions,
   ProjectPermissionCmekActions,
   ProjectPermissionSub
 } from "@app/context";
@@ -30,6 +31,14 @@ const GeneralPolicyActionSchema = z.object({
   edit: z.boolean().optional(),
   delete: z.boolean().optional(),
   create: z.boolean().optional()
+});
+
+const CertificatePolicyActionSchema = z.object({
+  [ProjectPermissionCertificateActions.Create]: z.boolean().optional(),
+  [ProjectPermissionCertificateActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionCertificateActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionCertificateActions.Read]: z.boolean().optional(),
+  [ProjectPermissionCertificateActions.ReadPrivateKey]: z.boolean().optional()
 });
 
 const SecretPolicyActionSchema = z.object({
@@ -219,11 +228,10 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.AuditLogs]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.IpAllowList]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.CertificateAuthorities]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.Certificates]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.Certificates]: CertificatePolicyActionSchema.array().default([]),
       [ProjectPermissionSub.PkiAlerts]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.PkiCollections]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.CertificateTemplates]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.CertificatePrivateKey]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SshCertificateAuthorities]: GeneralPolicyActionSchema.array().default(
         []
       ),
@@ -371,11 +379,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.AuditLogs,
         ProjectPermissionSub.IpAllowList,
         ProjectPermissionSub.CertificateAuthorities,
-        ProjectPermissionSub.Certificates,
         ProjectPermissionSub.PkiAlerts,
         ProjectPermissionSub.PkiCollections,
         ProjectPermissionSub.CertificateTemplates,
-        ProjectPermissionSub.CertificatePrivateKey,
         ProjectPermissionSub.SecretApproval,
         ProjectPermissionSub.Tags,
         ProjectPermissionSub.SecretRotation,
@@ -504,6 +510,25 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canEdit) formVal[subject as ProjectPermissionSub.Member]![0].edit = true;
       if (canCreate) formVal[subject as ProjectPermissionSub.Member]![0].create = true;
       if (canDelete) formVal[subject as ProjectPermissionSub.Member]![0].delete = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.Certificates) {
+      const canRead = action.includes(ProjectPermissionCertificateActions.Read);
+      const canEdit = action.includes(ProjectPermissionCertificateActions.Edit);
+      const canDelete = action.includes(ProjectPermissionCertificateActions.Delete);
+      const canCreate = action.includes(ProjectPermissionCertificateActions.Create);
+      const canReadPrivateKey = action.includes(ProjectPermissionCertificateActions.ReadPrivateKey);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      // from above statement we are sure it won't be undefined
+      if (canRead) formVal[subject]![0].read = true;
+      if (canEdit) formVal[subject]![0].edit = true;
+      if (canCreate) formVal[subject]![0].create = true;
+      if (canDelete) formVal[subject]![0].delete = true;
+      if (canReadPrivateKey)
+        formVal[subject]![0][ProjectPermissionCertificateActions.ReadPrivateKey] = true;
       return;
     }
 
@@ -1014,19 +1039,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.Certificates]: {
     title: "Certificates",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
-    ]
-  },
-  [ProjectPermissionSub.CertificatePrivateKey]: {
-    title: "Certificate Private Key",
-    actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: ProjectPermissionCertificateActions.Read },
+      { label: "Read Private Key", value: ProjectPermissionCertificateActions.ReadPrivateKey },
+      { label: "Create", value: ProjectPermissionCertificateActions.Create },
+      { label: "Modify", value: ProjectPermissionCertificateActions.Edit },
+      { label: "Remove", value: ProjectPermissionCertificateActions.Delete }
     ]
   },
   [ProjectPermissionSub.CertificateTemplates]: {

@@ -6,6 +6,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -106,11 +107,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      // Prevent proxies from caching sensitive data (private key)
-      reply.header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-      reply.header("Pragma", "no-cache");
-      reply.header("Expires", "0");
-      reply.header("Surrogate-Control", "no-store");
+      addNoCacheHeaders(reply);
 
       return certPrivateKey;
     }
@@ -134,7 +131,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATES.GET_CERT.certificate),
-          certificateChain: z.string().trim().describe(CERTIFICATES.GET_CERT.certificateChain),
+          certificateChain: z.string().trim().nullish().describe(CERTIFICATES.GET_CERT.certificateChain),
           privateKey: z.string().trim().describe(CERTIFICATES.GET_CERT.privateKey),
           serialNumber: z.string().trim().describe(CERTIFICATES.GET_CERT.serialNumberRes)
         })
@@ -163,11 +160,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      // Prevent proxies from caching sensitive data (private key)
-      reply.header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-      reply.header("Pragma", "no-cache");
-      reply.header("Expires", "0");
-      reply.header("Surrogate-Control", "no-store");
+      addNoCacheHeaders(reply);
 
       return {
         certificate,
@@ -525,7 +518,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATES.GET_CERT.certificate),
-          certificateChain: z.string().trim().describe(CERTIFICATES.GET_CERT.certificateChain),
+          certificateChain: z.string().trim().nullish().describe(CERTIFICATES.GET_CERT.certificateChain),
           serialNumber: z.string().trim().describe(CERTIFICATES.GET_CERT.serialNumberRes)
         })
       }

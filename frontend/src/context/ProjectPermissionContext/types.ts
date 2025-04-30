@@ -7,6 +7,14 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionCertificateActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  ReadPrivateKey = "read-private-key"
+}
+
 export enum ProjectPermissionSecretActions {
   DescribeAndReadValue = "read",
   DescribeSecret = "describeSecret",
@@ -170,7 +178,6 @@ export enum ProjectPermissionSub {
   Identity = "identity",
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
-  CertificatePrivateKey = "certificate-private-key",
   CertificateTemplates = "certificate-templates",
   SshCertificateAuthorities = "ssh-certificate-authorities",
   SshCertificateTemplates = "ssh-certificate-templates",
@@ -268,9 +275,8 @@ export type ProjectPermissionSet =
       )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
-  | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
+  | [ProjectPermissionCertificateActions, ProjectPermissionSub.Certificates]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
-  | [ProjectPermissionActions, ProjectPermissionSub.CertificatePrivateKey]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
