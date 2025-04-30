@@ -73,7 +73,8 @@ The platform utilizes Postgres to persist all of its data and Redis for caching 
 ### PostgreSQL
 
 <Info>
-  Please note that the database user must have **CREATE** privileges along with ability to create and modify tables. This is needed for Infisical to run schema migrations.
+  Please note that the database user you create must be granted all privileges on the Infisical database.
+  This includes the ability to create new schemas, create, update, delete, modify tables and indexes, etc.
 </Info>
 
 <ParamField query="DB_CONNECTION_URI" type="string" default="" required>
