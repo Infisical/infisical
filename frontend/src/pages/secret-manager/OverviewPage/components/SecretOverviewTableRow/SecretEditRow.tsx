@@ -4,6 +4,7 @@ import { subject } from "@casl/ability";
 import {
   faCheck,
   faCopy,
+  faEyeSlash,
   faProjectDiagram,
   faTrash,
   faXmark
@@ -25,13 +26,13 @@ import {
   ModalTrigger,
   Tooltip
 } from "@app/components/v2";
-import { Blur } from "@app/components/v2/Blur";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
-import { useToggle } from "@app/hooks";
+import { usePopUp, useToggle } from "@app/hooks";
 import { SecretType } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 
 type Props = {
   defaultValue?: string | null;
@@ -54,6 +55,14 @@ type Props = {
   ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
   isRotatedSecret?: boolean;
+  importedBy?: {
+    environment: { name: string; slug: string };
+    folders: {
+      name: string;
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
+      isImported: boolean;
+    }[];
+  }[];
 };
 
 export const SecretEditRow = ({
@@ -70,8 +79,13 @@ export const SecretEditRow = ({
   secretPath,
   isVisible,
   secretId,
-  isRotatedSecret
+  isRotatedSecret,
+  importedBy
 }: Props) => {
+  const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
+    "editSecret"
+  ] as const);
+
   const {
     handleSubmit,
     control,
@@ -115,6 +129,20 @@ export const SecretEditRow = ({
       if (isCreatable) {
         await onSecretCreate(environment, secretName, value);
       } else {
+        if (
+          importedBy &&
+          importedBy.some(({ folders }) =>
+            folders?.some(({ secrets }) =>
+              secrets?.some(
+                ({ referencedSecretKey, referencedSecretEnv }) =>
+                  referencedSecretKey === secretName && referencedSecretEnv === environment
+              )
+            )
+          )
+        ) {
+          handlePopUpOpen("editSecret", { secretValue: value });
+          return;
+        }
         await onSecretUpdate(
           environment,
           secretName,
@@ -124,12 +152,40 @@ export const SecretEditRow = ({
         );
       }
     }
-    reset({ value });
+    if (secretValueHidden && !isOverride) {
+      setTimeout(() => {
+        reset({ value: defaultValue || null });
+      }, 50);
+    } else {
+      reset({ value });
+    }
+  };
+
+  const handleEditSecret = async ({ secretValue }: { secretValue: string }) => {
+    await onSecretUpdate(
+      environment,
+      secretName,
+      secretValue,
+      isOverride ? SecretType.Personal : SecretType.Shared,
+      secretId
+    );
+    reset({ value: secretValue });
+    handlePopUpClose("editSecret");
   };
 
   const canReadSecretValue = hasSecretReadValueOrDescribePermission(
     permission,
     ProjectPermissionSecretActions.ReadValue
+  );
+
+  const canEditSecretValue = permission.can(
+    ProjectPermissionSecretActions.Edit,
+    subject(ProjectPermissionSub.Secrets, {
+      environment,
+      secretPath,
+      secretName,
+      secretTags: ["*"]
+    })
   );
 
   const handleDeleteSecret = useCallback(async () => {
@@ -153,29 +209,32 @@ export const SecretEditRow = ({
         deleteKey={secretName}
         onDeleteApproved={handleDeleteSecret}
       />
-
+      {secretValueHidden && !isOverride && (
+        <Tooltip
+          content={`You do not have access to view the current value${canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}`}
+        >
+          <FontAwesomeIcon className="pl-2" size="sm" icon={faEyeSlash} />
+        </Tooltip>
+      )}
       <div className="flex-grow border-r border-r-mineshaft-600 pl-1 pr-2">
-        {secretValueHidden ? (
-          <Blur tooltipText="You do not have permission to read the value of this secret." />
-        ) : (
-          <Controller
-            disabled={isImportedSecret && !defaultValue}
-            control={control}
-            name="value"
-            render={({ field }) => (
-              <InfisicalSecretInput
-                {...field}
-                isReadOnly={isImportedSecret || isRotatedSecret}
-                value={field.value as string}
-                key="secret-input"
-                isVisible={isVisible}
-                secretPath={secretPath}
-                environment={environment}
-                isImport={isImportedSecret}
-              />
-            )}
-          />
-        )}
+        <Controller
+          disabled={isImportedSecret && !defaultValue}
+          control={control}
+          name="value"
+          render={({ field }) => (
+            <InfisicalSecretInput
+              {...field}
+              isReadOnly={isImportedSecret || (isRotatedSecret && !isOverride)}
+              value={field.value as string}
+              key="secret-input"
+              isVisible={isVisible && !secretValueHidden}
+              secretPath={secretPath}
+              environment={environment}
+              isImport={isImportedSecret}
+              defaultValue={secretValueHidden ? "" : undefined}
+            />
+          )}
+        />
       </div>
 
       <div
@@ -306,6 +365,26 @@ export const SecretEditRow = ({
           </>
         )}
       </div>
+      <DeleteActionModal
+        isOpen={popUp.editSecret.isOpen}
+        deleteKey="confirm"
+        buttonColorSchema="secondary"
+        buttonText="Save"
+        subTitle=""
+        title="Do you want to edit this secret?"
+        onChange={(isOpen) => handlePopUpToggle("editSecret", isOpen)}
+        onDeleteApproved={() => handleEditSecret(popUp?.editSecret?.data)}
+        formContent={
+          importedBy &&
+          importedBy.length > 0 && (
+            <CollapsibleSecretImports
+              importedBy={importedBy}
+              secretsToDelete={[secretName]}
+              onlyReferences
+            />
+          )
+        }
+      />
     </div>
   );
 };

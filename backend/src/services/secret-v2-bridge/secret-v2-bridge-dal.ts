@@ -64,7 +64,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
     try {
       const docs = await (tx || db)(TableName.SecretV2)
-        .where(filter)
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter(filter, TableName.SecretV2))
         .leftJoin(
           TableName.SecretV2JnTag,
           `${TableName.SecretV2}.id`,
