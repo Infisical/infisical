@@ -26,6 +26,7 @@ import {
   useListWorkspaceSshHosts,
   useUpdateSshHost
 } from "@app/hooks/api";
+import { LoginMappingSource } from "@app/hooks/api/sshHost/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -48,7 +49,8 @@ const schema = z
     loginMappings: z
       .object({
         loginUser: z.string().trim().min(1),
-        allowedPrincipals: z.array(z.string().trim()).default([])
+        allowedPrincipals: z.array(z.string().trim()).default([]),
+        source: z.nativeEnum(LoginMappingSource)
       })
       .array()
       .default([])
@@ -99,9 +101,10 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
         hostname: sshHost.hostname,
         alias: sshHost.alias ?? "",
         userCertTtl: sshHost.userCertTtl,
-        loginMappings: sshHost.loginMappings.map(({ loginUser, allowedPrincipals }) => ({
+        loginMappings: sshHost.loginMappings.map(({ loginUser, allowedPrincipals, source }) => ({
           loginUser,
-          allowedPrincipals: allowedPrincipals.usernames
+          allowedPrincipals: allowedPrincipals.usernames,
+          source
         }))
       });
 
@@ -121,6 +124,11 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({ hostname, alias, userCertTtl, loginMappings }: FormData) => {
     try {
       if (!projectId) return;
+
+      // Filter out login mappings that are from host groups
+      const hostLoginMappings = loginMappings.filter(
+        (mapping) => mapping.source === LoginMappingSource.HOST
+      );
 
       // check if there is already a different host with the same hostname
       const existingHostnames =
@@ -157,7 +165,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
           hostname,
           alias: trimmedAlias,
           userCertTtl,
-          loginMappings: loginMappings.map(({ loginUser, allowedPrincipals }) => ({
+          loginMappings: hostLoginMappings.map(({ loginUser, allowedPrincipals }) => ({
             loginUser,
             allowedPrincipals: {
               usernames: allowedPrincipals
@@ -170,7 +178,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
           hostname,
           alias: trimmedAlias,
           userCertTtl,
-          loginMappings: loginMappings.map(({ loginUser, allowedPrincipals }) => ({
+          loginMappings: hostLoginMappings.map(({ loginUser, allowedPrincipals }) => ({
             loginUser,
             allowedPrincipals: {
               usernames: allowedPrincipals
@@ -265,7 +273,11 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
               variant="outline_bg"
               onClick={() => {
                 const newIndex = loginMappingsFormFields.fields.length;
-                loginMappingsFormFields.append({ loginUser: "", allowedPrincipals: [""] });
+                loginMappingsFormFields.append({
+                  loginUser: "",
+                  allowedPrincipals: [""],
+                  source: LoginMappingSource.HOST
+                });
                 setExpandedMappings((prev) => ({
                   ...prev,
                   [newIndex]: true
@@ -298,6 +310,12 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                       render={({ field }) => (
                         <span className="text-sm font-medium leading-tight">
                           {field.value || "New Login Mapping"}
+                          {loginMappingsFormFields.fields[i].source ===
+                            LoginMappingSource.HOST_GROUP && (
+                            <span className="ml-2 text-xs text-mineshaft-400">
+                              (inherited from host group)
+                            </span>
+                          )}
                         </span>
                       )}
                     />
@@ -306,6 +324,9 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                     ariaLabel="delete login mapping"
                     variant="plain"
                     onClick={() => loginMappingsFormFields.remove(i)}
+                    isDisabled={
+                      loginMappingsFormFields.fields[i].source === LoginMappingSource.HOST_GROUP
+                    }
                   >
                     <FontAwesomeIcon icon={faTrash} />
                   </IconButton>
@@ -327,7 +348,17 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                             <Input
                               {...field}
                               placeholder="ec2-user"
+                              isDisabled={
+                                loginMappingsFormFields.fields[i].source ===
+                                LoginMappingSource.HOST_GROUP
+                              }
                               onChange={(e) => {
+                                if (
+                                  loginMappingsFormFields.fields[i].source ===
+                                  LoginMappingSource.HOST_GROUP
+                                )
+                                  return;
+
                                 const newValue = e.target.value;
                                 const loginMappings = getValues("loginMappings");
                                 const isDuplicate = loginMappings.some(
@@ -355,17 +386,20 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                           label="Allowed Principals"
                           className="text-xs text-mineshaft-400"
                         />
-                        <Button
-                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                          size="xs"
-                          variant="outline_bg"
-                          onClick={() => {
-                            const current = getValues(`loginMappings.${i}.allowedPrincipals`) ?? [];
-                            setValue(`loginMappings.${i}.allowedPrincipals`, [...current, ""]);
-                          }}
-                        >
-                          Add Principal
-                        </Button>
+                        {loginMappingsFormFields.fields[i].source === LoginMappingSource.HOST && (
+                          <Button
+                            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                            size="xs"
+                            variant="outline_bg"
+                            onClick={() => {
+                              const current =
+                                getValues(`loginMappings.${i}.allowedPrincipals`) ?? [];
+                              setValue(`loginMappings.${i}.allowedPrincipals`, [...current, ""]);
+                            }}
+                          >
+                            Add Principal
+                          </Button>
+                        )}
                       </div>
                       <Controller
                         control={control}
@@ -382,6 +416,12 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                                     <Select
                                       value={principal}
                                       onValueChange={(newValue) => {
+                                        if (
+                                          loginMappingsFormFields.fields[i].source ===
+                                          LoginMappingSource.HOST_GROUP
+                                        )
+                                          return;
+
                                         if (value.includes(newValue)) {
                                           createNotification({
                                             text: "This principal is already added",
@@ -395,6 +435,10 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                                       }}
                                       placeholder="Select a member"
                                       className="w-full"
+                                      isDisabled={
+                                        loginMappingsFormFields.fields[i].source ===
+                                        LoginMappingSource.HOST_GROUP
+                                      }
                                     >
                                       {members.map((member) => (
                                         <SelectItem
@@ -412,11 +456,21 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                                     variant="plain"
                                     className="h-9"
                                     onClick={() => {
+                                      if (
+                                        loginMappingsFormFields.fields[i].source ===
+                                        LoginMappingSource.HOST_GROUP
+                                      )
+                                        return;
+
                                       const newPrincipals = value.filter(
                                         (_, idx) => idx !== principalIndex
                                       );
                                       onChange(newPrincipals);
                                     }}
+                                    isDisabled={
+                                      loginMappingsFormFields.fields[i].source ===
+                                      LoginMappingSource.HOST_GROUP
+                                    }
                                   >
                                     <FontAwesomeIcon icon={faTrash} />
                                   </IconButton>

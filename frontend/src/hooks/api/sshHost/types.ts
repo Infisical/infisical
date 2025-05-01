@@ -1,3 +1,8 @@
+export enum LoginMappingSource {
+  HOST = "host",
+  HOST_GROUP = "hostGroup"
+}
+
 export type TSshHost = {
   id: string;
   projectId: string;
@@ -10,6 +15,7 @@ export type TSshHost = {
     allowedPrincipals: {
       usernames: string[];
     };
+    source: LoginMappingSource;
   }[];
 };
 

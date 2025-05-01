@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
+import { LoginMappingSource } from "@app/ee/services/ssh-host/ssh-host-types";
 import { isValidHostname } from "@app/ee/services/ssh-host/ssh-host-validators";
 import { SSH_HOSTS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
@@ -24,7 +25,11 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.array(
           sanitizedSshHost.extend({
-            loginMappings: z.array(loginMappingSchema)
+            loginMappings: loginMappingSchema
+              .extend({
+                source: z.nativeEnum(LoginMappingSource)
+              })
+              .array()
           })
         )
       }
@@ -54,7 +59,11 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: sanitizedSshHost.extend({
-          loginMappings: z.array(loginMappingSchema)
+          loginMappings: loginMappingSchema
+            .extend({
+              source: z.nativeEnum(LoginMappingSource)
+            })
+            .array()
         })
       }
     },
@@ -119,7 +128,11 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: sanitizedSshHost.extend({
-          loginMappings: z.array(loginMappingSchema)
+          loginMappings: loginMappingSchema
+            .extend({
+              source: z.nativeEnum(LoginMappingSource)
+            })
+            .array()
         })
       }
     },
@@ -192,7 +205,11 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: sanitizedSshHost.extend({
-          loginMappings: z.array(loginMappingSchema)
+          loginMappings: loginMappingSchema
+            .extend({
+              source: z.nativeEnum(LoginMappingSource)
+            })
+            .array()
         })
       }
     },
@@ -240,7 +257,11 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: sanitizedSshHost.extend({
-          loginMappings: z.array(loginMappingSchema)
+          loginMappings: loginMappingSchema
+            .extend({
+              source: z.nativeEnum(LoginMappingSource)
+            })
+            .array()
         })
       }
     },

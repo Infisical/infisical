@@ -29,6 +29,7 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { fetchSshHostUserCaPublicKey, useListWorkspaceSshHosts } from "@app/hooks/api";
+import { LoginMappingSource } from "@app/hooks/api/sshHost/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -90,9 +91,16 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                       {host.loginMappings.length === 0 ? (
                         <span className="italic text-mineshaft-400">None</span>
                       ) : (
-                        host.loginMappings.map(({ loginUser, allowedPrincipals }) => (
+                        host.loginMappings.map(({ loginUser, allowedPrincipals, source }) => (
                           <div key={`${host.id}-${loginUser}`} className="mb-2">
-                            <div className="text-mineshaft-200">{loginUser}</div>
+                            <div className="text-mineshaft-200">
+                              {loginUser}
+                              {source === LoginMappingSource.HOST_GROUP && (
+                                <span className="ml-2 text-xs text-mineshaft-400">
+                                  (inherited from host group)
+                                </span>
+                              )}
+                            </div>
                             {allowedPrincipals.usernames.map((username) => (
                               <div key={`${host.id}-${loginUser}-${username}`} className="ml-4">
                                 └─ {username}

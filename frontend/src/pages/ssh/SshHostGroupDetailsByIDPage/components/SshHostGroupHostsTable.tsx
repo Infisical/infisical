@@ -42,6 +42,7 @@ export const SshHostGroupHostsTable = ({ sshHostGroupId, handlePopUpOpen }: Prop
             <Tr>
               <Th>Alias</Th>
               <Th>Hostname</Th>
+              <Th>Added On</Th>
               <Th />
             </Tr>
           </THead>
@@ -53,6 +54,7 @@ export const SshHostGroupHostsTable = ({ sshHostGroupId, handlePopUpOpen }: Prop
                   <Tr className="h-10" key={`host-${host.id}`}>
                     <Td>{host.alias ?? "-"}</Td>
                     <Td>{host.hostname}</Td>
+                    <Td>{new Date(host.joinedGroupAt).toLocaleDateString()}</Td>
                     <Td className="flex justify-end">
                       <ProjectPermissionCan
                         I={ProjectPermissionActions.Edit}

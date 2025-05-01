@@ -14,6 +14,7 @@ import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-s
 import { sanitizedSshCertificate } from "@app/ee/services/ssh-certificate/ssh-certificate-schema";
 import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-schema";
 import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
+import { LoginMappingSource } from "@app/ee/services/ssh-host/ssh-host-types";
 import { sanitizedSshHostGroup } from "@app/ee/services/ssh-host-group/ssh-host-group-schema";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -632,7 +633,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           hosts: z.array(
             sanitizedSshHost.extend({
-              loginMappings: z.array(loginMappingSchema)
+              loginMappings: loginMappingSchema
+                .extend({
+                  source: z.nativeEnum(LoginMappingSource)
+                })
+                .array()
             })
           )
         })
@@ -666,7 +671,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           groups: z.array(
             sanitizedSshHostGroup.extend({
-              loginMappings: z.array(loginMappingSchema),
+              loginMappings: loginMappingSchema.array(),
               hostCount: z.number()
             })
           )

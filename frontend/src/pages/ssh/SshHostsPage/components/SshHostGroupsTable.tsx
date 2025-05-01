@@ -43,7 +43,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
           <THead>
             <Tr>
               <Th>Name</Th>
-              <Th># Hosts</Th>
+              <Th># Hosts in Group</Th>
               <Th>Login User - Authorized Principals Mapping</Th>
               <Th />
             </Tr>

@@ -16,6 +16,11 @@ export type TLoginMapping = {
   };
 };
 
+export enum LoginMappingSource {
+  HOST = "host",
+  HOST_GROUP = "hostGroup"
+}
+
 export type TCreateSshHostDTO = {
   hostname: string;
   alias?: string;

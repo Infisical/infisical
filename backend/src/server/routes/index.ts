@@ -855,13 +855,15 @@ export const registerRoutes = async (
   });
 
   const sshHostGroupService = sshHostGroupServiceFactory({
+    projectDAL,
     sshHostDAL,
     sshHostGroupDAL,
     sshHostGroupMembershipDAL,
     sshHostLoginUserDAL,
     sshHostLoginUserMappingDAL,
     userDAL,
-    permissionService
+    permissionService,
+    licenseService
   });
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({

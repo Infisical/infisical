@@ -8,9 +8,11 @@ import { TSshHostLoginUserMappingDALFactory } from "@app/ee/services/ssh-host/ss
 import { TSshHostLoginUserDALFactory } from "@app/ee/services/ssh-host/ssh-login-user-dal";
 import { TSshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
 import { TSshHostGroupMembershipDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-membership-dal";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { createSshLoginMappings } from "../ssh-host/ssh-host-fns";
 import {
   TAddHostToSshHostGroupDTO,
@@ -23,7 +25,8 @@ import {
 } from "./ssh-host-group-types";
 
 type TSshHostGroupServiceFactoryDep = {
-  sshHostDAL: TSshHostDALFactory; // TODO: Pick
+  projectDAL: Pick<TProjectDALFactory, "findById" | "find">;
+  sshHostDAL: Pick<TSshHostDALFactory, "findSshHostByIdWithLoginMappings">;
   sshHostGroupDAL: Pick<
     TSshHostGroupDALFactory,
     | "create"
@@ -33,24 +36,29 @@ type TSshHostGroupServiceFactoryDep = {
     | "transaction"
     | "findSshHostGroupByIdWithLoginMappings"
     | "findAllSshHostsInGroup"
+    | "findOne"
+    | "find"
   >;
-  sshHostGroupMembershipDAL: TSshHostGroupMembershipDALFactory; // TODO: Pick
+  sshHostGroupMembershipDAL: Pick<TSshHostGroupMembershipDALFactory, "create" | "deleteById" | "findOne">;
   sshHostLoginUserDAL: Pick<TSshHostLoginUserDALFactory, "create" | "transaction" | "delete">;
   sshHostLoginUserMappingDAL: Pick<TSshHostLoginUserMappingDALFactory, "insertMany">;
   userDAL: Pick<TUserDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getUserProjectPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TSshHostGroupServiceFactory = ReturnType<typeof sshHostGroupServiceFactory>;
 
 export const sshHostGroupServiceFactory = ({
+  projectDAL,
   sshHostDAL,
   sshHostGroupDAL,
   sshHostGroupMembershipDAL,
   sshHostLoginUserDAL,
   sshHostLoginUserMappingDAL,
   userDAL,
-  permissionService
+  permissionService,
+  licenseService
 }: TSshHostGroupServiceFactoryDep) => {
   const createSshHostGroup = async ({
     projectId,
@@ -72,11 +80,38 @@ export const sshHostGroupServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.SshHostGroups);
 
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.sshHostGroups)
+      throw new BadRequestError({
+        message: "Failed to create SSH host group due to plan restriction. Upgrade plan to create group."
+      });
+
     const newSshHostGroup = await sshHostGroupDAL.transaction(async (tx) => {
+      // (dangtony98): room to optimize check to ensure that
+      // the SSH host group name is unique across the whole org
+      const project = await projectDAL.findById(projectId);
+      if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+      const projects = await projectDAL.find({
+        orgId: project.orgId
+      });
+
+      const existingSshHostGroup = await sshHostGroupDAL.find({
+        name,
+        $in: {
+          projectId: projects.map((p) => p.id)
+        }
+      });
+
+      if (existingSshHostGroup.length) {
+        throw new BadRequestError({
+          message: `SSH host group with name '${name}' already exists in the organization`
+        });
+      }
+
       const sshHostGroup = await sshHostGroupDAL.create(
         {
           projectId,
-          name // TODO: check that this is unique across the whole org
+          name
         },
         tx
       );
@@ -130,6 +165,12 @@ export const sshHostGroupServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SshHostGroups);
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.sshHostGroups)
+      throw new BadRequestError({
+        message: "Failed to update SSH host group due to plan restriction. Upgrade plan to update group."
+      });
 
     const updatedSshHostGroup = await sshHostGroupDAL.transaction(async (tx) => {
       await sshHostGroupDAL.updateById(
@@ -280,8 +321,7 @@ export const sshHostGroupServiceFactory = ({
       actionProjectType: ActionProjectType.SSH
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshHostGroups);
-    // TODO: look over permissioning
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SshHostGroups);
 
     await sshHostGroupMembershipDAL.create({ sshHostGroupId, sshHostId: hostId });
 
@@ -296,10 +336,6 @@ export const sshHostGroupServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TRemoveHostFromSshHostGroupDTO) => {
-    console.log("removeHostFromSshHostGroup args: ", {
-      sshHostGroupId,
-      hostId
-    });
     const sshHostGroup = await sshHostGroupDAL.findSshHostGroupByIdWithLoginMappings(sshHostGroupId);
     if (!sshHostGroup) throw new NotFoundError({ message: `SSH host group with ID '${sshHostGroupId}' not found` });
 
@@ -326,7 +362,6 @@ export const sshHostGroupServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SshHostGroups);
-    // TODO: look over permissioning
 
     const sshHostGroupMembership = await sshHostGroupMembershipDAL.findOne({
       sshHostGroupId,
@@ -338,10 +373,6 @@ export const sshHostGroupServiceFactory = ({
         message: `SSH host with ID ${hostId} not found in SSH host group with ID ${sshHostGroupId}`
       });
     }
-
-    console.log("boom: ", {
-      sshHostGroupMembership
-    });
 
     await sshHostGroupMembershipDAL.deleteById(sshHostGroupMembership.id);
 

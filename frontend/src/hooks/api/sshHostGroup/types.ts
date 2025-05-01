@@ -39,7 +39,7 @@ export type TDeleteSshHostGroupDTO = {
 };
 
 export type TListSshHostGroupHostsResponse = {
-  hosts: TSshHost[];
+  hosts: TSshHost & { joinedGroupAt: string; isPartOfGroup: boolean }[];
   totalCount: number;
 };
 
