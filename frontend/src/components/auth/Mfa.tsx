@@ -191,7 +191,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
             </div>
           )}
         </div>
-        <div className="mx-auto mt-4 block w-max md:hidden">
+        <div className="mx-auto mt-4 block w-max min-w-[18rem] md:hidden">
           {method === MfaMethod.EMAIL && (
             <ReactCodeInput
               name=""
