@@ -92,7 +92,7 @@ export const CachingPanel = () => {
 
       <DeleteActionModal
         isOpen={popUp.invalidateCache.isOpen}
-        title={`Are you sure want to invalidate ${type} cache?`}
+        title={`Are you sure you want to invalidate ${type} cache?`}
         subTitle="This action is permanent and irreversible. The cache clearing process may take several minutes to complete."
         onChange={(isOpen) => handlePopUpToggle("invalidateCache", isOpen)}
         deleteKey="confirm"
