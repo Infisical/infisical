@@ -30,8 +30,6 @@ export const OAuthCallbackPage = () => {
 
   const { state: rawState, code } = search;
 
-  console.log("the code is ", code);
-
   const state = stateSchema.parse(rawState);
 
   const clearState = () => {
