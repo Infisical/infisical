@@ -19,8 +19,11 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
-import { revocationReasonToCrlCode } from "./certificate-fns";
+import { revocationReasonToCrlCode, splitPemChain } from "./certificate-fns";
 import {
+  CertExtendedKeyUsage,
+  CertExtendedKeyUsageOIDToName,
+  CertKeyUsage,
   CertStatus,
   TDeleteCertDTO,
   TGetCertBodyDTO,
@@ -273,46 +276,54 @@ export const certificateServiceFactory = ({
     }
 
     // Parse the certificate
-    const certObj = new x509.X509Certificate(certificatePem);
+    const leafCert = new x509.X509Certificate(certificatePem);
 
     // Verify the certificate chain
-    if (chainPem) {
-      const chainCert = new x509.X509Certificate(chainPem);
-      if (!(await certObj.verify({ publicKey: chainCert.publicKey }))) {
-        throw new BadRequestError({ message: "Certificate chain verification failed" });
-      }
+    const chainCerts = splitPemChain(chainPem).map((pem) => new x509.X509Certificate(pem));
+    if (chainCerts.length === 0) {
+      throw new BadRequestError({
+        message: "Certificate chain must contain at least one issuer certificate"
+      });
     }
 
-    // If private key provided, verify it matches the certificate
-    if (privateKeyPem) {
-      try {
-        const message = Buffer.from("certificate-verification-test");
+    const chainValidationPromises = chainCerts.map((issuerCert) =>
+      leafCert.verify({ publicKey: issuerCert.publicKey }).catch(() => false)
+    );
 
-        const privateKey = createPrivateKey(privateKeyPem);
-        const publicKey = createPublicKey(certificatePem);
+    const results = await Promise.all(chainValidationPromises);
 
-        const signature = sign(null, message, privateKey);
-        const isValid = verify(null, message, publicKey, signature);
+    if (!results.some((result) => result === true)) {
+      throw new BadRequestError({ message: "Certificate chain verification failed" });
+    }
 
-        if (!isValid) {
-          throw new BadRequestError({ message: "Private key does not match certificate" });
-        }
-      } catch (err) {
-        throw new BadRequestError({ message: "Invalid private key format" });
+    // Verify private key matches the certificate
+    try {
+      const message = Buffer.from("certificate-verification-test");
+
+      const privateKey = createPrivateKey(privateKeyPem);
+      const publicKey = createPublicKey(certificatePem);
+
+      const signature = sign(null, message, privateKey);
+      const isValid = verify(null, message, publicKey, signature);
+
+      if (!isValid) {
+        throw new BadRequestError({ message: "Private key does not match certificate" });
       }
+    } catch (err) {
+      throw new BadRequestError({ message: "Invalid private key format" });
     }
 
     // Get certificate attributes
-    const commonName = Array.from(certObj.subjectName.getField("CN")?.values() || [])[0] || "";
+    const commonName = Array.from(leafCert.subjectName.getField("CN")?.values() || [])[0] || "";
 
     let altNames: undefined | string;
-    const sanExtension = certObj.extensions.find((ext) => ext.type === "2.5.29.17");
+    const sanExtension = leafCert.extensions.find((ext) => ext.type === "2.5.29.17");
     if (sanExtension) {
       const sanNames = new x509.GeneralNames(sanExtension.value);
       altNames = sanNames.items.map((name) => name.value).join(", ");
     }
 
-    const { serialNumber, notBefore, notAfter } = certObj;
+    const { serialNumber, notBefore, notAfter } = leafCert;
 
     // Encrypt certificate for storage
     const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
@@ -328,50 +339,83 @@ export const certificateServiceFactory = ({
       plainText: Buffer.from(certificatePem)
     });
 
-    await certificateDAL.transaction(async (tx) => {
-      const cert = await certificateDAL.create(
-        {
-          status: CertStatus.ACTIVE,
-          friendlyName: friendlyName || commonName,
-          commonName,
-          altNames,
-          serialNumber,
-          notBefore,
-          notAfter,
-          projectId
-          // TODO(andrey): Add keyUsages and extendedKeyUsages
-          // keyUsages,
-          // extendedKeyUsages
-        },
-        tx
-      );
+    // Extract Key Usage
+    const keyUsagesExt = leafCert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
 
-      await certificateBodyDAL.create(
-        {
-          certId: cert.id,
-          encryptedCertificate
-        },
-        tx
+    let keyUsages: CertKeyUsage[] = [];
+    if (keyUsagesExt) {
+      keyUsages = Object.values(CertKeyUsage).filter(
+        // eslint-disable-next-line no-bitwise
+        (keyUsage) => (x509.KeyUsageFlags[keyUsage] & keyUsagesExt.usages) !== 0
       );
+    }
 
-      if (collectionId) {
-        await pkiCollectionItemDAL.create(
+    // Extract Extended Key Usage
+    const extKeyUsageExt = leafCert.getExtension("2.5.29.37") as x509.ExtendedKeyUsageExtension;
+    let extendedKeyUsages: CertExtendedKeyUsage[] = [];
+    if (extKeyUsageExt) {
+      extendedKeyUsages = extKeyUsageExt.usages.map((ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string]);
+    }
+
+    const cert = await certificateDAL.transaction(async (tx) => {
+      try {
+        const txCert = await certificateDAL.create(
           {
-            pkiCollectionId: collectionId,
-            certId: cert.id
+            status: CertStatus.ACTIVE,
+            friendlyName: friendlyName || commonName,
+            commonName,
+            altNames,
+            serialNumber,
+            notBefore,
+            notAfter,
+            projectId,
+            keyUsages,
+            extendedKeyUsages
           },
           tx
         );
-      }
 
-      return cert;
+        await certificateBodyDAL.create(
+          {
+            certId: txCert.id,
+            encryptedCertificate
+          },
+          tx
+        );
+
+        if (collectionId) {
+          await pkiCollectionItemDAL.create(
+            {
+              pkiCollectionId: collectionId,
+              certId: txCert.id
+            },
+            tx
+          );
+        }
+
+        return txCert;
+      } catch (error: unknown) {
+        if (
+          typeof error === "object" &&
+          error !== null &&
+          "error" in error &&
+          error.error &&
+          typeof error.error === "object" &&
+          "code" in error.error &&
+          error.error.code === "23505"
+        ) {
+          throw new BadRequestError({ message: "Certificate serial already exists in your project" });
+        }
+        throw error;
+      }
     });
 
     return {
       certificate: certificatePem,
       certificateChain: chainPem,
       privateKey: privateKeyPem,
-      serialNumber
+      serialNumber,
+      cert
     };
   };
 

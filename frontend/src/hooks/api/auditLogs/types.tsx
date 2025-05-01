@@ -582,6 +582,14 @@ interface IssueCert {
     serialNumber: string;
   };
 }
+interface ImportCert {
+  type: EventType.IMPORT_CERT;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
 
 interface GetCert {
   type: EventType.GET_CERT;
@@ -874,6 +882,7 @@ export type Event =
   | ImportCaCert
   | GetCaCrl
   | IssueCert
+  | ImportCert
   | GetCert
   | DeleteCert
   | RevokeCert

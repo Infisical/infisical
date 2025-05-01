@@ -46,3 +46,6 @@ export const constructPemChainFromCerts = (certificates: x509.X509Certificate[])
     .map((cert) => cert.toString("pem"))
     .join("\n")
     .trim();
+
+export const splitPemChain = (pemText: string) =>
+  pemText.match(/-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----/g) || [];

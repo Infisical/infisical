@@ -192,8 +192,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         projectSlug: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.projectSlug),
 
         certificatePem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.certificatePem),
-        privateKeyPem: z.string().trim().optional().describe(CERTIFICATES.IMPORT.privateKeyPem),
-        chainPem: z.string().trim().optional().describe(CERTIFICATES.IMPORT.chainPem),
+        privateKeyPem: z.string().trim().describe(CERTIFICATES.IMPORT.privateKeyPem),
+        chainPem: z.string().trim().describe(CERTIFICATES.IMPORT.chainPem),
 
         friendlyName: z.string().trim().optional().describe(CERTIFICATES.IMPORT.friendlyName),
         pkiCollectionId: z.string().trim().optional().describe(CERTIFICATES.IMPORT.pkiCollectionId)
@@ -201,45 +201,34 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATES.IMPORT.certificate),
-          certificateChain: z.string().trim().optional().describe(CERTIFICATES.IMPORT.certificateChain),
-          privateKey: z.string().trim().optional().describe(CERTIFICATES.IMPORT.privateKey),
+          certificateChain: z.string().trim().describe(CERTIFICATES.IMPORT.certificateChain),
+          privateKey: z.string().trim().describe(CERTIFICATES.IMPORT.privateKey),
           serialNumber: z.string().trim().describe(CERTIFICATES.IMPORT.serialNumber)
         })
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, privateKey, serialNumber } = await server.services.certificate.importCert({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.body
+      const { certificate, certificateChain, privateKey, serialNumber, cert } =
+        await server.services.certificate.importCert({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.body
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: cert.projectId,
+        event: {
+          type: EventType.IMPORT_CERT,
+          metadata: {
+            certId: cert.id,
+            cn: cert.commonName,
+            serialNumber
+          }
+        }
       });
-
-      // TODO(andrey): Add logs
-      // await server.services.auditLog.createAuditLog({
-      //   ...req.auditLogInfo,
-      //   projectId: ca.projectId,
-      //   event: {
-      //     type: EventType.ISSUE_CERT,
-      //     metadata: {
-      //       caId: ca.id,
-      //       dn: ca.dn,
-      //       serialNumber
-      //     }
-      //   }
-      // });
-
-      // await server.services.telemetry.sendPostHogEvents({
-      //   event: PostHogEventTypes.IssueCert,
-      //   distinctId: getTelemetryDistinctId(req),
-      //   properties: {
-      //     caId: req.body.caId,
-      //     certificateTemplateId: req.body.certificateTemplateId,
-      //     commonName: req.body.commonName,
-      //     ...req.auditLogInfo
-      //   }
-      // });
 
       return {
         certificate,

@@ -9,10 +9,10 @@ import { useDeleteCert } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CertificateCertModal } from "./CertificateCertModal";
+import { CertificateImportModal } from "./CertificateImportModal";
 import { CertificateModal } from "./CertificateModal";
 import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
-import { CertificateImportModal } from "./CertificateImportModal";
 
 export const CertificatesSection = () => {
   const { currentWorkspace } = useWorkspace();

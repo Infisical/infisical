@@ -81,6 +81,6 @@ export type TImportCertDTO = {
   pkiCollectionId?: string;
 
   certificatePem: string;
-  privateKeyPem?: string;
-  chainPem?: string;
+  privateKeyPem: string;
+  chainPem: string;
 } & Omit<TProjectPermission, "projectId">;

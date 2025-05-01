@@ -15,43 +15,18 @@ import {
   TextArea
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { useImportCertificate, useGetCert, useListWorkspacePkiCollections } from "@app/hooks/api";
+import { useGetCert, useImportCertificate, useListWorkspacePkiCollections } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CertificateContent } from "./CertificateContent";
 
 const schema = z.object({
   certificatePem: z.string().trim().min(1, "Certificate PEM is required"),
-  privateKeyPem: z.string().trim().optional(),
-  chainPem: z.string().trim().optional(),
+  privateKeyPem: z.string().trim(),
+  chainPem: z.string().trim(),
 
   friendlyName: z.string(),
   collectionId: z.string().optional()
-
-  // Can be added as override fields in the future | Also edit /frontend/src/hooks/api/ca/types.ts
-  // commonName: z.string().trim().min(1),
-  // altNames: z.string(),
-
-  // Can be added as override fields in the future | Also edit /frontend/src/hooks/api/ca/types.ts
-  // keyUsages: z.object({
-  //   [CertKeyUsage.DIGITAL_SIGNATURE]: z.boolean().optional(),
-  //   [CertKeyUsage.KEY_ENCIPHERMENT]: z.boolean().optional(),
-  //   [CertKeyUsage.NON_REPUDIATION]: z.boolean().optional(),
-  //   [CertKeyUsage.DATA_ENCIPHERMENT]: z.boolean().optional(),
-  //   [CertKeyUsage.KEY_AGREEMENT]: z.boolean().optional(),
-  //   [CertKeyUsage.KEY_CERT_SIGN]: z.boolean().optional(),
-  //   [CertKeyUsage.CRL_SIGN]: z.boolean().optional(),
-  //   [CertKeyUsage.ENCIPHER_ONLY]: z.boolean().optional(),
-  //   [CertKeyUsage.DECIPHER_ONLY]: z.boolean().optional()
-  // }),
-  // extendedKeyUsages: z.object({
-  //   [CertExtendedKeyUsage.CLIENT_AUTH]: z.boolean().optional(),
-  //   [CertExtendedKeyUsage.CODE_SIGNING]: z.boolean().optional(),
-  //   [CertExtendedKeyUsage.EMAIL_PROTECTION]: z.boolean().optional(),
-  //   [CertExtendedKeyUsage.OCSP_SIGNING]: z.boolean().optional(),
-  //   [CertExtendedKeyUsage.SERVER_AUTH]: z.boolean().optional(),
-  //   [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
-  // })
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -195,33 +170,14 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
               name="certificatePem"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
-                  label="Certificate PEM"
+                  label="Leaf Certificate PEM"
                   isError={Boolean(error)}
+                  errorText={error?.message}
                   isRequired
-                  errorText={error?.message}
                 >
                   <TextArea
                     {...field}
-                    placeholder="TODO(andrey): Pem placeholder"
-                    isDisabled={Boolean(cert)}
-                  />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              defaultValue=""
-              name="chainPem"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Certificate Chain PEM"
-                  isError={Boolean(error)}
-                  isOptional
-                  errorText={error?.message}
-                >
-                  <TextArea
-                    {...field}
-                    placeholder="TODO(andrey): Pem placeholder"
+                    placeholder={"-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"}
                     isDisabled={Boolean(cert)}
                   />
                 </FormControl>
@@ -235,12 +191,33 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <FormControl
                   label="Private Key PEM"
                   isError={Boolean(error)}
-                  isOptional
                   errorText={error?.message}
+                  isRequired
                 >
                   <TextArea
                     {...field}
-                    placeholder="TODO(andrey): Pem placeholder"
+                    placeholder={
+                      "-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----"
+                    }
+                    isDisabled={Boolean(cert)}
+                  />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue=""
+              name="chainPem"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Certificate Chain PEM"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  isRequired
+                >
+                  <TextArea
+                    {...field}
+                    placeholder={"-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"}
                     isDisabled={Boolean(cert)}
                   />
                 </FormControl>

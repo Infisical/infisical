@@ -1389,7 +1389,7 @@ export const certificateAuthorityServiceFactory = ({
           notAfter: notAfterDate,
           keyUsages: selectedKeyUsages,
           extendedKeyUsages: selectedExtendedKeyUsages,
-          projectId: ca.projectId
+          projectId: (ca as TCertificateAuthorities).projectId
         },
         tx
       );
@@ -1782,7 +1782,7 @@ export const certificateAuthorityServiceFactory = ({
           notAfter: notAfterDate,
           keyUsages: selectedKeyUsages,
           extendedKeyUsages: selectedExtendedKeyUsages,
-          projectId: ca.projectId
+          projectId: (ca as TCertificateAuthorities).projectId
         },
         tx
       );
