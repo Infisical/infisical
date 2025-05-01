@@ -120,7 +120,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                           </ProjectPermissionCan>
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Delete}
-                            a={ProjectPermissionSub.SshHosts}
+                            a={ProjectPermissionSub.SshHostGroups}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem

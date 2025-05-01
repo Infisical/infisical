@@ -1,37 +1,22 @@
-import { TSshHost } from "../sshHost/types";
+import { TLoginMapping, TSshHost } from "../sshHost/types";
 
 export type TSshHostGroup = {
   id: string;
   projectId: string;
   name: string;
-  loginMappings: {
-    loginUser: string;
-    allowedPrincipals: {
-      usernames: string[];
-    };
-  }[];
+  loginMappings: TLoginMapping[];
 };
 
 export type TCreateSshHostGroupDTO = {
   projectId: string;
   name: string;
-  loginMappings: {
-    loginUser: string;
-    allowedPrincipals: {
-      usernames: string[];
-    };
-  }[];
+  loginMappings: TLoginMapping[];
 };
 
 export type TUpdateSshHostGroupDTO = {
   sshHostGroupId: string;
   name?: string;
-  loginMappings?: {
-    loginUser: string;
-    allowedPrincipals: {
-      usernames: string[];
-    };
-  }[];
+  loginMappings?: TLoginMapping[];
 };
 
 export type TDeleteSshHostGroupDTO = {
@@ -39,7 +24,7 @@ export type TDeleteSshHostGroupDTO = {
 };
 
 export type TListSshHostGroupHostsResponse = {
-  hosts: TSshHost & { joinedGroupAt: string; isPartOfGroup: boolean }[];
+  hosts: (TSshHost & { joinedGroupAt: string; isPartOfGroup: boolean })[];
   totalCount: number;
 };
 

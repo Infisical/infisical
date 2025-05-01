@@ -34,7 +34,7 @@ type Props = {
 
 const schema = z
   .object({
-    name: z.string().trim(),
+    name: z.string().trim().min(1).max(64),
     loginMappings: z
       .object({
         loginUser: z.string().trim().min(1),

@@ -38,7 +38,8 @@ export const AddHostGroupMemberModal = ({ popUp, handlePopUpToggle }: Props) => 
     sshHostGroupId: popUpData?.sshHostGroupId,
     filter: EHostGroupMembershipFilter.NON_GROUP_MEMBERS
   });
-  const { mutateAsync: addHostToSshHostGroup } = useAddHostToSshHostGroup();
+  const { mutateAsync: addHostToSshHostGroup, isPending: isAddingHostToSshHostGroup } =
+    useAddHostToSshHostGroup();
 
   const handleAddHost = async (sshHostId: string) => {
     try {
@@ -99,11 +100,11 @@ export const AddHostGroupMemberModal = ({ popUp, handlePopUpToggle }: Props) => 
                         >
                           {(isAllowed) => (
                             <Button
-                              isLoading={isPending}
+                              isLoading={isAddingHostToSshHostGroup}
                               isDisabled={!isAllowed}
                               colorSchema="primary"
                               variant="outline_bg"
-                              type="submit"
+                              type="button"
                               onClick={() => handleAddHost(host.id)}
                             >
                               Add

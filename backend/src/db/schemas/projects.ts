@@ -27,7 +27,7 @@ export const ProjectsSchema = z.object({
   description: z.string().nullable().optional(),
   type: z.string(),
   enforceCapitalization: z.boolean().default(false),
-  hasDeleteProtection: z.boolean().default(false).nullable().optional()
+  hasDeleteProtection: z.boolean().default(true).nullable().optional()
 });
 
 export type TProjects = z.infer<typeof ProjectsSchema>;

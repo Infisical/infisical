@@ -1603,6 +1603,7 @@ interface GetSshHostGroupHostsEvent {
   type: EventType.GET_SSH_HOST_GROUP_HOSTS;
   metadata: {
     sshHostGroupId: string;
+    name: string;
   };
 }
 

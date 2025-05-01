@@ -89,18 +89,24 @@ export const sshHostGroupServiceFactory = ({
     const newSshHostGroup = await sshHostGroupDAL.transaction(async (tx) => {
       // (dangtony98): room to optimize check to ensure that
       // the SSH host group name is unique across the whole org
-      const project = await projectDAL.findById(projectId);
+      const project = await projectDAL.findById(projectId, tx);
       if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-      const projects = await projectDAL.find({
-        orgId: project.orgId
-      });
+      const projects = await projectDAL.find(
+        {
+          orgId: project.orgId
+        },
+        { tx }
+      );
 
-      const existingSshHostGroup = await sshHostGroupDAL.find({
-        name,
-        $in: {
-          projectId: projects.map((p) => p.id)
-        }
-      });
+      const existingSshHostGroup = await sshHostGroupDAL.find(
+        {
+          name,
+          $in: {
+            projectId: projects.map((p) => p.id)
+          }
+        },
+        { tx }
+      );
 
       if (existingSshHostGroup.length) {
         throw new BadRequestError({
@@ -307,7 +313,7 @@ export const sshHostGroupServiceFactory = ({
     }
 
     if (sshHostGroup.projectId !== sshHost.projectId) {
-      throw new NotFoundError({
+      throw new BadRequestError({
         message: `SSH host with ID ${hostId} not found in project ${sshHostGroup.projectId}`
       });
     }
@@ -347,7 +353,7 @@ export const sshHostGroupServiceFactory = ({
     }
 
     if (sshHostGroup.projectId !== sshHost.projectId) {
-      throw new NotFoundError({
+      throw new BadRequestError({
         message: `SSH host with ID ${hostId} not found in project ${sshHostGroup.projectId}`
       });
     }

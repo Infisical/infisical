@@ -63,7 +63,7 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
       description: "Create SSH Host Group",
       body: z.object({
         projectId: z.string().describe(SSH_HOST_GROUPS.CREATE.projectId),
-        name: slugSchema({ min: 0, max: 64, field: "name" }).describe(SSH_HOST_GROUPS.CREATE.name),
+        name: slugSchema({ min: 1, max: 64, field: "name" }).describe(SSH_HOST_GROUPS.CREATE.name),
         loginMappings: z.array(loginMappingSchema).default([]).describe(SSH_HOST_GROUPS.CREATE.loginMappings)
       }),
       response: {
@@ -107,12 +107,12 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Update SSH Host",
+      description: "Update SSH Host Group",
       params: z.object({
         sshHostGroupId: z.string().trim().describe(SSH_HOST_GROUPS.UPDATE.sshHostGroupId)
       }),
       body: z.object({
-        name: slugSchema({ min: 0, max: 64, field: "name" }).describe(SSH_HOST_GROUPS.UPDATE.name).optional(),
+        name: slugSchema({ min: 1, max: 64, field: "name" }).describe(SSH_HOST_GROUPS.UPDATE.name).optional(),
         loginMappings: z.array(loginMappingSchema).optional().describe(SSH_HOST_GROUPS.UPDATE.loginMappings)
       }),
       response: {
@@ -239,7 +239,8 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
         event: {
           type: EventType.GET_SSH_HOST_GROUP_HOSTS,
           metadata: {
-            sshHostGroupId: req.params.sshHostGroupId
+            sshHostGroupId: req.params.sshHostGroupId,
+            name: sshHostGroup.name
           }
         }
       });

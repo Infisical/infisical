@@ -47,7 +47,7 @@ export const SshHostGroupHostsTable = ({ sshHostGroupId, handlePopUpOpen }: Prop
             </Tr>
           </THead>
           <TBody>
-            {isPending && <TableSkeleton columns={2} innerKey="ssh-host-group-hosts" />}
+            {isPending && <TableSkeleton columns={4} innerKey="ssh-host-group-hosts" />}
             {!isPending &&
               data?.hosts.map((host) => {
                 return (
@@ -61,10 +61,10 @@ export const SshHostGroupHostsTable = ({ sshHostGroupId, handlePopUpOpen }: Prop
                         a={ProjectPermissionSub.SshHostGroups}
                       >
                         {(isAllowed) => (
-                          <Tooltip content="Remove user from group">
+                          <Tooltip content="Remove host from group">
                             <IconButton
                               isDisabled={!isAllowed}
-                              ariaLabel="Remove user from group"
+                              ariaLabel="Remove host from group"
                               onClick={() =>
                                 handlePopUpOpen("removeHostFromSshHostGroup", {
                                   sshHostId: host.id,

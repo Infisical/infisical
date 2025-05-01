@@ -56,11 +56,14 @@ export const SshHostGroupsSection = () => {
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Host Groups</p>
-        <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.SshHosts}>
+        <ProjectPermissionCan
+          I={ProjectPermissionActions.Create}
+          a={ProjectPermissionSub.SshHostGroups}
+        >
           {(isAllowed) => (
             <Button
               colorSchema="primary"
-              type="submit"
+              type="button"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => handleAddSshHostGroupModal()}
               isDisabled={!isAllowed}

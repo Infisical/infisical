@@ -3,6 +3,14 @@ export enum LoginMappingSource {
   HOST_GROUP = "hostGroup"
 }
 
+export type TLoginMapping = {
+  loginUser: string;
+  allowedPrincipals: {
+    usernames: string[];
+  };
+  source: LoginMappingSource;
+};
+
 export type TSshHost = {
   id: string;
   projectId: string;
@@ -10,13 +18,7 @@ export type TSshHost = {
   alias: string | null;
   userCertTtl: string;
   hostCertTtl: string;
-  loginMappings: {
-    loginUser: string;
-    allowedPrincipals: {
-      usernames: string[];
-    };
-    source: LoginMappingSource;
-  }[];
+  loginMappings: TLoginMapping[];
 };
 
 export type TCreateSshHostDTO = {
@@ -25,12 +27,7 @@ export type TCreateSshHostDTO = {
   alias?: string;
   userCertTtl?: string;
   hostCertTtl?: string;
-  loginMappings: {
-    loginUser: string;
-    allowedPrincipals: {
-      usernames: string[];
-    };
-  }[];
+  loginMappings: TLoginMapping[];
 };
 
 export type TUpdateSshHostDTO = {
@@ -39,12 +36,7 @@ export type TUpdateSshHostDTO = {
   alias?: string;
   userCertTtl?: string;
   hostCertTtl?: string;
-  loginMappings?: {
-    loginUser: string;
-    allowedPrincipals: {
-      usernames: string[];
-    };
-  }[];
+  loginMappings?: TLoginMapping[];
 };
 
 export type TDeleteSshHostDTO = {

@@ -3,9 +3,6 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
-// TODO: can attach default SSH login mappings to a host group
-// TODO: can attach default user SSH CA and host SSH CA (convert existing project level ones to a group)
-
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.SshHostGroup))) {
     await knex.schema.createTable(TableName.SshHostGroup, (t) => {
@@ -36,6 +33,7 @@ export async function up(knex: Knex): Promise<void> {
   if (!hasGroupColumn) {
     await knex.schema.alterTable(TableName.SshHostLoginUser, (t) => {
       t.uuid("sshHostGroupId").nullable();
+      t.foreign("sshHostGroupId").references("id").inTable(TableName.SshHostGroup).onDelete("CASCADE");
       t.uuid("sshHostId").nullable().alter();
     });
   }

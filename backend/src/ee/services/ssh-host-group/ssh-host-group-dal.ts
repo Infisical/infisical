@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
@@ -155,7 +155,9 @@ export const sshHostGroupDALFactory = (db: TDbClient) => {
         .first();
 
       if (!sshHostGroup) {
-        throw new Error(`SSH host group with ID ${sshHostGroupId} not found`);
+        throw new BadRequestError({
+          message: `SSH host group with ID ${sshHostGroupId} not found`
+        });
       }
 
       const query = db
