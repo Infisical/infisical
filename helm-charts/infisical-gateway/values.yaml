@@ -1,0 +1,41 @@
+image:
+  repository: infisical/infisical-gateway
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+# Environment variables for the gateway
+env:
+  TOKEN: ""
+  INFISICAL_API_URL: "https://app.infisical.com/api"
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+securityContext: {}
+affinity: {}
+tolerations: {}
+nodeSelector: {}
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false

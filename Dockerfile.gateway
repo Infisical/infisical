@@ -1,0 +1,24 @@
+# Build stage
+FROM golang:1.23.0-alpine AS builder
+
+WORKDIR /app
+
+COPY ./cli .
+
+RUN go build -o infisical-cli .
+
+FROM alpine:latest
+
+ENV TOKEN=""
+ENV INFISICAL_API_URL="https://app.infisical.com"
+
+
+
+WORKDIR /app
+
+COPY --from=builder /app/infisical-cli .
+
+# Make the binary executable
+RUN chmod +x /app/infisical-cli
+
+CMD ["sh", "-c", "if [ -z \"${TOKEN}\" ]; then echo 'ERROR: TOKEN environment variable must be set'; exit 1; fi && ./infisical-cli gateway --token ${TOKEN} --domain ${INFISICAL_API_URL}"]
