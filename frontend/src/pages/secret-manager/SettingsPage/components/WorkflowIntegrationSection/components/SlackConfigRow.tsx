@@ -1,5 +1,6 @@
+/* eslint-disable no-nested-ternary */
 import { BsSlack } from "react-icons/bs";
-import { faCheck, faEllipsis, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -10,6 +11,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Spinner,
   Td,
   Tr
 } from "@app/components/v2";
@@ -33,12 +35,15 @@ type Props = {
 
 export const SlackConfigRow = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  const { data: slackConfig } = useGetWorkspaceWorkflowIntegrationConfig({
-    workspaceId: currentWorkspace?.id ?? "",
-    integration: WorkflowIntegrationPlatform.SLACK
-  });
+  const { data: slackConfig, isPending: isSlackConfigLoading } =
+    useGetWorkspaceWorkflowIntegrationConfig({
+      workspaceId: currentWorkspace?.id ?? "",
+      integration: WorkflowIntegrationPlatform.SLACK
+    });
 
-  const { data: slackChannels } = useGetSlackIntegrationChannels(slackConfig?.integrationId);
+  const { data: slackChannels, isPending: isSlackChannelsLoading } = useGetSlackIntegrationChannels(
+    slackConfig?.integrationId
+  );
   const slackChannelIdToName = Object.fromEntries(
     (slackChannels || []).map((channel) => [channel.id, channel.name])
   );
@@ -46,6 +51,8 @@ export const SlackConfigRow = ({ handlePopUpOpen }: Props) => {
   if (slackConfig?.integration !== WorkflowIntegrationPlatform.SLACK) {
     return null;
   }
+
+  const isLoadingConfig = isSlackChannelsLoading || isSlackConfigLoading;
 
   return (
     <Tr>
@@ -56,34 +63,36 @@ export const SlackConfigRow = ({ handlePopUpOpen }: Props) => {
         </div>
       </Td>
       <Td>
-        {slackConfig.isAccessRequestNotificationEnabled ? (
-          <FontAwesomeIcon icon={faCheck} className="text-green-500" />
+        {slackConfig.isAccessRequestNotificationEnabled &&
+        !isLoadingConfig &&
+        slackConfig.accessRequestChannels.length > 0 ? (
+          <Badge>
+            {slackConfig.accessRequestChannels
+              .split(", ")
+              .map((channel) => slackChannelIdToName[channel])
+              .join(", ")}
+          </Badge>
+        ) : isLoadingConfig ? (
+          <Spinner size="xs" />
         ) : (
-          <FontAwesomeIcon icon={faXmark} className="text-red-500" />
+          <Badge variant="danger">Disabled</Badge>
         )}
       </Td>
       <Td>
-        {slackConfig.isSecretRequestNotificationEnabled ? (
-          <FontAwesomeIcon icon={faCheck} className="text-green-500" />
+        {slackConfig.isSecretRequestNotificationEnabled &&
+        !isLoadingConfig &&
+        slackConfig.secretRequestChannels.length > 0 ? (
+          <Badge>
+            {slackConfig.secretRequestChannels
+              .split(", ")
+              .map((channel) => slackChannelIdToName[channel])
+              .join(", ")}
+          </Badge>
+        ) : isLoadingConfig ? (
+          <Spinner size="xs" />
         ) : (
-          <FontAwesomeIcon icon={faXmark} className="text-red-500" />
+          <Badge variant="danger">Disabled</Badge>
         )}
-      </Td>
-      <Td>
-        <Badge>
-          {slackConfig.accessRequestChannels
-            .split(", ")
-            .map((channel) => slackChannelIdToName[channel])
-            .join(", ")}
-        </Badge>
-      </Td>
-      <Td>
-        <Badge>
-          {slackConfig.secretRequestChannels
-            .split(", ")
-            .map((channel) => slackChannelIdToName[channel])
-            .join(", ")}
-        </Badge>
       </Td>
 
       <Td>
@@ -94,6 +103,25 @@ export const SlackConfigRow = ({ handlePopUpOpen }: Props) => {
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="p-1">
+            <OrgPermissionCan I={OrgPermissionActions.Edit} an={OrgPermissionSubjects.Settings}>
+              {(isAllowed) => (
+                <DropdownMenuItem
+                  disabled={!isAllowed}
+                  className={twMerge(
+                    !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+
+                    handlePopUpOpen("editIntegration", {
+                      integration: WorkflowIntegrationPlatform.SLACK
+                    });
+                  }}
+                >
+                  Edit
+                </DropdownMenuItem>
+              )}
+            </OrgPermissionCan>
             <OrgPermissionCan I={OrgPermissionActions.Delete} an={OrgPermissionSubjects.Settings}>
               {(isAllowed) => (
                 <DropdownMenuItem
@@ -111,25 +139,6 @@ export const SlackConfigRow = ({ handlePopUpOpen }: Props) => {
                   }}
                 >
                   Delete
-                </DropdownMenuItem>
-              )}
-            </OrgPermissionCan>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} an={OrgPermissionSubjects.Settings}>
-              {(isAllowed) => (
-                <DropdownMenuItem
-                  disabled={!isAllowed}
-                  className={twMerge(
-                    !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-
-                    handlePopUpOpen("editIntegration", {
-                      integration: WorkflowIntegrationPlatform.SLACK
-                    });
-                  }}
-                >
-                  Edit
                 </DropdownMenuItem>
               )}
             </OrgPermissionCan>

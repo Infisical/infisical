@@ -1,5 +1,6 @@
+/* eslint-disable no-nested-ternary */
 import { BsMicrosoftTeams } from "react-icons/bs";
-import { faCheck, faEllipsis, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -34,10 +35,11 @@ type Props = {
 
 export const MicrosoftTeamsConfigRow = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  const { data: microsoftTeamsConfig } = useGetWorkspaceWorkflowIntegrationConfig({
-    workspaceId: currentWorkspace?.id ?? "",
-    integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
-  });
+  const { data: microsoftTeamsConfig, isPending: isMicrosoftTeamsConfigLoading } =
+    useGetWorkspaceWorkflowIntegrationConfig({
+      workspaceId: currentWorkspace?.id ?? "",
+      integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
+    });
 
   const { data: microsoftTeamsChannels, isPending: isMicrosoftTeamsChannelsLoading } =
     useGetMicrosoftTeamsIntegrationTeams(microsoftTeamsConfig?.integrationId);
@@ -51,6 +53,8 @@ export const MicrosoftTeamsConfigRow = ({ handlePopUpOpen }: Props) => {
     return null;
   }
 
+  const isLoadingConfig = isMicrosoftTeamsChannelsLoading || isMicrosoftTeamsConfigLoading;
+
   return (
     <Tr>
       <Td className="flex max-w-xs items-center overflow-hidden text-ellipsis">
@@ -60,39 +64,33 @@ export const MicrosoftTeamsConfigRow = ({ handlePopUpOpen }: Props) => {
         </div>
       </Td>
       <Td>
-        {microsoftTeamsConfig.isAccessRequestNotificationEnabled ? (
-          <FontAwesomeIcon icon={faCheck} className="text-green-500" />
-        ) : (
-          <FontAwesomeIcon icon={faXmark} className="text-red-500" />
-        )}
-      </Td>
-      <Td>
-        {microsoftTeamsConfig.isSecretRequestNotificationEnabled ? (
-          <FontAwesomeIcon icon={faCheck} className="text-green-500" />
-        ) : (
-          <FontAwesomeIcon icon={faXmark} className="text-red-500" />
-        )}
-      </Td>
-      <Td>
-        {isMicrosoftTeamsChannelsLoading ? (
-          <Spinner size="xs" />
-        ) : (
+        {microsoftTeamsConfig.isAccessRequestNotificationEnabled &&
+        !isLoadingConfig &&
+        microsoftTeamsConfig.accessRequestChannels?.channelIds?.length > 0 ? (
           <Badge>
-            {(microsoftTeamsConfig.accessRequestChannels?.channelIds || [])
-              ?.map((channel) => microsoftTeamsChannelIdToName[channel])
+            {microsoftTeamsConfig.accessRequestChannels.channelIds
+              .map((channel) => microsoftTeamsChannelIdToName[channel])
               .join(", ")}
           </Badge>
+        ) : isLoadingConfig ? (
+          <Spinner size="xs" />
+        ) : (
+          <Badge variant="danger">Disabled</Badge>
         )}
       </Td>
       <Td>
-        {isMicrosoftTeamsChannelsLoading ? (
-          <Spinner size="xs" />
-        ) : (
+        {microsoftTeamsConfig.isSecretRequestNotificationEnabled &&
+        !isLoadingConfig &&
+        microsoftTeamsConfig.secretRequestChannels?.channelIds?.length > 0 ? (
           <Badge>
-            {(microsoftTeamsConfig.secretRequestChannels?.channelIds || [])
-              ?.map((channel) => microsoftTeamsChannelIdToName[channel])
+            {microsoftTeamsConfig.secretRequestChannels.channelIds
+              .map((channel) => microsoftTeamsChannelIdToName[channel])
               .join(", ")}
           </Badge>
+        ) : isLoadingConfig ? (
+          <Spinner size="xs" />
+        ) : (
+          <Badge variant="danger">Disabled</Badge>
         )}
       </Td>
 
@@ -104,6 +102,25 @@ export const MicrosoftTeamsConfigRow = ({ handlePopUpOpen }: Props) => {
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="p-1">
+            <OrgPermissionCan I={OrgPermissionActions.Edit} an={OrgPermissionSubjects.Settings}>
+              {(isAllowed) => (
+                <DropdownMenuItem
+                  disabled={!isAllowed}
+                  className={twMerge(
+                    !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+
+                    handlePopUpOpen("editIntegration", {
+                      integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
+                    });
+                  }}
+                >
+                  Edit
+                </DropdownMenuItem>
+              )}
+            </OrgPermissionCan>
             <OrgPermissionCan I={OrgPermissionActions.Delete} an={OrgPermissionSubjects.Settings}>
               {(isAllowed) => (
                 <DropdownMenuItem
@@ -121,25 +138,6 @@ export const MicrosoftTeamsConfigRow = ({ handlePopUpOpen }: Props) => {
                   }}
                 >
                   Delete
-                </DropdownMenuItem>
-              )}
-            </OrgPermissionCan>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} an={OrgPermissionSubjects.Settings}>
-              {(isAllowed) => (
-                <DropdownMenuItem
-                  disabled={!isAllowed}
-                  className={twMerge(
-                    !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-
-                    handlePopUpOpen("editIntegration", {
-                      integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
-                    });
-                  }}
-                >
-                  Edit
                 </DropdownMenuItem>
               )}
             </OrgPermissionCan>

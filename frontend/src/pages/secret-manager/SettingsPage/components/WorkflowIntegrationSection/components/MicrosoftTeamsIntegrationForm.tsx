@@ -17,7 +17,8 @@ import {
   Input,
   Select,
   SelectItem,
-  Switch
+  Switch,
+  Tooltip
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import {
@@ -37,18 +38,22 @@ const formSchema = z
     microsoftTeamsIntegrationId: z.string(),
     isSecretRequestNotificationEnabled: z.boolean(),
     isAccessRequestNotificationEnabled: z.boolean(),
-    secretRequestChannels: z.object({
-      teamId: z.string(),
-      channelIds: z.string().array()
-    }),
-    accessRequestChannels: z.object({
-      teamId: z.string(),
-      channelIds: z.string().array()
-    })
+    secretRequestChannels: z
+      .object({
+        teamId: z.string(),
+        channelIds: z.string().array()
+      })
+      .optional(),
+    accessRequestChannels: z
+      .object({
+        teamId: z.string(),
+        channelIds: z.string().array()
+      })
+      .optional()
   })
   .superRefine((data, ctx) => {
     if (data.isSecretRequestNotificationEnabled) {
-      if (!data.secretRequestChannels.teamId) {
+      if (!data?.secretRequestChannels?.teamId) {
         ctx.addIssue({
           path: ["secretRequestChannels", "teamId"],
           code: z.ZodIssueCode.custom,
@@ -56,7 +61,7 @@ const formSchema = z
         });
       }
 
-      if (!data.secretRequestChannels.channelIds.length) {
+      if (!data?.secretRequestChannels?.channelIds?.length) {
         ctx.addIssue({
           path: ["secretRequestChannels", "channelIds"],
           code: z.ZodIssueCode.custom,
@@ -66,7 +71,7 @@ const formSchema = z
     }
 
     if (data.isAccessRequestNotificationEnabled) {
-      if (!data.accessRequestChannels.teamId) {
+      if (!data?.accessRequestChannels?.teamId) {
         ctx.addIssue({
           path: ["accessRequestChannels", "teamId"],
           code: z.ZodIssueCode.custom,
@@ -74,7 +79,7 @@ const formSchema = z
         });
       }
 
-      if (!data.accessRequestChannels.channelIds.length) {
+      if (!data?.accessRequestChannels?.channelIds?.length) {
         ctx.addIssue({
           path: ["accessRequestChannels", "channelIds"],
           code: z.ZodIssueCode.custom,
@@ -108,7 +113,8 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
     watch,
     handleSubmit,
     setValue,
-    formState: { isDirty, isSubmitting }
+    getValues,
+    formState: { isDirty, isSubmitting, errors }
   } = useForm<TMicrosoftTeamsConfigForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -210,12 +216,19 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
 
       if (microsoftTeamsConfig.integration === WorkflowIntegrationPlatform.MICROSOFT_TEAMS) {
         if (microsoftTeamsConfig.secretRequestChannels) {
-          setValue("secretRequestChannels", microsoftTeamsConfig.secretRequestChannels);
-          setValue("accessRequestChannels", microsoftTeamsConfig.accessRequestChannels);
+          if (Object.entries(microsoftTeamsConfig.accessRequestChannels).length) {
+            setValue("accessRequestChannels", microsoftTeamsConfig.accessRequestChannels);
+          }
+          if (Object.entries(microsoftTeamsConfig.secretRequestChannels).length) {
+            setValue("secretRequestChannels", microsoftTeamsConfig.secretRequestChannels);
+          }
         }
       }
     }
   }, [microsoftTeamsConfig]);
+
+  console.log("values", getValues());
+  console.log("errors", errors);
 
   return (
     <form onSubmit={handleSubmit(handleIntegrationSave)}>
@@ -235,7 +248,20 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
                     {...field}
                     isDisabled={!isAllowed}
                     placeholder="None"
-                    onValueChange={onChange}
+                    onValueChange={(v) => {
+                      onChange(v);
+
+                      setValue("isAccessRequestNotificationEnabled", false);
+                      setValue("isSecretRequestNotificationEnabled", false);
+                      setValue("accessRequestChannels", {
+                        teamId: "",
+                        channelIds: []
+                      });
+                      setValue("secretRequestChannels", {
+                        teamId: "",
+                        channelIds: []
+                      });
+                    }}
                     className="w-full"
                     defaultValue={microsoftTeamsConfig?.integrationId}
                   >
@@ -522,6 +548,7 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
             colorSchema="secondary"
             className="mt-4"
             type="submit"
+            disabled={!isDirty}
             isDisabled={!isDirty}
             isLoading={isSubmitting}
           >
