@@ -111,6 +111,11 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
       return;
     }
 
+    // Authentication is handled on a route-level here.
+    if (req.url.includes("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
+      return;
+    }
+
     const { authMode, token, actor } = await extractAuth(req, appCfg.AUTH_SECRET);
 
     if (!authMode) return;

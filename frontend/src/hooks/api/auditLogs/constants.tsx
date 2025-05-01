@@ -94,8 +94,10 @@ export const eventToNameMap: { [K in EventType]: string } = {
     "Create certificate template EST configuration",
   [EventType.UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG]:
     "Update certificate template EST configuration",
-  [EventType.UPDATE_PROJECT_SLACK_CONFIG]: "Update project slack configuration",
-  [EventType.GET_PROJECT_SLACK_CONFIG]: "Get project slack configuration",
+  [EventType.UPDATE_PROJECT_WORKFLOW_INTEGRATION_CONFIG]:
+    "Update project workflow integration configuration",
+  [EventType.GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG]:
+    "Get project workflow integration configuration",
   [EventType.INTEGRATION_SYNCED]: "Integration sync",
   [EventType.CREATE_SHARED_SECRET]: "Create shared secret",
   [EventType.DELETE_SHARED_SECRET]: "Delete shared secret",
@@ -163,7 +165,22 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_SECRET_ROTATION]: "Create Secret Rotation",
   [EventType.UPDATE_SECRET_ROTATION]: "Update Secret Rotation",
   [EventType.DELETE_SECRET_ROTATION]: "Delete Secret Rotation",
-  [EventType.SECRET_ROTATION_ROTATE_SECRETS]: "Secret Rotation secrets rotated"
+  [EventType.SECRET_ROTATION_ROTATE_SECRETS]: "Secret Rotation secrets rotated",
+
+  [EventType.GET_PROJECT_SLACK_CONFIG]: "Get Project Slack Config",
+  [EventType.UPDATE_PROJECT_SLACK_CONFIG]: "Update Project Slack Config",
+
+  [EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CREATE]:
+    "Create Microsoft Teams Workflow Integration",
+  [EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_DELETE]:
+    "Delete Microsoft Teams Workflow Integration",
+  [EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_UPDATE]:
+    "Update Microsoft Teams Workflow Integration",
+  [EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS]:
+    "Microsoft Teams Workflow Integration Check Installation Status",
+  [EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS]: "Get Microsoft Teams tenant teams",
+  [EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET]: "Get Microsoft Teams Workflow Integration",
+  [EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST]: "List Microsoft Teams Workflow Integration"
 };
 
 export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {
