@@ -2,6 +2,8 @@
 import { Knex } from "knex";
 import { Tables } from "knex/types/tables";
 
+import { TableName } from "@app/db/schemas";
+
 import { DatabaseError } from "../errors";
 import { buildDynamicKnexQuery, TKnexDynamicOperator } from "./dynamic";
 
@@ -25,28 +27,41 @@ export type TFindFilter<R extends object = object> = Partial<R> & {
   $search?: Partial<{ [k in keyof R]: R[k] }>;
   $complex?: TKnexDynamicOperator<R>;
 };
+
 export const buildFindFilter =
-  <R extends object = object>({ $in, $notNull, $search, $complex, ...filter }: TFindFilter<R>) =>
+  <R extends object = object>(
+    { $in, $notNull, $search, $complex, ...filter }: TFindFilter<R>,
+    tableName?: TableName,
+    excludeKeys?: Array<keyof R>
+  ) =>
   (bd: Knex.QueryBuilder<R, R>) => {
-    void bd.where(filter);
+    const processedFilter = tableName
+      ? Object.fromEntries(
+          Object.entries(filter)
+            .filter(([key]) => !excludeKeys || !excludeKeys.includes(key as keyof R))
+            .map(([key, value]) => [`${tableName}.${key}`, value])
+        )
+      : filter;
+
+    void bd.where(processedFilter);
     if ($in) {
       Object.entries($in).forEach(([key, val]) => {
         if (val) {
-          void bd.whereIn(key as never, val as never);
+          void bd.whereIn(`${tableName ? `${tableName}.` : ""}${key}`, val as never);
         }
       });
     }
 
     if ($notNull?.length) {
       $notNull.forEach((key) => {
-        void bd.whereNotNull(key as never);
+        void bd.whereNotNull(`${tableName ? `${tableName}.` : ""}${key as string}`);
       });
     }
 
     if ($search) {
       Object.entries($search).forEach(([key, val]) => {
         if (val) {
-          void bd.whereILike(key as never, val as never);
+          void bd.whereILike(`${tableName ? `${tableName}.` : ""}${key}`, val as never);
         }
       });
     }

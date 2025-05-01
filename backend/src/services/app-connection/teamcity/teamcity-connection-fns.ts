@@ -69,6 +69,5 @@ export const listTeamCityProjects = async (appConnection: TTeamCityConnection) =
     }
   );
 
-  // Filter out the root project. Should not be seen by users.
-  return resp.data.project.filter((proj) => proj.id !== "_Root");
+  return resp.data.project;
 };

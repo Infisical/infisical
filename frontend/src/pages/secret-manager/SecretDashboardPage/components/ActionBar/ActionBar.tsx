@@ -69,6 +69,7 @@ import {
   dashboardKeys,
   fetchDashboardProjectSecretsByKeys
 } from "@app/hooks/api/dashboard/queries";
+import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
 import { ApiErrorTypes, SecretType, TApiErrors, WsTag } from "@app/hooks/api/types";
@@ -113,11 +114,12 @@ type Props = {
   onVisibilityToggle: () => void;
   onToggleRowType: (rowType: RowType) => void;
   onClickRollbackMode: () => void;
+  usedBySecretSyncs?: UsedBySecretSyncs[];
   importedBy?: {
     environment: { name: string; slug: string };
     folders: {
       name: string;
-      secrets?: { secretId: string; referencedSecretKey: string }[];
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
       isImported: boolean;
     }[];
   }[];
@@ -139,7 +141,8 @@ export const ActionBar = ({
   onClickRollbackMode,
   onToggleRowType,
   protectedBranchPolicyName,
-  importedBy
+  importedBy,
+  usedBySecretSyncs
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addFolder",
@@ -1071,11 +1074,12 @@ export const ActionBar = ({
         onChange={(isOpen) => handlePopUpToggle("bulkDeleteSecrets", isOpen)}
         onDeleteApproved={handleSecretBulkDelete}
         formContent={
-          importedBy &&
-          importedBy.length > 0 && (
+          ((importedBy && importedBy.length > 0) ||
+            (usedBySecretSyncs && usedBySecretSyncs?.length > 0)) && (
             <CollapsibleSecretImports
               importedBy={importedBy}
               secretsToDelete={Object.values(selectedSecrets).map((s) => s.key)}
+              usedBySecretSyncs={usedBySecretSyncs}
             />
           )
         }

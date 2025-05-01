@@ -20,6 +20,13 @@ import {
   TAwsIamUserSecretRotationWithConnection
 } from "./aws-iam-user-secret";
 import {
+  TAzureClientSecretRotation,
+  TAzureClientSecretRotationGeneratedCredentials,
+  TAzureClientSecretRotationInput,
+  TAzureClientSecretRotationListItem,
+  TAzureClientSecretRotationWithConnection
+} from "./azure-client-secret";
+import {
   TLdapPasswordRotation,
   TLdapPasswordRotationGeneratedCredentials,
   TLdapPasswordRotationInput,
@@ -45,6 +52,7 @@ export type TSecretRotationV2 =
   | TPostgresCredentialsRotation
   | TMsSqlCredentialsRotation
   | TAuth0ClientSecretRotation
+  | TAzureClientSecretRotation
   | TLdapPasswordRotation
   | TAwsIamUserSecretRotation;
 
@@ -52,12 +60,14 @@ export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
   | TMsSqlCredentialsRotationWithConnection
   | TAuth0ClientSecretRotationWithConnection
+  | TAzureClientSecretRotationWithConnection
   | TLdapPasswordRotationWithConnection
   | TAwsIamUserSecretRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
   | TAuth0ClientSecretRotationGeneratedCredentials
+  | TAzureClientSecretRotationGeneratedCredentials
   | TLdapPasswordRotationGeneratedCredentials
   | TAwsIamUserSecretRotationGeneratedCredentials;
 
@@ -65,6 +75,7 @@ export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
   | TMsSqlCredentialsRotationInput
   | TAuth0ClientSecretRotationInput
+  | TAzureClientSecretRotationInput
   | TLdapPasswordRotationInput
   | TAwsIamUserSecretRotationInput;
 
@@ -72,6 +83,7 @@ export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
   | TMsSqlCredentialsRotationListItem
   | TAuth0ClientSecretRotationListItem
+  | TAzureClientSecretRotationListItem
   | TLdapPasswordRotationListItem
   | TAwsIamUserSecretRotationListItem;
 
@@ -197,7 +209,7 @@ export type TRotationFactory<
   C extends TSecretRotationV2GeneratedCredentials
 > = (
   secretRotation: T,
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
   issueCredentials: TRotationFactoryIssueCredentials<C>;

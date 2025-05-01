@@ -11,6 +11,10 @@ import {
   SanitizedAzureAppConfigurationConnectionSchema
 } from "@app/services/app-connection/azure-app-configuration";
 import {
+  AzureClientSecretsConnectionListItemSchema,
+  SanitizedAzureClientSecretsConnectionSchema
+} from "@app/services/app-connection/azure-client-secrets";
+import {
   AzureKeyVaultConnectionListItemSchema,
   SanitizedAzureKeyVaultConnectionSchema
 } from "@app/services/app-connection/azure-key-vault";
@@ -63,8 +67,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedPostgresConnectionSchema.options,
   ...SanitizedMsSqlConnectionSchema.options,
   ...SanitizedCamundaConnectionSchema.options,
-  ...SanitizedWindmillConnectionSchema.options,
   ...SanitizedAuth0ConnectionSchema.options,
+  ...SanitizedAzureClientSecretsConnectionSchema.options,
+  ...SanitizedWindmillConnectionSchema.options,
   ...SanitizedLdapConnectionSchema.options,
   ...SanitizedTeamCityConnectionSchema.options
 ]);
@@ -82,8 +87,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   PostgresConnectionListItemSchema,
   MsSqlConnectionListItemSchema,
   CamundaConnectionListItemSchema,
-  WindmillConnectionListItemSchema,
   Auth0ConnectionListItemSchema,
+  AzureClientSecretsConnectionListItemSchema,
+  WindmillConnectionListItemSchema,
   LdapConnectionListItemSchema,
   TeamCityConnectionListItemSchema
 ]);

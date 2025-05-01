@@ -13,6 +13,7 @@ import {
   Auth0ConnectionMethod,
   AwsConnectionMethod,
   AzureAppConfigurationConnectionMethod,
+  AzureClientSecretsConnectionMethod,
   AzureKeyVaultConnectionMethod,
   CamundaConnectionMethod,
   DatabricksConnectionMethod,
@@ -44,6 +45,10 @@ export const APP_CONNECTION_MAP: Record<
     name: "Azure App Configuration",
     image: "Microsoft Azure.png"
   },
+  [AppConnection.AzureClientSecrets]: {
+    name: "Azure Client Secrets",
+    image: "Microsoft Azure.png"
+  },
   [AppConnection.Databricks]: { name: "Databricks", image: "Databricks.png" },
   [AppConnection.Humanitec]: { name: "Humanitec", image: "Humanitec.png" },
   [AppConnection.TerraformCloud]: { name: "Terraform Cloud", image: "Terraform Cloud.png" },
@@ -63,6 +68,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "GitHub App", icon: faGithub };
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
+    case AzureClientSecretsConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
       return { name: "OAuth", icon: faPassport };
     case AwsConnectionMethod.AccessKey:

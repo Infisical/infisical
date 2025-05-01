@@ -7,9 +7,11 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   AzureAppConfigurationConnectionMethod,
+  AzureClientSecretsConnectionMethod,
   AzureKeyVaultConnectionMethod,
   GitHubConnectionMethod,
   TAzureAppConfigurationConnection,
+  TAzureClientSecretsConnection,
   TAzureKeyVaultConnection,
   TGitHubConnection,
   useCreateAppConnection,
@@ -32,18 +34,26 @@ type AzureAppConfigurationFormData = BaseFormData &
   Pick<TAzureAppConfigurationConnection, "name" | "method" | "description"> &
   Pick<TAzureAppConfigurationConnection["credentials"], "tenantId">;
 
+type AzureClientSecretsFormData = BaseFormData &
+  Pick<TAzureClientSecretsConnection, "name" | "method" | "description"> &
+  Pick<TAzureClientSecretsConnection["credentials"], "tenantId">;
+
 type FormDataMap = {
   [AppConnection.GitHub]: GithubFormData & { app: AppConnection.GitHub };
   [AppConnection.AzureKeyVault]: AzureKeyVaultFormData & { app: AppConnection.AzureKeyVault };
   [AppConnection.AzureAppConfiguration]: AzureAppConfigurationFormData & {
     app: AppConnection.AzureAppConfiguration;
   };
+  [AppConnection.AzureClientSecrets]: AzureClientSecretsFormData & {
+    app: AppConnection.AzureClientSecrets;
+  };
 };
 
 const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
   [AppConnection.GitHub]: "githubConnectionFormData",
   [AppConnection.AzureKeyVault]: "azureKeyVaultConnectionFormData",
-  [AppConnection.AzureAppConfiguration]: "azureAppConfigurationConnectionFormData"
+  [AppConnection.AzureAppConfiguration]: "azureAppConfigurationConnectionFormData",
+  [AppConnection.AzureClientSecrets]: "azureClientSecretsConnectionFormData"
 };
 
 export const OAuthCallbackPage = () => {
@@ -194,6 +204,54 @@ export const OAuthCallbackPage = () => {
     };
   }, []);
 
+  const handleAzureClientSecrets = useCallback(async () => {
+    const formData = getFormData(AppConnection.AzureClientSecrets);
+    if (formData === null) return null;
+
+    clearState(AppConnection.AzureClientSecrets);
+
+    const { connectionId, name, description, returnUrl } = formData;
+
+    try {
+      if (connectionId) {
+        await updateAppConnection.mutateAsync({
+          app: AppConnection.AzureClientSecrets,
+          connectionId,
+          credentials: {
+            code: code as string,
+            tenantId: formData.tenantId
+          }
+        });
+      } else {
+        await createAppConnection.mutateAsync({
+          app: AppConnection.AzureClientSecrets,
+          name,
+          description,
+          method: AzureClientSecretsConnectionMethod.OAuth,
+          credentials: {
+            code: code as string,
+            tenantId: formData.tenantId
+          }
+        });
+      }
+    } catch (err: any) {
+      createNotification({
+        title: `Failed to ${connectionId ? "update" : "add"} Azure Client Secrets Connection`,
+        text: err?.message,
+        type: "error"
+      });
+      navigate({
+        to: returnUrl ?? "/organization/app-connections"
+      });
+    }
+
+    return {
+      connectionId,
+      returnUrl,
+      appConnectionName: formData.app
+    };
+  }, []);
+
   const handleGithub = useCallback(async () => {
     const formData = getFormData(AppConnection.GitHub);
     if (formData === null) return null;
@@ -280,6 +338,8 @@ export const OAuthCallbackPage = () => {
         data = await handleAzureKeyVault();
       } else if (appConnection === AppConnection.AzureAppConfiguration) {
         data = await handleAzureAppConfiguration();
+      } else if (appConnection === AppConnection.AzureClientSecrets) {
+        data = await handleAzureClientSecrets();
       }
 
       if (data) {

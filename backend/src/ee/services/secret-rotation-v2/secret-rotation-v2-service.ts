@@ -14,6 +14,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { auth0ClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/auth0-client-secret/auth0-client-secret-rotation-fns";
+import { azureClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/azure-client-secret/azure-client-secret-rotation-fns";
 import { ldapPasswordRotationFactory } from "@app/ee/services/secret-rotation-v2/ldap-password/ldap-password-rotation-fns";
 import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
@@ -102,7 +103,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   queueService: Pick<TQueueServiceFactory, "queuePg">;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
 };
 
 export type TSecretRotationV2ServiceFactory = ReturnType<typeof secretRotationV2ServiceFactory>;
@@ -117,8 +118,9 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.PostgresCredentials]: sqlCredentialsRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.MsSqlCredentials]: sqlCredentialsRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.Auth0ClientSecret]: auth0ClientSecretRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.LdapPassword]: ldapPasswordRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.AwsIamUserSecret]: awsIamUserSecretRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.AzureClientSecret]: azureClientSecretRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.AwsIamUserSecret]: awsIamUserSecretRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.LdapPassword]: ldapPasswordRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -447,7 +449,8 @@ export const secretRotationV2ServiceFactory = ({
       {
         parameters: payload.parameters,
         secretsMapping,
-        connection
+        connection,
+        rotationInterval: payload.rotationInterval
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService

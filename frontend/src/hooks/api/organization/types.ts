@@ -18,6 +18,7 @@ export type Organization = {
   selectedMfaMethod?: MfaMethod;
   shouldUseNewPrivilegeSystem: boolean;
   allowSecretSharingOutsideOrganization?: boolean;
+  userTokenExpiration?: string;
   userRole: string;
 };
 
@@ -32,6 +33,7 @@ export type UpdateOrgDTO = {
   selectedMfaMethod?: MfaMethod;
   allowSecretSharingOutsideOrganization?: boolean;
   bypassOrgAuthEnabled?: boolean;
+  userTokenExpiration?: string;
 };
 
 export type BillingDetails = {

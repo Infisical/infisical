@@ -6,4 +6,5 @@ export * from "./array";
 export * from "./dates";
 export * from "./object";
 export * from "./string";
+export * from "./time";
 export * from "./undefined";
