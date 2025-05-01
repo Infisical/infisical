@@ -230,7 +230,7 @@ export const userServiceFactory = ({
     if (duplicatedAccounts.length && myAccount) {
       await userDAL.transaction(async (tx) => {
         await userDAL.delete({ $in: { id: duplicatedAccounts?.map((el) => el.id) } }, tx);
-        await userDAL.updateById(userId, { username: myAccount.username.toLowerCase() });
+        await userDAL.updateById(userId, { username: myAccount.username.toLowerCase() }, tx);
       });
     }
   };

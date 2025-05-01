@@ -723,8 +723,8 @@ export const authLoginServiceFactory = ({
       }
 
       user = await userDAL.create({
-        username: email.toLowerCase(),
-        email: email.toLowerCase(),
+        username: email.trim().toLowerCase(),
+        email: email.trim().toLowerCase(),
         isEmailVerified: true,
         firstName,
         lastName,

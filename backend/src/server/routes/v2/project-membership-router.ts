@@ -110,7 +110,12 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           .default([])
           .describe(PROJECT_USERS.REMOVE_MEMBER.emails)
           .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
-        usernames: z.string().array().default([]).describe(PROJECT_USERS.REMOVE_MEMBER.usernames)
+        usernames: z
+          .string()
+          .array()
+          .default([])
+          .describe(PROJECT_USERS.REMOVE_MEMBER.usernames)
+          .refine((val) => val.every((el) => el === el.toLowerCase()), "Username must be lowercase")
       }),
       response: {
         200: z.object({

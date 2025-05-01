@@ -73,7 +73,7 @@ export const authSignupServiceFactory = ({
 }: TAuthSignupDep) => {
   // first step of signup. create user and send email
   const beginEmailSignupProcess = async (email: string) => {
-    const sanitizedEmail = email.toLowerCase();
+    const sanitizedEmail = email.trim().toLowerCase();
     const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
     if (isEmailInvalid) {
       throw new Error("Provided a disposable email");
@@ -113,7 +113,7 @@ export const authSignupServiceFactory = ({
   };
 
   const verifyEmailSignup = async (email: string, code: string) => {
-    const sanitizedEmail = email.toLowerCase();
+    const sanitizedEmail = email.trim().toLowerCase();
     const usersByUsername = await userDAL.findUserByUsername(sanitizedEmail);
     const user =
       usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === sanitizedEmail) : usersByUsername?.[0];
@@ -166,7 +166,7 @@ export const authSignupServiceFactory = ({
     authorization,
     useDefaultOrg
   }: TCompleteAccountSignupDTO) => {
-    const sanitizedEmail = email.toLowerCase();
+    const sanitizedEmail = email.trim().toLowerCase();
     const appCfg = getConfig();
     const serverCfg = await getServerCfg();
 
@@ -415,7 +415,7 @@ export const authSignupServiceFactory = ({
     encryptedPrivateKeyTag,
     authorization
   }: TCompleteAccountInviteDTO) => {
-    const sanitizedEmail = email.toLowerCase();
+    const sanitizedEmail = email.trim().toLowerCase();
     const usersByUsername = await userDAL.findUserByUsername(sanitizedEmail);
     const user =
       usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === sanitizedEmail) : usersByUsername?.[0];
