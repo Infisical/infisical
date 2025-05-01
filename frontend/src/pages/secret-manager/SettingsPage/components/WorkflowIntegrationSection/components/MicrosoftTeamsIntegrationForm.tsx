@@ -112,8 +112,7 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
     watch,
     handleSubmit,
     setValue,
-    getValues,
-    formState: { isDirty, isSubmitting, errors }
+    formState: { isDirty, isSubmitting }
   } = useForm<TMicrosoftTeamsConfigForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
