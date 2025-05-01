@@ -6,7 +6,6 @@ on:
 
 permissions:
     contents: write
-    pull-requests: write
 
 jobs:
     release-image:
@@ -18,7 +17,7 @@ jobs:
               run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical-gateway/}"
 
             - name: Checkout code
-              uses: actions/checkout@v2
+              uses: actions/checkout@v4
 
             - name: 🔧 Set up QEMU
               uses: docker/setup-qemu-action@v1

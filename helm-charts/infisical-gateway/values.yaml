@@ -1,16 +1,22 @@
 image:
   repository: infisical/infisical-gateway
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: "v0.0.1"
 
-# Environment variables for the gateway
-env:
-  TOKEN: ""
-  INFISICAL_API_URL: "https://app.infisical.com/api"
+secret:
+  # create a new secret (if true) or use existing (if false)
+  create: true
+  # name of the secret to use/create
+  name: "infisical-gateway-secrets"
+
+  # Secret data (only used if create: true)
+  data:
+    TOKEN: ""
+    INFISICAL_API_URL: "https://app.infisical.com"
 
 resources:
   limits:
-    cpu: 100m
+    cpu: 500m
     memory: 128Mi
   requests:
     cpu: 100m
@@ -28,8 +34,12 @@ serviceAccount:
 
 podAnnotations: {}
 podLabels: {}
-podSecurityContext: {}
-securityContext: {}
+podSecurityContext:
+  runAsNonRoot: true
+
+securityContext:
+  runAsNonRoot: true
+
 affinity: {}
 tolerations: {}
 nodeSelector: {}
