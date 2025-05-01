@@ -61,7 +61,8 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
         redirectUri: z.string(),
         tenantId: z.string().uuid(),
         slug: z.string(),
-        description: z.string().optional()
+        description: z.string().optional(),
+        code: z.string().trim()
       })
     },
 
@@ -72,6 +73,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
         slug: req.body.slug,
         description: req.body.description,
         redirectUri: req.body.redirectUri,
+        code: req.body.code,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

@@ -16,48 +16,77 @@ import { TWorkflowIntegrationDALFactory } from "../workflow-integration/workflow
 import { WorkflowIntegrationStatus } from "../workflow-integration/workflow-integration-types";
 import { TMicrosoftTeamsIntegrationDALFactory } from "./microsoft-teams-integration-dal";
 
+const ConsentError = "AADSTS65001";
+
 export const verifyTenantFromCode = async (
   tenantId: string,
+  code: string,
   redirectUri: string,
   clientId: string,
   clientSecret: string
 ) => {
-  const tokenEndpoint = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+  const getAccessToken = async (params: URLSearchParams) => {
+    const response = await axios
+      .post<{ access_token: string }>(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, params, {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        }
+      })
+      .catch((err) => {
+        if (axios.isAxiosError(err)) {
+          if ((err.response?.data as { error_description?: string })?.error_description?.includes(ConsentError)) {
+            throw new BadRequestError({
+              message: "Unable to verify tenant, please ensure that you have granted admin consent."
+            });
+          }
+          logger.error(err.response?.data, "Error fetching Microsoft Teams access token");
+        }
+        throw err;
+      });
 
-  const params = new URLSearchParams({
-    client_id: clientId,
-    client_secret: clientSecret,
-    scope: "https://graph.microsoft.com/.default",
-    redirect_uri: redirectUri,
-    grant_type: "client_credentials"
-  });
+    return response.data.access_token;
+  };
 
-  const response = await axios
-    .post<{ access_token: string }>(tokenEndpoint, params, {
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      }
+  // Azure App-based auth
+  const applicationAccessToken = await getAccessToken(
+    new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: "https://graph.microsoft.com/.default",
+      redirect_uri: redirectUri,
+      grant_type: "client_credentials"
     })
-    .catch((err) => {
-      if (axios.isAxiosError(err)) {
-        logger.error(err.response?.data, "Error fetching Microsoft Teams access token");
-      }
-      throw err;
-    });
+  );
 
-  const accessToken = response.data.access_token;
-  const decodedToken = jwt.decode(accessToken) as { tid: string };
+  // User-based auth
+  const authorizationAccessToken = await getAccessToken(
+    new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: "https://graph.microsoft.com/.default",
+      redirect_uri: redirectUri,
+      grant_type: "authorization_code",
+      code
+    })
+  );
 
-  // the 'tid' claim in the token contains the tenant ID
-  const tenantIdFromToken = decodedToken.tid;
+  // Verify application token
+  const { tid: tenantIdFromApplicationAccessToken } = jwt.decode(applicationAccessToken) as { tid: string };
 
-  if (tenantIdFromToken !== tenantId) {
+  if (tenantIdFromApplicationAccessToken !== tenantId) {
     throw new BadRequestError({
-      message: `Invalid tenant state ID. Expected ${tenantId}, got ${tenantIdFromToken}`
+      message: `Invalid application token tenant ID. Expected ${tenantId}, got ${tenantIdFromApplicationAccessToken}`
     });
   }
 
-  return tenantIdFromToken;
+  // Verify user authorization token
+  const { tid: tenantIdFromAuthorizationAccessToken } = jwt.decode(authorizationAccessToken) as { tid: string };
+
+  if (tenantIdFromAuthorizationAccessToken !== tenantId) {
+    throw new BadRequestError({
+      message: `Invalid authorization token tenant ID. Expected ${tenantId}, got ${tenantIdFromAuthorizationAccessToken}`
+    });
+  }
 };
 
 export const getMicrosoftTeamsAccessToken = async (

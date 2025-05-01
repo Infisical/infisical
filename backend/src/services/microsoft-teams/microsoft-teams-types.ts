@@ -10,6 +10,7 @@ export type TCreateMicrosoftTeamsIntegrationDTO = Omit<TOrgPermission, "orgId"> 
   slug: string;
   redirectUri: string;
   description?: string;
+  code: string;
 };
 
 export type TCheckInstallationStatusDTO = { workflowIntegrationId: string } & Omit<TOrgPermission, "orgId">;

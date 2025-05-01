@@ -126,12 +126,17 @@ This guide will provide step by step instructions on how to configure Microsoft 
           ![microsoft-teams-configure-bot](/images/platform/workflow-integrations/microsoft-teams-integration/teams-dev-portal-configure-bot.png)
         </Step>
 
-        <Step title="Run an app validation test">
-          To ensure that the Microsoft Teams App is working correctly, you can run an app validation test.
+        <Step title="Run an app validation test (Recommended)">
+          To ensure that the Microsoft Teams App is working correctly, you can run an app validation test. This step is optional, but recommended to ensure the app is working correctly.
 
           You should expect to see two errors related to sending welcome messages, because we haven't configured the Microsoft Teams App inside Infisical yet, which is required for proactive messages.
 
           ![microsoft-teams-app-validation-test](/images/platform/workflow-integrations/microsoft-teams-integration/teams-dev-portal-app-validation.png)
+
+          <Note>
+            You may see manifest validation errors. Before running an app validation test, you must ensure that your app has all errors resolved, such as having a description and a valid name.
+          </Note>
+
           ![microsoft-teams-app-validation-test-results](/images/platform/workflow-integrations/microsoft-teams-integration/teams-dev-portal-app-validation-result.png)
 
           <Note>

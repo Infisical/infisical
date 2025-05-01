@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
@@ -13,7 +15,8 @@ const stateSchema = z.object({
   tenantId: z.string(),
   slug: z.string(),
   description: z.string().optional(),
-  csrfToken: z.string()
+  csrfToken: z.string(),
+  clientId: z.string()
 });
 
 export const OAuthCallbackPage = () => {
@@ -27,7 +30,9 @@ export const OAuthCallbackPage = () => {
 
   const createMicrosoftTeamsWorkflowIntegration = useCreateMicrosoftTeamsIntegration();
 
-  const { state: rawState, tenant: stateTenant, admin_consent: adminConsent } = search;
+  const { state: rawState, code } = search;
+
+  console.log("the code is ", code);
 
   const state = stateSchema.parse(rawState);
 
@@ -42,21 +47,29 @@ export const OAuthCallbackPage = () => {
   const handleMicrosoftTeams = useCallback(async () => {
     clearState();
 
-    if (Boolean(adminConsent.toLowerCase()) !== true) {
-      throw new Error("Failed to grant admin consent");
-    }
-
-    if (stateTenant !== state.tenantId) {
-      throw new Error(`Invalid tenant ID. Expected ${stateTenant}, got ${state.tenantId}`);
+    if (!code) {
+      throw new Error("No code provided");
     }
 
     await createMicrosoftTeamsWorkflowIntegration.mutateAsync({
       orgId: currentOrg.id,
       tenantId: state.tenantId,
+      code,
       slug: state.slug,
       description: state.description ?? "",
       redirectUri: state.redirectUri
     });
+
+    createNotification({
+      text: "Successfully granted Microsoft Teams admin consent",
+      type: "success"
+    });
+
+    navigate({
+      to: ROUTE_PATHS.Organization.SettingsPage.path
+    });
+
+    return;
   }, []);
 
   // Ensure that the localstorage is ready for use, to avoid the form data being malformed
@@ -72,22 +85,16 @@ export const OAuthCallbackPage = () => {
     (async () => {
       try {
         await handleMicrosoftTeams();
-
-        createNotification({
-          text: "Successfully granted Microsoft Teams admin consent",
-          type: "success"
-        });
       } catch (err) {
         console.error(err);
         createNotification({
-          text: "Failed to grant Microsoft Teams admin consent",
+          text:
+            code !== ""
+              ? "Failed to create Microsoft Teams workflow integration"
+              : "Failed to grant Microsoft Teams admin consent",
           type: "error"
         });
       }
-
-      navigate({
-        to: ROUTE_PATHS.Organization.SettingsPage.path
-      });
     })();
   }, [isReady]);
 

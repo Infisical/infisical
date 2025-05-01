@@ -7,6 +7,7 @@ import { OAuthCallbackPage } from "./OauthCallbackPage";
 const SettingsOAuthCallbackPageQueryParamsSchema = z.object({
   state: z
     .object({
+      clientId: z.string(),
       tenantId: z.string(),
       slug: z.string(),
       description: z.string().optional(),
@@ -15,8 +16,7 @@ const SettingsOAuthCallbackPageQueryParamsSchema = z.object({
     })
     .nullable()
     .catch(null),
-  tenant: z.string().catch(""),
-  admin_consent: z.string().catch("")
+  code: z.string().catch("")
 });
 
 export const Route = createFileRoute(

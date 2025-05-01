@@ -211,6 +211,7 @@ export const microsoftTeamsServiceFactory = ({
   };
 
   const completeMicrosoftTeamsIntegration = async ({
+    code,
     actor,
     actorId,
     actorOrgId,
@@ -251,7 +252,7 @@ export const microsoftTeamsServiceFactory = ({
     const botAppPassword = decryptWithRoot(encryptedMicrosoftTeamsClientSecret);
     const botId = decryptWithRoot(encryptedMicrosoftTeamsBotId);
 
-    await verifyTenantFromCode(tenantId, redirectUri, botAppId.toString(), botAppPassword.toString());
+    await verifyTenantFromCode(tenantId, code, redirectUri, botAppId.toString(), botAppPassword.toString());
 
     await workflowIntegrationDAL.transaction(async (tx) => {
       const workflowIntegration = await workflowIntegrationDAL.create(

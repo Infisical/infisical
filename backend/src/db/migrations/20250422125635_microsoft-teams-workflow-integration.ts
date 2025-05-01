@@ -47,7 +47,7 @@ export async function up(knex: Knex): Promise<void> {
       table.foreign("id").references("id").inTable(TableName.WorkflowIntegrations).onDelete("CASCADE"); // the ID itself is the workflow integration ID
 
       table.string("internalTeamsAppId").nullable();
-      table.string("tenantId").unique().notNullable();
+      table.string("tenantId").notNullable();
       table.binary("encryptedAccessToken").nullable();
       table.binary("encryptedBotAccessToken").nullable();
 

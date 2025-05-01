@@ -59,6 +59,7 @@ export type TUpdateMicrosoftTeamsIntegrationDTO = {
 };
 
 export type TCreateMicrosoftTeamsIntegrationDTO = {
+  code: string;
   tenantId: string;
   slug: string;
   description?: string;
