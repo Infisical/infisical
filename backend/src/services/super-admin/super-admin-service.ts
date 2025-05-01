@@ -572,7 +572,12 @@ export const superAdminServiceFactory = ({
   };
 
   const invalidateCache = async (type: CacheType) => {
-    if (type === CacheType.ALL || type === CacheType.SECRETS) await keyStore.deleteItems("secret-manager:*");
+    let totalKeysCleared = 0;
+
+    if (type === CacheType.ALL || type === CacheType.SECRETS)
+      totalKeysCleared += await keyStore.deleteItems({ pattern: "secret-manager:*" });
+
+    return totalKeysCleared;
   };
 
   return {

@@ -1,6 +1,7 @@
 import { Redis } from "ioredis";
 
 import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
+import { delay as delayMs } from "@app/lib/delay";
 import { Redlock, Settings } from "@app/lib/red-lock";
 
 export const PgSqlLock = {
@@ -48,6 +49,13 @@ export const KeyStoreTtls = {
   AccessTokenStatusUpdateInSeconds: 120
 };
 
+type TDeleteItems = {
+  pattern: string;
+  batchSize?: number;
+  delay?: number;
+  jitter?: number;
+};
+
 type TWaitTillReady = {
   key: string;
   waitingCb?: () => void;
@@ -56,8 +64,6 @@ type TWaitTillReady = {
   delay?: number;
   jitter?: number;
 };
-
-const DELETION_BATCH_SIZE = 500;
 
 export const keyStoreFactory = (redisUrl: string) => {
   const redis = new Redis(redisUrl);
@@ -77,7 +83,7 @@ export const keyStoreFactory = (redisUrl: string) => {
 
   const deleteItem = async (key: string) => redis.del(key);
 
-  const deleteItems = async (pattern: string) => {
+  const deleteItems = async ({ pattern, batchSize = 500, delay = 1500, jitter = 200 }: TDeleteItems) => {
     let cursor = "0";
     let totalDeleted = 0;
 
@@ -87,8 +93,8 @@ export const keyStoreFactory = (redisUrl: string) => {
       const [nextCursor, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 1000); // Count should be 1000 - 5000 for prod loads
       cursor = nextCursor;
 
-      for (let i = 0; i < keys.length; i += DELETION_BATCH_SIZE) {
-        const batch = keys.slice(i, i + DELETION_BATCH_SIZE);
+      for (let i = 0; i < keys.length; i += batchSize) {
+        const batch = keys.slice(i, i + batchSize);
         const pipeline = redis.pipeline();
         for (const key of batch) {
           pipeline.unlink(key);
@@ -96,6 +102,9 @@ export const keyStoreFactory = (redisUrl: string) => {
         // eslint-disable-next-line no-await-in-loop
         await pipeline.exec();
         totalDeleted += batch.length;
+
+        // eslint-disable-next-line no-await-in-loop
+        await delayMs(Math.max(0, delay + Math.floor((Math.random() * 2 - 1) * jitter)));
       }
     } while (cursor !== "0");
 

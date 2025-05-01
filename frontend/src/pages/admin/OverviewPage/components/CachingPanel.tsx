@@ -11,7 +11,7 @@ export const CachingPanel = () => {
   const { mutateAsync: invalidateCache } = useInvalidateCache();
   const { membership } = useOrgPermission();
 
-  const [type, setType] = useState<CacheType>(CacheType.ALL);
+  const [type, setType] = useState<CacheType | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -19,25 +19,28 @@ export const CachingPanel = () => {
   ] as const);
 
   const handleInvalidateCacheSubmit = async () => {
-    try {
-      setIsLoading(true);
+    if (!type) return;
+    setIsLoading(true);
 
+    try {
       await invalidateCache({ type });
 
       createNotification({
-        text: `Successfully purged ${type} cache`,
+        text: `Successfully invalidated ${type} cache`,
         type: "success"
       });
 
-      setIsLoading(false);
+      setType(null);
       handlePopUpClose("invalidateCache");
     } catch (err) {
       console.error(err);
       createNotification({
-        text: `Failed to purge ${type} cache`,
+        text: `Failed to invalidate ${type} cache`,
         type: "error"
       });
     }
+
+    setIsLoading(false);
   };
 
   return (
@@ -90,7 +93,7 @@ export const CachingPanel = () => {
       <DeleteActionModal
         isOpen={popUp.invalidateCache.isOpen}
         title={`Are you sure want to invalidate ${type} cache?`}
-        subTitle="This action cannot be undone."
+        subTitle="This action is permanent and irreversible. The cache clearing process may take several minutes to complete."
         onChange={(isOpen) => handlePopUpToggle("invalidateCache", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={handleInvalidateCacheSubmit}

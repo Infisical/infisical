@@ -553,19 +553,25 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
     handler: async (req) => {
-      await server.services.superAdmin.invalidateCache(req.body.type);
+      const keysCleared = await server.services.superAdmin.invalidateCache(req.body.type);
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.InvalidateCache,
         distinctId: getTelemetryDistinctId(req),
         properties: {
+          keysCleared,
           ...req.auditLogInfo
         }
       });
 
       return {
-        message: "Successfully purged cache"
+        message: `Successfully invalidated ${keysCleared} cached items`
       };
     }
   });
