@@ -896,9 +896,17 @@ export const useGetWorkspaceWorkflowIntegrationConfig = ({
   return useQuery({
     queryKey: workspaceKeys.getWorkspaceWorkflowIntegrationConfig(workspaceId, integration),
     queryFn: async () => {
-      const { data } = await apiRequest.get<ProjectWorkflowIntegrationConfig>(
-        `/api/v1/workspace/${workspaceId}/workflow-integration-config/${integration}`
-      );
+      const { data } = await apiRequest
+        .get<ProjectWorkflowIntegrationConfig>(
+          `/api/v1/workspace/${workspaceId}/workflow-integration-config/${integration}`
+        )
+        .catch((err) => {
+          if (err.response.status === 404) {
+            return { data: null };
+          }
+
+          throw err;
+        });
 
       return data;
     },

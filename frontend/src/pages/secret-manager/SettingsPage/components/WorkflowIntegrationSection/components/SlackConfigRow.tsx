@@ -24,7 +24,7 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
-  slackConfig?: ProjectWorkflowIntegrationConfig;
+  slackConfig?: ProjectWorkflowIntegrationConfig | null;
   isSlackConfigLoading: boolean;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["removeIntegration", "editIntegration"]>,

@@ -24,7 +24,7 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
-  microsoftTeamsConfig?: ProjectWorkflowIntegrationConfig;
+  microsoftTeamsConfig?: ProjectWorkflowIntegrationConfig | null;
   isMicrosoftTeamsConfigLoading: boolean;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["removeIntegration", "editIntegration"]>,
