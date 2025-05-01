@@ -275,7 +275,6 @@ export const certificateServiceFactory = ({
       if (pkiCollection.projectId !== projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
     }
 
-    // Parse the certificate
     const leafCert = new x509.X509Certificate(certificatePem);
 
     // Verify the certificate chain

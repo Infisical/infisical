@@ -120,7 +120,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
         setCertificateDetails(null);
       }}
     >
-      <ModalContent title={`${cert ? "View" : "Issue"} Certificate`}>
+      <ModalContent title={`${cert ? "View" : "Import"} Certificate`}>
         {!certificateDetails ? (
           <form onSubmit={handleSubmit(onFormSubmit)}>
             <Controller

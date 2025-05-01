@@ -56,7 +56,6 @@ export const useImportCertificate = () => {
   const queryClient = useQueryClient();
   return useMutation<TImportCertificateResponse, object, TImportCertificateDTO>({
     mutationFn: async (body) => {
-      console.log("DBG-1");
       const { data } = await apiRequest.post<TImportCertificateResponse>(
         "/api/v1/pki/certificates/import-certificate",
         body
