@@ -4,7 +4,7 @@ import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
-import { GenericResourceNameSchema } from "@app/server/lib/schemas";
+import { OrganizationInputSchema } from "@app/server/lib/schemas";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -88,24 +88,25 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
-      body: z.object({
-        email: z.string().trim(),
-        firstName: z.string().trim(),
-        lastName: z.string().trim().optional(),
-        protectedKey: z.string().trim(),
-        protectedKeyIV: z.string().trim(),
-        protectedKeyTag: z.string().trim(),
-        publicKey: z.string().trim(),
-        encryptedPrivateKey: z.string().trim(),
-        encryptedPrivateKeyIV: z.string().trim(),
-        encryptedPrivateKeyTag: z.string().trim(),
-        salt: z.string().trim(),
-        verifier: z.string().trim(),
-        organizationName: GenericResourceNameSchema,
-        providerAuthToken: z.string().trim().optional().nullish(),
-        attributionSource: z.string().trim().optional(),
-        password: z.string()
-      }),
+      body: z
+        .object({
+          email: z.string().trim(),
+          firstName: z.string().trim(),
+          lastName: z.string().trim().optional(),
+          protectedKey: z.string().trim(),
+          protectedKeyIV: z.string().trim(),
+          protectedKeyTag: z.string().trim(),
+          publicKey: z.string().trim(),
+          encryptedPrivateKey: z.string().trim(),
+          encryptedPrivateKeyIV: z.string().trim(),
+          encryptedPrivateKeyTag: z.string().trim(),
+          salt: z.string().trim(),
+          verifier: z.string().trim(),
+          providerAuthToken: z.string().trim().optional().nullish(),
+          attributionSource: z.string().trim().optional(),
+          password: z.string()
+        })
+        .and(OrganizationInputSchema),
       response: {
         200: z.object({
           message: z.string(),

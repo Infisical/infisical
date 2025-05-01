@@ -13,6 +13,7 @@ export const SignupSsoPage = () => {
   const { t } = useTranslation();
   const search = useSearch({ from: ROUTE_PATHS.Auth.SignUpSsoPage.id });
   const token = search.token as string;
+  const defaultOrgAllowed = search.defaultOrgAllowed as boolean | undefined;
 
   const [step, setStep] = useState(0);
   const [password, setPassword] = useState("");
@@ -57,6 +58,7 @@ export const SignupSsoPage = () => {
             password={password}
             setPassword={setPassword}
             providerAuthToken={token}
+            forceDefaultOrg={defaultOrgAllowed}
           />
         );
       default:

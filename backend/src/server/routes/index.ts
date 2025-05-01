@@ -623,6 +623,7 @@ export const registerRoutes = async (
     tokenService,
     orgDAL,
     totpService,
+    orgMembershipDAL,
     auditLogService
   });
   const passwordService = authPaswordServiceFactory({
