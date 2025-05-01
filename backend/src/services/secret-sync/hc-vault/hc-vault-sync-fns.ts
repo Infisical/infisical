@@ -1,3 +1,5 @@
+import { isAxiosError } from "axios";
+
 import { request } from "@app/lib/config/request";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -14,17 +16,25 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 const listHCVaultVariables = async ({ instanceUrl, namespace, mount, accessToken, path }: THCVaultListVariables) => {
   await blockLocalAndPrivateIpAddresses(instanceUrl);
 
-  const { data } = await request.get<THCVaultListVariablesResponse>(
-    `${instanceUrl}/v1/${removeTrailingSlash(mount)}/data/${path}`,
-    {
-      headers: {
-        "X-Vault-Token": accessToken,
-        ...(namespace ? { "X-Vault-Namespace": namespace } : {})
+  try {
+    const { data } = await request.get<THCVaultListVariablesResponse>(
+      `${instanceUrl}/v1/${removeTrailingSlash(mount)}/data/${path}`,
+      {
+        headers: {
+          "X-Vault-Token": accessToken,
+          ...(namespace ? { "X-Vault-Namespace": namespace } : {})
+        }
       }
-    }
-  );
+    );
 
-  return data.data.data;
+    return data.data.data;
+  } catch (error: unknown) {
+    // Returning an empty set when a path isn't found allows that path to be created by a later POST request
+    if (isAxiosError(error) && error.response?.status === 404) {
+      return {};
+    }
+    throw error;
+  }
 };
 
 // Hashicorp Vault updates all variables in one batch. This is to respect their versioning

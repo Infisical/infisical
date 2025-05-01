@@ -40,6 +40,10 @@ description: "Learn how to configure a Hashicorp Vault Sync for Infisical."
                 - **Path**: The specific path within the secrets engine where secrets will be stored.
 
                 After configuring these parameters, click the **Next** button to continue to the Sync Options step.
+
+                <Note>
+                    If the **path** you provide does not exist in Vault, it will be created.
+                </Note>
             </Step>
             <Step title="Configure Sync Options">
                 Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
