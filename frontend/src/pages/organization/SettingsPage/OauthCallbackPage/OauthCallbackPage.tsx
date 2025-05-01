@@ -1,5 +1,3 @@
-import crypto from "crypto";
-
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
@@ -60,16 +58,9 @@ export const OAuthCallbackPage = () => {
       redirectUri: state.redirectUri
     });
 
-    createNotification({
-      text: "Successfully granted Microsoft Teams admin consent",
-      type: "success"
-    });
-
     navigate({
       to: ROUTE_PATHS.Organization.SettingsPage.path
     });
-
-    return;
   }, []);
 
   // Ensure that the localstorage is ready for use, to avoid the form data being malformed
@@ -85,13 +76,15 @@ export const OAuthCallbackPage = () => {
     (async () => {
       try {
         await handleMicrosoftTeams();
+
+        createNotification({
+          text: "Successfully created Microsoft Teams workflow integration",
+          type: "success"
+        });
       } catch (err) {
         console.error(err);
         createNotification({
-          text:
-            code !== ""
-              ? "Failed to create Microsoft Teams workflow integration"
-              : "Failed to grant Microsoft Teams admin consent",
+          text: "Failed to create Microsoft Teams workflow integration",
           type: "error"
         });
       }
