@@ -1,5 +1,5 @@
 import { BsMicrosoftTeams, BsSlack } from "react-icons/bs";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faGear, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
@@ -7,6 +7,7 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
+  EmptyState,
   Table,
   TableContainer,
   TBody,
@@ -16,7 +17,10 @@ import {
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useDeleteProjectWorkflowIntegration } from "@app/hooks/api";
+import {
+  useDeleteProjectWorkflowIntegration,
+  useGetWorkspaceWorkflowIntegrationConfig
+} from "@app/hooks/api";
 import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
 
 import { AddWorkflowIntegrationModal } from "./components/AddWorkflowIntegrationModal";
@@ -44,6 +48,17 @@ export const WorkflowIntegrationTab = () => {
   ] as const);
 
   const { currentWorkspace } = useWorkspace();
+  const { data: slackConfig, isPending: isSlackConfigLoading } =
+    useGetWorkspaceWorkflowIntegrationConfig({
+      workspaceId: currentWorkspace?.id ?? "",
+      integration: WorkflowIntegrationPlatform.SLACK
+    });
+
+  const { data: microsoftTeamsConfig, isPending: isMicrosoftTeamsConfigLoading } =
+    useGetWorkspaceWorkflowIntegrationConfig({
+      workspaceId: currentWorkspace?.id ?? "",
+      integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
+    });
 
   const { mutateAsync: deleteIntegration } = useDeleteProjectWorkflowIntegration();
 
@@ -89,20 +104,37 @@ export const WorkflowIntegrationTab = () => {
         Connect Infisical to other platforms for notification and workflow integrations.
       </p>
       <TableContainer>
-        <Table>
-          <THead>
-            <Tr>
-              <Td>Provider</Td>
-              <Td>Access Request Notifications Destination</Td>
-              <Td>Secret Request Notifications Destination</Td>
-              <Td />
-            </Tr>
-          </THead>
-          <TBody>
-            <SlackConfigRow handlePopUpOpen={handlePopUpOpen} />
-            <MicrosoftTeamsConfigRow handlePopUpOpen={handlePopUpOpen} />
-          </TBody>
-        </Table>
+        {!!slackConfig || !!microsoftTeamsConfig ? (
+          <Table>
+            <THead>
+              <Tr>
+                <Td>Provider</Td>
+                <Td>Access Request Notifications Destination</Td>
+                <Td>Secret Request Notifications Destination</Td>
+                <Td />
+              </Tr>
+            </THead>
+            <TBody>
+              <SlackConfigRow
+                handlePopUpOpen={handlePopUpOpen}
+                isSlackConfigLoading={isSlackConfigLoading}
+                slackConfig={slackConfig}
+              />
+              <MicrosoftTeamsConfigRow
+                handlePopUpOpen={handlePopUpOpen}
+                isMicrosoftTeamsConfigLoading={isMicrosoftTeamsConfigLoading}
+                microsoftTeamsConfig={microsoftTeamsConfig}
+              />
+            </TBody>
+          </Table>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <EmptyState
+              title="No project workflow integrations configured. Add a new workflow integration to get started"
+              icon={faGear}
+            />
+          </div>
+        )}
       </TableContainer>
       <AddWorkflowIntegrationModal
         isOpen={popUp.addWorkflowIntegration.isOpen}

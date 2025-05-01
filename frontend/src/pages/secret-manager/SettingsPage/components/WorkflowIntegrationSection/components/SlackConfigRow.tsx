@@ -15,15 +15,17 @@ import {
   Td,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useWorkspace } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { useGetSlackIntegrationChannels } from "@app/hooks/api";
 import {
-  useGetSlackIntegrationChannels,
-  useGetWorkspaceWorkflowIntegrationConfig
-} from "@app/hooks/api";
-import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
+  ProjectWorkflowIntegrationConfig,
+  WorkflowIntegrationPlatform
+} from "@app/hooks/api/workflowIntegrations/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
+  slackConfig?: ProjectWorkflowIntegrationConfig;
+  isSlackConfigLoading: boolean;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["removeIntegration", "editIntegration"]>,
     data?: {
@@ -33,14 +35,7 @@ type Props = {
   ) => void;
 };
 
-export const SlackConfigRow = ({ handlePopUpOpen }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const { data: slackConfig, isPending: isSlackConfigLoading } =
-    useGetWorkspaceWorkflowIntegrationConfig({
-      workspaceId: currentWorkspace?.id ?? "",
-      integration: WorkflowIntegrationPlatform.SLACK
-    });
-
+export const SlackConfigRow = ({ handlePopUpOpen, isSlackConfigLoading, slackConfig }: Props) => {
   const { data: slackChannels, isPending: isSlackChannelsLoading } = useGetSlackIntegrationChannels(
     slackConfig?.integrationId
   );

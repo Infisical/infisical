@@ -15,15 +15,17 @@ import {
   Td,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useWorkspace } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { useGetMicrosoftTeamsIntegrationTeams } from "@app/hooks/api";
 import {
-  useGetMicrosoftTeamsIntegrationTeams,
-  useGetWorkspaceWorkflowIntegrationConfig
-} from "@app/hooks/api";
-import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
+  ProjectWorkflowIntegrationConfig,
+  WorkflowIntegrationPlatform
+} from "@app/hooks/api/workflowIntegrations/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
+  microsoftTeamsConfig?: ProjectWorkflowIntegrationConfig;
+  isMicrosoftTeamsConfigLoading: boolean;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["removeIntegration", "editIntegration"]>,
     data?: {
@@ -33,14 +35,11 @@ type Props = {
   ) => void;
 };
 
-export const MicrosoftTeamsConfigRow = ({ handlePopUpOpen }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const { data: microsoftTeamsConfig, isPending: isMicrosoftTeamsConfigLoading } =
-    useGetWorkspaceWorkflowIntegrationConfig({
-      workspaceId: currentWorkspace?.id ?? "",
-      integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
-    });
-
+export const MicrosoftTeamsConfigRow = ({
+  handlePopUpOpen,
+  isMicrosoftTeamsConfigLoading,
+  microsoftTeamsConfig
+}: Props) => {
   const { data: microsoftTeamsChannels, isPending: isMicrosoftTeamsChannelsLoading } =
     useGetMicrosoftTeamsIntegrationTeams(microsoftTeamsConfig?.integrationId);
   const microsoftTeamsChannelIdToName = Object.fromEntries(
