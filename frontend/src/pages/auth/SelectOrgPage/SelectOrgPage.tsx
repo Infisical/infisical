@@ -89,7 +89,7 @@ export const SelectOrganizationPage = () => {
           </div>
           <div className="thin-scrollbar flex h-full max-h-60 w-full flex-col items-stretch gap-2 overflow-auto rounded-md">
             {duplicateAccounts?.data?.duplicateAccounts?.map((el) => {
-              const lastSession = el.devices.at(-1);
+              const lastSession = el.devices?.at(-1);
               return (
                 <div
                   key={el.id}

@@ -181,7 +181,7 @@ export const oidcConfigServiceFactory = ({
     manageGroupMemberships
   }: TOidcLoginDTO) => {
     const serverCfg = await getServerCfg();
-    const sanitizedEmail = email.toLowerCase();
+    const sanitizedEmail = email.trim().toLowerCase();
 
     if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.OIDC)) {
       throw new ForbiddenRequestError({

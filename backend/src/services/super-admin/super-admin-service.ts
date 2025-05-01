@@ -272,7 +272,7 @@ export const superAdminServiceFactory = ({
     userAgent
   }: TAdminSignUpDTO) => {
     const appCfg = getConfig();
-    const sanitizedEmail = email.toLowerCase();
+    const sanitizedEmail = email.trim().toLowerCase();
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exists" });
 
@@ -349,7 +349,7 @@ export const superAdminServiceFactory = ({
 
   const bootstrapInstance = async ({ email, password, organizationName }: TAdminBootstrapInstanceDTO) => {
     const appCfg = getConfig();
-    const sanitizedEmail = email.toLowerCase();
+    const sanitizedEmail = email.trim().toLowerCase();
     const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
     if (serverCfg?.initialized) {
       throw new BadRequestError({ message: "Instance has already been set up" });
