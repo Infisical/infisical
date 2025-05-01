@@ -7,6 +7,7 @@ import { ProjectType, SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecre
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
+import { applyJitter } from "@app/lib/dates";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import {
   buildFindFilter,
@@ -22,7 +23,6 @@ import type {
   TFindSecretsByFolderIdsFilter,
   TGetSecretsDTO
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
-import { applyJitter } from "@app/lib/dates";
 
 export const SecretServiceCacheKeys = {
   get productKey() {
