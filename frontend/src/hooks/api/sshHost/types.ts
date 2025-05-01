@@ -20,14 +20,13 @@ export type TSshHost = {
   hostCertTtl: string;
   loginMappings: TLoginMapping[];
 };
-
 export type TCreateSshHostDTO = {
   projectId: string;
   hostname: string;
   alias?: string;
   userCertTtl?: string;
   hostCertTtl?: string;
-  loginMappings: TLoginMapping[];
+  loginMappings: Omit<TLoginMapping, "source">[];
 };
 
 export type TUpdateSshHostDTO = {
@@ -36,7 +35,7 @@ export type TUpdateSshHostDTO = {
   alias?: string;
   userCertTtl?: string;
   hostCertTtl?: string;
-  loginMappings?: TLoginMapping[];
+  loginMappings?: Omit<TLoginMapping, "source">[];
 };
 
 export type TDeleteSshHostDTO = {

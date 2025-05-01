@@ -4,19 +4,19 @@ export type TSshHostGroup = {
   id: string;
   projectId: string;
   name: string;
-  loginMappings: TLoginMapping[];
+  loginMappings: Omit<TLoginMapping, "source">[];
 };
 
 export type TCreateSshHostGroupDTO = {
   projectId: string;
   name: string;
-  loginMappings: TLoginMapping[];
+  loginMappings: Omit<TLoginMapping, "source">[];
 };
 
 export type TUpdateSshHostGroupDTO = {
   sshHostGroupId: string;
   name?: string;
-  loginMappings?: TLoginMapping[];
+  loginMappings?: Omit<TLoginMapping, "source">[];
 };
 
 export type TDeleteSshHostGroupDTO = {
