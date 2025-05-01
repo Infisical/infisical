@@ -57,6 +57,8 @@ type TWaitTillReady = {
   jitter?: number;
 };
 
+const DELETION_BATCH_SIZE = 500;
+
 export const keyStoreFactory = (redisUrl: string) => {
   const redis = new Redis(redisUrl);
   const redisLock = new Redlock([redis], { retryCount: 2, retryDelay: 200 });
@@ -74,6 +76,31 @@ export const keyStoreFactory = (redisUrl: string) => {
   ) => redis.set(prefix ? `${prefix}:${key}` : key, value, "EX", expiryInSeconds);
 
   const deleteItem = async (key: string) => redis.del(key);
+
+  const deleteItems = async (pattern: string) => {
+    let cursor = "0";
+    let totalDeleted = 0;
+
+    do {
+      // Await in loop is needed so that Redis is not overwhelmed
+      // eslint-disable-next-line no-await-in-loop
+      const [nextCursor, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 1000); // Count should be 1000 - 5000 for prod loads
+      cursor = nextCursor;
+
+      for (let i = 0; i < keys.length; i += DELETION_BATCH_SIZE) {
+        const batch = keys.slice(i, i + DELETION_BATCH_SIZE);
+        const pipeline = redis.pipeline();
+        for (const key of batch) {
+          pipeline.unlink(key);
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await pipeline.exec();
+        totalDeleted += batch.length;
+      }
+    } while (cursor !== "0");
+
+    return totalDeleted;
+  };
 
   const incrementBy = async (key: string, value: number) => redis.incrby(key, value);
 
@@ -108,6 +135,7 @@ export const keyStoreFactory = (redisUrl: string) => {
     setExpiry,
     setItemWithExpiry,
     deleteItem,
+    deleteItems,
     incrementBy,
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {
       return redisLock.acquire(resources, duration, settings);

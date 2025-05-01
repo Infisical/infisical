@@ -26,6 +26,7 @@ import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
 import {
+  CacheType,
   LoginMethod,
   TAdminBootstrapInstanceDTO,
   TAdminGetIdentitiesDTO,
@@ -45,7 +46,7 @@ type TSuperAdminServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">;
 };
 
@@ -570,6 +571,10 @@ export const superAdminServiceFactory = ({
     await kmsService.updateEncryptionStrategy(strategy);
   };
 
+  const invalidateCache = async (type: CacheType) => {
+    if (type === CacheType.ALL || type === CacheType.SECRETS) await keyStore.deleteItems("secret-manager:*");
+  };
+
   return {
     initServerCfg,
     updateServerCfg,
@@ -583,6 +588,7 @@ export const superAdminServiceFactory = ({
     getConfiguredEncryptionStrategies,
     grantServerAdminAccessToUser,
     deleteIdentitySuperAdminAccess,
-    deleteUserSuperAdminAccess
+    deleteUserSuperAdminAccess,
+    invalidateCache
   };
 };

@@ -31,6 +31,7 @@ import {
 import { IdentityPanel } from "@app/pages/admin/OverviewPage/components/IdentityPanel";
 
 import { AuthPanel } from "./components/AuthPanel";
+import { CachingPanel } from "./components/CachingPanel";
 import { EncryptionPanel } from "./components/EncryptionPanel";
 import { IntegrationPanel } from "./components/IntegrationPanel";
 import { UserPanel } from "./components/UserPanel";
@@ -42,7 +43,8 @@ enum TabSections {
   Integrations = "integrations",
   Users = "users",
   Identities = "identities",
-  Kmip = "kmip"
+  Kmip = "kmip",
+  Caching = "caching"
 }
 
 enum SignUpModes {
@@ -164,6 +166,7 @@ export const OverviewPage = () => {
                     <Tab value={TabSections.Integrations}>Integrations</Tab>
                     <Tab value={TabSections.Users}>User Identities</Tab>
                     <Tab value={TabSections.Identities}>Machine Identities</Tab>
+                    <Tab value={TabSections.Caching}>Caching</Tab>
                   </div>
                 </TabList>
                 <TabPanel value={TabSections.Settings}>
@@ -407,6 +410,9 @@ export const OverviewPage = () => {
                 </TabPanel>
                 <TabPanel value={TabSections.Identities}>
                   <IdentityPanel />
+                </TabPanel>
+                <TabPanel value={TabSections.Caching}>
+                  <CachingPanel />
                 </TabPanel>
               </Tabs>
             </div>

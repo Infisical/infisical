@@ -74,3 +74,12 @@ export enum RootKeyEncryptionStrategy {
   Software = "SOFTWARE",
   HSM = "HSM"
 }
+
+export enum CacheType {
+  ALL = "all",
+  SECRETS = "secrets"
+}
+
+export type TInvalidateCacheDTO = {
+  type: CacheType;
+};

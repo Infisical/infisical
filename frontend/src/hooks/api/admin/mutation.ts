@@ -9,6 +9,7 @@ import {
   AdminSlackConfig,
   RootKeyEncryptionStrategy,
   TCreateAdminUserDTO,
+  TInvalidateCacheDTO,
   TServerConfig,
   TUpdateAdminSlackConfigDTO
 } from "./types";
@@ -144,6 +145,18 @@ export const useUpdateServerEncryptionStrategy = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.getServerEncryptionStrategies() });
+    }
+  });
+};
+
+export const useInvalidateCache = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, object, TInvalidateCacheDTO>({
+    mutationFn: async (dto) => {
+      await apiRequest.post("/api/v1/admin/invalidate-cache", dto);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getInvalidateCache() });
     }
   });
 };

@@ -4,13 +4,14 @@ import { z } from "zod";
 import { IdentitiesSchema, OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
-import { LoginMethod } from "@app/services/super-admin/super-admin-types";
+import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerAdminRouter = async (server: FastifyZodProvider) => {
@@ -532,6 +533,39 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         user: user.user,
         organization,
         identity: machineIdentity
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/invalidate-cache",
+    config: {
+      rateLimit: invalidateCacheLimit
+    },
+    schema: {
+      body: z.object({
+        type: z.nativeEnum(CacheType)
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      await server.services.superAdmin.invalidateCache(req.body.type);
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.InvalidateCache,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          ...req.auditLogInfo
+        }
+      });
+
+      return {
+        message: "Successfully purged cache"
       };
     }
   });

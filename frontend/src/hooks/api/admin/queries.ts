@@ -23,7 +23,8 @@ export const adminQueryKeys = {
   getIdentities: (filters: AdminGetIdentitiesFilters) =>
     [adminStandaloneKeys.getIdentities, { filters }] as const,
   getAdminSlackConfig: () => ["admin-slack-config"] as const,
-  getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const
+  getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const,
+  getInvalidateCache: () => ["admin-invalidate-cache"] as const
 };
 
 export const fetchServerConfig = async () => {
