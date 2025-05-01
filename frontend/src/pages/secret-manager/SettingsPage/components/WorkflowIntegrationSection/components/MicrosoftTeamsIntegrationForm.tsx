@@ -17,8 +17,7 @@ import {
   Input,
   Select,
   SelectItem,
-  Switch,
-  Tooltip
+  Switch
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import {
