@@ -226,9 +226,6 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
     }
   }, [microsoftTeamsConfig]);
 
-  console.log("values", getValues());
-  console.log("errors", errors);
-
   return (
     <form onSubmit={handleSubmit(handleIntegrationSave)}>
       <div className="flex w-full flex-col justify-start">
