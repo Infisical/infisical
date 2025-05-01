@@ -3,6 +3,7 @@ import { TAppConnectionOption } from "./app-options";
 import { TAuth0Connection } from "./auth0-connection";
 import { TAwsConnection } from "./aws-connection";
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
+import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TCamundaConnection } from "./camunda-connection";
 import { TDatabricksConnection } from "./databricks-connection";
@@ -20,6 +21,7 @@ import { TWindmillConnection } from "./windmill-connection";
 export * from "./auth0-connection";
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
+export * from "./azure-client-secrets-connection";
 export * from "./azure-key-vault-connection";
 export * from "./camunda-connection";
 export * from "./databricks-connection";
@@ -40,6 +42,7 @@ export type TAppConnection =
   | TGcpConnection
   | TAzureKeyVaultConnection
   | TAzureAppConfigurationConnection
+  | TAzureClientSecretsConnection
   | TDatabricksConnection
   | THumanitecConnection
   | TTerraformCloudConnection
@@ -83,6 +86,7 @@ export type TAppConnectionMap = {
   [AppConnection.GCP]: TGcpConnection;
   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnection;
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
+  [AppConnection.AzureClientSecrets]: TAzureClientSecretsConnection;
   [AppConnection.Databricks]: TDatabricksConnection;
   [AppConnection.Humanitec]: THumanitecConnection;
   [AppConnection.TerraformCloud]: TTerraformCloudConnection;

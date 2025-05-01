@@ -24,6 +24,11 @@ import {
   validateAzureAppConfigurationConnectionCredentials
 } from "./azure-app-configuration";
 import {
+  AzureClientSecretsConnectionMethod,
+  getAzureClientSecretsConnectionListItem,
+  validateAzureClientSecretsConnectionCredentials
+} from "./azure-client-secrets";
+import {
   AzureKeyVaultConnectionMethod,
   getAzureKeyVaultConnectionListItem,
   validateAzureKeyVaultConnectionCredentials
@@ -76,6 +81,7 @@ export const listAppConnectionOptions = () => {
     getPostgresConnectionListItem(),
     getMsSqlConnectionListItem(),
     getCamundaConnectionListItem(),
+    getAzureClientSecretsConnectionListItem(),
     getWindmillConnectionListItem(),
     getAuth0ConnectionListItem(),
     getLdapConnectionListItem(),
@@ -136,6 +142,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.AzureKeyVault]: validateAzureKeyVaultConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureAppConfiguration]:
       validateAzureAppConfigurationConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureClientSecrets]:
+      validateAzureClientSecretsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -157,6 +165,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "GitHub App";
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
+    case AzureClientSecretsConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
       return "OAuth";
     case AwsConnectionMethod.AccessKey:
@@ -226,6 +235,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.TerraformCloud]: platformManagedCredentialsNotSupported,
   [AppConnection.Camunda]: platformManagedCredentialsNotSupported,
   [AppConnection.Vercel]: platformManagedCredentialsNotSupported,
+  [AppConnection.AzureClientSecrets]: platformManagedCredentialsNotSupported,
   [AppConnection.Windmill]: platformManagedCredentialsNotSupported,
   [AppConnection.Auth0]: platformManagedCredentialsNotSupported,
   [AppConnection.LDAP]: platformManagedCredentialsNotSupported, // we could support this in the future
