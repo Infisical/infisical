@@ -192,8 +192,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         projectSlug: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.projectSlug),
 
         certificatePem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.certificatePem),
-        privateKeyPem: z.string().trim().describe(CERTIFICATES.IMPORT.privateKeyPem),
-        chainPem: z.string().trim().describe(CERTIFICATES.IMPORT.chainPem),
+        privateKeyPem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.privateKeyPem),
+        chainPem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.chainPem),
 
         friendlyName: z.string().trim().optional().describe(CERTIFICATES.IMPORT.friendlyName),
         pkiCollectionId: z.string().trim().optional().describe(CERTIFICATES.IMPORT.pkiCollectionId)
@@ -491,7 +491,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: cert.projectId,
         event: {
-          type: EventType.DELETE_CERT,
+          type: EventType.GET_CERT_BODY,
           metadata: {
             certId: cert.id,
             cn: cert.commonName,

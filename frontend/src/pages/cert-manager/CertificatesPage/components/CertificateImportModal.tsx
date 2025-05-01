@@ -22,8 +22,8 @@ import { CertificateContent } from "./CertificateContent";
 
 const schema = z.object({
   certificatePem: z.string().trim().min(1, "Certificate PEM is required"),
-  privateKeyPem: z.string().trim(),
-  chainPem: z.string().trim(),
+  privateKeyPem: z.string().trim().min(1, "Private Key PEM is required"),
+  chainPem: z.string().trim().min(1, "Certificate Chain PEM is required"),
 
   friendlyName: z.string(),
   collectionId: z.string().optional()

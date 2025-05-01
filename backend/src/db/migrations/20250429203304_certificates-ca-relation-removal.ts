@@ -4,11 +4,6 @@ import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.Certificate)) {
-    await knex.schema.alterTable(TableName.Certificate, (t) => {
-      t.uuid("caId").nullable().alter();
-      t.uuid("caCertId").nullable().alter();
-    });
-
     const hasProjectIdColumn = await knex.schema.hasColumn(TableName.Certificate, "projectId");
     if (!hasProjectIdColumn) {
       await knex.transaction(async (trx) => {
@@ -29,6 +24,11 @@ export async function up(knex: Knex): Promise<void> {
         });
       });
     }
+
+    await knex.schema.alterTable(TableName.Certificate, (t) => {
+      t.uuid("caId").nullable().alter();
+      t.uuid("caCertId").nullable().alter();
+    });
   }
 }
 

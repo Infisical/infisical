@@ -279,29 +279,49 @@ export const certificateServiceFactory = ({
 
     // Verify the certificate chain
     const chainCerts = splitPemChain(chainPem).map((pem) => new x509.X509Certificate(pem));
+
+    // Remove leaf cert from the chain if it's present
+    if (chainCerts[0].equal(leafCert)) {
+      chainCerts.splice(0, 1);
+    }
+
     if (chainCerts.length === 0) {
       throw new BadRequestError({
         message: "Certificate chain must contain at least one issuer certificate"
       });
     }
 
-    const chainValidationPromises = chainCerts.map((issuerCert) =>
-      leafCert.verify({ publicKey: issuerCert.publicKey }).catch(() => false)
-    );
+    // Verify leaf certificate is signed by the first certificate in the chain
+    const isLeafVerified = await leafCert.verify({ publicKey: chainCerts[0].publicKey }).catch(() => false);
+    if (!isLeafVerified) {
+      throw new BadRequestError({ message: "Leaf certificate verification against chain failed" });
+    }
 
-    const results = await Promise.all(chainValidationPromises);
+    // Verify the entire chain of trust
+    const verificationPromises = chainCerts.slice(0, -1).map(async (currentCert, index) => {
+      const issuerCert = chainCerts[index + 1];
+      return currentCert.verify({ publicKey: issuerCert.publicKey }).catch(() => false);
+    });
 
-    if (!results.some((result) => result === true)) {
-      throw new BadRequestError({ message: "Certificate chain verification failed" });
+    const verificationResults = await Promise.all(verificationPromises);
+
+    if (verificationResults.some((result) => !result)) {
+      throw new BadRequestError({
+        message: "Certificate chain verification failed: broken trust chain"
+      });
     }
 
     // Verify private key matches the certificate
+    let privateKey;
     try {
-      const message = Buffer.from("certificate-verification-test");
+      privateKey = createPrivateKey(privateKeyPem);
+    } catch (err) {
+      throw new BadRequestError({ message: "Invalid private key format" });
+    }
 
-      const privateKey = createPrivateKey(privateKeyPem);
+    try {
+      const message = Buffer.from(Buffer.alloc(32));
       const publicKey = createPublicKey(certificatePem);
-
       const signature = sign(null, message, privateKey);
       const isValid = verify(null, message, publicKey, signature);
 
@@ -309,7 +329,10 @@ export const certificateServiceFactory = ({
         throw new BadRequestError({ message: "Private key does not match certificate" });
       }
     } catch (err) {
-      throw new BadRequestError({ message: "Invalid private key format" });
+      if (err instanceof BadRequestError) {
+        throw err;
+      }
+      throw new BadRequestError({ message: "Error verifying private key against certificate" });
     }
 
     // Get certificate attributes
@@ -394,15 +417,9 @@ export const certificateServiceFactory = ({
 
         return txCert;
       } catch (error: unknown) {
-        if (
-          typeof error === "object" &&
-          error !== null &&
-          "error" in error &&
-          error.error &&
-          typeof error.error === "object" &&
-          "code" in error.error &&
-          error.error.code === "23505"
-        ) {
+        // @ts-expect-error We're expecting a database error
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        if (error?.error?.code === "23505") {
           throw new BadRequestError({ message: "Certificate serial already exists in your project" });
         }
         throw error;
