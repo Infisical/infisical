@@ -182,7 +182,7 @@
     "cron": "^3.1.7",
     "dd-trace": "^5.40.0",
     "dotenv": "^16.4.1",
-    "fastify": "^4.28.1",
+    "fastify": "^4.29.1",
     "fastify-plugin": "^4.5.1",
     "google-auth-library": "^9.9.0",
     "googleapis": "^137.1.0",
