@@ -1,5 +1,5 @@
 import { BsMicrosoftTeams, BsSlack } from "react-icons/bs";
-import { faEllipsis, faGear, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis, faGear, faInfoCircle, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import axios from "axios";
 import { twMerge } from "tailwind-merge";
@@ -21,6 +21,7 @@ import {
   TBody,
   Td,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
@@ -173,15 +174,20 @@ export const OrgWorkflowIntegrationTab = withPermission(
                 )}
               {workflowIntegrations?.map((workflowIntegration) => (
                 <Tr key={workflowIntegration.id}>
-                  <Td className="flex max-w-xs items-center overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
+                  <Td className="flex max-w-xs items-center gap-2 overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
                     {workflowIntegration.integration === WorkflowIntegrationPlatform.SLACK ? (
                       <BsSlack />
                     ) : (
                       <BsMicrosoftTeams />
                     )}
-                    <div className="ml-2 capitalize">
+                    <div className="capitalize">
                       {workflowIntegration.integration.replaceAll("-", " ")}
                     </div>
+                    {workflowIntegration.description && (
+                      <Tooltip content={workflowIntegration.description}>
+                        <FontAwesomeIcon icon={faInfoCircle} className="text-gray-400" size="sm" />
+                      </Tooltip>
+                    )}
                   </Td>
                   <Td>{workflowIntegration.slug}</Td>
                   <Td>{renderStatus(workflowIntegration.status)}</Td>
