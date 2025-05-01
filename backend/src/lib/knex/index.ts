@@ -47,21 +47,21 @@ export const buildFindFilter =
     if ($in) {
       Object.entries($in).forEach(([key, val]) => {
         if (val) {
-          void bd.whereIn([`${tableName ? `${tableName}.` : ""}${key}`] as never, val as never);
+          void bd.whereIn(`${tableName ? `${tableName}.` : ""}${key}`, val as never);
         }
       });
     }
 
     if ($notNull?.length) {
       $notNull.forEach((key) => {
-        void bd.whereNotNull([`${tableName ? `${tableName}.` : ""}${key as string}`] as never);
+        void bd.whereNotNull(`${tableName ? `${tableName}.` : ""}${key as string}`);
       });
     }
 
     if ($search) {
       Object.entries($search).forEach(([key, val]) => {
         if (val) {
-          void bd.whereILike([`${tableName ? `${tableName}.` : ""}${key}`] as never, val as never);
+          void bd.whereILike(`${tableName ? `${tableName}.` : ""}${key}`, val as never);
         }
       });
     }

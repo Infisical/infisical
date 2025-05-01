@@ -22,6 +22,12 @@ import {
   TValidateAzureAppConfigurationConnectionCredentialsSchema
 } from "./azure-app-configuration";
 import {
+  TAzureClientSecretsConnection,
+  TAzureClientSecretsConnectionConfig,
+  TAzureClientSecretsConnectionInput,
+  TValidateAzureClientSecretsConnectionCredentialsSchema
+} from "./azure-client-secrets";
+import {
   TAzureKeyVaultConnection,
   TAzureKeyVaultConnectionConfig,
   TAzureKeyVaultConnectionInput,
@@ -113,6 +119,7 @@ export type TAppConnection = { id: string } & (
   | TPostgresConnection
   | TMsSqlConnection
   | TCamundaConnection
+  | TAzureClientSecretsConnection
   | TWindmillConnection
   | TAuth0Connection
   | THCVaultConnection
@@ -137,6 +144,7 @@ export type TAppConnectionInput = { id: string } & (
   | TPostgresConnectionInput
   | TMsSqlConnectionInput
   | TCamundaConnectionInput
+  | TAzureClientSecretsConnectionInput
   | TWindmillConnectionInput
   | TAuth0ConnectionInput
   | THCVaultConnectionInput
@@ -161,12 +169,13 @@ export type TAppConnectionConfig =
   | TGcpConnectionConfig
   | TAzureKeyVaultConnectionConfig
   | TAzureAppConfigurationConnectionConfig
+  | TAzureClientSecretsConnectionConfig
   | TDatabricksConnectionConfig
   | THumanitecConnectionConfig
   | TTerraformCloudConnectionConfig
-  | TVercelConnectionConfig
   | TSqlConnectionConfig
   | TCamundaConnectionConfig
+  | TVercelConnectionConfig
   | TWindmillConnectionConfig
   | TAuth0ConnectionConfig
   | THCVaultConnectionConfig
@@ -179,13 +188,14 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateGcpConnectionCredentialsSchema
   | TValidateAzureKeyVaultConnectionCredentialsSchema
   | TValidateAzureAppConfigurationConnectionCredentialsSchema
+  | TValidateAzureClientSecretsConnectionCredentialsSchema
   | TValidateDatabricksConnectionCredentialsSchema
   | TValidateHumanitecConnectionCredentialsSchema
   | TValidatePostgresConnectionCredentialsSchema
   | TValidateMsSqlConnectionCredentialsSchema
   | TValidateCamundaConnectionCredentialsSchema
-  | TValidateTerraformCloudConnectionCredentialsSchema
   | TValidateVercelConnectionCredentialsSchema
+  | TValidateTerraformCloudConnectionCredentialsSchema
   | TValidateWindmillConnectionCredentialsSchema
   | TValidateAuth0ConnectionCredentialsSchema
   | TValidateHCVaultConnectionCredentialsSchema

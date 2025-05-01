@@ -28,7 +28,8 @@ export const OrganizationsSchema = z.object({
   shouldUseNewPrivilegeSystem: z.boolean().default(true),
   privilegeUpgradeInitiatedByUsername: z.string().nullable().optional(),
   privilegeUpgradeInitiatedAt: z.date().nullable().optional(),
-  bypassOrgAuthEnabled: z.boolean().default(false)
+  bypassOrgAuthEnabled: z.boolean().default(false),
+  userTokenExpiration: z.string().nullable().optional()
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

@@ -1882,6 +1882,10 @@ export const AppConnections = {
     TEAMCITY: {
       instanceUrl: "The TeamCity instance URL to connect with.",
       accessToken: "The access token to use to connect with TeamCity."
+    },
+    AZURE_CLIENT_SECRETS: {
+      code: "The OAuth code to use to connect with Azure Client Secrets.",
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets."
     }
   }
 };
@@ -2094,6 +2098,11 @@ export const SecretRotations = {
     AUTH0_CLIENT_SECRET: {
       clientId: "The client ID of the Auth0 Application to rotate the client secret for."
     },
+    AZURE_CLIENT_SECRET: {
+      objectId: "The ID of the Azure Application to rotate the client secret for.",
+      appName: "The name of the Azure Application to rotate the client secret for.",
+      clientId: "The client ID of the Azure Application to rotate the client secret for."
+    },
     LDAP_PASSWORD: {
       dn: "The Distinguished Name (DN) of the principal to rotate the password for."
     },
@@ -2121,6 +2130,10 @@ export const SecretRotations = {
       password: "The name of the secret that the generated password will be mapped to."
     },
     AUTH0_CLIENT_SECRET: {
+      clientId: "The name of the secret that the client ID will be mapped to.",
+      clientSecret: "The name of the secret that the rotated client secret will be mapped to."
+    },
+    AZURE_CLIENT_SECRET: {
       clientId: "The name of the secret that the client ID will be mapped to.",
       clientSecret: "The name of the secret that the rotated client secret will be mapped to."
     },

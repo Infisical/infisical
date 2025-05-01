@@ -32,6 +32,8 @@ import { ValidateAuth0ConnectionCredentialsSchema } from "./auth0";
 import { ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
+import { ValidateAzureClientSecretsConnectionCredentialsSchema } from "./azure-client-secrets";
+import { azureClientSecretsConnectionService } from "./azure-client-secrets/azure-client-secrets-service";
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
@@ -78,6 +80,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Postgres]: ValidatePostgresConnectionCredentialsSchema,
   [AppConnection.MsSql]: ValidateMsSqlConnectionCredentialsSchema,
   [AppConnection.Camunda]: ValidateCamundaConnectionCredentialsSchema,
+  [AppConnection.AzureClientSecrets]: ValidateAzureClientSecretsConnectionCredentialsSchema,
   [AppConnection.Windmill]: ValidateWindmillConnectionCredentialsSchema,
   [AppConnection.Auth0]: ValidateAuth0ConnectionCredentialsSchema,
   [AppConnection.HCVault]: ValidateHCVaultConnectionCredentialsSchema,
@@ -457,9 +460,10 @@ export const appConnectionServiceFactory = ({
     terraformCloud: terraformCloudConnectionService(connectAppConnectionById),
     camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     vercel: vercelConnectionService(connectAppConnectionById),
-    windmill: windmillConnectionService(connectAppConnectionById),
+    azureClientSecrets: azureClientSecretsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     hcvault: hcVaultConnectionService(connectAppConnectionById),
+    windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById)
   };
 };

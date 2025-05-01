@@ -8,6 +8,7 @@ import { DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 import { useCreateSecretV3, useDeleteSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
@@ -29,11 +30,12 @@ type Props = {
   tags?: WsTag[];
   isVisible?: boolean;
   isProtectedBranch?: boolean;
+  usedBySecretSyncs?: UsedBySecretSyncs[];
   importedBy?: {
     environment: { name: string; slug: string };
     folders: {
       name: string;
-      secrets?: { secretId: string; referencedSecretKey: string }[];
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
       isImported: boolean;
     }[];
   }[];
@@ -47,6 +49,7 @@ export const SecretListView = ({
   tags: wsTags = [],
   isVisible,
   isProtectedBranch = false,
+  usedBySecretSyncs,
   importedBy
 }: Props) => {
   const queryClient = useQueryClient();
@@ -366,6 +369,7 @@ export const SecretListView = ({
           onSaveSecret={handleSaveSecret}
           onDeleteSecret={onDeleteSecret}
           onDetailViewSecret={onDetailViewSecret}
+          importedBy={importedBy}
           onCreateTag={onCreateTag}
           handleSecretShare={() =>
             handlePopUpOpen("createSharedSecret", {
@@ -382,10 +386,11 @@ export const SecretListView = ({
         onDeleteApproved={handleSecretDelete}
         buttonText="Delete Secret"
         formContent={
-          importedBy &&
-          importedBy.length > 0 && (
+          ((importedBy && importedBy.length > 0) ||
+            (usedBySecretSyncs && usedBySecretSyncs?.length > 0)) && (
             <CollapsibleSecretImports
               importedBy={importedBy}
+              usedBySecretSyncs={usedBySecretSyncs}
               secretsToDelete={[(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key || ""]}
             />
           )

@@ -56,11 +56,12 @@ export type FolderResult = {
 export type SecretResult = {
   secretId: string;
   referencedSecretKey: string;
+  referencedSecretEnv: string;
 } & FolderResult;
 
 export type FolderInfo = {
   folderName: string;
-  secrets?: { secretId: string; referencedSecretKey: string }[];
+  secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
   folderId: string;
   folderImported: boolean;
   envSlug?: string;

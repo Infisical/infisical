@@ -29,9 +29,10 @@ import {
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
-import { useToggle } from "@app/hooks";
+import { usePopUp, useToggle } from "@app/hooks";
 import { SecretType } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 
 type Props = {
   defaultValue?: string | null;
@@ -54,6 +55,14 @@ type Props = {
   ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
   isRotatedSecret?: boolean;
+  importedBy?: {
+    environment: { name: string; slug: string };
+    folders: {
+      name: string;
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
+      isImported: boolean;
+    }[];
+  }[];
 };
 
 export const SecretEditRow = ({
@@ -70,8 +79,13 @@ export const SecretEditRow = ({
   secretPath,
   isVisible,
   secretId,
-  isRotatedSecret
+  isRotatedSecret,
+  importedBy
 }: Props) => {
+  const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
+    "editSecret"
+  ] as const);
+
   const {
     handleSubmit,
     control,
@@ -115,6 +129,20 @@ export const SecretEditRow = ({
       if (isCreatable) {
         await onSecretCreate(environment, secretName, value);
       } else {
+        if (
+          importedBy &&
+          importedBy.some(({ folders }) =>
+            folders?.some(({ secrets }) =>
+              secrets?.some(
+                ({ referencedSecretKey, referencedSecretEnv }) =>
+                  referencedSecretKey === secretName && referencedSecretEnv === environment
+              )
+            )
+          )
+        ) {
+          handlePopUpOpen("editSecret", { secretValue: value });
+          return;
+        }
         await onSecretUpdate(
           environment,
           secretName,
@@ -131,6 +159,18 @@ export const SecretEditRow = ({
     } else {
       reset({ value });
     }
+  };
+
+  const handleEditSecret = async ({ secretValue }: { secretValue: string }) => {
+    await onSecretUpdate(
+      environment,
+      secretName,
+      secretValue,
+      isOverride ? SecretType.Personal : SecretType.Shared,
+      secretId
+    );
+    reset({ value: secretValue });
+    handlePopUpClose("editSecret");
   };
 
   const canReadSecretValue = hasSecretReadValueOrDescribePermission(
@@ -325,6 +365,26 @@ export const SecretEditRow = ({
           </>
         )}
       </div>
+      <DeleteActionModal
+        isOpen={popUp.editSecret.isOpen}
+        deleteKey="confirm"
+        buttonColorSchema="secondary"
+        buttonText="Save"
+        subTitle=""
+        title="Do you want to edit this secret?"
+        onChange={(isOpen) => handlePopUpToggle("editSecret", isOpen)}
+        onDeleteApproved={() => handleEditSecret(popUp?.editSecret?.data)}
+        formContent={
+          importedBy &&
+          importedBy.length > 0 && (
+            <CollapsibleSecretImports
+              importedBy={importedBy}
+              secretsToDelete={[secretName]}
+              onlyReferences
+            />
+          )
+        }
+      />
     </div>
   );
 };

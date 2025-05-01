@@ -1,13 +1,16 @@
+/* eslint-disable no-nested-ternary */
 import React, { useMemo } from "react";
-import { faFileImport, faKey, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport, faKey, faSync, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Table, TBody, Td, Th, THead, Tr } from "@app/components/v2";
+import { Table, TBody, Td, Th, THead, Tooltip, Tr } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 
 enum ItemType {
   Folder = "Folder",
-  Secret = "Secret"
+  Secret = "Secret",
+  SecretSync = "SecretSync"
 }
 
 interface FlatItem {
@@ -17,6 +20,8 @@ interface FlatItem {
   reference: string;
   id: string;
   environment: { name: string; slug: string };
+  tooltipText?: string;
+  destination?: string;
 }
 
 interface CollapsibleSecretImportsProps {
@@ -24,16 +29,20 @@ interface CollapsibleSecretImportsProps {
     environment: { name: string; slug: string };
     folders: {
       name: string;
-      secrets?: { secretId: string; referencedSecretKey: string }[];
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
       isImported: boolean;
     }[];
   }[];
+  usedBySecretSyncs?: UsedBySecretSyncs[] | null;
   secretsToDelete: string[];
+  onlyReferences?: boolean;
 }
 
 export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> = ({
   importedBy = [],
-  secretsToDelete
+  usedBySecretSyncs = [],
+  secretsToDelete,
+  onlyReferences
 }) => {
   const { currentWorkspace } = useWorkspace();
 
@@ -51,6 +60,15 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
   };
 
   const handlePathClick = (item: FlatItem) => {
+    if (item.type === ItemType.SecretSync) {
+      window.open(
+        `/secret-manager/${currentWorkspace.id}/integrations/secret-syncs/${item.destination}/${item.id}`,
+        "_blank",
+        "noopener,noreferrer"
+      );
+      return;
+    }
+
     let pathToNavigate;
     if (item.type === ItemType.Folder) {
       pathToNavigate = item.path;
@@ -70,7 +88,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
 
     importedBy.forEach((env) => {
       env.folders.forEach((folder) => {
-        if (folder.isImported) {
+        if (folder.isImported && !onlyReferences) {
           items.push({
             type: ItemType.Folder,
             path: folder.name,
@@ -103,7 +121,26 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
       });
     });
 
+    // Add secret sync items
+    usedBySecretSyncs?.forEach((syncItem) => {
+      items.push({
+        type: ItemType.SecretSync,
+        destination: syncItem.destination,
+        path: syncItem.path,
+        id: syncItem.id,
+        reference: "Secret Sync",
+        environment: { name: syncItem.environment, slug: "" },
+        tooltipText: `Currently used by Secret Sync: ${syncItem.name}`
+      });
+    });
+
     return items.sort((a, b) => {
+      if (a.type === ItemType.SecretSync && b.type !== ItemType.SecretSync) return 1;
+      if (a.type !== ItemType.SecretSync && b.type === ItemType.SecretSync) return -1;
+
+      if (a.type === ItemType.SecretSync && b.type === ItemType.SecretSync) {
+        return a.path.localeCompare(b.path);
+      }
       const envCompare = a.environment.name.localeCompare(b.environment.name);
       if (envCompare !== 0) return envCompare;
 
@@ -119,7 +156,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
 
       return aPath.localeCompare(bPath);
     });
-  }, [importedBy]);
+  }, [importedBy, usedBySecretSyncs, secretsToDelete, onlyReferences]);
 
   const hasImportedItems = importedBy.some((element) => {
     if (element.folders && element.folders.length > 0) {
@@ -135,19 +172,33 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
     return false;
   });
 
-  if (!hasImportedItems) {
+  const hasSecretSyncItems = usedBySecretSyncs && usedBySecretSyncs.length > 0;
+
+  if (!hasImportedItems && !hasSecretSyncItems) {
     return null;
   }
 
+  const alertColors = onlyReferences
+    ? {
+        border: "border-yellow-700/30",
+        bg: "bg-yellow-900/20",
+        text: "text-yellow-500"
+      }
+    : {
+        border: "border-red-700/30",
+        bg: "bg-red-900/20",
+        text: "text-red-500"
+      };
+
   return (
     <div className="mb-4 w-full">
-      <div className="mb-4 rounded-md border border-red-700/30 bg-red-900/20">
+      <div className={`mb-4 rounded-md border ${alertColors.border} ${alertColors.bg}`}>
         <div className="flex items-start gap-3 p-4">
-          <div className="mt-0.5 flex-shrink-0 text-red-500">
+          <div className={`mt-0.5 flex-shrink-0 ${alertColors.text}`}>
             <FontAwesomeIcon icon={faWarning} className="h-5 w-5" aria-hidden="true" />
           </div>
           <div className="w-full">
-            <p className="text-sm font-semibold text-red-500">
+            <p className={`text-sm font-semibold ${alertColors.text}`}>
               The following resources will be affected by this change
             </p>
           </div>
@@ -168,14 +219,36 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
                 key={item.id}
                 onClick={() => handlePathClick(item)}
                 className="cursor-pointer hover:bg-mineshaft-700"
-                title={`Navigate to ${item.path}`}
+                title={
+                  item.type === ItemType.SecretSync
+                    ? "Navigate to Secret Sync"
+                    : `Navigate to ${item.path}`
+                }
               >
                 <Td>
-                  <FontAwesomeIcon
-                    icon={item.type === ItemType.Secret ? faKey : faFileImport}
-                    className={`h-4 w-4 ${item.type === ItemType.Secret ? "text-gray-400" : "text-green-700"}`}
-                    aria-hidden="true"
-                  />
+                  <Tooltip
+                    className="max-w-md"
+                    content={item.tooltipText}
+                    isDisabled={!item.tooltipText}
+                  >
+                    <FontAwesomeIcon
+                      icon={
+                        item.type === ItemType.Secret
+                          ? faKey
+                          : item.type === ItemType.Folder
+                            ? faFileImport
+                            : faSync
+                      }
+                      className={`h-4 w-4 ${
+                        item.type === ItemType.Secret
+                          ? "text-gray-400"
+                          : item.type === ItemType.Folder
+                            ? "text-green-700"
+                            : "text-mineshaft-300"
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </Tooltip>
                 </Td>
                 <Td className="px-4">{item.environment.name}</Td>
                 <Td className="truncate px-4">{truncatePath(item.path)}</Td>

@@ -154,7 +154,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                       secrets: z
                         .object({
                           secretId: z.string(),
-                          referencedSecretKey: z.string()
+                          referencedSecretKey: z.string(),
+                          referencedSecretEnv: z.string()
                         })
                         .array()
                         .optional()
@@ -163,6 +164,16 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 })
                 .array()
                 .optional()
+            })
+            .array()
+            .optional(),
+          usedBySecretSyncs: z
+            .object({
+              name: z.string(),
+              destination: z.string(),
+              environment: z.string(),
+              id: z.string(),
+              path: z.string()
             })
             .array()
             .optional(),
@@ -500,6 +511,24 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
+      const usedBySecretSyncs: { name: string; destination: string; environment: string; id: string; path: string }[] =
+        [];
+      for await (const environment of environments) {
+        const secretSyncs = await server.services.secretSync.listSecretSyncsBySecretPath(
+          { projectId, secretPath, environment },
+          req.permission
+        );
+        secretSyncs.forEach((sync) => {
+          usedBySecretSyncs.push({
+            name: sync.name,
+            destination: sync.destination,
+            environment,
+            id: sync.id,
+            path: sync.folder?.path || "/"
+          });
+        });
+      }
+
       return {
         folders,
         dynamicSecrets,
@@ -512,6 +541,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         totalSecretCount,
         totalSecretRotationCount,
         importedByEnvs,
+        usedBySecretSyncs,
         totalCount:
           (totalFolderCount ?? 0) +
           (totalDynamicSecretCount ?? 0) +
@@ -611,6 +641,16 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           totalFolderCount: z.number().optional(),
           totalDynamicSecretCount: z.number().optional(),
           totalSecretCount: z.number().optional(),
+          usedBySecretSyncs: z
+            .object({
+              name: z.string(),
+              destination: z.string(),
+              environment: z.string(),
+              id: z.string(),
+              path: z.string()
+            })
+            .array()
+            .optional(),
           importedBy: z
             .object({
               environment: z.object({
@@ -624,7 +664,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                   secrets: z
                     .object({
                       secretId: z.string(),
-                      referencedSecretKey: z.string()
+                      referencedSecretKey: z.string(),
+                      referencedSecretEnv: z.string()
                     })
                     .array()
                     .optional()
@@ -904,6 +945,18 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         secrets
       });
 
+      const secretSyncs = await server.services.secretSync.listSecretSyncsBySecretPath(
+        { projectId, secretPath, environment },
+        req.permission
+      );
+      const usedBySecretSyncs = secretSyncs.map((sync) => ({
+        name: sync.name,
+        destination: sync.destination,
+        environment: sync.environment?.name || environment,
+        id: sync.id,
+        path: sync.folder?.path || "/"
+      }));
+
       if (secrets?.length || secretRotations?.length) {
         const secretCount =
           (secrets?.length ?? 0) +
@@ -950,6 +1003,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         totalSecretCount,
         totalSecretRotationCount,
         importedBy,
+        usedBySecretSyncs,
         totalCount:
           (totalImportCount ?? 0) +
           (totalFolderCount ?? 0) +
