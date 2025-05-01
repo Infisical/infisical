@@ -207,7 +207,7 @@ export const certificateServiceFactory = ({
 
     let certificateChain = null;
 
-    // TODO(andrey): Update this after the "store cert chain on cert body" PR gets merged
+    // TODO(andrey): Update this to get certificateChain straight from the certificate body after the "store cert chain on cert body" PR gets merged
     if (cert.caCertId) {
       const { caCert, caCertChain } = await getCaCertChain({
         caCertId: cert.caCertId,

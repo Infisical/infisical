@@ -1423,7 +1423,6 @@ export const certificateAuthorityServiceFactory = ({
       kmsService
     });
 
-    // TODO(andrey): Might need tweaks after other PR merge
     return {
       certificate: leafCert.toString("pem"),
       certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
@@ -1816,7 +1815,6 @@ export const certificateAuthorityServiceFactory = ({
       kmsService
     });
 
-    // TODO(andrey): Might need tweaks after other PR merge
     return {
       certificate: leafCert,
       certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
