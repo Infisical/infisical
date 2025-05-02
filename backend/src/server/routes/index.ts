@@ -238,6 +238,7 @@ import { projectSlackConfigDALFactory } from "@app/services/slack/project-slack-
 import { slackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { slackServiceFactory } from "@app/services/slack/slack-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
+import { invalidateCacheQueueFactory } from "@app/services/super-admin/invalidate-cache-queue";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { telemetryDALFactory } from "@app/services/telemetry/telemetry-dal";
@@ -605,6 +606,11 @@ export const registerRoutes = async (
     queueService
   });
 
+  const invalidateCacheQueue = invalidateCacheQueueFactory({
+    keyStore,
+    queueService
+  });
+
   const userService = userServiceFactory({
     userDAL,
     userAliasDAL,
@@ -715,7 +721,8 @@ export const registerRoutes = async (
     keyStore,
     licenseService,
     kmsService,
-    microsoftTeamsService
+    microsoftTeamsService,
+    invalidateCacheQueue
   });
 
   const orgAdminService = orgAdminServiceFactory({

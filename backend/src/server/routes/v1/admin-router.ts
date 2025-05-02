@@ -572,19 +572,18 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const keysCleared = await server.services.superAdmin.invalidateCache(req.body.type);
+      await server.services.superAdmin.invalidateCache(req.body.type);
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.InvalidateCache,
         distinctId: getTelemetryDistinctId(req),
         properties: {
-          keysCleared,
           ...req.auditLogInfo
         }
       });
 
       return {
-        message: `Successfully invalidated ${keysCleared} cached items`
+        message: "Cache invalidation job started"
       };
     }
   });

@@ -25,6 +25,7 @@ import { TOrgServiceFactory } from "../org/org-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
+import { TInvalidateCacheQueueFactory } from "./invalidate-cache-queue";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
 import {
   CacheType,
@@ -50,6 +51,7 @@ type TSuperAdminServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
+  invalidateCacheQueue: TInvalidateCacheQueueFactory;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
@@ -81,7 +83,8 @@ export const superAdminServiceFactory = ({
   identityAccessTokenDAL,
   identityTokenAuthDAL,
   identityOrgMembershipDAL,
-  microsoftTeamsService
+  microsoftTeamsService,
+  invalidateCacheQueue
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
@@ -633,12 +636,9 @@ export const superAdminServiceFactory = ({
   };
 
   const invalidateCache = async (type: CacheType) => {
-    let totalKeysCleared = 0;
-
-    if (type === CacheType.ALL || type === CacheType.SECRETS)
-      totalKeysCleared += await keyStore.deleteItems({ pattern: "secret-manager:*" });
-
-    return totalKeysCleared;
+    await invalidateCacheQueue.startInvalidate({
+      data: { type }
+    });
   };
 
   return {

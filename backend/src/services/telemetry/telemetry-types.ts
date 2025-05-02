@@ -207,7 +207,6 @@ export type TIssueCertificateEvent = {
 export type TInvalidateCacheEvent = {
   event: PostHogEventTypes.InvalidateCache;
   properties: {
-    keysCleared: number;
     userAgent?: string;
   };
 };
