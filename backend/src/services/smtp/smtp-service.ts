@@ -2,6 +2,10 @@ import { render } from "@react-email/components";
 import { createTransport } from "nodemailer";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
 import React from "react";
+
+import { getConfig } from "@app/lib/config/env";
+import { logger } from "@app/lib/logger";
+
 import {
   AccessApprovalRequestTemplate,
   EmailMfaTemplate,
@@ -12,6 +16,7 @@ import {
   IntegrationSyncFailedTemplate,
   NewDeviceLoginTemplate,
   OrgAdminBreakglassAccessTemplate,
+  OrgAdminProjectGrantAccessTemplate,
   OrganizationInvitationTemplate,
   PasswordResetTemplate,
   PasswordSetupTemplate,
@@ -29,12 +34,7 @@ import {
   ServiceTokenExpiryNoticeTemplate,
   SignupEmailVerificationTemplate,
   UnlockAccountTemplate
-} from "src/services/smtp/emails";
-
-import { getConfig } from "@app/lib/config/env";
-import { logger } from "@app/lib/logger";
-
-import OrgAdminProjectGrantAccessTemplate from "./emails/OrgAdminProjectGrantAccessTemplate";
+} from "./emails";
 
 export type TSmtpConfig = SMTPTransport.Options;
 export type TSmtpSendMail = {
