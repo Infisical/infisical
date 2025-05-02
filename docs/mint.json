@@ -1,6 +1,6 @@
 {
   "name": "Infisical",
-  "openapi": "https://8078-2600-4808-58b6-1200-8040-d650-d716-35f4.ngrok-free.app/api/docs/json",
+  "openapi": "https://app.infisical.com/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
@@ -932,7 +932,7 @@
           "group": "Identity Specific Privilege",
           "pages": [
             {
-              "group": "V1",
+              "group": "V1 (Legacy)",
               "pages": [
                 "api-reference/endpoints/identity-specific-privilege/v1/create-permanent",
                 "api-reference/endpoints/identity-specific-privilege/v1/create-temporary",
