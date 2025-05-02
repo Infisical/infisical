@@ -4,7 +4,7 @@ import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
-import { OrganizationInputSchema } from "@app/server/lib/schemas";
+import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -106,7 +106,23 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           attributionSource: z.string().trim().optional(),
           password: z.string()
         })
-        .and(OrganizationInputSchema),
+        .and(
+          z.preprocess(
+            (data) => {
+              if (typeof data === "object" && data && "useDefaultOrg" in data === false) {
+                return { ...data, useDefaultOrg: false };
+              }
+              return data;
+            },
+            z.discriminatedUnion("useDefaultOrg", [
+              z.object({ useDefaultOrg: z.literal(true) }),
+              z.object({
+                useDefaultOrg: z.literal(false),
+                organizationName: GenericResourceNameSchema
+              })
+            ])
+          )
+        ),
       response: {
         200: z.object({
           message: z.string(),

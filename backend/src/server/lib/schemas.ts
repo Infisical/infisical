@@ -48,22 +48,3 @@ export const SecretNameSchema = BaseSecretNameSchema.refine(
 )
   .refine((el) => !el.includes(":"), "Secret name cannot contain colon.")
   .refine((el) => !el.includes("/"), "Secret name cannot contain forward slash.");
-
-const DefaultOrgSchema = z.object({
-  useDefaultOrg: z.literal(true)
-});
-
-const CustomOrgSchema = z.object({
-  useDefaultOrg: z.literal(false),
-  organizationName: GenericResourceNameSchema
-});
-
-export const OrganizationInputSchema = z.preprocess(
-  (data) => {
-    if (typeof data === "object" && data && "useDefaultOrg" in data === false) {
-      return { ...data, useDefaultOrg: false };
-    }
-    return data;
-  },
-  z.discriminatedUnion("useDefaultOrg", [DefaultOrgSchema, CustomOrgSchema])
-);
