@@ -35,8 +35,16 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: "infisical/cli:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/sbin/tini", "--", "/bin/sh", "-c"]
+          args:
+            - >-
+              if [ -z "${TOKEN}" ]; then 
+                echo 'ERROR: TOKEN environment variable must be set'; 
+                exit 1; 
+              fi && 
+              /bin/infisical gateway --token ${TOKEN}
           envFrom:
             - secretRef:
                 name: {{ .Values.secret.name }}

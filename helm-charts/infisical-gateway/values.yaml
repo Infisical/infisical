@@ -1,18 +1,10 @@
 image:
-  repository: infisical/infisical-gateway
   pullPolicy: IfNotPresent
-  tag: "v0.0.1"
+  tag: "0.41.1"
 
 secret:
-  # create a new secret (if true) or use existing (if false)
-  create: true
-  # name of the secret to use/create
-  name: "infisical-gateway-secrets"
-
-  # Secret data (only used if create: true)
-  data:
-    TOKEN: ""
-    INFISICAL_API_URL: "https://app.infisical.com"
+  # The secret that contains the environment variables to be used by the gateway, such as INFISICAL_API_URL and TOKEN
+  name: "infisical-gateway-environment"
 
 resources:
   limits:
@@ -39,6 +31,7 @@ podSecurityContext:
 
 securityContext:
   runAsNonRoot: true
+  runAsUser: 1000
 
 affinity: {}
 tolerations: {}
