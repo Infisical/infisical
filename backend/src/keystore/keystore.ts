@@ -1,6 +1,7 @@
 import { Redis } from "ioredis";
 
 import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
+import { applyJitter } from "@app/lib/dates";
 import { delay as delayMs } from "@app/lib/delay";
 import { Redlock, Settings } from "@app/lib/red-lock";
 
@@ -104,7 +105,7 @@ export const keyStoreFactory = (redisUrl: string) => {
         totalDeleted += batch.length;
 
         // eslint-disable-next-line no-await-in-loop
-        await delayMs(Math.max(0, delay + Math.floor((Math.random() * 2 - 1) * jitter)));
+        await delayMs(Math.max(0, applyJitter(delay, jitter)));
       }
     } while (cursor !== "0");
 
@@ -130,7 +131,7 @@ export const keyStoreFactory = (redisUrl: string) => {
       // eslint-disable-next-line
       await new Promise((resolve) => {
         waitingCb?.();
-        setTimeout(resolve, Math.max(0, delay + Math.floor((Math.random() * 2 - 1) * jitter)));
+        setTimeout(resolve, Math.max(0, applyJitter(delay, jitter)));
       });
       attempts += 1;
       // eslint-disable-next-line

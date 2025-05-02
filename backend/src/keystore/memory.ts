@@ -1,5 +1,6 @@
 import RE2 from "re2";
 
+import { applyJitter } from "@app/lib/dates";
 import { delay as delayMs } from "@app/lib/delay";
 import { Lock } from "@app/lib/red-lock";
 
@@ -38,7 +39,7 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
         }
 
         // eslint-disable-next-line no-await-in-loop
-        await delayMs(Math.max(0, delay + Math.floor((Math.random() * 2 - 1) * jitter)));
+        await delayMs(Math.max(0, applyJitter(delay, jitter)));
       }
 
       return totalDeleted;
