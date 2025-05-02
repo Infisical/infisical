@@ -47,8 +47,10 @@ AccordionTrigger.displayName = "AccordionTrigger";
 
 export const AccordionContent = forwardRef<
   HTMLDivElement,
-  AccordionPrimitive.AccordionContentProps
->(({ children, className, ...props }, forwardedRef) => (
+  AccordionPrimitive.AccordionContentProps & {
+    childrenClassName?: string;
+  }
+>(({ children, className, childrenClassName, ...props }, forwardedRef) => (
   <AccordionPrimitive.Content
     className={twMerge(
       "overflow-hidden data-[state=closed]:animate-slideUp data-[state=open]:animate-slideDown",
@@ -57,7 +59,7 @@ export const AccordionContent = forwardRef<
     {...props}
     ref={forwardedRef}
   >
-    <div className="px-4 py-2 text-sm">{children}</div>
+    <div className={twMerge("px-4 py-2 text-sm", childrenClassName)}>{children}</div>
   </AccordionPrimitive.Content>
 ));
 

@@ -58,6 +58,12 @@ import {
   TValidateGitHubConnectionCredentialsSchema
 } from "./github";
 import {
+  THCVaultConnection,
+  THCVaultConnectionConfig,
+  THCVaultConnectionInput,
+  TValidateHCVaultConnectionCredentialsSchema
+} from "./hc-vault";
+import {
   THumanitecConnection,
   THumanitecConnectionConfig,
   THumanitecConnectionInput,
@@ -116,6 +122,7 @@ export type TAppConnection = { id: string } & (
   | TAzureClientSecretsConnection
   | TWindmillConnection
   | TAuth0Connection
+  | THCVaultConnection
   | TLdapConnection
   | TTeamCityConnection
 );
@@ -140,6 +147,7 @@ export type TAppConnectionInput = { id: string } & (
   | TAzureClientSecretsConnectionInput
   | TWindmillConnectionInput
   | TAuth0ConnectionInput
+  | THCVaultConnectionInput
   | TLdapConnectionInput
   | TTeamCityConnectionInput
 );
@@ -170,6 +178,7 @@ export type TAppConnectionConfig =
   | TVercelConnectionConfig
   | TWindmillConnectionConfig
   | TAuth0ConnectionConfig
+  | THCVaultConnectionConfig
   | TLdapConnectionConfig
   | TTeamCityConnectionConfig;
 
@@ -189,6 +198,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateTerraformCloudConnectionCredentialsSchema
   | TValidateWindmillConnectionCredentialsSchema
   | TValidateAuth0ConnectionCredentialsSchema
+  | TValidateHCVaultConnectionCredentialsSchema
   | TValidateLdapConnectionCredentialsSchema
   | TValidateTeamCityConnectionCredentialsSchema;
 

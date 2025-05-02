@@ -17,6 +17,12 @@ export const ROUTE_PATHS = Object.freeze({
     PasswordSetupPage: setRoute("/password-setup", "/_authenticate/password-setup")
   },
   Organization: {
+    Settings: {
+      OauthCallbackPage: setRoute(
+        "/organization/settings/oauth/callback",
+        "/_authenticate/_inject-org-details/_org-layout/organization/settings/oauth/callback"
+      )
+    },
     SecretScanning: setRoute(
       "/organization/secret-scanning",
       "/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning"
@@ -31,7 +37,7 @@ export const ROUTE_PATHS = Object.freeze({
     ),
     SettingsPage: setRoute(
       "/organization/settings",
-      "/_authenticate/_inject-org-details/_org-layout/organization/settings"
+      "/_authenticate/_inject-org-details/_org-layout/organization/settings/"
     ),
     GroupDetailsByIDPage: setRoute(
       "/organization/groups/$groupId",

@@ -8,6 +8,7 @@ import { CamundaSyncDestinationCol } from "./CamundaSyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
+import { HCVaultSyncDestinationCol } from "./HCVaultSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
 import { TeamCitySyncDestinationCol } from "./TeamCitySyncDestinationCol";
 import { TerraformCloudSyncDestinationCol } from "./TerraformCloudSyncDestinationCol";
@@ -44,6 +45,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <VercelSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Windmill:
       return <WindmillSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.HCVault:
+      return <HCVaultSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.TeamCity:
       return <TeamCitySyncDestinationCol secretSync={secretSync} />;
     default:

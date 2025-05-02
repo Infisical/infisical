@@ -29,6 +29,10 @@ import {
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import {
+  HCVaultConnectionListItemSchema,
+  SanitizedHCVaultConnectionSchema
+} from "@app/services/app-connection/hc-vault";
+import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
@@ -68,6 +72,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedMsSqlConnectionSchema.options,
   ...SanitizedCamundaConnectionSchema.options,
   ...SanitizedAuth0ConnectionSchema.options,
+  ...SanitizedHCVaultConnectionSchema.options,
   ...SanitizedAzureClientSecretsConnectionSchema.options,
   ...SanitizedWindmillConnectionSchema.options,
   ...SanitizedLdapConnectionSchema.options,
@@ -88,6 +93,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   MsSqlConnectionListItemSchema,
   CamundaConnectionListItemSchema,
   Auth0ConnectionListItemSchema,
+  HCVaultConnectionListItemSchema,
   AzureClientSecretsConnectionListItemSchema,
   WindmillConnectionListItemSchema,
   LdapConnectionListItemSchema,

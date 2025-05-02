@@ -1,0 +1,100 @@
+    ### Create Microsoft Teams workflow integration
+    <Steps>
+      <Step title="Install the Infisical Microsoft Teams App in Microsoft Teams tenant">
+
+        Currently, Infisical requires you to install a custom Microsoft Teams app into your Microsoft Teams tenant.
+
+        You can download the Infisical Microsoft Teams app package here:
+        - [Infisical Microsoft Teams app package](https://infisical-microsoft-teams-app.s3.us-east-1.amazonaws.com/Infisical.zip)
+
+        <Note>
+          **Important for self-hosted users:**
+
+          If you're self-hosting Infisical, you can skip the download step. Instead you should use the app package file you downloaded from the Microsoft Teams Developer Portal when you followed the Self-hosted guide.
+        </Note>
+
+        Once you've downloaded the app package, you can install the app in your Microsoft Teams tenant by navigating to the **Apps** > **Upload a custom app** page, and selecting the "Upload an app" button.
+
+        ![microsoft-teams-install-app](/images/platform/workflow-integrations/microsoft-teams-integration/microsoft-teams-install-app.png)
+        ![microsoft-teams-submit-app](/images/platform/workflow-integrations/microsoft-teams-integration/microsoft-teams-submit-app.png)
+
+        Once the app has been submitted, your Microsoft Teams tenant admin will need to approve the app in the [Microsoft Teams Admin Center](https://admin.teams.microsoft.com/policies/manage-apps).
+
+        <Warning>
+          After the app has been approved, it can take a few hours _(up to 24 hours in some cases)_ for Microsoft Teams to reflect the new app. During this period, the Infisical app will not be visible in Microsoft Teams, and won't be usable.
+        </Warning>
+
+        Once the app has been approved, you will be able to use the Infisical Microsoft Teams integration in your projects.
+      </Step>
+
+      <Step title="Add the Infisical Microsoft Teams app to your Microsoft Teams teams">
+        Once the app has been approved and installed in your Microsoft Teams tenant, you can add the app to your Microsoft Teams teams.
+
+        ![microsoft-teams-add-app](/images/platform/workflow-integrations/microsoft-teams-integration/microsoft-teams-add-app.png)
+
+        Navigate to **Apps** > **Built for your org**, select the "Infisical" app, and press the "Add" button to select the teams and channels you wish to add the app to.
+
+        <Info>
+          This can also be done later through the [Microsoft Teams Admin Center](https://admin.teams.microsoft.com/policies/manage-apps), or through the Microsoft Teams client itself by navigating to the individual team's app settings.
+        </Info>
+
+        Once the app has been added to the team, you will be able to use the Infisical Microsoft Teams integration in the team.
+      </Step>
+
+      <Step title="Navigate to the Workflow Integrations tab in your organization settings">
+
+        After installing the Microsoft Teams app, you are now ready to configure the Microsoft Teams integration within Infisical.
+
+        Navigate to the **Workflow Integrations** tab in your organization settings, and press the "Add" button.
+
+        ![org-integrations-overview](/images/platform/workflow-integrations/microsoft-teams-integration/infisical-org-overview.png)
+      </Step>
+
+      <Step title="Create a Microsoft Teams workflow integration">
+        In order to use the Infisical Microsoft Teams integration, you will need to grant admin consent to the app. Once the consent is granted, the Microsoft Teams workflow integration will be created in your Infisical organization.
+
+        Press the "Add" button and select the "Microsoft Teams" platform option.
+        ![add-microsoft-teams-integration](/images/platform/workflow-integrations/microsoft-teams-integration/infisical-org-add-microsoft-teams-integration.png)
+
+        Select the Microsoft Teams integration you wish to configure, and press the "Configure" button.
+
+        Here you will be prompted to enter an alias, tenant ID, and an optional description for your workflow integration.
+        The tenant ID is the ID of the Microsoft 365 / Azure AD tenant that you installed the Infisical Microsoft Teams app in, in the previous steps.
+
+        ![configure-microsoft-teams-integration](/images/platform/workflow-integrations/microsoft-teams-integration/infisical-org-microsoft-teams-integration-modal.png)
+
+        Press the "Create Microsoft Teams Integration" button, and you'll be navigated to the Azure AD consent page.
+
+        ![microsoft-consent-page](/images/platform/workflow-integrations/microsoft-teams-integration/microsoft-consent-page.png)
+
+        <Note>
+          Please note that you must be a privileged administrator user of your Microsoft 365 / Azure AD tenant in order to grant admin consent to the app.
+        </Note>
+
+        Once you've granted admin consent, you'll be navigated back to the Infisical organization settings, where you can now select the Microsoft Teams integration you just created.
+
+        ![microsoft-teams-workflow-integration-created](/images/platform/workflow-integrations/microsoft-teams-integration/microsoft-teams-workflow-integration-created.png)
+      </Step>
+    </Steps>
+
+    ### Configure project to use Microsoft Teams workflow integration
+
+    <Steps>
+      <Step title="Navigate to the Workflow Integrations tab in the project settings">
+
+        To add a new Microsoft Teams workflow integration, navigate to **Project Settings** > **Workflow Integrations** and press the "Add".
+        ![project-settings-workflow-integrations](/images/platform/workflow-integrations/microsoft-teams-integration/infisical-project-settings.png)
+
+        Select the "Microsoft Teams" option from the list of available workflow integrations.
+
+      </Step>
+      <Step title="Configure the Microsoft Teams workflow integration">
+        Your project will send notifications to the connected Microsoft Teams team of the
+        selected Microsoft Teams integration when the configured events are triggered.
+
+
+        Press the "Save" button to save your Microsoft Teams workflow integration.
+        ![infisical-project-microsoft-teams-integration-save](/images/platform/workflow-integrations/microsoft-teams-integration/infisical-project-microsoft-teams-integration-save.png)
+      </Step>
+    </Steps>
+    Once you've created the project Microsoft Teams workflow integration, you will now receive Access Requests and Secret Approval Requests notifications in Microsoft Teams according to your configuration.

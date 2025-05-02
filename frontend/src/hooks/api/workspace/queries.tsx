@@ -20,7 +20,10 @@ import { TSshCertificateTemplate } from "../sshCertificateTemplates/types";
 import { TSshHost } from "../sshHost/types";
 import { userKeys } from "../users/query-keys";
 import { TWorkspaceUser } from "../users/types";
-import { ProjectSlackConfig } from "../workflowIntegrations/types";
+import {
+  ProjectWorkflowIntegrationConfig,
+  WorkflowIntegrationPlatform
+} from "../workflowIntegrations/types";
 import { workspaceKeys } from "./query-keys";
 import {
   CreateEnvironmentDTO,
@@ -883,13 +886,27 @@ export const useListWorkspaceSshCertificateTemplates = (projectId: string) => {
   });
 };
 
-export const useGetWorkspaceSlackConfig = ({ workspaceId }: { workspaceId: string }) => {
+export const useGetWorkspaceWorkflowIntegrationConfig = ({
+  workspaceId,
+  integration
+}: {
+  workspaceId: string;
+  integration: WorkflowIntegrationPlatform;
+}) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceSlackConfig(workspaceId),
+    queryKey: workspaceKeys.getWorkspaceWorkflowIntegrationConfig(workspaceId, integration),
     queryFn: async () => {
-      const { data } = await apiRequest.get<ProjectSlackConfig>(
-        `/api/v1/workspace/${workspaceId}/slack-config`
-      );
+      const { data } = await apiRequest
+        .get<ProjectWorkflowIntegrationConfig>(
+          `/api/v1/workspace/${workspaceId}/workflow-integration-config/${integration}`
+        )
+        .catch((err) => {
+          if (err.response.status === 404) {
+            return { data: null };
+          }
+
+          throw err;
+        });
 
       return data;
     },

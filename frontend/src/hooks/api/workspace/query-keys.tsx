@@ -1,6 +1,7 @@
 import { TListProjectIdentitiesDTO, TSearchProjectsDTO } from "@app/hooks/api/workspace/types";
 
 import type { CaStatus } from "../ca";
+import { WorkflowIntegrationPlatform } from "../workflowIntegrations/types";
 
 export const workspaceKeys = {
   getWorkspaceById: (workspaceId: string) => ["workspaces", { workspaceId }] as const,
@@ -54,8 +55,10 @@ export const workspaceKeys = {
     [{ workspaceId }, "workspace-pki-collections"] as const,
   getWorkspaceCertificateTemplates: (workspaceId: string) =>
     [{ workspaceId }, "workspace-certificate-templates"] as const,
-  getWorkspaceSlackConfig: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-slack-config"] as const,
+  getWorkspaceWorkflowIntegrationConfig: (
+    workspaceId: string,
+    integration: WorkflowIntegrationPlatform
+  ) => [{ workspaceId, integration }, "workspace-workflow-integration-config"] as const,
   getWorkspaceSshCas: (projectId: string) => [{ projectId }, "workspace-ssh-cas"] as const,
   allWorkspaceSshCertificates: (projectId: string) =>
     [{ projectId }, "workspace-ssh-certificates"] as const,

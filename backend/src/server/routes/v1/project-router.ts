@@ -14,6 +14,7 @@ import {
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
+import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
@@ -21,8 +22,10 @@ import { re2Validator } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
 import { ProjectFilterType, SearchProjectSortBy } from "@app/services/project/project-types";
 import { validateSlackChannelsField } from "@app/services/slack/slack-auth-validators";
+import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import { integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
@@ -740,55 +743,112 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:workspaceId/slack-config",
+    url: "/:workspaceId/workflow-integration-config/:integration",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim(),
+        integration: z.nativeEnum(WorkflowIntegration)
       }),
       response: {
-        200: ProjectSlackConfigsSchema.pick({
-          id: true,
-          slackIntegrationId: true,
-          isAccessRequestNotificationEnabled: true,
-          accessRequestChannels: true,
-          isSecretRequestNotificationEnabled: true,
-          secretRequestChannels: true
+        200: z.discriminatedUnion("integration", [
+          ProjectSlackConfigsSchema.pick({
+            id: true,
+            isAccessRequestNotificationEnabled: true,
+            accessRequestChannels: true,
+            isSecretRequestNotificationEnabled: true,
+            secretRequestChannels: true
+          }).merge(
+            z.object({
+              integration: z.literal(WorkflowIntegration.SLACK),
+              integrationId: z.string()
+            })
+          ),
+          ProjectMicrosoftTeamsConfigsSchema.pick({
+            id: true,
+            isAccessRequestNotificationEnabled: true,
+            accessRequestChannels: true,
+            isSecretRequestNotificationEnabled: true,
+            secretRequestChannels: true
+          }).merge(
+            z.object({
+              integration: z.literal(WorkflowIntegration.MICROSOFT_TEAMS),
+              integrationId: z.string()
+            })
+          )
+        ])
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const config = await server.services.project.getProjectWorkflowIntegrationConfig({
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        integration: req.params.integration
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG,
+          metadata: {
+            id: config.id,
+            integration: config.integration
+          }
+        }
+      });
+
+      return config;
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:projectId/workflow-integration/:integration/:integrationId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim(),
+        integration: z.nativeEnum(WorkflowIntegration),
+        integrationId: z.string()
+      }),
+      response: {
+        200: z.object({
+          integrationConfig: z.object({
+            id: z.string()
+          })
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const slackConfig = await server.services.project.getProjectSlackConfig({
+      const deletedIntegration = await server.services.project.deleteProjectWorkflowIntegration({
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId
+        projectId: req.params.projectId,
+        integration: req.params.integration,
+        integrationId: req.params.integrationId
       });
 
-      if (slackConfig) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          projectId: req.params.workspaceId,
-          event: {
-            type: EventType.GET_PROJECT_SLACK_CONFIG,
-            metadata: {
-              id: slackConfig.id
-            }
-          }
-        });
-      }
-
-      return slackConfig;
+      return {
+        integrationConfig: deletedIntegration
+      };
     }
   });
 
   server.route({
     method: "PUT",
-    url: "/:workspaceId/slack-config",
+    url: "/:workspaceId/workflow-integration",
     config: {
       rateLimit: readLimit
     },
@@ -796,27 +856,57 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         workspaceId: z.string().trim()
       }),
-      body: z.object({
-        slackIntegrationId: z.string(),
-        isAccessRequestNotificationEnabled: z.boolean(),
-        accessRequestChannels: validateSlackChannelsField,
-        isSecretRequestNotificationEnabled: z.boolean(),
-        secretRequestChannels: validateSlackChannelsField
-      }),
-      response: {
-        200: ProjectSlackConfigsSchema.pick({
-          id: true,
-          slackIntegrationId: true,
-          isAccessRequestNotificationEnabled: true,
-          accessRequestChannels: true,
-          isSecretRequestNotificationEnabled: true,
-          secretRequestChannels: true
+
+      body: z.discriminatedUnion("integration", [
+        z.object({
+          integration: z.literal(WorkflowIntegration.SLACK),
+          integrationId: z.string(),
+          accessRequestChannels: validateSlackChannelsField,
+          secretRequestChannels: validateSlackChannelsField,
+          isAccessRequestNotificationEnabled: z.boolean(),
+          isSecretRequestNotificationEnabled: z.boolean()
+        }),
+        z.object({
+          integration: z.literal(WorkflowIntegration.MICROSOFT_TEAMS),
+          integrationId: z.string(),
+          accessRequestChannels: validateMicrosoftTeamsChannelsSchema,
+          secretRequestChannels: validateMicrosoftTeamsChannelsSchema,
+          isAccessRequestNotificationEnabled: z.boolean(),
+          isSecretRequestNotificationEnabled: z.boolean()
         })
+      ]),
+      response: {
+        200: z.discriminatedUnion("integration", [
+          ProjectSlackConfigsSchema.pick({
+            id: true,
+            isAccessRequestNotificationEnabled: true,
+            accessRequestChannels: true,
+            isSecretRequestNotificationEnabled: true,
+            secretRequestChannels: true
+          }).merge(
+            z.object({
+              integration: z.literal(WorkflowIntegration.SLACK),
+              integrationId: z.string()
+            })
+          ),
+          ProjectMicrosoftTeamsConfigsSchema.pick({
+            id: true,
+            isAccessRequestNotificationEnabled: true,
+            isSecretRequestNotificationEnabled: true
+          }).merge(
+            z.object({
+              integration: z.literal(WorkflowIntegration.MICROSOFT_TEAMS),
+              integrationId: z.string(),
+              accessRequestChannels: validateMicrosoftTeamsChannelsSchema,
+              secretRequestChannels: validateMicrosoftTeamsChannelsSchema
+            })
+          )
+        ])
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const slackConfig = await server.services.project.updateProjectSlackConfig({
+      const workflowIntegrationConfig = await server.services.project.updateProjectWorkflowIntegration({
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
@@ -829,19 +919,20 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: req.params.workspaceId,
         event: {
-          type: EventType.UPDATE_PROJECT_SLACK_CONFIG,
+          type: EventType.UPDATE_PROJECT_WORKFLOW_INTEGRATION_CONFIG,
           metadata: {
-            id: slackConfig.id,
-            slackIntegrationId: slackConfig.slackIntegrationId,
-            isAccessRequestNotificationEnabled: slackConfig.isAccessRequestNotificationEnabled,
-            accessRequestChannels: slackConfig.accessRequestChannels,
-            isSecretRequestNotificationEnabled: slackConfig.isSecretRequestNotificationEnabled,
-            secretRequestChannels: slackConfig.secretRequestChannels
+            id: workflowIntegrationConfig.id,
+            integrationId: workflowIntegrationConfig.integrationId,
+            integration: workflowIntegrationConfig.integration,
+            isAccessRequestNotificationEnabled: workflowIntegrationConfig.isAccessRequestNotificationEnabled,
+            accessRequestChannels: workflowIntegrationConfig.accessRequestChannels,
+            isSecretRequestNotificationEnabled: workflowIntegrationConfig.isSecretRequestNotificationEnabled,
+            secretRequestChannels: workflowIntegrationConfig.secretRequestChannels
           }
         }
       });
 
-      return slackConfig;
+      return workflowIntegrationConfig;
     }
   });
 

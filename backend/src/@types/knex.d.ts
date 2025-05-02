@@ -427,6 +427,16 @@ import {
   TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
 import {
+  TMicrosoftTeamsIntegrations,
+  TMicrosoftTeamsIntegrationsInsert,
+  TMicrosoftTeamsIntegrationsUpdate
+} from "@app/db/schemas/microsoft-teams-integrations";
+import {
+  TProjectMicrosoftTeamsConfigs,
+  TProjectMicrosoftTeamsConfigsInsert,
+  TProjectMicrosoftTeamsConfigsUpdate
+} from "@app/db/schemas/project-microsoft-teams-configs";
+import {
   TSecretReminderRecipients,
   TSecretReminderRecipientsInsert,
   TSecretReminderRecipientsUpdate
@@ -1001,6 +1011,16 @@ declare module "knex/types/tables" {
       TSecretRotationV2SecretMappings,
       TSecretRotationV2SecretMappingsInsert,
       TSecretRotationV2SecretMappingsUpdate
+    >;
+    [TableName.MicrosoftTeamsIntegrations]: KnexOriginal.CompositeTableType<
+      TMicrosoftTeamsIntegrations,
+      TMicrosoftTeamsIntegrationsInsert,
+      TMicrosoftTeamsIntegrationsUpdate
+    >;
+    [TableName.ProjectMicrosoftTeamsConfigs]: KnexOriginal.CompositeTableType<
+      TProjectMicrosoftTeamsConfigs,
+      TProjectMicrosoftTeamsConfigsInsert,
+      TProjectMicrosoftTeamsConfigsUpdate
     >;
     [TableName.SecretReminderRecipients]: KnexOriginal.CompositeTableType<
       TSecretReminderRecipients,

@@ -1862,6 +1862,13 @@ export const AppConnections = {
       instanceUrl: "The Windmill instance URL to connect with (defaults to https://app.windmill.dev).",
       accessToken: "The access token to use to connect with Windmill."
     },
+    HC_VAULT: {
+      instanceUrl: "The Hashicrop Vault instance URL to connect with.",
+      namespace: "The Hashicrop Vault namespace to connect with.",
+      accessToken: "The access token used to connect with Hashicorp Vault.",
+      roleId: "The Role ID used to connect with Hashicorp Vault.",
+      secretId: "The Secret ID used to connect with Hashicorp Vault."
+    },
     LDAP: {
       provider: "The type of LDAP provider. Determines provider-specific behaviors.",
       url: "The LDAP/LDAPS URL to connect to (e.g., 'ldap://domain-or-ip:389' or 'ldaps://domain-or-ip:636').",
@@ -2018,6 +2025,10 @@ export const SecretSyncs = {
     WINDMILL: {
       workspace: "The Windmill workspace to sync secrets to.",
       path: "The Windmill workspace path to sync secrets to."
+    },
+    HC_VAULT: {
+      mount: "The Hashicorp Vault Secrets Engine Mount to sync secrets to.",
+      path: "The Hashicorp Vault path to sync secrets to."
     },
     TEAMCITY: {
       project: "The TeamCity project to sync secrets to.",
