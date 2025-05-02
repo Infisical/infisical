@@ -130,7 +130,11 @@ export const smtpServiceFactory = (cfg: TSmtpConfig) => {
     }
 
     const htmlToSend = await render(
-      <EmailTemplate {...substitutions} isCloud={appCfg.isCloud} siteUrl={appCfg.SITE_URL} />
+      React.createElement(EmailTemplate, {
+        ...substitutions,
+        isCloud: appCfg.isCloud,
+        siteUrl: appCfg.SITE_URL
+      })
     );
 
     if (isSmtpOn) {
