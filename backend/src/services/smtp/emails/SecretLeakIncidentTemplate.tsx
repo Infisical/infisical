@@ -54,7 +54,7 @@ export const SecretLeakIncidentTemplate = ({
         </Text>
         <Text className="text-[14px]">
           Once you have taken action, be sure to update the status of the risk in the{" "}
-          <Link href={`${siteUrl}/secret-scanning`} className="text-slate-700 no-underline">
+          <Link href={`${siteUrl}/organization/secret-scanning`} className="text-slate-700 no-underline">
             Infisical Dashboard
           </Link>
           .
