@@ -24,7 +24,7 @@ export const IntegrationSyncFailedTemplate = ({
   return (
     <BaseEmailWrapper
       title="Integration Sync Failed"
-      preview="An integration sync has error has occurred."
+      preview="An integration sync error has occurred."
       siteUrl={siteUrl}
     >
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">

@@ -3,7 +3,7 @@ import React from "react";
 
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 
-interface ShareSecretTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
+interface SecretRequestCompletedTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   name?: string;
   respondentUsername: string;
   secretRequestUrl: string;
@@ -14,14 +14,14 @@ export const SecretRequestCompletedTemplate = ({
   siteUrl,
   respondentUsername,
   secretRequestUrl
-}: ShareSecretTemplateProps) => {
+}: SecretRequestCompletedTemplateProps) => {
   return (
     <BaseEmailWrapper title="Shared Secret" preview="A secret has been shared with you." siteUrl={siteUrl}>
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
         <strong>A secret has been shared with you</strong>
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[12px] text-center pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
-        <Text className="text-14px">
+        <Text className="text-[14px]">
           {respondentUsername ? <strong>{respondentUsername}</strong> : "Someone"} shared a secret{" "}
           {name && (
             <>
@@ -50,4 +50,4 @@ SecretRequestCompletedTemplate.PreviewProps = {
   siteUrl: "https://infisical.com",
   secretRequestUrl: "https://infisical.com",
   name: "API_TOKEN"
-} as ShareSecretTemplateProps;
+} as SecretRequestCompletedTemplateProps;

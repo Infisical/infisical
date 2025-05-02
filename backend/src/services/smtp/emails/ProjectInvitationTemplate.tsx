@@ -16,7 +16,7 @@ export const ProjectInvitationTemplate = ({ callback_url, workspaceName, siteUrl
       siteUrl={siteUrl}
     >
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        You've been invited to join a new project on Infisical
+        You've been invited to join a project on Infisical
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[12px] pb-[8px] border text-center border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-black text-[14px] leading-[24px]">
@@ -26,7 +26,7 @@ export const ProjectInvitationTemplate = ({ callback_url, workspaceName, siteUrl
       <Section className="text-center mt-[28px]">
         <Button
           href={callback_url}
-          className="rounded-md  p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
+          className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
         >
           Join Project
         </Button>

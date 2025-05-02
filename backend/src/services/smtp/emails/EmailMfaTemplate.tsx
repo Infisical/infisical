@@ -15,7 +15,7 @@ export const EmailMfaTemplate = ({ code, siteUrl, isCloud }: EmailMfaTemplatePro
         <strong>MFA required</strong>
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[8px] text-center pb-[8px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
-        <Text>Enter the MFA code below in the browser where you started sign-in.</Text>
+        <Text>Enter the MFA code shown below in the browser where you started sign-in.</Text>
         <Text className="text-[24px] mt-[16px]">
           <strong>{code}</strong>
         </Text>
@@ -26,7 +26,7 @@ export const EmailMfaTemplate = ({ code, siteUrl, isCloud }: EmailMfaTemplatePro
           {isCloud ? (
             <>
               Contact us at{" "}
-              <Link href={`mailto:support@infisical.com`} className="text-slate-700 no-underline">
+              <Link href="mailto:support@infisical.com" className="text-slate-700 no-underline">
                 support@infisical.com
               </Link>{" "}
               immediately

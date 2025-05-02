@@ -27,7 +27,7 @@ export const PasswordResetTemplate = ({ email, isCloud, siteUrl, callback_url, t
           {isCloud ? (
             <>
               us immediately at{" "}
-              <Link href={`mailto:support@infisical.com`} className="text-slate-700 no-underline">
+              <Link href="mailto:support@infisical.com" className="text-slate-700 no-underline">
                 support@infisical.com
               </Link>
             </>
@@ -39,8 +39,8 @@ export const PasswordResetTemplate = ({ email, isCloud, siteUrl, callback_url, t
       </Section>
       <Section className="text-center mt-[28px]">
         <Button
-          href={`${callback_url}?token=${token}&to=${email}`}
-          className="rounded-md  p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
+          href={`${callback_url}?token=${token}&to=${encodeURIComponent(email)}`}
+          className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
         >
           Reset Password
         </Button>
@@ -54,5 +54,7 @@ export default PasswordResetTemplate;
 PasswordResetTemplate.PreviewProps = {
   email: "kevin@infisical.com",
   callback_url: "https://app.infisical.com",
-  isCloud: true
+  isCloud: true,
+  token: "preview-token",
+  siteUrl: "https://infisical.com"
 } as PasswordResetTemplateProps;

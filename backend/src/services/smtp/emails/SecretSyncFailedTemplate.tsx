@@ -26,7 +26,7 @@ export const SecretSyncFailedTemplate = ({
   return (
     <BaseEmailWrapper title="Secret Sync Failed" preview="A secret sync failed." siteUrl={siteUrl}>
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        Your <strong>{syncDestination}</strong> Sync <strong>{syncName}</strong> failed to sync
+        Your <strong>{syncDestination}</strong> sync <strong>{syncName}</strong> failed to complete
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[26px] pb-[4px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <strong>Name</strong>
@@ -59,7 +59,7 @@ export const SecretSyncFailedTemplate = ({
           href={syncUrl}
           className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
         >
-          View in Infiscal
+          View in Infisical
         </Button>
       </Section>
     </BaseEmailWrapper>

@@ -21,7 +21,7 @@ export const ExternalImportFailedTemplate = ({ error, siteUrl, provider }: Exter
         </Text>
         <Text className="text-black text-[14px] leading-[24px]">
           If your issue persists, you can contact the Infisical team at{" "}
-          <Link href={`mailto:support@infisical.com`} className="text-slate-700 no-underline">
+          <Link href="mailto:support@infisical.com" className="text-slate-700 no-underline">
             support@infisical.com
           </Link>
           .

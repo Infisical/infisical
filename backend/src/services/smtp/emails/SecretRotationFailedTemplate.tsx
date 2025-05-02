@@ -26,7 +26,7 @@ export const SecretRotationFailedTemplate = ({
   return (
     <BaseEmailWrapper title="Secret Rotation Failed" preview="A secret rotation failed." siteUrl={siteUrl}>
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        Your <strong>{rotationType}</strong> Rotation <strong>{rotationName}</strong> failed to rotate
+        Your <strong>{rotationType}</strong> rotation <strong>{rotationName}</strong> failed to rotate
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[26px] pb-[4px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <strong>Name</strong>
@@ -47,7 +47,7 @@ export const SecretRotationFailedTemplate = ({
           href={`${rotationUrl}?search=${rotationName}&secretPath=${secretPath}`}
           className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
         >
-          View in Infiscal
+          View in Infisical
         </Button>
       </Section>
     </BaseEmailWrapper>

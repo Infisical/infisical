@@ -24,7 +24,7 @@ export const OrgAdminBreakglassAccessTemplate = ({
       siteUrl={siteUrl}
     >
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        The organization admin <strong>{email}</strong> has bypassed enforced SSO login.
+        The organization admin <strong>{email}</strong> has bypassed enforced SSO login
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[24px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <strong className="text-[14px]">Timestamp</strong>
@@ -53,5 +53,5 @@ OrgAdminBreakglassAccessTemplate.PreviewProps = {
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15",
   timestamp: "Tue Apr 29 2025 23:03:27 GMT+0000 (Coordinated Universal Time)",
   siteUrl: "https://infisical.com",
-  email: "august@infiscal.com"
+  email: "august@infisical.com"
 } as OrgAdminBreakglassAccessTemplateProps;

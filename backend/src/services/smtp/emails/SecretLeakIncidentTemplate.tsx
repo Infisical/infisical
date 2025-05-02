@@ -62,8 +62,8 @@ export const SecretLeakIncidentTemplate = ({
       </Section>
       <Section className="text-center mt-[28px]">
         <Button
-          href={`${siteUrl}/secret-scanning`}
-          className="rounded-md  p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
+          href={`${siteUrl}/organization/secret-scanning`}
+          className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
         >
           View Leaked Secrets
         </Button>

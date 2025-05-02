@@ -9,7 +9,6 @@ export * from "./NewDeviceLoginTemplate";
 export * from "./OrgAdminBreakglassAccessTemplate";
 export * from "./OrgAdminProjectGrantAccessTemplate";
 export * from "./OrganizationInvitationTemplate";
-export * from "./OrganizationInvitationTemplate";
 export * from "./PasswordResetTemplate";
 export * from "./PasswordSetupTemplate";
 export * from "./PkiExpirationAlertTemplate";

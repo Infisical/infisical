@@ -25,7 +25,7 @@ export const ServiceTokenExpiryNoticeTemplate = ({
         <strong>Service token expiry notice</strong>
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
-        <Text className="text-14px">
+        <Text className="text-[14px]">
           Your service token <strong>{tokenName}</strong> for the project <strong>{projectName}</strong> will expire
           within 24 hours.
         </Text>

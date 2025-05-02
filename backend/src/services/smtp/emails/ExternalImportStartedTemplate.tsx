@@ -26,5 +26,6 @@ export const ExternalImportStartedTemplate = ({ siteUrl, provider }: ExternalImp
 export default ExternalImportStartedTemplate;
 
 ExternalImportStartedTemplate.PreviewProps = {
-  provider: "EnvKey"
+  provider: "EnvKey",
+  siteUrl: "https://infisical.com"
 } as ExternalImportStartedTemplateProps;

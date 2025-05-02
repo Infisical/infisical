@@ -26,7 +26,7 @@ export const PasswordSetupTemplate = ({ email, isCloud, siteUrl, callback_url, t
           {isCloud ? (
             <>
               us immediately at{" "}
-              <Link href={`mailto:support@infisical.com`} className="text-slate-700 no-underline">
+              <Link href="mailto:support@infisical.com" className="text-slate-700 no-underline">
                 support@infisical.com
               </Link>
             </>
@@ -38,8 +38,8 @@ export const PasswordSetupTemplate = ({ email, isCloud, siteUrl, callback_url, t
       </Section>
       <Section className="text-center mt-[28px]">
         <Button
-          href={`${callback_url}?token=${token}&to=${email}`}
-          className="rounded-md  p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
+          href={`${callback_url}?token=${token}&to=${encodeURIComponent(email)}`}
+          className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
         >
           Set Up Password
         </Button>
@@ -53,5 +53,7 @@ export default PasswordSetupTemplate;
 PasswordSetupTemplate.PreviewProps = {
   email: "casey@infisical.com",
   callback_url: "https://app.infisical.com",
-  isCloud: true
+  isCloud: true,
+  siteUrl: "https://infisical.com",
+  token: "preview-token"
 } as PasswordSetupTemplateProps;

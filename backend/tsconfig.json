@@ -26,7 +26,7 @@
     "paths": {
       "@app/*": ["./src/*"]
     },
-    "jsx": "react"
+    "jsx": "react-jsx"
   },
   "include": ["src/**/*", "scripts/**/*", "e2e-test/**/*", "./.eslintrc.js", "./tsup.config.js"],
   "exclude": ["node_modules"]

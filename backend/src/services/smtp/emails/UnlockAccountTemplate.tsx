@@ -19,7 +19,7 @@ export const UnlockAccountTemplate = ({ token, siteUrl, callback_url }: UnlockAc
         <strong>Unlock your Infisical account</strong>
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
-        <Text className="text-14px">
+        <Text className="text-[14px]">
           Your account has been temporarily locked due to multiple failed login attempts.
         </Text>
         <Text>If these attempts were not made by you, reset your password immediately.</Text>
@@ -41,6 +41,5 @@ export default UnlockAccountTemplate;
 UnlockAccountTemplate.PreviewProps = {
   callback_url: "Example Project",
   siteUrl: "https://infisical.com",
-  url: "https://infisical.com",
-  token: "Example Token"
+  token: "preview-token"
 } as UnlockAccountTemplateProps;

@@ -26,13 +26,13 @@ export const ScimUserProvisionedTemplate = ({
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[12px] pb-[8px] border text-center border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-black text-[14px] leading-[24px]">
-          You've been invited you to collaborate on <strong>{organizationName}</strong>.
+          You've been invited to collaborate on <strong>{organizationName}</strong>.
         </Text>
       </Section>
       <Section className="text-center mt-[28px]">
         <Button
           href={callback_url}
-          className="rounded-md  p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
+          className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
         >
           Accept Invite
         </Button>

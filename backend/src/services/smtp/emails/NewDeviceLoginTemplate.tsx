@@ -42,7 +42,7 @@ export const NewDeviceLoginTemplate = ({
         <Text className="mb-[0px]">
           If you believe that this login is suspicious, please contact{" "}
           {isCloud ? (
-            <Link href={`mailto:support@infisical.com`} className="text-slate-700 no-underline">
+            <Link href="mailto:support@infisical.com" className="text-slate-700 no-underline">
               support@infisical.com
             </Link>
           ) : (

@@ -1,5 +1,4 @@
 import { render } from "@react-email/components";
-import handlebars from "handlebars";
 import { createTransport } from "nodemailer";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
 import React from "react";
@@ -80,7 +79,7 @@ export enum SmtpTemplates {
 export enum SmtpHost {
   Sendgrid = "smtp.sendgrid.net",
   Mailgun = "smtp.mailgun.org",
-  SocketLabs = "smtp.sockerlabs.com",
+  SocketLabs = "smtp.socketlabs.com",
   Zohomail = "smtp.zoho.com",
   Gmail = "smtp.gmail.com",
   Office365 = "smtp.office365.com"
@@ -120,13 +119,6 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {
   const smtp = createTransport(cfg);
   const isSmtpOn = Boolean(cfg.host);
-
-  handlebars.registerHelper("emailFooter", () => {
-    const { SITE_URL } = getConfig();
-    return new handlebars.SafeString(
-      `<p style="font-size: 12px;">Email sent via Infisical at <a href="${SITE_URL}">${SITE_URL}</a></p>`
-    );
-  });
 
   const sendMail = async ({ substitutions, recipients, template, subjectLine }: TSmtpSendMail) => {
     const appCfg = getConfig();

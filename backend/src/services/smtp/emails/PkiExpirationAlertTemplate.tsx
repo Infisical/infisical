@@ -45,10 +45,10 @@ export const PkiExpirationAlertTemplate = ({
           </Fragment>
         ))}
         <Hr />
-        <Text className="text-[14px]  leading-[24px]">
+        <Text className="text-[14px] leading-[24px]">
           Please take the necessary actions to renew these items before they expire.
         </Text>
-        <Text className="text-[14px]  leading-[24px]">
+        <Text className="text-[14px] leading-[24px]">
           For more details, please log in to your Infisical account and check your PKI management section.
         </Text>
       </Section>
@@ -61,8 +61,9 @@ export default PkiExpirationAlertTemplate;
 PkiExpirationAlertTemplate.PreviewProps = {
   alertBeforeDays: 5,
   items: [
-    { type: "CA", friendlyName: "Example CA", serialNumber: "1234567890", expiryDate: "2022-01-01" },
-    { type: "Certificate", friendlyName: "Example Certificate", serialNumber: "1234567890", expiryDate: "2022-01-01" }
+    { type: "CA", friendlyName: "Example CA", serialNumber: "1234567890", expiryDate: "2032-01-01" },
+    { type: "Certificate", friendlyName: "Example Certificate", serialNumber: "2345678901", expiryDate: "2032-01-01" }
   ],
-  alertName: "My PKI Alert"
+  alertName: "My PKI Alert",
+  siteUrl: "https://infisical.com"
 } as PkiExpirationAlertTemplateProps;

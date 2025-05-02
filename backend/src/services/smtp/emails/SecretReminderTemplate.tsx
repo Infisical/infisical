@@ -18,7 +18,7 @@ export const SecretReminderTemplate = ({
   return (
     <BaseEmailWrapper title="Secret Reminder" preview="You have a new secret reminder." siteUrl={siteUrl}>
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        Secret Reminder
+        <strong>Secret Reminder</strong>
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[8px] pb-[8px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-[14px]">

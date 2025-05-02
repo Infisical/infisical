@@ -47,8 +47,8 @@ export const OrganizationInvitationTemplate = ({
       </Section>
       <Section className="text-center mt-[28px]">
         <Button
-          href={`${callback_url}?token=${token}${metadata ? `&metadata=${metadata}` : ""}&to=${email}&organization_id=${organizationId}`}
-          className="rounded-md  p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
+          href={`${callback_url}?token=${token}${metadata ? `&metadata=${metadata}` : ""}&to=${encodeURIComponent(email)}&organization_id=${organizationId}`}
+          className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
         >
           Accept Invite
         </Button>
@@ -71,5 +71,7 @@ OrganizationInvitationTemplate.PreviewProps = {
   inviterUsername: "jane@infisical.com",
   email: "john@infisical.com",
   siteUrl: "https://infisical.com",
-  callback_url: "https://app.infisical.com"
+  callback_url: "https://app.infisical.com",
+  token: "preview-token",
+  organizationId: "1ae1c2c7-8068-461c-b15e-421737868a6a"
 } as OrganizationInvitationTemplateProps;

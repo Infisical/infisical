@@ -71,6 +71,7 @@ import { TIdentityTokenAuthServiceFactory } from "@app/services/identity-token-a
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
+import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
@@ -100,7 +101,6 @@ import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
-import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 
 declare module "@fastify/request-context" {
   interface RequestContextData {

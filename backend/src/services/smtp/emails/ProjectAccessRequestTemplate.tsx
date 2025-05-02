@@ -8,7 +8,6 @@ interface ProjectAccessRequestTemplateProps extends Omit<BaseEmailWrapperProps, 
   requesterName: string;
   requesterEmail: string;
   orgName: string;
-  environment: string;
   note: string;
   callback_url: string;
 }
@@ -64,5 +63,6 @@ ProjectAccessRequestTemplate.PreviewProps = {
   orgName: "Example Org",
   siteUrl: "https://infisical.com",
   projectName: "Example Project",
-  note: "I need access to the project for the new initiative for HR."
+  note: "I need access to the project for the new initiative for HR.",
+  callback_url: "https://infisical.com"
 } as ProjectAccessRequestTemplateProps;
