@@ -49,8 +49,8 @@ export const CachingPanel = () => {
         <div className="flex flex-col">
           <span className="mb-2 text-xl font-semibold text-mineshaft-100">Secrets Cache</span>
           <span className="max-w-xl text-sm text-mineshaft-400">
-            The secrets cache encompasses all secrets stored within the system and provides a
-            temporary, secure storage location for frequently accessed credentials.
+            The encrypted secrets cache encompasses all secrets stored within the system and
+            provides a temporary, secure storage location for frequently accessed credentials.
           </span>
         </div>
 
