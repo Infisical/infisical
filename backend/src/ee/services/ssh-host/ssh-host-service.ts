@@ -262,16 +262,15 @@ export const sshHostServiceFactory = ({
         }
 
         if (allowedPrincipals.groups && allowedPrincipals.groups.length > 0) {
-          const groups = await groupDAL.findGroupsByProjectId(projectId);
+          const projectGroups = await groupDAL.findGroupsByProjectId(projectId);
+          const groups = projectGroups.filter((g) => allowedPrincipals.groups?.includes(g.slug));
 
-          const foundGroupSlugs = new Set(groups.map((g) => g.slug));
-
-          for (const slug of allowedPrincipals.groups) {
-            if (!foundGroupSlugs.has(slug)) {
-              throw new BadRequestError({
-                message: `Invalid group slug: ${slug}`
-              });
-            }
+          if (groups.length !== allowedPrincipals.groups?.length) {
+            throw new BadRequestError({
+              message: `Invalid group slugs: ${allowedPrincipals.groups
+                .filter((g) => !projectGroups.some((pg) => pg.slug === g))
+                .join(", ")}`
+            });
           }
 
           for await (const group of groups) {

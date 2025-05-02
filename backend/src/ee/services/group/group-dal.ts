@@ -160,11 +160,7 @@ export const groupDALFactory = (db: TDbClient) => {
   const findGroupsByProjectId = async (projectId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.Groups)
-        .leftJoin(
-          TableName.GroupProjectMembership,
-          `${TableName.Groups}.id`,
-          `${TableName.GroupProjectMembership}.groupId`
-        )
+        .join(TableName.GroupProjectMembership, `${TableName.Groups}.id`, `${TableName.GroupProjectMembership}.groupId`)
         .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
         .select(selectAllTableCols(TableName.Groups));
       return docs;

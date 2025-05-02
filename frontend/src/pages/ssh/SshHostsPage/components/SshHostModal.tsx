@@ -49,11 +49,11 @@ const schema = z
     loginMappings: z
       .object({
         loginUser: z.string().trim().min(1),
-        principals: z
+        allowedPrincipals: z
           .array(
             z.object({
               type: z.enum(["user", "group"]),
-              value: z.string().trim()
+              value: z.string().trim().min(1)
             })
           )
           .default([])
@@ -110,7 +110,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
         userCertTtl: sshHost.userCertTtl,
         loginMappings: sshHost.loginMappings.map(({ loginUser, allowedPrincipals }) => ({
           loginUser,
-          principals: [
+          allowedPrincipals: [
             ...(allowedPrincipals.usernames || []).map((username) => ({
               type: "user" as const,
               value: username
@@ -169,10 +169,14 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
         }
       }
 
-      const transformedLoginMappings = loginMappings.map(({ loginUser, principals }) => {
-        const usernames = principals.filter((p) => p.type === "user").map((p) => p.value);
+      const transformedLoginMappings = loginMappings.map(({ loginUser, allowedPrincipals }) => {
+        const usernames = allowedPrincipals
+          .filter((p) => p.type === "user" && p.value)
+          .map((p) => p.value);
 
-        const groupNames = principals.filter((p) => p.type === "group").map((p) => p.value);
+        const groupNames = allowedPrincipals
+          .filter((p) => p.type === "group" && p.value)
+          .map((p) => p.value);
 
         return {
           loginUser,
@@ -182,7 +186,6 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
           }
         };
       });
-      console.log(transformedLoginMappings);
 
       if (sshHost) {
         await updateMutateAsync({
@@ -230,7 +233,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
     principalType: string,
     principalValue: string
   ) => {
-    const principals = getValues(`loginMappings.${mappingIndex}.principals`) || [];
+    const principals = getValues(`loginMappings.${mappingIndex}.allowedPrincipals`) || [];
     return principals.some((p) => p.type === principalType && p.value === principalValue);
   };
 
@@ -297,7 +300,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
               variant="outline_bg"
               onClick={() => {
                 const newIndex = loginMappingsFormFields.fields.length;
-                loginMappingsFormFields.append({ loginUser: "", principals: [] });
+                loginMappingsFormFields.append({ loginUser: "", allowedPrincipals: [] });
                 setExpandedMappings((prev) => ({
                   ...prev,
                   [newIndex]: true
@@ -392,8 +395,8 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                           size="xs"
                           variant="outline_bg"
                           onClick={() => {
-                            const current = getValues(`loginMappings.${i}.principals`) ?? [];
-                            setValue(`loginMappings.${i}.principals`, [
+                            const current = getValues(`loginMappings.${i}.allowedPrincipals`) ?? [];
+                            setValue(`loginMappings.${i}.allowedPrincipals`, [
                               ...current,
                               { type: "user", value: "" }
                             ]);
@@ -404,7 +407,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                       </div>
                       <Controller
                         control={control}
-                        name={`loginMappings.${i}.principals`}
+                        name={`loginMappings.${i}.allowedPrincipals`}
                         render={({ field: { value = [], onChange }, fieldState: { error } }) => (
                           <div className="flex flex-col space-y-2">
                             {value.map((principal, principalIndex) => (
