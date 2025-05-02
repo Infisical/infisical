@@ -11,8 +11,9 @@ export const SshHostLoginUsersSchema = z.object({
   id: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  sshHostId: z.string().uuid(),
-  loginUser: z.string()
+  sshHostId: z.string().uuid().nullable().optional(),
+  loginUser: z.string(),
+  sshHostGroupId: z.string().uuid().nullable().optional()
 });
 
 export type TSshHostLoginUsers = z.infer<typeof SshHostLoginUsersSchema>;

@@ -234,6 +234,7 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.SshHostGroups]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretApproval]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretRollback]: SecretRollbackPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Project]: WorkspacePolicyActionSchema.array().default([]),
@@ -380,7 +381,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.Kms,
         ProjectPermissionSub.SshCertificateTemplates,
         ProjectPermissionSub.SshCertificateAuthorities,
-        ProjectPermissionSub.SshCertificates
+        ProjectPermissionSub.SshCertificates,
+        ProjectPermissionSub.SshHostGroups
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -1062,6 +1064,15 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Modify", value: ProjectPermissionSshHostActions.Edit },
       { label: "Remove", value: ProjectPermissionSshHostActions.Delete },
       { label: "Issue Host Certificate", value: ProjectPermissionSshHostActions.IssueHostCert }
+    ]
+  },
+  [ProjectPermissionSub.SshHostGroups]: {
+    title: "SSH Host Groups",
+    actions: [
+      { label: "Read", value: "read" },
+      { label: "Create", value: "create" },
+      { label: "Modify", value: "edit" },
+      { label: "Remove", value: "delete" }
     ]
   },
   [ProjectPermissionSub.PkiCollections]: {

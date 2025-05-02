@@ -38,6 +38,7 @@ export {
   useListWorkspaceSshCas,
   useListWorkspaceSshCertificates,
   useListWorkspaceSshCertificateTemplates,
+  useListWorkspaceSshHostGroups,
   useListWorkspaceSshHosts,
   useNameWorkspaceSecrets,
   useSearchProjects,

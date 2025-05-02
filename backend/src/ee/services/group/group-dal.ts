@@ -153,7 +153,7 @@ export const groupDALFactory = (db: TDbClient) => {
         totalCount: Number(members?.[0]?.total_count ?? 0)
       };
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find all org members" });
+      throw new DatabaseError({ error, name: "Find all user group members" });
     }
   };
 
