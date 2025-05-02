@@ -134,6 +134,7 @@ export enum ProjectPermissionSub {
   SshCertificates = "ssh-certificates",
   SshCertificateTemplates = "ssh-certificate-templates",
   SshHosts = "ssh-hosts",
+  SshHostGroups = "ssh-host-groups",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
   Kms = "kms",
@@ -240,6 +241,7 @@ export type ProjectPermissionSet =
       ProjectPermissionSshHostActions,
       ProjectPermissionSub.SshHosts | (ForcedSubject<ProjectPermissionSub.SshHosts> & SshHostSubjectFields)
     ]
+  | [ProjectPermissionActions, ProjectPermissionSub.SshHostGroups]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
@@ -509,6 +511,12 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.SshHostGroups).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.PkiAlerts).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
@@ -686,7 +694,8 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.PkiCollections,
     ProjectPermissionSub.SshCertificateAuthorities,
     ProjectPermissionSub.SshCertificates,
-    ProjectPermissionSub.SshCertificateTemplates
+    ProjectPermissionSub.SshCertificateTemplates,
+    ProjectPermissionSub.SshHostGroups
   ].forEach((el) => {
     can(
       [

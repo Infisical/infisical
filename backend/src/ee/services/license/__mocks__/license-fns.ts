@@ -28,7 +28,8 @@ export const getDefaultOnPremFeatures = () => {
     has_used_trial: true,
     secretApproval: true,
     secretRotation: true,
-    caCrl: false
+    caCrl: false,
+    sshHostGroups: false
   };
 };
 

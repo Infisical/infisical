@@ -12,6 +12,7 @@ import {
 import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
+import { TLoginMapping } from "@app/ee/services/ssh-host/ssh-host-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TProjectPermission } from "@app/lib/types";
@@ -192,12 +193,19 @@ export enum EventType {
   UPDATE_SSH_CERTIFICATE_TEMPLATE = "update-ssh-certificate-template",
   DELETE_SSH_CERTIFICATE_TEMPLATE = "delete-ssh-certificate-template",
   GET_SSH_CERTIFICATE_TEMPLATE = "get-ssh-certificate-template",
+  GET_SSH_HOST = "get-ssh-host",
   CREATE_SSH_HOST = "create-ssh-host",
   UPDATE_SSH_HOST = "update-ssh-host",
   DELETE_SSH_HOST = "delete-ssh-host",
-  GET_SSH_HOST = "get-ssh-host",
   ISSUE_SSH_HOST_USER_CERT = "issue-ssh-host-user-cert",
   ISSUE_SSH_HOST_HOST_CERT = "issue-ssh-host-host-cert",
+  GET_SSH_HOST_GROUP = "get-ssh-host-group",
+  CREATE_SSH_HOST_GROUP = "create-ssh-host-group",
+  UPDATE_SSH_HOST_GROUP = "update-ssh-host-group",
+  DELETE_SSH_HOST_GROUP = "delete-ssh-host-group",
+  GET_SSH_HOST_GROUP_HOSTS = "get-ssh-host-group-hosts",
+  ADD_HOST_TO_SSH_HOST_GROUP = "add-host-to-ssh-host-group",
+  REMOVE_HOST_FROM_SSH_HOST_GROUP = "remove-host-from-ssh-host-group",
   CREATE_CA = "create-certificate-authority",
   GET_CA = "get-certificate-authority",
   UPDATE_CA = "update-certificate-authority",
@@ -1512,12 +1520,7 @@ interface CreateSshHost {
     alias: string | null;
     userCertTtl: string;
     hostCertTtl: string;
-    loginMappings: {
-      loginUser: string;
-      allowedPrincipals: {
-        usernames: string[];
-      };
-    }[];
+    loginMappings: TLoginMapping[];
     userSshCaId: string;
     hostSshCaId: string;
   };
@@ -1531,12 +1534,7 @@ interface UpdateSshHost {
     alias?: string | null;
     userCertTtl?: string;
     hostCertTtl?: string;
-    loginMappings?: {
-      loginUser: string;
-      allowedPrincipals: {
-        usernames: string[];
-      };
-    }[];
+    loginMappings?: TLoginMapping[];
     userSshCaId?: string;
     hostSshCaId?: string;
   };
@@ -1577,6 +1575,66 @@ interface IssueSshHostHostCert {
     serialNumber: string;
     principals: string[];
     ttl: string;
+  };
+}
+
+interface GetSshHostGroupEvent {
+  type: EventType.GET_SSH_HOST_GROUP;
+  metadata: {
+    sshHostGroupId: string;
+    name: string;
+  };
+}
+
+interface CreateSshHostGroupEvent {
+  type: EventType.CREATE_SSH_HOST_GROUP;
+  metadata: {
+    sshHostGroupId: string;
+    name: string;
+    loginMappings: TLoginMapping[];
+  };
+}
+
+interface UpdateSshHostGroupEvent {
+  type: EventType.UPDATE_SSH_HOST_GROUP;
+  metadata: {
+    sshHostGroupId: string;
+    name?: string;
+    loginMappings?: TLoginMapping[];
+  };
+}
+
+interface DeleteSshHostGroupEvent {
+  type: EventType.DELETE_SSH_HOST_GROUP;
+  metadata: {
+    sshHostGroupId: string;
+    name: string;
+  };
+}
+
+interface GetSshHostGroupHostsEvent {
+  type: EventType.GET_SSH_HOST_GROUP_HOSTS;
+  metadata: {
+    sshHostGroupId: string;
+    name: string;
+  };
+}
+
+interface AddHostToSshHostGroupEvent {
+  type: EventType.ADD_HOST_TO_SSH_HOST_GROUP;
+  metadata: {
+    sshHostGroupId: string;
+    sshHostId: string;
+    hostname: string;
+  };
+}
+
+interface RemoveHostFromSshHostGroupEvent {
+  type: EventType.REMOVE_HOST_FROM_SSH_HOST_GROUP;
+  metadata: {
+    sshHostGroupId: string;
+    sshHostId: string;
+    hostname: string;
   };
 }
 
@@ -2828,6 +2886,13 @@ export type Event =
   | CreateAppConnectionEvent
   | UpdateAppConnectionEvent
   | DeleteAppConnectionEvent
+  | GetSshHostGroupEvent
+  | CreateSshHostGroupEvent
+  | UpdateSshHostGroupEvent
+  | DeleteSshHostGroupEvent
+  | GetSshHostGroupHostsEvent
+  | AddHostToSshHostGroupEvent
+  | RemoveHostFromSshHostGroupEvent
   | CreateSharedSecretEvent
   | DeleteSharedSecretEvent
   | ReadSharedSecretEvent
