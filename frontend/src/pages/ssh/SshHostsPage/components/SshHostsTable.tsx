@@ -94,40 +94,31 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                         Object.entries(
                           host.loginMappings.reduce(
                             (acc, mapping) => {
-                              const { loginUser, source } = mapping;
-                              const existing = acc[loginUser];
-
-                              if (!existing) {
-                                acc[loginUser] = mapping;
-                              } else if (
-                                existing.source === LoginMappingSource.HOST_GROUP &&
-                                source === LoginMappingSource.HOST
-                              ) {
-                                // Prefer HOST over HOST_GROUP
-                                acc[loginUser] = mapping;
-                              }
-
+                              const key = `${mapping.loginUser}|${mapping.source}|${mapping.allowedPrincipals.usernames.sort().join(",")}`;
+                              acc[key] = mapping;
                               return acc;
                             },
                             {} as Record<string, (typeof host.loginMappings)[number]>
                           )
-                        ).map(([loginUser, { allowedPrincipals, source }]) => (
-                          <div key={`${host.id}-${loginUser}`} className="mb-2">
-                            <div className="text-mineshaft-200">
-                              {loginUser}
-                              {source === LoginMappingSource.HOST_GROUP && (
-                                <span className="ml-2 text-xs text-mineshaft-400">
-                                  (inherited from host group)
-                                </span>
-                              )}
-                            </div>
-                            {allowedPrincipals.usernames.map((username) => (
-                              <div key={`${host.id}-${loginUser}-${username}`} className="ml-4">
-                                └─ {username}
+                        )
+                          .sort(([a], [b]) => a.localeCompare(b))
+                          .map(([key, { loginUser, allowedPrincipals, source }]) => (
+                            <div key={`${host.id}-${key}`} className="mb-2">
+                              <div className="text-mineshaft-200">
+                                {loginUser}
+                                {source === LoginMappingSource.HOST_GROUP && (
+                                  <span className="ml-2 text-xs text-mineshaft-400">
+                                    (inherited from host group)
+                                  </span>
+                                )}
                               </div>
-                            ))}
-                          </div>
-                        ))
+                              {allowedPrincipals.usernames.map((username) => (
+                                <div key={`${host.id}-${key}-${username}`} className="ml-4">
+                                  └─ {username}
+                                </div>
+                              ))}
+                            </div>
+                          ))
                       )}
                     </Td>
                     <Td className="text-right align-middle">
