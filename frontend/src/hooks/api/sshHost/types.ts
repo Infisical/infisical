@@ -9,6 +9,7 @@ export type TSshHost = {
     loginUser: string;
     allowedPrincipals: {
       usernames: string[];
+      groups: string[];
     };
   }[];
 };
@@ -23,6 +24,7 @@ export type TCreateSshHostDTO = {
     loginUser: string;
     allowedPrincipals: {
       usernames: string[];
+      groups: string[];
     };
   }[];
 };
@@ -37,6 +39,7 @@ export type TUpdateSshHostDTO = {
     loginUser: string;
     allowedPrincipals: {
       usernames: string[];
+      groups: string[];
     };
   }[];
 };

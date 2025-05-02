@@ -176,7 +176,8 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
           db.ref("id").withSchema(TableName.OrgMembership).as("orgMembershipId"),
           db.ref("firstName").withSchema(TableName.Users).as("firstName"),
-          db.ref("lastName").withSchema(TableName.Users).as("lastName")
+          db.ref("lastName").withSchema(TableName.Users).as("lastName"),
+          db.ref("slug").withSchema(TableName.Groups).as("groupSlug")
         );
 
       return docs;

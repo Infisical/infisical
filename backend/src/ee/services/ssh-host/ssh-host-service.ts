@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, ProjectType } from "@app/db/schemas";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionSshHostActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
@@ -19,6 +20,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectSshConfigDALFactory } from "@app/services/project/project-ssh-config-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import {
   convertActorToPrincipals,
   createSshCert,
@@ -38,12 +40,14 @@ import {
 
 type TSshHostServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
+  groupDAL: Pick<TGroupDALFactory, "findGroupsByProjectId">;
   projectDAL: Pick<TProjectDALFactory, "find">;
   projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "findOne">;
   sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "findOne">;
   sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "findOne">;
   sshCertificateDAL: Pick<TSshCertificateDALFactory, "create" | "transaction">;
   sshCertificateBodyDAL: Pick<TSshCertificateBodyDALFactory, "create">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg">;
   sshHostDAL: Pick<
     TSshHostDALFactory,
     | "transaction"
@@ -57,7 +61,10 @@ type TSshHostServiceFactoryDep = {
   >;
   sshHostLoginUserDAL: TSshHostLoginUserDALFactory;
   sshHostLoginUserMappingDAL: TSshHostLoginUserMappingDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getUserProjectPermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getUserProjectPermission" | "checkGroupProjectPermission"
+  >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -65,6 +72,8 @@ export type TSshHostServiceFactory = ReturnType<typeof sshHostServiceFactory>;
 
 export const sshHostServiceFactory = ({
   userDAL,
+  userGroupMembershipDAL,
+  groupDAL,
   projectDAL,
   projectSshConfigDAL,
   sshCertificateAuthorityDAL,
@@ -212,7 +221,7 @@ export const sshHostServiceFactory = ({
           tx
         );
 
-        if (allowedPrincipals.usernames.length > 0) {
+        if (allowedPrincipals.usernames && allowedPrincipals.usernames.length > 0) {
           const users = await userDAL.find(
             {
               $in: {
@@ -247,6 +256,42 @@ export const sshHostServiceFactory = ({
             users.map((user) => ({
               sshHostLoginUserId: sshHostLoginUser.id,
               userId: user.id
+            })),
+            tx
+          );
+        }
+
+        if (allowedPrincipals.groups && allowedPrincipals.groups.length > 0) {
+          const groups = await groupDAL.findGroupsByProjectId(projectId);
+
+          const foundGroupSlugs = new Set(groups.map((g) => g.slug));
+
+          for (const slug of allowedPrincipals.groups) {
+            if (!foundGroupSlugs.has(slug)) {
+              throw new BadRequestError({
+                message: `Invalid group slug: ${slug}`
+              });
+            }
+          }
+
+          for await (const group of groups) {
+            // check that each group has access to the SSH project and have read access to hosts
+            const hasPermission = await permissionService.checkGroupProjectPermission({
+              groupId: group.id,
+              projectId,
+              checkPermissions: [ProjectPermissionSshHostActions.Read, ProjectPermissionSub.SshHosts]
+            });
+            if (!hasPermission) {
+              throw new BadRequestError({
+                message: `Group ${group.slug} does not have access to the SSH project`
+              });
+            }
+          }
+
+          await sshHostLoginUserMappingDAL.insertMany(
+            groups.map((group) => ({
+              sshHostLoginUserId: sshHostLoginUser.id,
+              groupId: group.id
             })),
             tx
           );
@@ -319,7 +364,7 @@ export const sshHostServiceFactory = ({
               tx
             );
 
-            if (allowedPrincipals.usernames.length > 0) {
+            if (allowedPrincipals.usernames && allowedPrincipals.usernames.length > 0) {
               const users = await userDAL.find(
                 {
                   $in: {
@@ -353,6 +398,42 @@ export const sshHostServiceFactory = ({
                 users.map((user) => ({
                   sshHostLoginUserId: sshHostLoginUser.id,
                   userId: user.id
+                })),
+                tx
+              );
+            }
+
+            if (allowedPrincipals.groups && allowedPrincipals.groups.length > 0) {
+              const groups = await groupDAL.findGroupsByProjectId(host.projectId);
+
+              const foundGroupSlugs = new Set(groups.map((g) => g.slug));
+
+              for (const slug of allowedPrincipals.groups) {
+                if (!foundGroupSlugs.has(slug)) {
+                  throw new BadRequestError({
+                    message: `Invalid group slug: ${slug}`
+                  });
+                }
+              }
+
+              for await (const group of groups) {
+                // check that each group has access to the SSH project and have read access to hosts
+                const hasPermission = await permissionService.checkGroupProjectPermission({
+                  groupId: group.id,
+                  projectId: host.projectId,
+                  checkPermissions: [ProjectPermissionSshHostActions.Read, ProjectPermissionSub.SshHosts]
+                });
+                if (!hasPermission) {
+                  throw new BadRequestError({
+                    message: `Group ${group.slug} does not have access to the SSH project`
+                  });
+                }
+              }
+
+              await sshHostLoginUserMappingDAL.insertMany(
+                groups.map((group) => ({
+                  sshHostLoginUserId: sshHostLoginUser.id,
+                  groupId: group.id
                 })),
                 tx
               );
@@ -460,10 +541,14 @@ export const sshHostServiceFactory = ({
       userDAL
     });
 
+    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actorId, actorOrgId);
+    const userGroupSlugs = userGroups.map((g) => g.groupSlug);
+
     const mapping = host.loginMappings.find(
       (m) =>
         m.loginUser === loginUser &&
-        m.allowedPrincipals.usernames.some((allowed) => internalPrincipals.includes(allowed))
+        (m.allowedPrincipals.usernames.some((allowed) => internalPrincipals.includes(allowed)) ||
+          m.allowedPrincipals.groups.some((allowed) => userGroupSlugs.includes(allowed)))
     );
 
     if (!mapping) {

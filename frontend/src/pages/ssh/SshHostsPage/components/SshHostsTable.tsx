@@ -3,7 +3,9 @@ import {
   faEllipsis,
   faPencil,
   faServer,
-  faTrash
+  faTrash,
+  faUser,
+  faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import FileSaver from "file-saver";
@@ -12,6 +14,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -91,13 +94,46 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                         <span className="italic text-mineshaft-400">None</span>
                       ) : (
                         host.loginMappings.map(({ loginUser, allowedPrincipals }) => (
-                          <div key={`${host.id}-${loginUser}`} className="mb-2">
-                            <div className="text-mineshaft-200">{loginUser}</div>
-                            {allowedPrincipals.usernames.map((username) => (
-                              <div key={`${host.id}-${loginUser}-${username}`} className="ml-4">
-                                └─ {username}
-                              </div>
-                            ))}
+                          <div key={`${host.id}-${loginUser}`} className="mb-3">
+                            <div className="mb-1 text-mineshaft-200">{loginUser}</div>
+                            <div className="ml-4 flex flex-col gap-1">
+                              {allowedPrincipals.usernames.map((username) => (
+                                <div
+                                  key={`${host.id}-${loginUser}-${username}`}
+                                  className="flex items-center gap-2"
+                                >
+                                  <div className="flex items-center">
+                                    <span className="text-gray-400">└─</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <FontAwesomeIcon
+                                      icon={faUser}
+                                      className="text-xs text-yellow/80"
+                                    />
+                                    <span>{username}</span>
+                                    <Badge variant="primary">user</Badge>
+                                  </div>
+                                </div>
+                              ))}
+                              {allowedPrincipals.groups.map((group) => (
+                                <div
+                                  key={`${host.id}-${loginUser}-${group}`}
+                                  className="flex items-center gap-2"
+                                >
+                                  <div className="flex items-center">
+                                    <span className="text-gray-400">└─</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <FontAwesomeIcon
+                                      icon={faUsers}
+                                      className="text-xs text-green/80"
+                                    />
+                                    <span>{group}</span>
+                                    <Badge variant="success">group</Badge>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         ))
                       )}

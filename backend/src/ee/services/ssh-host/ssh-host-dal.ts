@@ -27,8 +27,17 @@ export const sshHostDALFactory = (db: TDbClient) => {
           `${TableName.SshHostLoginUserMapping}.sshHostLoginUserId`
         )
         .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.SshHostLoginUserMapping}.userId`)
+        .leftJoin(
+          TableName.UserGroupMembership,
+          `${TableName.UserGroupMembership}.groupId`,
+          `${TableName.SshHostLoginUserMapping}.groupId`
+        )
         .whereIn(`${TableName.SshHost}.projectId`, projectIds)
-        .andWhere(`${TableName.SshHostLoginUserMapping}.userId`, userId)
+        .andWhere((bd) => {
+          void bd
+            .where(`${TableName.SshHostLoginUserMapping}.userId`, userId)
+            .orWhere(`${TableName.UserGroupMembership}.userId`, userId);
+        })
         .select(
           db.ref("id").withSchema(TableName.SshHost).as("sshHostId"),
           db.ref("projectId").withSchema(TableName.SshHost),
@@ -85,6 +94,7 @@ export const sshHostDALFactory = (db: TDbClient) => {
           `${TableName.SshHostLoginUserMapping}.sshHostLoginUserId`
         )
         .leftJoin(TableName.Users, `${TableName.SshHostLoginUserMapping}.userId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.Groups, `${TableName.SshHostLoginUserMapping}.groupId`, `${TableName.Groups}.id`)
         .where(`${TableName.SshHost}.projectId`, projectId)
         .select(
           db.ref("id").withSchema(TableName.SshHost).as("sshHostId"),
@@ -96,6 +106,7 @@ export const sshHostDALFactory = (db: TDbClient) => {
           db.ref("loginUser").withSchema(TableName.SshHostLoginUser),
           db.ref("username").withSchema(TableName.Users),
           db.ref("userId").withSchema(TableName.SshHostLoginUserMapping),
+          db.ref("slug").withSchema(TableName.Groups).as("groupSlug"),
           db.ref("userSshCaId").withSchema(TableName.SshHost),
           db.ref("hostSshCaId").withSchema(TableName.SshHost)
         )
@@ -113,7 +124,8 @@ export const sshHostDALFactory = (db: TDbClient) => {
         const loginMappings = Object.entries(loginMappingGrouped).map(([loginUser, entries]) => ({
           loginUser,
           allowedPrincipals: {
-            usernames: unique(entries.map((e) => e.username)).filter(Boolean)
+            usernames: unique(entries.map((e) => e.username)).filter(Boolean),
+            groups: unique(entries.map((e) => e.groupSlug)).filter(Boolean)
           }
         }));
 
@@ -144,6 +156,7 @@ export const sshHostDALFactory = (db: TDbClient) => {
           `${TableName.SshHostLoginUserMapping}.sshHostLoginUserId`
         )
         .leftJoin(TableName.Users, `${TableName.SshHostLoginUserMapping}.userId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.Groups, `${TableName.SshHostLoginUserMapping}.groupId`, `${TableName.Groups}.id`)
         .where(`${TableName.SshHost}.id`, sshHostId)
         .select(
           db.ref("id").withSchema(TableName.SshHost).as("sshHostId"),
@@ -156,7 +169,8 @@ export const sshHostDALFactory = (db: TDbClient) => {
           db.ref("username").withSchema(TableName.Users),
           db.ref("userId").withSchema(TableName.SshHostLoginUserMapping),
           db.ref("userSshCaId").withSchema(TableName.SshHost),
-          db.ref("hostSshCaId").withSchema(TableName.SshHost)
+          db.ref("hostSshCaId").withSchema(TableName.SshHost),
+          db.ref("slug").withSchema(TableName.Groups).as("groupSlug")
         );
 
       if (rows.length === 0) return null;
@@ -171,7 +185,8 @@ export const sshHostDALFactory = (db: TDbClient) => {
       const loginMappings = Object.entries(loginMappingGrouped).map(([loginUser, entries]) => ({
         loginUser,
         allowedPrincipals: {
-          usernames: unique(entries.map((e) => e.username)).filter(Boolean)
+          usernames: unique(entries.map((e) => e.username)).filter(Boolean),
+          groups: unique(entries.map((e) => e.groupSlug)).filter(Boolean)
         }
       }));
 

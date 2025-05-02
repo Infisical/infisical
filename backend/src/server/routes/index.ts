@@ -836,6 +836,8 @@ export const registerRoutes = async (
 
   const sshHostService = sshHostServiceFactory({
     userDAL,
+    groupDAL,
+    userGroupMembershipDAL,
     projectDAL,
     projectSshConfigDAL,
     sshCertificateAuthorityDAL,

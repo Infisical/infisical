@@ -1395,7 +1395,7 @@ export const SSH_HOSTS = {
     loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
     allowedPrincipals: "A list of allowed principals that can log in as the login user.",
     loginMappings:
-      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project.",
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users or groups slugs in the Infisical SSH project.",
     userSshCaId:
       "The ID of the SSH CA to use for user certificates. If not specified, the default user SSH CA will be used if it exists.",
     hostSshCaId:
@@ -1410,7 +1410,7 @@ export const SSH_HOSTS = {
     loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
     allowedPrincipals: "A list of allowed principals that can log in as the login user.",
     loginMappings:
-      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project."
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users or groups slugs in the Infisical SSH project."
   },
   DELETE: {
     sshHostId: "The ID of the SSH host to delete."

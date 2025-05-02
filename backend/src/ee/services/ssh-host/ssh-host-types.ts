@@ -10,7 +10,8 @@ export type TCreateSshHostDTO = {
   loginMappings: {
     loginUser: string;
     allowedPrincipals: {
-      usernames: string[];
+      usernames?: string[];
+      groups?: string[];
     };
   }[];
   userSshCaId?: string;
@@ -26,7 +27,8 @@ export type TUpdateSshHostDTO = {
   loginMappings?: {
     loginUser: string;
     allowedPrincipals: {
-      usernames: string[];
+      usernames?: string[];
+      groups?: string[];
     };
   }[];
 } & Omit<TProjectPermission, "projectId">;
