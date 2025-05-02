@@ -11,6 +11,7 @@ import { CamundaSyncFields } from "./CamundaSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
+import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
 import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
@@ -47,6 +48,8 @@ export const SecretSyncDestinationFields = () => {
       return <VercelSyncFields />;
     case SecretSync.Windmill:
       return <WindmillSyncFields />;
+    case SecretSync.HCVault:
+      return <HCVaultSyncFields />;
     case SecretSync.TeamCity:
       return <TeamCitySyncFields />;
     default:

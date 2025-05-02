@@ -20,7 +20,7 @@ export const BaseSecretRotationSchema = (type: SecretRotation) =>
     // unique to provider
     type: true,
     parameters: true,
-    secretMappings: true
+    secretsMapping: true
   }).extend({
     connection: z.object({
       app: z.literal(SECRET_ROTATION_CONNECTION_MAP[type]),

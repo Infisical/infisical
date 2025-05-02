@@ -20,7 +20,10 @@ const organizationRoutes = route("/organization", [
     index("organization/SecretSharingPage/route.tsx"),
     route("/settings", "organization/SecretSharingSettingsPage/route.tsx")
   ]),
-  route("/settings", "organization/SettingsPage/route.tsx"),
+  route("/settings", [
+    index("organization/SettingsPage/route.tsx"),
+    route("/oauth/callback", "organization/SettingsPage/OauthCallbackPage/route.tsx")
+  ]),
   route("/secret-scanning", "organization/SecretScanningPage/route.tsx"),
   route("/groups/$groupId", "organization/GroupDetailsByIDPage/route.tsx"),
   route("/members/$membershipId", "organization/UserDetailsByIDPage/route.tsx"),

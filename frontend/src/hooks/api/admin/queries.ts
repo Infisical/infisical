@@ -7,7 +7,7 @@ import { User } from "../types";
 import {
   AdminGetIdentitiesFilters,
   AdminGetUsersFilters,
-  AdminSlackConfig,
+  AdminIntegrationsConfig,
   TGetServerRootKmsEncryptionDetails,
   TServerConfig
 } from "./types";
@@ -22,7 +22,7 @@ export const adminQueryKeys = {
   getUsers: (filters: AdminGetUsersFilters) => [adminStandaloneKeys.getUsers, { filters }] as const,
   getIdentities: (filters: AdminGetIdentitiesFilters) =>
     [adminStandaloneKeys.getIdentities, { filters }] as const,
-  getAdminSlackConfig: () => ["admin-slack-config"] as const,
+  getAdminIntegrationsConfig: () => ["admin-integrations-config"] as const,
   getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const
 };
 
@@ -95,13 +95,11 @@ export const useAdminGetIdentities = (filters: AdminGetIdentitiesFilters) => {
   });
 };
 
-export const useGetAdminSlackConfig = () => {
+export const useGetAdminIntegrationsConfig = () => {
   return useQuery({
-    queryKey: adminQueryKeys.getAdminSlackConfig(),
+    queryKey: adminQueryKeys.getAdminIntegrationsConfig(),
     queryFn: async () => {
-      const { data } = await apiRequest.get<AdminSlackConfig>(
-        "/api/v1/admin/integrations/slack/config"
-      );
+      const { data } = await apiRequest.get<AdminIntegrationsConfig>("/api/v1/admin/integrations");
 
       return data;
     }

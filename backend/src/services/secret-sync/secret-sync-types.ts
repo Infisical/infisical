@@ -56,6 +56,12 @@ import {
 } from "./azure-key-vault";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import {
+  THCVaultSync,
+  THCVaultSyncInput,
+  THCVaultSyncListItem,
+  THCVaultSyncWithCredentials
+} from "./hc-vault/hc-vault-sync-types";
+import {
   THumanitecSync,
   THumanitecSyncInput,
   THumanitecSyncListItem,
@@ -88,6 +94,7 @@ export type TSecretSync =
   | TCamundaSync
   | TVercelSync
   | TWindmillSync
+  | THCVaultSync
   | TTeamCitySync;
 
 export type TSecretSyncWithCredentials =
@@ -103,6 +110,7 @@ export type TSecretSyncWithCredentials =
   | TCamundaSyncWithCredentials
   | TVercelSyncWithCredentials
   | TWindmillSyncWithCredentials
+  | THCVaultSyncWithCredentials
   | TTeamCitySyncWithCredentials;
 
 export type TSecretSyncInput =
@@ -118,6 +126,7 @@ export type TSecretSyncInput =
   | TCamundaSyncInput
   | TVercelSyncInput
   | TWindmillSyncInput
+  | THCVaultSyncInput
   | TTeamCitySyncInput;
 
 export type TSecretSyncListItem =
@@ -133,6 +142,7 @@ export type TSecretSyncListItem =
   | TCamundaSyncListItem
   | TVercelSyncListItem
   | TWindmillSyncListItem
+  | THCVaultSyncListItem
   | TTeamCitySyncListItem;
 
 export type TSyncOptionsConfig = {

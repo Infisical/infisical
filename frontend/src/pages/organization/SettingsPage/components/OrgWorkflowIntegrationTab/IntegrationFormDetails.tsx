@@ -1,6 +1,7 @@
 import { Modal, ModalContent } from "@app/components/v2";
 import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
 
+import { MicrosoftTeamsIntegrationForm } from "./MicrosoftTeamsIntegrationForm";
 import { SlackIntegrationForm } from "./SlackIntegrationForm";
 
 type Props = {
@@ -19,6 +20,9 @@ export const IntegrationFormDetails = ({ isOpen, id, onOpenChange, workflowPlatf
       <ModalContent title={modalTitle}>
         {workflowPlatform === WorkflowIntegrationPlatform.SLACK && (
           <SlackIntegrationForm id={id} onClose={() => onOpenChange(false)} />
+        )}
+        {workflowPlatform === WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
+          <MicrosoftTeamsIntegrationForm id={id} onClose={() => onOpenChange(false)} />
         )}
       </ModalContent>
     </Modal>

@@ -25,3 +25,6 @@ frontend/src/pages/secret-manager/SecretDashboardPage/components/SecretRotationL
 docs/documentation/platform/kms/overview.mdx:generic-api-key:281
 docs/documentation/platform/kms/overview.mdx:generic-api-key:344
 frontend/src/pages/secret-manager/OverviewPage/components/SecretOverviewTableRow/SecretOverviewTableRow.tsx:generic-api-key:85
+docs/cli/commands/user.mdx:generic-api-key:51
+frontend/src/pages/secret-manager/OverviewPage/components/SecretOverviewTableRow/SecretOverviewTableRow.tsx:generic-api-key:76
+docs/integrations/app-connections/hashicorp-vault.mdx:generic-api-key:188

@@ -26,7 +26,10 @@ export const SuperAdminSchema = z.object({
   encryptedSlackClientSecret: zodBuffer.nullable().optional(),
   authConsentContent: z.string().nullable().optional(),
   pageFrameContent: z.string().nullable().optional(),
-  adminIdentityIds: z.string().array().nullable().optional()
+  adminIdentityIds: z.string().array().nullable().optional(),
+  encryptedMicrosoftTeamsAppId: zodBuffer.nullable().optional(),
+  encryptedMicrosoftTeamsClientSecret: zodBuffer.nullable().optional(),
+  encryptedMicrosoftTeamsBotId: zodBuffer.nullable().optional()
 });
 
 export type TSuperAdmin = z.infer<typeof SuperAdminSchema>;

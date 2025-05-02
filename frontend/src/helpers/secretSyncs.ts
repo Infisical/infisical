@@ -40,6 +40,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
     name: "Windmill",
     image: "Windmill.png"
   },
+  [SecretSync.HCVault]: {
+    name: "Hashicorp Vault",
+    image: "Vault.png"
+  },
   [SecretSync.TeamCity]: {
     name: "TeamCity",
     image: "TeamCity.png"
@@ -59,6 +63,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Camunda]: AppConnection.Camunda,
   [SecretSync.Vercel]: AppConnection.Vercel,
   [SecretSync.Windmill]: AppConnection.Windmill,
+  [SecretSync.HCVault]: AppConnection.HCVault,
   [SecretSync.TeamCity]: AppConnection.TeamCity
 };
 

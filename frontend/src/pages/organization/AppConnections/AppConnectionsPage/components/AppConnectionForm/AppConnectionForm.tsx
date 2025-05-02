@@ -18,6 +18,7 @@ import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
+import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
@@ -94,6 +95,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <WindmillConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Auth0:
       return <Auth0ConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.HCVault:
+      return <HCVaultConnectionForm onSubmit={onSubmit} />;
     case AppConnection.LDAP:
       return <LdapConnectionForm onSubmit={onSubmit} />;
     case AppConnection.TeamCity:
@@ -164,6 +167,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <WindmillConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Auth0:
       return <Auth0ConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.HCVault:
+      return <HCVaultConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.LDAP:
       return <LdapConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.TeamCity:

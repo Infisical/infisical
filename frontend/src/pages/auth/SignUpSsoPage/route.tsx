@@ -5,7 +5,8 @@ import { z } from "zod";
 import { SignupSsoPage } from "./SignUpSsoPage";
 
 const SignupSSOPageQueryParamsSchema = z.object({
-  token: z.string()
+  token: z.string(),
+  defaultOrgAllowed: z.boolean().optional()
 });
 
 export const Route = createFileRoute("/_restrict-login-signup/signup/sso")({

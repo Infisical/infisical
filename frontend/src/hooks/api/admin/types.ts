@@ -26,6 +26,14 @@ export type TServerConfig = {
   pageFrameContent?: string;
 };
 
+export type TUpdateServerConfigDTO = {
+  slackClientId?: string;
+  slackClientSecret?: string;
+  microsoftTeamsAppId?: string;
+  microsoftTeamsClientSecret?: string;
+  microsoftTeamsBotId?: string;
+} & Partial<TServerConfig>;
+
 export type TCreateAdminUserDTO = {
   email: string;
   password: string;
@@ -42,11 +50,6 @@ export type TCreateAdminUserDTO = {
   salt: string;
 };
 
-export type TUpdateAdminSlackConfigDTO = {
-  clientId: string;
-  clientSecret: string;
-};
-
 export type AdminGetUsersFilters = {
   limit: number;
   searchTerm: string;
@@ -58,9 +61,16 @@ export type AdminGetIdentitiesFilters = {
   searchTerm: string;
 };
 
-export type AdminSlackConfig = {
-  clientId: string;
-  clientSecret: string;
+export type AdminIntegrationsConfig = {
+  slack: {
+    clientId: string;
+    clientSecret: string;
+  };
+  microsoftTeams: {
+    appId: string;
+    clientSecret: string;
+    botId: string;
+  };
 };
 
 export type TGetServerRootKmsEncryptionDetails = {

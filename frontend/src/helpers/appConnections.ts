@@ -19,6 +19,7 @@ import {
   DatabricksConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
+  HCVaultConnectionMethod,
   HumanitecConnectionMethod,
   LdapConnectionMethod,
   MsSqlConnectionMethod,
@@ -58,6 +59,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Camunda]: { name: "Camunda", image: "Camunda.png" },
   [AppConnection.Windmill]: { name: "Windmill", image: "Windmill.png" },
   [AppConnection.Auth0]: { name: "Auth0", image: "Auth0.png", size: 40 },
+  [AppConnection.HCVault]: { name: "Hashicorp Vault", image: "Vault.png", size: 65 },
   [AppConnection.LDAP]: { name: "LDAP", image: "LDAP.png", size: 65 },
   [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" }
 };
@@ -88,11 +90,14 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
+    case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
     case WindmillConnectionMethod.AccessToken:
       return { name: "Access Token", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:
       return { name: "Client Credentials", icon: faServer };
+    case HCVaultConnectionMethod.AppRole:
+      return { name: "App Role", icon: faUser };
     case LdapConnectionMethod.SimpleBind:
       return { name: "Simple Bind", icon: faLink };
     default:

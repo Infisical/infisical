@@ -338,7 +338,7 @@ func secretTemplateFunction(accessToken string, existingEtag string, currentEtag
 
 		parsedArguments.SetDefaults()
 
-		res, err := util.GetPlainTextSecretsV3(accessToken, projectID, envSlug, secretPath, false, parsedArguments.IsRecursive, "", *parsedArguments.ShouldExpandSecretReferences)
+		res, err := util.GetPlainTextSecretsV3(accessToken, projectID, envSlug, secretPath, true, parsedArguments.IsRecursive, "", *parsedArguments.ShouldExpandSecretReferences)
 		if err != nil {
 			return nil, err
 		}

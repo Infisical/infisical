@@ -30,6 +30,7 @@ import {
   TSecretSyncRaw,
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
+import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import { KmipPermission } from "../kmip/kmip-enum";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
@@ -252,11 +253,14 @@ export enum EventType {
   GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
   ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
+  GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
+  UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config",
   GET_SLACK_INTEGRATION = "get-slack-integration",
   UPDATE_SLACK_INTEGRATION = "update-slack-integration",
   DELETE_SLACK_INTEGRATION = "delete-slack-integration",
-  GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
-  UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config",
+  GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG = "get-project-workflow-integration-config",
+  UPDATE_PROJECT_WORKFLOW_INTEGRATION_CONFIG = "update-project-workflow-integration-config",
+
   GET_PROJECT_SSH_CONFIG = "get-project-ssh-config",
   UPDATE_PROJECT_SSH_CONFIG = "update-project-ssh-config",
   INTEGRATION_SYNCED = "integration-synced",
@@ -329,6 +333,15 @@ export enum EventType {
   SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
 
   PROJECT_ACCESS_REQUEST = "project-access-request",
+
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CREATE = "microsoft-teams-workflow-integration-create",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_DELETE = "microsoft-teams-workflow-integration-delete",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_UPDATE = "microsoft-teams-workflow-integration-update",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS = "microsoft-teams-workflow-integration-check-installation-status",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS = "microsoft-teams-workflow-integration-get-teams",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET = "microsoft-teams-workflow-integration-get",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list",
+
   PROJECT_ASSUME_PRIVILEGE_SESSION_START = "project-assume-privileges-session-start",
   PROJECT_ASSUME_PRIVILEGE_SESSION_END = "project-assume-privileges-session-end"
 }
@@ -2038,22 +2051,24 @@ interface GetSlackIntegration {
   };
 }
 
-interface UpdateProjectSlackConfig {
-  type: EventType.UPDATE_PROJECT_SLACK_CONFIG;
+interface UpdateProjectWorkflowIntegrationConfig {
+  type: EventType.UPDATE_PROJECT_WORKFLOW_INTEGRATION_CONFIG;
   metadata: {
     id: string;
-    slackIntegrationId: string;
+    integrationId: string;
+    integration: WorkflowIntegration;
     isAccessRequestNotificationEnabled: boolean;
-    accessRequestChannels: string;
+    accessRequestChannels?: string | { teamId: string; channelIds: string[] };
     isSecretRequestNotificationEnabled: boolean;
-    secretRequestChannels: string;
+    secretRequestChannels?: string | { teamId: string; channelIds: string[] };
   };
 }
 
-interface GetProjectSlackConfig {
-  type: EventType.GET_PROJECT_SLACK_CONFIG;
+interface GetProjectWorkflowIntegrationConfig {
+  type: EventType.GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG;
   metadata: {
     id: string;
+    integration: WorkflowIntegration;
   };
 }
 
@@ -2619,6 +2634,66 @@ interface RotateSecretRotationEvent {
   };
 }
 
+interface MicrosoftTeamsWorkflowIntegrationCreateEvent {
+  type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CREATE;
+  metadata: {
+    tenantId: string;
+    slug: string;
+    description?: string;
+  };
+}
+
+interface MicrosoftTeamsWorkflowIntegrationDeleteEvent {
+  type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_DELETE;
+  metadata: {
+    tenantId: string;
+    id: string;
+    slug: string;
+  };
+}
+
+interface MicrosoftTeamsWorkflowIntegrationCheckInstallationStatusEvent {
+  type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS;
+  metadata: {
+    tenantId: string;
+    slug: string;
+  };
+}
+
+interface MicrosoftTeamsWorkflowIntegrationGetTeamsEvent {
+  type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS;
+  metadata: {
+    tenantId: string;
+    slug: string;
+    id: string;
+  };
+}
+
+interface MicrosoftTeamsWorkflowIntegrationGetEvent {
+  type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET;
+  metadata: {
+    tenantId: string;
+    slug: string;
+    id: string;
+  };
+}
+
+interface MicrosoftTeamsWorkflowIntegrationListEvent {
+  type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST;
+  metadata: Record<string, string>;
+}
+
+interface MicrosoftTeamsWorkflowIntegrationUpdateEvent {
+  type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_UPDATE;
+  metadata: {
+    tenantId: string;
+    slug: string;
+    id: string;
+    newSlug?: string;
+    newDescription?: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -2781,8 +2856,8 @@ export type Event =
   | UpdateSlackIntegration
   | DeleteSlackIntegration
   | GetSlackIntegration
-  | UpdateProjectSlackConfig
-  | GetProjectSlackConfig
+  | UpdateProjectWorkflowIntegrationConfig
+  | GetProjectWorkflowIntegrationConfig
   | GetProjectSshConfig
   | UpdateProjectSshConfig
   | IntegrationSyncedEvent
@@ -2859,4 +2934,11 @@ export type Event =
   | CreateSecretRotationEvent
   | UpdateSecretRotationEvent
   | DeleteSecretRotationEvent
-  | RotateSecretRotationEvent;
+  | RotateSecretRotationEvent
+  | MicrosoftTeamsWorkflowIntegrationCreateEvent
+  | MicrosoftTeamsWorkflowIntegrationDeleteEvent
+  | MicrosoftTeamsWorkflowIntegrationCheckInstallationStatusEvent
+  | MicrosoftTeamsWorkflowIntegrationGetTeamsEvent
+  | MicrosoftTeamsWorkflowIntegrationGetEvent
+  | MicrosoftTeamsWorkflowIntegrationListEvent
+  | MicrosoftTeamsWorkflowIntegrationUpdateEvent;

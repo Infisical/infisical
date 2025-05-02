@@ -4,13 +4,12 @@ export {
   useAdminRemoveIdentitySuperAdminAccess,
   useCreateAdminUser,
   useRemoveUserServerAdminAccess,
-  useUpdateAdminSlackConfig,
   useUpdateServerConfig,
   useUpdateServerEncryptionStrategy
 } from "./mutation";
 export {
   useAdminGetUsers,
-  useGetAdminSlackConfig,
+  useGetAdminIntegrationsConfig,
   useGetServerConfig,
   useGetServerRootKmsEncryptionDetails
 } from "./queries";
