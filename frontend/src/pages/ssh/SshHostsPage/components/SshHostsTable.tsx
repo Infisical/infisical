@@ -107,16 +107,20 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                             {} as Record<string, Set<string>>
                           );
 
-                          const entriesFromHost = hostMappings.map(({ loginUser, allowedPrincipals }) => ({
-                            loginUser,
-                            source: LoginMappingSource.HOST,
-                            usernames: allowedPrincipals.usernames
-                          }));
+                          const entriesFromHost = hostMappings.map(
+                            ({ loginUser, allowedPrincipals }) => ({
+                              loginUser,
+                              source: LoginMappingSource.HOST,
+                              usernames: allowedPrincipals.usernames
+                            })
+                          );
 
                           const entriesFromGroup = groupMappings
                             .map(({ loginUser, allowedPrincipals }) => {
                               const existing = hostLoginUserToPrincipals[loginUser] || new Set();
-                              const filteredUsernames = allowedPrincipals.usernames.filter((u) => !existing.has(u));
+                              const filteredUsernames = allowedPrincipals.usernames.filter(
+                                (u) => !existing.has(u)
+                              );
                               return filteredUsernames.length > 0
                                 ? {
                                     loginUser,
@@ -230,10 +234,6 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
         {!isPending && data?.length === 0 && (
           <EmptyState title="No SSH hosts have been added" icon={faServer} />
         )}
-      </TableContainer>
-    </div>
-  );
-};
       </TableContainer>
     </div>
   );
