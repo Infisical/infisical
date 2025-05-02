@@ -67,7 +67,7 @@ export let getServerCfg: () => Promise<
 
 const ADMIN_CONFIG_KEY = "infisical-admin-cfg";
 const ADMIN_CONFIG_KEY_EXP = 60; // 60s
-const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
+export const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
 
 export const superAdminServiceFactory = ({
   serverCfgDAL,
@@ -641,6 +641,10 @@ export const superAdminServiceFactory = ({
     });
   };
 
+  const checkIfInvalidatingCache = async () => {
+    return (await keyStore.getItem("invalidating-cache")) !== null;
+  };
+
   return {
     initServerCfg,
     updateServerCfg,
@@ -655,6 +659,7 @@ export const superAdminServiceFactory = ({
     grantServerAdminAccessToUser,
     deleteIdentitySuperAdminAccess,
     deleteUserSuperAdminAccess,
-    invalidateCache
+    invalidateCache,
+    checkIfInvalidatingCache
   };
 };

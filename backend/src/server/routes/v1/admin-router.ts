@@ -587,4 +587,31 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/invalidating-cache-status",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          invalidating: z.boolean()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async () => {
+      const invalidating = await server.services.superAdmin.checkIfInvalidatingCache();
+
+      return {
+        invalidating
+      };
+    }
+  });
 };

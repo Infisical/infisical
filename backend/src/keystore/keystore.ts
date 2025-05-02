@@ -103,6 +103,7 @@ export const keyStoreFactory = (redisUrl: string) => {
         // eslint-disable-next-line no-await-in-loop
         await pipeline.exec();
         totalDeleted += batch.length;
+        console.log("BATCH DONE");
 
         // eslint-disable-next-line no-await-in-loop
         await delayMs(Math.max(0, applyJitter(delay, jitter)));

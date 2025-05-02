@@ -8,6 +8,7 @@ import {
   AdminGetIdentitiesFilters,
   AdminGetUsersFilters,
   AdminIntegrationsConfig,
+  TGetInvalidatingCacheStatus,
   TGetServerRootKmsEncryptionDetails,
   TServerConfig
 } from "./types";
@@ -117,6 +118,19 @@ export const useGetServerRootKmsEncryptionDetails = () => {
       );
 
       return data;
+    }
+  });
+};
+
+export const useGetInvalidatingCacheStatus = () => {
+  return useQuery({
+    queryKey: adminQueryKeys.getInvalidateCache(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetInvalidatingCacheStatus>(
+        "/api/v1/admin/invalidating-cache-status"
+      );
+
+      return data.invalidating;
     }
   });
 };

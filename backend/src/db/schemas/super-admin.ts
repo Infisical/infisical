@@ -29,7 +29,8 @@ export const SuperAdminSchema = z.object({
   adminIdentityIds: z.string().array().nullable().optional(),
   encryptedMicrosoftTeamsAppId: zodBuffer.nullable().optional(),
   encryptedMicrosoftTeamsClientSecret: zodBuffer.nullable().optional(),
-  encryptedMicrosoftTeamsBotId: zodBuffer.nullable().optional()
+  encryptedMicrosoftTeamsBotId: zodBuffer.nullable().optional(),
+  invalidatingCache: z.boolean().default(false)
 });
 
 export type TSuperAdmin = z.infer<typeof SuperAdminSchema>;
