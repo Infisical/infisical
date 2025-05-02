@@ -16,7 +16,7 @@ export const CachingPanel = () => {
     useGetInvalidatingCacheStatus();
   const { membership } = useOrgPermission();
 
-  const wasInvalidating = useRef(false);
+  const ignoreInitial = useRef(true);
   const [type, setType] = useState<CacheType | null>(null);
   const [buttonsDisabled, setButtonsDisabled] = useState(false);
 
@@ -46,8 +46,6 @@ export const CachingPanel = () => {
 
     try {
       await invalidateCache({ type });
-
-      wasInvalidating.current = true;
 
       createNotification({
         text: `Began invalidating ${type} cache`,
@@ -98,10 +96,18 @@ export const CachingPanel = () => {
     };
   }, [isInvalidating]);
 
+  // Helper to ignore the initial useEffect calls for isInvalidating
   useEffect(() => {
-    if (isInvalidating === false && wasInvalidating.current) {
+    const timer = setTimeout(() => {
+      ignoreInitial.current = false;
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!ignoreInitial.current && isInvalidating === false) {
       success();
-      wasInvalidating.current = false;
 
       if (pollingRef.current) clearInterval(pollingRef.current);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);

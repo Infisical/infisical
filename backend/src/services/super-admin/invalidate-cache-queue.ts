@@ -1,5 +1,4 @@
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { delay } from "@app/lib/delay";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
@@ -19,14 +18,6 @@ export const invalidateCacheQueueFactory = ({ queueService, keyStore }: TInvalid
       type: CacheType;
     };
   }) => {
-    // Cancel existing jobs if any
-    try {
-      console.log("stopping job");
-      await queueService.clearQueue(QueueName.InvalidateCache);
-    } catch (err) {
-      logger.warn(err, "Failed to clear queue");
-    }
-
     await queueService.queue(QueueName.InvalidateCache, QueueJobs.InvalidateCache, dto, {
       removeOnComplete: true,
       removeOnFail: true,
@@ -40,14 +31,10 @@ export const invalidateCacheQueueFactory = ({ queueService, keyStore }: TInvalid
         data: { type }
       } = job.data;
 
-      await keyStore.setItemWithExpiry("invalidating-cache", 3600, "true"); // 1 hour max (in case the job somehow silently fails)
-
-      console.log("STARTING JOB");
+      await keyStore.setItemWithExpiry("invalidating-cache", 1800, "true"); // 30 minutes max (in case the job somehow silently fails)
 
       if (type === CacheType.ALL || type === CacheType.SECRETS)
         await keyStore.deleteItems({ pattern: "secret-manager:*" });
-
-      // await delay(12000); // TODO(andrey): Remove. It's for debug
 
       await keyStore.deleteItem("invalidating-cache");
     } catch (err) {
