@@ -412,7 +412,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                           <div className="flex flex-col space-y-2">
                             {value.map((principal, principalIndex) => (
                               <div
-                                key={`${metadataFieldId}-principal-${principalIndex + 1}`}
+                                key={`principal-${i + 1}-${principalIndex + 1}-${principal.type}`}
                                 className="flex items-center space-x-2"
                               >
                                 <div className="mr-2">
@@ -482,7 +482,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                                       const newPrincipals = value.filter(
                                         (_, idx) => idx !== principalIndex
                                       );
-                                      onChange(newPrincipals);
+                                      onChange([...newPrincipals]);
                                     }}
                                   >
                                     <FontAwesomeIcon icon={faTrash} />
