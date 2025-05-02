@@ -50,8 +50,7 @@ export const SecretNameSchema = BaseSecretNameSchema.refine(
   .refine((el) => !el.includes("/"), "Secret name cannot contain forward slash.");
 
 const DefaultOrgSchema = z.object({
-  useDefaultOrg: z.literal(true),
-  organizationName: z.string().trim().optional()
+  useDefaultOrg: z.literal(true)
 });
 
 const CustomOrgSchema = z.object({

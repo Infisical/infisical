@@ -727,7 +727,11 @@ export const authLoginServiceFactory = ({
       if (authMethod === AuthMethod.GITHUB && serverCfg.defaultAuthOrgId) {
         let orgId = "";
         const defaultOrg = await orgDAL.findOrgById(serverCfg.defaultAuthOrgId);
-        if (!defaultOrg) throw new BadRequestError({ message: "Failed to find default organization" });
+        if (!defaultOrg) {
+          throw new BadRequestError({
+            message: `Failed to find default organization with ID ${serverCfg.defaultAuthOrgId}`
+          });
+        }
         orgId = defaultOrg.id;
         const [orgMembership] = await orgDAL.findMembership({
           [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
