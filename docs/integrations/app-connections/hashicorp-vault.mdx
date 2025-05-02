@@ -57,7 +57,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
                         - **data/\***: The path within the secrets engine used for storing secrets. The wildcard (*) grants access to all secrets within this mount point.
 
                         <Note>
-                            Ensure that you replace the policy path so that it matches with an existing KV Secrets Engine mount and path. You may set a specific path instead of using the wildcard (*) for a more granular policy.
+                            Make sure to replace the policy path with the specific path where you intend to sync your secrets. For better security and control, it's recommended to use a more granular path instead of a wildcard (*). You can also specify a path that doesn’t yet exist—Infisical will automatically create it for you during the sync process.
                         </Note>
                     </Tab>
                 </Tabs>
