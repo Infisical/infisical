@@ -1,14 +1,15 @@
+/* eslint-disable no-return-assign, consistent-return */
 import { useEffect, useRef, useState } from "react";
+import { faRotate } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { Badge, Button, DeleteActionModal } from "@app/components/v2";
 import { useOrgPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useInvalidateCache } from "@app/hooks/api";
-import { CacheType } from "@app/hooks/api/admin/types";
 import { useGetInvalidatingCacheStatus } from "@app/hooks/api/admin/queries";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faRotate } from "@fortawesome/free-solid-svg-icons";
+import { CacheType } from "@app/hooks/api/admin/types";
 
 export const CachingPanel = () => {
   const { mutateAsync: invalidateCache } = useInvalidateCache();
@@ -17,6 +18,9 @@ export const CachingPanel = () => {
   const { membership } = useOrgPermission();
 
   const ignoreInitial = useRef(true);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
   const [type, setType] = useState<CacheType | null>(null);
   const [buttonsDisabled, setButtonsDisabled] = useState(false);
 
@@ -24,21 +28,14 @@ export const CachingPanel = () => {
     "invalidateCache"
   ] as const);
 
-  const success = () => {
-    createNotification({
-      text: `Successfully invalidated cache`,
-      type: "success"
-    });
-    setButtonsDisabled(false);
+  const disableButtonsTemporarily = () => {
+    setButtonsDisabled(true);
+    timeoutRef.current = setTimeout(() => setButtonsDisabled(false), 10000);
   };
 
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const disableButtons = () => {
-    // Enable buttons after 10 seconds, even if still invalidating
-    setButtonsDisabled(true);
-    timeoutRef.current = setTimeout(() => {
-      setButtonsDisabled(false);
-    }, 10000);
+  const success = () => {
+    createNotification({ text: "Successfully invalidated cache", type: "success" });
+    setButtonsDisabled(false);
   };
 
   const handleInvalidateCacheSubmit = async () => {
@@ -46,13 +43,8 @@ export const CachingPanel = () => {
 
     try {
       await invalidateCache({ type });
-
-      createNotification({
-        text: `Began invalidating ${type} cache`,
-        type: "success"
-      });
-
-      disableButtons();
+      createNotification({ text: `Began invalidating ${type} cache`, type: "success" });
+      disableButtonsTemporarily();
       handlePopUpClose("invalidateCache");
 
       if (!(await refetchInvalidatingStatus()).data) {
@@ -61,58 +53,44 @@ export const CachingPanel = () => {
       }
     } catch (err) {
       console.error(err);
-      createNotification({
-        text: `Failed to invalidate ${type} cache`,
-        type: "error"
-      });
+      createNotification({ text: `Failed to invalidate ${type} cache`, type: "error" });
     }
 
     setType(null);
   };
 
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Update the "invalidating cache" status
   useEffect(() => {
-    if (!isInvalidating) return;
-
-    if (pollingRef.current) clearInterval(pollingRef.current);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
-    // Start polling every 3 seconds
-    pollingRef.current = setInterval(async () => {
-      try {
-        await refetchInvalidatingStatus();
-      } catch (err) {
-        console.error("Polling error:", err);
-      }
-    }, 3000);
-
-    disableButtons();
-
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [isInvalidating]);
-
-  // Helper to ignore the initial useEffect calls for isInvalidating
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      ignoreInitial.current = false;
-    }, 1000);
-
+    const timer = setTimeout(() => (ignoreInitial.current = false), 1000);
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
+    if (!isInvalidating) return;
+
+    clearInterval(pollingRef.current!);
+    clearTimeout(timeoutRef.current!);
+
+    pollingRef.current = setInterval(() => {
+      refetchInvalidatingStatus().catch((err) => console.error("Polling error:", err));
+    }, 3000);
+
+    disableButtonsTemporarily();
+
+    return () => {
+      clearInterval(pollingRef.current!);
+      clearTimeout(timeoutRef.current!);
+    };
+  }, [isInvalidating]);
+
+  useEffect(() => {
     if (!ignoreInitial.current && isInvalidating === false) {
       success();
-
-      if (pollingRef.current) clearInterval(pollingRef.current);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      clearInterval(pollingRef.current!);
+      clearTimeout(timeoutRef.current!);
     }
   }, [isInvalidating]);
+
+  const isAdmin = membership?.role === "admin";
 
   return (
     <>
@@ -142,34 +120,11 @@ export const CachingPanel = () => {
             setType(CacheType.SECRETS);
             handlePopUpOpen("invalidateCache");
           }}
-          isDisabled={Boolean(membership && membership.role !== "admin") || buttonsDisabled}
+          isDisabled={!isAdmin || buttonsDisabled}
         >
           Invalidate Secrets Cache
         </Button>
       </div>
-
-      {/* Uncomment this when we have more than one cache type */}
-      {/* <div className="mb-6 flex flex-wrap items-end justify-between gap-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="flex flex-col">
-          <span className="mb-2 text-xl font-semibold text-mineshaft-100">All Cache</span>
-          <span className="max-w-xl text-sm text-mineshaft-400">
-            All cache refers to the entirety of cached data throughout the system, including secrets
-            and miscellaneous information.
-          </span>
-        </div>
-
-        <Button
-          colorSchema="danger"
-          isLoading={isLoading}
-          onClick={() => {
-            setType(CacheType.ALL);
-            handlePopUpOpen("invalidateCache");
-          }}
-          isDisabled={Boolean(membership && membership.role !== "admin") || isLoading}
-        >
-          Invalidate All Cache
-        </Button>
-      </div> */}
 
       <DeleteActionModal
         isOpen={popUp.invalidateCache.isOpen}

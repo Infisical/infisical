@@ -21,7 +21,7 @@ export const invalidateCacheQueueFactory = ({ queueService, keyStore }: TInvalid
     await queueService.queue(QueueName.InvalidateCache, QueueJobs.InvalidateCache, dto, {
       removeOnComplete: true,
       removeOnFail: true,
-      jobId: "invalidate-cache"
+      jobId: `invalidate-cache-${dto.data.type}`
     });
   };
 
