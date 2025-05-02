@@ -5,7 +5,7 @@ import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certif
 import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
 import { LoginMappingSource } from "@app/ee/services/ssh-host/ssh-host-types";
 import { isValidHostname } from "@app/ee/services/ssh-host/ssh-host-validators";
-import { SSH_HOSTS } from "@app/lib/api-docs";
+import { ApiDocsTags, SSH_HOSTS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { publicSshCaLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -22,6 +22,8 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHosts],
       response: {
         200: z.array(
           sanitizedSshHost.extend({
@@ -54,6 +56,8 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHosts],
       params: z.object({
         sshHostId: z.string().describe(SSH_HOSTS.GET.sshHostId)
       }),
@@ -100,7 +104,9 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
-      description: "Add an SSH Host",
+      hide: false,
+      tags: [ApiDocsTags.SshHosts],
+      description: "Register SSH Host",
       body: z.object({
         projectId: z.string().describe(SSH_HOSTS.CREATE.projectId),
         hostname: z
@@ -176,6 +182,8 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHosts],
       description: "Update SSH Host",
       params: z.object({
         sshHostId: z.string().trim().describe(SSH_HOSTS.UPDATE.sshHostId)
@@ -252,6 +260,9 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHosts],
+      description: "Delete SSH Host",
       params: z.object({
         sshHostId: z.string().describe(SSH_HOSTS.DELETE.sshHostId)
       }),
@@ -299,6 +310,8 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHosts],
       description: "Issue SSH certificate for user",
       params: z.object({
         sshHostId: z.string().describe(SSH_HOSTS.ISSUE_SSH_CREDENTIALS.sshHostId)
@@ -371,6 +384,8 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHosts],
       description: "Issue SSH certificate for host",
       params: z.object({
         sshHostId: z.string().describe(SSH_HOSTS.ISSUE_HOST_CERT.sshHostId)
@@ -435,6 +450,8 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       rateLimit: publicSshCaLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHosts],
       description: "Get public key of the user SSH CA linked to the host",
       params: z.object({
         sshHostId: z.string().trim().describe(SSH_HOSTS.GET_USER_CA_PUBLIC_KEY.sshHostId)
@@ -456,6 +473,8 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
       rateLimit: publicSshCaLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHosts],
       description: "Get public key of the host SSH CA linked to the host",
       params: z.object({
         sshHostId: z.string().trim().describe(SSH_HOSTS.GET_HOST_CA_PUBLIC_KEY.sshHostId)

@@ -91,7 +91,27 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                       {host.loginMappings.length === 0 ? (
                         <span className="italic text-mineshaft-400">None</span>
                       ) : (
-                        host.loginMappings.map(({ loginUser, allowedPrincipals, source }) => (
+                        Object.entries(
+                          host.loginMappings.reduce(
+                            (acc, mapping) => {
+                              const { loginUser, source } = mapping;
+                              const existing = acc[loginUser];
+
+                              if (!existing) {
+                                acc[loginUser] = mapping;
+                              } else if (
+                                existing.source === LoginMappingSource.HOST_GROUP &&
+                                source === LoginMappingSource.HOST
+                              ) {
+                                // Prefer HOST over HOST_GROUP
+                                acc[loginUser] = mapping;
+                              }
+
+                              return acc;
+                            },
+                            {} as Record<string, (typeof host.loginMappings)[number]>
+                          )
+                        ).map(([loginUser, { allowedPrincipals, source }]) => (
                           <div key={`${host.id}-${loginUser}`} className="mb-2">
                             <div className="text-mineshaft-200">
                               {loginUser}
@@ -147,7 +167,7 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faPencil} />}
                               >
-                                Edit SSH host
+                                Edit Host
                               </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
@@ -169,7 +189,7 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faTrash} />}
                               >
-                                Delete SSH host
+                                Delete Host
                               </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>

@@ -4,7 +4,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
 import { sanitizedSshHostGroup } from "@app/ee/services/ssh-host-group/ssh-host-group-schema";
 import { EHostGroupMembershipFilter } from "@app/ee/services/ssh-host-group/ssh-host-group-types";
-import { SSH_HOST_GROUPS } from "@app/lib/api-docs";
+import { ApiDocsTags, SSH_HOST_GROUPS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -18,6 +18,9 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHostGroups],
+      description: "Get SSH Host Group",
       params: z.object({
         sshHostGroupId: z.string().describe(SSH_HOST_GROUPS.GET.sshHostGroupId)
       }),
@@ -60,6 +63,8 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHostGroups],
       description: "Create SSH Host Group",
       body: z.object({
         projectId: z.string().describe(SSH_HOST_GROUPS.CREATE.projectId),
@@ -107,6 +112,8 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHostGroups],
       description: "Update SSH Host Group",
       params: z.object({
         sshHostGroupId: z.string().trim().describe(SSH_HOST_GROUPS.UPDATE.sshHostGroupId)
@@ -155,6 +162,9 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHostGroups],
+      description: "Delete SSH Host Group",
       params: z.object({
         sshHostGroupId: z.string().describe(SSH_HOST_GROUPS.DELETE.sshHostGroupId)
       }),
@@ -197,6 +207,9 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHostGroups],
+      description: "Get SSH Hosts in a Host Group",
       params: z.object({
         sshHostGroupId: z.string().describe(SSH_HOST_GROUPS.GET.sshHostGroupId)
       }),
@@ -256,6 +269,9 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHostGroups],
+      description: "Add an SSH Host to a Host Group",
       params: z.object({
         sshHostGroupId: z.string().describe(SSH_HOST_GROUPS.ADD_HOST.sshHostGroupId),
         hostId: z.string().describe(SSH_HOST_GROUPS.ADD_HOST.hostId)
@@ -301,6 +317,9 @@ export const registerSshHostGroupRouter = async (server: FastifyZodProvider) => 
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHostGroups],
+      description: "Remove an SSH Host from a Host Group",
       params: z.object({
         sshHostGroupId: z.string().describe(SSH_HOST_GROUPS.DELETE_HOST.sshHostGroupId),
         hostId: z.string().describe(SSH_HOST_GROUPS.DELETE_HOST.hostId)

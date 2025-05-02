@@ -44,6 +44,9 @@ export const useUpdateSshHostGroup = () => {
         queryKey: workspaceKeys.getWorkspaceSshHostGroups(projectId)
       });
       queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceSshHosts(projectId)
+      });
+      queryClient.invalidateQueries({
         queryKey: sshHostGroupKeys.getSshHostGroupById(sshHostGroupId)
       });
     }
@@ -62,6 +65,9 @@ export const useDeleteSshHostGroup = () => {
     onSuccess: ({ projectId }, { sshHostGroupId }) => {
       queryClient.invalidateQueries({
         queryKey: workspaceKeys.getWorkspaceSshHostGroups(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceSshHosts(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: sshHostGroupKeys.getSshHostGroupById(sshHostGroupId)

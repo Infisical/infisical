@@ -1,4 +1,4 @@
-import { faServer, faUserMinus } from "@fortawesome/free-solid-svg-icons";
+import { faServer, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -68,13 +68,14 @@ export const SshHostGroupHostsTable = ({ sshHostGroupId, handlePopUpOpen }: Prop
                               onClick={() =>
                                 handlePopUpOpen("removeHostFromSshHostGroup", {
                                   sshHostId: host.id,
+                                  alias: host.alias,
                                   hostname: host.hostname
                                 })
                               }
                               variant="plain"
                               colorSchema="danger"
                             >
-                              <FontAwesomeIcon icon={faUserMinus} />
+                              <FontAwesomeIcon icon={faTrash} />
                             </IconButton>
                           </Tooltip>
                         )}

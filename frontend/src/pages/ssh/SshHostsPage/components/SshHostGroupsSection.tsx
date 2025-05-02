@@ -77,7 +77,7 @@ export const SshHostGroupsSection = () => {
       <SshHostGroupModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteSshHostGroup.isOpen}
-        title="Are you sure you want to remove the SSH host group?"
+        title={`Are you sure you want to remove the SSH host group: ${popUp?.deleteSshHostGroup?.data?.name}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteSshHostGroup", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>

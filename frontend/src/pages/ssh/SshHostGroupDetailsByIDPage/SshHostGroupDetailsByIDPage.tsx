@@ -95,7 +95,8 @@ const Page = () => {
                       )}
                       onClick={() =>
                         handlePopUpOpen("deleteSshHostGroup", {
-                          groupId: data.id
+                          groupId: data.id,
+                          name: data.name
                         })
                       }
                       disabled={!isAllowed}
@@ -123,7 +124,9 @@ const Page = () => {
       <SshHostGroupModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteSshHostGroup.isOpen}
-        title="Are you sure want to remove the SSH group from the project?"
+        title={`Are you sure want to remove the SSH group: ${
+          (popUp?.deleteSshHostGroup?.data as { name: string })?.name || ""
+        }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteSshHostGroup", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>

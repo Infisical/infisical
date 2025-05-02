@@ -114,7 +114,33 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faPencil} />}
                               >
-                                Edit SSH host group
+                                Edit Host Group
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={ProjectPermissionSub.SshHostGroups}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                className={twMerge(
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate({
+                                    to: `/${ProjectType.SSH}/$projectId/ssh-host-groups/$sshHostGroupId` as const,
+                                    params: {
+                                      projectId: currentWorkspace.id,
+                                      sshHostGroupId: group.id
+                                    }
+                                  });
+                                }}
+                                disabled={!isAllowed}
+                                icon={<FontAwesomeIcon icon={faServer} />}
+                              >
+                                Manage Hosts
                               </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
@@ -130,13 +156,14 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("deleteSshHostGroup", {
-                                    sshHostGroupId: group.id
+                                    sshHostGroupId: group.id,
+                                    name: group.name
                                   });
                                 }}
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faTrash} />}
                               >
-                                Delete SSH host group
+                                Delete Host Group
                               </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>

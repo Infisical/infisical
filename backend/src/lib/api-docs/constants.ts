@@ -48,6 +48,8 @@ export enum ApiDocsTags {
   SshCertificates = "SSH Certificates",
   SshCertificateAuthorities = "SSH Certificate Authorities",
   SshCertificateTemplates = "SSH Certificate Templates",
+  SshHosts = "SSH Hosts",
+  SshHostGroups = "SSH Host Groups",
   KmsKeys = "KMS Keys",
   KmsEncryption = "KMS Encryption",
   KmsSigning = "KMS Signing"

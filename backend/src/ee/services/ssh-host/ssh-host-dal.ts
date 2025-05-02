@@ -90,15 +90,19 @@ export const sshHostDALFactory = (db: TDbClient) => {
         const { sshHostId, hostname, alias, userCertTtl, hostCertTtl, userSshCaId, hostSshCaId, projectId } =
           hostRows[0];
 
-        const loginMappingGrouped = groupBy(hostRows, (r) => `${r.loginUser}|${r.source}`);
-        const loginMappings = Object.entries(loginMappingGrouped).map(([key]) => {
-          const [loginUser, source] = key.split("|");
+        const loginMappingGrouped = groupBy(hostRows, (r) => r.loginUser);
+        const loginMappings = Object.entries(loginMappingGrouped).map(([loginUser, mappings]) => {
+          // Prefer HOST source over HOST_GROUP
+          const preferredMapping =
+            mappings.find((m) => m.source === LoginMappingSource.HOST) ||
+            mappings.find((m) => m.source === LoginMappingSource.HOST_GROUP);
+
           return {
             loginUser,
             allowedPrincipals: {
               usernames: [user.username]
             },
-            source: source as LoginMappingSource
+            source: preferredMapping!.source
           };
         });
 

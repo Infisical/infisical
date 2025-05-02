@@ -362,7 +362,10 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                                 const newValue = e.target.value;
                                 const loginMappings = getValues("loginMappings");
                                 const isDuplicate = loginMappings.some(
-                                  (mapping, index) => index !== i && mapping.loginUser === newValue
+                                  (mapping, index) =>
+                                    index !== i &&
+                                    mapping.loginUser === newValue &&
+                                    mapping.source === LoginMappingSource.HOST
                                 );
 
                                 if (isDuplicate) {
