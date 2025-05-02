@@ -91,34 +91,69 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                       {host.loginMappings.length === 0 ? (
                         <span className="italic text-mineshaft-400">None</span>
                       ) : (
-                        Object.entries(
-                          host.loginMappings.reduce(
-                            (acc, mapping) => {
-                              const key = `${mapping.loginUser}|${mapping.source}|${mapping.allowedPrincipals.usernames.sort().join(",")}`;
-                              acc[key] = mapping;
+                        (() => {
+                          const hostMappings = host.loginMappings.filter(
+                            (m) => m.source !== LoginMappingSource.HOST_GROUP
+                          );
+                          const groupMappings = host.loginMappings.filter(
+                            (m) => m.source === LoginMappingSource.HOST_GROUP
+                          );
+
+                          const hostLoginUserToPrincipals = hostMappings.reduce(
+                            (acc, { loginUser, allowedPrincipals }) => {
+                              acc[loginUser] = new Set(allowedPrincipals.usernames);
                               return acc;
                             },
-                            {} as Record<string, (typeof host.loginMappings)[number]>
-                          )
-                        )
-                          .sort(([a], [b]) => a.localeCompare(b))
-                          .map(([key, { loginUser, allowedPrincipals, source }]) => (
-                            <div key={`${host.id}-${key}`} className="mb-2">
-                              <div className="text-mineshaft-200">
-                                {loginUser}
-                                {source === LoginMappingSource.HOST_GROUP && (
-                                  <span className="ml-2 text-xs text-mineshaft-400">
-                                    (inherited from host group)
-                                  </span>
-                                )}
-                              </div>
-                              {allowedPrincipals.usernames.map((username) => (
-                                <div key={`${host.id}-${key}-${username}`} className="ml-4">
-                                  └─ {username}
+                            {} as Record<string, Set<string>>
+                          );
+
+                          const entriesFromHost = hostMappings.map(({ loginUser, allowedPrincipals }) => ({
+                            loginUser,
+                            source: LoginMappingSource.HOST,
+                            usernames: allowedPrincipals.usernames
+                          }));
+
+                          const entriesFromGroup = groupMappings
+                            .map(({ loginUser, allowedPrincipals }) => {
+                              const existing = hostLoginUserToPrincipals[loginUser] || new Set();
+                              const filteredUsernames = allowedPrincipals.usernames.filter((u) => !existing.has(u));
+                              return filteredUsernames.length > 0
+                                ? {
+                                    loginUser,
+                                    source: LoginMappingSource.HOST_GROUP,
+                                    usernames: filteredUsernames
+                                  }
+                                : null;
+                            })
+                            .filter(Boolean) as {
+                            loginUser: string;
+                            source: LoginMappingSource;
+                            usernames: string[];
+                          }[];
+
+                          return [...entriesFromHost, ...entriesFromGroup]
+                            .sort((a, b) => a.loginUser.localeCompare(b.loginUser))
+                            .map(({ loginUser, usernames, source }) => (
+                              <div key={`${host.id}-${loginUser}-${source}`} className="mb-2">
+                                <div className="text-mineshaft-200">
+                                  {loginUser}
+                                  {source === LoginMappingSource.HOST_GROUP && (
+                                    <span className="ml-2 text-xs text-mineshaft-400">
+                                      (inherited from host group)
+                                    </span>
+                                  )}
                                 </div>
-                              ))}
-                            </div>
-                          ))
+                                {usernames.map((username) => (
+                                  <div
+                                    key={`${host.id}-${loginUser}-${source}-${username}`}
+                                    className="ml-4"
+                                  >
+                                    └─ {username}
+                                  </div>
+                                ))}
+                              </div>
+                            ));
+                        })()
                       )}
                     </Td>
                     <Td className="text-right align-middle">
@@ -195,6 +230,10 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
         {!isPending && data?.length === 0 && (
           <EmptyState title="No SSH hosts have been added" icon={faServer} />
         )}
+      </TableContainer>
+    </div>
+  );
+};
       </TableContainer>
     </div>
   );
