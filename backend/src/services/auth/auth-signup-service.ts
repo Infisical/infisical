@@ -295,7 +295,7 @@ export const authSignupServiceFactory = ({
 
     if (!organizationId) {
       let orgId = "";
-      if (useDefaultOrg && serverCfg.defaultAuthOrgId) {
+      if (useDefaultOrg && serverCfg.defaultAuthOrgId && !appCfg.isCloud) {
         const defaultOrg = await orgDAL.findOrgById(serverCfg.defaultAuthOrgId);
         if (!defaultOrg) throw new BadRequestError({ message: "Failed to find default organization" });
         orgId = defaultOrg.id;

@@ -347,7 +347,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       const serverCfg = await getServerCfg();
       return res.redirect(
         `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}${
-          serverCfg.defaultAuthOrgId ? `&defaultOrgAllowed=true` : ""
+          serverCfg.defaultAuthOrgId && !appCfg.isCloud ? `&defaultOrgAllowed=true` : ""
         }`
       );
     }

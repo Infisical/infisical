@@ -724,7 +724,7 @@ export const authLoginServiceFactory = ({
         isGhost: false
       });
 
-      if (authMethod === AuthMethod.GITHUB && serverCfg.defaultAuthOrgId) {
+      if (authMethod === AuthMethod.GITHUB && serverCfg.defaultAuthOrgId && !appCfg.isCloud) {
         let orgId = "";
         const defaultOrg = await orgDAL.findOrgById(serverCfg.defaultAuthOrgId);
         if (!defaultOrg) {
