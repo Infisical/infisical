@@ -9,6 +9,7 @@ import { TCamundaConnection } from "./camunda-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
+import { THCVaultConnection } from "./hc-vault-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
@@ -27,6 +28,7 @@ export * from "./camunda-connection";
 export * from "./databricks-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
+export * from "./hc-vault-connection";
 export * from "./humanitec-connection";
 export * from "./ldap-connection";
 export * from "./mssql-connection";
@@ -52,6 +54,7 @@ export type TAppConnection =
   | TCamundaConnection
   | TWindmillConnection
   | TAuth0Connection
+  | THCVaultConnection
   | TLdapConnection
   | TTeamCityConnection;
 
@@ -96,6 +99,7 @@ export type TAppConnectionMap = {
   [AppConnection.Camunda]: TCamundaConnection;
   [AppConnection.Windmill]: TWindmillConnection;
   [AppConnection.Auth0]: TAuth0Connection;
+  [AppConnection.HCVault]: THCVaultConnection;
   [AppConnection.LDAP]: TLdapConnection;
   [AppConnection.TeamCity]: TTeamCityConnection;
 };
