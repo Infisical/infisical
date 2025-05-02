@@ -955,12 +955,28 @@
         {
           "group": "Identity Specific Privilege",
           "pages": [
-            "api-reference/endpoints/identity-specific-privilege/create-permanent",
-            "api-reference/endpoints/identity-specific-privilege/create-temporary",
-            "api-reference/endpoints/identity-specific-privilege/update",
-            "api-reference/endpoints/identity-specific-privilege/delete",
-            "api-reference/endpoints/identity-specific-privilege/find-by-slug",
-            "api-reference/endpoints/identity-specific-privilege/list"
+            {
+              "group": "V1 (Legacy)",
+              "pages": [
+                "api-reference/endpoints/identity-specific-privilege/v1/create-permanent",
+                "api-reference/endpoints/identity-specific-privilege/v1/create-temporary",
+                "api-reference/endpoints/identity-specific-privilege/v1/update",
+                "api-reference/endpoints/identity-specific-privilege/v1/delete",
+                "api-reference/endpoints/identity-specific-privilege/v1/find-by-slug",
+                "api-reference/endpoints/identity-specific-privilege/v1/list"
+              ]
+            },
+            {
+              "group": "V2",
+              "pages": [
+                "api-reference/endpoints/identity-specific-privilege/v2/create",
+                "api-reference/endpoints/identity-specific-privilege/v2/update",
+                "api-reference/endpoints/identity-specific-privilege/v2/delete",
+                "api-reference/endpoints/identity-specific-privilege/v2/list",
+                "api-reference/endpoints/identity-specific-privilege/v2/find-by-id",
+                "api-reference/endpoints/identity-specific-privilege/v2/find-by-slug"
+              ]
+            }
           ]
         },
         {
