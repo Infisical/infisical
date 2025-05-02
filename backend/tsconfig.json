@@ -24,7 +24,8 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@app/*": ["./src/*"]
+      "@app/*": ["./src/*"],
+      "*": ["*", "*.tsx", "*.ts"]
     },
     "jsx": "react-jsx"
   },
