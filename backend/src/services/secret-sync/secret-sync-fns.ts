@@ -291,7 +291,7 @@ export const parseSyncErrorMessage = (err: unknown): string => {
   } else if (err instanceof AxiosError) {
     errorMessage = err?.response?.data
       ? JSON.stringify(err?.response?.data)
-      : (err?.message ?? "An unknown error occurred.");
+      : err?.message ?? "An unknown error occurred.";
   } else {
     errorMessage = (err as Error)?.message || "An unknown error occurred.";
   }
