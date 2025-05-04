@@ -107,7 +107,7 @@ func (r *InfisicalPushSecretReconciler) updateResourceVariables(infisicalPushSec
 	infisicalPushSecretResourceVariablesMap[string(infisicalPushSecret.UID)] = resourceVariables
 }
 
-func (r *InfisicalPushSecretReconciler) processGenerators(infisicalPushSecret v1alpha1.InfisicalPushSecret) (map[string]string, error) {
+func (r *InfisicalPushSecretReconciler) processGenerators(ctx context.Context, infisicalPushSecret v1alpha1.InfisicalPushSecret) (map[string]string, error) {
 
 	processedSecrets := make(map[string]string)
 
@@ -119,12 +119,16 @@ func (r *InfisicalPushSecretReconciler) processGenerators(infisicalPushSecret v1
 		generatorRef := generator.GeneratorRef
 
 		clusterGenerator := &v1alpha1.ClusterGenerator{}
-		err := r.Client.Get(context.TODO(), types.NamespacedName{Name: generatorRef.Name}, clusterGenerator)
+		err := r.Client.Get(ctx, types.NamespacedName{Name: generatorRef.Name}, clusterGenerator)
 		if err != nil {
 			return nil, fmt.Errorf("unable to get ClusterGenerator resource [err=%s]", err)
 		}
 		if generatorRef.Kind == v1alpha1.GeneratorKindPassword {
 			// get the custom ClusterGenerator resource from the cluster
+
+			if clusterGenerator.Spec.Generator.PasswordSpec == nil {
+				return nil, fmt.Errorf("password spec is not defined in the ClusterGenerator resource")
+			}
 
 			password, err := generatorUtil.GeneratorPassword(*clusterGenerator.Spec.Generator.PasswordSpec)
 			if err != nil {
@@ -233,7 +237,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 		}
 	}
 
-	generatorSecrets, err := r.processGenerators(infisicalPushSecret)
+	generatorSecrets, err := r.processGenerators(ctx, infisicalPushSecret)
 	if err != nil {
 		return fmt.Errorf("unable to process generators [err=%s]", err)
 	}

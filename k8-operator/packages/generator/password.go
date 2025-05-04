@@ -39,7 +39,7 @@ func GeneratorPassword(spec v1alpha1.PasswordSpec) (string, error) {
 
 	symbolCharacters := defaultSymbolChars
 
-	if spec.SymbolCharacters != nil {
+	if spec.SymbolCharacters != nil && *spec.SymbolCharacters != "" {
 		symbolCharacters = *spec.SymbolCharacters
 	}
 

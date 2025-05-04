@@ -34,7 +34,6 @@ type ClusterGeneratorSpec struct {
 	Kind GeneratorKind `json:"kind"`
 
 	// Generator the spec for this generator, must match the kind.
-	// +kubebuilder:validation:Optional
 	Generator GeneratorSpec `json:"generator,omitempty"`
 }
 
@@ -96,26 +95,29 @@ type UUIDList struct {
 type PasswordSpec struct {
 	// Length of the password to be generated.
 	// Defaults to 24
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=24
 	Length int `json:"length"`
 
-	// Digits specifies the number of digits in the generated
+	// digits specifies the number of digits in the generated
 	// password. If omitted it defaults to 25% of the length of the password
 	Digits *int `json:"digits,omitempty"`
 
-	// Symbols specifies the number of symbol characters in the generated
+	// symbols specifies the number of symbol characters in the generated
 	// password. If omitted it defaults to 25% of the length of the password
 	Symbols *int `json:"symbols,omitempty"`
 
-	// SymbolCharacters specifies the special characters that should be used
+	// symbolCharacters specifies the special characters that should be used
 	// in the generated password.
 	SymbolCharacters *string `json:"symbolCharacters,omitempty"`
 
-	// Set NoUpper to disable uppercase characters
+	// Set noUpper to disable uppercase characters
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
 	NoUpper bool `json:"noUpper"`
 
-	// set AllowRepeat to true to allow repeating characters.
+	// set allowRepeat to true to allow repeating characters.
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
 	AllowRepeat bool `json:"allowRepeat"`
 }

@@ -9,7 +9,7 @@ import (
 
 func ConvertIntervalToDuration(resyncInterval *string) (time.Duration, error) {
 
-	if resyncInterval == nil {
+	if resyncInterval == nil || *resyncInterval == "" {
 		return 0, nil
 	}
 
