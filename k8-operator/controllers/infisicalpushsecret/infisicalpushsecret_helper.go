@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	generatorUtil "github.com/Infisical/infisical/k8-operator/packages/generator"
 	infisicalSdk "github.com/infisical/go-sdk"
 	k8Errors "k8s.io/apimachinery/pkg/api/errors"
 )
@@ -106,6 +107,50 @@ func (r *InfisicalPushSecretReconciler) updateResourceVariables(infisicalPushSec
 	infisicalPushSecretResourceVariablesMap[string(infisicalPushSecret.UID)] = resourceVariables
 }
 
+func (r *InfisicalPushSecretReconciler) processGenerators(infisicalPushSecret v1alpha1.InfisicalPushSecret) (map[string]string, error) {
+
+	processedSecrets := make(map[string]string)
+
+	if len(infisicalPushSecret.Spec.Push.Generators) == 0 {
+		return processedSecrets, nil
+	}
+
+	for _, generator := range infisicalPushSecret.Spec.Push.Generators {
+		generatorRef := generator.GeneratorRef
+
+		clusterGenerator := &v1alpha1.ClusterGenerator{}
+		err := r.Client.Get(context.TODO(), types.NamespacedName{Name: generatorRef.Name}, clusterGenerator)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get ClusterGenerator resource [err=%s]", err)
+		}
+		if generatorRef.Kind == v1alpha1.GeneratorKindPassword {
+			// get the custom ClusterGenerator resource from the cluster
+
+			password, err := generatorUtil.GeneratorPassword(*clusterGenerator.Spec.Generator.PasswordSpec)
+			if err != nil {
+				return nil, fmt.Errorf("unable to generate password [err=%s]", err)
+			}
+
+			processedSecrets[generator.DestinationSecretName] = password
+		}
+
+		if generatorRef.Kind == v1alpha1.GeneratorKindUUID {
+
+			fmt.Printf("clusterGenerator: %+v\n", clusterGenerator)
+
+			uuid, err := generatorUtil.GeneratorUUID()
+			if err != nil {
+				return nil, fmt.Errorf("unable to generate UUID [err=%s]", err)
+			}
+
+			processedSecrets[generator.DestinationSecretName] = uuid
+		}
+	}
+
+	return processedSecrets, nil
+
+}
+
 func (r *InfisicalPushSecretReconciler) processTemplatedSecrets(infisicalPushSecret v1alpha1.InfisicalPushSecret, kubePushSecret *corev1.Secret, destination v1alpha1.InfisicalPushSecretDestination) (map[string]string, error) {
 
 	processedSecrets := make(map[string]string)
@@ -172,18 +217,31 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 		})
 	}
 
-	kubePushSecret, err := util.GetKubeSecretByNamespacedName(ctx, r.Client, types.NamespacedName{
-		Namespace: infisicalPushSecret.Spec.Push.Secret.SecretNamespace,
-		Name:      infisicalPushSecret.Spec.Push.Secret.SecretName,
-	})
+	processedSecrets := make(map[string]string)
 
-	if err != nil {
-		return fmt.Errorf("unable to fetch kube secret [err=%s]", err)
+	if infisicalPushSecret.Spec.Push.Secret != nil {
+		kubePushSecret, err := util.GetKubeSecretByNamespacedName(ctx, r.Client, types.NamespacedName{
+			Namespace: infisicalPushSecret.Spec.Push.Secret.SecretNamespace,
+			Name:      infisicalPushSecret.Spec.Push.Secret.SecretName,
+		})
+
+		if err != nil {
+			return fmt.Errorf("unable to fetch kube secret [err=%s]", err)
+		}
+
+		processedSecrets, err = r.processTemplatedSecrets(infisicalPushSecret, kubePushSecret, infisicalPushSecret.Spec.Destination)
+		if err != nil {
+			return fmt.Errorf("unable to process templated secrets [err=%s]", err)
+		}
 	}
 
-	processedSecrets, err := r.processTemplatedSecrets(infisicalPushSecret, kubePushSecret, infisicalPushSecret.Spec.Destination)
+	generatorSecrets, err := r.processGenerators(infisicalPushSecret)
 	if err != nil {
-		return fmt.Errorf("unable to process templated secrets [err=%s]", err)
+		return fmt.Errorf("unable to process generators [err=%s]", err)
+	}
+
+	for key, value := range generatorSecrets {
+		processedSecrets[key] = value
 	}
 
 	destination := infisicalPushSecret.Spec.Destination
