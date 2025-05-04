@@ -108,6 +108,11 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, nil
 	}
 
+	if infisicalPushSecretCRD.Spec.Push.Secret == nil && infisicalPushSecretCRD.Spec.Push.Generators == nil {
+		logger.Info("No secret or generators found, skipping reconciliation. Please define ")
+		return ctrl.Result{}, nil
+	}
+
 	duration, err := util.ConvertIntervalToDuration(infisicalPushSecretCRD.Spec.ResyncInterval)
 
 	if err != nil {
