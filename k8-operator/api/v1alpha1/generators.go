@@ -71,7 +71,7 @@ type ClusterGeneratorList struct {
 // UUIDSpec controls the behavior of the uuid generator.
 type UUIDSpec struct{}
 
-// UUID generates a version 1 UUID (e56657e3-764f-11ef-a397-65231a88c216).
+// UUID generates a version 4 UUID (e56657e3-764f-11ef-a397-65231a88c216).
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 type UUID struct {
