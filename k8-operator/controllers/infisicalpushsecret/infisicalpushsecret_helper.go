@@ -136,8 +136,6 @@ func (r *InfisicalPushSecretReconciler) processGenerators(infisicalPushSecret v1
 
 		if generatorRef.Kind == v1alpha1.GeneratorKindUUID {
 
-			fmt.Printf("clusterGenerator: %+v\n", clusterGenerator)
-
 			uuid, err := generatorUtil.GeneratorUUID()
 			if err != nil {
 				return nil, fmt.Errorf("unable to generate UUID [err=%s]", err)
