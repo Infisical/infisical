@@ -122,7 +122,7 @@ export const useGetServerRootKmsEncryptionDetails = () => {
   });
 };
 
-export const useGetInvalidatingCacheStatus = () => {
+export const useGetInvalidatingCacheStatus = (enabled = true) => {
   return useQuery({
     queryKey: adminQueryKeys.getInvalidateCache(),
     queryFn: async () => {
@@ -131,6 +131,8 @@ export const useGetInvalidatingCacheStatus = () => {
       );
 
       return data.invalidating;
-    }
+    },
+    enabled,
+    refetchInterval: (data) => (data ? 3000 : false)
   });
 };

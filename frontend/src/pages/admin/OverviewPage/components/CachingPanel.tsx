@@ -1,4 +1,3 @@
-/* eslint-disable no-return-assign, consistent-return */
 import { useEffect, useRef, useState } from "react";
 import { faRotate } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -13,16 +12,17 @@ import { CacheType } from "@app/hooks/api/admin/types";
 
 export const CachingPanel = () => {
   const { mutateAsync: invalidateCache } = useInvalidateCache();
-  const { data: isInvalidating, refetch: refetchInvalidatingStatus } =
-    useGetInvalidatingCacheStatus();
   const { membership } = useOrgPermission();
 
-  const ignoreInitial = useRef(true);
+  const hasShownSuccessRef = useRef(true);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const [type, setType] = useState<CacheType | null>(null);
   const [buttonsDisabled, setButtonsDisabled] = useState(false);
+  const [shouldPoll, setShouldPoll] = useState(false);
+
+  const { data: isInvalidating, refetch: refetchInvalidatingStatus } =
+    useGetInvalidatingCacheStatus(shouldPoll);
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "invalidateCache"
@@ -34,12 +34,18 @@ export const CachingPanel = () => {
   };
 
   const success = () => {
+    if (hasShownSuccessRef.current) return;
+    hasShownSuccessRef.current = true;
+
     createNotification({ text: "Successfully invalidated cache", type: "success" });
     setButtonsDisabled(false);
+    setShouldPoll(false);
   };
 
   const handleInvalidateCacheSubmit = async () => {
     if (!type) return;
+
+    hasShownSuccessRef.current = false;
 
     try {
       await invalidateCache({ type });
@@ -51,41 +57,35 @@ export const CachingPanel = () => {
         success();
         return;
       }
+
+      setShouldPoll(true);
     } catch (err) {
       console.error(err);
       createNotification({ text: `Failed to invalidate ${type} cache`, type: "error" });
     }
-
-    setType(null);
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => (ignoreInitial.current = false), 1000);
+    refetchInvalidatingStatus();
+    const timer = setTimeout(() => (hasShownSuccessRef.current = false), 1000);
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
     if (!isInvalidating) return;
 
-    clearInterval(pollingRef.current!);
     clearTimeout(timeoutRef.current!);
-
-    pollingRef.current = setInterval(() => {
-      refetchInvalidatingStatus().catch((err) => console.error("Polling error:", err));
-    }, 3000);
-
+    setShouldPoll(true);
     disableButtonsTemporarily();
 
     return () => {
-      clearInterval(pollingRef.current!);
       clearTimeout(timeoutRef.current!);
     };
   }, [isInvalidating]);
 
   useEffect(() => {
-    if (!ignoreInitial.current && isInvalidating === false) {
+    if (!hasShownSuccessRef.current && isInvalidating === false) {
       success();
-      clearInterval(pollingRef.current!);
       clearTimeout(timeoutRef.current!);
     }
   }, [isInvalidating]);
