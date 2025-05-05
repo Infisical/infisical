@@ -401,8 +401,8 @@ export const authLoginServiceFactory = ({
     }
 
     const shouldCheckMfa = selectedOrg.enforceMfa || user.isMfaEnabled;
-    const orgMfaMethod = selectedOrg.enforceMfa ? selectedOrg.selectedMfaMethod ?? MfaMethod.EMAIL : undefined;
-    const userMfaMethod = user.isMfaEnabled ? user.selectedMfaMethod ?? MfaMethod.EMAIL : undefined;
+    const orgMfaMethod = selectedOrg.enforceMfa ? (selectedOrg.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
+    const userMfaMethod = user.isMfaEnabled ? (user.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
     const mfaMethod = orgMfaMethod ?? userMfaMethod;
 
     if (shouldCheckMfa && (!decodedToken.isMfaVerified || decodedToken.mfaMethod !== mfaMethod)) {
@@ -573,9 +573,9 @@ export const authLoginServiceFactory = ({
   }: TVerifyMfaTokenDTO) => {
     const appCfg = getConfig();
     const user = await userDAL.findById(userId);
-    enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
     try {
+      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
       if (mfaMethod === MfaMethod.EMAIL) {
         await tokenService.validateTokenForUser({
           type: TokenType.TOKEN_EMAIL_MFA,

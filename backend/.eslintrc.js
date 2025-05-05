@@ -69,6 +69,15 @@ module.exports = {
           ["^\\."]
         ]
       }
+    ],
+    "import/extensions": [
+      "error",
+      "ignorePackages",
+      {
+        "": "never", // this is required to get the .tsx to work...
+        ts: "never",
+        tsx: "never"
+      }
     ]
   }
 };
