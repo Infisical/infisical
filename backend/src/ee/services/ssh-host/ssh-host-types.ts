@@ -1,19 +1,35 @@
+import { Knex } from "knex";
+
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { TSshHostLoginUserMappingDALFactory } from "@app/ee/services/ssh-host/ssh-host-login-user-mapping-dal";
+import { TSshHostLoginUserDALFactory } from "@app/ee/services/ssh-host/ssh-login-user-dal";
 import { TProjectPermission } from "@app/lib/types";
+import { ActorAuthMethod } from "@app/services/auth/auth-type";
+import { TUserDALFactory } from "@app/services/user/user-dal";
+
+import { TGroupDALFactory } from "../group/group-dal";
 
 export type TListSshHostsDTO = Omit<TProjectPermission, "projectId">;
+
+export type TLoginMapping = {
+  loginUser: string;
+  allowedPrincipals: {
+    usernames?: string[];
+    groups?: string[];
+  };
+};
+
+export enum LoginMappingSource {
+  HOST = "host",
+  HOST_GROUP = "hostGroup"
+}
 
 export type TCreateSshHostDTO = {
   hostname: string;
   alias?: string;
   userCertTtl: string;
   hostCertTtl: string;
-  loginMappings: {
-    loginUser: string;
-    allowedPrincipals: {
-      usernames?: string[];
-      groups?: string[];
-    };
-  }[];
+  loginMappings: TLoginMapping[];
   userSshCaId?: string;
   hostSshCaId?: string;
 } & TProjectPermission;
@@ -24,13 +40,7 @@ export type TUpdateSshHostDTO = {
   alias?: string;
   userCertTtl?: string;
   hostCertTtl?: string;
-  loginMappings?: {
-    loginUser: string;
-    allowedPrincipals: {
-      usernames?: string[];
-      groups?: string[];
-    };
-  }[];
+  loginMappings?: TLoginMapping[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetSshHostDTO = {
@@ -50,3 +60,20 @@ export type TIssueSshHostHostCertDTO = {
   sshHostId: string;
   publicKey: string;
 } & Omit<TProjectPermission, "projectId">;
+
+type BaseCreateSshLoginMappingsDTO = {
+  loginMappings: TLoginMapping[];
+  sshHostLoginUserDAL: Pick<TSshHostLoginUserDALFactory, "create" | "transaction">;
+  sshHostLoginUserMappingDAL: Pick<TSshHostLoginUserMappingDALFactory, "insertMany">;
+  userDAL: Pick<TUserDALFactory, "find">;
+  permissionService: Pick<TPermissionServiceFactory, "getUserProjectPermission" | "checkGroupProjectPermission">;
+  groupDAL: Pick<TGroupDALFactory, "findGroupsByProjectId">;
+  projectId: string;
+  actorAuthMethod: ActorAuthMethod;
+  actorOrgId: string;
+  tx?: Knex;
+};
+
+export type TCreateSshLoginMappingsDTO =
+  | (BaseCreateSshLoginMappingsDTO & { sshHostId: string; sshHostGroupId?: undefined })
+  | (BaseCreateSshLoginMappingsDTO & { sshHostGroupId: string; sshHostId?: undefined });

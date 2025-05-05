@@ -21,6 +21,7 @@ import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
+import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
@@ -88,6 +89,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Windmill:
       DestinationFieldsComponent = <WindmillSyncReviewFields />;
+      break;
+    case SecretSync.HCVault:
+      DestinationFieldsComponent = <HCVaultSyncReviewFields />;
       break;
     case SecretSync.TeamCity:
       DestinationFieldsComponent = <TeamCitySyncReviewFields />;

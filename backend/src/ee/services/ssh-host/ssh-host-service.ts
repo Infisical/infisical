@@ -28,6 +28,7 @@ import {
   getSshPublicKey
 } from "../ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "../ssh/ssh-certificate-authority-types";
+import { createSshLoginMappings } from "./ssh-host-fns";
 import {
   TCreateSshHostDTO,
   TDeleteSshHostDTO,
@@ -211,91 +212,19 @@ export const sshHostServiceFactory = ({
         tx
       );
 
-      // (dangtony98): room to optimize
-      for await (const { loginUser, allowedPrincipals } of loginMappings) {
-        const sshHostLoginUser = await sshHostLoginUserDAL.create(
-          {
-            sshHostId: host.id,
-            loginUser
-          },
-          tx
-        );
-
-        if (allowedPrincipals.usernames && allowedPrincipals.usernames.length > 0) {
-          const users = await userDAL.find(
-            {
-              $in: {
-                username: allowedPrincipals.usernames
-              }
-            },
-            { tx }
-          );
-
-          const foundUsernames = new Set(users.map((u) => u.username));
-
-          for (const uname of allowedPrincipals.usernames) {
-            if (!foundUsernames.has(uname)) {
-              throw new BadRequestError({
-                message: `Invalid username: ${uname}`
-              });
-            }
-          }
-
-          for await (const user of users) {
-            // check that each user has access to the SSH project
-            await permissionService.getUserProjectPermission({
-              userId: user.id,
-              projectId,
-              authMethod: actorAuthMethod,
-              userOrgId: actorOrgId,
-              actionProjectType: ActionProjectType.SSH
-            });
-          }
-
-          await sshHostLoginUserMappingDAL.insertMany(
-            users.map((user) => ({
-              sshHostLoginUserId: sshHostLoginUser.id,
-              userId: user.id
-            })),
-            tx
-          );
-        }
-
-        if (allowedPrincipals.groups && allowedPrincipals.groups.length > 0) {
-          const projectGroups = await groupDAL.findGroupsByProjectId(projectId);
-          const groups = projectGroups.filter((g) => allowedPrincipals.groups?.includes(g.slug));
-
-          if (groups.length !== allowedPrincipals.groups?.length) {
-            throw new BadRequestError({
-              message: `Invalid group slugs: ${allowedPrincipals.groups
-                .filter((g) => !projectGroups.some((pg) => pg.slug === g))
-                .join(", ")}`
-            });
-          }
-
-          for await (const group of groups) {
-            // check that each group has access to the SSH project and have read access to hosts
-            const hasPermission = await permissionService.checkGroupProjectPermission({
-              groupId: group.id,
-              projectId,
-              checkPermissions: [ProjectPermissionSshHostActions.Read, ProjectPermissionSub.SshHosts]
-            });
-            if (!hasPermission) {
-              throw new BadRequestError({
-                message: `Group ${group.slug} does not have access to the SSH project`
-              });
-            }
-          }
-
-          await sshHostLoginUserMappingDAL.insertMany(
-            groups.map((group) => ({
-              sshHostLoginUserId: sshHostLoginUser.id,
-              groupId: group.id
-            })),
-            tx
-          );
-        }
-      }
+      await createSshLoginMappings({
+        sshHostId: host.id,
+        loginMappings,
+        sshHostLoginUserDAL,
+        sshHostLoginUserMappingDAL,
+        groupDAL,
+        userDAL,
+        permissionService,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        tx
+      });
 
       const newSshHostWithLoginMappings = await sshHostDAL.findSshHostByIdWithLoginMappings(host.id, tx);
       if (!newSshHostWithLoginMappings) {
@@ -354,90 +283,19 @@ export const sshHostServiceFactory = ({
       if (loginMappings) {
         await sshHostLoginUserDAL.delete({ sshHostId: host.id }, tx);
         if (loginMappings.length) {
-          for await (const { loginUser, allowedPrincipals } of loginMappings) {
-            const sshHostLoginUser = await sshHostLoginUserDAL.create(
-              {
-                sshHostId: host.id,
-                loginUser
-              },
-              tx
-            );
-
-            if (allowedPrincipals.usernames && allowedPrincipals.usernames.length > 0) {
-              const users = await userDAL.find(
-                {
-                  $in: {
-                    username: allowedPrincipals.usernames
-                  }
-                },
-                { tx }
-              );
-
-              const foundUsernames = new Set(users.map((u) => u.username));
-
-              for (const uname of allowedPrincipals.usernames) {
-                if (!foundUsernames.has(uname)) {
-                  throw new BadRequestError({
-                    message: `Invalid username: ${uname}`
-                  });
-                }
-              }
-
-              for await (const user of users) {
-                await permissionService.getUserProjectPermission({
-                  userId: user.id,
-                  projectId: host.projectId,
-                  authMethod: actorAuthMethod,
-                  userOrgId: actorOrgId,
-                  actionProjectType: ActionProjectType.SSH
-                });
-              }
-
-              await sshHostLoginUserMappingDAL.insertMany(
-                users.map((user) => ({
-                  sshHostLoginUserId: sshHostLoginUser.id,
-                  userId: user.id
-                })),
-                tx
-              );
-            }
-
-            if (allowedPrincipals.groups && allowedPrincipals.groups.length > 0) {
-              const groups = await groupDAL.findGroupsByProjectId(host.projectId);
-
-              const foundGroupSlugs = new Set(groups.map((g) => g.slug));
-
-              for (const slug of allowedPrincipals.groups) {
-                if (!foundGroupSlugs.has(slug)) {
-                  throw new BadRequestError({
-                    message: `Invalid group slug: ${slug}`
-                  });
-                }
-              }
-
-              for await (const group of groups) {
-                // check that each group has access to the SSH project and have read access to hosts
-                const hasPermission = await permissionService.checkGroupProjectPermission({
-                  groupId: group.id,
-                  projectId: host.projectId,
-                  checkPermissions: [ProjectPermissionSshHostActions.Read, ProjectPermissionSub.SshHosts]
-                });
-                if (!hasPermission) {
-                  throw new BadRequestError({
-                    message: `Group ${group.slug} does not have access to the SSH project`
-                  });
-                }
-              }
-
-              await sshHostLoginUserMappingDAL.insertMany(
-                groups.map((group) => ({
-                  sshHostLoginUserId: sshHostLoginUser.id,
-                  groupId: group.id
-                })),
-                tx
-              );
-            }
-          }
+          await createSshLoginMappings({
+            sshHostId: host.id,
+            loginMappings,
+            sshHostLoginUserDAL,
+            sshHostLoginUserMappingDAL,
+            groupDAL,
+            userDAL,
+            permissionService,
+            projectId: host.projectId,
+            actorAuthMethod,
+            actorOrgId,
+            tx
+          });
         }
       }
 
@@ -546,8 +404,8 @@ export const sshHostServiceFactory = ({
     const mapping = host.loginMappings.find(
       (m) =>
         m.loginUser === loginUser &&
-        (m.allowedPrincipals.usernames.some((allowed) => internalPrincipals.includes(allowed)) ||
-          m.allowedPrincipals.groups.some((allowed) => userGroupSlugs.includes(allowed)))
+        (m.allowedPrincipals.usernames?.some((allowed) => internalPrincipals.includes(allowed)) ||
+          m.allowedPrincipals.groups?.some((allowed) => userGroupSlugs.includes(allowed)))
     );
 
     if (!mapping) {

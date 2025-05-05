@@ -25,6 +25,7 @@ import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./az
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
+import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
@@ -45,6 +46,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Camunda]: CAMUNDA_SYNC_LIST_OPTION,
   [SecretSync.Vercel]: VERCEL_SYNC_LIST_OPTION,
   [SecretSync.Windmill]: WINDMILL_SYNC_LIST_OPTION,
+  [SecretSync.HCVault]: HC_VAULT_SYNC_LIST_OPTION,
   [SecretSync.TeamCity]: TEAMCITY_SYNC_LIST_OPTION
 };
 
@@ -142,6 +144,8 @@ export const SecretSyncFns = {
         return VercelSyncFns.syncSecrets(secretSync, secretMap);
       case SecretSync.Windmill:
         return WindmillSyncFns.syncSecrets(secretSync, secretMap);
+      case SecretSync.HCVault:
+        return HCVaultSyncFns.syncSecrets(secretSync, secretMap);
       case SecretSync.TeamCity:
         return TeamCitySyncFns.syncSecrets(secretSync, secretMap);
       default:
@@ -203,6 +207,9 @@ export const SecretSyncFns = {
       case SecretSync.Windmill:
         secretMap = await WindmillSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.HCVault:
+        secretMap = await HCVaultSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.TeamCity:
         secretMap = await TeamCitySyncFns.getSecrets(secretSync);
         break;
@@ -259,6 +266,8 @@ export const SecretSyncFns = {
         return VercelSyncFns.removeSecrets(secretSync, secretMap);
       case SecretSync.Windmill:
         return WindmillSyncFns.removeSecrets(secretSync, secretMap);
+      case SecretSync.HCVault:
+        return HCVaultSyncFns.removeSecrets(secretSync, secretMap);
       case SecretSync.TeamCity:
         return TeamCitySyncFns.removeSecrets(secretSync, secretMap);
       default:
@@ -282,7 +291,7 @@ export const parseSyncErrorMessage = (err: unknown): string => {
   } else if (err instanceof AxiosError) {
     errorMessage = err?.response?.data
       ? JSON.stringify(err?.response?.data)
-      : err?.message ?? "An unknown error occurred.";
+      : (err?.message ?? "An unknown error occurred.");
   } else {
     errorMessage = (err as Error)?.message || "An unknown error occurred.";
   }

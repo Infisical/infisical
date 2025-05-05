@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BsMicrosoftTeams } from "react-icons/bs";
 import { faSlack } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
@@ -6,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Modal, ModalContent } from "@app/components/v2";
 import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
 
+import { MicrosoftTeamsIntegrationForm } from "./MicrosoftTeamsIntegrationForm";
 import { SlackIntegrationForm } from "./SlackIntegrationForm";
 
 type Props = {
@@ -20,9 +22,14 @@ enum WizardSteps {
 
 const PLATFORM_LIST = [
   {
-    icon: faSlack,
+    icon: <FontAwesomeIcon icon={faSlack} size="lg" />,
     platform: WorkflowIntegrationPlatform.SLACK,
     title: "Slack"
+  },
+  {
+    icon: <BsMicrosoftTeams className="text-lg" />,
+    platform: WorkflowIntegrationPlatform.MICROSOFT_TEAMS,
+    title: "Microsoft Teams"
   }
 ];
 
@@ -38,7 +45,10 @@ export const AddWorkflowIntegrationForm = ({ isOpen, onToggle }: Props) => {
 
   return (
     <Modal isOpen={isOpen} onOpenChange={(state) => handleFormReset(state)}>
-      <ModalContent title={`Add a ${selectedPlatform ?? "workflow"} integration`} className="my-4">
+      <ModalContent
+        title={`Add a ${selectedPlatform?.replace("-", " ").replace(/\b\w/g, (char) => char.toUpperCase()) ?? "workflow"} integration`}
+        className="my-4"
+      >
         <AnimatePresence mode="wait">
           {wizardStep === WizardSteps.SelectPlatform && (
             <motion.div
@@ -67,7 +77,7 @@ export const AddWorkflowIntegrationForm = ({ isOpen, onToggle }: Props) => {
                       }
                     }}
                   >
-                    <FontAwesomeIcon icon={icon} size="lg" />
+                    <div>{icon}</div>
                     <div className="whitespace-pre-wrap text-center text-sm">{title}</div>
                   </div>
                 ))}
@@ -84,6 +94,18 @@ export const AddWorkflowIntegrationForm = ({ isOpen, onToggle }: Props) => {
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <SlackIntegrationForm onClose={() => onToggle(false)} />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.PlatformInputs &&
+            selectedPlatform === WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
+              <motion.div
+                key="microsoft-teams-platform"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <MicrosoftTeamsIntegrationForm onClose={() => onToggle(false)} />
               </motion.div>
             )}
         </AnimatePresence>

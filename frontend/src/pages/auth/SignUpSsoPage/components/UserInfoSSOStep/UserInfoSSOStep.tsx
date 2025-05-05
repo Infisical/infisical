@@ -30,6 +30,7 @@ type Props = {
   name: string;
   providerOrganizationName: string;
   providerAuthToken?: string;
+  forceDefaultOrg?: boolean;
 };
 
 /**
@@ -51,7 +52,8 @@ export const UserInfoSSOStep = ({
   providerOrganizationName,
   password,
   setPassword,
-  providerAuthToken
+  providerAuthToken,
+  forceDefaultOrg
 }: Props) => {
   const [nameError, setNameError] = useState(false);
   const [organizationName, setOrganizationName] = useState("");
@@ -84,7 +86,7 @@ export const UserInfoSSOStep = ({
     } else {
       setNameError(false);
     }
-    if (!organizationName) {
+    if (!organizationName && !forceDefaultOrg) {
       setOrganizationNameError(true);
       errorCheck = true;
     } else {
@@ -160,7 +162,8 @@ export const UserInfoSSOStep = ({
                 salt: result.salt,
                 verifier: result.verifier,
                 organizationName,
-                attributionSource
+                attributionSource,
+                useDefaultOrg: forceDefaultOrg
               });
 
               // unset signup JWT token and set JWT token
@@ -267,7 +270,7 @@ export const UserInfoSSOStep = ({
             </p>
           )}
         </div>
-        {providerOrganizationName === undefined && (
+        {!forceDefaultOrg && providerOrganizationName === undefined && (
           <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
             <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
               Organization Name
@@ -279,7 +282,7 @@ export const UserInfoSSOStep = ({
               isRequired
               className="h-12"
               maxLength={64}
-              disabled
+              isDisabled={forceDefaultOrg}
             />
             {organizationNameError && (
               <p className="ml-1 mt-1 w-full text-left text-xs text-red-600">

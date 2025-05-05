@@ -3,12 +3,10 @@ import { WebClient } from "@slack/web-api";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TNotification, TriggerFeature } from "@app/lib/workflow-integrations/types";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
-import { TProjectDALFactory } from "../project/project-dal";
-import { TProjectSlackConfigDALFactory } from "./project-slack-config-dal";
-import { SlackTriggerFeature, TSlackNotification } from "./slack-types";
+import { TSendSlackNotificationDTO } from "./slack-types";
 
 export const fetchSlackChannels = async (botKey: string) => {
   const slackChannels: {
@@ -41,11 +39,11 @@ export const fetchSlackChannels = async (botKey: string) => {
   return slackChannels;
 };
 
-const buildSlackPayload = (notification: TSlackNotification) => {
+const buildSlackPayload = (notification: TNotification) => {
   const appCfg = getConfig();
 
   switch (notification.type) {
-    case SlackTriggerFeature.SECRET_APPROVAL: {
+    case TriggerFeature.SECRET_APPROVAL: {
       const { payload } = notification;
       const messageBody = `A secret approval request has been opened by ${payload.userEmail}.
 *Environment*: ${payload.environment}
@@ -79,7 +77,7 @@ View the complete details <${appCfg.SITE_URL}/secret-manager/${payload.projectId
         payloadBlocks
       };
     }
-    case SlackTriggerFeature.ACCESS_REQUEST: {
+    case TriggerFeature.ACCESS_REQUEST: {
       const { payload } = notification;
       const messageBody = `${payload.requesterFullName} (${payload.requesterEmail}) has requested ${
         payload.isTemporary ? "temporary" : "permanent"
@@ -125,50 +123,23 @@ User Note: ${payload.note}`
   }
 };
 
-export const triggerSlackNotification = async ({
-  projectId,
+export const sendSlackNotification = async ({
+  orgId,
   notification,
-  projectSlackConfigDAL,
-  projectDAL,
-  kmsService
-}: {
-  projectId: string;
-  notification: TSlackNotification;
-  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-}) => {
-  const { payloadMessage, payloadBlocks } = buildSlackPayload(notification);
-  const project = await projectDAL.findById(projectId);
-  const slackIntegration = await projectSlackConfigDAL.getIntegrationDetailsByProject(project.id);
-
-  if (!slackIntegration) {
-    return;
-  }
-
-  let targetChannelIds: string[] = [];
-  if (notification.type === SlackTriggerFeature.ACCESS_REQUEST) {
-    targetChannelIds = slackIntegration.accessRequestChannels?.split(", ") || [];
-    if (!targetChannelIds.length || !slackIntegration.isAccessRequestNotificationEnabled) {
-      return;
-    }
-  } else if (notification.type === SlackTriggerFeature.SECRET_APPROVAL) {
-    targetChannelIds = slackIntegration.secretRequestChannels?.split(", ") || [];
-    if (!targetChannelIds.length || !slackIntegration.isSecretRequestNotificationEnabled) {
-      return;
-    }
-  }
-
+  kmsService,
+  targetChannelIds,
+  slackIntegration
+}: TSendSlackNotificationDTO) => {
   const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
     type: KmsDataKey.Organization,
-    orgId: project.orgId
+    orgId
   });
-
   const botKey = orgDataKeyDecryptor({
     cipherTextBlob: slackIntegration.encryptedBotAccessToken
   }).toString("utf8");
-
   const slackWebClient = new WebClient(botKey);
+
+  const { payloadMessage, payloadBlocks } = buildSlackPayload(notification);
 
   for await (const conversationId of targetChannelIds) {
     // we send both text and blocks for compatibility with barebone clients

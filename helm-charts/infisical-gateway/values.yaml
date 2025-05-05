@@ -1,0 +1,44 @@
+image:
+  pullPolicy: IfNotPresent
+  tag: "0.41.1"
+
+secret:
+  # The secret that contains the environment variables to be used by the gateway, such as INFISICAL_API_URL and TOKEN
+  name: "infisical-gateway-environment"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext:
+  runAsNonRoot: true
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+affinity: {}
+tolerations: {}
+nodeSelector: {}
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false

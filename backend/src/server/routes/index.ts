@@ -103,6 +103,9 @@ import { sshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { sshHostLoginUserMappingDALFactory } from "@app/ee/services/ssh-host/ssh-host-login-user-mapping-dal";
 import { sshHostServiceFactory } from "@app/ee/services/ssh-host/ssh-host-service";
 import { sshHostLoginUserDALFactory } from "@app/ee/services/ssh-host/ssh-login-user-dal";
+import { sshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
+import { sshHostGroupMembershipDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-membership-dal";
+import { sshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-service";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -174,6 +177,9 @@ import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
+import { microsoftTeamsIntegrationDALFactory } from "@app/services/microsoft-teams/microsoft-teams-integration-dal";
+import { microsoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
+import { projectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
 import { orgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
@@ -399,6 +405,8 @@ export const registerRoutes = async (
   const sshHostDAL = sshHostDALFactory(db);
   const sshHostLoginUserDAL = sshHostLoginUserDALFactory(db);
   const sshHostLoginUserMappingDAL = sshHostLoginUserMappingDALFactory(db);
+  const sshHostGroupDAL = sshHostGroupDALFactory(db);
+  const sshHostGroupMembershipDAL = sshHostGroupMembershipDALFactory(db);
 
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
@@ -426,6 +434,8 @@ export const registerRoutes = async (
   const githubOrgSyncDAL = githubOrgSyncDALFactory(db);
 
   const secretRotationV2DAL = secretRotationV2DALFactory(db, folderDAL);
+  const microsoftTeamsIntegrationDAL = microsoftTeamsIntegrationDALFactory(db);
+  const projectMicrosoftTeamsConfigDAL = projectMicrosoftTeamsConfigDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -623,6 +633,7 @@ export const registerRoutes = async (
     tokenService,
     orgDAL,
     totpService,
+    orgMembershipDAL,
     auditLogService
   });
   const passwordService = authPaswordServiceFactory({
@@ -687,6 +698,15 @@ export const registerRoutes = async (
     orgDAL,
     externalGroupOrgRoleMappingDAL
   });
+
+  const microsoftTeamsService = microsoftTeamsServiceFactory({
+    microsoftTeamsIntegrationDAL,
+    permissionService,
+    workflowIntegrationDAL,
+    kmsService,
+    serverCfgDAL: superAdminDAL
+  });
+
   const superAdminService = superAdminServiceFactory({
     userDAL,
     identityDAL,
@@ -700,7 +720,8 @@ export const registerRoutes = async (
     orgService,
     keyStore,
     licenseService,
-    kmsService
+    kmsService,
+    microsoftTeamsService
   });
 
   const orgAdminService = orgAdminServiceFactory({
@@ -849,6 +870,19 @@ export const registerRoutes = async (
     sshHostLoginUserMappingDAL,
     permissionService,
     kmsService
+  });
+
+  const sshHostGroupService = sshHostGroupServiceFactory({
+    projectDAL,
+    sshHostDAL,
+    sshHostGroupDAL,
+    sshHostGroupMembershipDAL,
+    sshHostLoginUserDAL,
+    sshHostLoginUserMappingDAL,
+    userDAL,
+    permissionService,
+    licenseService,
+    groupDAL
   });
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({
@@ -1020,6 +1054,7 @@ export const registerRoutes = async (
     sshCertificateDAL,
     sshCertificateTemplateDAL,
     sshHostDAL,
+    sshHostGroupDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore,
@@ -1028,6 +1063,8 @@ export const registerRoutes = async (
     certificateTemplateDAL,
     projectSlackConfigDAL,
     slackIntegrationDAL,
+    projectMicrosoftTeamsConfigDAL,
+    microsoftTeamsIntegrationDAL,
     projectTemplateService,
     groupProjectDAL,
     smtpService
@@ -1152,7 +1189,9 @@ export const registerRoutes = async (
     userDAL,
     licenseService,
     projectSlackConfigDAL,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    projectMicrosoftTeamsConfigDAL,
+    microsoftTeamsService
   });
 
   const secretService = secretServiceFactory({
@@ -1214,7 +1253,9 @@ export const registerRoutes = async (
     accessApprovalPolicyApproverDAL,
     projectSlackConfigDAL,
     kmsService,
-    groupDAL
+    groupDAL,
+    microsoftTeamsService,
+    projectMicrosoftTeamsConfigDAL
   });
 
   const secretReplicationService = secretReplicationServiceFactory({
@@ -1612,6 +1653,7 @@ export const registerRoutes = async (
   await dailyResourceCleanUp.startCleanUp();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await kmsService.startService();
+  await microsoftTeamsService.start();
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
@@ -1671,6 +1713,7 @@ export const registerRoutes = async (
     sshCertificateAuthority: sshCertificateAuthorityService,
     sshCertificateTemplate: sshCertificateTemplateService,
     sshHost: sshHostService,
+    sshHostGroup: sshHostGroupService,
     certificateAuthority: certificateAuthorityService,
     certificateTemplate: certificateTemplateService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
@@ -1704,6 +1747,7 @@ export const registerRoutes = async (
     kmipOperation: kmipOperationService,
     gateway: gatewayService,
     secretRotationV2: secretRotationV2Service,
+    microsoftTeams: microsoftTeamsService,
     assumePrivileges: assumePrivilegeService,
     githubOrgSync: githubOrgSyncConfigService
   });

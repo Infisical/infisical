@@ -14,7 +14,8 @@ export const WorkflowIntegrationsSchema = z.object({
   orgId: z.string().uuid(),
   description: z.string().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  status: z.string().default("installed")
 });
 
 export type TWorkflowIntegrations = z.infer<typeof WorkflowIntegrationsSchema>;

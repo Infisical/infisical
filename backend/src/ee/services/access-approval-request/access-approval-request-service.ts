@@ -6,13 +6,15 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
+import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
+import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
-import { triggerSlackNotification } from "@app/services/slack/slack-fns";
-import { SlackTriggerFeature } from "@app/services/slack/slack-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -67,6 +69,8 @@ type TSecretApprovalRequestServiceFactoryDep = {
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
+  microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
+  projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
 };
 
 export type TAccessApprovalRequestServiceFactory = ReturnType<typeof accessApprovalRequestServiceFactory>;
@@ -84,6 +88,8 @@ export const accessApprovalRequestServiceFactory = ({
   smtpService,
   userDAL,
   kmsService,
+  microsoftTeamsService,
+  projectMicrosoftTeamsConfigDAL,
   projectSlackConfigDAL
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const createAccessApprovalRequest = async ({
@@ -219,24 +225,30 @@ export const accessApprovalRequestServiceFactory = ({
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const approvalUrl = `${cfg.SITE_URL}/secret-manager/${project.id}/approval`;
 
-      await triggerSlackNotification({
-        projectId: project.id,
-        projectSlackConfigDAL,
-        projectDAL,
-        kmsService,
-        notification: {
-          type: SlackTriggerFeature.ACCESS_REQUEST,
-          payload: {
-            projectName: project.name,
-            requesterFullName,
-            isTemporary,
-            requesterEmail: requestedByUser.email as string,
-            secretPath,
-            environment: envSlug,
-            permissions: accessTypes,
-            approvalUrl,
-            note
-          }
+      await triggerWorkflowIntegrationNotification({
+        input: {
+          notification: {
+            type: TriggerFeature.ACCESS_REQUEST,
+            payload: {
+              projectName: project.name,
+              requesterFullName,
+              isTemporary,
+              requesterEmail: requestedByUser.email as string,
+              secretPath,
+              environment: envSlug,
+              permissions: accessTypes,
+              approvalUrl,
+              note
+            }
+          },
+          projectId: project.id
+        },
+        dependencies: {
+          projectDAL,
+          projectSlackConfigDAL,
+          kmsService,
+          microsoftTeamsService,
+          projectMicrosoftTeamsConfigDAL
         }
       });
 

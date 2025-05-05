@@ -71,6 +71,7 @@ export type TFeatureSet = {
   projectTemplates: false;
   kmip: false;
   gateway: false;
+  sshHostGroups: false;
 };
 
 export type TOrgPlansTableDTO = {

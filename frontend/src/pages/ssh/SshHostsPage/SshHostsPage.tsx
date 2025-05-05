@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { PageHeader } from "@app/components/v2";
 
-import { SshHostsSection } from "./components";
+import { SshHostGroupsSection, SshHostsSection } from "./components";
 
 export const SshHostsPage = () => {
   const { t } = useTranslation();
@@ -19,6 +19,7 @@ export const SshHostsPage = () => {
               title="Hosts"
               description="Manage your SSH hosts, configure access policies, and define login behavior for secure connections."
             />
+            <SshHostGroupsSection />
             <SshHostsSection />
           </div>
         </div>

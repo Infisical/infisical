@@ -97,7 +97,11 @@ export const Route = createFileRoute("/_restrict-login-signup")({
     }
 
     if (!data.organizationId) {
-      if (location.pathname.endsWith("select-organization")) return;
+      if (
+        location.pathname.endsWith("select-organization") ||
+        location.pathname.endsWith("verify-email")
+      )
+        return;
       throw redirect({ to: "/login/select-organization" });
     }
     throw redirect({
