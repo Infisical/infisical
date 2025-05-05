@@ -14,7 +14,7 @@ export const CachingPanel = () => {
   const { mutateAsync: invalidateCache } = useInvalidateCache();
   const { membership } = useOrgPermission();
 
-  const hasShownSuccessRef = useRef(true);
+  const shouldShowSuccessRef = useRef(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [type, setType] = useState<CacheType | null>(null);
@@ -34,8 +34,8 @@ export const CachingPanel = () => {
   };
 
   const success = () => {
-    if (hasShownSuccessRef.current) return;
-    hasShownSuccessRef.current = true;
+    if (!shouldShowSuccessRef.current) return;
+    shouldShowSuccessRef.current = false;
 
     createNotification({ text: "Successfully invalidated cache", type: "success" });
     setButtonsDisabled(false);
@@ -45,7 +45,7 @@ export const CachingPanel = () => {
   const handleInvalidateCacheSubmit = async () => {
     if (!type) return;
 
-    hasShownSuccessRef.current = false;
+    shouldShowSuccessRef.current = true;
 
     try {
       await invalidateCache({ type });
@@ -67,8 +67,11 @@ export const CachingPanel = () => {
 
   useEffect(() => {
     refetchInvalidatingStatus();
-    const timer = setTimeout(() => (hasShownSuccessRef.current = false), 1000);
-    return () => clearTimeout(timer);
+    const timer = setTimeout(() => (shouldShowSuccessRef.current = true), 1000);
+    return () => {
+      clearTimeout(timer);
+      setShouldPoll(false);
+    };
   }, []);
 
   useEffect(() => {
@@ -84,7 +87,7 @@ export const CachingPanel = () => {
   }, [isInvalidating]);
 
   useEffect(() => {
-    if (!hasShownSuccessRef.current && isInvalidating === false) {
+    if (shouldShowSuccessRef.current && isInvalidating === false) {
       success();
       clearTimeout(timeoutRef.current!);
     }
