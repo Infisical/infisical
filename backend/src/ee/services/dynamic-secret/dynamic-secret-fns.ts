@@ -9,7 +9,7 @@ import { getDbConnectionHost } from "@app/lib/knex";
 export const verifyHostInputValidity = async (host: string, isGateway = false) => {
   const appCfg = getConfig();
 
-  if (appCfg.isDevelopmentMode) return [host];
+  // if (appCfg.isDevelopmentMode) return [host];
 
   const reservedHosts = [appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI)].concat(
     (appCfg.DB_READ_REPLICAS || []).map((el) => getDbConnectionHost(el.DB_CONNECTION_URI)),
@@ -27,8 +27,11 @@ export const verifyHostInputValidity = async (host: string, isGateway = false) =
         try {
           const resolvedIps = await dns.resolve4(el);
           exclusiveIps.push(...resolvedIps);
-        } catch {
-          const resolvedIps = (await dns.lookup(el, { all: true })).map(({ address }) => address);
+        } catch (error) {
+          // only try lookup if not found
+          if ((error as { code: string })?.code !== "ENOTFOUND") throw error;
+
+          const resolvedIps = (await dns.lookup(el, { all: true, family: 4 })).map(({ address }) => address);
           exclusiveIps.push(...resolvedIps);
         }
       }
@@ -46,8 +49,11 @@ export const verifyHostInputValidity = async (host: string, isGateway = false) =
     try {
       const resolvedIps = await dns.resolve4(host);
       inputHostIps.push(...resolvedIps);
-    } catch {
-      const resolvedIps = (await dns.lookup(host, { all: true })).map(({ address }) => address);
+    } catch (error) {
+      // only try lookup if not found
+      if ((error as { code: string })?.code !== "ENOTFOUND") throw error;
+
+      const resolvedIps = (await dns.lookup(host, { all: true, family: 4 })).map(({ address }) => address);
       inputHostIps.push(...resolvedIps);
     }
   }
