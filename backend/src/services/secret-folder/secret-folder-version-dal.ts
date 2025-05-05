@@ -85,6 +85,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
         .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
         .join("folder_cte", "folder_cte.id", `${TableName.SecretFolderVersion}.id`)
         .whereRaw(`folder_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+        .andWhere(`${TableName.Project}.version`, "<", 3)
         .delete();
     } catch (error) {
       throw new DatabaseError({
