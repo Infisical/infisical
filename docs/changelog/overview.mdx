@@ -4,6 +4,23 @@ title: "Changelog"
 
 The changelog below reflects new product developments and updates on a monthly basis.
 
+## April 2025
+
+- Released [Backstage integration](https://infisical.com/docs/integrations/external/backstage) for seamless secret management in Backstage developer portals.
+- Enhanced [Secret References](https://infisical.com/docs/documentation/platform/secret-reference) system with notifications when attempting to delete secrets that have existing references.
+- Released the official [C++ SDK](https://github.com/Infisical/infisical-cpp-sdk).
+- Released Infisical binary for direct download and added Winget repository for Windows CLI distribution.
+- Released dedicated [Cosign provider](https://docs.sigstore.dev/cosign/key_management/overview/) supporting signing and verification with [Infisical KMS](https://infisical.com/docs/documentation/platform/kms/overview).
+- Released multiple new Secret Syncs: [Windmill](https://infisical.com/docs/integrations/secret-syncs/windmill), [Terraform Cloud](https://infisical.com/docs/integrations/secret-syncs/terraform-cloud), [Vercel](https://infisical.com/docs/integrations/secret-syncs/vercel), and [TeamCity](https://infisical.com/docs/integrations/secret-syncs/teamcity).
+- Improved session management with ability to sign out individual sessions instead of requiring logging out all sessions.
+- Implemented GitHub Teams sync with Infisical groups.
+- Enhanced OIDC machine identity with ECDSA and JWT signature support.
+- **Major performance improvement**: Added caching for secrets API resulting in 5× reduction in read latency (P95 now 80ms vs previous 400ms).
+- The [Infisical CLI](https://infisical.com/docs/cli/overview) Debian/Ubuntu artifact repository has moved to AWS to address spam issues. **Please update any references to use the official Infisical repository at https://artifacts-cli.infisical.com.** Future Debian/Ubuntu releases will no longer be published on Cloudsmith.
+- Quality of life improvements: Authentication flow now remembers intended destination after login, implemented retry mechanisms across all SDKs, added metadata support for dynamic secrets, enabled folder duplication with contained secrets, enhanced machine identity search by role, and added service token expiration notifications.
+- Security enhancements: implemented secret rotation for Auth0, added option to disable project deletion, added LDAP user rotation, implemented SSO break-glass mechanism with approval workflow, and completely revamped secret rotation system.
+- API documentation refinement: now shows only supported endpoints instead of all internal ones.
+
 ## March 2025
 
 - Released [Infisical Gateway](https://infisical.com/docs/documentation/platform/gateways/overview) for secure access to private resources without needing direct inbound connections to private networks.
