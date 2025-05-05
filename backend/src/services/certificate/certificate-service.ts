@@ -485,7 +485,7 @@ export const certificateServiceFactory = ({
 
         await certificateSecretDAL.create(
           {
-            certId: cert.id,
+            certId: txCert.id,
             encryptedPrivateKey
           },
           tx

@@ -175,11 +175,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
                   errorText={error?.message}
                   isRequired
                 >
-                  <TextArea
-                    {...field}
-                    placeholder={"-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"}
-                    isDisabled={Boolean(cert)}
-                  />
+                  <TextArea {...field} isDisabled={Boolean(cert)} />
                 </FormControl>
               )}
             />
@@ -194,13 +190,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
                   errorText={error?.message}
                   isRequired
                 >
-                  <TextArea
-                    {...field}
-                    placeholder={
-                      "-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----"
-                    }
-                    isDisabled={Boolean(cert)}
-                  />
+                  <TextArea {...field} isDisabled={Boolean(cert)} />
                 </FormControl>
               )}
             />
@@ -215,11 +205,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
                   errorText={error?.message}
                   isRequired
                 >
-                  <TextArea
-                    {...field}
-                    placeholder={"-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"}
-                    isDisabled={Boolean(cert)}
-                  />
+                  <TextArea {...field} isDisabled={Boolean(cert)} />
                 </FormControl>
               )}
             />
