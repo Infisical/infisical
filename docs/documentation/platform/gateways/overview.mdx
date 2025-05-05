@@ -73,6 +73,61 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
         </Warning>
       </Tab>
 
+      <Tab title="Production (Helm)">
+
+        The Gateway can be installed via [Helm](https://helm.sh/). Helm is a package manager for Kubernetes that allows you to define, install, and upgrade Kubernetes applications.
+
+        For production deployments on Kubernetes, install the Gateway using the Infisical Helm chart:
+
+        ### Install the latest Helm Chart repository
+        ```bash
+        helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/' 
+        ```
+
+        ### Update the Helm Chart repository
+        ```bash
+        helm repo update
+        ```
+
+        ### Create a Kubernetes Secret with the gateway token
+
+        Create a new Kubernetes secret containing the gateway token as the `TOKEN` key. You can optionally also set the `INFISICAL_API_URL` key to your Infisical instance URL. By default, `INFISICAL_API_URL` is set to `https://app.infisical.com`.
+
+
+        ```bash
+        kubectl create secret generic infisical-gateway-environment --from-literal=TOKEN=<your-machine-identity-access-token>
+        ```
+      
+        <Note>
+          The secret name is `infisical-gateway-environment` by default. The `TOKEN` key is required, and the `INFISICAL_API_URL` key is optional.
+        </Note>
+
+        ### Install the Infisical Gateway Helm Chart
+        ```bash
+        helm install infisical-gateway infisical-helm-charts/infisical-gateway
+        ```
+
+        ### Check the gateway logs
+        After installing the gateway, you can check the logs to ensure it's running as expected.
+
+        ```bash
+        kubectl logs deployment/infisical-gateway
+        ```
+
+        You should see the following output which indicates the gateway is running as expected.
+        ```bash
+        $ kubectl logs deployment/infisical-gateway                  
+        INF Provided relay port 5349. Using TLS
+        INF Connected with relay
+        INF 10.0.101.112:56735
+        INF Starting relay connection health check
+        INF Gateway started successfully
+        INF New connection from: 10.0.1.8:34051
+        INF Gateway is reachable by Infisical
+        ```
+
+      </Tab>
+
       <Tab title="Development (direct)">
         For development or testing, you can run the Gateway directly. Log in with your machine identity and start the Gateway in one command:
         ```bash
