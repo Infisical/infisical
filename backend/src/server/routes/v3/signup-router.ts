@@ -88,24 +88,41 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
-      body: z.object({
-        email: z.string().trim(),
-        firstName: z.string().trim(),
-        lastName: z.string().trim().optional(),
-        protectedKey: z.string().trim(),
-        protectedKeyIV: z.string().trim(),
-        protectedKeyTag: z.string().trim(),
-        publicKey: z.string().trim(),
-        encryptedPrivateKey: z.string().trim(),
-        encryptedPrivateKeyIV: z.string().trim(),
-        encryptedPrivateKeyTag: z.string().trim(),
-        salt: z.string().trim(),
-        verifier: z.string().trim(),
-        organizationName: GenericResourceNameSchema,
-        providerAuthToken: z.string().trim().optional().nullish(),
-        attributionSource: z.string().trim().optional(),
-        password: z.string()
-      }),
+      body: z
+        .object({
+          email: z.string().trim(),
+          firstName: z.string().trim(),
+          lastName: z.string().trim().optional(),
+          protectedKey: z.string().trim(),
+          protectedKeyIV: z.string().trim(),
+          protectedKeyTag: z.string().trim(),
+          publicKey: z.string().trim(),
+          encryptedPrivateKey: z.string().trim(),
+          encryptedPrivateKeyIV: z.string().trim(),
+          encryptedPrivateKeyTag: z.string().trim(),
+          salt: z.string().trim(),
+          verifier: z.string().trim(),
+          providerAuthToken: z.string().trim().optional().nullish(),
+          attributionSource: z.string().trim().optional(),
+          password: z.string()
+        })
+        .and(
+          z.preprocess(
+            (data) => {
+              if (typeof data === "object" && data && "useDefaultOrg" in data === false) {
+                return { ...data, useDefaultOrg: false };
+              }
+              return data;
+            },
+            z.discriminatedUnion("useDefaultOrg", [
+              z.object({ useDefaultOrg: z.literal(true) }),
+              z.object({
+                useDefaultOrg: z.literal(false),
+                organizationName: GenericResourceNameSchema
+              })
+            ])
+          )
+        ),
       response: {
         200: z.object({
           message: z.string(),

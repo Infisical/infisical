@@ -11,6 +11,7 @@ export enum SecretSync {
   Camunda = "camunda",
   Vercel = "vercel",
   Windmill = "windmill",
+  HCVault = "hashicorp-vault",
   TeamCity = "teamcity"
 }
 

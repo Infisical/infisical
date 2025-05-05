@@ -99,8 +99,8 @@ export enum EventType {
   CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "create-certificate-template-est-config",
   UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "update-certificate-template-est-config",
   GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config",
-  UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config",
-  GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
+  UPDATE_PROJECT_WORKFLOW_INTEGRATION_CONFIG = "update-project-workflow-integration-config",
+  GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG = "get-project-workflow-integration-config",
   INTEGRATION_SYNCED = "integration-synced",
   CREATE_SHARED_SECRET = "create-shared-secret",
   DELETE_SHARED_SECRET = "delete-shared-secret",
@@ -164,5 +164,16 @@ export enum EventType {
   CREATE_SECRET_ROTATION = "create-secret-rotation",
   UPDATE_SECRET_ROTATION = "update-secret-rotation",
   DELETE_SECRET_ROTATION = "delete-secret-rotation",
-  SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets"
+  SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
+
+  GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
+  UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config",
+
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CREATE = "microsoft-teams-workflow-integration-create",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_DELETE = "microsoft-teams-workflow-integration-delete",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_UPDATE = "microsoft-teams-workflow-integration-update",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS = "microsoft-teams-workflow-integration-check-installation-status",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS = "microsoft-teams-workflow-integration-get-teams",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET = "microsoft-teams-workflow-integration-get",
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list"
 }

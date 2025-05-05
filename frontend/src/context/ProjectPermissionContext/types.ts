@@ -175,6 +175,7 @@ export enum ProjectPermissionSub {
   SshCertificateTemplates = "ssh-certificate-templates",
   SshCertificates = "ssh-certificates",
   SshHosts = "ssh-hosts",
+  SshHostGroups = "ssh-host-groups",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
   Kms = "kms",
@@ -272,6 +273,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
+  | [ProjectPermissionActions, ProjectPermissionSub.SshHostGroups]
   | [ProjectPermissionSshHostActions, ProjectPermissionSub.SshHosts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]

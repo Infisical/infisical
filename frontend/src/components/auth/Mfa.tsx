@@ -31,6 +31,25 @@ const codeInputProps = {
   }
 } as const;
 
+const codeInputPropsPhone = {
+  inputStyle: {
+    fontFamily: "monospace",
+    margin: "4px",
+    MozAppearance: "textfield",
+    width: "40px",
+    borderRadius: "5px",
+    fontSize: "24px",
+    height: "40px",
+    paddingLeft: "7",
+    backgroundColor: "#0d1117",
+    color: "white",
+    border: "1px solid #2d2f33",
+    textAlign: "center",
+    outlineColor: "#8ca542",
+    borderColor: "#2d2f33"
+  }
+} as const;
+
 type Props = {
   successCallback: () => void | Promise<void>;
   closeMfa?: () => void;
@@ -168,6 +187,24 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           )}
           {method === MfaMethod.TOTP && (
             <div className="mb-4 mt-6">
+              <Input value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} />
+            </div>
+          )}
+        </div>
+        <div className="mx-auto mt-4 block w-max min-w-[18rem] md:hidden">
+          {method === MfaMethod.EMAIL && (
+            <ReactCodeInput
+              name=""
+              inputMode="tel"
+              type="text"
+              fields={6}
+              onChange={setMfaCode}
+              className="mb-2 mt-2"
+              {...codeInputPropsPhone}
+            />
+          )}
+          {method === MfaMethod.TOTP && (
+            <div className="mb-4 mt-2">
               <Input value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} />
             </div>
           )}

@@ -9,7 +9,7 @@ import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { generateUserSrpKeys, getUserPrivateKey } from "@app/lib/crypto/srp";
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { getMinExpiresIn } from "@app/lib/fn";
 import { isDisposableEmail } from "@app/lib/validator";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
@@ -150,7 +150,8 @@ export const authSignupServiceFactory = ({
     encryptedPrivateKeyTag,
     ip,
     userAgent,
-    authorization
+    authorization,
+    useDefaultOrg
   }: TCompleteAccountSignupDTO) => {
     const appCfg = getConfig();
     const serverCfg = await getServerCfg();
@@ -293,15 +294,24 @@ export const authSignupServiceFactory = ({
     });
 
     if (!organizationId) {
-      const newOrganization = await orgService.createOrganization({
-        userId: user.id,
-        userEmail: user.email ?? user.username,
-        orgName: organizationName
-      });
+      let orgId = "";
+      if (useDefaultOrg && serverCfg.defaultAuthOrgId && !appCfg.isCloud) {
+        const defaultOrg = await orgDAL.findOrgById(serverCfg.defaultAuthOrgId);
+        if (!defaultOrg) throw new BadRequestError({ message: "Failed to find default organization" });
+        orgId = defaultOrg.id;
+      } else {
+        if (!organizationName) throw new BadRequestError({ message: "Organization name is required" });
+        const newOrganization = await orgService.createOrganization({
+          userId: user.id,
+          userEmail: user.email ?? user.username,
+          orgName: organizationName
+        });
 
-      if (!newOrganization) throw new Error("Failed to create organization");
+        if (!newOrganization) throw new Error("Failed to create organization");
+        orgId = newOrganization.id;
+      }
 
-      organizationId = newOrganization.id;
+      organizationId = orgId;
     }
 
     const updatedMembersips = await orgDAL.updateMembership(

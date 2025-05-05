@@ -44,6 +44,7 @@ export * from "./serviceTokens";
 export * from "./sshCa";
 export * from "./sshCertificateTemplates";
 export * from "./sshHost";
+export * from "./sshHostGroup";
 export * from "./ssoConfig";
 export * from "./subscriptions";
 export * from "./tags";

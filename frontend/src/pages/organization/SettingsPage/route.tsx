@@ -11,7 +11,7 @@ const SettingsPageQueryParams = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organization/settings"
+  "/_authenticate/_inject-org-details/_org-layout/organization/settings/"
 )({
   component: SettingsPage,
   validateSearch: zodValidator(SettingsPageQueryParams),

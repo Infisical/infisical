@@ -107,6 +107,7 @@ export type CompleteAccountSignupDTO = CompleteAccountDTO & {
   providerAuthToken?: string;
   attributionSource?: string;
   organizationName: string;
+  useDefaultOrg?: boolean;
 };
 
 export type VerifySignupInviteDTO = {

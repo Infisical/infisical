@@ -12,12 +12,13 @@ export type TCompleteAccountSignupDTO = {
   encryptedPrivateKeyTag: string;
   salt: string;
   verifier: string;
-  organizationName: string;
+  organizationName?: string;
   providerAuthToken?: string | null;
   attributionSource?: string | undefined;
   ip: string;
   userAgent: string;
   authorization: string;
+  useDefaultOrg?: boolean;
 };
 
 export type TCompleteAccountInviteDTO = {

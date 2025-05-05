@@ -17,9 +17,13 @@ import { groupBy, pick, unique } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { EnforcementLevel } from "@app/lib/types";
+import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
+import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
+import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -52,8 +56,6 @@ import {
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
-import { triggerSlackNotification } from "@app/services/slack/slack-fns";
-import { SlackTriggerFeature } from "@app/services/slack/slack-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -126,6 +128,8 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findById">;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
+  microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
@@ -155,7 +159,9 @@ export const secretApprovalRequestServiceFactory = ({
   secretVersionTagV2BridgeDAL,
   licenseService,
   projectSlackConfigDAL,
-  resourceMetadataDAL
+  resourceMetadataDAL,
+  projectMicrosoftTeamsConfigDAL,
+  microsoftTeamsService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
@@ -1171,21 +1177,28 @@ export const secretApprovalRequestServiceFactory = ({
 
     const env = await projectEnvDAL.findOne({ id: policy.envId });
     const user = await userDAL.findById(secretApprovalRequest.committerUserId);
-    await triggerSlackNotification({
-      projectId,
-      projectDAL,
-      kmsService,
-      projectSlackConfigDAL,
-      notification: {
-        type: SlackTriggerFeature.SECRET_APPROVAL,
-        payload: {
-          userEmail: user.email as string,
-          environment: env.name,
-          secretPath,
-          projectId,
-          requestId: secretApprovalRequest.id,
-          secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretName) ?? []))]
+
+    await triggerWorkflowIntegrationNotification({
+      input: {
+        projectId,
+        notification: {
+          type: TriggerFeature.SECRET_APPROVAL,
+          payload: {
+            userEmail: user.email as string,
+            environment: env.name,
+            secretPath,
+            projectId,
+            requestId: secretApprovalRequest.id,
+            secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretName) ?? []))]
+          }
         }
+      },
+      dependencies: {
+        projectDAL,
+        projectSlackConfigDAL,
+        kmsService,
+        projectMicrosoftTeamsConfigDAL,
+        microsoftTeamsService
       }
     });
 
@@ -1503,21 +1516,28 @@ export const secretApprovalRequestServiceFactory = ({
 
     const user = await userDAL.findById(secretApprovalRequest.committerUserId);
     const env = await projectEnvDAL.findOne({ id: policy.envId });
-    await triggerSlackNotification({
-      projectId,
-      projectDAL,
-      kmsService,
-      projectSlackConfigDAL,
-      notification: {
-        type: SlackTriggerFeature.SECRET_APPROVAL,
-        payload: {
-          userEmail: user.email as string,
-          environment: env.name,
-          secretPath,
-          projectId,
-          requestId: secretApprovalRequest.id,
-          secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))]
+
+    await triggerWorkflowIntegrationNotification({
+      input: {
+        projectId,
+        notification: {
+          type: TriggerFeature.SECRET_APPROVAL,
+          payload: {
+            userEmail: user.email as string,
+            environment: env.name,
+            secretPath,
+            projectId,
+            requestId: secretApprovalRequest.id,
+            secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))]
+          }
         }
+      },
+      dependencies: {
+        projectDAL,
+        kmsService,
+        projectSlackConfigDAL,
+        microsoftTeamsService,
+        projectMicrosoftTeamsConfigDAL
       }
     });
 

@@ -7,7 +7,8 @@ const sanitizedWorkflowIntegrationSchema = WorkflowIntegrationsSchema.pick({
   id: true,
   description: true,
   slug: true,
-  integration: true
+  integration: true,
+  status: true
 });
 
 export const registerWorkflowIntegrationRouter = async (server: FastifyZodProvider) => {
