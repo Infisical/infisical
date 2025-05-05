@@ -71,9 +71,9 @@ export const IdentitySection = withPermission(
 
     return (
       <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex justify-between">
-          <p className="text-xl font-semibold text-mineshaft-100">Identities</p>
-          <div className="flex w-full justify-end pr-4">
+        <div className="mb-4 flex items-center">
+          <p className="text-xl font-semibold text-mineshaft-100">Machine Identities</p>
+          <div className="ml-auto flex items-center gap-2">
             <a
               target="_blank"
               rel="noopener noreferrer"
@@ -86,31 +86,32 @@ export const IdentitySection = withPermission(
                 className="mb-[0.06rem] ml-1 text-xs"
               />
             </a>
+            <OrgPermissionCan
+              I={OrgPermissionIdentityActions.Create}
+              a={OrgPermissionSubjects.Identity}
+            >
+              {(isAllowed) => (
+                <Button
+                  colorSchema="primary"
+                  type="submit"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => {
+                    if (!isMoreIdentitiesAllowed && !isEnterprise) {
+                      handlePopUpOpen("upgradePlan", {
+                        description:
+                          "You can add more identities if you upgrade your Infisical plan."
+                      });
+                      return;
+                    }
+                    handlePopUpOpen("identity");
+                  }}
+                  isDisabled={!isAllowed}
+                >
+                  Create Identity
+                </Button>
+              )}
+            </OrgPermissionCan>
           </div>
-          <OrgPermissionCan
-            I={OrgPermissionIdentityActions.Create}
-            a={OrgPermissionSubjects.Identity}
-          >
-            {(isAllowed) => (
-              <Button
-                colorSchema="primary"
-                type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => {
-                  if (!isMoreIdentitiesAllowed && !isEnterprise) {
-                    handlePopUpOpen("upgradePlan", {
-                      description: "You can add more identities if you upgrade your Infisical plan."
-                    });
-                    return;
-                  }
-                  handlePopUpOpen("identity");
-                }}
-                isDisabled={!isAllowed}
-              >
-                Create Identity
-              </Button>
-            )}
-          </OrgPermissionCan>
         </div>
         <IdentityTable handlePopUpOpen={handlePopUpOpen} />
         <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
