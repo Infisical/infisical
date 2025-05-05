@@ -4,7 +4,10 @@ import * as x509 from "@peculiar/x509";
 import { ActionProjectType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -15,11 +18,21 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
-import { revocationReasonToCrlCode } from "./certificate-fns";
-import { CertStatus, TDeleteCertDTO, TGetCertBodyDTO, TGetCertDTO, TRevokeCertDTO } from "./certificate-types";
+import { buildCertificateChain, getCertificateCredentials, revocationReasonToCrlCode } from "./certificate-fns";
+import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
+import {
+  CertStatus,
+  TDeleteCertDTO,
+  TGetCertBodyDTO,
+  TGetCertBundleDTO,
+  TGetCertDTO,
+  TGetCertPrivateKeyDTO,
+  TRevokeCertDTO
+} from "./certificate-types";
 
 type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find">;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
@@ -34,6 +47,7 @@ export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFac
 
 export const certificateServiceFactory = ({
   certificateDAL,
+  certificateSecretDAL,
   certificateBodyDAL,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
@@ -59,11 +73,56 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
 
     return {
       cert,
       ca
+    };
+  };
+
+  /**
+   * Get certificate private key.
+   */
+  const getCertPrivateKey = async ({
+    serialNumber,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TGetCertPrivateKeyDTO) => {
+    const cert = await certificateDAL.findOne({ serialNumber });
+    const ca = await certificateAuthorityDAL.findById(cert.caId);
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: ca.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionSub.Certificates
+    );
+
+    const { certPrivateKey } = await getCertificateCredentials({
+      certId: cert.id,
+      projectId: ca.projectId,
+      certificateSecretDAL,
+      projectDAL,
+      kmsService
+    });
+
+    return {
+      ca,
+      cert,
+      certPrivateKey
     };
   };
 
@@ -83,7 +142,10 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Delete,
+      ProjectPermissionSub.Certificates
+    );
 
     const deletedCert = await certificateDAL.deleteById(cert.id);
 
@@ -118,7 +180,10 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Delete,
+      ProjectPermissionSub.Certificates
+    );
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
 
@@ -165,7 +230,10 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
@@ -192,10 +260,96 @@ export const certificateServiceFactory = ({
       kmsService
     });
 
+    const certificateChain = await buildCertificateChain({
+      caCert,
+      caCertChain,
+      kmsId: certificateManagerKeyId,
+      kmsService,
+      encryptedCertificateChain: certBody.encryptedCertificateChain || undefined
+    });
+
     return {
       certificate: certObj.toString("pem"),
-      certificateChain: `${caCert}\n${caCertChain}`.trim(),
+      certificateChain,
       serialNumber: certObj.serialNumber,
+      cert,
+      ca
+    };
+  };
+
+  /**
+   * Return certificate body and certificate chain for certificate with
+   * serial number [serialNumber]
+   */
+  const getCertBundle = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBundleDTO) => {
+    const cert = await certificateDAL.findOne({ serialNumber });
+    const ca = await certificateAuthorityDAL.findById(cert.caId);
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: ca.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionSub.Certificates
+    );
+
+    const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
+
+    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
+      projectId: ca.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKeyId
+    });
+    const decryptedCert = await kmsDecryptor({
+      cipherTextBlob: certBody.encryptedCertificate
+    });
+
+    const certObj = new x509.X509Certificate(decryptedCert);
+    const certificate = certObj.toString("pem");
+
+    const { caCert, caCertChain } = await getCaCertChain({
+      caCertId: cert.caCertId,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
+    });
+
+    const certificateChain = await buildCertificateChain({
+      caCert,
+      caCertChain,
+      kmsId: certificateManagerKeyId,
+      kmsService,
+      encryptedCertificateChain: certBody.encryptedCertificateChain || undefined
+    });
+
+    const { certPrivateKey } = await getCertificateCredentials({
+      certId: cert.id,
+      projectId: ca.projectId,
+      certificateSecretDAL,
+      projectDAL,
+      kmsService
+    });
+
+    return {
+      certificate,
+      certificateChain,
+      privateKey: certPrivateKey,
+      serialNumber,
       cert,
       ca
     };
@@ -203,8 +357,10 @@ export const certificateServiceFactory = ({
 
   return {
     getCert,
+    getCertPrivateKey,
     deleteCert,
     revokeCert,
-    getCertBody
+    getCertBody,
+    getCertBundle
   };
 };
