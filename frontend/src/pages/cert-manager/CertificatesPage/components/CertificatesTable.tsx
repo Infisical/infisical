@@ -30,7 +30,11 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub,
+  useWorkspace
+} from "@app/context";
 import { useListWorkspaceCertificates } from "@app/hooks/api";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -110,7 +114,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="p-1">
                         <ProjectPermissionCan
-                          I={ProjectPermissionActions.Read}
+                          I={ProjectPermissionCertificateActions.Read}
                           a={ProjectPermissionSub.Certificates}
                         >
                           {(isAllowed) => (
@@ -131,7 +135,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                           )}
                         </ProjectPermissionCan>
                         <ProjectPermissionCan
-                          I={ProjectPermissionActions.Read}
+                          I={ProjectPermissionCertificateActions.Read}
                           a={ProjectPermissionSub.Certificates}
                         >
                           {(isAllowed) => (
@@ -152,7 +156,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                           )}
                         </ProjectPermissionCan>
                         <ProjectPermissionCan
-                          I={ProjectPermissionActions.Delete}
+                          I={ProjectPermissionCertificateActions.Delete}
                           a={ProjectPermissionSub.Certificates}
                         >
                           {(isAllowed) => (
@@ -173,7 +177,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                           )}
                         </ProjectPermissionCan>
                         <ProjectPermissionCan
-                          I={ProjectPermissionActions.Delete}
+                          I={ProjectPermissionCertificateActions.Delete}
                           a={ProjectPermissionSub.Certificates}
                         >
                           {(isAllowed) => (

@@ -628,6 +628,24 @@ interface GetCertBody {
   };
 }
 
+interface GetCertPrivateKey {
+  type: EventType.GET_CERT_PRIVATE_KEY;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface GetCertBundle {
+  type: EventType.GET_CERT_BUNDLE;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
 interface CreatePkiAlert {
   type: EventType.CREATE_PKI_ALERT;
   metadata: {
@@ -890,6 +908,8 @@ export type Event =
   | DeleteCert
   | RevokeCert
   | GetCertBody
+  | GetCertPrivateKey
+  | GetCertBundle
   | CreatePkiAlert
   | GetPkiAlert
   | UpdatePkiAlert

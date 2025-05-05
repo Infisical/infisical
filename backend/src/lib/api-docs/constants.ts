@@ -1619,7 +1619,8 @@ export const CERTIFICATES = {
     serialNumber: "The serial number of the certificate to get the certificate body and certificate chain for.",
     certificate: "The certificate body of the certificate.",
     certificateChain: "The certificate chain of the certificate.",
-    serialNumberRes: "The serial number of the certificate."
+    serialNumberRes: "The serial number of the certificate.",
+    privateKey: "The private key of the certificate."
   },
   IMPORT: {
     projectSlug: "Slug of the project to import the certificate into.",

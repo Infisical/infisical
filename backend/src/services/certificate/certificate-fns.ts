@@ -1,6 +1,11 @@
+import crypto from "node:crypto";
+
 import * as x509 from "@peculiar/x509";
 
-import { CrlReason } from "./certificate-types";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+
+import { getProjectKmsCertificateKeyId } from "../project/project-fns";
+import { CrlReason, TGetCertificateCredentialsDTO } from "./certificate-types";
 
 export const revocationReasonToCrlCode = (crlReason: CrlReason) => {
   switch (crlReason) {
@@ -49,3 +54,47 @@ export const constructPemChainFromCerts = (certificates: x509.X509Certificate[])
 
 export const splitPemChain = (pemText: string) =>
   pemText.match(/-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----/g) || [];
+
+/**
+ * Return the public and private key of certificate
+ * Note: credentials are returned as PEM strings
+ */
+export const getCertificateCredentials = async ({
+  certId,
+  projectId,
+  certificateSecretDAL,
+  projectDAL,
+  kmsService
+}: TGetCertificateCredentialsDTO) => {
+  const certificateSecret = await certificateSecretDAL.findOne({ certId });
+  if (!certificateSecret)
+    throw new NotFoundError({ message: `Certificate secret for certificate with ID '${certId}' not found` });
+
+  const keyId = await getProjectKmsCertificateKeyId({
+    projectId,
+    projectDAL,
+    kmsService
+  });
+  const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    kmsId: keyId
+  });
+  const decryptedPrivateKey = await kmsDecryptor({
+    cipherTextBlob: certificateSecret.encryptedPrivateKey
+  });
+
+  try {
+    const skObj = crypto.createPrivateKey({ key: decryptedPrivateKey, format: "pem", type: "pkcs8" });
+    const certPrivateKey = skObj.export({ format: "pem", type: "pkcs8" }).toString();
+
+    const pkObj = crypto.createPublicKey(skObj);
+    const certPublicKey = pkObj.export({ format: "pem", type: "spki" }).toString();
+
+    return {
+      certificateSecret,
+      certPrivateKey,
+      certPublicKey
+    };
+  } catch (error) {
+    throw new BadRequestError({ message: `Failed to process private key for certificate with ID '${certId}'` });
+  }
+};

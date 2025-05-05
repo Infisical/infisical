@@ -17,6 +17,14 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionCertificateActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  ReadPrivateKey = "read-private-key"
+}
+
 export enum ProjectPermissionSecretActions {
   DescribeAndReadValue = "read",
   DescribeSecret = "describeSecret",
@@ -232,7 +240,7 @@ export type ProjectPermissionSet =
       ProjectPermissionSub.Identity | (ForcedSubject<ProjectPermissionSub.Identity> & IdentityManagementSubjectFields)
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
-  | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
+  | [ProjectPermissionCertificateActions, ProjectPermissionSub.Certificates]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
@@ -478,7 +486,7 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Certificates).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCertificateActions).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -688,7 +696,6 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.AuditLogs,
     ProjectPermissionSub.IpAllowList,
     ProjectPermissionSub.CertificateAuthorities,
-    ProjectPermissionSub.Certificates,
     ProjectPermissionSub.CertificateTemplates,
     ProjectPermissionSub.PkiAlerts,
     ProjectPermissionSub.PkiCollections,
@@ -707,6 +714,17 @@ const buildAdminPermissionRules = () => {
       el
     );
   });
+
+  can(
+    [
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionCertificateActions.Edit,
+      ProjectPermissionCertificateActions.Create,
+      ProjectPermissionCertificateActions.Delete,
+      ProjectPermissionCertificateActions.ReadPrivateKey
+    ],
+    ProjectPermissionSub.Certificates
+  );
 
   can(
     [
@@ -965,10 +983,10 @@ const buildMemberPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionCertificateActions.Edit,
+      ProjectPermissionCertificateActions.Create,
+      ProjectPermissionCertificateActions.Delete
     ],
     ProjectPermissionSub.Certificates
   );
@@ -1041,7 +1059,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionCertificateActions.Read, ProjectPermissionSub.Certificates);
   can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);

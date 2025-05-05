@@ -225,6 +225,8 @@ export enum EventType {
   DELETE_CERT = "delete-cert",
   REVOKE_CERT = "revoke-cert",
   GET_CERT_BODY = "get-cert-body",
+  GET_CERT_PRIVATE_KEY = "get-cert-private-key",
+  GET_CERT_BUNDLE = "get-cert-bundle",
   CREATE_PKI_ALERT = "create-pki-alert",
   GET_PKI_ALERT = "get-pki-alert",
   UPDATE_PKI_ALERT = "update-pki-alert",
@@ -1800,6 +1802,24 @@ interface GetCertBody {
   };
 }
 
+interface GetCertPrivateKey {
+  type: EventType.GET_CERT_PRIVATE_KEY;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface GetCertBundle {
+  type: EventType.GET_CERT_BUNDLE;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
 interface CreatePkiAlert {
   type: EventType.CREATE_PKI_ALERT;
   metadata: {
@@ -2835,6 +2855,8 @@ export type Event =
   | DeleteCert
   | RevokeCert
   | GetCertBody
+  | GetCertPrivateKey
+  | GetCertBundle
   | CreatePkiAlert
   | GetPkiAlert
   | UpdatePkiAlert

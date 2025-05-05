@@ -5,7 +5,10 @@ import { createPrivateKey, createPublicKey, sign, verify } from "crypto";
 import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -19,7 +22,8 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
-import { revocationReasonToCrlCode, splitPemChain } from "./certificate-fns";
+import { getCertificateCredentials, revocationReasonToCrlCode, splitPemChain } from "./certificate-fns";
+import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
@@ -27,13 +31,16 @@ import {
   CertStatus,
   TDeleteCertDTO,
   TGetCertBodyDTO,
+  TGetCertBundleDTO,
   TGetCertDTO,
+  TGetCertPrivateKeyDTO,
   TImportCertDTO,
   TRevokeCertDTO
 } from "./certificate-types";
 
 type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find" | "transaction" | "create">;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
@@ -53,6 +60,7 @@ export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFac
 
 export const certificateServiceFactory = ({
   certificateDAL,
+  certificateSecretDAL,
   certificateBodyDAL,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
@@ -79,10 +87,53 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
 
     return {
       cert
+    };
+  };
+
+  /**
+   * Get certificate private key.
+   */
+  const getCertPrivateKey = async ({
+    serialNumber,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TGetCertPrivateKeyDTO) => {
+    const cert = await certificateDAL.findOne({ serialNumber });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: cert.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionSub.Certificates
+    );
+
+    const { certPrivateKey } = await getCertificateCredentials({
+      certId: cert.id,
+      projectId: cert.projectId,
+      certificateSecretDAL,
+      projectDAL,
+      kmsService
+    });
+
+    return {
+      cert,
+      certPrivateKey
     };
   };
 
@@ -101,7 +152,10 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Delete,
+      ProjectPermissionSub.Certificates
+    );
 
     const deletedCert = await certificateDAL.deleteById(cert.id);
 
@@ -140,7 +194,10 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Delete,
+      ProjectPermissionSub.Certificates
+    );
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
 
@@ -186,7 +243,10 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
@@ -207,8 +267,14 @@ export const certificateServiceFactory = ({
 
     let certificateChain = null;
 
-    // TODO(andrey): Update this to get certificateChain straight from the certificate body after the "store cert chain on cert body" PR gets merged
-    if (cert.caCertId) {
+    // On newer certs the certBody.encryptedCertificateChain column will always exist.
+    // Older certs will have a caCertId which will be used as a fallback mechanism for structuring the chain.
+    if (certBody.encryptedCertificateChain) {
+      const decryptedCertChain = await kmsDecryptor({
+        cipherTextBlob: certBody.encryptedCertificateChain
+      });
+      certificateChain = decryptedCertChain.toString();
+    } else if (cert.caCertId) {
       const { caCert, caCertChain } = await getCaCertChain({
         caCertId: cert.caCertId,
         certificateAuthorityDAL,
@@ -266,7 +332,10 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Create,
+      ProjectPermissionSub.Certificates
+    );
 
     // Check PKI collection
     if (collectionId) {
@@ -361,6 +430,10 @@ export const certificateServiceFactory = ({
       plainText: Buffer.from(certificatePem)
     });
 
+    const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
+      plainText: Buffer.from(privateKeyPem)
+    });
+
     // Extract Key Usage
     const keyUsagesExt = leafCert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
 
@@ -378,6 +451,10 @@ export const certificateServiceFactory = ({
     if (extKeyUsageExt) {
       extendedKeyUsages = extKeyUsageExt.usages.map((ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string]);
     }
+
+    const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
+      plainText: Buffer.from(chainPem)
+    });
 
     const cert = await certificateDAL.transaction(async (tx) => {
       try {
@@ -400,7 +477,16 @@ export const certificateServiceFactory = ({
         await certificateBodyDAL.create(
           {
             certId: txCert.id,
-            encryptedCertificate
+            encryptedCertificate,
+            encryptedCertificateChain
+          },
+          tx
+        );
+
+        await certificateSecretDAL.create(
+          {
+            certId: cert.id,
+            encryptedPrivateKey
           },
           tx
         );
@@ -435,11 +521,94 @@ export const certificateServiceFactory = ({
     };
   };
 
+  /**
+   * Return certificate body and certificate chain for certificate with
+   * serial number [serialNumber]
+   */
+  const getCertBundle = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBundleDTO) => {
+    const cert = await certificateDAL.findOne({ serialNumber });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: cert.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionSub.Certificates
+    );
+
+    const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
+
+    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
+      projectId: cert.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKeyId
+    });
+    const decryptedCert = await kmsDecryptor({
+      cipherTextBlob: certBody.encryptedCertificate
+    });
+
+    const certObj = new x509.X509Certificate(decryptedCert);
+    const certificate = certObj.toString("pem");
+
+    let certificateChain = null;
+
+    // On newer certs the certBody.encryptedCertificateChain column will always exist.
+    // Older certs will have a caCertId which will be used as a fallback mechanism for structuring the chain.
+    if (certBody.encryptedCertificateChain) {
+      const decryptedCertChain = await kmsDecryptor({
+        cipherTextBlob: certBody.encryptedCertificateChain
+      });
+      certificateChain = decryptedCertChain.toString();
+    } else if (cert.caCertId) {
+      const { caCert, caCertChain } = await getCaCertChain({
+        caCertId: cert.caCertId,
+        certificateAuthorityDAL,
+        certificateAuthorityCertDAL,
+        projectDAL,
+        kmsService
+      });
+
+      certificateChain = `${caCert}\n${caCertChain}`.trim();
+    }
+
+    const { certPrivateKey } = await getCertificateCredentials({
+      certId: cert.id,
+      projectId: cert.projectId,
+      certificateSecretDAL,
+      projectDAL,
+      kmsService
+    });
+
+    return {
+      certificate,
+      certificateChain,
+      privateKey: certPrivateKey,
+      serialNumber,
+      cert
+    };
+  };
+
   return {
     getCert,
+    getCertPrivateKey,
     deleteCert,
     revokeCert,
     getCertBody,
-    importCert
+    importCert,
+    getCertBundle
   };
 };
