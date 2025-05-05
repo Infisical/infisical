@@ -22,6 +22,12 @@ import {
   TValidateAzureAppConfigurationConnectionCredentialsSchema
 } from "./azure-app-configuration";
 import {
+  TAzureClientSecretsConnection,
+  TAzureClientSecretsConnectionConfig,
+  TAzureClientSecretsConnectionInput,
+  TValidateAzureClientSecretsConnectionCredentialsSchema
+} from "./azure-client-secrets";
+import {
   TAzureKeyVaultConnection,
   TAzureKeyVaultConnectionConfig,
   TAzureKeyVaultConnectionInput,
@@ -51,6 +57,12 @@ import {
   TGitHubConnectionInput,
   TValidateGitHubConnectionCredentialsSchema
 } from "./github";
+import {
+  THCVaultConnection,
+  THCVaultConnectionConfig,
+  THCVaultConnectionInput,
+  TValidateHCVaultConnectionCredentialsSchema
+} from "./hc-vault";
 import {
   THumanitecConnection,
   THumanitecConnectionConfig,
@@ -107,8 +119,10 @@ export type TAppConnection = { id: string } & (
   | TPostgresConnection
   | TMsSqlConnection
   | TCamundaConnection
+  | TAzureClientSecretsConnection
   | TWindmillConnection
   | TAuth0Connection
+  | THCVaultConnection
   | TLdapConnection
   | TTeamCityConnection
 );
@@ -130,8 +144,10 @@ export type TAppConnectionInput = { id: string } & (
   | TPostgresConnectionInput
   | TMsSqlConnectionInput
   | TCamundaConnectionInput
+  | TAzureClientSecretsConnectionInput
   | TWindmillConnectionInput
   | TAuth0ConnectionInput
+  | THCVaultConnectionInput
   | TLdapConnectionInput
   | TTeamCityConnectionInput
 );
@@ -153,14 +169,16 @@ export type TAppConnectionConfig =
   | TGcpConnectionConfig
   | TAzureKeyVaultConnectionConfig
   | TAzureAppConfigurationConnectionConfig
+  | TAzureClientSecretsConnectionConfig
   | TDatabricksConnectionConfig
   | THumanitecConnectionConfig
   | TTerraformCloudConnectionConfig
-  | TVercelConnectionConfig
   | TSqlConnectionConfig
   | TCamundaConnectionConfig
+  | TVercelConnectionConfig
   | TWindmillConnectionConfig
   | TAuth0ConnectionConfig
+  | THCVaultConnectionConfig
   | TLdapConnectionConfig
   | TTeamCityConnectionConfig;
 
@@ -170,15 +188,17 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateGcpConnectionCredentialsSchema
   | TValidateAzureKeyVaultConnectionCredentialsSchema
   | TValidateAzureAppConfigurationConnectionCredentialsSchema
+  | TValidateAzureClientSecretsConnectionCredentialsSchema
   | TValidateDatabricksConnectionCredentialsSchema
   | TValidateHumanitecConnectionCredentialsSchema
   | TValidatePostgresConnectionCredentialsSchema
   | TValidateMsSqlConnectionCredentialsSchema
   | TValidateCamundaConnectionCredentialsSchema
-  | TValidateTerraformCloudConnectionCredentialsSchema
   | TValidateVercelConnectionCredentialsSchema
+  | TValidateTerraformCloudConnectionCredentialsSchema
   | TValidateWindmillConnectionCredentialsSchema
   | TValidateAuth0ConnectionCredentialsSchema
+  | TValidateHCVaultConnectionCredentialsSchema
   | TValidateLdapConnectionCredentialsSchema
   | TValidateTeamCityConnectionCredentialsSchema;
 

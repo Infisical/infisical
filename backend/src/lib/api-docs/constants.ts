@@ -48,6 +48,8 @@ export enum ApiDocsTags {
   SshCertificates = "SSH Certificates",
   SshCertificateAuthorities = "SSH Certificate Authorities",
   SshCertificateTemplates = "SSH Certificate Templates",
+  SshHosts = "SSH Hosts",
+  SshHostGroups = "SSH Host Groups",
   KmsKeys = "KMS Keys",
   KmsEncryption = "KMS Encryption",
   KmsSigning = "KMS Signing"
@@ -567,6 +569,9 @@ export const PROJECTS = {
   },
   LIST_SSH_HOSTS: {
     projectId: "The ID of the project to list SSH hosts for."
+  },
+  LIST_SSH_HOST_GROUPS: {
+    projectId: "The ID of the project to list SSH host groups for."
   },
   LIST_SSH_CERTIFICATES: {
     projectId: "The ID of the project to list SSH certificates for.",
@@ -1382,6 +1387,40 @@ export const SSH_CERTIFICATE_TEMPLATES = {
   }
 };
 
+export const SSH_HOST_GROUPS = {
+  GET: {
+    sshHostGroupId: "The ID of the SSH host group to get.",
+    filter: "The filter to apply to the SSH hosts in the SSH host group."
+  },
+  CREATE: {
+    projectId: "The ID of the project to create the SSH host group in.",
+    name: "The name of the SSH host group.",
+    loginMappings:
+      "A list of default login mappings to include on each host in the SSH host group. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project."
+  },
+  UPDATE: {
+    sshHostGroupId: "The ID of the SSH host group to update.",
+    name: "The name of the SSH host group to update to.",
+    loginMappings:
+      "A list of default login mappings to include on each host in the SSH host group. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project."
+  },
+  DELETE: {
+    sshHostGroupId: "The ID of the SSH host group to delete."
+  },
+  LIST_HOSTS: {
+    offset: "The offset to start from. If you enter 10, it will start from the 10th host",
+    limit: "The number of hosts to return."
+  },
+  ADD_HOST: {
+    sshHostGroupId: "The ID of the SSH host group to add the host to.",
+    hostId: "The ID of the SSH host to add to the SSH host group."
+  },
+  DELETE_HOST: {
+    sshHostGroupId: "The ID of the SSH host group to delete the host from.",
+    hostId: "The ID of the SSH host to delete from the SSH host group."
+  }
+};
+
 export const SSH_HOSTS = {
   GET: {
     sshHostId: "The ID of the SSH host to get."
@@ -1863,6 +1902,13 @@ export const AppConnections = {
       instanceUrl: "The Windmill instance URL to connect with (defaults to https://app.windmill.dev).",
       accessToken: "The access token to use to connect with Windmill."
     },
+    HC_VAULT: {
+      instanceUrl: "The Hashicrop Vault instance URL to connect with.",
+      namespace: "The Hashicrop Vault namespace to connect with.",
+      accessToken: "The access token used to connect with Hashicorp Vault.",
+      roleId: "The Role ID used to connect with Hashicorp Vault.",
+      secretId: "The Secret ID used to connect with Hashicorp Vault."
+    },
     LDAP: {
       provider: "The type of LDAP provider. Determines provider-specific behaviors.",
       url: "The LDAP/LDAPS URL to connect to (e.g., 'ldap://domain-or-ip:389' or 'ldaps://domain-or-ip:636').",
@@ -1876,6 +1922,10 @@ export const AppConnections = {
     TEAMCITY: {
       instanceUrl: "The TeamCity instance URL to connect with.",
       accessToken: "The access token to use to connect with TeamCity."
+    },
+    AZURE_CLIENT_SECRETS: {
+      code: "The OAuth code to use to connect with Azure Client Secrets.",
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets."
     }
   }
 };
@@ -2016,6 +2066,10 @@ export const SecretSyncs = {
       workspace: "The Windmill workspace to sync secrets to.",
       path: "The Windmill workspace path to sync secrets to."
     },
+    HC_VAULT: {
+      mount: "The Hashicorp Vault Secrets Engine Mount to sync secrets to.",
+      path: "The Hashicorp Vault path to sync secrets to."
+    },
     TEAMCITY: {
       project: "The TeamCity project to sync secrets to.",
       buildConfig: "The TeamCity build configuration to sync secrets to."
@@ -2084,6 +2138,11 @@ export const SecretRotations = {
     AUTH0_CLIENT_SECRET: {
       clientId: "The client ID of the Auth0 Application to rotate the client secret for."
     },
+    AZURE_CLIENT_SECRET: {
+      objectId: "The ID of the Azure Application to rotate the client secret for.",
+      appName: "The name of the Azure Application to rotate the client secret for.",
+      clientId: "The client ID of the Azure Application to rotate the client secret for."
+    },
     LDAP_PASSWORD: {
       dn: "The Distinguished Name (DN) of the principal to rotate the password for."
     },
@@ -2111,6 +2170,10 @@ export const SecretRotations = {
       password: "The name of the secret that the generated password will be mapped to."
     },
     AUTH0_CLIENT_SECRET: {
+      clientId: "The name of the secret that the client ID will be mapped to.",
+      clientSecret: "The name of the secret that the rotated client secret will be mapped to."
+    },
+    AZURE_CLIENT_SECRET: {
       clientId: "The name of the secret that the client ID will be mapped to.",
       clientSecret: "The name of the secret that the rotated client secret will be mapped to."
     },

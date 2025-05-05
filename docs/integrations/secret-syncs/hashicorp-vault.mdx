@@ -1,0 +1,160 @@
+---
+title: "Hashicorp Vault Sync"
+description: "Learn how to configure a Hashicorp Vault Sync for Infisical."
+---
+
+**Prerequisites:**
+    - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
+    - Create a [Hashicorp Vault Connection](/integrations/app-connections/hashicorp-vault)
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Add Sync">
+                Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+
+                ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+            </Step>
+            <Step title="Select Hashicorp Vault">
+                ![Select Hashicorp Vault](/images/secret-syncs/hashicorp-vault/select-option.png)
+            </Step>
+            <Step title="Configure Source">
+                Configure the **Source** from where secrets should be retrieved, then click **Next**.
+
+                ![Configure Source](/images/secret-syncs/hashicorp-vault/sync-source.png)
+
+                - **Environment**: The project environment to retrieve secrets from.
+                - **Secret Path**: The folder path to retrieve secrets from.
+
+                <Tip>
+                    If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+                </Tip>
+            </Step>
+            <Step title="Configure Destination">
+                Configure the **Destination** to where secrets should be deployed.
+
+                ![Configure Destination](/images/secret-syncs/hashicorp-vault/sync-destination.png)
+
+                - **Hashicorp Vault Connection**: The Vault Connection to authenticate with.
+                - **Secrets Engine Mount**: The secrets engine to sync secrets with (e.g., 'secret', 'kv').
+                - **Path**: The specific path within the secrets engine where secrets will be stored.
+
+                After configuring these parameters, click the **Next** button to continue to the Sync Options step.
+
+                <Note>
+                    If the **path** you provide does not exist in Vault, it will be created.
+                </Note>
+            </Step>
+            <Step title="Configure Sync Options">
+                Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
+
+                ![Configure Options](/images/secret-syncs/hashicorp-vault/sync-options.png)
+
+                - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
+                    - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
+                    - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Hashicorp Vault when keys conflict.
+                    - **Import Secrets (Prioritize Hashicorp Vault)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Hashicorp Vault over Infisical when keys conflict.
+                - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+                - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
+            </Step>
+            <Step title="Configure Details">
+                Configure the **Details** of your Hashicorp Vault Sync, then click **Next**.
+
+                ![Configure Details](/images/secret-syncs/hashicorp-vault/sync-details.png)
+
+                - **Name**: The name of your sync. Must be slug-friendly.
+                - **Description**: An optional description for your sync.
+            </Step>
+            <Step title="Review Configuration">
+                Review your Hashicorp Vault Sync configuration, then click **Create Sync**.
+
+                ![Confirm Configuration](/images/secret-syncs/hashicorp-vault/sync-review.png)
+            </Step>
+            <Step title="Sync Created">
+                If enabled, your Hashicorp Vault Sync will begin syncing your secrets to the destination endpoint.
+
+                ![Sync Created](/images/secret-syncs/hashicorp-vault/sync-created.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create an **Hashicorp Vault Sync**, make an API request to the [Create Hashicorp Vault Sync](/api-reference/endpoints/secret-syncs/hashicorp-vault/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/secret-syncs/hashicorp-vault \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-vault-sync",
+                    "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "description": "an example sync",
+                    "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "environment": "dev",
+                    "secretPath": "/",
+                    "isEnabled": true,
+                    "syncOptions": {
+                        "initialSyncBehavior": "overwrite-destination"
+                    },
+                    "destinationConfig": {
+                        "mount": "secret",
+                        "path": "dev/nested"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-vault-sync",
+                "description": "an example sync",
+                "isEnabled": true,
+                "version": 1,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "syncStatus": "succeeded",
+                "lastSyncJobId": "123",
+                "lastSyncMessage": null,
+                "lastSyncedAt": "2023-11-07T05:31:56Z",
+                "importStatus": null,
+                "lastImportJobId": null,
+                "lastImportMessage": null,
+                "lastImportedAt": null,
+                "removeStatus": null,
+                "lastRemoveJobId": null,
+                "lastRemoveMessage": null,
+                "lastRemovedAt": null,
+                "syncOptions": {
+                    "initialSyncBehavior": "overwrite-destination"
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connection": {
+                    "app": "hashicorp-vault",
+                    "name": "my-vault-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/"
+                },
+                "destination": "hashicorp-vault",
+                "destinationConfig": {
+                    "mount": "secret",
+                    "path": "dev/nested"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

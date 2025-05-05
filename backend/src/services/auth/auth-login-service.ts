@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
-import { OrgMembershipRole, TUsers, UserDeviceSchema } from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipStatus, TableName, TUsers, UserDeviceSchema } from "@app/db/schemas";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
@@ -12,7 +12,7 @@ import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -20,6 +20,8 @@ import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TOrgDALFactory } from "../org/org-dal";
+import { getDefaultOrgMembershipRole } from "../org/org-role-fns";
+import { TOrgMembershipDALFactory } from "../org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
@@ -48,6 +50,7 @@ type TAuthLoginServiceFactoryDep = {
   smtpService: TSmtpService;
   totpService: Pick<TTotpServiceFactory, "verifyUserTotp" | "verifyWithUserRecoveryCode">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  orgMembershipDAL: TOrgMembershipDALFactory;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
@@ -56,6 +59,7 @@ export const authLoginServiceFactory = ({
   tokenService,
   smtpService,
   orgDAL,
+  orgMembershipDAL,
   totpService,
   auditLogService
 }: TAuthLoginServiceFactoryDep) => {
@@ -143,6 +147,17 @@ export const authLoginServiceFactory = ({
     );
     if (!tokenSession) throw new Error("Failed to create token");
 
+    let tokenSessionExpiresIn: string | number = cfg.JWT_AUTH_LIFETIME;
+    let refreshTokenExpiresIn: string | number = cfg.JWT_REFRESH_LIFETIME;
+
+    if (organizationId) {
+      const org = await orgDAL.findById(organizationId);
+      if (org && org.userTokenExpiration) {
+        tokenSessionExpiresIn = getMinExpiresIn(cfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
+        refreshTokenExpiresIn = org.userTokenExpiration;
+      }
+    }
+
     const accessToken = jwt.sign(
       {
         authMethod,
@@ -155,7 +170,7 @@ export const authLoginServiceFactory = ({
         mfaMethod
       },
       cfg.AUTH_SECRET,
-      { expiresIn: cfg.JWT_AUTH_LIFETIME }
+      { expiresIn: tokenSessionExpiresIn }
     );
 
     const refreshToken = jwt.sign(
@@ -170,7 +185,7 @@ export const authLoginServiceFactory = ({
         mfaMethod
       },
       cfg.AUTH_SECRET,
-      { expiresIn: cfg.JWT_REFRESH_LIFETIME }
+      { expiresIn: refreshTokenExpiresIn }
     );
 
     return { access: accessToken, refresh: refreshToken };
@@ -386,8 +401,8 @@ export const authLoginServiceFactory = ({
     }
 
     const shouldCheckMfa = selectedOrg.enforceMfa || user.isMfaEnabled;
-    const orgMfaMethod = selectedOrg.enforceMfa ? selectedOrg.selectedMfaMethod ?? MfaMethod.EMAIL : undefined;
-    const userMfaMethod = user.isMfaEnabled ? user.selectedMfaMethod ?? MfaMethod.EMAIL : undefined;
+    const orgMfaMethod = selectedOrg.enforceMfa ? (selectedOrg.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
+    const userMfaMethod = user.isMfaEnabled ? (user.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
     const mfaMethod = orgMfaMethod ?? userMfaMethod;
 
     if (shouldCheckMfa && (!decodedToken.isMfaVerified || decodedToken.mfaMethod !== mfaMethod)) {
@@ -558,9 +573,9 @@ export const authLoginServiceFactory = ({
   }: TVerifyMfaTokenDTO) => {
     const appCfg = getConfig();
     const user = await userDAL.findById(userId);
-    enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
     try {
+      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
       if (mfaMethod === MfaMethod.EMAIL) {
         await tokenService.validateTokenForUser({
           type: TokenType.TOKEN_EMAIL_MFA,
@@ -708,6 +723,35 @@ export const authLoginServiceFactory = ({
         authMethods: [authMethod],
         isGhost: false
       });
+
+      if (authMethod === AuthMethod.GITHUB && serverCfg.defaultAuthOrgId && !appCfg.isCloud) {
+        let orgId = "";
+        const defaultOrg = await orgDAL.findOrgById(serverCfg.defaultAuthOrgId);
+        if (!defaultOrg) {
+          throw new BadRequestError({
+            message: `Failed to find default organization with ID ${serverCfg.defaultAuthOrgId}`
+          });
+        }
+        orgId = defaultOrg.id;
+        const [orgMembership] = await orgDAL.findMembership({
+          [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
+          [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+        });
+
+        if (!orgMembership) {
+          const { role, roleId } = await getDefaultOrgMembershipRole(defaultOrg.defaultMembershipRole);
+
+          await orgMembershipDAL.create({
+            userId: user.id,
+            inviteEmail: email,
+            orgId,
+            role,
+            roleId,
+            status: OrgMembershipStatus.Accepted,
+            isActive: true
+          });
+        }
+      }
     } else {
       const isLinkingRequired = !user?.authMethods?.includes(authMethod);
       if (isLinkingRequired) {

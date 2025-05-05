@@ -18,6 +18,7 @@ import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 import { GitHubSyncDestinationSection } from "./GitHubSyncDestinationSection";
+import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
 import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection";
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
@@ -35,7 +36,7 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
   const app = APP_CONNECTION_MAP[connection.app].name;
 
   let DestinationComponents: ReactNode;
-  switch (secretSync.destination) {
+  switch (destination) {
     case SecretSync.AWSParameterStore:
       DestinationComponents = <AwsParameterStoreSyncDestinationSection secretSync={secretSync} />;
       break;
@@ -73,6 +74,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.Windmill:
       DestinationComponents = <WindmillSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.HCVault:
+      DestinationComponents = <HCVaultSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.TeamCity:
       DestinationComponents = <TeamCitySyncDestinationSection secretSync={secretSync} />;

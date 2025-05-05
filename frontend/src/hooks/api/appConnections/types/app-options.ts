@@ -31,6 +31,11 @@ export type TAzureAppConfigurationConnectionOption = TAppConnectionOptionBase & 
   oauthClientId?: string;
 };
 
+export type TAzureClientSecretsConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.AzureClientSecrets;
+  oauthClientId?: string;
+};
+
 export type TDatabricksConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Databricks;
 };
@@ -67,6 +72,10 @@ export type TAuth0ConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Auth0;
 };
 
+export type THCVaultConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.HCVault;
+};
+
 export type TLdapConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.LDAP;
 };
@@ -81,6 +90,7 @@ export type TAppConnectionOption =
   | TGcpConnectionOption
   | TAzureAppConfigurationConnectionOption
   | TAzureKeyVaultConnectionOption
+  | TAzureClientSecretsConnectionOption
   | TDatabricksConnectionOption
   | THumanitecConnectionOption
   | TTerraformCloudConnectionOption
@@ -90,6 +100,7 @@ export type TAppConnectionOption =
   | TCamundaConnectionOption
   | TWindmillConnectionOption
   | TAuth0ConnectionOption
+  | THCVaultConnectionOption
   | TTeamCityConnectionOption;
 
 export type TAppConnectionOptionMap = {
@@ -98,6 +109,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.GCP]: TGcpConnectionOption;
   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnectionOption;
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnectionOption;
+  [AppConnection.AzureClientSecrets]: TAzureClientSecretsConnectionOption;
   [AppConnection.Databricks]: TDatabricksConnectionOption;
   [AppConnection.Humanitec]: THumanitecConnectionOption;
   [AppConnection.TerraformCloud]: TTerraformCloudConnectionOption;
@@ -107,6 +119,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Camunda]: TCamundaConnectionOption;
   [AppConnection.Windmill]: TWindmillConnectionOption;
   [AppConnection.Auth0]: TAuth0ConnectionOption;
+  [AppConnection.HCVault]: THCVaultConnectionOption;
   [AppConnection.LDAP]: TLdapConnectionOption;
   [AppConnection.TeamCity]: TTeamCityConnectionOption;
 };

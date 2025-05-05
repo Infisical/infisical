@@ -2,8 +2,8 @@
 import path from "node:path";
 
 import fs from "fs/promises";
-import { replaceTscAliasPaths } from "tsc-alias";
-import { defineConfig } from "tsup";
+import {replaceTscAliasPaths} from "tsc-alias";
+import {defineConfig} from "tsup";
 
 // Instead of using tsx or tsc for building, consider using tsup.
 // TSX serves as an alternative to Node.js, allowing you to build directly on the Node.js runtime.
@@ -50,7 +50,17 @@ export default defineConfig({
               const isFile = await fs
                 .stat(`${absPath}.ts`)
                 .then((el) => el.isFile)
-                .catch((err) => err.code === "ENOTDIR");
+                  .catch(async (err) => {
+                    if (err.code === "ENOTDIR") {
+                      return true;
+                    }
+
+                    // If .ts file doesn't exist, try checking for .tsx file
+                    return fs
+                        .stat(`${absPath}.tsx`)
+                        .then((el) => el.isFile)
+                        .catch((err) => err.code === "ENOTDIR");
+                  });
 
               return {
                 path: isFile ? `${args.path}.mjs` : `${args.path}/index.mjs`,

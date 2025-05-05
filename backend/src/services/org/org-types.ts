@@ -74,6 +74,7 @@ export type TUpdateOrgDTO = {
     selectedMfaMethod: MfaMethod;
     allowSecretSharingOutsideOrganization: boolean;
     bypassOrgAuthEnabled: boolean;
+    userTokenExpiration: string;
   }>;
 } & TOrgPermission;
 

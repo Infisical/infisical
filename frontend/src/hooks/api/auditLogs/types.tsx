@@ -1,6 +1,7 @@
 import { CaStatus } from "../ca";
 import { IdentityTrustedIp } from "../identities/types";
 import { PkiItemType } from "../pkiCollections/constants";
+import { WorkflowIntegration } from "../workflowIntegrations/types";
 import { ActorType, EventType, UserAgentType } from "./enums";
 
 export type TGetAuditLogsFilter = {
@@ -804,11 +805,12 @@ interface GetCertificateTemplateEstConfig {
   };
 }
 
-interface UpdateProjectSlackConfig {
-  type: EventType.UPDATE_PROJECT_SLACK_CONFIG;
+interface UpdateProjectWorkflowIntegrationConfig {
+  type: EventType.UPDATE_PROJECT_WORKFLOW_INTEGRATION_CONFIG;
   metadata: {
     id: string;
-    slackIntegrationId: string;
+    integrationId: string;
+    integration: WorkflowIntegration;
     isAccessRequestNotificationEnabled: boolean;
     accessRequestChannels: string;
     isSecretRequestNotificationEnabled: boolean;
@@ -816,10 +818,11 @@ interface UpdateProjectSlackConfig {
   };
 }
 
-interface GetProjectSlackConfig {
-  type: EventType.GET_PROJECT_SLACK_CONFIG;
+interface GetProjectWorkflowIntegrationConfig {
+  type: EventType.GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG;
   metadata: {
     id: string;
+    integration: WorkflowIntegration;
   };
 }
 
@@ -918,8 +921,8 @@ export type Event =
   | UpdateCertificateTemplateEstConfig
   | CreateCertificateTemplateEstConfig
   | GetCertificateTemplateEstConfig
-  | UpdateProjectSlackConfig
-  | GetProjectSlackConfig
+  | UpdateProjectWorkflowIntegrationConfig
+  | GetProjectWorkflowIntegrationConfig
   | IntegrationSyncedEvent;
 
 export type AuditLog = {

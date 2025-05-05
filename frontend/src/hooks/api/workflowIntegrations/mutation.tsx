@@ -5,8 +5,13 @@ import { apiRequest } from "@app/config/request";
 import { workspaceKeys } from "../workspace/query-keys";
 import { workflowIntegrationKeys } from "./queries";
 import {
+  TCheckMicrosoftTeamsIntegrationInstallationStatusDTO,
+  TCreateMicrosoftTeamsIntegrationDTO,
+  TDeleteMicrosoftTeamsIntegrationDTO,
+  TDeleteProjectWorkflowIntegrationDTO,
   TDeleteSlackIntegrationDTO,
-  TUpdateProjectSlackConfigDTO,
+  TUpdateMicrosoftTeamsIntegrationDTO,
+  TUpdateProjectWorkflowIntegrationConfigDTO,
   TUpdateSlackIntegrationDTO
 } from "./types";
 
@@ -28,6 +33,47 @@ export const useUpdateSlackIntegration = () => {
   });
 };
 
+export const useUpdateMicrosoftTeamsIntegration = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<object, object, TUpdateMicrosoftTeamsIntegrationDTO>({
+    mutationFn: async (dto) => {
+      const { data } = await apiRequest.patch(
+        `/api/v1/workflow-integrations/microsoft-teams/${dto.id}`,
+        dto
+      );
+
+      return data;
+    },
+    onSuccess: (_, { orgId, id }) => {
+      queryClient.invalidateQueries({
+        queryKey: workflowIntegrationKeys.getMicrosoftTeamsIntegration(id)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workflowIntegrationKeys.getMicrosoftTeamsIntegrations(orgId)
+      });
+      queryClient.invalidateQueries({ queryKey: workflowIntegrationKeys.getIntegrations(orgId) });
+    }
+  });
+};
+export const useCreateMicrosoftTeamsIntegration = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<object, object, TCreateMicrosoftTeamsIntegrationDTO>({
+    mutationFn: async (dto) => {
+      const { data } = await apiRequest.post("/api/v1/workflow-integrations/microsoft-teams", dto);
+
+      return data;
+    },
+    onSuccess: (_, { orgId }) => {
+      queryClient.invalidateQueries({
+        queryKey: workflowIntegrationKeys.getMicrosoftTeamsIntegrations(orgId)
+      });
+      queryClient.invalidateQueries({ queryKey: workflowIntegrationKeys.getIntegrations(orgId) });
+    }
+  });
+};
+
 export const useDeleteSlackIntegration = () => {
   const queryClient = useQueryClient();
 
@@ -44,21 +90,86 @@ export const useDeleteSlackIntegration = () => {
   });
 };
 
-export const useUpdateProjectSlackConfig = () => {
+export const useDeleteMicrosoftTeamsIntegration = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<object, object, TDeleteMicrosoftTeamsIntegrationDTO>({
+    mutationFn: async (dto) => {
+      const { data } = await apiRequest.delete(
+        `/api/v1/workflow-integrations/microsoft-teams/${dto.id}`
+      );
+
+      return data;
+    },
+    onSuccess: (_, { orgId, id }) => {
+      queryClient.invalidateQueries({
+        queryKey: workflowIntegrationKeys.getMicrosoftTeamsIntegration(id)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workflowIntegrationKeys.getMicrosoftTeamsIntegrations(orgId)
+      });
+      queryClient.invalidateQueries({ queryKey: workflowIntegrationKeys.getIntegrations(orgId) });
+    }
+  });
+};
+
+export const useUpdateProjectWorkflowIntegrationConfig = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (dto: TUpdateProjectSlackConfigDTO) => {
+    mutationFn: async (dto: TUpdateProjectWorkflowIntegrationConfigDTO) => {
       const { data } = await apiRequest.put(
-        `/api/v1/workspace/${dto.workspaceId}/slack-config`,
+        `/api/v1/workspace/${dto.workspaceId}/workflow-integration`,
         dto
       );
 
       return data;
     },
-    onSuccess: (_, { workspaceId }) => {
+    onSuccess: (_, { workspaceId, integration }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceSlackConfig(workspaceId)
+        queryKey: workspaceKeys.getWorkspaceWorkflowIntegrationConfig(workspaceId, integration)
       });
+    }
+  });
+};
+
+export const useDeleteProjectWorkflowIntegration = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (dto: TDeleteProjectWorkflowIntegrationDTO) => {
+      const { data } = await apiRequest.delete(
+        `/api/v1/workspace/${dto.projectId}/workflow-integration/${dto.integration}/${dto.integrationId}`
+      );
+
+      return data;
+    },
+    onSuccess: (_, { projectId, integration }) => {
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceWorkflowIntegrationConfig(projectId, integration)
+      });
+    }
+  });
+};
+
+export const useCheckMicrosoftTeamsIntegrationInstallationStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (dto: TCheckMicrosoftTeamsIntegrationInstallationStatusDTO) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/workflow-integrations/microsoft-teams/${dto.workflowIntegrationId}/installation-status`
+      );
+
+      return data;
+    },
+    onSuccess: (_, { workflowIntegrationId, orgId }) => {
+      queryClient.invalidateQueries({
+        queryKey: workflowIntegrationKeys.getMicrosoftTeamsIntegration(workflowIntegrationId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workflowIntegrationKeys.getMicrosoftTeamsIntegrations(orgId)
+      });
+      queryClient.invalidateQueries({ queryKey: workflowIntegrationKeys.getIntegrations(orgId) });
     }
   });
 };

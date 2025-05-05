@@ -23,6 +23,7 @@ import { fetchGithubEmails, fetchGithubUser } from "@app/lib/requests/github";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { OrgAuthMethod } from "@app/services/org/org-types";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 export const registerSsoRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -342,8 +343,12 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           }`
         );
       }
+
+      const serverCfg = await getServerCfg();
       return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
+        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}${
+          serverCfg.defaultAuthOrgId && !appCfg.isCloud ? `&defaultOrgAllowed=true` : ""
+        }`
       );
     }
   });

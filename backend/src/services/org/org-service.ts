@@ -170,8 +170,12 @@ export const orgServiceFactory = ({
     actorOrgId: string | undefined
   ) => {
     await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
+    const appCfg = getConfig();
     const org = await orgDAL.findOrgById(orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+    if (!org.userTokenExpiration) {
+      return { ...org, userTokenExpiration: appCfg.JWT_REFRESH_LIFETIME };
+    }
     return org;
   };
   /*
@@ -350,7 +354,8 @@ export const orgServiceFactory = ({
       enforceMfa,
       selectedMfaMethod,
       allowSecretSharingOutsideOrganization,
-      bypassOrgAuthEnabled
+      bypassOrgAuthEnabled,
+      userTokenExpiration
     }
   }: TUpdateOrgDTO) => {
     const appCfg = getConfig();
@@ -451,7 +456,8 @@ export const orgServiceFactory = ({
       enforceMfa,
       selectedMfaMethod,
       allowSecretSharingOutsideOrganization,
-      bypassOrgAuthEnabled
+      bypassOrgAuthEnabled,
+      userTokenExpiration
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;
@@ -692,6 +698,8 @@ export const orgServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
 
+    const invitingUser = await userDAL.findOne({ id: actorId });
+
     const org = await orgDAL.findOrgById(orgId);
 
     const [inviteeOrgMembership] = await orgDAL.findMembership({
@@ -725,8 +733,8 @@ export const orgServiceFactory = ({
       subjectLine: "Infisical organization invitation",
       recipients: [inviteeOrgMembership.email as string],
       substitutions: {
-        inviterFirstName: inviteeOrgMembership.firstName,
-        inviterUsername: inviteeOrgMembership.email,
+        inviterFirstName: invitingUser.firstName,
+        inviterUsername: invitingUser.email,
         organizationName: org?.name,
         email: inviteeOrgMembership.email,
         organizationId: org?.id.toString(),
@@ -754,6 +762,8 @@ export const orgServiceFactory = ({
     const appCfg = getConfig();
 
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+
+    const invitingUser = await userDAL.findOne({ id: actorId });
 
     const org = await orgDAL.findOrgById(orgId);
 
@@ -1173,8 +1183,8 @@ export const orgServiceFactory = ({
           subjectLine: "Infisical organization invitation",
           recipients: [el.email],
           substitutions: {
-            inviterFirstName: el.firstName,
-            inviterUsername: el.email,
+            inviterFirstName: invitingUser.firstName,
+            inviterUsername: invitingUser.email,
             organizationName: org?.name,
             email: el.email,
             organizationId: org?.id.toString(),
