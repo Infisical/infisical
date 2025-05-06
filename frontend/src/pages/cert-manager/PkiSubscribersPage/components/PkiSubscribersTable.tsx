@@ -1,5 +1,6 @@
 import { faEllipsis, faPencil, faServer, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -25,6 +26,7 @@ import {
   useWorkspace
 } from "@app/context";
 import { useListWorkspacePkiSubscribers } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -35,6 +37,7 @@ type Props = {
 };
 
 export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
+  const navigate = useNavigate();
   const { currentWorkspace } = useWorkspace();
   const { data, isPending } = useListWorkspacePkiSubscribers(currentWorkspace?.id || "");
   return (
@@ -55,7 +58,20 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
               data.length > 0 &&
               data.map((subscriber) => {
                 return (
-                  <Tr className="h-10" key={`pki-subscriber-${subscriber.id}`}>
+                  <Tr
+                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                    key={`pki-subscriber-${subscriber.id}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigate({
+                        to: `/${ProjectType.CertificateManager}/$projectId/subscribers/$subscriberId` as const,
+                        params: {
+                          projectId: currentWorkspace.id,
+                          subscriberId: subscriber.id
+                        }
+                      });
+                    }}
+                  >
                     <Td>{subscriber.name}</Td>
                     <Td>{subscriber.commonName}</Td>
                     <Td className="text-right align-middle">

@@ -37,4 +37,5 @@ export type TIssuePkiSubscriberCertDTO = {
 
 export type TSignPkiSubscriberCertDTO = {
   subscriberId: string;
+  csr: string;
 } & Omit<TProjectPermission, "projectId">;

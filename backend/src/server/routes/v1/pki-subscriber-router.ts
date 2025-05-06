@@ -5,11 +5,13 @@ import { ApiDocsTags, PKI_SUBSCRIBERS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { validateAltNameField } from "@app/services/certificate-authority/certificate-authority-validators";
 import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -31,7 +33,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const subscriber = await server.services.pkiSubscriber.getPkiSubscriberById({
+      const subscriber = await server.services.pkiSubscriber.getSubscriberById({
         subscriberId: req.params.subscriberId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -103,7 +105,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const subscriber = await server.services.pkiSubscriber.createPkiSubscriber({
+      const subscriber = await server.services.pkiSubscriber.createSubscriber({
         ...req.body,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -185,7 +187,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      const subscriber = await server.services.pkiSubscriber.updatePkiSubscriber({
+      const subscriber = await server.services.pkiSubscriber.updateSubscriber({
         subscriberId: req.params.subscriberId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -235,7 +237,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const subscriber = await server.services.pkiSubscriber.deletePkiSubscriber({
+      const subscriber = await server.services.pkiSubscriber.deleteSubscriber({
         subscriberId: req.params.subscriberId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -264,7 +266,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiSubscribers],
@@ -283,37 +285,43 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      // TODO: reuse issueCertFromCa fn (or not since we are adding support for external CAs?)
-      // const { serialNumber, signedPublicKey, privateKey, publicKey, keyAlgorithm, host, principals } =
-      //   await server.services.pkiSubscriber.issuePkiSubscriberCertificate({
-      //     subscriberId: req.params.subscriberId,
-      //     actor: req.permission.type,
-      //     actorId: req.permission.id,
-      //     actorAuthMethod: req.permission.authMethod,
-      //     actorOrgId: req.permission.orgId
-      //   });
+      const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber, subscriber } =
+        await server.services.pkiSubscriber.issueSubscriberCert({
+          subscriberId: req.params.subscriberId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
         event: {
-          type: EventType.ISSUE_SSH_HOST_USER_CERT,
+          type: EventType.ISSUE_PKI_SUBSCRIBER_CERT,
           metadata: {
-            sshHostId: req.params.sshHostId,
-            hostname: host.hostname,
-            loginUser: req.body.loginUser,
-            principals,
-            ttl: host.userCertTtl
+            subscriberId: subscriber.id,
+            serialNumber
           }
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.IssueCert,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          subscriberId: subscriber.id,
+          commonName: subscriber.commonName,
+          ...req.auditLogInfo
+        }
+      });
+
       return {
-        serialNumber,
-        signedKey: signedPublicKey,
+        certificate,
+        certificateChain,
+        issuingCaCertificate,
         privateKey,
-        publicKey,
-        keyAlgorithm
+        serialNumber
       };
     }
   });
@@ -324,7 +332,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiSubscribers],
@@ -333,7 +341,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         subscriberId: z.string().describe(PKI_SUBSCRIBERS.ISSUE_CERT.subscriberId)
       }),
       body: z.object({
-        csr: z.string().trim().min(1).
+        csr: z.string().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -345,36 +353,43 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      // TODO: reuse issueCertFromCa fn (or not since we are adding support for external CAs?)
-      const { serialNumber, signedPublicKey, privateKey, publicKey, keyAlgorithm, host, principals } =
-        await server.services.pkiSubscriber.issuePkiSubscriberCertificate({
+      const { certificate, certificateChain, issuingCaCertificate, serialNumber, subscriber } =
+        await server.services.pkiSubscriber.signSubscriberCert({
           subscriberId: req.params.subscriberId,
+          csr: req.body.csr,
           actor: req.permission.type,
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId
         });
 
-      // await server.services.auditLog.createAuditLog({
-      //   ...req.auditLogInfo,
-      //   orgId: req.permission.orgId,
-      //   event: {
-      //     type: EventType.ISSUE_SSH_HOST_USER_CERT,
-      //     metadata: {
-      //       sshHostId: req.params.sshHostId,
-      //       hostname: host.hostname,
-      //       loginUser: req.body.loginUser,
-      //       principals,
-      //       ttl: host.userCertTtl
-      //     }
-      //   }
-      // });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.SIGN_PKI_SUBSCRIBER_CERT,
+          metadata: {
+            subscriberId: subscriber.id,
+            serialNumber
+          }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignCert,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          subscriberId: subscriber.id,
+          commonName: subscriber.commonName,
+          ...req.auditLogInfo
+        }
+      });
 
       return {
-        serialNumber,
-        signedKey: signedPublicKey,
-        publicKey,
-        keyAlgorithm
+        certificate: certificate.toString("pem"),
+        certificateChain,
+        issuingCaCertificate,
+        serialNumber
       };
     }
   });

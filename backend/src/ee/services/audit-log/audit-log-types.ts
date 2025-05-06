@@ -20,6 +20,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
@@ -31,7 +32,6 @@ import {
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
-import { CertKeyUsage, CertExtendedKeyUsage } from "@app/services/certificate/certificate-types";
 
 import { KmipPermission } from "../kmip/kmip-enum";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
@@ -242,6 +242,8 @@ export enum EventType {
   UPDATE_PKI_SUBSCRIBER = "update-pki-subscriber",
   DELETE_PKI_SUBSCRIBER = "delete-pki-subscriber",
   GET_PKI_SUBSCRIBER = "get-pki-subscriber",
+  ISSUE_PKI_SUBSCRIBER_CERT = "issue-pki-subscriber-cert",
+  SIGN_PKI_SUBSCRIBER_CERT = "sign-pki-subscriber-cert",
   CREATE_KMS = "create-kms",
   UPDATE_KMS = "update-kms",
   DELETE_KMS = "delete-kms",
@@ -1946,6 +1948,22 @@ interface GetPkiSubscriber {
   };
 }
 
+interface IssuePkiSubscriberCert {
+  type: EventType.ISSUE_PKI_SUBSCRIBER_CERT;
+  metadata: {
+    subscriberId: string;
+    serialNumber: string;
+  };
+}
+
+interface SignPkiSubscriberCert {
+  type: EventType.SIGN_PKI_SUBSCRIBER_CERT;
+  metadata: {
+    subscriberId: string;
+    serialNumber: string;
+  };
+}
+
 interface CreateKmsEvent {
   type: EventType.CREATE_KMS;
   metadata: {
@@ -2908,6 +2926,8 @@ export type Event =
   | UpdatePkiSubscriber
   | DeletePkiSubscriber
   | GetPkiSubscriber
+  | IssuePkiSubscriberCert
+  | SignPkiSubscriberCert
   | CreateKmsEvent
   | UpdateKmsEvent
   | DeleteKmsEvent

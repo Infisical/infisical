@@ -954,6 +954,15 @@ export const registerRoutes = async (
 
   const pkiSubscriberService = pkiSubscriberServiceFactory({
     pkiSubscriberDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCrlDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    projectDAL,
+    kmsService,
     permissionService
   });
 

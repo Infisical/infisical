@@ -54,7 +54,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   projectTemplates: false,
   kmip: false,
   gateway: false,
-  sshHostGroups: false
+  sshHostGroups: true
 });
 
 export const setupLicenseRequestWithStore = (baseURL: string, refreshUrl: string, licenseKey: string) => {

@@ -188,6 +188,7 @@ export type TSignCertificateEvent = {
   properties: {
     caId?: string;
     certificateTemplateId?: string;
+    subscriberId?: string;
     commonName: string;
     userAgent?: string;
   };
@@ -198,6 +199,7 @@ export type TIssueCertificateEvent = {
   properties: {
     caId?: string;
     certificateTemplateId?: string;
+    subscriberId?: string;
     commonName: string;
     userAgent?: string;
   };
