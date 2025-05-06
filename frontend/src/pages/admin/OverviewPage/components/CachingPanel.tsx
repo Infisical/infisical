@@ -14,12 +14,14 @@ export const CachingPanel = () => {
   const { mutateAsync: invalidateCache } = useInvalidateCache();
   const { user } = useUser();
 
-  const shouldShowSuccessRef = useRef(false);
-
   const [type, setType] = useState<CacheType | null>(null);
   const [shouldPoll, setShouldPoll] = useState(false);
 
-  const { data: invalidationStatus, isPending } = useGetInvalidatingCacheStatus(shouldPoll);
+  const {
+    data: invalidationStatus,
+    isPending,
+    refetch
+  } = useGetInvalidatingCacheStatus(shouldPoll);
   const isInvalidating = Boolean(shouldPoll && !isPending && invalidationStatus);
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -29,12 +31,16 @@ export const CachingPanel = () => {
   const handleInvalidateCacheSubmit = async () => {
     if (!type || isInvalidating) return;
 
-    shouldShowSuccessRef.current = true;
     try {
       await invalidateCache({ type });
       createNotification({ text: `Began invalidating ${type} cache`, type: "success" });
       handlePopUpClose("invalidateCache");
-      setShouldPoll(true);
+
+      refetch().then((v) =>
+        v
+          ? setShouldPoll(true)
+          : createNotification({ text: "Successfully invalidated cache", type: "success" })
+      );
     } catch (err) {
       console.error(err);
       createNotification({ text: `Failed to invalidate ${type} cache`, type: "error" });
@@ -49,6 +55,10 @@ export const CachingPanel = () => {
       createNotification({ text: "Successfully invalidated cache", type: "success" });
     }
   }, [isInvalidating, shouldPoll]);
+
+  useEffect(() => {
+    refetch().then((v) => setShouldPoll(v.data || false));
+  }, []);
 
   return (
     <>
