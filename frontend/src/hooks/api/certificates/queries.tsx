@@ -6,7 +6,8 @@ import { TCertificate } from "./types";
 
 export const certKeys = {
   getCertById: (serialNumber: string) => [{ serialNumber }, "cert"],
-  getCertBody: (serialNumber: string) => [{ serialNumber }, "certBody"]
+  getCertBody: (serialNumber: string) => [{ serialNumber }, "certBody"],
+  getCertBundle: (serialNumber: string) => [{ serialNumber }, "certBundle"]
 };
 
 export const useGetCert = (serialNumber: string) => {
@@ -33,6 +34,22 @@ export const useGetCertBody = (serialNumber: string) => {
         certificateChain: string;
         serialNumber: string;
       }>(`/api/v1/pki/certificates/${serialNumber}/certificate`);
+      return data;
+    },
+    enabled: Boolean(serialNumber)
+  });
+};
+
+export const useGetCertBundle = (serialNumber: string) => {
+  return useQuery({
+    queryKey: certKeys.getCertBundle(serialNumber),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        certificate: string;
+        certificateChain: string;
+        serialNumber: string;
+        privateKey: string;
+      }>(`/api/v1/pki/certificates/${serialNumber}/bundle`);
       return data;
     },
     enabled: Boolean(serialNumber)
