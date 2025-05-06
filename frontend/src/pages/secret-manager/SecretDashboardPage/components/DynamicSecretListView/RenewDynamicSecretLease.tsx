@@ -7,27 +7,23 @@ import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useRenewDynamicSecretLease } from "@app/hooks/api";
+import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
-const formSchema = z.object({
-  ttl: z.string().superRefine((val, ctx) => {
-    if (!val) return;
-    const valMs = ms(val);
-    if (valMs < 60 * 1000)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
-    // a day
-    if (valMs > 24 * 60 * 60 * 1000)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
-  })
-});
-type TForm = z.infer<typeof formSchema>;
+type TForm = {
+  ttl: string;
+};
 
 type Props = {
   onClose: () => void;
   leaseId: string;
   dynamicSecretName: string;
+  dynamicSecret: TDynamicSecret;
   projectSlug: string;
   environment: string;
   secretPath: string;
+  minTtl?: string; // Optional minimum TTL, defaults to 1min
+  maxTtl?: string; // Optional maximum TTL, defaults to 1day
+  defaultTtl?: string; // Optional default TTL, defaults to 1h
 };
 
 export const RenewDynamicSecretLease = ({
@@ -36,8 +32,28 @@ export const RenewDynamicSecretLease = ({
   dynamicSecretName,
   leaseId,
   secretPath,
-  environment
+  environment,
+  dynamicSecret
 }: Props) => {
+  const maxTtlMs = ms(dynamicSecret.maxTTL);
+
+  const formSchema = z.object({
+    ttl: z.string().superRefine((val, ctx) => {
+      if (!val) return;
+      const valMs = ms(val);
+      if (valMs < 60)
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "TTL must be greater than 1 second"
+        });
+      if (valMs > maxTtlMs)
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `TTL must be less than ${dynamicSecret.maxTTL}`
+        });
+    })
+  });
+
   const {
     control,
     formState: { isSubmitting },
@@ -45,7 +61,7 @@ export const RenewDynamicSecretLease = ({
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      ttl: "1h"
+      ttl: dynamicSecret.defaultTTL
     }
   });
 
@@ -81,7 +97,7 @@ export const RenewDynamicSecretLease = ({
       <Controller
         control={control}
         name="ttl"
-        defaultValue="1h"
+        defaultValue={dynamicSecret.defaultTTL}
         render={({ field, fieldState: { error } }) => (
           <FormControl
             label={<TtlFormLabel label="TTL" />}

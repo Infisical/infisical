@@ -305,6 +305,10 @@ export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
   })
 ]);
 
+export const DynamicSecretGcpIamSchema = z.object({
+  serviceAccountEmail: z.string().email().trim().min(1, "Service account email required")
+});
+
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
   Cassandra = "cassandra",
@@ -320,7 +324,8 @@ export enum DynamicSecretProviders {
   SapHana = "sap-hana",
   Snowflake = "snowflake",
   Totp = "totp",
-  SapAse = "sap-ase"
+  SapAse = "sap-ase",
+  GcpIam = "gcp-iam"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -338,7 +343,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.AzureEntraID), inputs: AzureEntraIDSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Ldap), inputs: LdapSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.GcpIam), inputs: DynamicSecretGcpIamSchema })
 ]);
 
 export type TDynamicProviderFns = {

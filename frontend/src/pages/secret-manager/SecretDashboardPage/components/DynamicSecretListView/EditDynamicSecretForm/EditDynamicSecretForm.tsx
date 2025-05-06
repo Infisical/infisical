@@ -9,6 +9,7 @@ import { EditDynamicSecretAwsIamForm } from "./EditDynamicSecretAwsIamForm";
 import { EditDynamicSecretAzureEntraIdForm } from "./EditDynamicSecretAzureEntraIdForm";
 import { EditDynamicSecretCassandraForm } from "./EditDynamicSecretCassandraForm";
 import { EditDynamicSecretElasticSearchForm } from "./EditDynamicSecretElasticSearchForm";
+import { EditDynamicSecretGcpIamForm } from "./EditDynamicSecretGcpIamForm";
 import { EditDynamicSecretLdapForm } from "./EditDynamicSecretLdapForm";
 import { EditDynamicSecretMongoAtlasForm } from "./EditDynamicSecretMongoAtlasForm";
 import { EditDynamicSecretMongoDBForm } from "./EditDynamicSecretMongoDBForm";
@@ -304,6 +305,24 @@ export const EditDynamicSecretForm = ({
           exit={{ opacity: 0, translateX: -30 }}
         >
           <EditDynamicSecretTotpForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+
+      {dynamicSecretDetails?.type === DynamicSecretProviders.GcpIam && (
+        <motion.div
+          key="gcp-iam-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretGcpIamForm
             onClose={onClose}
             projectSlug={projectSlug}
             secretPath={secretPath}

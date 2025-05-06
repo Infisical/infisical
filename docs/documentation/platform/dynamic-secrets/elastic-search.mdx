@@ -82,20 +82,20 @@ The Infisical Elasticsearch dynamic secret allows you to generate Elasticsearch 
 
   </Step>
   <Step title="Click `Submit`">
-  	After submitting the form, you will see a dynamic secret created in the dashboard. 
+  	After submitting the form, you will see a dynamic secret created in the dashboard.
 
 	<Note>
-		If this step fails, you may have to add the CA certificate. 
+		If this step fails, you may have to add the CA certificate.
 	</Note>
 
   </Step>
   <Step title="Generate dynamic secrets">
-	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials. 
-	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item. 
+	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
+	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
 	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
-	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate-redis.png)
-	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty-redis.png)
+	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
+	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
 
 	When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate  how long the credentials are valid for.
 
@@ -106,14 +106,14 @@ The Infisical Elasticsearch dynamic secret allows you to generate Elasticsearch 
 	</Tip>
 
 
-	Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you. 
+	Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you.
 
 	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
   </Step>
 </Steps>
 
 ## Audit or Revoke Leases
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard. 
+Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
 This will allow you to see the expiration time of the lease or delete a lease before it's set time to live.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
