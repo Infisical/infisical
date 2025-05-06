@@ -1,0 +1,130 @@
+import { Knex } from "knex";
+
+import { TableName } from "../schemas";
+import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
+
+export async function up(knex: Knex): Promise<void> {
+  const hasFolderCommitTable = await knex.schema.hasTable(TableName.FolderCommit);
+  if (!hasFolderCommitTable) {
+    await knex.schema.createTable(TableName.FolderCommit, (t) => {
+      t.bigIncrements("id").primary();
+      t.string("actorName").notNullable();
+      t.string("actorType").notNullable();
+      t.string("message");
+      t.timestamp("date").notNullable().defaultTo(knex.fn.now());
+      t.uuid("folderId").notNullable();
+      t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
+      t.timestamps(true, true, true);
+
+      t.index("folderId");
+    });
+  }
+
+  const hasFolderCommitChangesTable = await knex.schema.hasTable(TableName.FolderCommitChanges);
+  if (!hasFolderCommitChangesTable) {
+    await knex.schema.createTable(TableName.FolderCommitChanges, (t) => {
+      t.uuid("id").primary().defaultTo(knex.fn.uuid());
+      t.bigInteger("folderCommitId").notNullable();
+      t.foreign("folderCommitId").references("id").inTable(TableName.FolderCommit).onDelete("CASCADE");
+      t.string("changeType").notNullable();
+      t.uuid("secretVersionId");
+      t.foreign("secretVersionId").references("id").inTable(TableName.SecretVersionV2).onDelete("CASCADE");
+      t.uuid("folderVersionId");
+      t.foreign("folderVersionId").references("id").inTable(TableName.SecretFolderVersion).onDelete("CASCADE");
+      t.timestamps(true, true, true);
+
+      t.index("folderCommitId");
+      t.index("secretVersionId");
+      t.index("folderVersionId");
+    });
+  }
+
+  const hasFolderCheckpointTable = await knex.schema.hasTable(TableName.FolderCheckpoint);
+  if (!hasFolderCheckpointTable) {
+    await knex.schema.createTable(TableName.FolderCheckpoint, (t) => {
+      t.uuid("id").primary().defaultTo(knex.fn.uuid());
+      t.bigInteger("folderCommitId").notNullable();
+      t.foreign("folderCommitId").references("id").inTable(TableName.FolderCommit).onDelete("CASCADE");
+      t.timestamp("date").notNullable().defaultTo(knex.fn.now());
+      t.timestamps(true, true, true);
+
+      t.index("folderCommitId");
+    });
+  }
+
+  const hasFolderCheckpointResourcesTable = await knex.schema.hasTable(TableName.FolderCheckpointResources);
+  if (!hasFolderCheckpointResourcesTable) {
+    await knex.schema.createTable(TableName.FolderCheckpointResources, (t) => {
+      t.uuid("id").primary().defaultTo(knex.fn.uuid());
+      t.uuid("folderCheckpointId").notNullable();
+      t.foreign("folderCheckpointId").references("id").inTable(TableName.FolderCheckpoint).onDelete("CASCADE");
+      t.uuid("secretVersionId");
+      t.foreign("secretVersionId").references("id").inTable(TableName.SecretVersionV2).onDelete("CASCADE");
+      t.uuid("folderVersionId");
+      t.foreign("folderVersionId").references("id").inTable(TableName.SecretFolderVersion).onDelete("CASCADE");
+      t.timestamps(true, true, true);
+
+      t.index("folderCheckpointId");
+      t.index("secretVersionId");
+      t.index("folderVersionId");
+    });
+  }
+
+  const hasFolderTreeCheckpointTable = await knex.schema.hasTable(TableName.FolderTreeCheckpoint);
+  if (!hasFolderTreeCheckpointTable) {
+    await knex.schema.createTable(TableName.FolderTreeCheckpoint, (t) => {
+      t.uuid("id").primary().defaultTo(knex.fn.uuid());
+      t.bigInteger("folderCommitId").notNullable();
+      t.foreign("folderCommitId").references("id").inTable(TableName.FolderCommit).onDelete("CASCADE");
+      t.timestamp("date").notNullable().defaultTo(knex.fn.now());
+      t.timestamps(true, true, true);
+
+      t.index("folderCommitId");
+    });
+  }
+
+  const hasFolderTreeCheckpointResourcesTable = await knex.schema.hasTable(TableName.FolderTreeCheckpointResources);
+  if (!hasFolderTreeCheckpointResourcesTable) {
+    await knex.schema.createTable(TableName.FolderTreeCheckpointResources, (t) => {
+      t.uuid("id").primary().defaultTo(knex.fn.uuid());
+      t.uuid("folderTreeCheckpointId").notNullable();
+      t.foreign("folderTreeCheckpointId").references("id").inTable(TableName.FolderTreeCheckpoint).onDelete("CASCADE");
+      t.uuid("folderId").notNullable();
+      t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
+      t.bigInteger("folderCommitId").notNullable();
+      t.foreign("folderCommitId").references("id").inTable(TableName.FolderCommit).onDelete("CASCADE");
+      t.timestamps(true, true, true);
+
+      t.index("folderTreeCheckpointId");
+      t.index("folderId");
+      t.index("folderCommitId");
+    });
+  }
+
+  await createOnUpdateTrigger(knex, TableName.FolderCommit);
+  await createOnUpdateTrigger(knex, TableName.FolderCommitChanges);
+  await createOnUpdateTrigger(knex, TableName.FolderCheckpoint);
+  await createOnUpdateTrigger(knex, TableName.FolderCheckpointResources);
+  await createOnUpdateTrigger(knex, TableName.FolderTreeCheckpoint);
+  await createOnUpdateTrigger(knex, TableName.FolderTreeCheckpointResources);
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await dropOnUpdateTrigger(knex, TableName.FolderTreeCheckpointResources);
+  await knex.schema.dropTableIfExists(TableName.FolderTreeCheckpointResources);
+
+  await dropOnUpdateTrigger(knex, TableName.FolderTreeCheckpoint);
+  await knex.schema.dropTableIfExists(TableName.FolderTreeCheckpoint);
+
+  await dropOnUpdateTrigger(knex, TableName.FolderCheckpointResources);
+  await knex.schema.dropTableIfExists(TableName.FolderCheckpointResources);
+
+  await dropOnUpdateTrigger(knex, TableName.FolderCheckpoint);
+  await knex.schema.dropTableIfExists(TableName.FolderCheckpoint);
+
+  await dropOnUpdateTrigger(knex, TableName.FolderCommitChanges);
+  await knex.schema.dropTableIfExists(TableName.FolderCommitChanges);
+
+  await dropOnUpdateTrigger(knex, TableName.FolderCommit);
+  await knex.schema.dropTableIfExists(TableName.FolderCommit);
+}
