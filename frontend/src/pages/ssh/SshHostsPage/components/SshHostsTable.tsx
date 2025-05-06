@@ -131,7 +131,8 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                               const filteredGroups = allowedPrincipals.groups?.filter(
                                 (g) => !existing.groups?.has(g)
                               );
-                              return (filteredGroups?.length ?? 0) > 0
+                              return ((filteredGroups?.length || filteredUsernames?.length) ?? 0) >
+                                0
                                 ? {
                                     loginUser,
                                     source: LoginMappingSource.HOST_GROUP,

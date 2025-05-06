@@ -351,88 +351,86 @@ export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
                         name={`loginMappings.${i}.allowedPrincipals`}
                         render={({ field: { value = [], onChange }, fieldState: { error } }) => (
                           <div className="flex flex-col space-y-2">
-                            {(value.length === 0 ? [{ type: "user", value: "" }] : value).map(
-                              (principal, principalIndex) => (
-                                <div
-                                  key={`principal-${i + 1}-${principalIndex + 1}-${principal.type}`}
-                                  className="flex items-center space-x-2"
-                                >
-                                  <div className="mr-2">
-                                    <Select
-                                      className="w-24"
-                                      value={principal.type}
-                                      onValueChange={(newType) => {
-                                        const newPrincipals = [...value];
-                                        newPrincipals[principalIndex] = {
-                                          type: newType as "user" | "group",
-                                          value: ""
-                                        };
-                                        onChange(newPrincipals);
-                                      }}
-                                    >
-                                      <SelectItem value="user">User</SelectItem>
-                                      <SelectItem value="group">Group</SelectItem>
-                                    </Select>
-                                  </div>
-                                  <div className="flex-1">
-                                    <Select
-                                      value={principal.value}
-                                      onValueChange={(newValue) => {
-                                        if (isPrincipalDuplicate(i, principal.type, newValue)) {
-                                          createNotification({
-                                            text: `This ${principal.type} is already added`,
-                                            type: "error"
-                                          });
-                                          return;
-                                        }
-                                        const newPrincipals = [...value];
-                                        newPrincipals[principalIndex] = {
-                                          type: principal.type as "user" | "group",
-                                          value: newValue
-                                        };
-                                        onChange(newPrincipals);
-                                      }}
-                                      placeholder={`Select a ${principal.type}`}
-                                      className="w-full"
-                                    >
-                                      {principal.type === "user"
-                                        ? members.map((member) => (
-                                            <SelectItem
-                                              key={member.user.id}
-                                              value={member.user.username}
-                                            >
-                                              {member.user.username}
-                                            </SelectItem>
-                                          ))
-                                        : groups.map((group) => (
-                                            <SelectItem
-                                              key={group.group.slug}
-                                              value={group.group.slug}
-                                            >
-                                              {group.group.slug}
-                                            </SelectItem>
-                                          ))}
-                                    </Select>
-                                  </div>
-                                  <div className="flex w-10 justify-center">
-                                    <IconButton
-                                      size="sm"
-                                      ariaLabel="delete principal"
-                                      variant="plain"
-                                      className="h-9"
-                                      onClick={() => {
-                                        const newPrincipals = value.filter(
-                                          (_, idx) => idx !== principalIndex
-                                        );
-                                        onChange(newPrincipals.length ? newPrincipals : []);
-                                      }}
-                                    >
-                                      <FontAwesomeIcon icon={faTrash} />
-                                    </IconButton>
-                                  </div>
+                            {value.map((principal, principalIndex) => (
+                              <div
+                                key={`principal-${i + 1}-${principalIndex + 1}-${principal.type}`}
+                                className="flex items-center space-x-2"
+                              >
+                                <div className="mr-2">
+                                  <Select
+                                    className="w-24"
+                                    value={principal.type}
+                                    onValueChange={(newType) => {
+                                      const newPrincipals = [...value];
+                                      newPrincipals[principalIndex] = {
+                                        type: newType as "user" | "group",
+                                        value: ""
+                                      };
+                                      onChange(newPrincipals);
+                                    }}
+                                  >
+                                    <SelectItem value="user">User</SelectItem>
+                                    <SelectItem value="group">Group</SelectItem>
+                                  </Select>
                                 </div>
-                              )
-                            )}
+                                <div className="flex-1">
+                                  <Select
+                                    value={principal.value}
+                                    onValueChange={(newValue) => {
+                                      if (isPrincipalDuplicate(i, principal.type, newValue)) {
+                                        createNotification({
+                                          text: `This ${principal.type} is already added`,
+                                          type: "error"
+                                        });
+                                        return;
+                                      }
+                                      const newPrincipals = [...value];
+                                      newPrincipals[principalIndex] = {
+                                        type: principal.type as "user" | "group",
+                                        value: newValue
+                                      };
+                                      onChange(newPrincipals);
+                                    }}
+                                    placeholder={`Select a ${principal.type}`}
+                                    className="w-full"
+                                  >
+                                    {principal.type === "user"
+                                      ? members.map((member) => (
+                                          <SelectItem
+                                            key={member.user.id}
+                                            value={member.user.username}
+                                          >
+                                            {member.user.username}
+                                          </SelectItem>
+                                        ))
+                                      : groups.map((group) => (
+                                          <SelectItem
+                                            key={group.group.slug}
+                                            value={group.group.slug}
+                                          >
+                                            {group.group.slug}
+                                          </SelectItem>
+                                        ))}
+                                  </Select>
+                                </div>
+                                <div className="flex w-10 justify-center">
+                                  <IconButton
+                                    size="sm"
+                                    ariaLabel="delete principal"
+                                    variant="plain"
+                                    className="h-9"
+                                    onClick={() => {
+                                      const newPrincipals = value.filter(
+                                        (_, idx) => idx !== principalIndex
+                                      );
+                                      onChange(newPrincipals.length ? newPrincipals : []);
+                                    }}
+                                  >
+                                    <FontAwesomeIcon icon={faTrash} />
+                                  </IconButton>
+                                </div>
+                              </div>
+                            ))}
                             {error && <span className="text-sm text-red-500">{error.message}</span>}
                           </div>
                         )}
