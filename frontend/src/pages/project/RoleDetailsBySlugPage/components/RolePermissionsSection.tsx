@@ -19,6 +19,7 @@ import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
@@ -31,6 +32,7 @@ import {
   isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   projectRoleFormSchema,
+  ProjectTypePermissionSubjects,
   rolePermission2Form,
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
@@ -104,7 +106,9 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     }
   };
 
-  const isCustomRole = !["admin", "member", "viewer", "no-access"].includes(role?.slug ?? "");
+  const isCustomRole = !Object.values(ProjectMembershipRole).includes(
+    (role?.slug ?? "") as ProjectMembershipRole
+  );
 
   const onNewPolicy = (selectedSubject: ProjectPermissionSub) => {
     const rootPolicyValue = form.getValues(`permissions.${selectedSubject}`);
@@ -192,6 +196,12 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="thin-scrollbar max-h-96" align="end">
                         {Object.keys(PROJECT_PERMISSION_OBJECT)
+                          .filter(
+                            (subject) =>
+                              ProjectTypePermissionSubjects[currentWorkspace.type][
+                                subject as ProjectPermissionSub
+                              ]
+                          )
                           .sort((a, b) =>
                             PROJECT_PERMISSION_OBJECT[
                               a as keyof typeof PROJECT_PERMISSION_OBJECT
@@ -221,17 +231,19 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
           </div>
           <div className="py-4">
             {!isPending && <PermissionEmptyState />}
-            {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
-              <GeneralPermissionPolicies
-                subject={subject}
-                actions={PROJECT_PERMISSION_OBJECT[subject].actions}
-                title={PROJECT_PERMISSION_OBJECT[subject].title}
-                key={`project-permission-${subject}`}
-                isDisabled={isDisabled}
-              >
-                {renderConditionalComponents(subject, isDisabled)}
-              </GeneralPermissionPolicies>
-            ))}
+            {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
+              .filter((subject) => ProjectTypePermissionSubjects[currentWorkspace.type][subject])
+              .map((subject) => (
+                <GeneralPermissionPolicies
+                  subject={subject}
+                  actions={PROJECT_PERMISSION_OBJECT[subject].actions}
+                  title={PROJECT_PERMISSION_OBJECT[subject].title}
+                  key={`project-permission-${subject}`}
+                  isDisabled={isDisabled}
+                >
+                  {renderConditionalComponents(subject, isDisabled)}
+                </GeneralPermissionPolicies>
+              ))}
           </div>
         </FormProvider>
       </form>

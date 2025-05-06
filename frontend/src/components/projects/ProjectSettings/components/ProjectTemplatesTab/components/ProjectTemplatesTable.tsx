@@ -23,7 +23,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { useGetProjectTypeFromRoute, usePopUp } from "@app/hooks";
 import { TProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
 
 import { DeleteProjectTemplateModal } from "./DeleteProjectTemplateModal";
@@ -35,8 +35,10 @@ type Props = {
 export const ProjectTemplatesTable = ({ onEdit }: Props) => {
   const { subscription } = useSubscription();
 
-  const { isPending, data: projectTemplates = [] } = useListProjectTemplates({
-    enabled: subscription?.projectTemplates
+  const projectType = useGetProjectTypeFromRoute();
+
+  const { isPending, data: projectTemplates = [] } = useListProjectTemplates(projectType, {
+    enabled: subscription?.projectTemplates && Boolean(projectType)
   });
   const [search, setSearch] = useState("");
 
@@ -49,6 +51,8 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
       ) ?? [],
     [search, projectTemplates]
   );
+
+  const isSecretManagerTemplates = projectType === "secret-manager";
 
   return (
     <div>
@@ -64,7 +68,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
             <Tr>
               <Th>Name</Th>
               <Th>Roles</Th>
-              <Th>Environments</Th>
+              {isSecretManagerTemplates && <Th>Environments</Th>}
               <Th />
             </Tr>
           </THead>
@@ -77,7 +81,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
               />
             )}
             {filteredTemplates.map((template) => {
-              const { id, name, roles, environments, description } = template;
+              const { id, name, roles, environments = [], description } = template;
               return (
                 <Tr
                   onClick={() => onEdit(template)}
@@ -116,28 +120,30 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                       </Tooltip>
                     )}
                   </Td>
-                  <Td className="pl-14">
-                    {environments.length}
-                    {environments.length > 0 && (
-                      <Tooltip
-                        content={
-                          <ul className="ml-2 list-disc">
-                            {environments
-                              .sort((a, b) => (a.position > b.position ? 1 : -1))
-                              .map((env) => (
-                                <li key={env.slug}>{env.name}</li>
-                              ))}
-                          </ul>
-                        }
-                      >
-                        <FontAwesomeIcon
-                          size="sm"
-                          className="ml-2 text-mineshaft-400"
-                          icon={faCircleInfo}
-                        />
-                      </Tooltip>
-                    )}
-                  </Td>
+                  {isSecretManagerTemplates && environments && (
+                    <Td className="pl-14">
+                      {environments.length}
+                      {environments.length > 0 && (
+                        <Tooltip
+                          content={
+                            <ul className="ml-2 list-disc">
+                              {environments
+                                .sort((a, b) => (a.position > b.position ? 1 : -1))
+                                .map((env) => (
+                                  <li key={env.slug}>{env.name}</li>
+                                ))}
+                            </ul>
+                          }
+                        >
+                          <FontAwesomeIcon
+                            size="sm"
+                            className="ml-2 text-mineshaft-400"
+                            icon={faCircleInfo}
+                          />
+                        </Tooltip>
+                      )}
+                    </Td>
+                  )}
                   <Td className="w-5">
                     {name !== "default" && (
                       <OrgPermissionCan

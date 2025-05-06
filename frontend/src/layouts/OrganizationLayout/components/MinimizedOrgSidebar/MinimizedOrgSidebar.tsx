@@ -269,7 +269,9 @@ export const MinimizedOrgSidebar = () => {
                   <MenuIconButton
                     isSelected={
                       isActive ||
-                      window.location.pathname.startsWith(`/${ProjectType.SecretManager}`)
+                      window.location.pathname.startsWith(
+                        `/organization/${ProjectType.SecretManager}`
+                      )
                     }
                     icon="sliding-carousel"
                   >
@@ -282,7 +284,9 @@ export const MinimizedOrgSidebar = () => {
                   <MenuIconButton
                     isSelected={
                       isActive ||
-                      window.location.pathname.startsWith(`/${ProjectType.CertificateManager}`)
+                      window.location.pathname.startsWith(
+                        `/organization/${ProjectType.CertificateManager}`
+                      )
                     }
                     icon="note"
                   >
@@ -294,7 +298,8 @@ export const MinimizedOrgSidebar = () => {
                 {({ isActive }) => (
                   <MenuIconButton
                     isSelected={
-                      isActive || window.location.pathname.startsWith(`/${ProjectType.KMS}`)
+                      isActive ||
+                      window.location.pathname.startsWith(`/organization/${ProjectType.KMS}`)
                     }
                     icon="unlock"
                   >
@@ -306,7 +311,8 @@ export const MinimizedOrgSidebar = () => {
                 {({ isActive }) => (
                   <MenuIconButton
                     isSelected={
-                      isActive || window.location.pathname.startsWith(`/${ProjectType.SSH}`)
+                      isActive ||
+                      window.location.pathname.startsWith(`/organization/${ProjectType.SSH}`)
                     }
                     icon="verified"
                   >

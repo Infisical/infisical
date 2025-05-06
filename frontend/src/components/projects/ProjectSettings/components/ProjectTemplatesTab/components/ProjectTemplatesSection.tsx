@@ -50,7 +50,7 @@ export const ProjectTemplatesSection = () => {
             className="absolute min-h-[10rem] w-full"
           >
             <div>
-              <p className="mb-6 text-bunker-300">
+              <p className="mb-6 font-inter text-bunker-300">
                 Create and configure templates with predefined roles and environments to streamline
                 project setup
               </p>

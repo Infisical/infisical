@@ -49,6 +49,7 @@ import {
   isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   projectRoleFormSchema,
+  ProjectTypePermissionSubjects,
   rolePermission2Form
 } from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
 import { renderConditionalComponents } from "@app/pages/project/RoleDetailsBySlugPage/components/RolePermissionsSection";
@@ -265,6 +266,12 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="thin-scrollbar max-h-96" align="end">
                   {Object.keys(PROJECT_PERMISSION_OBJECT)
+                    .filter(
+                      (subject) =>
+                        ProjectTypePermissionSubjects[currentWorkspace.type][
+                          subject as ProjectPermissionSub
+                        ]
+                    )
                     .sort((a, b) =>
                       PROJECT_PERMISSION_OBJECT[a as keyof typeof PROJECT_PERMISSION_OBJECT].title
                         .toLowerCase()

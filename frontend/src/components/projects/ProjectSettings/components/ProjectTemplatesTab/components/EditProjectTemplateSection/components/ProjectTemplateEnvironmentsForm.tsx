@@ -35,6 +35,7 @@ const formSchema = z.object({
       slug: slugSchema({ min: 1, max: 32 })
     })
     .array()
+    .nullish()
 });
 
 type TFormSchema = z.infer<typeof formSchema>;
@@ -67,7 +68,7 @@ export const ProjectTemplateEnvironmentsForm = ({
   const onFormSubmit = async (form: TFormSchema) => {
     try {
       const { environments: updatedEnvs } = await updateProjectTemplate.mutateAsync({
-        environments: form.environments.map((env, index) => ({
+        environments: form.environments?.map((env, index) => ({
           ...env,
           position: index + 1
         })),
