@@ -21,9 +21,6 @@ type Props = {
   projectSlug: string;
   environment: string;
   secretPath: string;
-  minTtl?: string; // Optional minimum TTL, defaults to 1min
-  maxTtl?: string; // Optional maximum TTL, defaults to 1day
-  defaultTtl?: string; // Optional default TTL, defaults to 1h
 };
 
 export const RenewDynamicSecretLease = ({
@@ -41,7 +38,7 @@ export const RenewDynamicSecretLease = ({
     ttl: z.string().superRefine((val, ctx) => {
       if (!val) return;
       const valMs = ms(val);
-      if (valMs < 60)
+      if (valMs < 1000)
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "TTL must be greater than 1 second"

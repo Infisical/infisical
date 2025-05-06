@@ -10,34 +10,33 @@ import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 
-const formSchema = z.object({
-  provider: z.object({
-    serviceAccountEmail: z.string().email().trim().min(1, "Service account email required")
-  }),
-  defaultTTL: z.string().superRefine((val, ctx) => {
-    const valMs = ms(val);
-    if (valMs < 1000)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1 second" });
-    if (valMs > 60 * 60 * 1000)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than 1 hour" });
-  }),
-  maxTTL: z
-    .string()
-    .optional()
-    .superRefine((val, ctx) => {
-      if (!val) return;
-      const valMs = ms(val);
-      if (valMs < 1000)
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "TTL must be a greater than 1 second"
-        });
-      if (valMs > 60 * 60 * 1000)
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than 1 hour" });
+const validateTTL = (val: string, ctx: z.RefinementCtx) => {
+  if (!val) return;
+  const valMs = ms(val);
+  if (valMs === undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid TTL format" });
+    return;
+  }
+  if (valMs < 1000)
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1 second" });
+  if (valMs > 60 * 60 * 1000)
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than 1 hour" });
+};
+
+const formSchema = z
+  .object({
+    provider: z.object({
+      serviceAccountEmail: z.string().email().trim().min(1, "Service account email required")
     }),
-  name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
-  environment: z.object({ name: z.string(), slug: z.string() })
-});
+    defaultTTL: z.string().superRefine(validateTTL),
+    maxTTL: z.string().optional().superRefine(validateTTL),
+    name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
+    environment: z.object({ name: z.string(), slug: z.string() })
+  })
+  .refine((d) => !d.maxTTL || ms(d.maxTTL)! >= ms(d.defaultTTL)!, {
+    path: ["maxTTL"],
+    message: "Max TTL must be greater than or equal to Default TTL"
+  });
 type TForm = z.infer<typeof formSchema>;
 
 type Props = {
@@ -64,7 +63,7 @@ export const GcpIamInputForm = ({
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      environment: isSingleEnvironmentMode ? environments[0] : undefined
+      environment: isSingleEnvironmentMode && environments.length > 0 ? environments[0] : undefined
     }
   });
 
@@ -77,8 +76,6 @@ export const GcpIamInputForm = ({
     defaultTTL,
     environment
   }: TForm) => {
-    console.log("handleCreateDynamicSecret called");
-
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
     try {

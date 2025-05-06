@@ -9,33 +9,37 @@ import { Button, FormControl, Input } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
-const formSchema = z.object({
-  inputs: z.object({
-    serviceAccountEmail: z.string().email().trim().min(1, "Service account email required")
-  }),
-  defaultTTL: z.string().superRefine((val, ctx) => {
-    const valMs = ms(val);
-    if (valMs < 1000)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1 second" });
-    if (valMs > 60 * 60 * 1000)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than 1 hour" });
-  }),
-  maxTTL: z
-    .string()
-    .optional()
-    .superRefine((val, ctx) => {
-      if (!val) return;
-      const valMs = ms(val);
-      if (valMs < 1000)
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "TTL must be a greater than 1 second"
-        });
-      if (valMs > 60 * 60 * 1000)
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than 1 hour" });
+const validateTTL = (val: string, ctx: z.RefinementCtx) => {
+  if (!val) return;
+  const valMs = ms(val);
+  if (valMs === undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid TTL format" });
+    return;
+  }
+  if (valMs < 1000)
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1 second" });
+  if (valMs > 60 * 60 * 1000)
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than 1 hour" });
+};
+
+const formSchema = z
+  .object({
+    inputs: z.object({
+      serviceAccountEmail: z.string().email().trim().min(1, "Service account email required")
     }),
-  newName: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase")
-});
+    defaultTTL: z.string().superRefine(validateTTL),
+    maxTTL: z
+      .string()
+      .optional()
+      .superRefine((val, ctx) => {
+        if (val) validateTTL(val, ctx);
+      }),
+    newName: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase")
+  })
+  .refine((d) => !d.maxTTL || ms(d.maxTTL)! >= ms(d.defaultTTL)!, {
+    path: ["maxTTL"],
+    message: "Max TTL must be greater than or equal to Default TTL"
+  });
 type TForm = z.infer<typeof formSchema>;
 
 type Props = {
@@ -107,7 +111,6 @@ export const EditDynamicSecretGcpIamForm = ({
             <div className="flex-grow">
               <Controller
                 control={control}
-                defaultValue=""
                 name="newName"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
@@ -124,7 +127,6 @@ export const EditDynamicSecretGcpIamForm = ({
               <Controller
                 control={control}
                 name="defaultTTL"
-                defaultValue="1h"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label={<TtlFormLabel label="Default TTL" />}
@@ -140,7 +142,6 @@ export const EditDynamicSecretGcpIamForm = ({
               <Controller
                 control={control}
                 name="maxTTL"
-                defaultValue="24h"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label={<TtlFormLabel label="Max TTL" />}
@@ -161,7 +162,6 @@ export const EditDynamicSecretGcpIamForm = ({
             <Controller
               control={control}
               name="inputs.serviceAccountEmail"
-              defaultValue=""
               render={({ field, fieldState: { error } }) => (
                 <FormControl
                   label="Service Account Email"
