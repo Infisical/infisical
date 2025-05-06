@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { Badge, Button, DeleteActionModal } from "@app/components/v2";
-import { useOrgPermission } from "@app/context";
+import { useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useInvalidateCache } from "@app/hooks/api";
 import { useGetInvalidatingCacheStatus } from "@app/hooks/api/admin/queries";
@@ -12,52 +12,28 @@ import { CacheType } from "@app/hooks/api/admin/types";
 
 export const CachingPanel = () => {
   const { mutateAsync: invalidateCache } = useInvalidateCache();
-  const { membership } = useOrgPermission();
+  const { user } = useUser();
 
   const shouldShowSuccessRef = useRef(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [type, setType] = useState<CacheType | null>(null);
-  const [buttonsDisabled, setButtonsDisabled] = useState(false);
   const [shouldPoll, setShouldPoll] = useState(false);
 
-  const { data: isInvalidating, refetch: refetchInvalidatingStatus } =
-    useGetInvalidatingCacheStatus(shouldPoll);
+  const { data: invalidationStatus, isPending } = useGetInvalidatingCacheStatus(shouldPoll);
+  const isInvalidating = Boolean(shouldPoll && !isPending && invalidationStatus);
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "invalidateCache"
   ] as const);
 
-  const disableButtonsTemporarily = () => {
-    setButtonsDisabled(true);
-    timeoutRef.current = setTimeout(() => setButtonsDisabled(false), 10000);
-  };
-
-  const success = () => {
-    if (!shouldShowSuccessRef.current) return;
-    shouldShowSuccessRef.current = false;
-
-    createNotification({ text: "Successfully invalidated cache", type: "success" });
-    setButtonsDisabled(false);
-    setShouldPoll(false);
-  };
-
   const handleInvalidateCacheSubmit = async () => {
-    if (!type) return;
+    if (!type || isInvalidating) return;
 
     shouldShowSuccessRef.current = true;
-
     try {
       await invalidateCache({ type });
       createNotification({ text: `Began invalidating ${type} cache`, type: "success" });
-      disableButtonsTemporarily();
       handlePopUpClose("invalidateCache");
-
-      if (!(await refetchInvalidatingStatus()).data) {
-        success();
-        return;
-      }
-
       setShouldPoll(true);
     } catch (err) {
       console.error(err);
@@ -66,34 +42,13 @@ export const CachingPanel = () => {
   };
 
   useEffect(() => {
-    refetchInvalidatingStatus();
-    const timer = setTimeout(() => (shouldShowSuccessRef.current = true), 1000);
-    return () => {
-      clearTimeout(timer);
+    if (isInvalidating) return;
+
+    if (shouldPoll) {
       setShouldPoll(false);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isInvalidating) return;
-
-    clearTimeout(timeoutRef.current!);
-    setShouldPoll(true);
-    disableButtonsTemporarily();
-
-    return () => {
-      clearTimeout(timeoutRef.current!);
-    };
-  }, [isInvalidating]);
-
-  useEffect(() => {
-    if (shouldShowSuccessRef.current && isInvalidating === false) {
-      success();
-      clearTimeout(timeoutRef.current!);
+      createNotification({ text: "Successfully invalidated cache", type: "success" });
     }
-  }, [isInvalidating]);
-
-  const isAdmin = membership?.role === "admin";
+  }, [isInvalidating, shouldPoll]);
 
   return (
     <>
@@ -123,12 +78,11 @@ export const CachingPanel = () => {
             setType(CacheType.SECRETS);
             handlePopUpOpen("invalidateCache");
           }}
-          isDisabled={!isAdmin || buttonsDisabled}
+          isDisabled={!user.superAdmin || isInvalidating}
         >
           Invalidate Secrets Cache
         </Button>
       </div>
-
       <DeleteActionModal
         isOpen={popUp.invalidateCache.isOpen}
         title={`Are you sure you want to invalidate ${type} cache?`}
