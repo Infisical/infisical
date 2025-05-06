@@ -11,7 +11,7 @@ export const FolderTreeCheckpointResourcesSchema = z.object({
   id: z.string().uuid(),
   folderTreeCheckpointId: z.string().uuid(),
   folderId: z.string().uuid(),
-  folderCommitId: z.coerce.number(),
+  folderCommitId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -7,11 +7,11 @@ export async function up(knex: Knex): Promise<void> {
   const hasFolderCommitTable = await knex.schema.hasTable(TableName.FolderCommit);
   if (!hasFolderCommitTable) {
     await knex.schema.createTable(TableName.FolderCommit, (t) => {
-      t.bigIncrements("id").primary();
-      t.string("actorName").notNullable();
+      t.uuid("id").primary().defaultTo(knex.fn.uuid());
+      t.bigIncrements("commitId");
+      t.jsonb("actorMetadata").notNullable();
       t.string("actorType").notNullable();
       t.string("message");
-      t.timestamp("date").notNullable().defaultTo(knex.fn.now());
       t.uuid("folderId").notNullable();
       t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
       t.timestamps(true, true, true);
@@ -24,7 +24,7 @@ export async function up(knex: Knex): Promise<void> {
   if (!hasFolderCommitChangesTable) {
     await knex.schema.createTable(TableName.FolderCommitChanges, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
-      t.bigInteger("folderCommitId").notNullable();
+      t.uuid("folderCommitId").notNullable();
       t.foreign("folderCommitId").references("id").inTable(TableName.FolderCommit).onDelete("CASCADE");
       t.string("changeType").notNullable();
       t.uuid("secretVersionId");
@@ -43,9 +43,8 @@ export async function up(knex: Knex): Promise<void> {
   if (!hasFolderCheckpointTable) {
     await knex.schema.createTable(TableName.FolderCheckpoint, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
-      t.bigInteger("folderCommitId").notNullable();
+      t.uuid("folderCommitId").notNullable();
       t.foreign("folderCommitId").references("id").inTable(TableName.FolderCommit).onDelete("CASCADE");
-      t.timestamp("date").notNullable().defaultTo(knex.fn.now());
       t.timestamps(true, true, true);
 
       t.index("folderCommitId");
@@ -74,9 +73,8 @@ export async function up(knex: Knex): Promise<void> {
   if (!hasFolderTreeCheckpointTable) {
     await knex.schema.createTable(TableName.FolderTreeCheckpoint, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
-      t.bigInteger("folderCommitId").notNullable();
+      t.uuid("folderCommitId").notNullable();
       t.foreign("folderCommitId").references("id").inTable(TableName.FolderCommit).onDelete("CASCADE");
-      t.timestamp("date").notNullable().defaultTo(knex.fn.now());
       t.timestamps(true, true, true);
 
       t.index("folderCommitId");
@@ -91,7 +89,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("folderTreeCheckpointId").references("id").inTable(TableName.FolderTreeCheckpoint).onDelete("CASCADE");
       t.uuid("folderId").notNullable();
       t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
-      t.bigInteger("folderCommitId").notNullable();
+      t.uuid("folderCommitId").notNullable();
       t.foreign("folderCommitId").references("id").inTable(TableName.FolderCommit).onDelete("CASCADE");
       t.timestamps(true, true, true);
 
@@ -110,21 +108,45 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await dropOnUpdateTrigger(knex, TableName.FolderTreeCheckpointResources);
-  await knex.schema.dropTableIfExists(TableName.FolderTreeCheckpointResources);
+  const hasFolderCheckpointResourcesTable = await knex.schema.hasTable(TableName.FolderCheckpointResources);
+  const hasFolderTreeCheckpointResourcesTable = await knex.schema.hasTable(TableName.FolderTreeCheckpointResources);
+  const hasFolderCommitTable = await knex.schema.hasTable(TableName.FolderCommit);
+  const hasFolderCommitChangesTable = await knex.schema.hasTable(TableName.FolderCommitChanges);
+  const hasFolderTreeCheckpointTable = await knex.schema.hasTable(TableName.FolderTreeCheckpoint);
+  const hasFolderCheckpointTable = await knex.schema.hasTable(TableName.FolderCheckpoint);
 
-  await dropOnUpdateTrigger(knex, TableName.FolderTreeCheckpoint);
-  await knex.schema.dropTableIfExists(TableName.FolderTreeCheckpoint);
+  if (hasFolderCheckpointResourcesTable) {
+    await dropOnUpdateTrigger(knex, TableName.FolderCheckpointResources);
+    await knex.schema.dropTableIfExists(TableName.FolderCheckpointResources);
+  }
 
-  await dropOnUpdateTrigger(knex, TableName.FolderCheckpointResources);
-  await knex.schema.dropTableIfExists(TableName.FolderCheckpointResources);
+  if (hasFolderTreeCheckpointResourcesTable) {
+    await dropOnUpdateTrigger(knex, TableName.FolderTreeCheckpointResources);
+    await knex.schema.dropTableIfExists(TableName.FolderTreeCheckpointResources);
+  }
 
-  await dropOnUpdateTrigger(knex, TableName.FolderCheckpoint);
-  await knex.schema.dropTableIfExists(TableName.FolderCheckpoint);
+  if (hasFolderTreeCheckpointTable) {
+    await dropOnUpdateTrigger(knex, TableName.FolderTreeCheckpoint);
+    await knex.schema.dropTableIfExists(TableName.FolderTreeCheckpoint);
+  }
 
-  await dropOnUpdateTrigger(knex, TableName.FolderCommitChanges);
-  await knex.schema.dropTableIfExists(TableName.FolderCommitChanges);
+  if (hasFolderCheckpointResourcesTable) {
+    await dropOnUpdateTrigger(knex, TableName.FolderCheckpointResources);
+    await knex.schema.dropTableIfExists(TableName.FolderCheckpointResources);
+  }
 
-  await dropOnUpdateTrigger(knex, TableName.FolderCommit);
-  await knex.schema.dropTableIfExists(TableName.FolderCommit);
+  if (hasFolderCheckpointTable) {
+    await dropOnUpdateTrigger(knex, TableName.FolderCheckpoint);
+    await knex.schema.dropTableIfExists(TableName.FolderCheckpoint);
+  }
+
+  if (hasFolderCommitChangesTable) {
+    await dropOnUpdateTrigger(knex, TableName.FolderCommitChanges);
+    await knex.schema.dropTableIfExists(TableName.FolderCommitChanges);
+  }
+
+  if (hasFolderCommitTable) {
+    await dropOnUpdateTrigger(knex, TableName.FolderCommit);
+    await knex.schema.dropTableIfExists(TableName.FolderCommit);
+  }
 }

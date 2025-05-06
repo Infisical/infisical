@@ -161,7 +161,7 @@ export enum TableName {
   FolderTreeCheckpointResources = "folder_tree_checkpoint_resources"
 }
 
-export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
+export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
 
 export const UserDeviceSchema = z
   .object({

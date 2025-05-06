@@ -8,15 +8,15 @@ import { ormify, selectAllTableCols } from "@app/lib/knex";
 export type TFolderCheckpointDALFactory = ReturnType<typeof folderCheckpointDALFactory>;
 
 type CheckpointWithCommitInfo = TFolderCheckpoints & {
-  actorName: string;
+  actorMetadata: unknown;
   actorType: string;
-  message: string | null;
+  message?: string | null;
   commitDate: Date;
   folderId: string;
 };
 
 export const folderCheckpointDALFactory = (db: TDbClient) => {
-  const folderCheckpointOrm = ormify<TFolderCheckpoints>(db, TableName.FolderCheckpoint);
+  const folderCheckpointOrm = ormify(db, TableName.FolderCheckpoint);
 
   const findByCommitId = async (folderCommitId: string, tx?: Knex): Promise<TFolderCheckpoints | undefined> => {
     try {
@@ -37,13 +37,13 @@ export const folderCheckpointDALFactory = (db: TDbClient) => {
         .where({ folderId })
         .select(selectAllTableCols(TableName.FolderCheckpoint))
         .select(
-          db.ref("actorName").withSchema(TableName.FolderCommit),
+          db.ref("actorMetadata").withSchema(TableName.FolderCommit),
           db.ref("actorType").withSchema(TableName.FolderCommit),
           db.ref("message").withSchema(TableName.FolderCommit),
-          db.ref("date").withSchema(TableName.FolderCommit).as("commitDate"),
+          db.ref("createdAt").withSchema(TableName.FolderCommit).as("commitDate"),
           db.ref("folderId").withSchema(TableName.FolderCommit)
         )
-        .orderBy(`${TableName.FolderCheckpoint}.date`, "desc");
+        .orderBy(`${TableName.FolderCheckpoint}.createdAt`, "desc");
 
       if (limit !== undefined) {
         query = query.limit(limit);
@@ -63,13 +63,13 @@ export const folderCheckpointDALFactory = (db: TDbClient) => {
         .where({ folderId })
         .select(selectAllTableCols(TableName.FolderCheckpoint))
         .select(
-          db.ref("actorName").withSchema(TableName.FolderCommit),
+          db.ref("actorMetadata").withSchema(TableName.FolderCommit),
           db.ref("actorType").withSchema(TableName.FolderCommit),
           db.ref("message").withSchema(TableName.FolderCommit),
-          db.ref("date").withSchema(TableName.FolderCommit).as("commitDate"),
+          db.ref("createdAt").withSchema(TableName.FolderCommit).as("commitDate"),
           db.ref("folderId").withSchema(TableName.FolderCommit)
         )
-        .orderBy(`${TableName.FolderCheckpoint}.date`, "desc")
+        .orderBy(`${TableName.FolderCheckpoint}.createdAt`, "desc")
         .first();
       return doc;
     } catch (error) {

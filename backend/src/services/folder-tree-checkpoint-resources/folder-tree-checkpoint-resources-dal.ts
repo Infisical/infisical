@@ -3,9 +3,9 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import {
   TableName,
-  TEnvironments,
   TFolderTreeCheckpointResources,
   TFolderTreeCheckpoints,
+  TProjectEnvironments,
   TSecretFolders
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -15,21 +15,17 @@ export type TFolderTreeCheckpointResourcesDALFactory = ReturnType<typeof folderT
 
 type ResourceWithCheckpointInfo = TFolderTreeCheckpointResources & {
   folderCommitId: string;
-  date: Date;
 };
 
 type ResourceWithFolderInfo = TFolderTreeCheckpointResources & {
   name: string;
-  parentId: string | null;
+  parentId?: string | null;
   slug: string;
   envName: string;
 };
 
 export const folderTreeCheckpointResourcesDALFactory = (db: TDbClient) => {
-  const folderTreeCheckpointResourcesOrm = ormify<TFolderTreeCheckpointResources>(
-    db,
-    TableName.FolderTreeCheckpointResources
-  );
+  const folderTreeCheckpointResourcesOrm = ormify(db, TableName.FolderTreeCheckpointResources);
 
   const findByTreeCheckpointId = async (
     folderTreeCheckpointId: string,
@@ -50,7 +46,7 @@ export const folderTreeCheckpointResourcesDALFactory = (db: TDbClient) => {
   const findByFolderId = async (folderId: string, tx?: Knex): Promise<ResourceWithCheckpointInfo[]> => {
     try {
       const docs = await (tx || db.replicaNode())<
-        TFolderTreeCheckpointResources & Pick<TFolderTreeCheckpoints, "folderCommitId" | "date">
+        TFolderTreeCheckpointResources & Pick<TFolderTreeCheckpoints, "folderCommitId" | "createdAt">
       >(TableName.FolderTreeCheckpointResources)
         .where({ folderId })
         .select(selectAllTableCols(TableName.FolderTreeCheckpointResources))
@@ -61,7 +57,7 @@ export const folderTreeCheckpointResourcesDALFactory = (db: TDbClient) => {
         )
         .select(
           db.ref("folderCommitId").withSchema(TableName.FolderTreeCheckpoint),
-          db.ref("date").withSchema(TableName.FolderTreeCheckpoint)
+          db.ref("createdAt").withSchema(TableName.FolderTreeCheckpoint)
         );
       return docs;
     } catch (error) {
@@ -69,13 +65,10 @@ export const folderTreeCheckpointResourcesDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByFolderCommitId = async (
-    folderCommitId: string,
-    tx?: Knex
-  ): Promise<(TFolderTreeCheckpointResources & { date: Date })[]> => {
+  const findByFolderCommitId = async (folderCommitId: string, tx?: Knex): Promise<TFolderTreeCheckpointResources[]> => {
     try {
       const docs = await (tx || db.replicaNode())<
-        TFolderTreeCheckpointResources & Pick<TFolderTreeCheckpoints, "date">
+        TFolderTreeCheckpointResources & Pick<TFolderTreeCheckpoints, "createdAt">
       >(TableName.FolderTreeCheckpointResources)
         .where({ folderCommitId })
         .select(selectAllTableCols(TableName.FolderTreeCheckpointResources))
@@ -84,7 +77,7 @@ export const folderTreeCheckpointResourcesDALFactory = (db: TDbClient) => {
           `${TableName.FolderTreeCheckpointResources}.folderTreeCheckpointId`,
           `${TableName.FolderTreeCheckpoint}.id`
         )
-        .select(db.ref("date").withSchema(TableName.FolderTreeCheckpoint));
+        .select(db.ref("createdAt").withSchema(TableName.FolderTreeCheckpoint));
       return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByFolderCommitId" });
@@ -99,7 +92,7 @@ export const folderTreeCheckpointResourcesDALFactory = (db: TDbClient) => {
       const docs = await (tx || db.replicaNode())<
         TFolderTreeCheckpointResources &
           Pick<TSecretFolders, "name" | "parentId"> &
-          Pick<TEnvironments, "slug"> & { envName: string }
+          Pick<TProjectEnvironments, "slug"> & { envName: string }
       >(TableName.FolderTreeCheckpointResources)
         .where({ folderTreeCheckpointId })
         .select(selectAllTableCols(TableName.FolderTreeCheckpointResources))

@@ -8,15 +8,14 @@ import { ormify, selectAllTableCols } from "@app/lib/knex";
 export type TFolderCommitChangesDALFactory = ReturnType<typeof folderCommitChangesDALFactory>;
 
 type CommitChangeWithCommitInfo = TFolderCommitChanges & {
-  actorName: string;
+  actorMetadata: unknown;
   actorType: string;
-  message: string | null;
-  date: Date;
+  message?: string | null;
   folderId: string;
 };
 
 export const folderCommitChangesDALFactory = (db: TDbClient) => {
-  const folderCommitChangesOrm = ormify<TFolderCommitChanges>(db, TableName.FolderCommitChanges);
+  const folderCommitChangesOrm = ormify(db, TableName.FolderCommitChanges);
 
   const findByCommitId = async (folderCommitId: string, tx?: Knex): Promise<TFolderCommitChanges[]> => {
     try {
@@ -32,16 +31,17 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
   const findBySecretVersionId = async (secretVersionId: string, tx?: Knex): Promise<CommitChangeWithCommitInfo[]> => {
     try {
       const docs = await (tx || db.replicaNode())<
-        TFolderCommitChanges & Pick<TFolderCommits, "actorName" | "actorType" | "message" | "date" | "folderId">
+        TFolderCommitChanges &
+          Pick<TFolderCommits, "actorMetadata" | "actorType" | "message" | "createdAt" | "folderId">
       >(TableName.FolderCommitChanges)
         .where({ secretVersionId })
         .select(selectAllTableCols(TableName.FolderCommitChanges))
         .join(TableName.FolderCommit, `${TableName.FolderCommitChanges}.folderCommitId`, `${TableName.FolderCommit}.id`)
         .select(
-          db.ref("actorName").withSchema(TableName.FolderCommit),
+          db.ref("actorMetadata").withSchema(TableName.FolderCommit),
           db.ref("actorType").withSchema(TableName.FolderCommit),
           db.ref("message").withSchema(TableName.FolderCommit),
-          db.ref("date").withSchema(TableName.FolderCommit),
+          db.ref("createdAt").withSchema(TableName.FolderCommit),
           db.ref("folderId").withSchema(TableName.FolderCommit)
         );
       return docs;
@@ -53,16 +53,17 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
   const findByFolderVersionId = async (folderVersionId: string, tx?: Knex): Promise<CommitChangeWithCommitInfo[]> => {
     try {
       const docs = await (tx || db.replicaNode())<
-        TFolderCommitChanges & Pick<TFolderCommits, "actorName" | "actorType" | "message" | "date" | "folderId">
+        TFolderCommitChanges &
+          Pick<TFolderCommits, "actorMetadata" | "actorType" | "message" | "createdAt" | "folderId">
       >(TableName.FolderCommitChanges)
         .where({ folderVersionId })
         .select(selectAllTableCols(TableName.FolderCommitChanges))
         .join(TableName.FolderCommit, `${TableName.FolderCommitChanges}.folderCommitId`, `${TableName.FolderCommit}.id`)
         .select(
-          db.ref("actorName").withSchema(TableName.FolderCommit),
+          db.ref("actorMetadata").withSchema(TableName.FolderCommit),
           db.ref("actorType").withSchema(TableName.FolderCommit),
           db.ref("message").withSchema(TableName.FolderCommit),
-          db.ref("date").withSchema(TableName.FolderCommit),
+          db.ref("createdAt").withSchema(TableName.FolderCommit),
           db.ref("folderId").withSchema(TableName.FolderCommit)
         );
       return docs;

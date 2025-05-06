@@ -43,7 +43,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
       const docs: Array<TSecretFolderVersions & { max: number }> = await (tx || db.replicaNode())(
         TableName.SecretFolderVersion
       )
-        .whereIn("folderId", folderIds)
+        .whereIn(`${TableName.SecretFolderVersion}.folderId`, folderIds)
         .join(
           (tx || db)(TableName.SecretFolderVersion)
             .groupBy("folderId")

@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const FolderCommitsSchema = z.object({
-  id: z.coerce.number(),
-  actorName: z.string(),
+  id: z.string().uuid(),
+  commitId: z.coerce.number(),
+  actorMetadata: z.unknown(),
   actorType: z.string(),
   message: z.string().nullable().optional(),
-  date: z.date(),
   folderId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date()

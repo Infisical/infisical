@@ -8,7 +8,8 @@ import { ormify, selectAllTableCols } from "@app/lib/knex";
 export type TFolderCommitDALFactory = ReturnType<typeof folderCommitDALFactory>;
 
 export const folderCommitDALFactory = (db: TDbClient) => {
-  const folderCommitOrm = ormify<TFolderCommits>(db, TableName.FolderCommit);
+  const folderCommitOrm = ormify(db, TableName.FolderCommit);
+  const { delete: deleteOp, deleteById, ...restOfOrm } = folderCommitOrm;
 
   const findByFolderId = async (folderId: string, tx?: Knex): Promise<TFolderCommits[]> => {
     try {
@@ -48,7 +49,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
   };
 
   return {
-    ...folderCommitOrm,
+    ...restOfOrm,
     findByFolderId,
     findById,
     findLatestCommit

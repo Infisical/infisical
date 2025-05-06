@@ -61,6 +61,7 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -96,7 +97,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
     TSecretV2BridgeDALFactory,
     "bulkUpdate" | "insertMany" | "deleteMany" | "upsertSecretReferences" | "find" | "invalidateSecretCacheByProjectId"
   >;
-  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
+  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
@@ -104,6 +105,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   queueService: Pick<TQueueServiceFactory, "queuePg">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
 };
 
 export type TSecretRotationV2ServiceFactory = ReturnType<typeof secretRotationV2ServiceFactory>;
@@ -141,6 +143,7 @@ export const secretRotationV2ServiceFactory = ({
   snapshotService,
   keyStore,
   queueService,
+  folderCommitService,
   appConnectionDAL
 }: TSecretRotationV2ServiceFactoryDep) => {
   const $queueSendSecretRotationStatusNotification = async (secretRotation: TSecretRotationV2Raw) => {
@@ -533,7 +536,12 @@ export const secretRotationV2ServiceFactory = ({
             secretVersionDAL: secretVersionV2BridgeDAL,
             secretVersionTagDAL: secretVersionTagV2BridgeDAL,
             secretTagDAL,
-            resourceMetadataDAL
+            folderCommitService,
+            resourceMetadataDAL,
+            actor: {
+              type: actor.type,
+              actorId: actor.id
+            }
           });
 
           await secretRotationV2DAL.insertSecretMappings(
@@ -668,7 +676,12 @@ export const secretRotationV2ServiceFactory = ({
             secretVersionDAL: secretVersionV2BridgeDAL,
             secretVersionTagDAL: secretVersionTagV2BridgeDAL,
             secretTagDAL,
-            resourceMetadataDAL
+            folderCommitService,
+            resourceMetadataDAL,
+            actor: {
+              type: actor.type,
+              actorId: actor.id
+            }
           });
 
           secretsMappingUpdated = true;
@@ -786,6 +799,9 @@ export const secretRotationV2ServiceFactory = ({
             projectId,
             folderId,
             actorId: actor.id, // not actually used since rotated secrets are shared
+            actorType: actor.type,
+            folderCommitService,
+            secretVersionDAL: secretVersionV2BridgeDAL,
             tx
           });
         }
@@ -926,6 +942,7 @@ export const secretRotationV2ServiceFactory = ({
             secretDAL: secretV2BridgeDAL,
             secretVersionDAL: secretVersionV2BridgeDAL,
             secretVersionTagDAL: secretVersionTagV2BridgeDAL,
+            folderCommitService,
             secretTagDAL,
             resourceMetadataDAL
           });

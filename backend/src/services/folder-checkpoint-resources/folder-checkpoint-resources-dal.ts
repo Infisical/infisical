@@ -9,11 +9,10 @@ export type TFolderCheckpointResourcesDALFactory = ReturnType<typeof folderCheck
 
 type ResourceWithCheckpointInfo = TFolderCheckpointResources & {
   folderCommitId: string;
-  date: Date;
 };
 
 export const folderCheckpointResourcesDALFactory = (db: TDbClient) => {
-  const folderCheckpointResourcesOrm = ormify<TFolderCheckpointResources>(db, TableName.FolderCheckpointResources);
+  const folderCheckpointResourcesOrm = ormify(db, TableName.FolderCheckpointResources);
 
   const findByCheckpointId = async (folderCheckpointId: string, tx?: Knex): Promise<TFolderCheckpointResources[]> => {
     try {
@@ -29,7 +28,7 @@ export const folderCheckpointResourcesDALFactory = (db: TDbClient) => {
   const findBySecretVersionId = async (secretVersionId: string, tx?: Knex): Promise<ResourceWithCheckpointInfo[]> => {
     try {
       const docs = await (tx || db.replicaNode())<
-        TFolderCheckpointResources & Pick<TFolderCheckpoints, "folderCommitId" | "date">
+        TFolderCheckpointResources & Pick<TFolderCheckpoints, "folderCommitId" | "createdAt">
       >(TableName.FolderCheckpointResources)
         .where({ secretVersionId })
         .select(selectAllTableCols(TableName.FolderCheckpointResources))
@@ -40,7 +39,7 @@ export const folderCheckpointResourcesDALFactory = (db: TDbClient) => {
         )
         .select(
           db.ref("folderCommitId").withSchema(TableName.FolderCheckpoint),
-          db.ref("date").withSchema(TableName.FolderCheckpoint)
+          db.ref("createdAt").withSchema(TableName.FolderCheckpoint)
         );
       return docs;
     } catch (error) {
@@ -51,7 +50,7 @@ export const folderCheckpointResourcesDALFactory = (db: TDbClient) => {
   const findByFolderVersionId = async (folderVersionId: string, tx?: Knex): Promise<ResourceWithCheckpointInfo[]> => {
     try {
       const docs = await (tx || db.replicaNode())<
-        TFolderCheckpointResources & Pick<TFolderCheckpoints, "folderCommitId" | "date">
+        TFolderCheckpointResources & Pick<TFolderCheckpoints, "folderCommitId" | "createdAt">
       >(TableName.FolderCheckpointResources)
         .where({ folderVersionId })
         .select(selectAllTableCols(TableName.FolderCheckpointResources))
@@ -62,7 +61,7 @@ export const folderCheckpointResourcesDALFactory = (db: TDbClient) => {
         )
         .select(
           db.ref("folderCommitId").withSchema(TableName.FolderCheckpoint),
-          db.ref("date").withSchema(TableName.FolderCheckpoint)
+          db.ref("createdAt").withSchema(TableName.FolderCheckpoint)
         );
       return docs;
     } catch (error) {

@@ -8,15 +8,15 @@ import { ormify, selectAllTableCols } from "@app/lib/knex";
 export type TFolderTreeCheckpointDALFactory = ReturnType<typeof folderTreeCheckpointDALFactory>;
 
 type TreeCheckpointWithCommitInfo = TFolderTreeCheckpoints & {
-  actorName: string;
+  actorMetadata: unknown;
   actorType: string;
-  message: string | null;
+  message?: string | null;
   commitDate: Date;
   folderId: string;
 };
 
 export const folderTreeCheckpointDALFactory = (db: TDbClient) => {
-  const folderTreeCheckpointOrm = ormify<TFolderTreeCheckpoints>(db, TableName.FolderTreeCheckpoint);
+  const folderTreeCheckpointOrm = ormify(db, TableName.FolderTreeCheckpoint);
 
   const findByCommitId = async (folderCommitId: string, tx?: Knex): Promise<TFolderTreeCheckpoints | undefined> => {
     try {
@@ -38,7 +38,7 @@ export const folderTreeCheckpointDALFactory = (db: TDbClient) => {
     try {
       const query = (tx || db.replicaNode())<
         TFolderTreeCheckpoints &
-          Pick<TFolderCommits, "actorName" | "actorType" | "message" | "folderId"> & { commitDate: Date }
+          Pick<TFolderCommits, "actorMetadata" | "actorType" | "message" | "folderId"> & { commitDate: Date }
       >(TableName.FolderTreeCheckpoint)
         .join(
           TableName.FolderCommit,
@@ -50,13 +50,13 @@ export const folderTreeCheckpointDALFactory = (db: TDbClient) => {
         .where({ projectId })
         .select(selectAllTableCols(TableName.FolderTreeCheckpoint))
         .select(
-          db.ref("actorName").withSchema(TableName.FolderCommit),
+          db.ref("actorMetadata").withSchema(TableName.FolderCommit),
           db.ref("actorType").withSchema(TableName.FolderCommit),
           db.ref("message").withSchema(TableName.FolderCommit),
-          db.ref("date").withSchema(TableName.FolderCommit).as("commitDate"),
+          db.ref("createdAt").withSchema(TableName.FolderCommit).as("commitDate"),
           db.ref("folderId").withSchema(TableName.FolderCommit)
         )
-        .orderBy(`${TableName.FolderTreeCheckpoint}.date`, "desc");
+        .orderBy(`${TableName.FolderTreeCheckpoint}.createdAt`, "desc");
 
       if (limit) {
         void query.limit(limit);
@@ -76,7 +76,7 @@ export const folderTreeCheckpointDALFactory = (db: TDbClient) => {
     try {
       const doc = await (tx || db.replicaNode())<
         TFolderTreeCheckpoints &
-          Pick<TFolderCommits, "actorName" | "actorType" | "message" | "folderId"> & { commitDate: Date }
+          Pick<TFolderCommits, "actorMetadata" | "actorType" | "message" | "folderId"> & { commitDate: Date }
       >(TableName.FolderTreeCheckpoint)
         .join(
           TableName.FolderCommit,
@@ -88,13 +88,13 @@ export const folderTreeCheckpointDALFactory = (db: TDbClient) => {
         .where({ projectId })
         .select(selectAllTableCols(TableName.FolderTreeCheckpoint))
         .select(
-          db.ref("actorName").withSchema(TableName.FolderCommit),
+          db.ref("actorMetadata").withSchema(TableName.FolderCommit),
           db.ref("actorType").withSchema(TableName.FolderCommit),
           db.ref("message").withSchema(TableName.FolderCommit),
-          db.ref("date").withSchema(TableName.FolderCommit).as("commitDate"),
+          db.ref("createdAt").withSchema(TableName.FolderCommit).as("commitDate"),
           db.ref("folderId").withSchema(TableName.FolderCommit)
         )
-        .orderBy(`${TableName.FolderTreeCheckpoint}.date`, "desc")
+        .orderBy(`${TableName.FolderTreeCheckpoint}.createdAt`, "desc")
         .first();
       return doc;
     } catch (error) {
