@@ -126,6 +126,7 @@ import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { certificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { certificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { certificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { certificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { certificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
@@ -814,6 +815,7 @@ export const registerRoutes = async (
 
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
+  const certificateSecretDAL = certificateSecretDALFactory(db);
 
   const pkiAlertDAL = pkiAlertDALFactory(db);
   const pkiCollectionDAL = pkiCollectionDALFactory(db);
@@ -823,6 +825,7 @@ export const registerRoutes = async (
   const certificateService = certificateServiceFactory({
     certificateDAL,
     certificateBodyDAL,
+    certificateSecretDAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     certificateAuthorityCrlDAL,
@@ -894,6 +897,7 @@ export const registerRoutes = async (
     certificateAuthorityQueue,
     certificateDAL,
     certificateBodyDAL,
+    certificateSecretDAL,
     pkiCollectionDAL,
     pkiCollectionItemDAL,
     projectDAL,

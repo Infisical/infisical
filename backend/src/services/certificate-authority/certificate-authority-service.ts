@@ -6,7 +6,11 @@ import { z } from "zod";
 
 import { ActionProjectType, ProjectType, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -21,6 +25,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
@@ -75,6 +80,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getById" | "find">;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
   certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find">;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
@@ -96,6 +102,7 @@ export const certificateAuthorityServiceFactory = ({
   certificateTemplateDAL,
   certificateDAL,
   certificateBodyDAL,
+  certificateSecretDAL,
   pkiCollectionDAL,
   pkiCollectionItemDAL,
   projectDAL,
@@ -1157,7 +1164,10 @@ export const certificateAuthorityServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Create,
+      ProjectPermissionSub.Certificates
+    );
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
     if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
@@ -1373,6 +1383,23 @@ export const certificateAuthorityServiceFactory = ({
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
       plainText: Buffer.from(new Uint8Array(leafCert.rawData))
     });
+    const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
+      plainText: Buffer.from(skLeaf)
+    });
+
+    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+      caCertId: caCert.id,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
+    });
+
+    const certificateChainPem = `${issuingCaCertificate}\n${caCertChain}`.trim();
+
+    const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
+      plainText: Buffer.from(certificateChainPem)
+    });
 
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
@@ -1396,7 +1423,16 @@ export const certificateAuthorityServiceFactory = ({
       await certificateBodyDAL.create(
         {
           certId: cert.id,
-          encryptedCertificate
+          encryptedCertificate,
+          encryptedCertificateChain
+        },
+        tx
+      );
+
+      await certificateSecretDAL.create(
+        {
+          certId: cert.id,
+          encryptedPrivateKey
         },
         tx
       );
@@ -1414,17 +1450,9 @@ export const certificateAuthorityServiceFactory = ({
       return cert;
     });
 
-    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
-      caCertId: caCert.id,
-      certificateAuthorityDAL,
-      certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
-    });
-
     return {
       certificate: leafCert.toString("pem"),
-      certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
+      certificateChain: certificateChainPem,
       issuingCaCertificate,
       privateKey: skLeaf,
       serialNumber,
@@ -1487,7 +1515,7 @@ export const certificateAuthorityServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Create,
+        ProjectPermissionCertificateActions.Create,
         ProjectPermissionSub.Certificates
       );
     }

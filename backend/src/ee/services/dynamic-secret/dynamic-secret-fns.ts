@@ -24,8 +24,16 @@ export const verifyHostInputValidity = async (host: string, isGateway = false) =
       if (net.isIPv4(el)) {
         exclusiveIps.push(el);
       } else {
-        const resolvedIps = await dns.resolve4(el);
-        exclusiveIps.push(...resolvedIps);
+        try {
+          const resolvedIps = await dns.resolve4(el);
+          exclusiveIps.push(...resolvedIps);
+        } catch (error) {
+          // only try lookup if not found
+          if ((error as { code: string })?.code !== "ENOTFOUND") throw error;
+
+          const resolvedIps = (await dns.lookup(el, { all: true, family: 4 })).map(({ address }) => address);
+          exclusiveIps.push(...resolvedIps);
+        }
       }
     }
   }
@@ -38,8 +46,16 @@ export const verifyHostInputValidity = async (host: string, isGateway = false) =
     if (normalizedHost === "localhost" || normalizedHost === "host.docker.internal") {
       throw new BadRequestError({ message: "Invalid db host" });
     }
-    const resolvedIps = await dns.resolve4(host);
-    inputHostIps.push(...resolvedIps);
+    try {
+      const resolvedIps = await dns.resolve4(host);
+      inputHostIps.push(...resolvedIps);
+    } catch (error) {
+      // only try lookup if not found
+      if ((error as { code: string })?.code !== "ENOTFOUND") throw error;
+
+      const resolvedIps = (await dns.lookup(host, { all: true, family: 4 })).map(({ address }) => address);
+      inputHostIps.push(...resolvedIps);
+    }
   }
 
   if (!isGateway && !(appCfg.DYNAMIC_SECRET_ALLOW_INTERNAL_IP || appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)) {

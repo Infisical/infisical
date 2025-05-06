@@ -7,6 +7,14 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionCertificateActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  ReadPrivateKey = "read-private-key"
+}
+
 export enum ProjectPermissionSecretActions {
   DescribeAndReadValue = "read",
   DescribeSecret = "describeSecret",
@@ -277,7 +285,7 @@ export type ProjectPermissionSet =
       )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
-  | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
+  | [ProjectPermissionCertificateActions, ProjectPermissionSub.Certificates]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]

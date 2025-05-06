@@ -29,6 +29,19 @@ Used to configure platform-specific security and operational settings
   Specifies the internal port on which the application listens.
 </ParamField>
 
+<ParamField query="HOST" type="string" default="localhost" optional>
+  Specifies the network interface Infisical will bind to when accepting incoming connections.
+
+  By default, Infisical binds to `localhost`, which restricts access to connections from the same machine. 
+
+  To make the application accessible externally (e.g., for self-hosted deployments), set this to `0.0.0.0`, which tells the server to listen on all network interfaces.
+
+  Example values:
+  - `localhost` (default, same as `127.0.0.1`)
+  - `0.0.0.0` (all interfaces, accessible externally)
+  - `192.168.1.100` (specific interface IP)
+</ParamField>
+
 <ParamField query="TELEMETRY_ENABLED" type="string" default="true" optional>
   Telemetry helps us improve Infisical but if you want to disable it you may set
   this to `false`.

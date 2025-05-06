@@ -2,6 +2,10 @@ import * as x509 from "@peculiar/x509";
 
 import { TProjectPermission } from "@app/lib/types";
 
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { TProjectDALFactory } from "../project/project-dal";
+import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
+
 export enum CertStatus {
   ACTIVE = "active",
   REVOKED = "revoked"
@@ -73,3 +77,27 @@ export type TRevokeCertDTO = {
 export type TGetCertBodyDTO = {
   serialNumber: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TGetCertPrivateKeyDTO = {
+  serialNumber: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TGetCertBundleDTO = {
+  serialNumber: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TGetCertificateCredentialsDTO = {
+  certId: string;
+  projectId: string;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+};
+
+export type TBuildCertificateChainDTO = {
+  caCert?: string;
+  caCertChain?: string;
+  encryptedCertificateChain?: Buffer;
+  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey">;
+  kmsId: string;
+};
