@@ -10,15 +10,17 @@ import {
 } from "./types";
 
 export const useCreateNewInstallationSession = () => {
-  return useMutation<{ sessionId: string }, object, { organizationId: string }>({
-    mutationFn: async (opt) => {
-      const { data } = await apiRequest.post(
-        "/api/v1/secret-scanning/create-installation-session/organization",
-        opt
-      );
-      return data;
+  return useMutation<{ sessionId: string; gitAppSlug: string }, object, { organizationId: string }>(
+    {
+      mutationFn: async (opt) => {
+        const { data } = await apiRequest.post(
+          "/api/v1/secret-scanning/create-installation-session/organization",
+          opt
+        );
+        return data;
+      }
     }
-  });
+  );
 };
 
 export const useUpdateRiskStatus = () => {
