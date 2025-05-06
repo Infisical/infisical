@@ -170,7 +170,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .default(InfisicalProjectTemplate.Default)
           .describe(PROJECTS.CREATE.template),
-        type: z.nativeEnum(ProjectType).default(ProjectType.SecretManager)
+        type: z.nativeEnum(ProjectType).default(ProjectType.SecretManager),
+        shouldCreateDefaultEnvs: z.boolean().optional().default(true)
       }),
       response: {
         200: z.object({
@@ -190,7 +191,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         slug: req.body.slug,
         kmsKeyId: req.body.kmsKeyId,
         template: req.body.template,
-        type: req.body.type
+        type: req.body.type,
+        createDefaultEnvs: req.body.shouldCreateDefaultEnvs
       });
 
       await server.services.telemetry.sendPostHogEvents({
@@ -272,7 +274,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        slug: slugSchema({ min: 5, max: 36 }).describe("The slug of the project to get.")
+        slug: slugSchema({ max: 36 }).describe("The slug of the project to get.")
       }),
       response: {
         200: projectWithEnv
