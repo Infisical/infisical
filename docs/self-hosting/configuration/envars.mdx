@@ -625,6 +625,30 @@ To help you sync secrets from Infisical to services such as Github and Gitlab, I
   </ParamField>
 </Accordion>
 
+## Secret Scanning
+
+<Accordion title="GitHub">
+  <ParamField query="INFISICAL_GITHUB_APP_ID" type="string" default="none" optional>
+    The App ID of your GitHub App.
+  </ParamField>
+
+  <ParamField query="INFISICAL_GITHUB_APP_SLUG" type="string" default="none" optional>
+    The slug of your GitHub App.
+  </ParamField>
+
+  <ParamField query="INFISICAL_GITHUB_APP_PRIVATE_KEY" type="string" default="none" optional>
+    A private key for your GitHub App.
+  </ParamField>
+
+  <ParamField query="INFISICAL_GITHUB_APP_WEBHOOK_SECRET" type="string" default="none" optional>
+    The webhook secret of your GitHub App.
+  </ParamField>
+
+  <ParamField query="SECRET_SCANNING_ORG_WHITELIST" type="string" default="none" optional>
+    A comma separated list of Infisical organization ID's that are allowed to use the secret scanning feature.
+  </ParamField>
+</Accordion>
+
 ## Observability
 
 You can configure Infisical to collect and expose telemetry data for analytics and monitoring.

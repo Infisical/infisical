@@ -23,7 +23,8 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
       body: z.object({ organizationId: z.string().trim() }),
       response: {
         200: z.object({
-          sessionId: z.string()
+          sessionId: z.string(),
+          gitAppSlug: z.string()
         })
       }
     },

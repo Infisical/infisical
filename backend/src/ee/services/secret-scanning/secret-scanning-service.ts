@@ -47,12 +47,14 @@ export const secretScanningServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TInstallAppSessionDTO) => {
+    const appCfg = getConfig();
+
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
 
     const sessionId = crypto.randomBytes(16).toString("hex");
     await gitAppInstallSessionDAL.upsert({ orgId, sessionId, userId: actorId });
-    return { sessionId };
+    return { sessionId, gitAppSlug: appCfg.SECRET_SCANNING_GIT_APP_SLUG };
   };
 
   const linkInstallationToOrg = async ({
