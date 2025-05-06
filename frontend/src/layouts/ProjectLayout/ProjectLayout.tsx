@@ -104,6 +104,20 @@ export const ProjectLayout = () => {
                       {isCertManager && (
                         <>
                           <Link
+                            to={
+                              `/${ProjectType.CertificateManager}/$projectId/subscribers` as const
+                            }
+                            params={{
+                              projectId: currentWorkspace.id
+                            }}
+                          >
+                            {({ isActive }) => (
+                              <MenuItem isSelected={isActive} icon="certificate-authority">
+                                Subscribers
+                              </MenuItem>
+                            )}
+                          </Link>
+                          <Link
                             to={`/${ProjectType.CertificateManager}/$projectId/overview` as const}
                             params={{
                               projectId: currentWorkspace.id

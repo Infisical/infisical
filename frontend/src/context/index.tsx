@@ -16,6 +16,7 @@ export {
   ProjectPermissionIdentityActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
   useProjectPermission
 } from "./ProjectPermissionContext";

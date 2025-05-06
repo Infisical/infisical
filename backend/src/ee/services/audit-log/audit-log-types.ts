@@ -31,6 +31,7 @@ import {
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
+import { CertKeyUsage, CertExtendedKeyUsage } from "@app/services/certificate/certificate-types";
 
 import { KmipPermission } from "../kmip/kmip-enum";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
@@ -235,6 +236,10 @@ export enum EventType {
   GET_PKI_COLLECTION_ITEMS = "get-pki-collection-items",
   ADD_PKI_COLLECTION_ITEM = "add-pki-collection-item",
   DELETE_PKI_COLLECTION_ITEM = "delete-pki-collection-item",
+  CREATE_PKI_SUBSCRIBER = "create-pki-subscriber",
+  UPDATE_PKI_SUBSCRIBER = "update-pki-subscriber",
+  DELETE_PKI_SUBSCRIBER = "delete-pki-subscriber",
+  GET_PKI_SUBSCRIBER = "get-pki-subscriber",
   CREATE_KMS = "create-kms",
   UPDATE_KMS = "update-kms",
   DELETE_KMS = "delete-kms",
@@ -1879,6 +1884,48 @@ interface DeletePkiCollectionItem {
   };
 }
 
+interface CreatePkiSubscriber {
+  type: EventType.CREATE_PKI_SUBSCRIBER;
+  metadata: {
+    pkiSubscriberId: string;
+    caId: string;
+    name: string;
+    commonName: string;
+    ttl: string;
+    subjectAlternativeNames: string[];
+    keyUsages: CertKeyUsage[];
+    extendedKeyUsages: CertExtendedKeyUsage[];
+  };
+}
+
+interface UpdatePkiSubscriber {
+  type: EventType.UPDATE_PKI_SUBSCRIBER;
+  metadata: {
+    pkiSubscriberId: string;
+    caId?: string;
+    name?: string;
+    commonName?: string;
+    ttl?: string;
+    subjectAlternativeNames?: string[];
+    keyUsages?: CertKeyUsage[];
+    extendedKeyUsages?: CertExtendedKeyUsage[];
+  };
+}
+
+interface DeletePkiSubscriber {
+  type: EventType.DELETE_PKI_SUBSCRIBER;
+  metadata: {
+    pkiSubscriberId: string;
+  };
+}
+
+interface GetPkiSubscriber {
+  type: EventType.GET_PKI_SUBSCRIBER;
+  metadata: {
+    pkiSubscriberId: string;
+  };
+}
+
 interface CreateKmsEvent {
   type: EventType.CREATE_KMS;
   metadata: {
@@ -2835,6 +2882,10 @@ export type Event =
   | GetPkiCollectionItems
   | AddPkiCollectionItem
   | DeletePkiCollectionItem
+  | CreatePkiSubscriber
+  | UpdatePkiSubscriber
+  | DeletePkiSubscriber
+  | GetPkiSubscriber
   | CreateKmsEvent
   | UpdateKmsEvent
   | DeleteKmsEvent

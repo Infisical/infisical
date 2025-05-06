@@ -16,6 +16,7 @@ import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificat
 import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
 import { LoginMappingSource } from "@app/ee/services/ssh-host/ssh-host-types";
 import { sanitizedSshHostGroup } from "@app/ee/services/ssh-host-group/ssh-host-group-schema";
+import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -485,6 +486,36 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return { collections: pkiCollections };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/pki-subscribers",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_PKI_SUBSCRIBERS.projectId)
+      }),
+      response: {
+        200: z.object({
+          subscribers: z.array(sanitizedPkiSubscriber)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const subscribers = await server.services.project.listProjectPkiSubscribers({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId
+      });
+
+      return { subscribers };
     }
   });
 

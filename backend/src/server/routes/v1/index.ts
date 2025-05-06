@@ -26,11 +26,13 @@ import { registerIdentityUaRouter } from "./identity-universal-auth-router";
 import { registerIntegrationAuthRouter } from "./integration-auth-router";
 import { registerIntegrationRouter } from "./integration-router";
 import { registerInviteOrgRouter } from "./invite-org-router";
+import { registerMicrosoftTeamsRouter } from "./microsoft-teams-router";
 import { registerOrgAdminRouter } from "./org-admin-router";
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
 import { registerPkiAlertRouter } from "./pki-alert-router";
 import { registerPkiCollectionRouter } from "./pki-collection-router";
+import { registerPkiSubscriberRouter } from "./pki-subscriber-router";
 import { registerProjectEnvRouter } from "./project-env-router";
 import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
@@ -47,7 +49,6 @@ import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
 import { registerWorkflowIntegrationRouter } from "./workflow-integration-router";
-import { registerMicrosoftTeamsRouter } from "./microsoft-teams-router";
 
 export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });
@@ -103,6 +104,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(registerCertificateTemplateRouter, { prefix: "/certificate-templates" });
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
       await pkiRouter.register(registerPkiCollectionRouter, { prefix: "/collections" });
+      await pkiRouter.register(registerPkiSubscriberRouter, { prefix: "/subscribers" });
     },
     { prefix: "/pki" }
   );

@@ -87,6 +87,14 @@ export enum ProjectPermissionSshHostActions {
   IssueHostCert = "issue-host-cert"
 }
 
+export enum ProjectPermissionPkiSubscriberActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueCert = "issue-cert"
+}
+
 export enum ProjectPermissionSecretRotationActions {
   Read = "read",
   ReadGeneratedCredentials = "read-generated-credentials",
@@ -178,6 +186,7 @@ export enum ProjectPermissionSub {
   SshHostGroups = "ssh-host-groups",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
+  PkiSubscribers = "pki-subscribers",
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
@@ -277,6 +286,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionSshHostActions, ProjectPermissionSub.SshHosts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
+  | [ProjectPermissionPkiSubscriberActions, ProjectPermissionSub.PkiSubscribers]
   | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]

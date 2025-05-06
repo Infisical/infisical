@@ -79,6 +79,15 @@ export enum ProjectPermissionSshHostActions {
   IssueHostCert = "issue-host-cert"
 }
 
+export enum ProjectPermissionPkiSubscriberActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueCert = "issue-cert",
+  SignCert = "sign-cert"
+}
+
 export enum ProjectPermissionSecretSyncActions {
   Read = "read",
   Create = "create",
@@ -135,6 +144,7 @@ export enum ProjectPermissionSub {
   SshCertificateTemplates = "ssh-certificate-templates",
   SshHosts = "ssh-hosts",
   SshHostGroups = "ssh-host-groups",
+  PkiSubscribers = "pki-subscribers",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
   Kms = "kms",
@@ -241,6 +251,7 @@ export type ProjectPermissionSet =
       ProjectPermissionSshHostActions,
       ProjectPermissionSub.SshHosts | (ForcedSubject<ProjectPermissionSub.SshHosts> & SshHostSubjectFields)
     ]
+  | [ProjectPermissionPkiSubscriberActions, ProjectPermissionSub.PkiSubscribers] // (dangtony98): TODO: update
   | [ProjectPermissionActions, ProjectPermissionSub.SshHostGroups]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
@@ -721,6 +732,17 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
+      ProjectPermissionPkiSubscriberActions.Read,
+      ProjectPermissionPkiSubscriberActions.Create,
+      ProjectPermissionPkiSubscriberActions.Edit,
+      ProjectPermissionPkiSubscriberActions.Delete,
+      ProjectPermissionPkiSubscriberActions.IssueCert
+    ],
+    ProjectPermissionSub.PkiSubscribers
+  );
+
+  can(
+    [
       ProjectPermissionMemberActions.Create,
       ProjectPermissionMemberActions.Edit,
       ProjectPermissionMemberActions.Delete,
@@ -977,6 +999,7 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiAlerts);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiCollections);
+  can([ProjectPermissionPkiSubscriberActions.Read], ProjectPermissionSub.PkiSubscribers);
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificates);
   can([ProjectPermissionActions.Create], ProjectPermissionSub.SshCertificates);

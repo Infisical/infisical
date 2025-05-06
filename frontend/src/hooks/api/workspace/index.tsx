@@ -35,6 +35,7 @@ export {
   useListWorkspaceGroups,
   useListWorkspacePkiAlerts,
   useListWorkspacePkiCollections,
+  useListWorkspacePkiSubscribers,
   useListWorkspaceSshCas,
   useListWorkspaceSshCertificates,
   useListWorkspaceSshCertificateTemplates,

@@ -194,6 +194,8 @@ import { pkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-servic
 import { pkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { pkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { pkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
+import { pkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
+import { pkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
@@ -816,6 +818,7 @@ export const registerRoutes = async (
   const pkiAlertDAL = pkiAlertDALFactory(db);
   const pkiCollectionDAL = pkiCollectionDALFactory(db);
   const pkiCollectionItemDAL = pkiCollectionItemDALFactory(db);
+  const pkiSubscriberDAL = pkiSubscriberDALFactory(db);
 
   const certificateService = certificateServiceFactory({
     certificateDAL,
@@ -945,6 +948,11 @@ export const registerRoutes = async (
     projectDAL
   });
 
+  const pkiSubscriberService = pkiSubscriberServiceFactory({
+    pkiSubscriberDAL,
+    permissionService
+  });
+
   const projectTemplateService = projectTemplateServiceFactory({
     licenseService,
     permissionService,
@@ -1042,6 +1050,7 @@ export const registerRoutes = async (
     projectRoleDAL,
     folderDAL,
     licenseService,
+    pkiSubscriberDAL,
     certificateAuthorityDAL,
     certificateDAL,
     pkiAlertDAL,
@@ -1717,6 +1726,7 @@ export const registerRoutes = async (
     certificateEst: certificateEstService,
     pkiAlert: pkiAlertService,
     pkiCollection: pkiCollectionService,
+    pkiSubscriber: pkiSubscriberService,
     secretScanning: secretScanningService,
     license: licenseService,
     trustedIp: trustedIpService,
