@@ -284,8 +284,11 @@ const secretManagerIntegrationsRedirect = route("/integrations", [
 
 const certManagerRoutes = route("/cert-manager/$projectId", [
   layout("cert-manager-layout", "cert-manager/layout.tsx", [
-    route("/subscribers/$subscriberId", "cert-manager/PkiSubscriberDetailsByIDPage/route.tsx"),
-    route("/subscribers", "cert-manager/PkiSubscribersPage/route.tsx"),
+    route("/subscribers", [
+      index("cert-manager/PkiSubscribersPage/route.tsx"),
+      route("/$subscriberId", "cert-manager/PkiSubscriberDetailsByIDPage/route.tsx")
+    ]),
+
     route("/overview", "cert-manager/CertificatesPage/route.tsx"),
     route("/certificate-authorities", "cert-manager/CertificateAuthoritiesPage/route.tsx"),
     route("/alerting", "cert-manager/AlertingPage/route.tsx"),

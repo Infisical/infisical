@@ -1,12 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from '@tanstack/react-router'
 
-import { PkiSubscribersPage } from "./PkiSubscribersPage";
+import { PkiSubscribersPage } from './PkiSubscribersPage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers"
+  '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/',
 )({
-  component: PkiSubscribersPage
-});
+  component: PkiSubscribersPage,
+})
 
 function RouteComponent() {
   return (
@@ -14,5 +14,5 @@ function RouteComponent() {
       Hello
       "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers"!
     </div>
-  );
+  )
 }
