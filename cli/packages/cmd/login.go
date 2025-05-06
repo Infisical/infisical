@@ -59,6 +59,12 @@ func handleUniversalAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.I
 		return infisicalSdk.MachineIdentityCredential{}, err
 	}
 
+	// Update the infisicalClient with the domain flag
+	domain, err := cmd.Flags().GetString("domain")
+	if err == nil && domain != "" {
+		infisicalClient.SetSiteUrl(domain)
+	}
+
 	return infisicalClient.Auth().UniversalAuthLogin(clientId, clientSecret)
 }
 
