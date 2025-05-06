@@ -29,7 +29,12 @@ const formSchema = z
       serviceAccountEmail: z.string().email().trim().min(1, "Service account email required")
     }),
     defaultTTL: z.string().superRefine(validateTTL),
-    maxTTL: z.string().optional().superRefine(validateTTL),
+    maxTTL: z
+      .string()
+      .optional()
+      .superRefine((val, ctx) => {
+        if (val) validateTTL(val, ctx);
+      }),
     name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
     environment: z.object({ name: z.string(), slug: z.string() })
   })
