@@ -6,15 +6,15 @@ import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
+import { Button, FormControl, Input } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { TProjectTemplate, useUpdateProjectTemplate } from "@app/hooks/api/projectTemplates";
 import { slugSchema } from "@app/lib/schemas";
 import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
-import { NewPermissionRule } from "@app/pages/project/RoleDetailsBySlugPage/components/NewPermissionRule";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
+import { PolicySelectionModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicySelectionModal";
 import {
   formRolePermission2API,
   PROJECT_PERMISSION_OBJECT,
@@ -44,7 +44,7 @@ export const ProjectTemplateEditRoleForm = ({
   role,
   isDisabled
 }: Props) => {
-  const { popUp, handlePopUpToggle } = usePopUp(["createPolicy"] as const);
+  const { popUp, handlePopUpToggle } = usePopUp(["addPolicy"] as const);
 
   const formMethods = useForm<TFormSchema>({
     values: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : undefined,
@@ -119,34 +119,29 @@ export const ProjectTemplateEditRoleForm = ({
                 <Button
                   variant="outline_bg"
                   type="submit"
-                  className={twMerge("h-10 rounded-r-none", isDirty && "bg-primary text-black")}
+                  className={twMerge(
+                    "h-10 rounded-r-none border border-primary",
+                    isDirty && "bg-primary text-black"
+                  )}
                   isDisabled={isSubmitting || !isDirty || isDisabled}
                   isLoading={isSubmitting}
                   leftIcon={<FontAwesomeIcon icon={faSave} />}
                 >
                   Save
                 </Button>
-                <Modal
-                  isOpen={popUp.createPolicy.isOpen}
-                  onOpenChange={(isOpen) => handlePopUpToggle("createPolicy", isOpen)}
+                <Button
+                  className="h-10 rounded-l-none"
+                  variant="outline_bg"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  isDisabled={isDisabled}
+                  onClick={() => handlePopUpToggle("addPolicy")}
                 >
-                  <ModalTrigger asChild>
-                    <Button
-                      className="h-10 rounded-l-none"
-                      variant="outline_bg"
-                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                      isDisabled={isDisabled}
-                    >
-                      New Policy
-                    </Button>
-                  </ModalTrigger>
-                  <ModalContent
-                    title="New Policy"
-                    subTitle="Policies grant additional permissions."
-                  >
-                    <NewPermissionRule onClose={() => handlePopUpToggle("createPolicy")} />
-                  </ModalContent>
-                </Modal>
+                  Add Policies
+                </Button>
+                <PolicySelectionModal
+                  isOpen={popUp.addPolicy.isOpen}
+                  onOpenChange={(isOpen) => handlePopUpToggle("addPolicy", isOpen)}
+                />
               </div>
             </div>
           )}

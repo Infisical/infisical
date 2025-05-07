@@ -913,7 +913,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [{ label: "Modify", value: "edit" }]
   },
   [ProjectPermissionSub.Integrations]: {
-    title: "Integrations",
+    title: "Native Integrations",
     actions: [
       { label: "Read", value: "read" },
       { label: "Create", value: "create" },
