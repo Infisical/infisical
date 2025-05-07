@@ -96,84 +96,8 @@ export const userServiceFactory = ({
       code
     });
 
-    const { email } = user;
-
-    await userDAL.transaction(async (tx) => {
-      await userDAL.updateById(
-        user.id,
-        {
-          isEmailVerified: true
-        },
-        tx
-      );
-
-      // check if there are verified users with the same email.
-      const users = await userDAL.find(
-        {
-          email: email.toLowerCase(),
-          isEmailVerified: true
-        },
-        { tx }
-      );
-
-      if (users.length > 1) {
-        // merge users
-        const mergeUser = users.find((u) => u.id !== user.id);
-        if (!mergeUser) throw new NotFoundError({ name: "Failed to find merge user" });
-
-        const mergeUserOrgMembershipSet = new Set(
-          (await orgMembershipDAL.find({ userId: mergeUser.id }, { tx })).map((m) => m.orgId)
-        );
-        const myOrgMemberships = (await orgMembershipDAL.find({ userId: user.id }, { tx })).filter(
-          (m) => !mergeUserOrgMembershipSet.has(m.orgId)
-        );
-
-        const userAliases = await userAliasDAL.find(
-          {
-            userId: user.id
-          },
-          { tx }
-        );
-        await userDAL.deleteById(user.id, tx);
-
-        if (myOrgMemberships.length) {
-          await orgMembershipDAL.insertMany(
-            myOrgMemberships.map((orgMembership) => ({
-              ...orgMembership,
-              userId: mergeUser.id
-            })),
-            tx
-          );
-        }
-
-        if (userAliases.length) {
-          await userAliasDAL.insertMany(
-            userAliases.map((userAlias) => ({
-              ...userAlias,
-              userId: mergeUser.id
-            })),
-            tx
-          );
-        }
-      } else {
-        await userDAL.delete(
-          {
-            email,
-            isAccepted: false,
-            isEmailVerified: false
-          },
-          tx
-        );
-
-        // update current user's username to [email]
-        await userDAL.updateById(
-          user.id,
-          {
-            username: email.toLowerCase()
-          },
-          tx
-        );
-      }
+    await userDAL.updateById(user.id, {
+      isEmailVerified: true
     });
   };
 
