@@ -394,11 +394,6 @@ export const MinimizedOrgSidebar = () => {
                       </DropdownMenuItem>
                     </Link>
                   )}
-                  <Link to="/organization/admin">
-                    <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faCog} />}>
-                      Organization Admin Console
-                    </DropdownMenuItem>
-                  </Link>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
