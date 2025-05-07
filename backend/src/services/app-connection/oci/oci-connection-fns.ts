@@ -1,4 +1,4 @@
-import { common, identity, keymanagement } from "oci-sdk";
+import { common, identity, keymanagement, vault } from "oci-sdk";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
@@ -56,43 +56,24 @@ export const validateOCIConnectionCredentials = async (config: TOCIConnectionCon
   return config.credentials;
 };
 
-// TODO(andrey): This may need to be removed. I don't think the endpoint is right
 export const listOCIVaults = async (appConnection: TOCIConnection, compartmentOcid: string) => {
   const provider = await getOCIProvider(appConnection);
-  const signer = new common.DefaultRequestSigner(provider);
 
-  // Create proper type for response
-  interface VaultsResponse {
-    items: Array<{
-      id: string;
-      displayName: string;
-      compartmentId: string;
-      timeCreated: string;
-      lifecycleState: string;
-    }>;
-  }
-
-  const requestParams = await common.composeRequest({
-    method: "GET",
-    baseEndpoint: `https://vaults.${appConnection.credentials.region}.oci.oraclecloud.com`,
-    path: "/20180608/vaults",
-    pathParams: { compartmentId: compartmentOcid },
-    defaultHeaders: {
-      Accept: "application/json"
-    }
-  });
-  await signer.signHttpRequest(requestParams);
-  const resp = await request.get<VaultsResponse>(requestParams.uri, {
-    headers: requestParams.headers as unknown as Record<string, string>
+  const keyManagementClient = new keymanagement.KmsVaultClient({
+    authenticationDetailsProvider: provider
   });
 
-  return resp.data.items;
+  const vaults = await keyManagementClient.listVaults({
+    compartmentId: compartmentOcid
+  });
+
+  return vaults.items;
 };
 
 export const listOCIVaultKeys = async (appConnection: TOCIConnection, compartmentOcid: string, vaultOcid: string) => {
   const provider = await getOCIProvider(appConnection);
 
-  const vaultIdMatch = vaultOcid.match(/ocid1\.vault\.[^.]+\.([^.]+)/);
+  const vaultIdMatch = vaultOcid.match(/ocid1\.vault\.[^.]+\.[^.]+\.([^.]+)/);
   if (!vaultIdMatch || !vaultIdMatch[1]) {
     throw new BadRequestError({
       message: "Invalid vault OCID format"
@@ -103,14 +84,11 @@ export const listOCIVaultKeys = async (appConnection: TOCIConnection, compartmen
     authenticationDetailsProvider: provider
   });
 
-  keyManagementClient.endpoint = `https://${vaultIdMatch[1]}-crypto.kms.${appConnection.credentials.region}.oraclecloud.com`;
+  keyManagementClient.endpoint = `https://${vaultIdMatch[1]}-management.kms.${appConnection.credentials.region}.oraclecloud.com`;
 
   const keys = await keyManagementClient.listKeys({
     compartmentId: compartmentOcid
   });
 
-  return keys.items.map((key) => ({
-    id: key.id,
-    displayName: key.displayName
-  }));
+  return keys.items;
 };

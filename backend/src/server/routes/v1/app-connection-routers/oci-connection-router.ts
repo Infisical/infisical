@@ -22,8 +22,6 @@ export const registerOCIConnectionRouter = async (server: FastifyZodProvider) =>
   });
 
   // The following endpoints are for internal Infisical App use only and not part of the public API
-
-  // TODO(andrey): These may need to be changed
   server.route({
     method: "GET",
     url: `/:connectionId/vaults`,
@@ -32,25 +30,29 @@ export const registerOCIConnectionRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        connectionId: z.string().uuid(),
+        connectionId: z.string().uuid()
+      }),
+      querystring: z.object({
         compartmentOcid: z.string().min(1, "Compartment OCID required")
       }),
       response: {
         200: z
           .object({
-            // TODO(andrey): This may need change
             id: z.string(),
-            displayName: z.string(),
-            compartmentId: z.string(),
-            timeCreated: z.string(),
-            lifecycleState: z.string()
+            displayName: z.string()
           })
           .array()
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const vaults = await server.services.appConnection.oci.listVaults(req.params, req.permission);
+      const { connectionId } = req.params;
+      const { compartmentOcid } = req.query;
+
+      const vaults = await server.services.appConnection.oci.listVaults(
+        { connectionId, compartmentOcid },
+        req.permission
+      );
       return vaults;
     }
   });
@@ -63,14 +65,15 @@ export const registerOCIConnectionRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        connectionId: z.string().uuid(),
+        connectionId: z.string().uuid()
+      }),
+      querystring: z.object({
         compartmentOcid: z.string().min(1, "Compartment OCID required"),
         vaultOcid: z.string().min(1, "Compartment OCID required")
       }),
       response: {
         200: z
           .object({
-            // TODO(andrey): This may need change
             id: z.string(),
             displayName: z.string()
           })
@@ -79,7 +82,13 @@ export const registerOCIConnectionRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const vaults = await server.services.appConnection.oci.listVaultKeys(req.params, req.permission);
+      const { connectionId } = req.params;
+      const { compartmentOcid, vaultOcid } = req.query;
+
+      const vaults = await server.services.appConnection.oci.listVaultKeys(
+        { connectionId, compartmentOcid, vaultOcid },
+        req.permission
+      );
       return vaults;
     }
   });
