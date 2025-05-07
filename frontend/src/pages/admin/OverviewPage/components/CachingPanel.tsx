@@ -19,10 +19,10 @@ export const CachingPanel = () => {
 
   const {
     data: invalidationStatus,
-    isPending,
+    isFetching,
     refetch
   } = useGetInvalidatingCacheStatus(shouldPoll);
-  const isInvalidating = Boolean(shouldPoll && !isPending && invalidationStatus);
+  const isInvalidating = Boolean(shouldPoll && (isFetching || invalidationStatus));
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "invalidateCache"
@@ -34,13 +34,8 @@ export const CachingPanel = () => {
     try {
       await invalidateCache({ type });
       createNotification({ text: `Began invalidating ${type} cache`, type: "success" });
+      setShouldPoll(true);
       handlePopUpClose("invalidateCache");
-
-      refetch().then((v) =>
-        v
-          ? setShouldPoll(true)
-          : createNotification({ text: "Successfully invalidated cache", type: "success" })
-      );
     } catch (err) {
       console.error(err);
       createNotification({ text: `Failed to invalidate ${type} cache`, type: "error" });
