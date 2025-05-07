@@ -17,6 +17,7 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  ConfirmActionModal,
   FormControl,
   IconButton,
   Input,
@@ -26,11 +27,16 @@ import {
   Skeleton,
   Tooltip
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrgPermission } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
-import { useRequestProjectAccess, useSearchProjects } from "@app/hooks/api";
+import {
+  useOrgAdminAccessProject,
+  useRequestProjectAccess,
+  useSearchProjects
+} from "@app/hooks/api";
 import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
+import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
 
 type Props = {
   type: ProjectType;
@@ -106,8 +112,12 @@ export const AllProjectView = ({
     orderDirection
   } = usePagination("name", { initPerPage: 50 });
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
-    "requestAccessConfirmation"
+    "requestAccessConfirmation",
+    "gainAccessConfirmation"
   ] as const);
+
+  const orgAdminAccessProject = useOrgAdminAccessProject();
+  const { permission } = useOrgPermission();
 
   const { data: searchedProjects, isPending: isProjectLoading } = useSearchProjects({
     limit,
@@ -123,6 +133,27 @@ export const AllProjectView = ({
     totalCount: searchedProjects?.totalCount || 0
   });
   const requestedWorkspaceDetails = (popUp.requestAccessConfirmation.data || {}) as Workspace;
+
+  const handleAccessProject = async () => {
+    try {
+      const projectId = (popUp.gainAccessConfirmation.data as { id: string })?.id;
+      await orgAdminAccessProject.mutateAsync({
+        projectId
+      });
+      handlePopUpToggle("gainAccessConfirmation", false);
+      await navigate({
+        to: `/${type}/$projectId/overview` as const,
+        params: {
+          projectId
+        }
+      });
+    } catch {
+      createNotification({
+        text: "Failed to access project",
+        type: "error"
+      });
+    }
+  };
 
   return (
     <div>
@@ -247,14 +278,27 @@ export const AllProjectView = ({
                         Joined
                       </div>
                     ) : (
-                      <div className="opacity-0 transition-all group-hover:opacity-100">
-                        <Button
-                          size="xs"
-                          variant="outline_bg"
-                          onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
-                        >
-                          Request Access
-                        </Button>
+                      <div className="flex items-center gap-2 opacity-0 transition-all group-hover:opacity-100">
+                        {permission.can(
+                          OrgPermissionAdminConsoleAction.AccessAllProjects,
+                          OrgPermissionSubjects.AdminConsole
+                        ) ? (
+                          <Button
+                            size="xs"
+                            variant="outline_bg"
+                            onClick={() => handlePopUpOpen("gainAccessConfirmation", workspace)}
+                          >
+                            Gain Access
+                          </Button>
+                        ) : (
+                          <Button
+                            size="xs"
+                            variant="outline_bg"
+                            onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
+                          >
+                            Request Access
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -286,6 +330,15 @@ export const AllProjectView = ({
           <div className="text-center font-light">No Projects Found</div>
         </div>
       )}
+      <ConfirmActionModal
+        isOpen={popUp.gainAccessConfirmation.isOpen}
+        confirmKey="access"
+        title="Do you want to gain access to this project?"
+        subTitle="This will grant you project admin for the specific project."
+        onChange={(isOpen) => handlePopUpToggle("gainAccessConfirmation", isOpen)}
+        onConfirmed={handleAccessProject}
+        buttonText="Confirm"
+      />
       <Modal
         isOpen={popUp.requestAccessConfirmation.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("requestAccessConfirmation", isOpen)}
