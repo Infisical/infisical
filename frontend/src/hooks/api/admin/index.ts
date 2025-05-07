@@ -3,6 +3,7 @@ export {
   useAdminGrantServerAdminAccess,
   useAdminRemoveIdentitySuperAdminAccess,
   useCreateAdminUser,
+  useInvalidateCache,
   useRemoveUserServerAdminAccess,
   useUpdateServerConfig,
   useUpdateServerEncryptionStrategy

@@ -25,8 +25,10 @@ import { TOrgServiceFactory } from "../org/org-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
+import { TInvalidateCacheQueueFactory } from "./invalidate-cache-queue";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
 import {
+  CacheType,
   LoginMethod,
   TAdminBootstrapInstanceDTO,
   TAdminGetIdentitiesDTO,
@@ -46,9 +48,10 @@ type TSuperAdminServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
+  invalidateCacheQueue: TInvalidateCacheQueueFactory;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
@@ -64,7 +67,7 @@ export let getServerCfg: () => Promise<
 
 const ADMIN_CONFIG_KEY = "infisical-admin-cfg";
 const ADMIN_CONFIG_KEY_EXP = 60; // 60s
-const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
+export const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
 
 export const superAdminServiceFactory = ({
   serverCfgDAL,
@@ -80,7 +83,8 @@ export const superAdminServiceFactory = ({
   identityAccessTokenDAL,
   identityTokenAuthDAL,
   identityOrgMembershipDAL,
-  microsoftTeamsService
+  microsoftTeamsService,
+  invalidateCacheQueue
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
@@ -631,6 +635,16 @@ export const superAdminServiceFactory = ({
     await kmsService.updateEncryptionStrategy(strategy);
   };
 
+  const invalidateCache = async (type: CacheType) => {
+    await invalidateCacheQueue.startInvalidate({
+      data: { type }
+    });
+  };
+
+  const checkIfInvalidatingCache = async () => {
+    return (await keyStore.getItem("invalidating-cache")) !== null;
+  };
+
   return {
     initServerCfg,
     updateServerCfg,
@@ -644,6 +658,8 @@ export const superAdminServiceFactory = ({
     getConfiguredEncryptionStrategies,
     grantServerAdminAccessToUser,
     deleteIdentitySuperAdminAccess,
-    deleteUserSuperAdminAccess
+    deleteUserSuperAdminAccess,
+    invalidateCache,
+    checkIfInvalidatingCache
   };
 };
