@@ -24,10 +24,10 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoles, useUpdateGroupWorkspaceRole } from "@app/hooks/api";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/workspace/types";
 import { groupBy } from "@app/lib/fn/array";
 
@@ -260,12 +260,6 @@ export const GroupRoles = ({ roles = [], disableEdit = false, groupId }: TMember
     }
   };
 
-  const formatRoleName = (role: string, customRoleName?: string) => {
-    if (role === ProjectMembershipRole.Custom) return customRoleName;
-    if (role === ProjectMembershipRole.Member) return "Developer";
-    return role;
-  };
-
   return (
     <div className="flex items-center space-x-2">
       {roles
@@ -275,7 +269,7 @@ export const GroupRoles = ({ roles = [], disableEdit = false, groupId }: TMember
           return (
             <Tag key={id} className="capitalize">
               <div className="flex items-center space-x-2">
-                <div>{formatRoleName(role, customRoleName)}</div>
+                <div>{formatProjectRoleName(role, customRoleName)}</div>
                 {isTemporary && (
                   <div>
                     <Tooltip content={isExpired ? "Expired Temporary Access" : "Temporary Access"}>
@@ -303,7 +297,7 @@ export const GroupRoles = ({ roles = [], disableEdit = false, groupId }: TMember
                 return (
                   <Tag key={id} className="capitalize">
                     <div className="flex items-center space-x-2">
-                      <div>{formatRoleName(role, customRoleName)}</div>
+                      <div>{formatProjectRoleName(role, customRoleName)}</div>
                       {isTemporary && (
                         <div>
                           <Tooltip

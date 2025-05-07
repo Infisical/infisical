@@ -12,11 +12,14 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
+import { useGetProjectTypeFromRoute } from "@app/hooks";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import {
   isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   projectRoleFormSchema,
+  ProjectTypePermissionSubjects,
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
 
@@ -37,18 +40,20 @@ export const NewPermissionRule = ({ onClose }: Props) => {
         .extend({ type: z.nativeEnum(ProjectPermissionSub) })
     ),
     defaultValues: {
-      type: ProjectPermissionSub.Secrets
+      type: ProjectPermissionSub.Project
     }
   });
 
   const selectedSubject = form.watch("type");
+
+  const projectType = useGetProjectTypeFromRoute();
 
   return (
     <div>
       <Controller
         control={form.control}
         name="type"
-        defaultValue={ProjectPermissionSub.Secrets}
+        defaultValue={ProjectPermissionSub.Project}
         render={({ field: { onChange, ...field }, fieldState: { error } }) => (
           <FormControl label="Subject" errorText={error?.message} isError={Boolean(error)}>
             <Select
@@ -57,11 +62,18 @@ export const NewPermissionRule = ({ onClose }: Props) => {
               onValueChange={(e) => onChange(e)}
               className="w-full"
             >
-              {Object.keys(PROJECT_PERMISSION_OBJECT).map((subject) => (
-                <SelectItem value={subject} key={`permission-create-${subject}`}>
-                  {PROJECT_PERMISSION_OBJECT[subject as ProjectPermissionSub].title}
-                </SelectItem>
-              ))}
+              {Object.keys(PROJECT_PERMISSION_OBJECT)
+                .filter(
+                  (subject) =>
+                    ProjectTypePermissionSubjects[projectType ?? ProjectType.SecretManager][
+                      subject as ProjectPermissionSub
+                    ]
+                )
+                .map((subject) => (
+                  <SelectItem value={subject} key={`permission-create-${subject}`}>
+                    {PROJECT_PERMISSION_OBJECT[subject as ProjectPermissionSub].title}
+                  </SelectItem>
+                ))}
             </Select>
           </FormControl>
         )}

@@ -12,6 +12,7 @@ import {
   ModalContent,
   TextArea
 } from "@app/components/v2";
+import { useGetProjectTypeFromRoute } from "@app/hooks";
 import {
   TProjectTemplate,
   useCreateProjectTemplate,
@@ -41,6 +42,7 @@ type FormProps = {
 const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
   const createProjectTemplate = useCreateProjectTemplate();
   const updateProjectTemplate = useUpdateProjectTemplate();
+  const projectType = useGetProjectTypeFromRoute();
 
   const {
     handleSubmit,
@@ -55,9 +57,17 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
   });
 
   const onFormSubmit = async (data: FormData) => {
+    if (!projectType) {
+      createNotification({
+        text: "Failed to determine project type",
+        type: "error"
+      });
+      return;
+    }
+
     const mutation = projectTemplate
       ? updateProjectTemplate.mutateAsync({ templateId: projectTemplate.id, ...data })
-      : createProjectTemplate.mutateAsync(data);
+      : createProjectTemplate.mutateAsync({ ...data, type: projectType });
     try {
       const template = await mutation;
       createNotification({

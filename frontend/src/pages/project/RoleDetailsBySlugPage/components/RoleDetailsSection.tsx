@@ -6,6 +6,7 @@ import { IconButton, Tooltip } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { useGetProjectRoleBySlug } from "@app/hooks/api";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -21,7 +22,9 @@ export const RoleDetailsSection = ({ roleSlug, handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const { data } = useGetProjectRoleBySlug(currentWorkspace?.id ?? "", roleSlug as string);
 
-  const isCustomRole = !["admin", "member", "viewer", "no-access"].includes(data?.slug ?? "");
+  const isCustomRole = !Object.values(ProjectMembershipRole).includes(
+    (data?.slug ?? "") as ProjectMembershipRole
+  );
 
   return data ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
