@@ -347,7 +347,7 @@ export const secretRotationQueueFactory = ({
               actor: {
                 type: ActorType.PLATFORM
               },
-              message: "Secret rotation",
+              message: "Changed by Secret rotation",
               folderId: secretVersions[0].folderId,
               changes: secretVersions.map((sv) => ({
                 type: "add",

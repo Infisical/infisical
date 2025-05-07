@@ -115,24 +115,19 @@ export async function down(knex: Knex): Promise<void> {
   const hasFolderTreeCheckpointTable = await knex.schema.hasTable(TableName.FolderTreeCheckpoint);
   const hasFolderCheckpointTable = await knex.schema.hasTable(TableName.FolderCheckpoint);
 
-  if (hasFolderCheckpointResourcesTable) {
-    await dropOnUpdateTrigger(knex, TableName.FolderCheckpointResources);
-    await knex.schema.dropTableIfExists(TableName.FolderCheckpointResources);
-  }
-
   if (hasFolderTreeCheckpointResourcesTable) {
     await dropOnUpdateTrigger(knex, TableName.FolderTreeCheckpointResources);
     await knex.schema.dropTableIfExists(TableName.FolderTreeCheckpointResources);
   }
 
-  if (hasFolderTreeCheckpointTable) {
-    await dropOnUpdateTrigger(knex, TableName.FolderTreeCheckpoint);
-    await knex.schema.dropTableIfExists(TableName.FolderTreeCheckpoint);
-  }
-
   if (hasFolderCheckpointResourcesTable) {
     await dropOnUpdateTrigger(knex, TableName.FolderCheckpointResources);
     await knex.schema.dropTableIfExists(TableName.FolderCheckpointResources);
+  }
+
+  if (hasFolderTreeCheckpointTable) {
+    await dropOnUpdateTrigger(knex, TableName.FolderTreeCheckpoint);
+    await knex.schema.dropTableIfExists(TableName.FolderTreeCheckpoint);
   }
 
   if (hasFolderCheckpointTable) {

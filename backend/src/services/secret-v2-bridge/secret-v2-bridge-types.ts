@@ -182,7 +182,7 @@ export type TFnSecretBulkInsert = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   actor?: {
     type: string;
-    actorId: string;
+    actorId?: string;
   };
 };
 
@@ -211,7 +211,7 @@ export type TFnSecretBulkUpdate = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   actor?: {
     type: string;
-    actorId: string;
+    actorId?: string;
   };
   tx?: Knex;
 };

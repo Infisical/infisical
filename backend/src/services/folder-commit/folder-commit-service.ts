@@ -77,18 +77,15 @@ export const folderCommitServiceFactory = ({
         },
         tx
       );
-      for (const change of data.changes) {
-        // eslint-disable-next-line no-await-in-loop
-        await folderCommitChangesDAL.create(
-          {
-            folderCommitId: newCommit.id,
-            changeType: change.type,
-            secretVersionId: change.secretVersionId,
-            folderVersionId: change.folderVersionId
-          },
-          tx
-        );
-      }
+      await folderCommitChangesDAL.insertMany(
+        data.changes.map((change) => ({
+          folderCommitId: newCommit.id,
+          changeType: change.type,
+          secretVersionId: change.secretVersionId,
+          folderVersionId: change.folderVersionId
+        })),
+        tx
+      );
 
       return newCommit;
     } catch (error) {
@@ -96,7 +93,7 @@ export const folderCommitServiceFactory = ({
     }
   };
 
-  // Add a change to a commit and trigger checkpoints as needed
+  // Add a change to an existing commit
   const addCommitChange = async (data: TCommitChangeDTO, tx?: Knex) => {
     try {
       if (!data.secretVersionId && !data.folderVersionId) {

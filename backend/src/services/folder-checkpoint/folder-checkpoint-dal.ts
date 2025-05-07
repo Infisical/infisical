@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TFolderCheckpoints } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TFolderCheckpointDALFactory = ReturnType<typeof folderCheckpointDALFactory>;
 
@@ -34,7 +34,8 @@ export const folderCheckpointDALFactory = (db: TDbClient) => {
     try {
       let query = (tx || db.replicaNode())(TableName.FolderCheckpoint)
         .join(TableName.FolderCommit, `${TableName.FolderCheckpoint}.folderCommitId`, `${TableName.FolderCommit}.id`)
-        .where({ folderId })
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter({ folderId }, TableName.FolderCommit))
         .select(selectAllTableCols(TableName.FolderCheckpoint))
         .select(
           db.ref("actorMetadata").withSchema(TableName.FolderCommit),
@@ -60,7 +61,8 @@ export const folderCheckpointDALFactory = (db: TDbClient) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.FolderCheckpoint)
         .join(TableName.FolderCommit, `${TableName.FolderCheckpoint}.folderCommitId`, `${TableName.FolderCommit}.id`)
-        .where({ folderId })
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter({ folderId }, TableName.FolderCommit))
         .select(selectAllTableCols(TableName.FolderCheckpoint))
         .select(
           db.ref("actorMetadata").withSchema(TableName.FolderCommit),

@@ -943,6 +943,9 @@ export const secretRotationV2ServiceFactory = ({
             secretVersionDAL: secretVersionV2BridgeDAL,
             secretVersionTagDAL: secretVersionTagV2BridgeDAL,
             folderCommitService,
+            actor: {
+              type: ActorType.PLATFORM
+            },
             secretTagDAL,
             resourceMetadataDAL
           });

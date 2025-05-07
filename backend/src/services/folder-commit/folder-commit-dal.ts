@@ -13,10 +13,10 @@ export const folderCommitDALFactory = (db: TDbClient) => {
 
   const findByFolderId = async (folderId: string, tx?: Knex): Promise<TFolderCommits[]> => {
     try {
-      const docs = await (tx || db.replicaNode())<TFolderCommits>(TableName.FolderCommit)
+      const docs = await (tx || db.replicaNode())(TableName.FolderCommit)
         .where({ folderId })
         .select(selectAllTableCols(TableName.FolderCommit))
-        .orderBy("date", "desc");
+        .orderBy("createdAt", "desc");
       return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByFolderId" });
@@ -25,7 +25,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex): Promise<TFolderCommits | undefined> => {
     try {
-      const doc = await (tx || db.replicaNode())<TFolderCommits>(TableName.FolderCommit)
+      const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
         .where({ id })
         .select(selectAllTableCols(TableName.FolderCommit))
         .first();
@@ -37,10 +37,10 @@ export const folderCommitDALFactory = (db: TDbClient) => {
 
   const findLatestCommit = async (folderId: string, tx?: Knex): Promise<TFolderCommits | undefined> => {
     try {
-      const doc = await (tx || db.replicaNode())<TFolderCommits>(TableName.FolderCommit)
+      const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
         .where({ folderId })
         .select(selectAllTableCols(TableName.FolderCommit))
-        .orderBy("date", "desc")
+        .orderBy("createdAt", "desc")
         .first();
       return doc;
     } catch (error) {

@@ -623,7 +623,7 @@ export const importDataIntoInfisicalFn = async ({
                 id: actorId
               }
             },
-            message: "External migration",
+            message: "Changed by external migration",
             folderId: parentEnv.rootFolderId,
             changes: [
               {
