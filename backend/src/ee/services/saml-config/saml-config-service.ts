@@ -266,7 +266,7 @@ export const samlConfigServiceFactory = ({
           await orgMembershipDAL.create(
             {
               userId: userAlias.userId,
-              inviteEmail: email.toLowerCase(),
+              inviteEmail: email,
               orgId,
               role,
               roleId,
@@ -324,7 +324,7 @@ export const samlConfigServiceFactory = ({
         if (serverCfg.trustSamlEmails) {
           newUser = await userDAL.findOne(
             {
-              email: email.toLowerCase(),
+              email,
               isEmailVerified: true
             },
             tx
@@ -335,8 +335,8 @@ export const samlConfigServiceFactory = ({
           const uniqueUsername = await normalizeUsername(`${firstName ?? ""}-${lastName ?? ""}`, userDAL);
           newUser = await userDAL.create(
             {
-              username: serverCfg.trustSamlEmails ? email.toLowerCase() : uniqueUsername,
-              email: email.toLowerCase(),
+              username: serverCfg.trustSamlEmails ? email : uniqueUsername,
+              email,
               isEmailVerified: serverCfg.trustSamlEmails,
               firstName,
               lastName,
@@ -352,7 +352,7 @@ export const samlConfigServiceFactory = ({
             userId: newUser.id,
             aliasType: UserAliasType.SAML,
             externalId,
-            emails: email ? [email.toLowerCase()] : [],
+            emails: email ? [email] : [],
             orgId
           },
           tx
@@ -372,7 +372,7 @@ export const samlConfigServiceFactory = ({
           await orgMembershipDAL.create(
             {
               userId: newUser.id,
-              inviteEmail: email.toLowerCase(),
+              inviteEmail: email,
               orgId,
               role,
               roleId,

@@ -82,9 +82,11 @@ export const SelectOrganizationPage = () => {
               <b>{duplicateAccounts?.data?.myAccount?.username}</b>.
             </p>
             <Alert variant="warning" hideTitle>
-              We&apos;ve detected multiple accounts using variations of the same email address.
-              Please confirm that this account, {duplicateAccounts?.data?.myAccount?.username}, is
-              the account you wish to retain.
+              <div>
+                We&apos;ve detected multiple accounts using variations of the same email address.
+                Confirm to retain this account <b>{duplicateAccounts?.data?.myAccount?.username}</b>
+                . Upon confirmation other accounts will be <b>removed</b>.
+              </div>
             </Alert>
           </div>
           <div className="thin-scrollbar flex h-full max-h-60 w-full flex-col items-stretch gap-2 overflow-auto rounded-md">
@@ -121,13 +123,13 @@ export const SelectOrganizationPage = () => {
           <div className="mt-4 flex w-full flex-col">
             <div className="flex gap-6">
               <Button
-                className="flex-grow"
+                className="flex-1 flex-grow"
                 isLoading={removeDuplicateEmails.isPending}
                 onClick={() =>
                   removeDuplicateEmails.mutate(undefined, {
                     onSuccess: () => {
                       createNotification({
-                        type: "info",
+                        type: "success",
                         text: "Removed duplicate accounts"
                       });
                       setRemoveDuplicateLater(true);
@@ -140,9 +142,9 @@ export const SelectOrganizationPage = () => {
               <Button
                 variant="outline_bg"
                 onClick={() => setRemoveDuplicateLater(true)}
-                className="flex-grow"
+                className="flex-1 flex-grow"
               >
-                Do This Later
+                Ask Again Later?
               </Button>
             </div>
             <Button
@@ -152,7 +154,7 @@ export const SelectOrganizationPage = () => {
               className="mt-4"
               onClick={handleLogout}
             >
-              Change account
+              Change Account
             </Button>
           </div>
         </form>
