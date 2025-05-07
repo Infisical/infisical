@@ -86,7 +86,7 @@ const Content = ({ onClose }: ContentProps) => {
             [...rootPolicyValue, {}],
             { shouldDirty: true, shouldTouch: true }
           );
-        } else {
+        } else if (!rootPolicyValue?.length) {
           rootForm.setValue(
             `permissions.${type}`,
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -130,7 +130,7 @@ const Content = ({ onClose }: ContentProps) => {
                 setValue(
                   "permissions",
                   Object.fromEntries(
-                    Object.values(ProjectPermissionSub).map((subject) => [subject, true])
+                    filteredPolicies.map((subject) => [subject, true])
                   ) as TForm["permissions"],
                   { shouldDirty: true }
                 );
