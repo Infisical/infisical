@@ -181,7 +181,7 @@ const Content = ({ onClose }: ContentProps) => {
             iconSize="2x"
             icon={faSearch}
             className="!pb-4 !pt-8"
-            title="No polices match search"
+            title="No policies match search"
           />
         )}
       </TableContainer>
