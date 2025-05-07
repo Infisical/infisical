@@ -9,7 +9,6 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
-import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { AuthMethod } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
@@ -32,7 +31,6 @@ type TUserServiceFactoryDep = {
     | "findUserEncKeyByUserId"
     | "delete"
   >;
-  userAliasDAL: Pick<TUserAliasDALFactory, "find" | "insertMany">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "findByUserId">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
@@ -45,7 +43,6 @@ export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
 
 export const userServiceFactory = ({
   userDAL,
-  userAliasDAL,
   orgMembershipDAL,
   projectMembershipDAL,
   groupProjectDAL,
