@@ -1,10 +1,7 @@
 ---
-title: "Project Access Requests"
-description: "Learn how to request access to projects in Infisical."
+title: "Project Access"
+description: "Learn how to grant access to projects in Infisical."
 ---
-
-The Project Access Request feature allows users to view all projects within organization, including those they don't currently have access to.
-Users can request access to these projects by submitting a request that automatically notifies project administrators via email, along with any comments provided by the user.
 
 # Viewing Available Projects
 
@@ -20,9 +17,11 @@ From the Infisical dashboard, users can view all projects within the organizatio
 
 # Requesting Access to a Project
 
+Users can request access to these projects by submitting a request that automatically notifies project administrators via email, along with any comments provided by the user.
+
 To request access to a project you don't currently have access for:
 
-1. Click the **Request Access** button next to the project name
+1. Click on **Request Access** button next to the project name
    ![all-project-view](/images/platform/project-access-requests/request-access.png)
 
 2. Add a comment explaining why you need access
@@ -34,3 +33,21 @@ To request access to a project you don't currently have access for:
   Project administrators will receive email notification with details regarding
   the access request.
 </Info>
+
+# Gain Access to a Project
+
+This action can be only be performed by Organization Admins or users with the permission `Access all organization projects`.
+
+![permission](/images/platform/project-access-requests/access-all-project-permission.png)
+
+These users can directly grant themselves access to a project with Project Admin privileges. This functionality is intended for break-glass scenarios, such as when the original project admin has left the organization.
+
+To gain access to a project you don't currently have access for:
+
+1. Click on **Gain Access** button next to the project name
+   ![all-project-view](/images/platform/project-access-requests/gain-access.png)
+
+2. Type **access** to confirm your action
+   ![all-project-view](/images/platform/project-access-requests/gain-access-conf.png)
+
+3. Click **Submit Request**

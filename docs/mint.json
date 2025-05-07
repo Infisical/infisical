@@ -236,8 +236,7 @@
           "group": "Admin Consoles",
           "pages": [
             "documentation/platform/admin-panel/overview",
-            "documentation/platform/admin-panel/server-admin",
-            "documentation/platform/admin-panel/org-admin-console"
+            "documentation/platform/admin-panel/server-admin"
           ]
         },
         "documentation/platform/secret-sharing",
