@@ -7,7 +7,7 @@ export const CertManagerSettingsPage = () => {
   return (
     <>
       <Helmet>
-        <title>Cert Managment Settings</title>
+        <title>Cert Management Settings</title>
       </Helmet>
       <div className="flex w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-7xl">

@@ -117,11 +117,14 @@ export const projectRoleServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
     if (roleSlug !== "custom" && Object.values(ProjectMembershipRole).includes(roleSlug as ProjectMembershipRole)) {
-      const predefinedRole = getPredefinedRoles({
+      const [predefinedRole] = getPredefinedRoles({
         projectId: project.id,
         projectType: project.type as ProjectType,
         roleFilter: roleSlug as ProjectMembershipRole
-      })[0];
+      });
+
+      if (!predefinedRole) throw new NotFoundError({ message: `Default role with slug '${roleSlug}' not found` });
+
       return { ...predefinedRole, permissions: UnpackedPermissionSchema.array().parse(predefinedRole.permissions) };
     }
 

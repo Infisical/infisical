@@ -53,7 +53,7 @@ export const NewPermissionRule = ({ onClose }: Props) => {
       <Controller
         control={form.control}
         name="type"
-        defaultValue={ProjectPermissionSub.Secrets}
+        defaultValue={ProjectPermissionSub.Project}
         render={({ field: { onChange, ...field }, fieldState: { error } }) => (
           <FormControl label="Subject" errorText={error?.message} isError={Boolean(error)}>
             <Select

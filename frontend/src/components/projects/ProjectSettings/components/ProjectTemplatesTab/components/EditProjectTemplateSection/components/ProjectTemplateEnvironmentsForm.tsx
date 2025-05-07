@@ -19,7 +19,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { TProjectTemplate, useUpdateProjectTemplate } from "@app/hooks/api/projectTemplates";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -56,6 +56,8 @@ export const ProjectTemplateEnvironmentsForm = ({
     resolver: zodResolver(formSchema)
   });
 
+  const { subscription } = useSubscription();
+
   const {
     fields: environments,
     move,
@@ -89,6 +91,9 @@ export const ProjectTemplateEnvironmentsForm = ({
       });
     }
   };
+
+  const isEnvironmentLimitExceeded =
+    Boolean(subscription.environmentLimit) && environments.length >= subscription.environmentLimit;
 
   return (
     <form
@@ -139,6 +144,8 @@ export const ProjectTemplateEnvironmentsForm = ({
                     <OrgPermissionCan
                       I={OrgPermissionActions.Edit}
                       a={OrgPermissionSubjects.ProjectTemplates}
+                      renderTooltip={isEnvironmentLimitExceeded ? true : undefined}
+                      allowedLabel={`Plan environment limit of ${subscription.environmentLimit} exceeded. Contact Infisical to increase limit.`}
                     >
                       {(isAllowed) => (
                         <Button
@@ -148,7 +155,7 @@ export const ProjectTemplateEnvironmentsForm = ({
                           variant="solid"
                           size="xs"
                           leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                          isDisabled={!isAllowed}
+                          isDisabled={!isAllowed || isEnvironmentLimitExceeded}
                         >
                           Add Environment
                         </Button>

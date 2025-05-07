@@ -57,7 +57,13 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
   });
 
   const onFormSubmit = async (data: FormData) => {
-    if (!projectType) return;
+    if (!projectType) {
+      createNotification({
+        text: "Failed to determine project type",
+        type: "error"
+      });
+      return;
+    }
 
     const mutation = projectTemplate
       ? updateProjectTemplate.mutateAsync({ templateId: projectTemplate.id, ...data })

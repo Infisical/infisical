@@ -50,6 +50,10 @@ we will register a remote host with Infisical through a [machine identity](/docu
       This role grants the ability to **Create** and **Issue Host Certificates** on the **SSH Host** resource; this will enable the linked machine identity to bootstrap a remote host with Infisical
       and establish the necessary configuration on it.
 
+      <Tip>
+          If you plan to use a custom role to bootstrap SSH hosts, ensure the role has the **Create** and **Issue Host Certificates** on the **SSH Host** resource.
+      </Tip>
+
     ![ssh add identity to project](/images/platform/ssh/v2/ssh-add-identity-to-project.png)
 
   </Step>

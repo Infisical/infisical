@@ -160,6 +160,17 @@ export const projectTemplateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
 
+    if (environments && type !== ProjectType.SecretManager) {
+      throw new BadRequestError({ message: "Cannot configure environments for non-SecretManager project templates" });
+    }
+
+    if (environments && plan.environmentLimit !== null && environments.length > plan.environmentLimit) {
+      throw new BadRequestError({
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        message: `Failed to create project template due to environment count exceeding your current limit of ${plan.environmentLimit}. Contact Infisical to increase limit.`
+      });
+    }
+
     const isConflictingName = Boolean(
       await projectTemplateDAL.findOne({
         name: params.name,
@@ -215,6 +226,13 @@ export const projectTemplateServiceFactory = ({
 
     if (projectTemplate.type === ProjectType.SecretManager && environments === null)
       throw new BadRequestError({ message: "Environments cannot be removed for SecretManager project templates" });
+
+    if (environments && plan.environmentLimit !== null && environments.length > plan.environmentLimit) {
+      throw new BadRequestError({
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        message: `Failed to update project template due to environment count exceeding your current limit of ${plan.environmentLimit}. Contact Infisical to increase limit.`
+      });
+    }
 
     if (params.name && projectTemplate.name !== params.name) {
       const isConflictingName = Boolean(

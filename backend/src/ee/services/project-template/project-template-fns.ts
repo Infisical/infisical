@@ -13,7 +13,7 @@ export const getDefaultProjectTemplate = (orgId: string, type: ProjectType) => (
   name: InfisicalProjectTemplate.Default,
   createdAt: new Date(),
   updatedAt: new Date(),
-  description: `Infisical's ${type ? `"${type}"` : ""} default project template`,
+  description: `Infisical's ${type} default project template`,
   environments: type === ProjectType.SecretManager ? ProjectTemplateDefaultEnvironments : null,
   roles: [...getPredefinedRoles({ projectId: "project-template", projectType: type })].map(
     ({ name, slug, permissions }) => ({
