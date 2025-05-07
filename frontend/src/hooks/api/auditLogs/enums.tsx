@@ -74,6 +74,7 @@ export enum EventType {
   IMPORT_CA_CERT = "import-certificate-authority-cert",
   GET_CA_CRL = "get-certificate-authority-crl",
   ISSUE_CERT = "issue-cert",
+  IMPORT_CERT = "import-cert",
   GET_CERT = "get-cert",
   DELETE_CERT = "delete-cert",
   REVOKE_CERT = "revoke-cert",

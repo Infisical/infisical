@@ -4,9 +4,12 @@ import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.CertificateBody)) {
-    await knex.schema.alterTable(TableName.CertificateBody, (t) => {
-      t.binary("encryptedCertificateChain").nullable();
-    });
+    const hasColumn = await knex.schema.hasColumn(TableName.CertificateBody, "encryptedCertificateChain");
+    if (!hasColumn) {
+      await knex.schema.alterTable(TableName.CertificateBody, (t) => {
+        t.binary("encryptedCertificateChain").nullable();
+      });
+    }
   }
 
   if (!(await knex.schema.hasTable(TableName.CertificateSecret))) {
@@ -26,8 +29,11 @@ export async function down(knex: Knex): Promise<void> {
   }
 
   if (await knex.schema.hasTable(TableName.CertificateBody)) {
-    await knex.schema.alterTable(TableName.CertificateBody, (t) => {
-      t.dropColumn("encryptedCertificateChain");
-    });
+    const hasColumn = await knex.schema.hasColumn(TableName.CertificateBody, "encryptedCertificateChain");
+    if (hasColumn) {
+      await knex.schema.alterTable(TableName.CertificateBody, (t) => {
+        t.dropColumn("encryptedCertificateChain");
+      });
+    }
   }
 }

@@ -1415,7 +1415,8 @@ export const certificateAuthorityServiceFactory = ({
           notBefore: notBeforeDate,
           notAfter: notAfterDate,
           keyUsages: selectedKeyUsages,
-          extendedKeyUsages: selectedExtendedKeyUsages
+          extendedKeyUsages: selectedExtendedKeyUsages,
+          projectId: (ca as TCertificateAuthorities).projectId
         },
         tx
       );
@@ -1793,6 +1794,20 @@ export const certificateAuthorityServiceFactory = ({
       plainText: Buffer.from(new Uint8Array(leafCert.rawData))
     });
 
+    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+      caCertId: ca.activeCaCertId,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
+    });
+
+    const certificateChainPem = `${issuingCaCertificate}\n${caCertChain}`.trim();
+
+    const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
+      plainText: Buffer.from(certificateChainPem)
+    });
+
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
@@ -1807,7 +1822,8 @@ export const certificateAuthorityServiceFactory = ({
           notBefore: notBeforeDate,
           notAfter: notAfterDate,
           keyUsages: selectedKeyUsages,
-          extendedKeyUsages: selectedExtendedKeyUsages
+          extendedKeyUsages: selectedExtendedKeyUsages,
+          projectId: (ca as TCertificateAuthorities).projectId
         },
         tx
       );
@@ -1815,7 +1831,8 @@ export const certificateAuthorityServiceFactory = ({
       await certificateBodyDAL.create(
         {
           certId: cert.id,
-          encryptedCertificate
+          encryptedCertificate,
+          encryptedCertificateChain
         },
         tx
       );
@@ -1833,17 +1850,9 @@ export const certificateAuthorityServiceFactory = ({
       return cert;
     });
 
-    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
-      caCertId: ca.activeCaCertId,
-      certificateAuthorityDAL,
-      certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
-    });
-
     return {
       certificate: leafCert,
-      certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
+      certificateChain: certificateChainPem,
       issuingCaCertificate,
       serialNumber,
       ca,

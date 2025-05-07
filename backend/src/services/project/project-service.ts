@@ -954,13 +954,9 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
-    const cas = await certificateAuthorityDAL.find({ projectId });
-
     const certificates = await certificateDAL.find(
       {
-        $in: {
-          caId: cas.map((ca) => ca.id)
-        },
+        projectId,
         ...(friendlyName && { friendlyName }),
         ...(commonName && { commonName })
       },
