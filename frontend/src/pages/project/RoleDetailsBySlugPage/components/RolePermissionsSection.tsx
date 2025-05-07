@@ -8,19 +8,15 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { AccessTree } from "@app/components/permissions";
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v2";
+import { Button } from "@app/components/v2";
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
+import { usePopUp } from "@app/hooks";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
+import { PolicySelectionModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicySelectionModal";
 
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
@@ -90,6 +86,8 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
 
   const { mutateAsync: updateRole } = useUpdateProjectRole();
 
+  const { popUp, handlePopUpToggle } = usePopUp(["addPolicy"] as const);
+
   const onSubmit = async (el: TFormSchema) => {
     try {
       if (!projectId || !role?.id) return;
@@ -109,30 +107,6 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const isCustomRole = !Object.values(ProjectMembershipRole).includes(
     (role?.slug ?? "") as ProjectMembershipRole
   );
-
-  const onNewPolicy = (selectedSubject: ProjectPermissionSub) => {
-    const rootPolicyValue = form.getValues(`permissions.${selectedSubject}`);
-    if (rootPolicyValue && isConditionalSubjects(selectedSubject)) {
-      form.setValue(
-        `permissions.${selectedSubject}`,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore-error akhilmhdh: this is because of ts collision with both
-        [...rootPolicyValue, {}],
-        { shouldDirty: true, shouldTouch: true }
-      );
-    } else {
-      form.setValue(
-        `permissions.${selectedSubject}`,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore-error akhilmhdh: this is because of ts collision with both
-        [{}],
-        {
-          shouldDirty: true,
-          shouldTouch: true
-        }
-      );
-    }
-  };
 
   const permissions = form.watch("permissions");
 
@@ -176,54 +150,25 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     <Button
                       variant="outline_bg"
                       type="submit"
-                      className={twMerge("h-10 rounded-r-none", isDirty && "bg-primary text-black")}
+                      className={twMerge(
+                        "h-10 rounded-r-none border border-primary",
+                        isDirty && "bg-primary text-black"
+                      )}
                       isDisabled={isSubmitting || !isDirty}
                       isLoading={isSubmitting}
                       leftIcon={<FontAwesomeIcon icon={faSave} />}
                     >
                       Save
                     </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger>
-                        <Button
-                          isDisabled={isDisabled}
-                          className="h-10 rounded-l-none"
-                          variant="outline_bg"
-                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                        >
-                          New policy
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="thin-scrollbar max-h-96" align="end">
-                        {Object.keys(PROJECT_PERMISSION_OBJECT)
-                          .filter(
-                            (subject) =>
-                              ProjectTypePermissionSubjects[currentWorkspace.type][
-                                subject as ProjectPermissionSub
-                              ]
-                          )
-                          .sort((a, b) =>
-                            PROJECT_PERMISSION_OBJECT[
-                              a as keyof typeof PROJECT_PERMISSION_OBJECT
-                            ].title
-                              .toLowerCase()
-                              .localeCompare(
-                                PROJECT_PERMISSION_OBJECT[
-                                  b as keyof typeof PROJECT_PERMISSION_OBJECT
-                                ].title.toLowerCase()
-                              )
-                          )
-                          .map((subject) => (
-                            <DropdownMenuItem
-                              key={`permission-create-${subject}`}
-                              className="py-3"
-                              onClick={() => onNewPolicy(subject as ProjectPermissionSub)}
-                            >
-                              {PROJECT_PERMISSION_OBJECT[subject as ProjectPermissionSub].title}
-                            </DropdownMenuItem>
-                          ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button
+                      isDisabled={isDisabled}
+                      className="h-10 rounded-l-none"
+                      variant="outline_bg"
+                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                      onClick={() => handlePopUpToggle("addPolicy")}
+                    >
+                      Add Policy
+                    </Button>
                   </div>
                 </>
               )}
@@ -245,6 +190,10 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                 </GeneralPermissionPolicies>
               ))}
           </div>
+          <PolicySelectionModal
+            isOpen={popUp.addPolicy.isOpen}
+            onOpenChange={(isOpen) => handlePopUpToggle("addPolicy", isOpen)}
+          />
         </FormProvider>
       </form>
     </div>

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useRouterState } from "@tanstack/react-router";
 
 import { ProjectType } from "@app/hooks/api/workspace/types";
@@ -5,9 +6,17 @@ import { ProjectType } from "@app/hooks/api/workspace/types";
 export const useGetProjectTypeFromRoute = () => {
   const { location } = useRouterState();
 
-  const segment = location.pathname.split("/")[2];
+  return useMemo(() => {
+    const segments = location.pathname.split("/");
 
-  if (!Object.values(ProjectType).includes(segment as ProjectType)) return undefined;
+    let type: ProjectType | undefined;
 
-  return segment as ProjectType;
+    // location of project type can vary in router path, so we need to check all possible values
+    segments.forEach((segment) => {
+      if (Object.values(ProjectType).includes(segment as ProjectType))
+        type = segment as ProjectType;
+    });
+
+    return type;
+  }, [location]);
 };
