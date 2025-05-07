@@ -162,6 +162,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
         .join("version_cte", "version_cte.id", `${TableName.SecretVersionV2}.id`)
         .whereRaw(`version_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+        // Projects with version >= 3 will require to have all secret versions for PIT
         .andWhere(`${TableName.Project}.version`, "<", 3)
         .delete();
     } catch (error) {
