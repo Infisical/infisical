@@ -1,6 +1,5 @@
-import { common, identity, keymanagement, vault } from "oci-sdk";
+import { common, identity, keymanagement } from "oci-sdk";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -54,6 +53,30 @@ export const validateOCIConnectionCredentials = async (config: TOCIConnectionCon
   }
 
   return config.credentials;
+};
+
+export const listOCICompartments = async (appConnection: TOCIConnection) => {
+  const provider = await getOCIProvider(appConnection);
+
+  const identityClient = new identity.IdentityClient({ authenticationDetailsProvider: provider });
+
+  const rootCompartment = await identityClient
+    .getTenancy({
+      tenancyId: appConnection.credentials.tenancyOcid
+    })
+    .then((response) => ({
+      ...response.tenancy,
+      id: appConnection.credentials.tenancyOcid,
+      name: response.tenancy.name ? `${response.tenancy.name} (root)` : "root"
+    }));
+
+  const compartments = await identityClient.listCompartments({
+    compartmentId: appConnection.credentials.tenancyOcid,
+    compartmentIdInSubtree: true,
+    accessLevel: identity.requests.ListCompartmentsRequest.AccessLevel.Any
+  });
+
+  return [rootCompartment, ...compartments.items];
 };
 
 export const listOCIVaults = async (appConnection: TOCIConnection, compartmentOcid: string) => {

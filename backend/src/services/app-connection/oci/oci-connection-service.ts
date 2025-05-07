@@ -1,7 +1,7 @@
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { listOCIVaultKeys, listOCIVaults } from "./oci-connection-fns";
+import { listOCICompartments, listOCIVaultKeys, listOCIVaults } from "./oci-connection-fns";
 import { TOCIConnection } from "./oci-connection-types";
 
 type TGetAppConnectionFunc = (
@@ -22,6 +22,17 @@ type TListOCIVaultKeysDTO = {
 };
 
 export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
+  const listCompartments = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
+
+    try {
+      const compartments = await listOCICompartments(appConnection);
+      return compartments;
+    } catch (error) {
+      return [];
+    }
+  };
+
   const listVaults = async ({ connectionId, compartmentOcid }: TListOCIVaultsDTO, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 
@@ -48,6 +59,7 @@ export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
   };
 
   return {
+    listCompartments,
     listVaults,
     listVaultKeys
   };

@@ -1,10 +1,12 @@
 // Response types
+export type TOCICompartment = {
+  id: string;
+  name: string;
+};
+
 export type TOCIVault = {
   id: string;
   displayName: string;
-  compartmentId: string;
-  timeCreated: string;
-  lifecycleState: string;
 };
 
 export type TOCIVaultKey = {

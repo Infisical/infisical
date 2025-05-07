@@ -24,6 +24,34 @@ export const registerOCIConnectionRouter = async (server: FastifyZodProvider) =>
   // The following endpoints are for internal Infisical App use only and not part of the public API
   server.route({
     method: "GET",
+    url: `/:connectionId/compartments`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string(),
+            name: z.string()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      const compartments = await server.services.appConnection.oci.listCompartments(connectionId, req.permission);
+      return compartments;
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: `/:connectionId/vaults`,
     config: {
       rateLimit: readLimit

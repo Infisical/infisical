@@ -2084,7 +2084,7 @@ export const SecretSyncs = {
     OCI_VAULT: {
       compartmentOcid: "The OCID (Oracle Cloud Identifier) of the compartment where the vault is located.",
       vaultOcid: "The OCID (Oracle Cloud Identifier) of the vault to sync secrets to.",
-      keyOcid: "The OCID (Oracle Cloud Identifier) of the encryption key to use when creating secrets in the vault." // TODO(andrey): May or may not be needed. This refers to encryption key.
+      keyOcid: "The OCID (Oracle Cloud Identifier) of the encryption key to use when creating secrets in the vault."
     }
   }
 };

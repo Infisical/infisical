@@ -3,12 +3,47 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { appConnectionKeys } from "../queries";
-import { TListOCIVaultKeys, TListOCIVaults, TOCIVault, TOCIVaultKey } from "./types";
+import {
+  TListOCIVaultKeys,
+  TListOCIVaults,
+  TOCICompartment,
+  TOCIVault,
+  TOCIVaultKey
+} from "./types";
 
 const ociConnectionKeys = {
   all: [...appConnectionKeys.all, "oci"] as const,
-  listVaults: (connectionId: string) => [...ociConnectionKeys.all, "vaults", connectionId] as const,
-  listVaultKeys: (connectionId: string) => [...ociConnectionKeys.all, "keys", connectionId] as const
+  listCompartments: (connectionId: string) =>
+    [...ociConnectionKeys.all, "compartments", connectionId] as const,
+  listVaults: (connectionId: string, compartmentOcid: string) =>
+    [...ociConnectionKeys.all, "vaults", connectionId, compartmentOcid] as const,
+  listVaultKeys: (connectionId: string, compartmentOcid: string, vaultOcid: string) =>
+    [...ociConnectionKeys.all, "keys", connectionId, compartmentOcid, vaultOcid] as const
+};
+
+export const useOCIConnectionListCompartments = (
+  connectionId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TOCICompartment[],
+      unknown,
+      TOCICompartment[],
+      ReturnType<typeof ociConnectionKeys.listCompartments>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: ociConnectionKeys.listCompartments(connectionId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TOCICompartment[]>(
+        `/api/v1/app-connections/oci/${connectionId}/compartments`
+      );
+
+      return data;
+    },
+    ...options
+  });
 };
 
 export const useOCIConnectionListVaults = (
@@ -24,7 +59,7 @@ export const useOCIConnectionListVaults = (
   >
 ) => {
   return useQuery({
-    queryKey: ociConnectionKeys.listVaults(connectionId),
+    queryKey: ociConnectionKeys.listVaults(connectionId, compartmentOcid),
     queryFn: async () => {
       const { data } = await apiRequest.get<TOCIVault[]>(
         `/api/v1/app-connections/oci/${connectionId}/vaults`,
@@ -54,7 +89,7 @@ export const useOCIConnectionListVaultKeys = (
   >
 ) => {
   return useQuery({
-    queryKey: ociConnectionKeys.listVaultKeys(connectionId),
+    queryKey: ociConnectionKeys.listVaultKeys(connectionId, compartmentOcid, vaultOcid),
     queryFn: async () => {
       const { data } = await apiRequest.get<TOCIVaultKey[]>(
         `/api/v1/app-connections/oci/${connectionId}/vault-keys`,
