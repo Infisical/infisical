@@ -171,6 +171,7 @@ ENV NODE_ENV production
 ENV STANDALONE_BUILD true 
 ENV STANDALONE_MODE true
 ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
+ENV NODE_OPTIONS="--max-old-space-size=1024"
 
 WORKDIR /backend
 
