@@ -141,6 +141,7 @@ import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/externa
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
 import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { folderCheckpointDALFactory } from "@app/services/folder-checkpoint/folder-checkpoint-dal";
+import { folderCheckpointResourcesDALFactory } from "@app/services/folder-checkpoint-resources/folder-checkpoint-resources-dal";
 import { folderCommitDALFactory } from "@app/services/folder-commit/folder-commit-dal";
 import { folderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { folderCommitChangesDALFactory } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
@@ -559,6 +560,7 @@ export const registerRoutes = async (
 
   const folderCommitChangesDAL = folderCommitChangesDALFactory(db);
   const folderCheckpointDAL = folderCheckpointDALFactory(db);
+  const folderCheckpointResourcesDAL = folderCheckpointResourcesDALFactory(db);
   const folderTreeCheckpointDAL = folderTreeCheckpointDALFactory(db);
   const folderCommitDAL = folderCommitDALFactory(db);
   const folderCommitService = folderCommitServiceFactory({
@@ -567,7 +569,12 @@ export const registerRoutes = async (
     folderCheckpointDAL,
     folderTreeCheckpointDAL,
     userDAL,
-    identityDAL
+    identityDAL,
+    folderDAL,
+    folderVersionDAL,
+    secretVersionV2BridgeDAL,
+    projectDAL,
+    folderCheckpointResourcesDAL
   });
   const scimService = scimServiceFactory({
     licenseService,

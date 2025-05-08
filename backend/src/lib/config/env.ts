@@ -228,6 +228,9 @@ const envSchema = z
     DATADOG_SERVICE: zpStr(z.string().optional().default("infisical-core")),
     DATADOG_HOSTNAME: zpStr(z.string().optional()),
 
+    // PIT
+    CHECKPOINT_WINDOW: zpStr(z.string().optional().default("10")),
+
     /* CORS ----------------------------------------------------------------------------- */
 
     CORS_ALLOWED_ORIGINS: zpStr(

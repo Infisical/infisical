@@ -23,24 +23,12 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findById = async (id: string, tx?: Knex): Promise<TFolderCommits | undefined> => {
-    try {
-      const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
-        .where({ id })
-        .select(selectAllTableCols(TableName.FolderCommit))
-        .first();
-      return doc;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindById" });
-    }
-  };
-
   const findLatestCommit = async (folderId: string, tx?: Knex): Promise<TFolderCommits | undefined> => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
         .where({ folderId })
         .select(selectAllTableCols(TableName.FolderCommit))
-        .orderBy("createdAt", "desc")
+        .orderBy("commitId", "desc")
         .first();
       return doc;
     } catch (error) {
@@ -48,10 +36,30 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     }
   };
 
+  const getNumberOfCommitsSince = async (folderId: string, folderCommitId: string, tx?: Knex): Promise<number> => {
+    try {
+      const referencedCommit = await (tx || db.replicaNode())(TableName.FolderCommit)
+        .where({ id: folderCommitId })
+        .select("commitId")
+        .first();
+
+      if (referencedCommit?.commitId) {
+        const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
+          .where({ folderId })
+          .where("commitId", ">", referencedCommit.commitId)
+          .count();
+        return Number(doc?.[0].count);
+      }
+      return 0;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "getNumberOfCommitsSince" });
+    }
+  };
+
   return {
     ...restOfOrm,
     findByFolderId,
-    findById,
-    findLatestCommit
+    findLatestCommit,
+    getNumberOfCommitsSince
   };
 };

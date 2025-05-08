@@ -3,12 +3,23 @@ import { Knex } from "knex";
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { folderCheckpointDALFactory } from "@app/services/folder-checkpoint/folder-checkpoint-dal";
+import { folderCheckpointResourcesDALFactory } from "@app/services/folder-checkpoint-resources/folder-checkpoint-resources-dal";
+import { folderCommitDALFactory } from "@app/services/folder-commit/folder-commit-dal";
+import { folderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
+import { folderCommitChangesDALFactory } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
+import { folderTreeCheckpointDALFactory } from "@app/services/folder-tree-checkpoint/folder-tree-checkpoint-dal";
+import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
+import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
+import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
+import { userDALFactory } from "@app/services/user/user-dal";
 
 import { TMigrationEnvConfig } from "./env-config";
 
@@ -49,4 +60,34 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
   await kmsService.startService();
 
   return { kmsService };
+};
+
+export const getMigrationPITServices = async ({ db }: { db: Knex }) => {
+  const projectDAL = projectDALFactory(db);
+  const folderCommitDAL = folderCommitDALFactory(db);
+  const folderCommitChangesDAL = folderCommitChangesDALFactory(db);
+  const folderCheckpointDAL = folderCheckpointDALFactory(db);
+  const folderTreeCheckpointDAL = folderTreeCheckpointDALFactory(db);
+  const userDAL = userDALFactory(db);
+  const identityDAL = identityDALFactory(db);
+  const folderDAL = secretFolderDALFactory(db);
+  const folderVersionDAL = secretFolderVersionDALFactory(db);
+  const secretVersionV2BridgeDAL = secretVersionV2BridgeDALFactory(db);
+  const folderCheckpointResourcesDAL = folderCheckpointResourcesDALFactory(db);
+
+  const folderCommitService = folderCommitServiceFactory({
+    folderCommitDAL,
+    folderCommitChangesDAL,
+    folderCheckpointDAL,
+    folderTreeCheckpointDAL,
+    userDAL,
+    identityDAL,
+    folderDAL,
+    folderVersionDAL,
+    secretVersionV2BridgeDAL,
+    projectDAL,
+    folderCheckpointResourcesDAL
+  });
+
+  return { folderCommitService };
 };

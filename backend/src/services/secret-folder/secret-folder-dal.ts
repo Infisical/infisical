@@ -488,6 +488,17 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByParentId = async (parentId: string, tx?: Knex) => {
+    try {
+      const folders = await (tx || db.replicaNode())(TableName.SecretFolder)
+        .where({ parentId })
+        .select(selectAllTableCols(TableName.SecretFolder));
+      return folders;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findByParentId" });
+    }
+  };
+
   return {
     ...secretFolderOrm,
     update,
@@ -499,6 +510,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     findClosestFolder,
     findByProjectId,
     findByMultiEnv,
-    findByEnvsDeep
+    findByEnvsDeep,
+    findByParentId
   };
 };
