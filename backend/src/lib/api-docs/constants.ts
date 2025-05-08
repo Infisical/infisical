@@ -1693,13 +1693,15 @@ export const ALERTS = {
 
 export const PKI_SUBSCRIBERS = {
   GET: {
-    subscriberId: "The ID of the PKI subscriber to get."
+    subscriberName: "The name of the PKI subscriber to get.",
+    projectId: "The ID of the project to get the PKI subscriber for."
   },
   CREATE: {
     projectId: "The ID of the project to create the PKI subscriber in.",
     caId: "The ID of the CA that will issue certificates for the PKI subscriber.",
     name: "The name of the PKI subscriber.",
     commonName: "The common name (CN) to be used on certificates issued for this subscriber.",
+    status: "The status of the PKI subscriber. This can be one of active or disabled.",
     ttl: "The time to live for the certificates issued for this subscriber such as 1m, 1h, 1d, 1y, ...",
     subjectAlternativeNames:
       "A list of Subject Alternative Names (SANs) to be used on certificates issued for this subscriber; these can be host names or email addresses.",
@@ -1707,10 +1709,12 @@ export const PKI_SUBSCRIBERS = {
     extendedKeyUsages: "The extended key usage extension to be used on certificates issued for this subscriber."
   },
   UPDATE: {
-    subscriberId: "The ID of the PKI subscriber to update.",
+    projectId: "The ID of the project to update the PKI subscriber in.",
+    subscriberName: "The name of the PKI subscriber to update.",
     caId: "The ID of the CA that will issue certificates for the PKI subscriber to update to.",
     name: "The name of the PKI subscriber to update to.",
     commonName: "The common name (CN) to be used on certificates issued for this subscriber to update to.",
+    status: "The status of the PKI subscriber to update to. This can be one of active or disabled.",
     ttl: "The time to live for the certificates issued for this subscriber such as 1m, 1h, 1d, 1y, ...",
     subjectAlternativeNames:
       "A comma-delimited list of Subject Alternative Names (SANs) to be used on certificates issued for this subscriber; these can be host names or email addresses.",
@@ -1719,15 +1723,23 @@ export const PKI_SUBSCRIBERS = {
       "The extended key usage extension to be used on certificates issued for this subscriber to update to."
   },
   DELETE: {
-    subscriberId: "The ID of the PKI subscriber to delete."
+    subscriberName: "The name of the PKI subscriber to delete.",
+    projectId: "The ID of the project of the PKI subscriber to delete."
   },
   ISSUE_CERT: {
-    subscriberId: "The ID of the PKI subscriber to issue the certificate for.",
+    subscriberName: "The name of the PKI subscriber to issue the certificate for.",
+    projectId: "The ID of the project of the PKI subscriber to issue the certificate for.",
     certificate: "The issued certificate.",
     issuingCaCertificate: "The certificate of the issuing CA.",
     certificateChain: "The certificate chain of the issued certificate.",
     privateKey: "The private key of the issued certificate.",
     serialNumber: "The serial number of the issued certificate."
+  },
+  LIST_CERTS: {
+    subscriberName: "The name of the PKI subscriber to list the certificates for.",
+    projectId: "The ID of the project of the PKI subscriber to list the certificates for.",
+    offset: "The offset to start from.",
+    limit: "The number of certificates to return."
   }
 };
 

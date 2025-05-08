@@ -91,7 +91,6 @@ import { Route as organizationSettingsPageOauthCallbackPageRouteImport } from '.
 import { Route as kmsSettingsPageRouteImport } from './pages/kms/SettingsPage/route'
 import { Route as kmsOverviewPageRouteImport } from './pages/kms/OverviewPage/route'
 import { Route as kmsKmipPageRouteImport } from './pages/kms/KmipPage/route'
-import { Route as certManagerPkiSubscribersPageRouteImport } from './pages/cert-manager/PkiSubscribersPage/route'
 import { Route as certManagerSettingsPageRouteImport } from './pages/cert-manager/SettingsPage/route'
 import { Route as certManagerCertificatesPageRouteImport } from './pages/cert-manager/CertificatesPage/route'
 import { Route as certManagerCertificateAuthoritiesPageRouteImport } from './pages/cert-manager/CertificateAuthoritiesPage/route'
@@ -118,6 +117,7 @@ import { Route as organizationAppConnectionsOauthCallbackPageRouteImport } from 
 import { Route as certManagerPkiSubscriberDetailsByIDPageRouteImport } from './pages/cert-manager/PkiSubscriberDetailsByIDPage/route'
 import { Route as certManagerCertAuthDetailsByIDPageRouteImport } from './pages/cert-manager/CertAuthDetailsByIDPage/route'
 import { Route as secretManagerIntegrationsListPageRouteImport } from './pages/secret-manager/IntegrationsListPage/route'
+import { Route as certManagerPkiSubscribersPageRouteImport } from './pages/cert-manager/PkiSubscribersPage/route'
 import { Route as secretManagerIntegrationsWindmillConfigurePageRouteImport } from './pages/secret-manager/integrations/WindmillConfigurePage/route'
 import { Route as secretManagerIntegrationsWindmillAuthorizePageRouteImport } from './pages/secret-manager/integrations/WindmillAuthorizePage/route'
 import { Route as secretManagerIntegrationsVercelConfigurePageRouteImport } from './pages/secret-manager/integrations/VercelConfigurePage/route'
@@ -247,6 +247,10 @@ const AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdImport =
 const AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutIntegrationsImport =
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations',
+  )()
+const AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersImport =
+  createFileRoute(
+    '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers',
   )()
 
 // Create/Update Routes
@@ -814,6 +818,15 @@ const secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute =
     } as any,
   )
 
+const AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRoute =
+  AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersImport.update(
+    {
+      id: '/subscribers',
+      path: '/subscribers',
+      getParentRoute: () => certManagerLayoutRoute,
+    } as any,
+  )
+
 const projectAccessControlPageRouteCertManagerRoute =
   projectAccessControlPageRouteCertManagerImport.update({
     id: '/access-management',
@@ -905,13 +918,6 @@ const kmsKmipPageRouteRoute = kmsKmipPageRouteImport.update({
   path: '/kmip',
   getParentRoute: () => kmsLayoutRoute,
 } as any)
-
-const certManagerPkiSubscribersPageRouteRoute =
-  certManagerPkiSubscribersPageRouteImport.update({
-    id: '/subscribers',
-    path: '/subscribers',
-    getParentRoute: () => certManagerLayoutRoute,
-  } as any)
 
 const certManagerSettingsPageRouteRoute =
   certManagerSettingsPageRouteImport.update({
@@ -1078,9 +1084,10 @@ const organizationAppConnectionsOauthCallbackPageRouteRoute =
 
 const certManagerPkiSubscriberDetailsByIDPageRouteRoute =
   certManagerPkiSubscriberDetailsByIDPageRouteImport.update({
-    id: '/$subscriberId',
-    path: '/$subscriberId',
-    getParentRoute: () => certManagerPkiSubscribersPageRouteRoute,
+    id: '/$subscriberName',
+    path: '/$subscriberName',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRoute,
   } as any)
 
 const certManagerCertAuthDetailsByIDPageRouteRoute =
@@ -1096,6 +1103,14 @@ const secretManagerIntegrationsListPageRouteRoute =
     path: '/',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const certManagerPkiSubscribersPageRouteRoute =
+  certManagerPkiSubscribersPageRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRoute,
   } as any)
 
 const secretManagerIntegrationsWindmillConfigurePageRouteRoute =
@@ -2200,13 +2215,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof certManagerSettingsPageRouteImport
       parentRoute: typeof certManagerLayoutImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers': {
-      id: '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers'
-      path: '/subscribers'
-      fullPath: '/cert-manager/$projectId/subscribers'
-      preLoaderRoute: typeof certManagerPkiSubscribersPageRouteImport
-      parentRoute: typeof certManagerLayoutImport
-    }
     '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/kmip': {
       id: '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/kmip'
       path: '/kmip'
@@ -2305,6 +2313,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof projectAccessControlPageRouteCertManagerImport
       parentRoute: typeof certManagerLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers': {
+      id: '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers'
+      path: '/subscribers'
+      fullPath: '/cert-manager/$projectId/subscribers'
+      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersImport
+      parentRoute: typeof certManagerLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback': {
       id: '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback'
       path: '/azure-app-configuration/oauth2/callback'
@@ -2396,6 +2411,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof projectAccessControlPageRouteSshImport
       parentRoute: typeof sshLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/': {
+      id: '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/'
+      path: '/'
+      fullPath: '/cert-manager/$projectId/subscribers/'
+      preLoaderRoute: typeof certManagerPkiSubscribersPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/': {
       id: '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/'
       path: '/'
@@ -2410,12 +2432,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof certManagerCertAuthDetailsByIDPageRouteImport
       parentRoute: typeof certManagerLayoutImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberId': {
-      id: '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberId'
-      path: '/$subscriberId'
-      fullPath: '/cert-manager/$projectId/subscribers/$subscriberId'
+    '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName': {
+      id: '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName'
+      path: '/$subscriberName'
+      fullPath: '/cert-manager/$projectId/subscribers/$subscriberName'
       preLoaderRoute: typeof certManagerPkiSubscriberDetailsByIDPageRouteImport
-      parentRoute: typeof certManagerPkiSubscribersPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback': {
       id: '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback'
@@ -3246,19 +3268,22 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteWithChildren =
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren,
   )
 
-interface certManagerPkiSubscribersPageRouteRouteChildren {
+interface AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRouteChildren {
+  certManagerPkiSubscribersPageRouteRoute: typeof certManagerPkiSubscribersPageRouteRoute
   certManagerPkiSubscriberDetailsByIDPageRouteRoute: typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
 }
 
-const certManagerPkiSubscribersPageRouteRouteChildren: certManagerPkiSubscribersPageRouteRouteChildren =
+const AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRouteChildren =
   {
+    certManagerPkiSubscribersPageRouteRoute:
+      certManagerPkiSubscribersPageRouteRoute,
     certManagerPkiSubscriberDetailsByIDPageRouteRoute:
       certManagerPkiSubscriberDetailsByIDPageRouteRoute,
   }
 
-const certManagerPkiSubscribersPageRouteRouteWithChildren =
-  certManagerPkiSubscribersPageRouteRoute._addFileChildren(
-    certManagerPkiSubscribersPageRouteRouteChildren,
+const AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRouteWithChildren =
+  AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRoute._addFileChildren(
+    AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRouteChildren,
   )
 
 interface certManagerLayoutRouteChildren {
@@ -3266,8 +3291,8 @@ interface certManagerLayoutRouteChildren {
   certManagerCertificateAuthoritiesPageRouteRoute: typeof certManagerCertificateAuthoritiesPageRouteRoute
   certManagerCertificatesPageRouteRoute: typeof certManagerCertificatesPageRouteRoute
   certManagerSettingsPageRouteRoute: typeof certManagerSettingsPageRouteRoute
-  certManagerPkiSubscribersPageRouteRoute: typeof certManagerPkiSubscribersPageRouteRouteWithChildren
   projectAccessControlPageRouteCertManagerRoute: typeof projectAccessControlPageRouteCertManagerRoute
+  AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRouteWithChildren
   certManagerCertAuthDetailsByIDPageRouteRoute: typeof certManagerCertAuthDetailsByIDPageRouteRoute
   projectIdentityDetailsByIDPageRouteCertManagerRoute: typeof projectIdentityDetailsByIDPageRouteCertManagerRoute
   projectMemberDetailsByIDPageRouteCertManagerRoute: typeof projectMemberDetailsByIDPageRouteCertManagerRoute
@@ -3281,10 +3306,10 @@ const certManagerLayoutRouteChildren: certManagerLayoutRouteChildren = {
     certManagerCertificateAuthoritiesPageRouteRoute,
   certManagerCertificatesPageRouteRoute: certManagerCertificatesPageRouteRoute,
   certManagerSettingsPageRouteRoute: certManagerSettingsPageRouteRoute,
-  certManagerPkiSubscribersPageRouteRoute:
-    certManagerPkiSubscribersPageRouteRouteWithChildren,
   projectAccessControlPageRouteCertManagerRoute:
     projectAccessControlPageRouteCertManagerRoute,
+  AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRoute:
+    AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRouteWithChildren,
   certManagerCertAuthDetailsByIDPageRouteRoute:
     certManagerCertAuthDetailsByIDPageRouteRoute,
   projectIdentityDetailsByIDPageRouteCertManagerRoute:
@@ -3953,7 +3978,6 @@ export interface FileRoutesByFullPath {
   '/cert-manager/$projectId/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/cert-manager/$projectId/overview': typeof certManagerCertificatesPageRouteRoute
   '/cert-manager/$projectId/settings': typeof certManagerSettingsPageRouteRoute
-  '/cert-manager/$projectId/subscribers': typeof certManagerPkiSubscribersPageRouteRouteWithChildren
   '/kms/$projectId/kmip': typeof kmsKmipPageRouteRoute
   '/kms/$projectId/overview': typeof kmsOverviewPageRouteRoute
   '/kms/$projectId/settings': typeof kmsSettingsPageRouteRoute
@@ -3968,6 +3992,7 @@ export interface FileRoutesByFullPath {
   '/ssh/$projectId/overview': typeof sshSshHostsPageRouteRoute
   '/ssh/$projectId/settings': typeof sshSettingsPageRouteRoute
   '/cert-manager/$projectId/access-management': typeof projectAccessControlPageRouteCertManagerRoute
+  '/cert-manager/$projectId/subscribers': typeof AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRouteWithChildren
   '/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
   '/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
   '/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
@@ -3981,9 +4006,10 @@ export interface FileRoutesByFullPath {
   '/secret-manager/$projectId/access-management': typeof projectAccessControlPageRouteSecretManagerRoute
   '/secret-manager/$projectId/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutIntegrationsRouteWithChildren
   '/ssh/$projectId/access-management': typeof projectAccessControlPageRouteSshRoute
+  '/cert-manager/$projectId/subscribers/': typeof certManagerPkiSubscribersPageRouteRoute
   '/secret-manager/$projectId/integrations/': typeof secretManagerIntegrationsListPageRouteRoute
   '/cert-manager/$projectId/ca/$caId': typeof certManagerCertAuthDetailsByIDPageRouteRoute
-  '/cert-manager/$projectId/subscribers/$subscriberId': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
+  '/cert-manager/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/organization/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/secret-manager/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/secret-manager/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
@@ -4134,7 +4160,6 @@ export interface FileRoutesByTo {
   '/cert-manager/$projectId/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/cert-manager/$projectId/overview': typeof certManagerCertificatesPageRouteRoute
   '/cert-manager/$projectId/settings': typeof certManagerSettingsPageRouteRoute
-  '/cert-manager/$projectId/subscribers': typeof certManagerPkiSubscribersPageRouteRouteWithChildren
   '/kms/$projectId/kmip': typeof kmsKmipPageRouteRoute
   '/kms/$projectId/overview': typeof kmsOverviewPageRouteRoute
   '/kms/$projectId/settings': typeof kmsSettingsPageRouteRoute
@@ -4161,9 +4186,10 @@ export interface FileRoutesByTo {
   '/kms/$projectId/access-management': typeof projectAccessControlPageRouteKmsRoute
   '/secret-manager/$projectId/access-management': typeof projectAccessControlPageRouteSecretManagerRoute
   '/ssh/$projectId/access-management': typeof projectAccessControlPageRouteSshRoute
+  '/cert-manager/$projectId/subscribers': typeof certManagerPkiSubscribersPageRouteRoute
   '/secret-manager/$projectId/integrations': typeof secretManagerIntegrationsListPageRouteRoute
   '/cert-manager/$projectId/ca/$caId': typeof certManagerCertAuthDetailsByIDPageRouteRoute
-  '/cert-manager/$projectId/subscribers/$subscriberId': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
+  '/cert-manager/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/organization/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/secret-manager/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/secret-manager/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
@@ -4332,7 +4358,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/overview': typeof certManagerCertificatesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/settings': typeof certManagerSettingsPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers': typeof certManagerPkiSubscribersPageRouteRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/kmip': typeof kmsKmipPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/overview': typeof kmsOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/settings': typeof kmsSettingsPageRouteRoute
@@ -4347,6 +4372,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/overview': typeof sshSshHostsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/settings': typeof sshSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/access-management': typeof projectAccessControlPageRouteCertManagerRoute
+  '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers': typeof AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
@@ -4360,9 +4386,10 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/access-management': typeof projectAccessControlPageRouteSecretManagerRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutIntegrationsRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/access-management': typeof projectAccessControlPageRouteSshRoute
+  '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/': typeof certManagerPkiSubscribersPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/': typeof secretManagerIntegrationsListPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/ca/$caId': typeof certManagerCertAuthDetailsByIDPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberId': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
@@ -4523,7 +4550,6 @@ export interface FileRouteTypes {
     | '/cert-manager/$projectId/certificate-authorities'
     | '/cert-manager/$projectId/overview'
     | '/cert-manager/$projectId/settings'
-    | '/cert-manager/$projectId/subscribers'
     | '/kms/$projectId/kmip'
     | '/kms/$projectId/overview'
     | '/kms/$projectId/settings'
@@ -4538,6 +4564,7 @@ export interface FileRouteTypes {
     | '/ssh/$projectId/overview'
     | '/ssh/$projectId/settings'
     | '/cert-manager/$projectId/access-management'
+    | '/cert-manager/$projectId/subscribers'
     | '/integrations/azure-app-configuration/oauth2/callback'
     | '/integrations/azure-key-vault/oauth2/callback'
     | '/integrations/bitbucket/oauth2/callback'
@@ -4551,9 +4578,10 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/access-management'
     | '/secret-manager/$projectId/integrations'
     | '/ssh/$projectId/access-management'
+    | '/cert-manager/$projectId/subscribers/'
     | '/secret-manager/$projectId/integrations/'
     | '/cert-manager/$projectId/ca/$caId'
-    | '/cert-manager/$projectId/subscribers/$subscriberId'
+    | '/cert-manager/$projectId/subscribers/$subscriberName'
     | '/organization/app-connections/$appConnection/oauth/callback'
     | '/secret-manager/$projectId/integrations/$integrationId'
     | '/secret-manager/$projectId/integrations/select-integration-auth'
@@ -4703,7 +4731,6 @@ export interface FileRouteTypes {
     | '/cert-manager/$projectId/certificate-authorities'
     | '/cert-manager/$projectId/overview'
     | '/cert-manager/$projectId/settings'
-    | '/cert-manager/$projectId/subscribers'
     | '/kms/$projectId/kmip'
     | '/kms/$projectId/overview'
     | '/kms/$projectId/settings'
@@ -4730,9 +4757,10 @@ export interface FileRouteTypes {
     | '/kms/$projectId/access-management'
     | '/secret-manager/$projectId/access-management'
     | '/ssh/$projectId/access-management'
+    | '/cert-manager/$projectId/subscribers'
     | '/secret-manager/$projectId/integrations'
     | '/cert-manager/$projectId/ca/$caId'
-    | '/cert-manager/$projectId/subscribers/$subscriberId'
+    | '/cert-manager/$projectId/subscribers/$subscriberName'
     | '/organization/app-connections/$appConnection/oauth/callback'
     | '/secret-manager/$projectId/integrations/$integrationId'
     | '/secret-manager/$projectId/integrations/select-integration-auth'
@@ -4899,7 +4927,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificate-authorities'
     | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/settings'
-    | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers'
     | '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/kmip'
     | '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/settings'
@@ -4914,6 +4941,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/access-management'
+    | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback'
@@ -4927,9 +4955,10 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/access-management'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations'
     | '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/access-management'
+    | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/'
     | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/ca/$caId'
-    | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberId'
+    | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName'
     | '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/select-integration-auth'
@@ -5428,8 +5457,8 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificate-authorities",
         "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/overview",
         "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/settings",
-        "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers",
         "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/access-management",
+        "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers",
         "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/ca/$caId",
         "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/identities/$identityId",
         "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/members/$membershipId",
@@ -5499,13 +5528,6 @@ export const routeTree = rootRoute
       "filePath": "cert-manager/SettingsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout"
     },
-    "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers": {
-      "filePath": "cert-manager/PkiSubscribersPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout",
-      "children": [
-        "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberId"
-      ]
-    },
     "/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/kmip": {
       "filePath": "kms/KmipPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout"
@@ -5561,6 +5583,14 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/access-management": {
       "filePath": "project/AccessControlPage/route-cert-manager.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers": {
+      "filePath": "",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout",
+      "children": [
+        "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/",
+        "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName"
+      ]
     },
     "/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback": {
       "filePath": "secret-manager/integrations/route-azure-app-configurations-oauth-redirect.tsx",
@@ -5694,6 +5724,10 @@ export const routeTree = rootRoute
       "filePath": "project/AccessControlPage/route-ssh.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout"
     },
+    "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/": {
+      "filePath": "cert-manager/PkiSubscribersPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers"
+    },
     "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/": {
       "filePath": "secret-manager/IntegrationsListPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations"
@@ -5702,7 +5736,7 @@ export const routeTree = rootRoute
       "filePath": "cert-manager/CertAuthDetailsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout"
     },
-    "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberId": {
+    "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName": {
       "filePath": "cert-manager/PkiSubscriberDetailsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers"
     },

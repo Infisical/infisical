@@ -1,5 +1,5 @@
 /* eslint-disable no-bitwise */
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import crypto, { KeyObject } from "crypto";
 
@@ -40,10 +40,12 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import {
+  PkiSubscriberStatus,
   TCreatePkiSubscriberDTO,
   TDeletePkiSubscriberDTO,
-  TGetPkiSubscriberByIdDTO,
+  TGetPkiSubscriberDTO,
   TIssuePkiSubscriberCertDTO,
+  TListPkiSubscriberCertsDTO,
   TSignPkiSubscriberCertDTO,
   TUpdatePkiSubscriberDTO
 } from "./pki-subscriber-types";
@@ -51,13 +53,13 @@ import {
 type TPkiSubscriberServiceFactoryDep = {
   pkiSubscriberDAL: Pick<
     TPkiSubscriberDALFactory,
-    "create" | "findById" | "updateById" | "deleteById" | "transaction" | "find"
+    "create" | "findById" | "updateById" | "deleteById" | "transaction" | "find" | "findOne"
   >;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "countCertificatesForPkiSubscriber" | "find">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById" | "find">;
@@ -83,6 +85,7 @@ export const pkiSubscriberServiceFactory = ({
   const createSubscriber = async ({
     name,
     commonName,
+    status,
     caId,
     ttl,
     subjectAlternativeNames,
@@ -103,69 +106,42 @@ export const pkiSubscriberServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    // (dangtony98): TODO: make permission more granular
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiSubscriberActions.Read,
-      ProjectPermissionSub.PkiSubscribers
+      ProjectPermissionPkiSubscriberActions.Create,
+      subject(ProjectPermissionSub.PkiSubscribers, {
+        name
+      })
     );
 
-    const newSubscriber = await pkiSubscriberDAL.transaction(async (tx) => {
-      // (dangtony98): room to optimize check to ensure that
-      // the PKI subscriber name is unique across the whole org
-      const project = await projectDAL.findById(projectId, tx);
-      if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-      const projects = await projectDAL.find(
-        {
-          orgId: project.orgId
-        },
-        { tx }
-      );
-
-      const existingPkiSubscriber = await pkiSubscriberDAL.find(
-        {
-          name,
-          $in: {
-            projectId: projects.map((p) => p.id)
-          }
-        },
-        { tx }
-      );
-
-      if (existingPkiSubscriber.length) {
-        throw new BadRequestError({
-          message: `PKI subscriber with name '${name}' already exists in the organization`
-        });
-      }
-
-      const subscriber = await pkiSubscriberDAL.create(
-        {
-          caId,
-          projectId,
-          name,
-          commonName,
-          ttl,
-          subjectAlternativeNames,
-          keyUsages,
-          extendedKeyUsages
-        },
-        tx
-      );
-
-      return subscriber;
+    const newSubscriber = await pkiSubscriberDAL.create({
+      caId,
+      projectId,
+      name,
+      commonName,
+      status,
+      ttl,
+      subjectAlternativeNames,
+      keyUsages,
+      extendedKeyUsages
     });
 
     return newSubscriber;
   };
 
-  const getSubscriberById = async ({
-    subscriberId,
+  const getSubscriber = async ({
+    subscriberName,
+    projectId,
     actorId,
     actorAuthMethod,
     actor,
     actorOrgId
-  }: TGetPkiSubscriberByIdDTO) => {
-    const subscriber = await pkiSubscriberDAL.findById(subscriberId);
-    if (!subscriber) throw new NotFoundError({ message: `PKI subscriber with ID '${subscriberId}' not found` });
+  }: TGetPkiSubscriberDTO) => {
+    const subscriber = await pkiSubscriberDAL.findOne({
+      name: subscriberName,
+      projectId
+    });
+
+    if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -176,19 +152,22 @@ export const pkiSubscriberServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    // (dangtony98): TODO: make permission more granular
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPkiSubscriberActions.Read,
-      ProjectPermissionSub.PkiSubscribers
+      subject(ProjectPermissionSub.PkiSubscribers, {
+        name: subscriber.name
+      })
     );
 
     return subscriber;
   };
 
   const updateSubscriber = async ({
-    subscriberId,
+    subscriberName,
+    projectId,
     name,
     commonName,
+    status,
     caId,
     ttl,
     subjectAlternativeNames,
@@ -199,83 +178,11 @@ export const pkiSubscriberServiceFactory = ({
     actor,
     actorOrgId
   }: TUpdatePkiSubscriberDTO) => {
-    const foundSubscriber = await pkiSubscriberDAL.findById(subscriberId);
-    if (!foundSubscriber) throw new NotFoundError({ message: `PKI subscriber with ID '${subscriberId}' not found` });
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: foundSubscriber.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+    const subscriber = await pkiSubscriberDAL.findOne({
+      name: subscriberName,
+      projectId
     });
-
-    // (dangtony98): TODO: make permission more granular
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiSubscriberActions.Edit,
-      ProjectPermissionSub.PkiSubscribers
-    );
-
-    const updatedSubscriber = await pkiSubscriberDAL.transaction(async (tx) => {
-      if (name) {
-        // (dangtony98): room to optimize check to ensure that
-        // the PKI subscriber name is unique across the whole org
-        const project = await projectDAL.findById(foundSubscriber.projectId, tx);
-        if (!project) throw new NotFoundError({ message: `Project with ID '${foundSubscriber.projectId}' not found` });
-        const projects = await projectDAL.find(
-          {
-            orgId: project.orgId
-          },
-          { tx }
-        );
-
-        const existingPkiSubscriber = await pkiSubscriberDAL.find(
-          {
-            name,
-            $in: {
-              projectId: projects.map((p) => p.id)
-            }
-          },
-          { tx }
-        );
-
-        if (existingPkiSubscriber.length) {
-          throw new BadRequestError({
-            message: `PKI subscriber with name '${name}' already exists in the organization`
-          });
-        }
-      }
-
-      const subscriber = await pkiSubscriberDAL.updateById(
-        subscriberId,
-        {
-          caId,
-          name,
-          commonName,
-          ttl,
-          subjectAlternativeNames,
-          keyUsages,
-          extendedKeyUsages
-        },
-        tx
-      );
-
-      return subscriber;
-    });
-
-    return updatedSubscriber;
-  };
-
-  const deleteSubscriber = async ({
-    subscriberId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TDeletePkiSubscriberDTO) => {
-    const subscriber = await pkiSubscriberDAL.findById(subscriberId);
-    if (!subscriber) throw new NotFoundError({ message: `PKI subscriber with ID '${subscriberId}' not found` });
+    if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -286,26 +193,76 @@ export const pkiSubscriberServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    // (dangtony98): TODO: make permission more granular
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiSubscriberActions.Delete,
-      ProjectPermissionSub.PkiSubscribers
+      ProjectPermissionPkiSubscriberActions.Edit,
+      subject(ProjectPermissionSub.PkiSubscribers, {
+        name: subscriber.name
+      })
     );
 
-    await pkiSubscriberDAL.deleteById(subscriberId);
+    const updatedSubscriber = await pkiSubscriberDAL.updateById(subscriber.id, {
+      caId,
+      name,
+      commonName,
+      status,
+      ttl,
+      subjectAlternativeNames,
+      keyUsages,
+      extendedKeyUsages
+    });
+
+    return updatedSubscriber;
+  };
+
+  const deleteSubscriber = async ({
+    subscriberName,
+    projectId,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TDeletePkiSubscriberDTO) => {
+    const subscriber = await pkiSubscriberDAL.findOne({
+      name: subscriberName,
+      projectId
+    });
+    if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: subscriber.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPkiSubscriberActions.Delete,
+      subject(ProjectPermissionSub.PkiSubscribers, {
+        name: subscriber.name
+      })
+    );
+
+    await pkiSubscriberDAL.deleteById(subscriber.id);
 
     return subscriber;
   };
 
   const issueSubscriberCert = async ({
-    subscriberId,
+    subscriberName,
+    projectId,
     actorId,
     actorAuthMethod,
     actor,
     actorOrgId
   }: TIssuePkiSubscriberCertDTO) => {
-    const subscriber = await pkiSubscriberDAL.findById(subscriberId);
-    if (!subscriber) throw new NotFoundError({ message: `PKI subscriber with ID '${subscriberId}' not found` });
+    const subscriber = await pkiSubscriberDAL.findOne({
+      name: subscriberName,
+      projectId
+    });
+    if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
+
     const ca = await certificateAuthorityDAL.findById(subscriber.caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID '${subscriber.caId}' not found` });
 
@@ -318,13 +275,16 @@ export const pkiSubscriberServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    // (dangtony98): TODO: make permission more granular
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPkiSubscriberActions.IssueCert,
-      ProjectPermissionSub.PkiSubscribers
+      subject(ProjectPermissionSub.PkiSubscribers, {
+        name: subscriber.name
+      })
     );
 
-    if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
+    if (subscriber.status !== PkiSubscriberStatus.ACTIVE)
+      throw new BadRequestError({ message: "Subscriber is not active" });
+    if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
     if (ca.requireTemplateForIssuance) {
       throw new BadRequestError({ message: "Certificate template is required for issuance" });
@@ -452,6 +412,7 @@ export const pkiSubscriberServiceFactory = ({
         {
           caId: ca.id,
           caCertId: caCert.id,
+          pkiSubscriberId: subscriber.id,
           status: CertStatus.ACTIVE,
           friendlyName: subscriber.commonName,
           commonName: subscriber.commonName,
@@ -495,7 +456,8 @@ export const pkiSubscriberServiceFactory = ({
   };
 
   const signSubscriberCert = async ({
-    subscriberId,
+    subscriberName,
+    projectId,
     csr,
     actorId,
     actorAuthMethod,
@@ -503,8 +465,11 @@ export const pkiSubscriberServiceFactory = ({
     actorOrgId
   }: TSignPkiSubscriberCertDTO) => {
     const appCfg = getConfig();
-    const subscriber = await pkiSubscriberDAL.findById(subscriberId);
-    if (!subscriber) throw new NotFoundError({ message: `PKI subscriber with ID '${subscriberId}' not found` });
+    const subscriber = await pkiSubscriberDAL.findOne({
+      name: subscriberName,
+      projectId
+    });
+    if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
     const ca = await certificateAuthorityDAL.findById(subscriber.caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID '${subscriber.caId}' not found` });
 
@@ -517,13 +482,16 @@ export const pkiSubscriberServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    // (dangtony98): TODO: make permission more granular
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiSubscriberActions.SignCert,
-      ProjectPermissionSub.PkiSubscribers
+      ProjectPermissionPkiSubscriberActions.IssueCert,
+      subject(ProjectPermissionSub.PkiSubscribers, {
+        name: subscriber.name
+      })
     );
 
-    if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
+    if (subscriber.status !== PkiSubscriberStatus.ACTIVE)
+      throw new BadRequestError({ message: "Subscriber is not active" });
+    if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
     if (ca.requireTemplateForIssuance) {
       throw new BadRequestError({ message: "Certificate template is required for issuance" });
@@ -711,6 +679,7 @@ export const pkiSubscriberServiceFactory = ({
         {
           caId: ca.id,
           caCertId: caCert.id,
+          pkiSubscriberId: subscriber.id,
           status: CertStatus.ACTIVE,
           friendlyName: subscriber.commonName,
           commonName: subscriber.commonName,
@@ -747,12 +716,62 @@ export const pkiSubscriberServiceFactory = ({
     };
   };
 
+  const listSubscriberCerts = async ({
+    subscriberName,
+    projectId,
+    offset,
+    limit,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TListPkiSubscriberCertsDTO) => {
+    const subscriber = await pkiSubscriberDAL.findOne({
+      name: subscriberName,
+      projectId
+    });
+    if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
+    const ca = await certificateAuthorityDAL.findById(subscriber.caId);
+    if (!ca) throw new NotFoundError({ message: `CA with ID '${subscriber.caId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: ca.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPkiSubscriberActions.ListCerts,
+      subject(ProjectPermissionSub.PkiSubscribers, {
+        name: subscriber.name
+      })
+    );
+
+    const certificates = await certificateDAL.find(
+      {
+        pkiSubscriberId: subscriber.id
+      },
+      { offset, limit, sort: [["updatedAt", "desc"]] }
+    );
+
+    const count = await certificateDAL.countCertificatesForPkiSubscriber(subscriber.id);
+
+    return {
+      certificates,
+      totalCount: count
+    };
+  };
+
   return {
     createSubscriber,
-    getSubscriberById,
+    getSubscriber,
     updateSubscriber,
     deleteSubscriber,
     issueSubscriberCert,
-    signSubscriberCert
+    signSubscriberCert,
+    listSubscriberCerts
   };
 };

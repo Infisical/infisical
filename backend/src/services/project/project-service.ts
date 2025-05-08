@@ -1083,18 +1083,12 @@ export const projectServiceFactory = ({
 
     for (const subscriber of subscribers) {
       try {
-        // (dangtony98): Add more granular permissions
         ForbiddenError.from(permission).throwUnlessCan(
           ProjectPermissionPkiSubscriberActions.Read,
-          ProjectPermissionSub.PkiSubscribers
+          subject(ProjectPermissionSub.PkiSubscribers, {
+            name: subscriber.name
+          })
         );
-
-        // ForbiddenError.from(permission).throwUnlessCan(
-        //   ProjectPermissionSshHostActions.Read,
-        //   subject(ProjectPermissionSub.SshHosts, {
-        //     hostname: host.hostname
-        //   })
-        // );
 
         allowedSubscribers.push(subscriber);
       } catch {

@@ -15,7 +15,10 @@ export const PkiSubscribersPage = () => {
       <div className="h-full bg-bunker-800">
         <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
           <div className="mx-auto mb-6 w-full max-w-7xl">
-            <PageHeader title="Subscribers" description="Manage your PKI subscribers." />
+            <PageHeader
+              title="Subscribers"
+              description="Manage subscribers that request and receive certificates, including user devices, servers, and services."
+            />
             <PkiSubscriberSection />
           </div>
         </div>

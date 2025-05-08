@@ -112,6 +112,7 @@
           "pages": [
             "documentation/platform/pki/overview",
             "documentation/platform/pki/private-ca",
+            "documentation/platform/pki/subscribers",
             "documentation/platform/pki/certificates",
             "documentation/platform/pki/pki-issuer",
             "documentation/platform/pki/est",
@@ -1427,6 +1428,18 @@
     {
       "group": "Infisical PKI",
       "pages": [
+        {
+          "group": "Subscribers",
+          "pages": [
+            "api-reference/endpoints/pki/subscribers/list-certs",
+            "api-reference/endpoints/pki/subscribers/create",
+            "api-reference/endpoints/pki/subscribers/read",
+            "api-reference/endpoints/pki/subscribers/update",
+            "api-reference/endpoints/pki/subscribers/delete",
+            "api-reference/endpoints/pki/subscribers/issue-cert",
+            "api-reference/endpoints/pki/subscribers/sign-cert"
+          ]
+        },
         {
           "group": "Certificate Authorities",
           "pages": [

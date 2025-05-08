@@ -16,6 +16,8 @@ export const sanitizedSshHost = SshHostsSchema.pick({
 export const loginMappingSchema = z.object({
   loginUser: z.string().trim(),
   allowedPrincipals: z.object({
-    usernames: z.array(z.string().trim()).transform((usernames) => Array.from(new Set(usernames)))
+    usernames: z
+      .array(z.string().trim())
+      .transform((usernames) => Array.from(new Set(usernames.filter((username) => username !== ""))))
   })
 });

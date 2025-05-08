@@ -18,13 +18,29 @@ export async function up(knex: Knex): Promise<void> {
       t.string("ttl").notNullable();
       t.specificType("keyUsages", "text[]").notNullable();
       t.specificType("extendedKeyUsages", "text[]").notNullable();
+      t.string("status").notNullable(); // active / disabled
       t.unique(["projectId", "name"]);
     });
     await createOnUpdateTrigger(knex, TableName.PkiSubscriber);
   }
+
+  const hasSubscriberCol = await knex.schema.hasColumn(TableName.Certificate, "pkiSubscriberId");
+  if (!hasSubscriberCol) {
+    await knex.schema.alterTable(TableName.Certificate, (t) => {
+      t.uuid("pkiSubscriberId").nullable();
+      t.foreign("pkiSubscriberId").references("id").inTable(TableName.PkiSubscriber).onDelete("SET NULL");
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
+  const hasSubscriberCol = await knex.schema.hasColumn(TableName.Certificate, "pkiSubscriberId");
+  if (hasSubscriberCol) {
+    await knex.schema.alterTable(TableName.Certificate, (t) => {
+      t.dropColumn("pkiSubscriberId");
+    });
+  }
+
   await knex.schema.dropTableIfExists(TableName.PkiSubscriber);
   await dropOnUpdateTrigger(knex, TableName.PkiSubscriber);
 }

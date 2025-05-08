@@ -100,7 +100,8 @@ export enum ProjectPermissionPkiSubscriberActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  IssueCert = "issue-cert"
+  IssueCert = "issue-cert",
+  ListCerts = "list-certs"
 }
 
 export enum ProjectPermissionSecretRotationActions {
@@ -229,6 +230,14 @@ export type SecretRotationSubjectFields = {
   secretPath: string;
 };
 
+export type SshHostSubjectFields = {
+  hostname: string;
+};
+
+export type PkiSubscriberSubjectFields = {
+  name: string;
+};
+
 export type ProjectPermissionSet =
   | [
       ProjectPermissionSecretActions,
@@ -291,10 +300,22 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshHostGroups]
-  | [ProjectPermissionSshHostActions, ProjectPermissionSub.SshHosts]
+  | [
+      ProjectPermissionSshHostActions,
+      (
+        | ProjectPermissionSub.SshHosts
+        | (ForcedSubject<ProjectPermissionSub.SshHosts> & SshHostSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionPkiSubscriberActions,
+      (
+        | ProjectPermissionSub.PkiSubscribers
+        | (ForcedSubject<ProjectPermissionSub.PkiSubscribers> & PkiSubscriberSubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
-  | [ProjectPermissionPkiSubscriberActions, ProjectPermissionSub.PkiSubscribers]
   | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]

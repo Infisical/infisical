@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { CertificatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PKI_SUBSCRIBERS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
@@ -11,12 +12,13 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { validateAltNameField } from "@app/services/certificate-authority/certificate-authority-validators";
 import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
+import { PkiSubscriberStatus } from "@app/services/pki-subscriber/pki-subscriber-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/:subscriberId",
+    url: "/:subscriberName",
     config: {
       rateLimit: readLimit
     },
@@ -25,7 +27,10 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       tags: [ApiDocsTags.PkiSubscribers],
       description: "Get PKI Subscriber",
       params: z.object({
-        subscriberId: z.string().describe(PKI_SUBSCRIBERS.GET.subscriberId)
+        subscriberName: z.string().describe(PKI_SUBSCRIBERS.GET.subscriberName)
+      }),
+      querystring: z.object({
+        projectId: z.string().describe(PKI_SUBSCRIBERS.GET.projectId)
       }),
       response: {
         200: sanitizedPkiSubscriber
@@ -33,8 +38,9 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const subscriber = await server.services.pkiSubscriber.getSubscriberById({
-        subscriberId: req.params.subscriberId,
+      const subscriber = await server.services.pkiSubscriber.getSubscriber({
+        subscriberName: req.params.subscriberName,
+        projectId: req.query.projectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -47,7 +53,8 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         event: {
           type: EventType.GET_PKI_SUBSCRIBER,
           metadata: {
-            pkiSubscriberId: subscriber.id
+            pkiSubscriberId: subscriber.id,
+            name: subscriber.name
           }
         }
       });
@@ -76,6 +83,10 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
           .describe(PKI_SUBSCRIBERS.CREATE.caId),
         name: slugSchema({ min: 1, max: 64, field: "name" }).describe(PKI_SUBSCRIBERS.CREATE.name),
         commonName: z.string().trim().min(1).describe(PKI_SUBSCRIBERS.CREATE.commonName),
+        status: z
+          .nativeEnum(PkiSubscriberStatus)
+          .default(PkiSubscriberStatus.ACTIVE)
+          .describe(PKI_SUBSCRIBERS.CREATE.status),
         ttl: z
           .string()
           .trim()
@@ -137,7 +148,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
 
   server.route({
     method: "PATCH",
-    url: "/:subscriberId",
+    url: "/:subscriberName",
     config: {
       rateLimit: writeLimit
     },
@@ -147,9 +158,10 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       tags: [ApiDocsTags.PkiSubscribers],
       description: "Update PKI Subscriber",
       params: z.object({
-        subscriberId: z.string().trim().describe(PKI_SUBSCRIBERS.UPDATE.subscriberId)
+        subscriberName: z.string().trim().describe(PKI_SUBSCRIBERS.UPDATE.subscriberName)
       }),
       body: z.object({
+        projectId: z.string().trim().describe(PKI_SUBSCRIBERS.UPDATE.projectId),
         caId: z
           .string()
           .trim()
@@ -159,6 +171,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
           .describe(PKI_SUBSCRIBERS.UPDATE.caId),
         name: slugSchema({ min: 1, max: 64, field: "name" }).describe(PKI_SUBSCRIBERS.UPDATE.name).optional(),
         commonName: z.string().trim().min(1).describe(PKI_SUBSCRIBERS.UPDATE.commonName).optional(),
+        status: z.nativeEnum(PkiSubscriberStatus).optional().describe(PKI_SUBSCRIBERS.UPDATE.status),
         subjectAlternativeNames: validateAltNameField
           .array()
           .optional()
@@ -188,7 +201,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.updateSubscriber({
-        subscriberId: req.params.subscriberId,
+        subscriberName: req.params.subscriberName,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -220,7 +233,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
 
   server.route({
     method: "DELETE",
-    url: "/:subscriberId",
+    url: "/:subscriberName",
     config: {
       rateLimit: writeLimit
     },
@@ -229,7 +242,10 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       tags: [ApiDocsTags.PkiSubscribers],
       description: "Delete PKI Subscriber",
       params: z.object({
-        subscriberId: z.string().describe(PKI_SUBSCRIBERS.DELETE.subscriberId)
+        subscriberName: z.string().describe(PKI_SUBSCRIBERS.DELETE.subscriberName)
+      }),
+      body: z.object({
+        projectId: z.string().trim().describe(PKI_SUBSCRIBERS.DELETE.projectId)
       }),
       response: {
         200: sanitizedPkiSubscriber
@@ -238,7 +254,8 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.deleteSubscriber({
-        subscriberId: req.params.subscriberId,
+        subscriberName: req.params.subscriberName,
+        projectId: req.body.projectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -251,7 +268,8 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         event: {
           type: EventType.DELETE_PKI_SUBSCRIBER,
           metadata: {
-            pkiSubscriberId: subscriber.id
+            pkiSubscriberId: subscriber.id,
+            name: subscriber.name
           }
         }
       });
@@ -262,7 +280,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
 
   server.route({
     method: "POST",
-    url: "/:subscriberId/issue-certificate",
+    url: "/:subscriberName/issue-certificate",
     config: {
       rateLimit: writeLimit
     },
@@ -272,7 +290,10 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       tags: [ApiDocsTags.PkiSubscribers],
       description: "Issue certificate",
       params: z.object({
-        subscriberId: z.string().describe(PKI_SUBSCRIBERS.ISSUE_CERT.subscriberId)
+        subscriberName: z.string().describe(PKI_SUBSCRIBERS.ISSUE_CERT.subscriberName)
+      }),
+      body: z.object({
+        projectId: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.projectId)
       }),
       response: {
         200: z.object({
@@ -287,7 +308,8 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber, subscriber } =
         await server.services.pkiSubscriber.issueSubscriberCert({
-          subscriberId: req.params.subscriberId,
+          subscriberName: req.params.subscriberName,
+          projectId: req.body.projectId,
           actor: req.permission.type,
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
@@ -296,11 +318,12 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        projectId: subscriber.projectId,
         event: {
           type: EventType.ISSUE_PKI_SUBSCRIBER_CERT,
           metadata: {
             subscriberId: subscriber.id,
+            name: subscriber.name,
             serialNumber
           }
         }
@@ -328,7 +351,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
 
   server.route({
     method: "POST",
-    url: "/:subscriberId/sign-certificate",
+    url: "/:subscriberName/sign-certificate",
     config: {
       rateLimit: writeLimit
     },
@@ -338,9 +361,10 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       tags: [ApiDocsTags.PkiSubscribers],
       description: "Sign certificate",
       params: z.object({
-        subscriberId: z.string().describe(PKI_SUBSCRIBERS.ISSUE_CERT.subscriberId)
+        subscriberName: z.string().describe(PKI_SUBSCRIBERS.ISSUE_CERT.subscriberName)
       }),
       body: z.object({
+        projectId: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.projectId),
         csr: z.string().trim().min(1)
       }),
       response: {
@@ -355,7 +379,8 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { certificate, certificateChain, issuingCaCertificate, serialNumber, subscriber } =
         await server.services.pkiSubscriber.signSubscriberCert({
-          subscriberId: req.params.subscriberId,
+          subscriberName: req.params.subscriberName,
+          projectId: req.body.projectId,
           csr: req.body.csr,
           actor: req.permission.type,
           actorId: req.permission.id,
@@ -365,11 +390,12 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        projectId: subscriber.projectId,
         event: {
           type: EventType.SIGN_PKI_SUBSCRIBER_CERT,
           metadata: {
             subscriberId: subscriber.id,
+            name: subscriber.name,
             serialNumber
           }
         }
@@ -390,6 +416,62 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         certificateChain,
         issuingCaCertificate,
         serialNumber
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:subscriberName/certificates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiSubscribers],
+      description: "List PKI Subscriber certificates",
+      params: z.object({
+        subscriberName: z.string().describe(PKI_SUBSCRIBERS.GET.subscriberName)
+      }),
+      querystring: z.object({
+        projectId: z.string().trim().describe(PKI_SUBSCRIBERS.LIST_CERTS.projectId),
+        offset: z.coerce.number().min(0).max(100).default(0).describe(PKI_SUBSCRIBERS.LIST_CERTS.offset),
+        limit: z.coerce.number().min(1).max(100).default(25).describe(PKI_SUBSCRIBERS.LIST_CERTS.limit)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(CertificatesSchema),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { totalCount, certificates } = await server.services.pkiSubscriber.listSubscriberCerts({
+        subscriberName: req.params.subscriberName,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.query.projectId,
+        event: {
+          type: EventType.LIST_PKI_SUBSCRIBER_CERTS,
+          metadata: {
+            subscriberId: req.params.subscriberName,
+            name: req.params.subscriberName,
+            projectId: req.query.projectId
+          }
+        }
+      });
+
+      return {
+        certificates,
+        totalCount
       };
     }
   });

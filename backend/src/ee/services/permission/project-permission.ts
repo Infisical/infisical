@@ -93,7 +93,7 @@ export enum ProjectPermissionPkiSubscriberActions {
   Edit = "edit",
   Delete = "delete",
   IssueCert = "issue-cert",
-  SignCert = "sign-cert"
+  ListCerts = "list-certs"
 }
 
 export enum ProjectPermissionSecretSyncActions {
@@ -200,6 +200,11 @@ export type SshHostSubjectFields = {
   hostname: string;
 };
 
+export type PkiSubscriberSubjectFields = {
+  name: string;
+  // (dangtony98): consider adding [commonName] as a subject field in the future
+};
+
 export type ProjectPermissionSet =
   | [
       ProjectPermissionSecretActions,
@@ -259,7 +264,13 @@ export type ProjectPermissionSet =
       ProjectPermissionSshHostActions,
       ProjectPermissionSub.SshHosts | (ForcedSubject<ProjectPermissionSub.SshHosts> & SshHostSubjectFields)
     ]
-  | [ProjectPermissionPkiSubscriberActions, ProjectPermissionSub.PkiSubscribers] // (dangtony98): TODO: update
+  | [
+      ProjectPermissionPkiSubscriberActions,
+      (
+        | ProjectPermissionSub.PkiSubscribers
+        | (ForcedSubject<ProjectPermissionSub.PkiSubscribers> & PkiSubscriberSubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.SshHostGroups]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
@@ -398,6 +409,21 @@ const IdentityManagementConditionSchema = z
 const SshHostConditionSchema = z
   .object({
     hostname: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
+  })
+  .partial();
+
+const PkiSubscriberConditionSchema = z
+  .object({
+    name: z.union([
       z.string(),
       z
         .object({
@@ -675,6 +701,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
     ).optional()
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.PkiSubscribers).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPkiSubscriberActions).describe(
+      "Describe what action an entity can take."
+    ),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    conditions: PkiSubscriberConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.SecretRotation).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretRotationActions).describe(
@@ -754,7 +790,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionPkiSubscriberActions.Create,
       ProjectPermissionPkiSubscriberActions.Edit,
       ProjectPermissionPkiSubscriberActions.Delete,
-      ProjectPermissionPkiSubscriberActions.IssueCert
+      ProjectPermissionPkiSubscriberActions.IssueCert,
+      ProjectPermissionPkiSubscriberActions.ListCerts
     ],
     ProjectPermissionSub.PkiSubscribers
   );

@@ -21,22 +21,25 @@ import {
   ProjectPermissionSub,
   useWorkspace
 } from "@app/context";
-import { useDeletePkiSubscriber, useGetPkiSubscriberById } from "@app/hooks/api";
+import { useDeletePkiSubscriber, useGetPkiSubscriber } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiSubscriberModal } from "../PkiSubscribersPage/components/PkiSubscriberModal";
-// import { PkiSubscriberCertificatesSection, PkiSubscriberDetailsSection } from "./components";
+import { PkiSubscriberCertificatesSection, PkiSubscriberDetailsSection } from "./components";
 
 const Page = () => {
-  const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate();
-  const projectId = currentWorkspace?.id || "";
-  const subscriberId = useParams({
+  const { currentWorkspace } = useWorkspace();
+  const projectId = currentWorkspace.id;
+  const subscriberName = useParams({
     from: ROUTE_PATHS.CertManager.PkiSubscriberDetailsByIDPage.id,
-    select: (el) => el.subscriberId
+    select: (el) => el.subscriberName
   });
-  const { data } = useGetPkiSubscriberById(subscriberId);
+  const { data } = useGetPkiSubscriber({
+    subscriberName,
+    projectId
+  });
 
   const { mutateAsync: deletePkiSubscriber } = useDeletePkiSubscriber();
 
@@ -45,14 +48,14 @@ const Page = () => {
     "deletePkiSubscriber"
   ] as const);
 
-  const onRemoveSubscriberSubmit = async (subscriberIdToDelete: string) => {
+  const onRemoveSubscriberSubmit = async (subscriberNameToDelete: string) => {
     try {
       if (!projectId) return;
 
-      await deletePkiSubscriber({ subscriberId: subscriberIdToDelete });
+      await deletePkiSubscriber({ subscriberName: subscriberNameToDelete, projectId });
 
       createNotification({
-        text: "Successfully deleted PKI subscriber",
+        text: "Successfully deleted subscriber",
         type: "success"
       });
 
@@ -66,7 +69,7 @@ const Page = () => {
     } catch (err) {
       console.error(err);
       createNotification({
-        text: "Failed to delete PKI subscriber",
+        text: "Failed to delete subscriber",
         type: "error"
       });
     }
@@ -114,15 +117,13 @@ const Page = () => {
           </PageHeader>
           <div className="flex">
             <div className="mr-4 w-96">
-              TODO: PkiSubscriberDetailsSection
-              {/* <PkiSubscriberDetailsSection
-                subscriberId={subscriberId}
+              <PkiSubscriberDetailsSection
+                subscriberName={data.name}
                 handlePopUpOpen={handlePopUpOpen}
-              /> */}
+              />
             </div>
             <div className="w-full">
-              TODO: PkiSubscriberCertificatesSection
-              {/* <PkiSubscriberCertificatesSection subscriberId={subscriberId} /> */}
+              <PkiSubscriberCertificatesSection subscriberName={data.name} />
             </div>
           </div>
         </div>
@@ -152,28 +153,14 @@ export const PkiSubscriberDetailsByIDPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "PKI Subscriber" })}</title>
       </Helmet>
-      {/* <ProjectPermissionCan
+      <ProjectPermissionCan
         I={ProjectPermissionPkiSubscriberActions.Read}
         a={ProjectPermissionSub.PkiSubscribers}
         passThrough={false}
         renderGuardBanner
       >
         <Page />
-      </ProjectPermissionCan> */}
-      TESTTT
+      </ProjectPermissionCan>
     </>
   );
 };
-
-/**
- * import { createFileRoute } from "@tanstack/react-router";
-
-import { PkiSubscriberDetailsByIDPage } from "./PkiSubscriberDetailsByIDPage";
-
-export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberId"
-)({
-  component: PkiSubscriberDetailsByIDPage
-});
-
- */

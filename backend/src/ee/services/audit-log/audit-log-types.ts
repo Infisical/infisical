@@ -19,8 +19,7 @@ import { TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
-import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
+import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
@@ -244,6 +243,7 @@ export enum EventType {
   GET_PKI_SUBSCRIBER = "get-pki-subscriber",
   ISSUE_PKI_SUBSCRIBER_CERT = "issue-pki-subscriber-cert",
   SIGN_PKI_SUBSCRIBER_CERT = "sign-pki-subscriber-cert",
+  LIST_PKI_SUBSCRIBER_CERTS = "list-pki-subscriber-certs",
   CREATE_KMS = "create-kms",
   UPDATE_KMS = "update-kms",
   DELETE_KMS = "delete-kms",
@@ -1938,6 +1938,7 @@ interface DeletePkiSubscriber {
   type: EventType.DELETE_PKI_SUBSCRIBER;
   metadata: {
     pkiSubscriberId: string;
+    name: string;
   };
 }
 
@@ -1945,6 +1946,7 @@ interface GetPkiSubscriber {
   type: EventType.GET_PKI_SUBSCRIBER;
   metadata: {
     pkiSubscriberId: string;
+    name: string;
   };
 }
 
@@ -1952,6 +1954,7 @@ interface IssuePkiSubscriberCert {
   type: EventType.ISSUE_PKI_SUBSCRIBER_CERT;
   metadata: {
     subscriberId: string;
+    name: string;
     serialNumber: string;
   };
 }
@@ -1960,7 +1963,17 @@ interface SignPkiSubscriberCert {
   type: EventType.SIGN_PKI_SUBSCRIBER_CERT;
   metadata: {
     subscriberId: string;
+    name: string;
     serialNumber: string;
+  };
+}
+
+interface ListPkiSubscriberCerts {
+  type: EventType.LIST_PKI_SUBSCRIBER_CERTS;
+  metadata: {
+    subscriberId: string;
+    name: string;
+    projectId: string;
   };
 }
 
@@ -2928,6 +2941,7 @@ export type Event =
   | GetPkiSubscriber
   | IssuePkiSubscriberCert
   | SignPkiSubscriberCert
+  | ListPkiSubscriberCerts
   | CreateKmsEvent
   | UpdateKmsEvent
   | DeleteKmsEvent

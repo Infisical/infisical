@@ -17,6 +17,7 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretSyncActions,
@@ -130,6 +131,15 @@ const SshHostPolicyActionSchema = z.object({
   [ProjectPermissionSshHostActions.IssueHostCert]: z.boolean().optional()
 });
 
+const PkiSubscriberPolicyActionSchema = z.object({
+  [ProjectPermissionPkiSubscriberActions.Read]: z.boolean().optional(),
+  [ProjectPermissionPkiSubscriberActions.Create]: z.boolean().optional(),
+  [ProjectPermissionPkiSubscriberActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionPkiSubscriberActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionPkiSubscriberActions.IssueCert]: z.boolean().optional(),
+  [ProjectPermissionPkiSubscriberActions.ListCerts]: z.boolean().optional()
+});
+
 const SecretRollbackPolicyActionSchema = z.object({
   read: z.boolean().optional(),
   create: z.boolean().optional()
@@ -229,6 +239,12 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.IpAllowList]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.CertificateAuthorities]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Certificates]: CertificatePolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.PkiSubscribers]: PkiSubscriberPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.PkiAlerts]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.PkiCollections]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.CertificateTemplates]: GeneralPolicyActionSchema.array().default([]),
@@ -270,6 +286,7 @@ type TConditionalFields =
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.DynamicSecrets
+  | ProjectPermissionSub.PkiSubscribers
   | ProjectPermissionSub.SshHosts
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.Identity;
@@ -283,7 +300,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.SecretFolders ||
   subject === ProjectPermissionSub.Identity ||
   subject === ProjectPermissionSub.SshHosts ||
-  subject === ProjectPermissionSub.SecretRotation;
+  subject === ProjectPermissionSub.SecretRotation ||
+  subject === ProjectPermissionSub.PkiSubscribers;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -714,6 +732,33 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         inverted
       });
     }
+
+    if (subject === ProjectPermissionSub.PkiSubscribers) {
+      if (!formVal[subject]) formVal[subject] = [];
+
+      formVal[subject]!.push({
+        [ProjectPermissionPkiSubscriberActions.Edit]: action.includes(
+          ProjectPermissionPkiSubscriberActions.Edit
+        ),
+        [ProjectPermissionPkiSubscriberActions.Delete]: action.includes(
+          ProjectPermissionPkiSubscriberActions.Delete
+        ),
+        [ProjectPermissionPkiSubscriberActions.Create]: action.includes(
+          ProjectPermissionPkiSubscriberActions.Create
+        ),
+        [ProjectPermissionPkiSubscriberActions.Read]: action.includes(
+          ProjectPermissionPkiSubscriberActions.Read
+        ),
+        [ProjectPermissionPkiSubscriberActions.IssueCert]: action.includes(
+          ProjectPermissionPkiSubscriberActions.IssueCert
+        ),
+        [ProjectPermissionPkiSubscriberActions.ListCerts]: action.includes(
+          ProjectPermissionPkiSubscriberActions.ListCerts
+        ),
+        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+        inverted
+      });
+    }
   });
 
   return formVal;
@@ -1101,6 +1146,17 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Create", value: "create" },
       { label: "Modify", value: "edit" },
       { label: "Remove", value: "delete" }
+    ]
+  },
+  [ProjectPermissionSub.PkiSubscribers]: {
+    title: "PKI Subscribers",
+    actions: [
+      { label: "Read", value: ProjectPermissionPkiSubscriberActions.Read },
+      { label: "Create", value: ProjectPermissionPkiSubscriberActions.Create },
+      { label: "Modify", value: ProjectPermissionPkiSubscriberActions.Edit },
+      { label: "Remove", value: ProjectPermissionPkiSubscriberActions.Delete },
+      { label: "Issue Certificate", value: ProjectPermissionPkiSubscriberActions.IssueCert },
+      { label: "List Certificates", value: ProjectPermissionPkiSubscriberActions.ListCerts }
     ]
   },
   [ProjectPermissionSub.PkiCollections]: {

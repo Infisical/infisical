@@ -179,7 +179,7 @@ export const sshHostGroupServiceFactory = ({
       });
 
     const updatedSshHostGroup = await sshHostGroupDAL.transaction(async (tx) => {
-      if (name) {
+      if (name && name !== sshHostGroup.name) {
         // (dangtony98): room to optimize check to ensure that
         // the SSH host group name is unique across the whole org
         const project = await projectDAL.findById(sshHostGroup.projectId, tx);
@@ -214,6 +214,7 @@ export const sshHostGroupServiceFactory = ({
           tx
         );
       }
+
       if (loginMappings) {
         await sshHostLoginUserDAL.delete({ sshHostGroupId: sshHostGroup.id }, tx);
         if (loginMappings.length) {

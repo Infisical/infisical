@@ -18,7 +18,8 @@ export const PkiSubscribersSchema = z.object({
   subjectAlternativeNames: z.string().array(),
   ttl: z.string(),
   keyUsages: z.string().array(),
-  extendedKeyUsages: z.string().array()
+  extendedKeyUsages: z.string().array(),
+  status: z.string()
 });
 
 export type TPkiSubscribers = z.infer<typeof PkiSubscribersSchema>;

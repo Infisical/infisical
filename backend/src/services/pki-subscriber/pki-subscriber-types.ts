@@ -2,40 +2,53 @@ import { TProjectPermission } from "@app/lib/types";
 
 import { CertExtendedKeyUsage, CertKeyUsage } from "../certificate/certificate-types";
 
+export enum PkiSubscriberStatus {
+  ACTIVE = "active",
+  DISABLED = "disabled"
+}
+
 export type TCreatePkiSubscriberDTO = {
   caId: string;
   name: string;
   commonName: string;
+  status: PkiSubscriberStatus;
   ttl: string;
   subjectAlternativeNames: string[];
   keyUsages: CertKeyUsage[];
   extendedKeyUsages: CertExtendedKeyUsage[];
 } & TProjectPermission;
 
-export type TGetPkiSubscriberByIdDTO = {
-  subscriberId: string;
-} & Omit<TProjectPermission, "projectId">;
+export type TGetPkiSubscriberDTO = {
+  subscriberName: string;
+} & TProjectPermission;
 
 export type TUpdatePkiSubscriberDTO = {
-  subscriberId: string;
+  subscriberName: string;
   caId?: string;
   name?: string;
   commonName?: string;
+  status?: PkiSubscriberStatus;
   ttl?: string;
   subjectAlternativeNames?: string[];
   keyUsages?: CertKeyUsage[];
   extendedKeyUsages?: CertExtendedKeyUsage[];
-} & Omit<TProjectPermission, "projectId">;
+} & TProjectPermission;
 
 export type TDeletePkiSubscriberDTO = {
-  subscriberId: string;
-} & Omit<TProjectPermission, "projectId">;
+  subscriberName: string;
+} & TProjectPermission;
 
 export type TIssuePkiSubscriberCertDTO = {
-  subscriberId: string;
-} & Omit<TProjectPermission, "projectId">;
+  subscriberName: string;
+} & TProjectPermission;
 
 export type TSignPkiSubscriberCertDTO = {
-  subscriberId: string;
+  subscriberName: string;
   csr: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TProjectPermission;
+
+export type TListPkiSubscriberCertsDTO = {
+  subscriberName: string;
+  offset: number;
+  limit: number;
+} & TProjectPermission;

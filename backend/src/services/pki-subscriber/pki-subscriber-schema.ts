@@ -6,6 +6,7 @@ export const sanitizedPkiSubscriber = PkiSubscribersSchema.pick({
   caId: true,
   name: true,
   commonName: true,
+  status: true,
   subjectAlternativeNames: true,
   ttl: true,
   keyUsages: true,

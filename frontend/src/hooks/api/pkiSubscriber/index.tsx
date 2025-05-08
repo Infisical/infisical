@@ -1,6 +1,7 @@
 export {
   useCreatePkiSubscriber,
   useDeletePkiSubscriber,
+  useIssuePkiSubscriberCert,
   useUpdatePkiSubscriber
 } from "./mutations";
-export { useGetPkiSubscriberById } from "./queries";
+export { useGetPkiSubscriber, useGetPkiSubscriberCertificates } from "./queries";

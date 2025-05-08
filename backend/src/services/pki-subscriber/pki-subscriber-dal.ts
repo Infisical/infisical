@@ -6,8 +6,5 @@ export type TPkiSubscriberDALFactory = ReturnType<typeof pkiSubscriberDALFactory
 
 export const pkiSubscriberDALFactory = (db: TDbClient) => {
   const pkiSubscriberOrm = ormify(db, TableName.PkiSubscriber);
-
-  return {
-    ...pkiSubscriberOrm
-  };
+  return pkiSubscriberOrm;
 };

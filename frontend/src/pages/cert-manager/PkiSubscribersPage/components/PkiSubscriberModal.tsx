@@ -22,7 +22,7 @@ import { useWorkspace } from "@app/context";
 import {
   CaStatus,
   useCreatePkiSubscriber,
-  useGetPkiSubscriberById,
+  useGetPkiSubscriber,
   useListWorkspaceCas,
   useListWorkspacePkiSubscribers,
   useUpdatePkiSubscriber
@@ -72,16 +72,18 @@ export type FormData = z.infer<typeof schema>;
 
 export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const projectId = currentWorkspace.id;
   const { data: subscribers } = useListWorkspacePkiSubscribers(projectId);
   const { data: cas } = useListWorkspaceCas({
     projectSlug: currentWorkspace?.slug ?? "",
     status: CaStatus.ACTIVE
   });
 
-  const { data: pkiSubscriber } = useGetPkiSubscriberById(
-    (popUp?.pkiSubscriber?.data as { subscriberId: string })?.subscriberId || ""
-  );
+  const { data: pkiSubscriber } = useGetPkiSubscriber({
+    subscriberName:
+      (popUp?.pkiSubscriber?.data as { subscriberName: string })?.subscriberName || "",
+    projectId
+  });
 
   const { mutateAsync: createMutateAsync } = useCreatePkiSubscriber();
   const { mutateAsync: updateMutateAsync } = useUpdatePkiSubscriber();
@@ -200,7 +202,8 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
       if (pkiSubscriber) {
         await updateMutateAsync({
-          subscriberId: pkiSubscriber.id,
+          subscriberName: pkiSubscriber.name,
+          projectId,
           name,
           caId,
           commonName,
@@ -258,7 +261,7 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
             name="name"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Name"
+                label="Subscriber Name"
                 isError={Boolean(error)}
                 errorText={error?.message}
                 isRequired

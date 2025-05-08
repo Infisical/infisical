@@ -300,8 +300,8 @@ export const ROUTE_PATHS = Object.freeze({
       "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/pki-collections/$collectionId"
     ),
     PkiSubscriberDetailsByIDPage: setRoute(
-      "/cert-manager/$projectId/subscribers/$subscriberId",
-      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberId"
+      "/cert-manager/$projectId/subscribers/$subscriberName",
+      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName"
     )
   },
   Ssh: {

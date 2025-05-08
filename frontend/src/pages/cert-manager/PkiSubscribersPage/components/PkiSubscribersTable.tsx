@@ -1,10 +1,17 @@
-import { faEllipsis, faPencil, faServer, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faBan,
+  faEllipsis,
+  faPencil,
+  faTrash,
+  faUserShield
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -26,12 +33,17 @@ import {
   useWorkspace
 } from "@app/context";
 import { useListWorkspacePkiSubscribers } from "@app/hooks/api";
+import {
+  getPkiSubscriberStatusBadgeVariant,
+  PkiSubscriberStatus,
+  pkiSubscriberStatusToNameMap
+} from "@app/hooks/api/pkiSubscriber/constants";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["deletePkiSubscriber", "pkiSubscriber"]>,
+    popUpName: keyof UsePopUpState<["deletePkiSubscriber", "pkiSubscriber", "pkiSubscriberStatus"]>,
     data?: object
   ) => void;
 };
@@ -47,12 +59,13 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
           <THead>
             <Tr>
               <Th>Name</Th>
+              <Th>Status</Th>
               <Th>Common Name</Th>
               <Th />
             </Tr>
           </THead>
           <TBody>
-            {isPending && <TableSkeleton columns={3} innerKey="pki-subscribers" />}
+            {isPending && <TableSkeleton columns={4} innerKey="pki-subscribers" />}
             {!isPending &&
               data &&
               data.length > 0 &&
@@ -61,18 +74,22 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
                   <Tr
                     className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                     key={`pki-subscriber-${subscriber.id}`}
-                    onClick={(e) => {
-                      e.preventDefault();
+                    onClick={() =>
                       navigate({
-                        to: `/${ProjectType.CertificateManager}/$projectId/subscribers/$subscriberId` as const,
+                        to: `/${ProjectType.CertificateManager}/$projectId/subscribers/$subscriberName` as const,
                         params: {
                           projectId: currentWorkspace.id,
-                          subscriberId: subscriber.id
+                          subscriberName: subscriber.name
                         }
-                      });
-                    }}
+                      })
+                    }
                   >
                     <Td>{subscriber.name}</Td>
+                    <Td>
+                      <Badge variant={getPkiSubscriberStatusBadgeVariant(subscriber.status)}>
+                        {pkiSubscriberStatusToNameMap[subscriber.status]}
+                      </Badge>
+                    </Td>
                     <Td>{subscriber.commonName}</Td>
                     <Td className="text-right align-middle">
                       <DropdownMenu>
@@ -96,13 +113,39 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("pkiSubscriber", {
-                                    subscriberId: subscriber.id
+                                    subscriberName: subscriber.name
                                   });
                                 }}
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faPencil} />}
                               >
                                 Edit Subscriber
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionPkiSubscriberActions.Edit}
+                            a={ProjectPermissionSub.PkiSubscribers}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                className={twMerge(
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("pkiSubscriberStatus", {
+                                    subscriberName: subscriber.name,
+                                    status:
+                                      subscriber.status === PkiSubscriberStatus.ACTIVE
+                                        ? PkiSubscriberStatus.DISABLED
+                                        : PkiSubscriberStatus.ACTIVE
+                                  });
+                                }}
+                                disabled={!isAllowed}
+                                icon={<FontAwesomeIcon icon={faBan} />}
+                              >
+                                {`${subscriber.status === PkiSubscriberStatus.ACTIVE ? "Disable" : "Enable"} Subscriber`}
                               </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
@@ -118,7 +161,7 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("deletePkiSubscriber", {
-                                    subscriberId: subscriber.id
+                                    subscriberName: subscriber.name
                                   });
                                 }}
                                 disabled={!isAllowed}
@@ -137,7 +180,7 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
           </TBody>
         </Table>
         {!isPending && data?.length === 0 && (
-          <EmptyState title="No PKI subscribers have been added" icon={faServer} />
+          <EmptyState title="No PKI subscribers have been added" icon={faUserShield} />
         )}
       </TableContainer>
     </div>

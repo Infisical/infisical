@@ -16,7 +16,6 @@ import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificat
 import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
 import { LoginMappingSource } from "@app/ee/services/ssh-host/ssh-host-types";
 import { sanitizedSshHostGroup } from "@app/ee/services/ssh-host-group/ssh-host-group-schema";
-import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -25,6 +24,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
+import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -657,6 +657,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHosts],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_HOSTS.projectId)
       }),
@@ -695,6 +697,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHostGroups],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_HOST_GROUPS.projectId)
       }),
