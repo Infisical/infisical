@@ -9,8 +9,7 @@ export const isValidLdapFilter = (filter: string) => {
     ldapjs.parseFilter(filter);
     return true;
   } catch (error) {
-    logger.error("Invalid LDAP filter");
-    logger.error(error);
+    logger.error(error, "Invalid LDAP filter");
     return false;
   }
 };

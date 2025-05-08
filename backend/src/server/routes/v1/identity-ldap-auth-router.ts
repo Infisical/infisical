@@ -15,6 +15,7 @@ import { z } from "zod";
 
 import { IdentityLdapAuthsSchema } from "@app/db/schemas/identity-ldap-auths";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { isValidLdapFilter } from "@app/ee/services/ldap-config/ldap-fns";
 import { ApiDocsTags, LDAP_AUTH } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
@@ -205,7 +206,13 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
           bindDN: z.string().trim().min(1).describe(LDAP_AUTH.ATTACH.bindDN),
           bindPass: z.string().trim().min(1).describe(LDAP_AUTH.ATTACH.bindPass),
           searchBase: z.string().trim().min(1).describe(LDAP_AUTH.ATTACH.searchBase),
-          searchFilter: z.string().trim().min(1).default("(uid={{username}})").describe(LDAP_AUTH.ATTACH.searchFilter),
+          searchFilter: z
+            .string()
+            .trim()
+            .min(1)
+            .default("(uid={{username}})")
+            .refine(isValidLdapFilter, "Invalid LDAP search filter")
+            .describe(LDAP_AUTH.ATTACH.searchFilter),
           allowedFields: AllowedFieldsSchema.array().optional().describe(LDAP_AUTH.ATTACH.allowedFields),
           ldapCaCertificate: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.ldapCaCertificate),
           accessTokenTrustedIps: z
@@ -302,7 +309,13 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
           bindDN: z.string().trim().min(1).describe(LDAP_AUTH.UPDATE.bindDN),
           bindPass: z.string().trim().min(1).describe(LDAP_AUTH.UPDATE.bindPass),
           searchBase: z.string().trim().min(1).describe(LDAP_AUTH.UPDATE.searchBase),
-          searchFilter: z.string().trim().min(1).default("(uid={{username}})").describe(LDAP_AUTH.UPDATE.searchFilter),
+          searchFilter: z
+            .string()
+            .trim()
+            .min(1)
+            .default("(uid={{username}})")
+            .refine(isValidLdapFilter, "Invalid LDAP search filter")
+            .describe(LDAP_AUTH.UPDATE.searchFilter),
           allowedFields: AllowedFieldsSchema.array().optional().describe(LDAP_AUTH.UPDATE.allowedFields),
           accessTokenTrustedIps: z
             .object({
