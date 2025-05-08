@@ -446,7 +446,7 @@ export const IdentityLdapAuthForm = ({
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               size="xs"
             >
-              Add Allowed Field
+              Add Required Attribute
             </Button>
           </div>
 

@@ -148,7 +148,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
 
     handler: async (req) => {
-      if (!req.passportMachineIdentity?.identityId || !req.passportMachineIdentity.user.uid) {
+      if (!req.passportMachineIdentity?.identityId) {
         throw new UnauthorizedError({ message: "Invalid request. Missing identity ID or LDAP entry details." });
       }
 
