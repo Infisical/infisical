@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.CertificateBody)) {
+  if (!(await knex.schema.hasColumn(TableName.CertificateBody, "encryptedCertificateChain"))) {
     await knex.schema.alterTable(TableName.CertificateBody, (t) => {
       t.binary("encryptedCertificateChain").nullable();
     });
@@ -25,7 +25,7 @@ export async function down(knex: Knex): Promise<void> {
     await knex.schema.dropTable(TableName.CertificateSecret);
   }
 
-  if (await knex.schema.hasTable(TableName.CertificateBody)) {
+  if (await knex.schema.hasColumn(TableName.CertificateBody, "encryptedCertificateChain")) {
     await knex.schema.alterTable(TableName.CertificateBody, (t) => {
       t.dropColumn("encryptedCertificateChain");
     });
