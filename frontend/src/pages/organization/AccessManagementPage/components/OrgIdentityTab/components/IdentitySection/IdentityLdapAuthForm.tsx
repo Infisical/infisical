@@ -442,9 +442,9 @@ export const IdentityLdapAuthForm = ({
                       icon={
                         isFirstField ? (
                           <Tooltip
-                            className="!w-[350px]"
+                            className="max-w-[420px]"
                             content={
-                              <div className="space-y-4 text-sm">
+                              <div className="max-h-[300px] space-y-4 overflow-y-auto text-sm">
                                 <p>
                                   Specify the fields that the user must contain in their LDAP entry
                                   in order to authenticate with this identity. If nothing is
@@ -466,7 +466,7 @@ export const IdentityLdapAuthForm = ({
 
                                 <p>
                                   The above example would allow users with the UID user1, user2, or
-                                  user3 to authenticate. But only if their emails also match
+                                  user3 to authenticate but only if their emails also match
                                   user@example.com
                                 </p>
                               </div>
