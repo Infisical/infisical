@@ -192,7 +192,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.REVOKE_IDENTITY_LDAP_AUTH]: "Revoked LDAP Auth for identity"
 };
 
-export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {
+export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
   [UserAgentType.WEB]: "Web",
   [UserAgentType.CLI]: "CLI",
   [UserAgentType.K8_OPERATOR]: "K8s operator",

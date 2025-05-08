@@ -186,7 +186,8 @@ export const identityAccessTokenServiceFactory = ({
       [IdentityAuthMethod.KUBERNETES_AUTH]: identityAccessToken.trustedIpsKubernetesAuth,
       [IdentityAuthMethod.OIDC_AUTH]: identityAccessToken.trustedIpsOidcAuth,
       [IdentityAuthMethod.TOKEN_AUTH]: identityAccessToken.trustedIpsAccessTokenAuth,
-      [IdentityAuthMethod.JWT_AUTH]: identityAccessToken.trustedIpsAccessJwtAuth
+      [IdentityAuthMethod.JWT_AUTH]: identityAccessToken.trustedIpsAccessJwtAuth,
+      [IdentityAuthMethod.LDAP_AUTH]: identityAccessToken.trustedIpsAccessLdapAuth
     };
 
     const trustedIps = trustedIpsMap[identityAccessToken.authMethod as IdentityAuthMethod];

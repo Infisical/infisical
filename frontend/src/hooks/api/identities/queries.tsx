@@ -253,6 +253,7 @@ export const useGetIdentityLdapAuth = (
     enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
 };
+
 export const useGetIdentityTokensTokenAuth = (identityId: string) => {
   return useQuery({
     enabled: Boolean(identityId),

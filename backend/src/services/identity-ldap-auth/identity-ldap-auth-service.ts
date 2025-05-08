@@ -241,6 +241,8 @@ export const identityLdapAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    if (allowedFields) AllowedFieldsSchema.array().parse(allowedFields);
+
     const identityLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
       const { encryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
@@ -263,8 +265,6 @@ export const identityLdapAuthServiceFactory = ({
       const { cipherTextBlob: encryptedBindDN } = encryptor({
         plainText: Buffer.from(bindDN)
       });
-
-      if (allowedFields) AllowedFieldsSchema.array().parse(allowedFields);
 
       const isConnected = await testLDAPConfig({
         bindDN,
@@ -374,6 +374,8 @@ export const identityLdapAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    if (allowedFields) AllowedFieldsSchema.array().parse(allowedFields);
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.orgId
@@ -421,8 +423,6 @@ export const identityLdapAuthServiceFactory = ({
           "Failed to connect to LDAP server. Please ensure that the LDAP server is running and your credentials are correct."
       });
     }
-
-    if (allowedFields) AllowedFieldsSchema.array().parse(allowedFields);
 
     const updatedLdapAuth = await identityLdapAuthDAL.updateById(identityLdapAuth.id, {
       url,

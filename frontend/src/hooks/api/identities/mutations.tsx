@@ -1145,6 +1145,9 @@ export const useUpdateIdentityLdapAuth = () => {
         queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityLdapAuth(identityId)
+      });
     }
   });
 };

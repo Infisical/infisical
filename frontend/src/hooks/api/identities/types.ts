@@ -482,7 +482,7 @@ export type IdentityLdapAuth = {
   searchFilter: string;
   uniqueAttribute: string;
   ldapCaCertificate?: string;
-  allowedFields: {
+  allowedFields?: {
     key: string;
     value: string;
   }[];
