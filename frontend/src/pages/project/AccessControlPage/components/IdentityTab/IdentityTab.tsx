@@ -41,11 +41,11 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { formatProjectRoleName } from "@app/helpers/roles";
 import { withProjectPermission } from "@app/hoc";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useDeleteIdentityFromWorkspace, useGetWorkspaceIdentityMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectIdentityOrderBy } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -53,12 +53,6 @@ import { IdentityModal } from "./components/IdentityModal";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
-const formatRoleName = (role: string, customRoleName?: string) => {
-  if (role === ProjectMembershipRole.Custom) return customRoleName;
-  if (role === ProjectMembershipRole.Member) return "Developer";
-  if (role === ProjectMembershipRole.NoAccess) return "No access";
-  return role;
-};
 export const IdentityTab = withProjectPermission(
   () => {
     const { currentWorkspace } = useWorkspace();
@@ -286,7 +280,7 @@ export const IdentityTab = withProjectPermission(
                                     <Tag key={roleId}>
                                       <div className="flex items-center space-x-2">
                                         <div className="capitalize">
-                                          {formatRoleName(role, customRoleName)}
+                                          {formatProjectRoleName(role, customRoleName)}
                                         </div>
                                         {isTemporary && (
                                           <div>
@@ -331,7 +325,9 @@ export const IdentityTab = withProjectPermission(
                                         return (
                                           <Tag key={roleId} className="capitalize">
                                             <div className="flex items-center space-x-2">
-                                              <div>{formatRoleName(role, customRoleName)}</div>
+                                              <div>
+                                                {formatProjectRoleName(role, customRoleName)}
+                                              </div>
                                               {isTemporary && (
                                                 <div>
                                                   <Tooltip

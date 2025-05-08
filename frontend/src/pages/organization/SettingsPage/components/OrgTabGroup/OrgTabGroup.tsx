@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSearch } from "@tanstack/react-router";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import { ROUTE_PATHS } from "@app/const/routes";
 
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
@@ -11,7 +12,6 @@ import { OrgAuthTab } from "../OrgAuthTab";
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
 import { OrgWorkflowIntegrationTab } from "../OrgWorkflowIntegrationTab/OrgWorkflowIntegrationTab";
-import { ProjectTemplatesTab } from "../ProjectTemplatesTab";
 
 export const OrgTabGroup = () => {
   const search = useSearch({
@@ -28,7 +28,34 @@ export const OrgTabGroup = () => {
     },
     { name: "Audit Log Streams", key: "tag-audit-log-streams", component: AuditLogStreamsTab },
     { name: "Import", key: "tab-import", component: ImportTab },
-    { name: "Project Templates", key: "project-templates", component: ProjectTemplatesTab },
+    {
+      name: "Project Templates",
+      key: "project-templates",
+      // scott: temporary, remove once users have adjusted
+      // eslint-disable-next-line react/no-unstable-nested-components
+      component: () => (
+        <div>
+          <NoticeBannerV2
+            className="mx-auto mt-10 max-w-4xl"
+            title="Project Templates New Location"
+          >
+            <p className="text-sm text-bunker-200">
+              Project templates have been moved to the Feature Settings page, under the &#34;Project
+              Templates&#34; tab.
+            </p>
+            <p className="mt-2 text-sm text-bunker-200">
+              Project templates are now product-specific, and can be configured for each project
+              type.
+            </p>
+            <img
+              src="/images/project-templates/project-templates-new-location.png"
+              className="mt-4 w-full max-w-4xl rounded"
+              alt="Project Templates New Location"
+            />
+          </NoticeBannerV2>
+        </div>
+      )
+    },
     { name: "KMIP", key: "kmip", component: KmipTab }
   ];
 

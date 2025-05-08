@@ -26,6 +26,7 @@ import {
   TPermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
 import { TProjectPermission } from "@app/hooks/api/roles/types";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const GeneralPolicyActionSchema = z.object({
   read: z.boolean().optional(),
@@ -957,7 +958,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [{ label: "Modify", value: "edit" }]
   },
   [ProjectPermissionSub.Integrations]: {
-    title: "Integrations",
+    title: "Native Integrations",
     actions: [
       { label: "Read", value: "read" },
       { label: "Create", value: "create" },
@@ -1178,7 +1179,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     ]
   },
   [ProjectPermissionSub.SecretApproval]: {
-    title: "Secret Protect policy",
+    title: "Secret Approval Policies",
     actions: [
       { label: "Read", value: "read" },
       { label: "Create", value: "create" },
@@ -1249,5 +1250,89 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         value: ProjectPermissionKmipActions.GenerateClientCertificates
       }
     ]
+  }
+};
+
+const SharedPermissionSubjects = {
+  [ProjectPermissionSub.AuditLogs]: true,
+  [ProjectPermissionSub.Groups]: true,
+  [ProjectPermissionSub.Member]: true,
+  [ProjectPermissionSub.Identity]: true,
+  [ProjectPermissionSub.Project]: true,
+  [ProjectPermissionSub.Role]: true,
+  [ProjectPermissionSub.Settings]: true
+};
+
+const SecretsManagerPermissionSubjects = (enabled = false) => ({
+  [ProjectPermissionSub.SecretFolders]: enabled,
+  [ProjectPermissionSub.SecretImports]: enabled,
+  [ProjectPermissionSub.DynamicSecrets]: enabled,
+  [ProjectPermissionSub.Secrets]: enabled,
+  [ProjectPermissionSub.SecretApproval]: enabled,
+  [ProjectPermissionSub.Integrations]: enabled,
+  [ProjectPermissionSub.SecretSyncs]: enabled,
+  [ProjectPermissionSub.Kms]: enabled,
+  [ProjectPermissionSub.Environments]: enabled,
+  [ProjectPermissionSub.Tags]: enabled,
+  [ProjectPermissionSub.Webhooks]: enabled,
+  [ProjectPermissionSub.IpAllowList]: enabled,
+  [ProjectPermissionSub.SecretRollback]: enabled,
+  [ProjectPermissionSub.SecretRotation]: enabled,
+  [ProjectPermissionSub.ServiceTokens]: enabled
+});
+
+const KmsPermissionSubjects = (enabled = false) => ({
+  [ProjectPermissionSub.Cmek]: enabled,
+  [ProjectPermissionSub.Kmip]: enabled
+});
+
+const CertificateManagerPermissionSubjects = (enabled = false) => ({
+  [ProjectPermissionSub.PkiCollections]: enabled,
+  [ProjectPermissionSub.PkiAlerts]: enabled,
+  [ProjectPermissionSub.CertificateAuthorities]: enabled,
+  [ProjectPermissionSub.CertificateTemplates]: enabled,
+  [ProjectPermissionSub.Certificates]: enabled
+});
+
+const SshPermissionSubjects = (enabled = false) => ({
+  [ProjectPermissionSub.SshCertificateAuthorities]: enabled,
+  [ProjectPermissionSub.SshCertificates]: enabled,
+  [ProjectPermissionSub.SshCertificateTemplates]: enabled,
+  [ProjectPermissionSub.SshHosts]: enabled,
+  [ProjectPermissionSub.SshHostGroups]: enabled
+});
+
+// scott: this structure ensures we don't forget to add project permissions to their relevant project type
+export const ProjectTypePermissionSubjects: Record<
+  ProjectType,
+  Record<ProjectPermissionSub, boolean>
+> = {
+  [ProjectType.SecretManager]: {
+    ...SharedPermissionSubjects,
+    ...SecretsManagerPermissionSubjects(true),
+    ...KmsPermissionSubjects(),
+    ...CertificateManagerPermissionSubjects(),
+    ...SshPermissionSubjects()
+  },
+  [ProjectType.KMS]: {
+    ...SharedPermissionSubjects,
+    ...KmsPermissionSubjects(true),
+    ...SecretsManagerPermissionSubjects(),
+    ...CertificateManagerPermissionSubjects(),
+    ...SshPermissionSubjects()
+  },
+  [ProjectType.CertificateManager]: {
+    ...SharedPermissionSubjects,
+    ...CertificateManagerPermissionSubjects(true),
+    ...KmsPermissionSubjects(),
+    ...SecretsManagerPermissionSubjects(),
+    ...SshPermissionSubjects()
+  },
+  [ProjectType.SSH]: {
+    ...SharedPermissionSubjects,
+    ...SshPermissionSubjects(true),
+    ...CertificateManagerPermissionSubjects(),
+    ...KmsPermissionSubjects(),
+    ...SecretsManagerPermissionSubjects()
   }
 };

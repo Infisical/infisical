@@ -9,9 +9,13 @@ const adminRoute = route("/admin", [
 
 const organizationRoutes = route("/organization", [
   route("/secret-manager/overview", "organization/SecretManagerOverviewPage/route.tsx"),
+  route("/secret-manager/settings", "organization/SecretManagerSettingsPage/route.tsx"),
   route("/cert-manager/overview", "organization/CertManagerOverviewPage/route.tsx"),
+  route("/cert-manager/settings", "organization/CertManagerSettingsPage/route.tsx"),
   route("/ssh/overview", "organization/SshOverviewPage/route.tsx"),
+  route("/ssh/settings", "organization/SshSettingsPage/route.tsx"),
   route("/kms/overview", "organization/KmsOverviewPage/route.tsx"),
+  route("/kms/settings", "organization/KmsSettingsPage/route.tsx"),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
   route("/admin", "organization/AdminPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),

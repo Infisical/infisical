@@ -5,6 +5,7 @@ resources:
   - bases/secrets.infisical.com_infisicalsecrets.yaml
   - bases/secrets.infisical.com_infisicalpushsecrets.yaml
   - bases/secrets.infisical.com_infisicaldynamicsecrets.yaml
+  - bases/secrets.infisical.com_clustergenerators.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

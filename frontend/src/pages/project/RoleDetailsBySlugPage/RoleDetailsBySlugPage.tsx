@@ -17,6 +17,7 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useDeleteProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
@@ -77,7 +78,9 @@ const Page = () => {
     }
   };
 
-  const isCustomRole = !["admin", "member", "viewer", "no-access"].includes(data?.slug ?? "");
+  const isCustomRole = !Object.values(ProjectMembershipRole).includes(
+    (data?.slug ?? "") as ProjectMembershipRole
+  );
 
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">

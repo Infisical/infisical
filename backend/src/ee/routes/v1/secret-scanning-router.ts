@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 import { GitAppOrgSchema, SecretScanningGitRisksSchema } from "@app/db/schemas";
+import { canUseSecretScanning } from "@app/ee/services/secret-scanning/secret-scanning-fns";
 import {
   SecretScanningResolvedStatus,
   SecretScanningRiskStatus
 } from "@app/ee/services/secret-scanning/secret-scanning-types";
-import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -23,14 +23,14 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
       body: z.object({ organizationId: z.string().trim() }),
       response: {
         200: z.object({
-          sessionId: z.string()
+          sessionId: z.string(),
+          gitAppSlug: z.string()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const appCfg = getConfig();
-      if (!appCfg.SECRET_SCANNING_ORG_WHITELIST?.includes(req.auth.orgId)) {
+      if (!canUseSecretScanning(req.auth.orgId)) {
         throw new BadRequestError({
           message: "Secret scanning is temporarily unavailable."
         });

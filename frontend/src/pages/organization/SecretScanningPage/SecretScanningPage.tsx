@@ -108,7 +108,7 @@ export const SecretScanningPage = withPermission(
 
     const generateNewIntegrationSession = async () => {
       const session = await createNewIntegrationSession({ organizationId });
-      window.location.href = `https://github.com/apps/infisical-radar/installations/new?state=${session.sessionId}`;
+      window.location.href = `https://github.com/apps/${session.gitAppSlug}/installations/new?state=${session.sessionId}`;
     };
 
     return (

@@ -52,14 +52,18 @@ import { Route as sshLayoutImport } from './pages/ssh/layout'
 import { Route as secretManagerLayoutImport } from './pages/secret-manager/layout'
 import { Route as kmsLayoutImport } from './pages/kms/layout'
 import { Route as certManagerLayoutImport } from './pages/cert-manager/layout'
+import { Route as organizationSshSettingsPageRouteImport } from './pages/organization/SshSettingsPage/route'
 import { Route as organizationSshOverviewPageRouteImport } from './pages/organization/SshOverviewPage/route'
 import { Route as organizationSecretSharingSettingsPageRouteImport } from './pages/organization/SecretSharingSettingsPage/route'
+import { Route as organizationSecretManagerSettingsPageRouteImport } from './pages/organization/SecretManagerSettingsPage/route'
 import { Route as organizationSecretManagerOverviewPageRouteImport } from './pages/organization/SecretManagerOverviewPage/route'
 import { Route as organizationRoleByIDPageRouteImport } from './pages/organization/RoleByIDPage/route'
 import { Route as organizationUserDetailsByIDPageRouteImport } from './pages/organization/UserDetailsByIDPage/route'
+import { Route as organizationKmsSettingsPageRouteImport } from './pages/organization/KmsSettingsPage/route'
 import { Route as organizationKmsOverviewPageRouteImport } from './pages/organization/KmsOverviewPage/route'
 import { Route as organizationIdentityDetailsByIDPageRouteImport } from './pages/organization/IdentityDetailsByIDPage/route'
 import { Route as organizationGroupDetailsByIDPageRouteImport } from './pages/organization/GroupDetailsByIDPage/route'
+import { Route as organizationCertManagerSettingsPageRouteImport } from './pages/organization/CertManagerSettingsPage/route'
 import { Route as organizationCertManagerOverviewPageRouteImport } from './pages/organization/CertManagerOverviewPage/route'
 import { Route as organizationSettingsPageRouteImport } from './pages/organization/SettingsPage/route'
 import { Route as organizationSecretSharingPageRouteImport } from './pages/organization/SecretSharingPage/route'
@@ -610,6 +614,14 @@ const certManagerLayoutRoute = certManagerLayoutImport.update({
     AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdRoute,
 } as any)
 
+const organizationSshSettingsPageRouteRoute =
+  organizationSshSettingsPageRouteImport.update({
+    id: '/ssh/settings',
+    path: '/ssh/settings',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
+  } as any)
+
 const organizationSshOverviewPageRouteRoute =
   organizationSshOverviewPageRouteImport.update({
     id: '/ssh/overview',
@@ -624,6 +636,14 @@ const organizationSecretSharingSettingsPageRouteRoute =
     path: '/settings',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRoute,
+  } as any)
+
+const organizationSecretManagerSettingsPageRouteRoute =
+  organizationSecretManagerSettingsPageRouteImport.update({
+    id: '/secret-manager/settings',
+    path: '/secret-manager/settings',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
   } as any)
 
 const organizationSecretManagerOverviewPageRouteRoute =
@@ -650,6 +670,14 @@ const organizationUserDetailsByIDPageRouteRoute =
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
   } as any)
 
+const organizationKmsSettingsPageRouteRoute =
+  organizationKmsSettingsPageRouteImport.update({
+    id: '/kms/settings',
+    path: '/kms/settings',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
+  } as any)
+
 const organizationKmsOverviewPageRouteRoute =
   organizationKmsOverviewPageRouteImport.update({
     id: '/kms/overview',
@@ -670,6 +698,14 @@ const organizationGroupDetailsByIDPageRouteRoute =
   organizationGroupDetailsByIDPageRouteImport.update({
     id: '/groups/$groupId',
     path: '/groups/$groupId',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
+  } as any)
+
+const organizationCertManagerSettingsPageRouteRoute =
+  organizationCertManagerSettingsPageRouteImport.update({
+    id: '/cert-manager/settings',
+    path: '/cert-manager/settings',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
   } as any)
@@ -2103,6 +2139,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationCertManagerOverviewPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/settings': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/settings'
+      path: '/cert-manager/settings'
+      fullPath: '/organization/cert-manager/settings'
+      preLoaderRoute: typeof organizationCertManagerSettingsPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId'
       path: '/groups/$groupId'
@@ -2122,6 +2165,13 @@ declare module '@tanstack/react-router' {
       path: '/kms/overview'
       fullPath: '/organization/kms/overview'
       preLoaderRoute: typeof organizationKmsOverviewPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organization/kms/settings': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/kms/settings'
+      path: '/kms/settings'
+      fullPath: '/organization/kms/settings'
+      preLoaderRoute: typeof organizationKmsSettingsPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId': {
@@ -2145,6 +2195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationSecretManagerOverviewPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organization/secret-manager/settings': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/secret-manager/settings'
+      path: '/secret-manager/settings'
+      fullPath: '/organization/secret-manager/settings'
+      preLoaderRoute: typeof organizationSecretManagerSettingsPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings': {
       id: '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings'
       path: '/settings'
@@ -2157,6 +2214,13 @@ declare module '@tanstack/react-router' {
       path: '/ssh/overview'
       fullPath: '/organization/ssh/overview'
       preLoaderRoute: typeof organizationSshOverviewPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organization/ssh/settings': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/ssh/settings'
+      path: '/ssh/settings'
+      fullPath: '/organization/ssh/settings'
+      preLoaderRoute: typeof organizationSshSettingsPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
     '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout': {
@@ -3220,13 +3284,17 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRouteWithChildren
   organizationCertManagerOverviewPageRouteRoute: typeof organizationCertManagerOverviewPageRouteRoute
+  organizationCertManagerSettingsPageRouteRoute: typeof organizationCertManagerSettingsPageRouteRoute
   organizationGroupDetailsByIDPageRouteRoute: typeof organizationGroupDetailsByIDPageRouteRoute
   organizationIdentityDetailsByIDPageRouteRoute: typeof organizationIdentityDetailsByIDPageRouteRoute
   organizationKmsOverviewPageRouteRoute: typeof organizationKmsOverviewPageRouteRoute
+  organizationKmsSettingsPageRouteRoute: typeof organizationKmsSettingsPageRouteRoute
   organizationUserDetailsByIDPageRouteRoute: typeof organizationUserDetailsByIDPageRouteRoute
   organizationRoleByIDPageRouteRoute: typeof organizationRoleByIDPageRouteRoute
   organizationSecretManagerOverviewPageRouteRoute: typeof organizationSecretManagerOverviewPageRouteRoute
+  organizationSecretManagerSettingsPageRouteRoute: typeof organizationSecretManagerSettingsPageRouteRoute
   organizationSshOverviewPageRouteRoute: typeof organizationSshOverviewPageRouteRoute
+  organizationSshSettingsPageRouteRoute: typeof organizationSshSettingsPageRouteRoute
 }
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren =
@@ -3248,19 +3316,27 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: Authentica
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRouteWithChildren,
     organizationCertManagerOverviewPageRouteRoute:
       organizationCertManagerOverviewPageRouteRoute,
+    organizationCertManagerSettingsPageRouteRoute:
+      organizationCertManagerSettingsPageRouteRoute,
     organizationGroupDetailsByIDPageRouteRoute:
       organizationGroupDetailsByIDPageRouteRoute,
     organizationIdentityDetailsByIDPageRouteRoute:
       organizationIdentityDetailsByIDPageRouteRoute,
     organizationKmsOverviewPageRouteRoute:
       organizationKmsOverviewPageRouteRoute,
+    organizationKmsSettingsPageRouteRoute:
+      organizationKmsSettingsPageRouteRoute,
     organizationUserDetailsByIDPageRouteRoute:
       organizationUserDetailsByIDPageRouteRoute,
     organizationRoleByIDPageRouteRoute: organizationRoleByIDPageRouteRoute,
     organizationSecretManagerOverviewPageRouteRoute:
       organizationSecretManagerOverviewPageRouteRoute,
+    organizationSecretManagerSettingsPageRouteRoute:
+      organizationSecretManagerSettingsPageRouteRoute,
     organizationSshOverviewPageRouteRoute:
       organizationSshOverviewPageRouteRoute,
+    organizationSshSettingsPageRouteRoute:
+      organizationSshSettingsPageRouteRoute,
   }
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteWithChildren =
@@ -3966,14 +4042,18 @@ export interface FileRoutesByFullPath {
   '/organization/secret-sharing/': typeof organizationSecretSharingPageRouteRoute
   '/organization/settings/': typeof organizationSettingsPageRouteRoute
   '/organization/cert-manager/overview': typeof organizationCertManagerOverviewPageRouteRoute
+  '/organization/cert-manager/settings': typeof organizationCertManagerSettingsPageRouteRoute
   '/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
   '/organization/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
   '/organization/kms/overview': typeof organizationKmsOverviewPageRouteRoute
+  '/organization/kms/settings': typeof organizationKmsSettingsPageRouteRoute
   '/organization/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/organization/secret-manager/overview': typeof organizationSecretManagerOverviewPageRouteRoute
+  '/organization/secret-manager/settings': typeof organizationSecretManagerSettingsPageRouteRoute
   '/organization/secret-sharing/settings': typeof organizationSecretSharingSettingsPageRouteRoute
   '/organization/ssh/overview': typeof organizationSshOverviewPageRouteRoute
+  '/organization/ssh/settings': typeof organizationSshSettingsPageRouteRoute
   '/cert-manager/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
   '/cert-manager/$projectId/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/cert-manager/$projectId/overview': typeof certManagerCertificatesPageRouteRoute
@@ -4148,14 +4228,18 @@ export interface FileRoutesByTo {
   '/organization/secret-sharing': typeof organizationSecretSharingPageRouteRoute
   '/organization/settings': typeof organizationSettingsPageRouteRoute
   '/organization/cert-manager/overview': typeof organizationCertManagerOverviewPageRouteRoute
+  '/organization/cert-manager/settings': typeof organizationCertManagerSettingsPageRouteRoute
   '/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
   '/organization/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
   '/organization/kms/overview': typeof organizationKmsOverviewPageRouteRoute
+  '/organization/kms/settings': typeof organizationKmsSettingsPageRouteRoute
   '/organization/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/organization/secret-manager/overview': typeof organizationSecretManagerOverviewPageRouteRoute
+  '/organization/secret-manager/settings': typeof organizationSecretManagerSettingsPageRouteRoute
   '/organization/secret-sharing/settings': typeof organizationSecretSharingSettingsPageRouteRoute
   '/organization/ssh/overview': typeof organizationSshOverviewPageRouteRoute
+  '/organization/ssh/settings': typeof organizationSshSettingsPageRouteRoute
   '/cert-manager/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
   '/cert-manager/$projectId/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/cert-manager/$projectId/overview': typeof certManagerCertificatesPageRouteRoute
@@ -4342,14 +4426,18 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/': typeof organizationSecretSharingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/settings/': typeof organizationSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/overview': typeof organizationCertManagerOverviewPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/settings': typeof organizationCertManagerSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/kms/overview': typeof organizationKmsOverviewPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/kms/settings': typeof organizationKmsSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/secret-manager/overview': typeof organizationSecretManagerOverviewPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/secret-manager/settings': typeof organizationSecretManagerSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings': typeof organizationSecretSharingSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/ssh/overview': typeof organizationSshOverviewPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/ssh/settings': typeof organizationSshSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout': typeof certManagerLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout': typeof kmsLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout': typeof secretManagerLayoutRouteWithChildren
@@ -4538,14 +4626,18 @@ export interface FileRouteTypes {
     | '/organization/secret-sharing/'
     | '/organization/settings/'
     | '/organization/cert-manager/overview'
+    | '/organization/cert-manager/settings'
     | '/organization/groups/$groupId'
     | '/organization/identities/$identityId'
     | '/organization/kms/overview'
+    | '/organization/kms/settings'
     | '/organization/members/$membershipId'
     | '/organization/roles/$roleId'
     | '/organization/secret-manager/overview'
+    | '/organization/secret-manager/settings'
     | '/organization/secret-sharing/settings'
     | '/organization/ssh/overview'
+    | '/organization/ssh/settings'
     | '/cert-manager/$projectId/alerting'
     | '/cert-manager/$projectId/certificate-authorities'
     | '/cert-manager/$projectId/overview'
@@ -4719,14 +4811,18 @@ export interface FileRouteTypes {
     | '/organization/secret-sharing'
     | '/organization/settings'
     | '/organization/cert-manager/overview'
+    | '/organization/cert-manager/settings'
     | '/organization/groups/$groupId'
     | '/organization/identities/$identityId'
     | '/organization/kms/overview'
+    | '/organization/kms/settings'
     | '/organization/members/$membershipId'
     | '/organization/roles/$roleId'
     | '/organization/secret-manager/overview'
+    | '/organization/secret-manager/settings'
     | '/organization/secret-sharing/settings'
     | '/organization/ssh/overview'
+    | '/organization/ssh/settings'
     | '/cert-manager/$projectId/alerting'
     | '/cert-manager/$projectId/certificate-authorities'
     | '/cert-manager/$projectId/overview'
@@ -4911,14 +5007,18 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/'
     | '/_authenticate/_inject-org-details/_org-layout/organization/settings/'
     | '/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/overview'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId'
     | '/_authenticate/_inject-org-details/_org-layout/organization/identities/$identityId'
     | '/_authenticate/_inject-org-details/_org-layout/organization/kms/overview'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/kms/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId'
     | '/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId'
     | '/_authenticate/_inject-org-details/_org-layout/organization/secret-manager/overview'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/secret-manager/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organization/ssh/overview'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/ssh/settings'
     | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout'
     | '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout'
@@ -5298,13 +5398,17 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing",
         "/_authenticate/_inject-org-details/_org-layout/organization/settings",
         "/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/overview",
+        "/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/settings",
         "/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId",
         "/_authenticate/_inject-org-details/_org-layout/organization/identities/$identityId",
         "/_authenticate/_inject-org-details/_org-layout/organization/kms/overview",
+        "/_authenticate/_inject-org-details/_org-layout/organization/kms/settings",
         "/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId",
         "/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId",
         "/_authenticate/_inject-org-details/_org-layout/organization/secret-manager/overview",
-        "/_authenticate/_inject-org-details/_org-layout/organization/ssh/overview"
+        "/_authenticate/_inject-org-details/_org-layout/organization/secret-manager/settings",
+        "/_authenticate/_inject-org-details/_org-layout/organization/ssh/overview",
+        "/_authenticate/_inject-org-details/_org-layout/organization/ssh/settings"
       ]
     },
     "/_authenticate/_inject-org-details/admin/_admin-layout": {
@@ -5417,6 +5521,10 @@ export const routeTree = rootRoute
       "filePath": "organization/CertManagerOverviewPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
     },
+    "/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/settings": {
+      "filePath": "organization/CertManagerSettingsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
+    },
     "/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId": {
       "filePath": "organization/GroupDetailsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
@@ -5427,6 +5535,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/kms/overview": {
       "filePath": "organization/KmsOverviewPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organization/kms/settings": {
+      "filePath": "organization/KmsSettingsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId": {
@@ -5441,12 +5553,20 @@ export const routeTree = rootRoute
       "filePath": "organization/SecretManagerOverviewPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
     },
+    "/_authenticate/_inject-org-details/_org-layout/organization/secret-manager/settings": {
+      "filePath": "organization/SecretManagerSettingsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
+    },
     "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings": {
       "filePath": "organization/SecretSharingSettingsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing"
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/ssh/overview": {
       "filePath": "organization/SshOverviewPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organization/ssh/settings": {
+      "filePath": "organization/SshSettingsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
     },
     "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout": {

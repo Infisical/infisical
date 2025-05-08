@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TProjectEnvironments } from "@app/db/schemas";
+import { ProjectType, TProjectEnvironments } from "@app/db/schemas";
 import { TProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 
@@ -15,8 +15,9 @@ export type TProjectTemplateRole = {
 export type TCreateProjectTemplateDTO = {
   name: string;
   description?: string;
+  type: ProjectType;
   roles: TProjectTemplateRole[];
-  environments: TProjectTemplateEnvironment[];
+  environments?: TProjectTemplateEnvironment[] | null;
 };
 
 export type TUpdateProjectTemplateDTO = Partial<TCreateProjectTemplateDTO>;
