@@ -126,7 +126,6 @@ export const OCIVaultSyncFields = () => {
                 setValue("destinationConfig.keyOcid", "");
               }}
               options={vaults}
-              isClearable
               placeholder="Select a vault..."
               getOptionLabel={(option) => option.displayName}
               getOptionValue={(option) => option.id}
@@ -166,7 +165,6 @@ export const OCIVaultSyncFields = () => {
                 onChange((option as SingleValue<{ id: string }>)?.id ?? null);
               }}
               options={keys}
-              isClearable
               placeholder="Select a key..."
               getOptionLabel={(option) => option.displayName}
               getOptionValue={(option) => option.id}

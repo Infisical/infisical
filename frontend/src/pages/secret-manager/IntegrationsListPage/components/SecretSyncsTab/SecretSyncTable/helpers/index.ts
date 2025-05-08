@@ -103,7 +103,6 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       secondaryText = destinationConfig.buildConfig;
       break;
     case SecretSync.OCIVault:
-      // TODO(andrey): Truncating these may make them look better
       primaryText = destinationConfig.compartmentOcid;
       secondaryText = destinationConfig.vaultOcid;
       break;

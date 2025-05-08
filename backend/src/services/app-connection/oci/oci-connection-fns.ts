@@ -73,7 +73,8 @@ export const listOCICompartments = async (appConnection: TOCIConnection) => {
   const compartments = await identityClient.listCompartments({
     compartmentId: appConnection.credentials.tenancyOcid,
     compartmentIdInSubtree: true,
-    accessLevel: identity.requests.ListCompartmentsRequest.AccessLevel.Any
+    accessLevel: identity.requests.ListCompartmentsRequest.AccessLevel.Any,
+    lifecycleState: identity.models.Compartment.LifecycleState.Active
   });
 
   return [rootCompartment, ...compartments.items];
@@ -90,7 +91,7 @@ export const listOCIVaults = async (appConnection: TOCIConnection, compartmentOc
     compartmentId: compartmentOcid
   });
 
-  return vaults.items;
+  return vaults.items.filter((v) => v.lifecycleState === keymanagement.models.Vault.LifecycleState.Active);
 };
 
 export const listOCIVaultKeys = async (appConnection: TOCIConnection, compartmentOcid: string, vaultOcid: string) => {
@@ -113,5 +114,5 @@ export const listOCIVaultKeys = async (appConnection: TOCIConnection, compartmen
     compartmentId: compartmentOcid
   });
 
-  return keys.items;
+  return keys.items.filter((v) => v.lifecycleState === keymanagement.models.KeySummary.LifecycleState.Enabled);
 };
