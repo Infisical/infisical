@@ -34,6 +34,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorType } from "../auth/auth-type";
+import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -90,6 +91,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
@@ -124,6 +126,7 @@ export const secretV2BridgeServiceFactory = ({
   projectEnvDAL,
   secretTagDAL,
   secretVersionDAL,
+  folderCommitService,
   folderDAL,
   permissionService,
   snapshotService,
@@ -327,6 +330,7 @@ export const secretV2BridgeServiceFactory = ({
         resourceMetadataDAL,
         secretDAL,
         secretVersionDAL,
+        folderCommitService,
         secretTagDAL,
         secretVersionTagDAL,
         actor: {
@@ -510,6 +514,7 @@ export const secretV2BridgeServiceFactory = ({
         folderId,
         orgId: actorOrgId,
         resourceMetadataDAL,
+        folderCommitService,
         inputSecrets: [
           {
             filter: { id: secretId },
@@ -650,6 +655,9 @@ export const secretV2BridgeServiceFactory = ({
           projectId,
           folderId,
           actorId,
+          actorType: actor,
+          folderCommitService,
+          secretVersionDAL,
           secretDAL,
           secretQueueService,
           inputSecrets: [
@@ -1590,6 +1598,7 @@ export const secretV2BridgeServiceFactory = ({
         orgId: actorOrgId,
         secretDAL,
         resourceMetadataDAL,
+        folderCommitService,
         secretVersionDAL,
         secretTagDAL,
         secretVersionTagDAL,
@@ -1859,6 +1868,7 @@ export const secretV2BridgeServiceFactory = ({
         const bulkUpdatedSecrets = await fnSecretBulkUpdate({
           folderId,
           orgId: actorOrgId,
+          folderCommitService,
           tx,
           inputSecrets: secretsToUpdate.map((el) => {
             const originalSecret = secretsToUpdateInDBGroupedByKey[el.secretKey][0];
@@ -1928,6 +1938,7 @@ export const secretV2BridgeServiceFactory = ({
             secretVersionDAL,
             secretTagDAL,
             secretVersionTagDAL,
+            folderCommitService,
             actor: {
               type: actor,
               actorId
@@ -2061,6 +2072,8 @@ export const secretV2BridgeServiceFactory = ({
         fnSecretBulkDelete({
           secretDAL,
           secretQueueService,
+          folderCommitService,
+          secretVersionDAL,
           inputSecrets: inputSecrets.map(({ type, secretKey }) => ({
             secretKey,
             type: type || SecretType.Shared
@@ -2068,6 +2081,7 @@ export const secretV2BridgeServiceFactory = ({
           projectId,
           folderId,
           actorId,
+          actorType: actor,
           tx
         })
       );
@@ -2469,6 +2483,7 @@ export const secretV2BridgeServiceFactory = ({
             tx,
             secretTagDAL,
             resourceMetadataDAL,
+            folderCommitService,
             secretVersionTagDAL,
             actor: {
               type: actor,
@@ -2495,6 +2510,7 @@ export const secretV2BridgeServiceFactory = ({
             folderId: destinationFolder.id,
             orgId: actorOrgId,
             resourceMetadataDAL,
+            folderCommitService,
             secretVersionDAL,
             secretDAL,
             tx,
