@@ -17,7 +17,6 @@ const organizationRoutes = route("/organization", [
   route("/kms/overview", "organization/KmsOverviewPage/route.tsx"),
   route("/kms/settings", "organization/KmsSettingsPage/route.tsx"),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
-  route("/admin", "organization/AdminPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),
   route("/secret-sharing", [
