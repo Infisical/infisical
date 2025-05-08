@@ -38,7 +38,7 @@
     "build:frontend": "npm run build --prefix ../frontend",
     "start": "node --enable-source-maps dist/main.mjs",
     "type:check": "tsc --noEmit",
-    "lint:fix": "eslint --fix --ext js,ts ./src",
+    "lint:fix": "node --max-old-space-size=8192 ./node_modules/.bin/eslint --fix --ext js,ts ./src",
     "lint": "eslint 'src/**/*.ts'",
     "test:unit": "vitest run -c vitest.unit.config.ts",
     "test:e2e": "vitest run -c vitest.e2e.config.ts --bail=1",
