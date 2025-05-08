@@ -706,7 +706,7 @@ export const pkiSubscriberServiceFactory = ({
     });
 
     return {
-      certificate: leafCert,
+      certificate: leafCert.toString("pem"),
       certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
       issuingCaCertificate,
       serialNumber,

@@ -361,17 +361,17 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       tags: [ApiDocsTags.PkiSubscribers],
       description: "Sign certificate",
       params: z.object({
-        subscriberName: z.string().describe(PKI_SUBSCRIBERS.ISSUE_CERT.subscriberName)
+        subscriberName: z.string().describe(PKI_SUBSCRIBERS.SIGN_CERT.subscriberName)
       }),
       body: z.object({
-        projectId: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.projectId),
-        csr: z.string().trim().min(1)
+        projectId: z.string().trim().describe(PKI_SUBSCRIBERS.SIGN_CERT.projectId),
+        csr: z.string().trim().min(1).max(3000).describe(PKI_SUBSCRIBERS.SIGN_CERT.csr)
       }),
       response: {
         200: z.object({
-          certificate: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.certificate),
-          issuingCaCertificate: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.issuingCaCertificate),
-          certificateChain: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.certificateChain),
+          certificate: z.string().trim().describe(PKI_SUBSCRIBERS.SIGN_CERT.certificate),
+          issuingCaCertificate: z.string().trim().describe(PKI_SUBSCRIBERS.SIGN_CERT.issuingCaCertificate),
+          certificateChain: z.string().trim().describe(PKI_SUBSCRIBERS.SIGN_CERT.certificateChain),
           serialNumber: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.serialNumber)
         })
       }
@@ -412,7 +412,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       });
 
       return {
-        certificate: certificate.toString("pem"),
+        certificate,
         certificateChain,
         issuingCaCertificate,
         serialNumber

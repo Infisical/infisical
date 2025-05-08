@@ -68,7 +68,7 @@ export const PkiSubscriberSection = () => {
     } catch (err) {
       console.error(err);
       createNotification({
-        text: `Failed to ${status === PkiSubscriberStatus.ACTIVE ? "enabled" : "disabled"} subscriber`,
+        text: `Failed to ${status === PkiSubscriberStatus.ACTIVE ? "enable" : "disable"} subscriber`,
         type: "error"
       });
     }
@@ -123,7 +123,7 @@ export const PkiSubscriberSection = () => {
       <PkiSubscriberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.pkiSubscriberStatus.isOpen}
-        title={`Are you sure want to ${isEnabling ? "enable" : "disable"} the subscriber ${subscriberName}?`}
+        title={`Are you sure you want to ${isEnabling ? "enable" : "disable"} the subscriber ${subscriberName}?`}
         subTitle={
           isEnabling
             ? "This action will allow issuing certificates for this subscriber again."

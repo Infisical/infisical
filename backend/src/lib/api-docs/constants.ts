@@ -1735,6 +1735,15 @@ export const PKI_SUBSCRIBERS = {
     privateKey: "The private key of the issued certificate.",
     serialNumber: "The serial number of the issued certificate."
   },
+  SIGN_CERT: {
+    subscriberName: "The name of the PKI subscriber to sign the certificate for.",
+    projectId: "The ID of the project of the PKI subscriber to sign the certificate for.",
+    csr: "The CSR to be used to sign the certificate.",
+    certificate: "The signed certificate.",
+    issuingCaCertificate: "The certificate of the issuing CA.",
+    certificateChain: "The certificate chain of the signed certificate.",
+    serialNumber: "The serial number of the signed certificate."
+  },
   LIST_CERTS: {
     subscriberName: "The name of the PKI subscriber to list the certificates for.",
     projectId: "The ID of the project of the PKI subscriber to list the certificates for.",

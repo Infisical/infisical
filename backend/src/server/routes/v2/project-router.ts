@@ -498,6 +498,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiSubscribers],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_PKI_SUBSCRIBERS.projectId)
       }),

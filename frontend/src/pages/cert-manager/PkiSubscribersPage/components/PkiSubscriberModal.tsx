@@ -165,16 +165,6 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
         return;
       }
 
-      console.log("onFormSubmitArgs: ", {
-        name,
-        caId,
-        commonName,
-        subjectAlternativeNames,
-        ttl,
-        keyUsages,
-        extendedKeyUsages
-      });
-
       // Check if there is already a different subscriber with the same name
       const existingNames =
         subscribers?.filter((s) => s.id !== pkiSubscriber?.id).map((s) => s.name) || [];

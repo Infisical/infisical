@@ -6,7 +6,7 @@ description: "Learn how to manage PKI subscribers and issue X.509 certificates f
 
 ## Concept
 
-In Infisical PKI, subscribers are logical representatiosn of entities such as devices, servers, applications that request and receive certificates from Certificate Authorities (CAs).
+In Infisical PKI, subscribers are logical representations of entities such as devices, servers, applications that request and receive certificates from Certificate Authorities (CAs).
 
 <div align="center">
 
@@ -109,7 +109,7 @@ openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
 ```
 
 Note that you can also obtain the CRL from the certificate itself by
-referencing the CRL distribution point extension on the certificate itself.
+referencing the CRL distribution point extension on the certificate.
 
 To check a certificate against the CRL distribution point specified within it with OpenSSL, you can use the following command:
 
@@ -125,7 +125,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
 <AccordionGroup>
   <Accordion title="What is the workflow for renewing a certificate?">
     To renew a certificate, you have to issue a new certificate for the same
-    subscriber The original certificate will continue to be valid through its
+    subscriber. The original certificate will continue to be valid through its
     original TTL unless explicitly revoked.
   </Accordion>
 </AccordionGroup>

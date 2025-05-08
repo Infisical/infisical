@@ -240,7 +240,7 @@ openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
 ```
 
 Note that you can also obtain the CRL from the certificate itself by
-referencing the CRL distribution point extension on the certificate itself.
+referencing the CRL distribution point extension on the certificate.
 
 To check a certificate against the CRL distribution point specified within it with OpenSSL, you can use the following command:
 

@@ -142,10 +142,9 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
         </div>
         {canIssuePkiSubscriberCert && (
           <Button
-            isDisabled={!canIssuePkiSubscriberCert}
             className="mt-4 w-full"
             colorSchema="primary"
-            type="submit"
+            type="button"
             isLoading={isIssuingCert}
             onClick={() => {
               onIssuePkiSubscriberCert();

@@ -102,8 +102,7 @@ const Page = () => {
                       )}
                       onClick={() =>
                         handlePopUpOpen("deletePkiSubscriber", {
-                          subscriberId: data.id,
-                          name: data.name
+                          subscriberName: data.name
                         })
                       }
                       disabled={!isAllowed}
@@ -131,14 +130,14 @@ const Page = () => {
       <PkiSubscriberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deletePkiSubscriber.isOpen}
-        title={`Are you sure want to remove the PKI subscriber: ${
+        title={`Are you sure you want to remove the PKI subscriber: ${
           (popUp?.deletePkiSubscriber?.data as { name: string })?.name || ""
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deletePkiSubscriber", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>
           onRemoveSubscriberSubmit(
-            (popUp?.deletePkiSubscriber?.data as { subscriberId: string })?.subscriberId
+            (popUp?.deletePkiSubscriber?.data as { subscriberName: string })?.subscriberName
           )
         }
       />
