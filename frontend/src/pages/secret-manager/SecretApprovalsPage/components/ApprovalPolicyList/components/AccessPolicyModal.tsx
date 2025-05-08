@@ -251,7 +251,7 @@ export const AccessPolicyForm = ({
                     label="Policy Type"
                     isRequired
                     isError={Boolean(error)}
-                    tooltipText="Change polices govern secret changes within a given environment and secret path. Access polices allow underprivileged user to request access to environment/secret path."
+                    tooltipText="Change policies govern secret changes within a given environment and secret path. Access policies allow underprivileged user to request access to environment/secret path."
                     errorText={error?.message}
                   >
                     <Select

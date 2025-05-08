@@ -1,6 +1,8 @@
 import { Redis } from "ioredis";
 
 import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
+import { applyJitter } from "@app/lib/dates";
+import { delay as delayMs } from "@app/lib/delay";
 import { Redlock, Settings } from "@app/lib/red-lock";
 
 export const PgSqlLock = {
@@ -48,6 +50,13 @@ export const KeyStoreTtls = {
   AccessTokenStatusUpdateInSeconds: 120
 };
 
+type TDeleteItems = {
+  pattern: string;
+  batchSize?: number;
+  delay?: number;
+  jitter?: number;
+};
+
 type TWaitTillReady = {
   key: string;
   waitingCb?: () => void;
@@ -75,6 +84,35 @@ export const keyStoreFactory = (redisUrl: string) => {
 
   const deleteItem = async (key: string) => redis.del(key);
 
+  const deleteItems = async ({ pattern, batchSize = 500, delay = 1500, jitter = 200 }: TDeleteItems) => {
+    let cursor = "0";
+    let totalDeleted = 0;
+
+    do {
+      // Await in loop is needed so that Redis is not overwhelmed
+      // eslint-disable-next-line no-await-in-loop
+      const [nextCursor, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 1000); // Count should be 1000 - 5000 for prod loads
+      cursor = nextCursor;
+
+      for (let i = 0; i < keys.length; i += batchSize) {
+        const batch = keys.slice(i, i + batchSize);
+        const pipeline = redis.pipeline();
+        for (const key of batch) {
+          pipeline.unlink(key);
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await pipeline.exec();
+        totalDeleted += batch.length;
+        console.log("BATCH DONE");
+
+        // eslint-disable-next-line no-await-in-loop
+        await delayMs(Math.max(0, applyJitter(delay, jitter)));
+      }
+    } while (cursor !== "0");
+
+    return totalDeleted;
+  };
+
   const incrementBy = async (key: string, value: number) => redis.incrby(key, value);
 
   const setExpiry = async (key: string, expiryInSeconds: number) => redis.expire(key, expiryInSeconds);
@@ -94,7 +132,7 @@ export const keyStoreFactory = (redisUrl: string) => {
       // eslint-disable-next-line
       await new Promise((resolve) => {
         waitingCb?.();
-        setTimeout(resolve, Math.max(0, delay + Math.floor((Math.random() * 2 - 1) * jitter)));
+        setTimeout(resolve, Math.max(0, applyJitter(delay, jitter)));
       });
       attempts += 1;
       // eslint-disable-next-line
@@ -108,6 +146,7 @@ export const keyStoreFactory = (redisUrl: string) => {
     setExpiry,
     setItemWithExpiry,
     deleteItem,
+    deleteItems,
     incrementBy,
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {
       return redisLock.acquire(resources, duration, settings);

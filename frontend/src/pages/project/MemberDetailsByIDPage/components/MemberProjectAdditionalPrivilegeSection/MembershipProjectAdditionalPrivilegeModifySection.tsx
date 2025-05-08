@@ -17,10 +17,6 @@ import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   FormControl,
   FormLabel,
   Input,
@@ -36,6 +32,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
+import { usePopUp } from "@app/hooks";
 import {
   useCreateProjectUserAdditionalPrivilege,
   useGetProjectUserPrivilegeDetails,
@@ -44,9 +41,9 @@ import {
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/projectUserAdditionalPrivilege/types";
 import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
+import { PolicySelectionModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicySelectionModal";
 import {
   formRolePermission2API,
-  isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   projectRoleFormSchema,
   rolePermission2Form
@@ -86,6 +83,8 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
   projectMembershipId,
   isDisabled
 }: Props) => {
+  const { popUp, handlePopUpToggle } = usePopUp(["addPolicy"] as const);
+
   const isCreate = !privilegeId;
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
@@ -166,30 +165,6 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
     }
   };
 
-  const onNewPolicy = (selectedSubject: ProjectPermissionSub) => {
-    const rootPolicyValue = form.getValues(`permissions.${selectedSubject}`);
-    if (rootPolicyValue && isConditionalSubjects(selectedSubject)) {
-      form.setValue(
-        `permissions.${selectedSubject}`,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore-error akhilmhdh: this is because of ts collision with both
-        [...rootPolicyValue, {}],
-        { shouldDirty: true, shouldTouch: true }
-      );
-    } else {
-      form.setValue(
-        `permissions.${selectedSubject}`,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore-error akhilmhdh: this is because of ts collision with both
-        [{}],
-        {
-          shouldDirty: true,
-          shouldTouch: true
-        }
-      );
-    }
-  };
-
   const privilegeTemporaryAccess = form.watch("temporaryAccess");
   const isTemporary = privilegeTemporaryAccess?.isTemporary;
   const isExpired =
@@ -245,46 +220,25 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
               <Button
                 variant="outline_bg"
                 type="submit"
-                className={twMerge("h-10 rounded-r-none", isDirty && "bg-primary text-black")}
+                className={twMerge(
+                  "h-10 rounded-r-none border border-primary",
+                  isDirty && "bg-primary text-black"
+                )}
                 isDisabled={isSubmitting || !isDirty || isDisabled}
                 isLoading={isSubmitting}
                 leftIcon={<FontAwesomeIcon icon={faSave} />}
               >
                 Save
               </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger>
-                  <Button
-                    isDisabled={isDisabled}
-                    className="h-10 rounded-l-none"
-                    variant="outline_bg"
-                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  >
-                    New policy
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="thin-scrollbar max-h-96" align="end">
-                  {Object.keys(PROJECT_PERMISSION_OBJECT)
-                    .sort((a, b) =>
-                      PROJECT_PERMISSION_OBJECT[a as keyof typeof PROJECT_PERMISSION_OBJECT].title
-                        .toLowerCase()
-                        .localeCompare(
-                          PROJECT_PERMISSION_OBJECT[
-                            b as keyof typeof PROJECT_PERMISSION_OBJECT
-                          ].title.toLowerCase()
-                        )
-                    )
-                    .map((subject) => (
-                      <DropdownMenuItem
-                        key={`permission-create-${subject}`}
-                        className="py-3"
-                        onClick={() => onNewPolicy(subject as ProjectPermissionSub)}
-                      >
-                        {PROJECT_PERMISSION_OBJECT[subject as ProjectPermissionSub].title}
-                      </DropdownMenuItem>
-                    ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button
+                isDisabled={isDisabled}
+                className="h-10 rounded-l-none"
+                variant="outline_bg"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => handlePopUpToggle("addPolicy")}
+              >
+                Add Policies
+              </Button>
             </div>
           </div>
         </div>
@@ -423,6 +377,10 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
             </GeneralPermissionPolicies>
           ))}
         </div>
+        <PolicySelectionModal
+          isOpen={popUp.addPolicy.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("addPolicy", isOpen)}
+        />
       </FormProvider>
     </form>
   );

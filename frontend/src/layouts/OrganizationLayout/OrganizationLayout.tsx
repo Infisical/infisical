@@ -11,11 +11,12 @@ import { BreadcrumbContainer, TBreadcrumbFormat } from "@app/components/v2";
 import { OrgPermissionSubjects, useOrgPermission, useServerConfig } from "@app/context";
 import { OrgPermissionSecretShareAction } from "@app/context/OrgPermissionContext/types";
 import { usePopUp } from "@app/hooks";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
 import { MinimizedOrgSidebar } from "./components/MinimizedOrgSidebar";
 import { SidebarHeader } from "./components/SidebarHeader";
-import { DefaultSideBar, SecretSharingSideBar } from "./ProductsSideBar";
+import { DefaultSideBar, ProjectOverviewSideBar, SecretSharingSideBar } from "./ProductsSideBar";
 
 export const OrganizationLayout = () => {
   const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
@@ -45,20 +46,37 @@ export const OrganizationLayout = () => {
     ] as string[]
   ).includes(location.pathname);
 
+  const isProjectOverviewOrSettingsPage = (
+    [
+      linkOptions({ to: "/organization/secret-manager/overview" }).to,
+      linkOptions({ to: "/organization/secret-manager/settings" }).to,
+      linkOptions({ to: "/organization/cert-manager/overview" }).to,
+      linkOptions({ to: "/organization/cert-manager/settings" }).to,
+      linkOptions({ to: "/organization/kms/overview" }).to,
+      linkOptions({ to: "/organization/kms/settings" }).to,
+      linkOptions({ to: "/organization/ssh/overview" }).to,
+      linkOptions({ to: "/organization/ssh/settings" }).to
+    ] as string[]
+  ).includes(location.pathname);
+
   const shouldShowOrgSidebar =
     location.pathname.startsWith("/organization") &&
     (!isSecretSharingPage || shouldShowProductsSidebar) &&
-    !(
-      [
-        linkOptions({ to: "/organization/secret-manager/overview" }).to,
-        linkOptions({ to: "/organization/cert-manager/overview" }).to,
-        linkOptions({ to: "/organization/ssh/overview" }).to,
-        linkOptions({ to: "/organization/kms/overview" }).to,
-        linkOptions({ to: "/organization/secret-scanning" }).to
-      ] as string[]
-    ).includes(location.pathname);
+    !([linkOptions({ to: "/organization/secret-scanning" }).to] as string[]).includes(
+      location.pathname
+    );
 
   const containerHeight = config.pageFrameContent ? "h-[94vh]" : "h-screen";
+
+  let SideBarComponent = <DefaultSideBar />;
+
+  if (isSecretSharingPage) {
+    SideBarComponent = <SecretSharingSideBar />;
+  } else if (isProjectOverviewOrSettingsPage) {
+    SideBarComponent = (
+      <ProjectOverviewSideBar type={location.pathname.split("/")[2] as ProjectType} />
+    );
+  }
 
   return (
     <>
@@ -80,10 +98,12 @@ export const OrganizationLayout = () => {
                 className="dark w-60 overflow-hidden border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900"
               >
                 <nav className="items-between flex h-full flex-col overflow-y-auto dark:[color-scheme:dark]">
-                  <div className="p-2 pt-3">
-                    <SidebarHeader />
-                  </div>
-                  {isSecretSharingPage ? <SecretSharingSideBar /> : <DefaultSideBar />}
+                  {!isProjectOverviewOrSettingsPage && (
+                    <div className="p-2 pt-3">
+                      <SidebarHeader />
+                    </div>
+                  )}
+                  {SideBarComponent}
                 </nav>
               </motion.div>
             )}

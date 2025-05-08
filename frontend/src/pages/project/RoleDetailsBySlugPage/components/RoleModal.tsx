@@ -115,12 +115,8 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
       });
 
       reset();
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text =
-        error?.response?.data?.message ??
-        `Failed to ${popUp?.role?.data ? "update" : "create"} role`;
+    } catch {
+      const text = `Failed to ${popUp?.role?.data ? "update" : "create"} role`;
 
       createNotification({
         text,

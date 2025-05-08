@@ -1822,8 +1822,12 @@ export const KMS = {
 };
 
 export const ProjectTemplates = {
+  LIST: {
+    type: "The type of project template to list."
+  },
   CREATE: {
     name: "The name of the project template to be created. Must be slug-friendly.",
+    type: "The type of project template to be created.",
     description: "An optional description of the project template.",
     roles: "The roles to be created when the template is applied to a project.",
     environments: "The environments to be created when the template is applied to a project."

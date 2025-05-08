@@ -185,11 +185,16 @@ export enum OrgMembershipStatus {
 }
 
 export enum ProjectMembershipRole {
+  // general
   Admin = "admin",
   Member = "member",
   Custom = "custom",
   Viewer = "viewer",
-  NoAccess = "no-access"
+  NoAccess = "no-access",
+  // ssh
+  SshHostBootstrapper = "ssh-host-bootstrapper",
+  // kms
+  KmsCryptographicOperator = "cryptographic-operator"
 }
 
 export enum SecretEncryptionAlgo {
