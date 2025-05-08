@@ -305,16 +305,16 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       }),
       body: z
         .object({
-          url: z.string().trim().min(1).describe(LDAP_AUTH.UPDATE.url),
-          bindDN: z.string().trim().min(1).describe(LDAP_AUTH.UPDATE.bindDN),
-          bindPass: z.string().trim().min(1).describe(LDAP_AUTH.UPDATE.bindPass),
-          searchBase: z.string().trim().min(1).describe(LDAP_AUTH.UPDATE.searchBase),
+          url: z.string().trim().min(1).optional().describe(LDAP_AUTH.UPDATE.url),
+          bindDN: z.string().trim().min(1).optional().describe(LDAP_AUTH.UPDATE.bindDN),
+          bindPass: z.string().trim().min(1).optional().describe(LDAP_AUTH.UPDATE.bindPass),
+          searchBase: z.string().trim().min(1).optional().describe(LDAP_AUTH.UPDATE.searchBase),
           searchFilter: z
             .string()
             .trim()
             .min(1)
-            .default("(uid={{username}})")
-            .refine(isValidLdapFilter, "Invalid LDAP search filter")
+            .optional()
+            .refine((v) => v === undefined || isValidLdapFilter(v), "Invalid LDAP search filter")
             .describe(LDAP_AUTH.UPDATE.searchFilter),
           allowedFields: AllowedFieldsSchema.array().optional().describe(LDAP_AUTH.UPDATE.allowedFields),
           accessTokenTrustedIps: z
