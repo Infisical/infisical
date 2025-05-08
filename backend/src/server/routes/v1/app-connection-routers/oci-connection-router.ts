@@ -97,7 +97,7 @@ export const registerOCIConnectionRouter = async (server: FastifyZodProvider) =>
       }),
       querystring: z.object({
         compartmentOcid: z.string().min(1, "Compartment OCID required"),
-        vaultOcid: z.string().min(1, "Compartment OCID required")
+        vaultOcid: z.string().min(1, "Vault OCID required")
       }),
       response: {
         200: z
@@ -113,11 +113,11 @@ export const registerOCIConnectionRouter = async (server: FastifyZodProvider) =>
       const { connectionId } = req.params;
       const { compartmentOcid, vaultOcid } = req.query;
 
-      const vaults = await server.services.appConnection.oci.listVaultKeys(
+      const keys = await server.services.appConnection.oci.listVaultKeys(
         { connectionId, compartmentOcid, vaultOcid },
         req.permission
       );
-      return vaults;
+      return keys;
     }
   });
 };

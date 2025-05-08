@@ -34,7 +34,7 @@ export const OCIVaultSyncFields = () => {
   const { data: vaults, isLoading: isVaultsLoading } = useOCIConnectionListVaults(
     { connectionId, compartmentOcid: selectedCompartment },
     {
-      enabled: Boolean(connectionId)
+      enabled: Boolean(connectionId && selectedCompartment)
     }
   );
 
@@ -43,7 +43,7 @@ export const OCIVaultSyncFields = () => {
   const { data: keys, isLoading: isKeysLoading } = useOCIConnectionListVaultKeys(
     { connectionId, compartmentOcid: selectedCompartment, vaultOcid: selectedVault },
     {
-      enabled: Boolean(connectionId)
+      enabled: Boolean(connectionId && selectedCompartment && selectedVault)
     }
   );
 
@@ -119,7 +119,7 @@ export const OCIVaultSyncFields = () => {
             <FilterableSelect
               menuPlacement="top"
               isLoading={isVaultsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId || !selectedCompartment || !vaults}
+              isDisabled={!connectionId || !selectedCompartment}
               value={vaults?.find((v) => v.id === value) ?? null}
               onChange={(option) => {
                 onChange((option as SingleValue<{ id: string }>)?.id ?? null);
@@ -157,9 +157,7 @@ export const OCIVaultSyncFields = () => {
             <FilterableSelect
               menuPlacement="top"
               isLoading={isKeysLoading && Boolean(connectionId)}
-              isDisabled={
-                !connectionId || !selectedCompartment || !selectedVault || !vaults || !keys
-              }
+              isDisabled={!connectionId || !selectedCompartment || !selectedVault}
               value={keys?.find((v) => v.id === value) ?? null}
               onChange={(option) => {
                 onChange((option as SingleValue<{ id: string }>)?.id ?? null);

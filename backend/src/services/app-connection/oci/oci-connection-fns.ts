@@ -108,7 +108,7 @@ export const listOCIVaultKeys = async (appConnection: TOCIConnection, compartmen
     authenticationDetailsProvider: provider
   });
 
-  keyManagementClient.endpoint = `https://${vaultIdMatch[1]}-management.kms.${appConnection.credentials.region}.oraclecloud.com`;
+  keyManagementClient.endpoint = `https://${vaultIdMatch[1].replace(/[^a-zA-Z0-9]/g, "")}-management.kms.${appConnection.credentials.region}.oraclecloud.com`;
 
   const keys = await keyManagementClient.listKeys({
     compartmentId: compartmentOcid

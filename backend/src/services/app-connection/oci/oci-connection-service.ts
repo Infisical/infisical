@@ -1,3 +1,4 @@
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
@@ -29,6 +30,7 @@ export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
       const compartments = await listOCICompartments(appConnection);
       return compartments;
     } catch (error) {
+      logger.error(error, "Failed to establish connection with OCI");
       return [];
     }
   };
@@ -40,6 +42,7 @@ export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
       const vaults = await listOCIVaults(appConnection, compartmentOcid);
       return vaults;
     } catch (error) {
+      logger.error(error, "Failed to establish connection with OCI");
       return [];
     }
   };
@@ -51,9 +54,10 @@ export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 
     try {
-      const vaults = await listOCIVaultKeys(appConnection, compartmentOcid, vaultOcid);
-      return vaults;
+      const keys = await listOCIVaultKeys(appConnection, compartmentOcid, vaultOcid);
+      return keys;
     } catch (error) {
+      logger.error(error, "Failed to establish connection with OCI");
       return [];
     }
   };

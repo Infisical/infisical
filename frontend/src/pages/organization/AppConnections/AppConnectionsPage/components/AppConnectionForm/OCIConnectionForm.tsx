@@ -33,8 +33,16 @@ const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
     method: z.literal(OCIConnectionMethod.AccessKey),
     credentials: z.object({
-      userOcid: z.string().trim().min(1, "User OCID required"),
-      tenancyOcid: z.string().trim().min(1, "Tenancy OCID required"),
+      userOcid: z
+        .string()
+        .trim()
+        .min(1, "User OCID required")
+        .regex(/^ocid1\.user\.oc1\.\..+$/, "Invalid User OCID format"),
+      tenancyOcid: z
+        .string()
+        .trim()
+        .min(1, "Tenancy OCID required")
+        .regex(/^ocid1\.tenancy\.oc1\.\..+$/, "Invalid Tenancy OCID format"),
       region: z.string().trim().min(1, "Region required"),
       fingerprint: z.string().trim().min(1, "Fingerprint required"),
       privateKey: z.string().trim().min(1, "Private Key required")
