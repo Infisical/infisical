@@ -182,7 +182,14 @@ export const eventToNameMap: { [K in EventType]: string } = {
     "Microsoft Teams Workflow Integration Check Installation Status",
   [EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS]: "Get Microsoft Teams tenant teams",
   [EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET]: "Get Microsoft Teams Workflow Integration",
-  [EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST]: "List Microsoft Teams Workflow Integration"
+  [EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST]:
+    "List Microsoft Teams Workflow Integration",
+
+  [EventType.LOGIN_IDENTITY_LDAP_AUTH]: "Identity login via LDAP Auth",
+  [EventType.ADD_IDENTITY_LDAP_AUTH]: "Attached LDAP Auth to identity",
+  [EventType.UPDATE_IDENTITY_LDAP_AUTH]: "Updated LDAP Auth for identity",
+  [EventType.GET_IDENTITY_LDAP_AUTH]: "Retrieved LDAP Auth for identity",
+  [EventType.REVOKE_IDENTITY_LDAP_AUTH]: "Revoked LDAP Auth for identity"
 };
 
 export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {

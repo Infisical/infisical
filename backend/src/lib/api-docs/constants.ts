@@ -18,6 +18,7 @@ export enum ApiDocsTags {
   KubernetesAuth = "Kubernetes Auth",
   JwtAuth = "JWT Auth",
   OidcAuth = "OIDC Auth",
+  LdapAuth = "LDAP Auth",
   Groups = "Groups",
   Organizations = "Organizations",
   Projects = "Projects",

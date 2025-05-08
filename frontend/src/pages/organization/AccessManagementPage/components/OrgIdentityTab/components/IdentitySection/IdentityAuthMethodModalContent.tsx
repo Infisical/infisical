@@ -13,6 +13,7 @@ import { IdentityAzureAuthForm } from "./IdentityAzureAuthForm";
 import { IdentityGcpAuthForm } from "./IdentityGcpAuthForm";
 import { IdentityJwtAuthForm } from "./IdentityJwtAuthForm";
 import { IdentityKubernetesAuthForm } from "./IdentityKubernetesAuthForm";
+import { IdentityLdapAuthForm } from "./IdentityLdapAuthForm";
 import { IdentityOidcAuthForm } from "./IdentityOidcAuthForm";
 import { IdentityTokenAuthForm } from "./IdentityTokenAuthForm";
 import { IdentityUniversalAuthForm } from "./IdentityUniversalAuthForm";
@@ -46,6 +47,7 @@ const identityAuthMethods = [
   { label: "AWS Auth", value: IdentityAuthMethod.AWS_AUTH },
   { label: "Azure Auth", value: IdentityAuthMethod.AZURE_AUTH },
   { label: "OIDC Auth", value: IdentityAuthMethod.OIDC_AUTH },
+  { label: "LDAP Auth", value: IdentityAuthMethod.LDAP_AUTH },
   {
     label: "JWT Auth",
     value: IdentityAuthMethod.JWT_AUTH
@@ -181,6 +183,16 @@ export const IdentityAuthMethodModalContent = ({
     [IdentityAuthMethod.JWT_AUTH]: {
       render: () => (
         <IdentityJwtAuthForm
+          identityId={identityAuthMethodData.identityId}
+          handlePopUpOpen={handlePopUpOpen}
+          handlePopUpToggle={handlePopUpToggle}
+        />
+      )
+    },
+
+    [IdentityAuthMethod.LDAP_AUTH]: {
+      render: () => (
+        <IdentityLdapAuthForm
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
