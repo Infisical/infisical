@@ -1,5 +1,5 @@
-import { cloneElement, useState } from "react";
-import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { cloneElement, ReactNode, useState } from "react";
+import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import {
   faChevronDown,
   faChevronRight,
@@ -29,6 +29,39 @@ type Props<T extends ProjectPermissionSub> = {
   isDisabled?: boolean;
 };
 
+type ActionProps = {
+  value: string;
+  subject: ProjectPermissionSub;
+  rootIndex: number;
+  label: ReactNode;
+  isDisabled?: boolean;
+  control: any;
+};
+
+const ActionCheckbox = ({ value, subject, isDisabled, rootIndex, label, control }: ActionProps) => {
+  // scott: using Controller caused discrepency between field value and actual value, this is a hacky fix
+  const fieldValue = useWatch({ control, name: `permissions.${subject}.${rootIndex}.${value}` });
+  const { setValue } = useFormContext();
+
+  return (
+    <div className="flex items-center justify-center">
+      <Checkbox
+        isDisabled={isDisabled}
+        isChecked={Boolean(fieldValue)}
+        onCheckedChange={(isChecked) =>
+          setValue(`permissions.${subject}.${rootIndex}.${value}`, isChecked, {
+            shouldDirty: true,
+            shouldTouch: true
+          })
+        }
+        id={`permissions.${subject}.${rootIndex}.${String(value)}`}
+      >
+        {label}
+      </Checkbox>
+    </div>
+  );
+};
+
 export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchema["permissions"]>>({
   subject,
   actions,
@@ -41,11 +74,18 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
     control,
     name: `permissions.${subject}`
   });
+
+  // scott: this is a hacky work-around to resolve bug of fields not updating UI when removed
+  const watchFields: any[] = useWatch({
+    control,
+    name: `permissions.${subject}`
+  });
+
   const [isOpen, setIsOpen] = useToggle();
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
 
-  if (!fields.length) return <div />;
+  if (!watchFields?.length) return <div />;
 
   const handleDragStart = (_: React.DragEvent, index: number) => {
     setDraggedItem(index);
@@ -194,25 +234,14 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                       }
 
                       return (
-                        <Controller
+                        <ActionCheckbox
                           key={`${el.id}-${index + 1}`}
-                          name={`permissions.${subject}.${rootIndex}.${value}` as any}
+                          value={value}
+                          label={label}
+                          rootIndex={rootIndex}
                           control={control}
-                          defaultValue={false}
-                          render={({ field }) => {
-                            return (
-                              <div className="flex items-center justify-center">
-                                <Checkbox
-                                  isDisabled={isDisabled}
-                                  isChecked={Boolean(field.value)}
-                                  onCheckedChange={field.onChange}
-                                  id={`permissions.${subject}.${rootIndex}.${String(value)}`}
-                                >
-                                  {label}
-                                </Checkbox>
-                              </div>
-                            );
-                          }}
+                          subject={subject}
+                          isDisabled={isDisabled}
                         />
                       );
                     })}

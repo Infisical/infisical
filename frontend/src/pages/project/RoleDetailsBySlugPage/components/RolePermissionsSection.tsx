@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { MongoAbility, MongoQuery, RawRuleOf } from "@casl/ability";
-import { faPlus, faSave } from "@fortawesome/free-solid-svg-icons";
+import { faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
@@ -12,17 +12,16 @@ import { Button } from "@app/components/v2";
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
-import { usePopUp } from "@app/hooks";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
-import { PolicySelectionModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicySelectionModal";
+import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
+import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
+import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
 
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
-import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
-import { PermissionEmptyState } from "./PermissionEmptyState";
 import {
   formRolePermission2API,
   isConditionalSubjects,
@@ -85,8 +84,6 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   } = form;
 
   const { mutateAsync: updateRole } = useUpdateProjectRole();
-
-  const { popUp, handlePopUpToggle } = usePopUp(["addPolicy"] as const);
 
   const onSubmit = async (el: TFormSchema) => {
     try {
@@ -151,7 +148,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                       variant="outline_bg"
                       type="submit"
                       className={twMerge(
-                        "h-10 rounded-r-none border border-primary",
+                        "mr-4 h-10 border border-primary",
                         isDirty && "bg-primary text-black"
                       )}
                       isDisabled={isSubmitting || !isDirty}
@@ -160,15 +157,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     >
                       Save
                     </Button>
-                    <Button
-                      isDisabled={isDisabled}
-                      className="h-10 rounded-l-none"
-                      variant="outline_bg"
-                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                      onClick={() => handlePopUpToggle("addPolicy")}
-                    >
-                      Add Policy
-                    </Button>
+                    <AddPoliciesButton isDisabled={isDisabled} />
                   </div>
                 </>
               )}
@@ -190,10 +179,6 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                 </GeneralPermissionPolicies>
               ))}
           </div>
-          <PolicySelectionModal
-            isOpen={popUp.addPolicy.isOpen}
-            onOpenChange={(isOpen) => handlePopUpToggle("addPolicy", isOpen)}
-          />
         </FormProvider>
       </form>
     </div>
