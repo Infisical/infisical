@@ -422,6 +422,8 @@ export const identityLdapAuthServiceFactory = ({
       });
     }
 
+    if (allowedFields) AllowedFieldsSchema.array().parse(allowedFields);
+
     const updatedLdapAuth = await identityLdapAuthDAL.updateById(identityLdapAuth.id, {
       url,
       searchBase,
