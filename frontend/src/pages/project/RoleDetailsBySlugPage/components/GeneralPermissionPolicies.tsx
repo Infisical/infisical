@@ -1,5 +1,5 @@
 import { cloneElement, ReactNode, useState } from "react";
-import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import { Control, Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import {
   faChevronDown,
   faChevronRight,
@@ -35,12 +35,15 @@ type ActionProps = {
   rootIndex: number;
   label: ReactNode;
   isDisabled?: boolean;
-  control: any;
+  control: Control<TFormSchema>;
 };
 
 const ActionCheckbox = ({ value, subject, isDisabled, rootIndex, label, control }: ActionProps) => {
-  // scott: using Controller caused discrepency between field value and actual value, this is a hacky fix
-  const fieldValue = useWatch({ control, name: `permissions.${subject}.${rootIndex}.${value}` });
+  // scott: using Controller caused discrepancy between field value and actual value, this is a hacky fix
+  const fieldValue = useWatch({
+    control,
+    name: `permissions.${subject}.${rootIndex}.${value}` as any
+  });
   const { setValue } = useFormContext();
 
   return (
@@ -51,7 +54,8 @@ const ActionCheckbox = ({ value, subject, isDisabled, rootIndex, label, control 
         onCheckedChange={(isChecked) =>
           setValue(`permissions.${subject}.${rootIndex}.${value}`, isChecked, {
             shouldDirty: true,
-            shouldTouch: true
+            shouldTouch: true,
+            shouldValidate: true
           })
         }
         id={`permissions.${subject}.${rootIndex}.${String(value)}`}
@@ -76,7 +80,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   });
 
   // scott: this is a hacky work-around to resolve bug of fields not updating UI when removed
-  const watchFields: any[] = useWatch({
+  const watchFields = useWatch<TFormSchema>({
     control,
     name: `permissions.${subject}`
   });
@@ -85,7 +89,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
 
-  if (!watchFields?.length) return <div />;
+  if (!watchFields || !Array.isArray(watchFields) || watchFields.length === 0) return <div />;
 
   const handleDragStart = (_: React.DragEvent, index: number) => {
     setDraggedItem(index);

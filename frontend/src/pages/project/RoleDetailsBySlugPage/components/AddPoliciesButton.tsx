@@ -40,7 +40,7 @@ export const AddPoliciesButton = ({ isDisabled }: Props) => {
       >
         <DropdownMenuTrigger asChild>
           <IconButton
-            ariaLabel="add-policies-options"
+            ariaLabel="Open policy template options"
             variant="outline_bg"
             className="rounded-l-none bg-mineshaft-600 p-3"
           >
