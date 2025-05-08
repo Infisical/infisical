@@ -57,8 +57,8 @@ export type FormData = z.infer<typeof schema>;
 
 export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
-  const { data: sshHostGroups } = useListWorkspaceSshHostGroups(currentWorkspace.id);
+  const projectId = currentWorkspace.id;
+  const { data: sshHostGroups } = useListWorkspaceSshHostGroups(projectId);
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
   const [expandedMappings, setExpandedMappings] = useState<Record<number, boolean>>({});
