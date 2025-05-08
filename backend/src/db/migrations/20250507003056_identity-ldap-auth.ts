@@ -23,7 +23,6 @@ export async function up(knex: Knex): Promise<void> {
       t.string("url").notNullable();
       t.string("searchBase").notNullable();
       t.string("searchFilter").notNullable();
-      t.string("uniqueAttribute").notNullable();
 
       t.jsonb("allowedFields").nullable();
 

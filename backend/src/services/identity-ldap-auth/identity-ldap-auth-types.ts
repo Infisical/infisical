@@ -17,7 +17,6 @@ export type TAttachLdapAuthDTO = {
   url: string;
   searchBase: string;
   searchFilter: string;
-  uniqueAttribute: string;
   bindDN: string;
   bindPass: string;
   ldapCaCertificate?: string;
@@ -34,7 +33,6 @@ export type TUpdateLdapAuthDTO = {
   url?: string;
   searchBase?: string;
   searchFilter?: string;
-  uniqueAttribute?: string;
   bindDN?: string;
   bindPass?: string;
   allowedFields?: TAllowedFields[];

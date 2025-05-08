@@ -1056,7 +1056,7 @@ interface LoginIdentityLdapAuthEvent {
   metadata: {
     identityId: string;
     ldapUsername: string;
-    ldapEmail: string;
+    ldapEmail?: string;
   };
 }
 

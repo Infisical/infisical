@@ -152,7 +152,7 @@ declare module "fastify" {
       identityId: string;
       user: {
         uid: string;
-        mail: string;
+        mail?: string;
       };
     };
     kmipUser: {

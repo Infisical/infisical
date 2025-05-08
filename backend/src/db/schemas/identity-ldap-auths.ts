@@ -22,7 +22,6 @@ export const IdentityLdapAuthsSchema = z.object({
   url: z.string(),
   searchBase: z.string(),
   searchFilter: z.string(),
-  uniqueAttribute: z.string(),
   allowedFields: z.unknown().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()

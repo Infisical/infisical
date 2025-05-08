@@ -35,7 +35,6 @@ const schema = z
     bindDN: z.string(),
     bindPass: z.string(),
     searchBase: z.string(),
-    uniqueAttribute: z.string(), // defaults to uidNumber
     searchFilter: z.string(), // defaults to (uid={{username}})
     ldapCaCertificate: z
       .string()
@@ -112,7 +111,6 @@ export const IdentityLdapAuthForm = ({
       bindDN: "",
       bindPass: "",
       searchBase: "",
-      uniqueAttribute: "uidNumber",
       searchFilter: "(uid={{username}})",
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
@@ -140,7 +138,6 @@ export const IdentityLdapAuthForm = ({
         bindDN: data.bindDN,
         bindPass: data.bindPass,
         searchBase: data.searchBase,
-        uniqueAttribute: data.uniqueAttribute,
         searchFilter: data.searchFilter,
         ldapCaCertificate: data.ldapCaCertificate || undefined,
         allowedFields: data.allowedFields,
@@ -161,7 +158,6 @@ export const IdentityLdapAuthForm = ({
         bindDN: "",
         bindPass: "",
         searchBase: "",
-        uniqueAttribute: "uidNumber",
         searchFilter: "(uid={{username}})",
         ldapCaCertificate: undefined,
         allowedFields: [],
@@ -185,7 +181,6 @@ export const IdentityLdapAuthForm = ({
     bindDN,
     bindPass,
     searchBase,
-    uniqueAttribute,
     searchFilter,
     ldapCaCertificate,
     allowedFields,
@@ -206,7 +201,6 @@ export const IdentityLdapAuthForm = ({
           bindPass,
           searchBase,
           searchFilter,
-          uniqueAttribute,
           ldapCaCertificate,
           allowedFields,
           accessTokenTTL: Number(accessTokenTTL),
@@ -223,7 +217,6 @@ export const IdentityLdapAuthForm = ({
           bindPass,
           searchBase,
           searchFilter,
-          uniqueAttribute,
           ldapCaCertificate,
           allowedFields,
           accessTokenTTL: Number(accessTokenTTL),
@@ -259,8 +252,8 @@ export const IdentityLdapAuthForm = ({
             "bindPass",
             "searchBase",
             "searchFilter",
-            "uniqueAttribute",
             "accessTokenTTL",
+            "allowedFields",
             "accessTokenMaxTTL",
             "accessTokenNumUsesLimit"
           ].includes(Object.keys(fields)[0])
@@ -336,21 +329,6 @@ export const IdentityLdapAuthForm = ({
 
           <Controller
             control={control}
-            name="uniqueAttribute"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                isRequired
-                label="Unique User Attribute"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="uidNumber" />
-              </FormControl>
-            )}
-          />
-
-          <Controller
-            control={control}
             name="searchFilter"
             render={({ field, fieldState: { error } }) => (
               <FormControl
@@ -360,69 +338,6 @@ export const IdentityLdapAuthForm = ({
                 errorText={error?.message}
               >
                 <Input {...field} placeholder="(uid={{username}})" />
-              </FormControl>
-            )}
-          />
-
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token TTL (seconds)"
-                tooltipText="The lifetime for an acccess token in seconds. This value will be referenced at renewal time."
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenMaxTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="The maximum lifetime for an access token in seconds. This value will be referenced at renewal time."
-              >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="0"
-            name="accessTokenNumUsesLimit"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max Number of Uses"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
-              >
-                <Input {...field} placeholder="0" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-        </TabPanel>
-        <TabPanel value={IdentityFormTab.Advanced}>
-          <Controller
-            control={control}
-            name="ldapCaCertificate"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="CA Certificate"
-                isOptional
-                errorText={error?.message}
-                isError={Boolean(error)}
-                tooltipText="An optional PEM-encoded CA cert for the LDAP server. This is used by the TLS client for secure communication with the LDAP server."
-              >
-                <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
               </FormControl>
             )}
           />
@@ -534,6 +449,69 @@ export const IdentityLdapAuthForm = ({
               Add Allowed Field
             </Button>
           </div>
+
+          <Controller
+            control={control}
+            defaultValue="2592000"
+            name="accessTokenTTL"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Access Token TTL (seconds)"
+                tooltipText="The lifetime for an acccess token in seconds. This value will be referenced at renewal time."
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue="2592000"
+            name="accessTokenMaxTTL"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Access Token Max TTL (seconds)"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                tooltipText="The maximum lifetime for an access token in seconds. This value will be referenced at renewal time."
+              >
+                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue="0"
+            name="accessTokenNumUsesLimit"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Access Token Max Number of Uses"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                tooltipText="The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
+              >
+                <Input {...field} placeholder="0" type="number" min="0" step="1" />
+              </FormControl>
+            )}
+          />
+        </TabPanel>
+        <TabPanel value={IdentityFormTab.Advanced}>
+          <Controller
+            control={control}
+            name="ldapCaCertificate"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="CA Certificate"
+                isOptional
+                errorText={error?.message}
+                isError={Boolean(error)}
+                tooltipText="An optional PEM-encoded CA cert for the LDAP server. This is used by the TLS client for secure communication with the LDAP server."
+              >
+                <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
+              </FormControl>
+            )}
+          />
 
           {accessTokenTrustedIpsFields.map(({ id }, index) => (
             <div className="mb-3 flex items-end space-x-2" key={id}>

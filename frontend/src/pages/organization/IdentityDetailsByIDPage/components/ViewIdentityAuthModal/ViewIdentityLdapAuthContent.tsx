@@ -79,9 +79,6 @@ export const ViewIdentityLdapAuthContent = ({
       <IdentityAuthFieldDisplay label="Search Base / DN">
         {data.searchBase}
       </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Unique Attribute">
-        {data.uniqueAttribute}
-      </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Search Filter">{data.searchFilter}</IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="CA Certificate">
         {data.ldapCaCertificate && (

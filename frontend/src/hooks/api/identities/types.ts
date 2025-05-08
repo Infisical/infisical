@@ -433,7 +433,6 @@ export type AddIdentityLdapAuthDTO = {
   bindPass: string;
   searchBase: string;
   searchFilter: string;
-  uniqueAttribute: string;
   ldapCaCertificate?: string;
   allowedFields?: {
     key: string;
@@ -455,7 +454,6 @@ export type UpdateIdentityLdapAuthDTO = {
   bindPass?: string;
   searchBase?: string;
   searchFilter?: string;
-  uniqueAttribute?: string;
   ldapCaCertificate?: string;
   allowedFields?: {
     key: string;
@@ -480,7 +478,6 @@ export type IdentityLdapAuth = {
   bindPass: string;
   searchBase: string;
   searchFilter: string;
-  uniqueAttribute: string;
   ldapCaCertificate?: string;
   allowedFields?: {
     key: string;

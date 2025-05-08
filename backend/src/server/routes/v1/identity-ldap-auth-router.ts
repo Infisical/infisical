@@ -15,7 +15,7 @@ import { z } from "zod";
 
 import { IdentityLdapAuthsSchema } from "@app/db/schemas/identity-ldap-auths";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApiDocsTags } from "@app/lib/api-docs";
+import { ApiDocsTags, LDAP_AUTH } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -45,6 +45,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
           ...ldapConfig,
           isActive: true,
           groupSearchBase: "",
+          uniqueUserAttribute: "",
           groupSearchFilter: ""
         };
 
@@ -120,9 +121,9 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       tags: [ApiDocsTags.LdapAuth],
       description: "Login with LDAP Auth",
       body: z.object({
-        identityId: z.string().trim(),
-        username: z.string(),
-        password: z.string()
+        identityId: z.string().trim().describe(LDAP_AUTH.LOGIN.identityId),
+        username: z.string().describe(LDAP_AUTH.LOGIN.username),
+        password: z.string().describe(LDAP_AUTH.LOGIN.password)
       }),
       response: {
         200: z.object({
@@ -147,11 +148,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
 
     handler: async (req) => {
-      if (
-        !req.passportMachineIdentity?.identityId ||
-        !req.passportMachineIdentity.user.mail ||
-        !req.passportMachineIdentity.user.uid
-      ) {
+      if (!req.passportMachineIdentity?.identityId || !req.passportMachineIdentity.user.uid) {
         throw new UnauthorizedError({ message: "Invalid request. Missing identity ID or LDAP entry details." });
       }
 
@@ -200,29 +197,40 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         }
       ],
       params: z.object({
-        identityId: z.string().trim()
+        identityId: z.string().trim().describe(LDAP_AUTH.ATTACH.identityId)
       }),
       body: z
         .object({
-          url: z.string().trim().min(1),
-          bindDN: z.string().trim().min(1),
-          bindPass: z.string().trim().min(1),
-          searchBase: z.string().trim().min(1),
-          uniqueAttribute: z.string().trim().min(1).default("uidNumber"),
-          searchFilter: z.string().trim().min(1).default("(uid={{username}})"),
-          allowedFields: AllowedFieldsSchema.array().optional(),
-          ldapCaCertificate: z.string().trim().optional(),
-
+          url: z.string().trim().min(1).describe(LDAP_AUTH.ATTACH.url),
+          bindDN: z.string().trim().min(1).describe(LDAP_AUTH.ATTACH.bindDN),
+          bindPass: z.string().trim().min(1).describe(LDAP_AUTH.ATTACH.bindPass),
+          searchBase: z.string().trim().min(1).describe(LDAP_AUTH.ATTACH.searchBase),
+          searchFilter: z.string().trim().min(1).default("(uid={{username}})").describe(LDAP_AUTH.ATTACH.searchFilter),
+          allowedFields: AllowedFieldsSchema.array().optional().describe(LDAP_AUTH.ATTACH.allowedFields),
+          ldapCaCertificate: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.ldapCaCertificate),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
             })
             .array()
             .min(1)
-            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
-          accessTokenTTL: z.number().int().min(0).max(315360000).default(2592000),
-          accessTokenMaxTTL: z.number().int().min(1).max(315360000).default(2592000),
-          accessTokenNumUsesLimit: z.number().int().min(0).default(0)
+            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+            .describe(LDAP_AUTH.ATTACH.accessTokenTrustedIps),
+          accessTokenTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .default(2592000)
+            .describe(LDAP_AUTH.ATTACH.accessTokenTTL),
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .min(1)
+            .max(315360000)
+            .default(2592000)
+            .describe(LDAP_AUTH.ATTACH.accessTokenMaxTTL),
+          accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(LDAP_AUTH.ATTACH.accessTokenNumUsesLimit)
         })
         .refine(
           (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
@@ -286,27 +294,38 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().trim().describe(LDAP_AUTH.UPDATE.identityId)
       }),
       body: z
         .object({
-          url: z.string().trim().min(1),
-          bindDN: z.string().trim().min(1),
-          bindPass: z.string().trim().min(1),
-          searchBase: z.string().trim().min(1),
-          uniqueAttribute: z.string().trim().min(1).default("uidNumber"),
-          searchFilter: z.string().trim().min(1).default("(uid={{username}})"),
-          allowedFields: AllowedFieldsSchema.array().optional(),
+          url: z.string().trim().min(1).describe(LDAP_AUTH.UPDATE.url),
+          bindDN: z.string().trim().min(1).describe(LDAP_AUTH.UPDATE.bindDN),
+          bindPass: z.string().trim().min(1).describe(LDAP_AUTH.UPDATE.bindPass),
+          searchBase: z.string().trim().min(1).describe(LDAP_AUTH.UPDATE.searchBase),
+          searchFilter: z.string().trim().min(1).default("(uid={{username}})").describe(LDAP_AUTH.UPDATE.searchFilter),
+          allowedFields: AllowedFieldsSchema.array().optional().describe(LDAP_AUTH.UPDATE.allowedFields),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
             })
             .array()
             .min(1)
-            .optional(),
-          accessTokenTTL: z.number().int().min(0).max(315360000).optional(),
-          accessTokenNumUsesLimit: z.number().int().min(0).optional(),
-          accessTokenMaxTTL: z.number().int().max(315360000).min(0).optional()
+            .optional()
+            .describe(LDAP_AUTH.UPDATE.accessTokenTrustedIps),
+          accessTokenTTL: z.number().int().min(0).max(315360000).optional().describe(LDAP_AUTH.UPDATE.accessTokenTTL),
+          accessTokenNumUsesLimit: z
+            .number()
+            .int()
+            .min(0)
+            .optional()
+            .describe(LDAP_AUTH.UPDATE.accessTokenNumUsesLimit),
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .max(315360000)
+            .min(0)
+            .optional()
+            .describe(LDAP_AUTH.UPDATE.accessTokenMaxTTL)
         })
         .refine(
           (val) => (val.accessTokenMaxTTL && val.accessTokenTTL ? val.accessTokenTTL <= val.accessTokenMaxTTL : true),
@@ -370,7 +389,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().trim().describe(LDAP_AUTH.RETRIEVE.identityId)
       }),
       response: {
         200: z.object({
@@ -427,7 +446,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().trim().describe(LDAP_AUTH.REVOKE.identityId)
       }),
       response: {
         200: z.object({
