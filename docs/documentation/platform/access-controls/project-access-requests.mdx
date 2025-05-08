@@ -1,57 +1,61 @@
 ---
-title: "Project Access"
-description: "Learn how to grant access to projects in Infisical."
+title: "Accessing Other Projects"
+description: "Learn how you can view, request, or gain access to projects you aren’t part of"
 ---
 
-# Viewing Available Projects
+Infisical supports two primary ways users can access projects:
 
-From the Infisical dashboard, users can view all projects within the organization:
+* **By Membership**: Users are explicitly added to a project. 
+* **By Permission**: Users with the `Access all organization projects` permission can view and manage all projects in the organization, even those they are not a member of.
 
-1.  Navigate to the main dashboard after logging in
-2.  The overview page for each product displays two tabs:
+Users who do not have access to a project (and lack the above permission) can request access through the dashboard.
 
-        		- **My Projects**: Projects you currently have access to
-        		- **All Projects**: Complete list of projects in the organization
+# Viewing Projects
 
-![all-project-view](/images/platform/project-access-requests/all-project-view.png)
+From the Infisical dashboard, users can explore projects across the organization:
+
+<Steps>
+  <Step title="Log in and go to the main dashboard" />
+  <Step title="Switch between project views using the tabs">
+    - **My Projects**: Projects you’re a member of  
+    - **All Projects**: All projects within the organization
+    ![all-project-view](/images/platform/project-access-requests/all-project-view.png)
+  </Step>
+</Steps>
 
 # Requesting Access to a Project
 
-Users can request access to these projects by submitting a request that automatically notifies project administrators via email, along with any comments provided by the user.
-
-To request access to a project you don't currently have access for:
+If you are not a member of a project and lack global access permissions, you can request access:
 
 <Steps>
-  <Step title="Click on Request Access button next to the project name">
-    ![all-project-view](/images/platform/project-access-requests/request-access.png)
+  <Step title="Click the Request Access button next to the desired project">
+    ![request-access](/images/platform/project-access-requests/request-access.png)
   </Step>
-  <Step title="Add a comment explaining why you need access">
-    ![all-project-view](/images/platform/project-access-requests/access-comment.png)
+  <Step title="Add a comment explaining your reason for access (optional)">
+    ![access-comment](/images/platform/project-access-requests/access-comment.png)
   </Step>
-  <Step title="Click Submit Request"></Step>
+  <Step title="Click Submit Request" />
 </Steps>
 
 <Info>
-  Project administrators will receive email notification with details regarding
-  the access request.
+  Project administrators will be notified via email and can approve or reject the request.
 </Info>
 
-# Gain Access to a Project
+# Gaining Access with Admin Permissions
 
-This action can be only be performed by Organization Admins or users with role having permission `Access all organization projects`.
-
-![permission](/images/platform/project-access-requests/access-all-project-permission.png)
-
-These users can directly grant themselves access to a project with Project Admin privileges. This functionality is intended for break-glass scenarios, such as when the original project admin has left the organization.
-
-To gain access to a project you don't currently have access for:
+Users with the `Access all organization projects` permission (an organization level permission), typically Organization Admins, can directly gain access to any project, bypassing the request workflow. 
+This is intended for break-glass scenarios, such as when a project has no active admin or support is required.
 
 <Steps>
-  <Step title="Click on Gain Access button next to the project name">
-    ![all-project-view](/images/platform/project-access-requests/gain-access.png)
+  <Step title="Click the Gain Access button next to the project">
+    ![gain-access](/images/platform/project-access-requests/gain-access.png)
   </Step>
   <Step title="Type access to confirm your action">
-    ![all-project-view](/images/platform/project-access-requests/gain-access-conf.png)
+    ![gain-access-conf](/images/platform/project-access-requests/gain-access-conf.png)
   </Step>
-  <Step title="Click Submit Request"></Step>
+  <Step title="Click Submit Request" />
 </Steps>
+
+<Info>
+  Gaining access this way grants full Project Admin privileges.
+</Info>
