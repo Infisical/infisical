@@ -69,7 +69,9 @@ func GitLog(source string, logOpts string) (<-chan *gitdiff.File, error) {
 	// HACK: to avoid https://github.com/zricethezav/gitleaks/issues/722
 	time.Sleep(50 * time.Millisecond)
 
-	return gitdiff.Parse(cmd, stdout)
+	reader := bufio.NewReader(stdout)
+
+	return gitdiff.Parse(reader)
 }
 
 // GitDiff returns a channel of gitdiff.File objects from
@@ -101,7 +103,9 @@ func GitDiff(source string, staged bool) (<-chan *gitdiff.File, error) {
 	// HACK: to avoid https://github.com/zricethezav/gitleaks/issues/722
 	time.Sleep(50 * time.Millisecond)
 
-	return gitdiff.Parse(cmd, stdout)
+	reader := bufio.NewReader(stdout)
+
+	return gitdiff.Parse(reader)
 }
 
 // listenForStdErr listens for stderr output from git and prints it to stdout

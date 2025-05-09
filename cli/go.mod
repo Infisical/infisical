@@ -10,7 +10,7 @@ require (
 	github.com/creack/pty v1.1.21
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/fatih/semgroup v1.2.0
-	github.com/gitleaks/go-gitdiff v0.8.0
+	github.com/gitleaks/go-gitdiff v0.9.1
 	github.com/h2non/filetype v1.1.3
 	github.com/infisical/go-sdk v0.5.92
 	github.com/infisical/infisical-kmip v0.3.5
