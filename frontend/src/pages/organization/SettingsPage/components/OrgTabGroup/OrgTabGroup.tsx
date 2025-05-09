@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { useSearch } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
@@ -69,8 +69,8 @@ export const OrgTabGroup = () => {
                 }
               ].map(({ label, type, icon }) => (
                 <li key={`project-template-${type}`}>
-                  <a
-                    href={`/organization/${type}/settings`}
+                  <Link
+                    to={`/organization/${type}/settings`}
                     className="mt-1 flex items-center gap-x-2 hover:text-mineshaft-100"
                   >
                     <span className="text-mineshaft-300">•</span>
@@ -80,7 +80,7 @@ export const OrgTabGroup = () => {
                       className="mt-0.5 h-5 w-5"
                     />{" "}
                     <span className="underline underline-offset-2">{label}</span>
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
