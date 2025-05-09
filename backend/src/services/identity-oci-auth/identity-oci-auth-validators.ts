@@ -1,13 +1,14 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 const usernameSchema = z
   .string()
   .min(1, "Username cannot be empty")
-  .regex(/^[a-zA-Z0-9._@-]+$/, "Invalid OCI username format");
-
+  .refine((val) => new RE2("^[a-zA-Z0-9._@-]+$").test(val), "Invalid OCI username format");
 export const validateUsernames = z
   .string()
   .trim()
+  .max(500, "Input exceeds the maximum limit of 500 characters")
   .transform((val) =>
     val
       .split(",")

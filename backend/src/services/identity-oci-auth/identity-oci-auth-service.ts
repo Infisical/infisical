@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
+import RE2 from "re2";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -57,6 +58,13 @@ export const identityOciAuthServiceFactory = ({
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityOciAuth.identityId });
 
     await blockLocalAndPrivateIpAddresses(headers.host);
+
+    // Validate OCI host format
+    if (!headers.host || !new RE2("^identity\\.[a-zA-Z0-9-]+\\.oraclecloud\\.com$").test(headers.host)) {
+      throw new BadRequestError({
+        message: "Invalid OCI host format. Expected format: identity.<region>.oraclecloud.com"
+      });
+    }
 
     const { data } = await request.get<TOciGetUserResponse>(`https://${headers.host}/20160918/users/${userOcid}`, {
       headers
@@ -209,7 +217,7 @@ export const identityOciAuthServiceFactory = ({
 
     if (
       (accessTokenMaxTTL || identityOciAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || identityOciAuth.accessTokenMaxTTL) > (accessTokenMaxTTL || identityOciAuth.accessTokenMaxTTL)
+      (accessTokenTTL || identityOciAuth.accessTokenTTL) > (accessTokenMaxTTL || identityOciAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
