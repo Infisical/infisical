@@ -12,9 +12,15 @@ export const OCIVaultSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Compartment OCID">{compartmentOcid}</GenericFieldLabel>
-      <GenericFieldLabel label="Vault OCID">{vaultOcid}</GenericFieldLabel>
-      <GenericFieldLabel label="Key OCID">{keyOcid}</GenericFieldLabel>
+      <GenericFieldLabel label="Compartment OCID" truncate>
+        {compartmentOcid}
+      </GenericFieldLabel>
+      <GenericFieldLabel label="Vault OCID" truncate>
+        {vaultOcid}
+      </GenericFieldLabel>
+      <GenericFieldLabel label="Key OCID" truncate>
+        {keyOcid}
+      </GenericFieldLabel>
     </>
   );
 };
