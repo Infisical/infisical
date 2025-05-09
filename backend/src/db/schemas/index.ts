@@ -37,6 +37,7 @@ export * from "./identity-gcp-auths";
 export * from "./identity-jwt-auths";
 export * from "./identity-kubernetes-auths";
 export * from "./identity-metadata";
+export * from "./identity-oci-auths";
 export * from "./identity-oidc-auths";
 export * from "./identity-org-memberships";
 export * from "./identity-project-additional-privilege";

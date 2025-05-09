@@ -13,6 +13,7 @@ import { IdentityAzureAuthForm } from "./IdentityAzureAuthForm";
 import { IdentityGcpAuthForm } from "./IdentityGcpAuthForm";
 import { IdentityJwtAuthForm } from "./IdentityJwtAuthForm";
 import { IdentityKubernetesAuthForm } from "./IdentityKubernetesAuthForm";
+import { IdentityOciAuthForm } from "./IdentityOciAuthForm";
 import { IdentityOidcAuthForm } from "./IdentityOidcAuthForm";
 import { IdentityTokenAuthForm } from "./IdentityTokenAuthForm";
 import { IdentityUniversalAuthForm } from "./IdentityUniversalAuthForm";
@@ -45,6 +46,7 @@ const identityAuthMethods = [
   { label: "GCP Auth", value: IdentityAuthMethod.GCP_AUTH },
   { label: "AWS Auth", value: IdentityAuthMethod.AWS_AUTH },
   { label: "Azure Auth", value: IdentityAuthMethod.AZURE_AUTH },
+  { label: "OCI Auth", value: IdentityAuthMethod.OCI_AUTH },
   { label: "OIDC Auth", value: IdentityAuthMethod.OIDC_AUTH },
   {
     label: "JWT Auth",
@@ -171,6 +173,16 @@ export const IdentityAuthMethodModalContent = ({
     [IdentityAuthMethod.AWS_AUTH]: {
       render: () => (
         <IdentityAwsAuthForm
+          identityId={identityAuthMethodData.identityId}
+          handlePopUpOpen={handlePopUpOpen}
+          handlePopUpToggle={handlePopUpToggle}
+        />
+      )
+    },
+
+    [IdentityAuthMethod.OCI_AUTH]: {
+      render: () => (
+        <IdentityOciAuthForm
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}

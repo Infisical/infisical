@@ -10,6 +10,7 @@ import {
   AddIdentityGcpAuthDTO,
   AddIdentityJwtAuthDTO,
   AddIdentityKubernetesAuthDTO,
+  AddIdentityOciAuthDTO,
   AddIdentityOidcAuthDTO,
   AddIdentityTokenAuthDTO,
   AddIdentityUniversalAuthDTO,
@@ -25,6 +26,7 @@ import {
   DeleteIdentityGcpAuthDTO,
   DeleteIdentityJwtAuthDTO,
   DeleteIdentityKubernetesAuthDTO,
+  DeleteIdentityOciAuthDTO,
   DeleteIdentityOidcAuthDTO,
   DeleteIdentityTokenAuthDTO,
   DeleteIdentityUniversalAuthClientSecretDTO,
@@ -36,6 +38,7 @@ import {
   IdentityGcpAuth,
   IdentityJwtAuth,
   IdentityKubernetesAuth,
+  IdentityOciAuth,
   IdentityOidcAuth,
   IdentityTokenAuth,
   IdentityUniversalAuth,
@@ -47,6 +50,7 @@ import {
   UpdateIdentityGcpAuthDTO,
   UpdateIdentityJwtAuthDTO,
   UpdateIdentityKubernetesAuthDTO,
+  UpdateIdentityOciAuthDTO,
   UpdateIdentityOidcAuthDTO,
   UpdateIdentityTokenAuthDTO,
   UpdateIdentityUniversalAuthDTO,
@@ -444,6 +448,97 @@ export const useDeleteIdentityAwsAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAwsAuth(identityId) });
+    }
+  });
+};
+
+export const useAddIdentityOciAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityOciAuth, object, AddIdentityOciAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      allowedUsernames,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityOciAuth }
+      } = await apiRequest.post<{ identityOciAuth: IdentityOciAuth }>(
+        `/api/v1/auth/oci-auth/identities/${identityId}`,
+        {
+          allowedUsernames,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityOciAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOciAuth(identityId) });
+    }
+  });
+};
+
+export const useUpdateIdentityOciAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityOciAuth, object, UpdateIdentityOciAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      allowedUsernames,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityOciAuth }
+      } = await apiRequest.patch<{ identityOciAuth: IdentityOciAuth }>(
+        `/api/v1/auth/oci-auth/identities/${identityId}`,
+        {
+          allowedUsernames,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityOciAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOciAuth(identityId) });
+    }
+  });
+};
+
+export const useDeleteIdentityOciAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityOciAuth, object, DeleteIdentityOciAuthDTO>({
+    mutationFn: async ({ identityId }) => {
+      const {
+        data: { identityOciAuth }
+      } = await apiRequest.delete(`/api/v1/auth/oci-auth/identities/${identityId}`);
+      return identityOciAuth;
+    },
+    onSuccess: (_, { organizationId, identityId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOciAuth(identityId) });
     }
   });
 };

@@ -290,6 +290,45 @@ export type DeleteIdentityAwsAuthDTO = {
   identityId: string;
 };
 
+export type IdentityOciAuth = {
+  identityId: string;
+  type: "iam";
+  allowedUsernames: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityOciAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  allowedUsernames: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityOciAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  allowedUsernames?: string;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type DeleteIdentityOciAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
 export type IdentityAzureAuth = {
   identityId: string;
   tenantId: string;

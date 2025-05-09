@@ -11,6 +11,7 @@ import {
   useDeleteIdentityGcpAuth,
   useDeleteIdentityJwtAuth,
   useDeleteIdentityKubernetesAuth,
+  useDeleteIdentityOciAuth,
   useDeleteIdentityOidcAuth,
   useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth
@@ -22,6 +23,7 @@ import { ViewIdentityAzureAuthContent } from "./ViewIdentityAzureAuthContent";
 import { ViewIdentityGcpAuthContent } from "./ViewIdentityGcpAuthContent";
 import { ViewIdentityJwtAuthContent } from "./ViewIdentityJwtAuthContent";
 import { ViewIdentityKubernetesAuthContent } from "./ViewIdentityKubernetesAuthContent";
+import { ViewIdentityOciAuthContent } from "./ViewIdentityOciAuthContent";
 import { ViewIdentityOidcAuthContent } from "./ViewIdentityOidcAuthContent";
 import { ViewIdentityTokenAuthContent } from "./ViewIdentityTokenAuthContent";
 import { ViewIdentityUniversalAuthContent } from "./ViewIdentityUniversalAuthContent";
@@ -59,6 +61,7 @@ export const Content = ({
   const { mutateAsync: revokeGcpAuth } = useDeleteIdentityGcpAuth();
   const { mutateAsync: revokeAwsAuth } = useDeleteIdentityAwsAuth();
   const { mutateAsync: revokeAzureAuth } = useDeleteIdentityAzureAuth();
+  const { mutateAsync: revokeOciAuth } = useDeleteIdentityOciAuth();
   const { mutateAsync: revokeOidcAuth } = useDeleteIdentityOidcAuth();
   const { mutateAsync: revokeJwtAuth } = useDeleteIdentityJwtAuth();
 
@@ -91,6 +94,10 @@ export const Content = ({
     case IdentityAuthMethod.AZURE_AUTH:
       revokeMethod = revokeAzureAuth;
       Component = ViewIdentityAzureAuthContent;
+      break;
+    case IdentityAuthMethod.OCI_AUTH:
+      revokeMethod = revokeOciAuth;
+      Component = ViewIdentityOciAuthContent;
       break;
     case IdentityAuthMethod.OIDC_AUTH:
       revokeMethod = revokeOidcAuth;

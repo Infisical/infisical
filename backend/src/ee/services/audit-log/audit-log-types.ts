@@ -152,6 +152,11 @@ export enum EventType {
   UPDATE_IDENTITY_AWS_AUTH = "update-identity-aws-auth",
   REVOKE_IDENTITY_AWS_AUTH = "revoke-identity-aws-auth",
   GET_IDENTITY_AWS_AUTH = "get-identity-aws-auth",
+  LOGIN_IDENTITY_OCI_AUTH = "login-identity-oci-auth",
+  ADD_IDENTITY_OCI_AUTH = "add-identity-oci-auth",
+  UPDATE_IDENTITY_OCI_AUTH = "update-identity-oci-auth",
+  REVOKE_IDENTITY_OCI_AUTH = "revoke-identity-oci-auth",
+  GET_IDENTITY_OCI_AUTH = "get-identity-oci-auth",
   LOGIN_IDENTITY_AZURE_AUTH = "login-identity-azure-auth",
   ADD_IDENTITY_AZURE_AUTH = "add-identity-azure-auth",
   UPDATE_IDENTITY_AZURE_AUTH = "update-identity-azure-auth",
@@ -980,6 +985,53 @@ interface UpdateIdentityAwsAuthEvent {
 
 interface GetIdentityAwsAuthEvent {
   type: EventType.GET_IDENTITY_AWS_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface LoginIdentityOciAuthEvent {
+  type: EventType.LOGIN_IDENTITY_OCI_AUTH;
+  metadata: {
+    identityId: string;
+    identityOciAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityOciAuthEvent {
+  type: EventType.ADD_IDENTITY_OCI_AUTH;
+  metadata: {
+    identityId: string;
+    allowedUsernames: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityOciAuthEvent {
+  type: EventType.REVOKE_IDENTITY_OCI_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface UpdateIdentityOciAuthEvent {
+  type: EventType.UPDATE_IDENTITY_OCI_AUTH;
+  metadata: {
+    identityId: string;
+    allowedUsernames?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityOciAuthEvent {
+  type: EventType.GET_IDENTITY_OCI_AUTH;
   metadata: {
     identityId: string;
   };
@@ -2770,6 +2822,11 @@ export type Event =
   | UpdateIdentityAwsAuthEvent
   | GetIdentityAwsAuthEvent
   | DeleteIdentityAwsAuthEvent
+  | LoginIdentityOciAuthEvent
+  | AddIdentityOciAuthEvent
+  | UpdateIdentityOciAuthEvent
+  | GetIdentityOciAuthEvent
+  | DeleteIdentityOciAuthEvent
   | LoginIdentityAzureAuthEvent
   | AddIdentityAzureAuthEvent
   | DeleteIdentityAzureAuthEvent
