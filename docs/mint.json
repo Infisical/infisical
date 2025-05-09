@@ -327,7 +327,7 @@
             }
           ]
         },
-        "documentation/platform/token",        
+        "documentation/platform/token",
         "documentation/platform/mfa",
         "documentation/platform/github-org-sync"
       ]

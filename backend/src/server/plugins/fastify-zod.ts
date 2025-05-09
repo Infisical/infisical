@@ -5,7 +5,7 @@
 import type { FastifySchema, FastifySchemaCompiler, FastifyTypeProvider } from "fastify";
 import type { FastifySerializerCompiler } from "fastify/types/schema";
 import type { z, ZodAny, ZodTypeAny } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { PostProcessCallback, zodToJsonSchema } from "zod-to-json-schema";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type FreeformRecord = Record<string, any>;
@@ -28,9 +28,24 @@ interface Schema extends FastifySchema {
   hide?: boolean;
 }
 
+const jsonDescription: PostProcessCallback = (jsonSchema, def) => {
+  if (def.description) {
+    try {
+      return {
+        ...jsonSchema,
+        description: undefined,
+        ...JSON.parse(def.description)
+      };
+    } catch {}
+  }
+
+  return jsonSchema;
+};
+
 const zodToJsonSchemaOptions = {
   target: "openApi3",
-  $refStrategy: "none"
+  $refStrategy: "none",
+  postProcess: jsonDescription
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
