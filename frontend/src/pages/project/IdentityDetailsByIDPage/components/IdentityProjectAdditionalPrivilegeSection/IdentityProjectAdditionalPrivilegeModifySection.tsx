@@ -1,12 +1,6 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import {
-  faCaretDown,
-  faChevronLeft,
-  faClock,
-  faPlus,
-  faSave
-} from "@fortawesome/free-solid-svg-icons";
+import { faCaretDown, faChevronLeft, faClock, faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, formatDistance } from "date-fns";
@@ -33,16 +27,15 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
 import {
   useCreateIdentityProjectAdditionalPrivilege,
   useGetIdentityProjectPrivilegeDetails,
   useUpdateIdentityProjectAdditionalPrivilege
 } from "@app/hooks/api";
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/identityProjectAdditionalPrivilege/types";
+import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
-import { PolicySelectionModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicySelectionModal";
 import {
   formRolePermission2API,
   PROJECT_PERMISSION_OBJECT,
@@ -97,7 +90,6 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
     ProjectPermissionIdentityActions.Edit,
     subject(ProjectPermissionSub.Identity, { identityId })
   );
-  const { popUp, handlePopUpToggle } = usePopUp(["addPolicy"] as const);
 
   const form = useForm<TFormSchema>({
     values: privilegeDetails
@@ -224,7 +216,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                 variant="outline_bg"
                 type="submit"
                 className={twMerge(
-                  "h-10 rounded-r-none border border-primary",
+                  "mr-4 h-10 border border-primary",
                   isDirty && "bg-primary text-black"
                 )}
                 isDisabled={isSubmitting || !isDirty || isDisabled}
@@ -233,15 +225,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
               >
                 Save
               </Button>
-              <Button
-                isDisabled={isDisabled}
-                className="h-10 rounded-l-none"
-                variant="outline_bg"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpToggle("addPolicy")}
-              >
-                Add Policies
-              </Button>
+              <AddPoliciesButton isDisabled={isDisabled} />
             </div>
           </div>
         </div>
@@ -382,10 +366,6 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
             )
           )}
         </div>
-        <PolicySelectionModal
-          isOpen={popUp.addPolicy.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("addPolicy", isOpen)}
-        />
       </FormProvider>
     </form>
   );
