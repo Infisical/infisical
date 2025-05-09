@@ -15,7 +15,10 @@ export const AlertingPage = () => {
         <title>{t("common.head-title", { title: "Alerting" })}</title>
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-7xl">
-        <PageHeader title="Alerting" />
+        <PageHeader
+          title="Alerting"
+          description="Configure alerts for expiring certificates and CAs to maintain security and compliance."
+        />
         <ProjectPermissionCan
           renderGuardBanner
           I={ProjectPermissionActions.Read}

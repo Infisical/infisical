@@ -75,8 +75,8 @@ In the following steps, we explore how to issue a X.509 certificate under a CA.
     Here's some guidance on each field:
 
     - Friendly Name: A friendly name for the certificate; this is only for display and defaults to the common name of the certificate if left empty.
-    - Common Name (CN): The (common) name for the certificate like `service.acme.com`.
-    - Alternative Names (SANs): A comma-delimited list of Subject Alternative Names (SANs) for the certificate; these can be host names or email addresses like `app1.acme.com, app2.acme.com`.
+    - Common Name (CN): The common name for the certificate like `service.acme.com`.
+    - Alternative Names (SANs): A comma-delimited list of Subject Alternative Names (SANs) for the certificate; these can be hostnames or email addresses like `app1.acme.com, app2.acme.com`.
     - TTL: The lifetime of the certificate in seconds.
     - Key Usage: The key usage extension of the certificate.
     - Extended Key Usage: The extended key usage extension of the certificate.
@@ -240,7 +240,7 @@ openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
 ```
 
 Note that you can also obtain the CRL from the certificate itself by
-referencing the CRL distribution point extension on the certificate itself.
+referencing the CRL distribution point extension on the certificate.
 
 To check a certificate against the CRL distribution point specified within it with OpenSSL, you can use the following command:
 

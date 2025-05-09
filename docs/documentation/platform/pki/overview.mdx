@@ -4,9 +4,10 @@ sidebarTitle: "Overview"
 description: "Learn how to create a Private CA hierarchy and issue X.509 certificates."
 ---
 
-Infisical can be used to create a Private Certificate Authority (CA) hierarchy and issue X.509 certificates for internal use. This allows you to manage your own PKI infrastructure and issue digital certificates for services, applications, and devices.
+Infisical can be used to create a Private Certificate Authority (CA) hierarchy and issue X.509 certificates for internal use. This allows you to manage your own PKI infrastructure and issue digital certificates for subscribers such as services, applications, and devices.
 
-Infisical's internal PKI offering is split into two modules:
+Infisical's PKI offering is split into three components:
 
-- [Private CA](/documentation/platform/pki/private-ca): Infisical lets you create private CAs, including root and intermediary CAs.
-- [Certificates](/documentation/platform/pki/certificates): Infisical allows you to issue X.509 certificates using the private CAs you create.
+- [Certificate Authorities](/documentation/platform/pki/private-ca): Create and manage private CAs, including root and intermediate CAs.
+- [Subscribers](/documentation/platform/pki/subscribers): Define and manage entities that will request X.509 certificates from CAs. This module provides a centralized view of all subscribers, enabling you to issue certificates and monitor their status.
+- [Certificates](/documentation/platform/pki/certificates): Track and monitor issued X.509 certificates, maintaining a comprehensive inventory of all active and expired certificates.

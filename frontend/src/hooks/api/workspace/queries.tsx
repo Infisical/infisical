@@ -14,6 +14,7 @@ import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
 import { TPkiAlert } from "../pkiAlerts/types";
 import { TPkiCollection } from "../pkiCollections/types";
+import { TPkiSubscriber } from "../pkiSubscriber/types";
 import { EncryptedSecret } from "../secrets/types";
 import { TSshCertificate, TSshCertificateAuthority } from "../sshCa/types";
 import { TSshCertificateTemplate } from "../sshCertificateTemplates/types";
@@ -869,6 +870,21 @@ export const useListWorkspaceSshHosts = (projectId: string) => {
         data: { hosts }
       } = await apiRequest.get<{ hosts: TSshHost[] }>(`/api/v2/workspace/${projectId}/ssh-hosts`);
       return hosts;
+    },
+    enabled: Boolean(projectId)
+  });
+};
+
+export const useListWorkspacePkiSubscribers = (projectId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspacePkiSubscribers(projectId),
+    queryFn: async () => {
+      const {
+        data: { subscribers }
+      } = await apiRequest.get<{ subscribers: TPkiSubscriber[] }>(
+        `/api/v2/workspace/${projectId}/pki-subscribers`
+      );
+      return subscribers;
     },
     enabled: Boolean(projectId)
   });

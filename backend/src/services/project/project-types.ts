@@ -155,6 +155,7 @@ export type TListProjectCertificateTemplatesDTO = TProjectPermission;
 export type TListProjectSshCasDTO = TProjectPermission;
 export type TListProjectSshHostsDTO = TProjectPermission;
 export type TListProjectSshCertificateTemplatesDTO = TProjectPermission;
+export type TListProjectPkiSubscribersDTO = TProjectPermission;
 export type TListProjectSshCertificatesDTO = {
   offset: number;
   limit: number;

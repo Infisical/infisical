@@ -27,7 +27,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSshHostActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { fetchSshHostUserCaPublicKey, useListWorkspaceSshHosts } from "@app/hooks/api";
 import { LoginMappingSource } from "@app/hooks/api/sshHost/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -180,7 +180,7 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                             Download User CA Public Key
                           </DropdownMenuItem>
                           <ProjectPermissionCan
-                            I={ProjectPermissionActions.Edit}
+                            I={ProjectPermissionSshHostActions.Edit}
                             a={ProjectPermissionSub.SshHosts}
                           >
                             {(isAllowed) => (
@@ -202,7 +202,7 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                             )}
                           </ProjectPermissionCan>
                           <ProjectPermissionCan
-                            I={ProjectPermissionActions.Delete}
+                            I={ProjectPermissionSshHostActions.Delete}
                             a={ProjectPermissionSub.SshHosts}
                           >
                             {(isAllowed) => (

@@ -23,6 +23,7 @@ import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
 import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
+import { PkiSubscriberPermissionConditions } from "./PkiSubscriberPermissionConditions";
 import {
   formRolePermission2API,
   isConditionalSubjects,
@@ -57,6 +58,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.SshHosts) {
       return <SshHostPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.PkiSubscribers) {
+      return <PkiSubscriberPermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;

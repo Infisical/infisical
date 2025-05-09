@@ -15,6 +15,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
@@ -35,6 +36,7 @@ import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
 import { TQueueServiceFactory } from "@app/queue";
+import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
@@ -86,6 +88,7 @@ import {
   TListProjectCasDTO,
   TListProjectCertificateTemplatesDTO,
   TListProjectCertsDTO,
+  TListProjectPkiSubscribersDTO,
   TListProjectsDTO,
   TListProjectSshCasDTO,
   TListProjectSshCertificatesDTO,
@@ -145,6 +148,7 @@ type TProjectServiceFactoryDep = {
     "findById" | "findByIdWithWorkflowIntegrationDetails"
   >;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
+  pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "find">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
@@ -207,6 +211,7 @@ export const projectServiceFactory = ({
   certificateTemplateDAL,
   pkiCollectionDAL,
   pkiAlertDAL,
+  pkiSubscriberDAL,
   sshCertificateAuthorityDAL,
   sshCertificateAuthoritySecretDAL,
   sshCertificateDAL,
@@ -1055,6 +1060,48 @@ export const projectServiceFactory = ({
     return {
       pkiCollections
     };
+  };
+
+  /**
+   * Return list of PKI subscribers for project
+   */
+  const listProjectPkiSubscribers = async ({
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    actor,
+    projectId
+  }: TListProjectPkiSubscribersDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    const allowedSubscribers = [];
+
+    // (dangtony98): room to optimize
+    const subscribers = await pkiSubscriberDAL.find({ projectId });
+
+    for (const subscriber of subscribers) {
+      try {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionPkiSubscriberActions.Read,
+          subject(ProjectPermissionSub.PkiSubscribers, {
+            name: subscriber.name
+          })
+        );
+
+        allowedSubscribers.push(subscriber);
+      } catch {
+        // intentionally ignore subscribers where user lacks access
+      }
+    }
+
+    return allowedSubscribers;
   };
 
   /**
@@ -1930,6 +1977,7 @@ export const projectServiceFactory = ({
     listProjectSshCas,
     listProjectSshHosts,
     listProjectSshHostGroups,
+    listProjectPkiSubscribers,
     listProjectSshCertificates,
     listProjectSshCertificateTemplates,
     updateVersionLimit,
