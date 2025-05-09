@@ -38,7 +38,7 @@ export const OrgTabGroup = () => {
       component: () => (
         <div>
           <NoticeBannerV2
-            className="mx-auto mt-10"
+            className="mx-auto"
             titleClassName="text-base"
             title="Project Templates Relocated"
           >
