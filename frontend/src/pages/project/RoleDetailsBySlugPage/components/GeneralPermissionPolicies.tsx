@@ -114,7 +114,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
               <div
                 key={el.id}
                 className={twMerge(
-                  "relative bg-mineshaft-800 p-5 first:rounded-t-md last:rounded-b-md",
+                  "relative bg-mineshaft-800 p-5 pr-10 first:rounded-t-md last:rounded-b-md",
                   dragOverItem === rootIndex ? "border-2 border-blue-400" : "",
                   draggedItem === rootIndex ? "opacity-50" : ""
                 )}
@@ -179,7 +179,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                     </div>
                   )}
                 </div>
-                <div className="flex text-gray-300">
+                <div className="flex gap-4 text-gray-300">
                   <div className="w-1/4">Actions</div>
                   <div className="flex flex-grow flex-wrap justify-start gap-8">
                     {actions.map(({ label, value }, index) => {

@@ -169,7 +169,7 @@ const getParameterStoreTagsRecord = async (
 
         throw new SecretSyncError({
           message:
-            "IAM role has inadequate permissions to manage resource tags. Ensure the following polices are present: ssm:ListTagsForResource, ssm:AddTagsToResource, and ssm:RemoveTagsFromResource",
+            "IAM role has inadequate permissions to manage resource tags. Ensure the following policies are present: ssm:ListTagsForResource, ssm:AddTagsToResource, and ssm:RemoveTagsFromResource",
           shouldRetry: false
         });
       }

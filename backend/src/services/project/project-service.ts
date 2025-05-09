@@ -14,6 +14,7 @@ import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/servi
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
+  ProjectPermissionCertificateActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
@@ -328,14 +329,16 @@ export const projectServiceFactory = ({
       // set default environments and root folder for provided environments
       let envs: TProjectEnvironments[] = [];
       if (projectTemplate) {
-        envs = await projectEnvDAL.insertMany(
-          projectTemplate.environments.map((env) => ({ ...env, projectId: project.id })),
-          tx
-        );
-        await folderDAL.insertMany(
-          envs.map(({ id }) => ({ name: ROOT_FOLDER_NAME, envId: id, version: 1 })),
-          tx
-        );
+        if (projectTemplate.environments) {
+          envs = await projectEnvDAL.insertMany(
+            projectTemplate.environments.map((env) => ({ ...env, projectId: project.id })),
+            tx
+          );
+          await folderDAL.insertMany(
+            envs.map(({ id }) => ({ name: ROOT_FOLDER_NAME, envId: id, version: 1 })),
+            tx
+          );
+        }
         await projectRoleDAL.insertMany(
           projectTemplate.packedRoles.map((role) => ({
             ...role,
@@ -591,7 +594,10 @@ export const projectServiceFactory = ({
         workspaces.map(async (workspace) => {
           return {
             ...workspace,
-            roles: [...(workspaceMappedToRoles[workspace.id] || []), ...getPredefinedRoles(workspace.id)]
+            roles: [
+              ...(workspaceMappedToRoles[workspace.id] || []),
+              ...getPredefinedRoles({ projectId: workspace.id, projectType: workspace.type as ProjectType })
+            ]
           };
         })
       );
@@ -948,7 +954,10 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
 
     const cas = await certificateAuthorityDAL.find({ projectId });
 

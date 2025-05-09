@@ -44,3 +44,8 @@ export enum LoginMethod {
   LDAP = "ldap",
   OIDC = "oidc"
 }
+
+export enum CacheType {
+  ALL = "all",
+  SECRETS = "secrets"
+}

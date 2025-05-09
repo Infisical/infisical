@@ -24,7 +24,7 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
-import { TProjectRole } from "@app/hooks/api/roles/types";
+import { ProjectMembershipRole, TProjectRole } from "@app/hooks/api/roles/types";
 import { RoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/RoleModal";
 
 export const ProjectRoleList = () => {
@@ -86,7 +86,9 @@ export const ProjectRoleList = () => {
             {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
             {roles?.map((role) => {
               const { id, name, slug } = role;
-              const isNonMutatable = ["admin", "member", "viewer", "no-access"].includes(slug);
+              const isNonMutatable = Object.values(ProjectMembershipRole).includes(
+                slug as ProjectMembershipRole
+              );
 
               return (
                 <Tr

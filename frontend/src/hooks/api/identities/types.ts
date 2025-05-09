@@ -425,6 +425,72 @@ export type IdentityTokenAuth = {
   accessTokenTrustedIps: IdentityTrustedIp[];
 };
 
+export type AddIdentityLdapAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  url: string;
+  bindDN: string;
+  bindPass: string;
+  searchBase: string;
+  searchFilter: string;
+  ldapCaCertificate?: string;
+  allowedFields?: {
+    key: string;
+    value: string;
+  }[];
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityLdapAuthDTO = {
+  identityId: string;
+  organizationId: string;
+  url?: string;
+  bindDN?: string;
+  bindPass?: string;
+  searchBase?: string;
+  searchFilter?: string;
+  ldapCaCertificate?: string;
+  allowedFields?: {
+    key: string;
+    value: string;
+  }[];
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type DeleteIdentityLdapAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
+export type IdentityLdapAuth = {
+  url: string;
+  bindDN: string;
+  bindPass: string;
+  searchBase: string;
+  searchFilter: string;
+  ldapCaCertificate?: string;
+  allowedFields?: {
+    key: string;
+    value: string;
+  }[];
+
+  identityId: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
 export type AddIdentityTokenAuthDTO = {
   organizationId: string;
   identityId: string;

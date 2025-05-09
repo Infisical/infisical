@@ -50,19 +50,13 @@ import {
   useUser,
   useWorkspace
 } from "@app/context";
+import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetProjectRoles, useGetWorkspaceUsers } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
-const formatRoleName = (role: string, customRoleName?: string) => {
-  if (role === ProjectMembershipRole.Custom) return customRoleName;
-  if (role === ProjectMembershipRole.Member) return "Developer";
-  if (role === ProjectMembershipRole.NoAccess) return "No access";
-  return role;
-};
 
 type Props = {
   handlePopUpOpen: (
@@ -343,7 +337,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                                 <Tag key={id}>
                                   <div className="flex items-center space-x-2">
                                     <div className="capitalize">
-                                      {formatRoleName(role, customRoleName)}
+                                      {formatProjectRoleName(role, customRoleName)}
                                     </div>
                                     {isTemporary && (
                                       <div>
@@ -386,7 +380,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                                     return (
                                       <Tag key={id} className="capitalize">
                                         <div className="flex items-center space-x-2">
-                                          <div>{formatRoleName(role, customRoleName)}</div>
+                                          <div>{formatProjectRoleName(role, customRoleName)}</div>
                                           {isTemporary && (
                                             <div>
                                               <Tooltip

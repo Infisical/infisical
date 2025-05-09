@@ -12,6 +12,7 @@ import { NotFoundError } from "@app/lib/errors";
 import { TGitAppDALFactory } from "./git-app-dal";
 import { TGitAppInstallSessionDALFactory } from "./git-app-install-session-dal";
 import { TSecretScanningDALFactory } from "./secret-scanning-dal";
+import { canUseSecretScanning } from "./secret-scanning-fns";
 import { TSecretScanningQueueFactory } from "./secret-scanning-queue";
 import {
   SecretScanningRiskStatus,
@@ -47,12 +48,14 @@ export const secretScanningServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TInstallAppSessionDTO) => {
+    const appCfg = getConfig();
+
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
 
     const sessionId = crypto.randomBytes(16).toString("hex");
     await gitAppInstallSessionDAL.upsert({ orgId, sessionId, userId: actorId });
-    return { sessionId };
+    return { sessionId, gitAppSlug: appCfg.SECRET_SCANNING_GIT_APP_SLUG };
   };
 
   const linkInstallationToOrg = async ({
@@ -91,7 +94,8 @@ export const secretScanningServiceFactory = ({
     const {
       data: { repositories }
     } = await octokit.apps.listReposAccessibleToInstallation();
-    if (appCfg.SECRET_SCANNING_ORG_WHITELIST?.includes(actorOrgId)) {
+
+    if (canUseSecretScanning(actorOrgId)) {
       await Promise.all(
         repositories.map(({ id, full_name }) =>
           secretScanningQueue.startFullRepoScan({
@@ -102,6 +106,7 @@ export const secretScanningServiceFactory = ({
         )
       );
     }
+
     return { installatedApp };
   };
 
@@ -164,7 +169,6 @@ export const secretScanningServiceFactory = ({
   };
 
   const handleRepoPushEvent = async (payload: WebhookEventMap["push"]) => {
-    const appCfg = getConfig();
     const { commits, repository, installation, pusher } = payload;
     if (!commits || !repository || !installation || !pusher) {
       return;
@@ -175,7 +179,7 @@ export const secretScanningServiceFactory = ({
     });
     if (!installationLink) return;
 
-    if (appCfg.SECRET_SCANNING_ORG_WHITELIST?.includes(installationLink.orgId)) {
+    if (canUseSecretScanning(installationLink.orgId)) {
       await secretScanningQueue.startPushEventScan({
         commits,
         pusher: { name: pusher.name, email: pusher.email },

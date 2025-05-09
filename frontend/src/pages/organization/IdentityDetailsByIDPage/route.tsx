@@ -20,7 +20,7 @@ export const Route = createFileRoute(
         link: linkOptions({ to: "/organization/access-management" })
       },
       {
-        label: "identities"
+        label: "Identities"
       }
     ]
   })

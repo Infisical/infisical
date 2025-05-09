@@ -1,9 +1,8 @@
 import { z } from "zod";
 
-import { ProjectMembershipRole, ProjectTemplatesSchema } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectTemplatesSchema, ProjectType } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
-import { ProjectTemplateDefaultEnvironments } from "@app/ee/services/project-template/project-template-constants";
 import { isInfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
 import { ApiDocsTags, ProjectTemplates } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -35,6 +34,7 @@ const SanitizedProjectTemplateSchema = ProjectTemplatesSchema.extend({
       position: z.number().min(1)
     })
     .array()
+    .nullable()
 });
 
 const ProjectTemplateRolesSchema = z
@@ -104,6 +104,9 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       hide: false,
       tags: [ApiDocsTags.ProjectTemplates],
       description: "List project templates for the current organization.",
+      querystring: z.object({
+        type: z.nativeEnum(ProjectType).optional().describe(ProjectTemplates.LIST.type)
+      }),
       response: {
         200: z.object({
           projectTemplates: SanitizedProjectTemplateSchema.array()
@@ -112,7 +115,8 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectTemplates = await server.services.projectTemplate.listProjectTemplatesByOrg(req.permission);
+      const { type } = req.query;
+      const projectTemplates = await server.services.projectTemplate.listProjectTemplatesByOrg(req.permission, type);
 
       const auditTemplates = projectTemplates.filter((template) => !isInfisicalProjectTemplate(template.name));
 
@@ -184,6 +188,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       tags: [ApiDocsTags.ProjectTemplates],
       description: "Create a project template.",
       body: z.object({
+        type: z.nativeEnum(ProjectType).describe(ProjectTemplates.CREATE.type),
         name: slugSchema({ field: "name" })
           .refine((val) => !isInfisicalProjectTemplate(val), {
             message: `The requested project template name is reserved.`
@@ -191,9 +196,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
           .describe(ProjectTemplates.CREATE.name),
         description: z.string().max(256).trim().optional().describe(ProjectTemplates.CREATE.description),
         roles: ProjectTemplateRolesSchema.default([]).describe(ProjectTemplates.CREATE.roles),
-        environments: ProjectTemplateEnvironmentsSchema.default(ProjectTemplateDefaultEnvironments).describe(
-          ProjectTemplates.CREATE.environments
-        )
+        environments: ProjectTemplateEnvironmentsSchema.describe(ProjectTemplates.CREATE.environments).optional()
       }),
       response: {
         200: z.object({

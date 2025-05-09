@@ -8,6 +8,7 @@ import {
   AdminGetIdentitiesFilters,
   AdminGetUsersFilters,
   AdminIntegrationsConfig,
+  TGetInvalidatingCacheStatus,
   TGetServerRootKmsEncryptionDetails,
   TServerConfig
 } from "./types";
@@ -22,8 +23,10 @@ export const adminQueryKeys = {
   getUsers: (filters: AdminGetUsersFilters) => [adminStandaloneKeys.getUsers, { filters }] as const,
   getIdentities: (filters: AdminGetIdentitiesFilters) =>
     [adminStandaloneKeys.getIdentities, { filters }] as const,
-  getAdminIntegrationsConfig: () => ["admin-integrations-config"] as const,
-  getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const
+  getAdminSlackConfig: () => ["admin-slack-config"] as const,
+  getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const,
+  getInvalidateCache: () => ["admin-invalidate-cache"] as const,
+  getAdminIntegrationsConfig: () => ["admin-integrations-config"] as const
 };
 
 export const fetchServerConfig = async () => {
@@ -116,5 +119,20 @@ export const useGetServerRootKmsEncryptionDetails = () => {
 
       return data;
     }
+  });
+};
+
+export const useGetInvalidatingCacheStatus = (enabled = true) => {
+  return useQuery({
+    queryKey: adminQueryKeys.getInvalidateCache(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetInvalidatingCacheStatus>(
+        "/api/v1/admin/invalidating-cache-status"
+      );
+
+      return data.invalidating;
+    },
+    enabled,
+    refetchInterval: (data) => (data ? 3000 : false)
   });
 };

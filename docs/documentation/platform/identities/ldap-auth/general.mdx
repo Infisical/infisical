@@ -1,0 +1,87 @@
+---
+title: General
+description: "Learn how to authenticate with Infisical using LDAP."
+---
+
+**LDAP Auth** is an LDAP based authentication method that allows you to authenticate with Infisical using a machine identity configured with an [LDAP](https://en.wikipedia.org/wiki/Lightweight_Directory_Access_Protocol) directory.
+
+## Guide
+<Steps>
+  <Step title="Creating an identity">
+    To create an identity, head to your Organization Settings > Access Control > Identities and press **Create identity**.
+
+    ![Create identity](/images/platform/identities/ldap/identities-org-create-identity.png)
+
+    When creating an identity, you specify an organization level role for it to assume; you can configure roles in Organization Settings > Access Control > Organization Roles.
+
+    ![Create identity modal](/images/platform/identities/ldap/identities-org-create-identity-modal.png)
+
+    Now input a few details for your new identity. Here's some guidance for each field:
+
+    - Name (required): A friendly name for the identity.
+    - Role (required): A role from the Organization Roles tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
+
+    Once you've created an identity, you'll be redirected to a page where you can manage the identity.
+  </Step>
+
+  <Step title="Configuring LDAP auth for your identity">
+    To configure LDAP auth for your identity, press the **Add Auth Method** button on the identity's page.
+
+    ![Add auth method](/images/platform/identities/ldap/identities-org-add-auth-method.png)
+    
+    Now select **LDAP Auth** from the list of available auth methods for the identity.
+
+    ![Select LDAP auth](/images/platform/identities/ldap/identities-org-add-auth-method-modal.png)
+    
+    
+    After selecting **LDAP Auth**, you'll see the form you need to fill out to configure LDAP auth for your identity. The following fields are available:
+
+    - `URL`: The LDAP server to connect to such as `ldap://ldap.your-org.com`, `ldaps://ldap.myorg.com:636` _(for connection over SSL/TLS)_, etc.
+    - `Bind DN`: The DN to bind to the LDAP server with.
+    - `Bind Pass`: The password to bind to the LDAP server with.
+    - `Search Base / DN`: Base DN under which to perform user search such as `ou=Users,dc=acme,dc=com`.
+    - `User Search Filter`: Template used to construct the LDAP user search filter such as `(uid={{username}})`; use literal `{{username}}` to have the given username used in the search. The default is `(uid={{username}})` which is compatible with several common directory schemas.
+    - `Required Attributes`: A key/value pair of attributes that must be present in the LDAP user entry for them to be authenticated. As an example, if you set key `uid` to value `user1,user2,user3`, then only users with `uid` of `user1`, `user2`, or `user3` will be able to login with this identity. Each value is a comma separated list of attributes.
+    - `CA Certificate`: The CA certificate to use when verifying the LDAP server certificate. This field is optional but recommended.
+    - `Access Token TTL` _(default is 2592000 equivalent to 30 days)_: The lifetime for an access token in seconds. This value will be referenced at renewal time.
+    - `Access Token Max TTL` _(default is 2592000 equivalent to 30 days)_: The maximum lifetime for an access token in seconds. This value will be referenced at renewal time.
+    - `Access Token Max Number of Uses` _(default is 0)_: The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses.
+    - `Access Token Trusted IPs`: The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the 0.0.0.0/0, allowing usage from any network address.
+
+    Once you've filled out the form, press **Add** to save your changes.
+
+    ![Configure LDAP auth](/images/platform/identities/ldap/identities-org-configure-ldap.png)
+
+    <Step title="Authenticating with the identity">
+      After configuring LDAP auth for your identity, you can authenticate with the identity and obtain an access token using your LDAP credentials.
+
+      ```bash
+        curl --request POST \
+          --url https://app.infisical.com/api/v1/auth/ldap-auth/login \
+          --header 'Content-Type: application/json' \
+          --data '{
+          "identityId": "<string>",
+          "username": "<string>",
+          "password": "<string>"
+        }'
+      ```
+
+      <Note>
+        For EU Cloud and Self-Hosted users, make sure to replace `https://app.infisical.com` with `https://eu.infisical.com` or your self-hosted instance's URL in the request URL.
+      </Note>
+
+      If successful, you'll receive an access token in the response body.
+
+      ```json
+      {
+        "accessToken": "your-access-token",
+        "expiresIn": 2592000,
+        "accessTokenMaxTTL": 2592000,
+        "tokenType": "Bearer"
+      }
+      ```
+
+      You can read more about the login API endpoint [here](/api-reference/endpoints/ldap-auth/login).
+    </Step>
+  </Step>
+</Steps>
