@@ -98,6 +98,9 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/login",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         organizationSlug: z.string().trim()

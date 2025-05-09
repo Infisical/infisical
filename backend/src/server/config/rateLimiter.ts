@@ -104,6 +104,14 @@ export const publicSshCaLimit: RateLimitOptions = {
 export const invalidateCacheLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",
-  max: 1,
+  max: 2,
+  keyGenerator: (req) => req.realIp
+};
+
+// Makes spamming "request access" harder, preventing email DDoS
+export const requestAccessLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 10,
   keyGenerator: (req) => req.realIp
 };
