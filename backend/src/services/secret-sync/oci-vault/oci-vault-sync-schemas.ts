@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { SecretSyncs } from "@app/lib/api-docs";
@@ -15,8 +16,8 @@ const OCIVaultSyncDestinationConfigSchema = z.object({
     .string()
     .trim()
     .min(1, "Compartment OCID required")
-    .regex(
-      /^ocid1\.(tenancy|compartment)\.oc1\..+$/,
+    .refine(
+      (val) => new RE2("^ocid1\\.(tenancy|compartment)\\.oc1\\..+$").test(val),
       "Invalid Compartment OCID format. Must start with ocid1.tenancy.oc1. or ocid1.compartment.oc1."
     )
     .describe(SecretSyncs.DESTINATION_CONFIG.OCI_VAULT.compartmentOcid),
@@ -24,13 +25,19 @@ const OCIVaultSyncDestinationConfigSchema = z.object({
     .string()
     .trim()
     .min(1, "Vault OCID required")
-    .regex(/^ocid1\.vault\.oc1\..+$/, "Invalid Vault OCID format. Must start with ocid1.vault.oc1.")
+    .refine(
+      (val) => new RE2("^ocid1\\.vault\\.oc1\\..+$").test(val),
+      "Invalid Vault OCID format. Must start with ocid1.vault.oc1."
+    )
     .describe(SecretSyncs.DESTINATION_CONFIG.OCI_VAULT.vaultOcid),
   keyOcid: z
     .string()
     .trim()
     .min(1, "Key OCID required")
-    .regex(/^ocid1\.key\.oc1\..+$/, "Invalid Key OCID format. Must start with ocid1.key.oc1.")
+    .refine(
+      (val) => new RE2("^ocid1\\.key\\.oc1\\..+$").test(val),
+      "Invalid Key OCID format. Must start with ocid1.key.oc1."
+    )
     .describe(SecretSyncs.DESTINATION_CONFIG.OCI_VAULT.keyOcid)
 });
 
