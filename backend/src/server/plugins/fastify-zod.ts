@@ -28,6 +28,7 @@ interface Schema extends FastifySchema {
   hide?: boolean;
 }
 
+// Credit: https://github.com/StefanTerdell/zod-to-json-schema
 const jsonDescription: PostProcessCallback = (jsonSchema, def) => {
   if (def.description) {
     try {
