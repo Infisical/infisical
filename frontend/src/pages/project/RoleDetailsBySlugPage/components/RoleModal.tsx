@@ -17,7 +17,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 const schema = z
   .object({
-    name: z.string(),
+    name: z.string().min(1, "Name required"),
     description: z.string(),
     slug: slugSchema({ min: 1 })
   })

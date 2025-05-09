@@ -5,15 +5,15 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent, Spinner } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
-import { useCreateProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
-import { TProjectRole } from "@app/hooks/api/roles/types";
+import { useOrganization } from "@app/context";
+import { useCreateOrgRole, useGetOrgRole } from "@app/hooks/api";
+import { TOrgRole } from "@app/hooks/api/roles/types";
 import { slugSchema } from "@app/lib/schemas";
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  roleSlug?: string;
+  roleId?: string;
 };
 
 const schema = z
@@ -27,7 +27,7 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 type ContentProps = {
-  role: TProjectRole;
+  role: TOrgRole;
   onClose: () => void;
 };
 
@@ -43,15 +43,13 @@ const Content = ({ role, onClose }: ContentProps) => {
     resolver: zodResolver(schema)
   });
 
-  const { currentWorkspace } = useWorkspace();
-
-  const createRole = useCreateProjectRole();
+  const createRole = useCreateOrgRole();
   const navigate = useNavigate();
 
   const handleDuplicateRole = async (form: FormData) => {
     try {
       const newRole = await createRole.mutateAsync({
-        projectId: role.projectId,
+        orgId: role.orgId,
         permissions: role.permissions,
         ...form
       });
@@ -62,10 +60,9 @@ const Content = ({ role, onClose }: ContentProps) => {
       });
 
       navigate({
-        to: `/${currentWorkspace.type}/$projectId/roles/$roleSlug` as const,
+        to: "/organization/roles/$roleId",
         params: {
-          roleSlug: newRole.slug,
-          projectId: currentWorkspace.id
+          roleId: newRole.id
         }
       });
 
@@ -128,12 +125,12 @@ const Content = ({ role, onClose }: ContentProps) => {
   );
 };
 
-export const DuplicateRoleModal = ({ isOpen, onOpenChange, roleSlug }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+export const DuplicateOrgRoleModal = ({ isOpen, onOpenChange, roleId }: Props) => {
+  const { currentOrg } = useOrganization();
 
-  const { data: role, isPending } = useGetProjectRoleBySlug(currentWorkspace.id, roleSlug ?? "");
+  const { data: role, isPending } = useGetOrgRole(currentOrg.id, roleId ?? "");
 
-  if (!roleSlug) return null;
+  if (!roleId) return null;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -151,7 +148,7 @@ export const DuplicateRoleModal = ({ isOpen, onOpenChange, roleSlug }: Props) =>
           <Content role={role!} onClose={() => onOpenChange(false)} />
         ) : (
           <p className="w-full text-center text-red">
-            Error: could not find role with slug &#34;{roleSlug}&#34;
+            Error: could not find role with slug &#34;{roleId}&#34;
           </p>
         )}
       </ModalContent>

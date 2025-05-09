@@ -25,7 +25,7 @@ import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@a
 import { usePopUp } from "@app/hooks";
 import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
 import { ProjectMembershipRole, TProjectRole } from "@app/hooks/api/roles/types";
-import { DuplicateRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateRoleModal";
+import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
 import { RoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/RoleModal";
 
 export const ProjectRoleList = () => {
@@ -202,7 +202,7 @@ export const ProjectRoleList = () => {
         onClose={() => handlePopUpClose("deleteRole")}
         onDeleteApproved={handleRoleDelete}
       />
-      <DuplicateRoleModal
+      <DuplicateProjectRoleModal
         isOpen={popUp.duplicateRole.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("duplicateRole", isOpen)}
         roleSlug={(popUp?.duplicateRole?.data as TProjectRole)?.slug}
