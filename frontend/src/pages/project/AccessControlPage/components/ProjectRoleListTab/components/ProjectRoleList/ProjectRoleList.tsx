@@ -25,13 +25,15 @@ import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@a
 import { usePopUp } from "@app/hooks";
 import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
 import { ProjectMembershipRole, TProjectRole } from "@app/hooks/api/roles/types";
+import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
 import { RoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/RoleModal";
 
 export const ProjectRoleList = () => {
   const navigate = useNavigate();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "role",
-    "deleteRole"
+    "deleteRole",
+    "duplicateRole"
   ] as const);
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
@@ -139,6 +141,25 @@ export const ProjectRoleList = () => {
                             </DropdownMenuItem>
                           )}
                         </ProjectPermissionCan>
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Create}
+                          a={ProjectPermissionSub.Role}
+                        >
+                          {(isAllowed) => (
+                            <DropdownMenuItem
+                              className={twMerge(
+                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                              )}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePopUpOpen("duplicateRole", role);
+                              }}
+                              disabled={!isAllowed}
+                            >
+                              Duplicate Role
+                            </DropdownMenuItem>
+                          )}
+                        </ProjectPermissionCan>
                         {!isNonMutatable && (
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Delete}
@@ -180,6 +201,11 @@ export const ProjectRoleList = () => {
         deleteKey={(popUp?.deleteRole?.data as TProjectRole)?.slug || ""}
         onClose={() => handlePopUpClose("deleteRole")}
         onDeleteApproved={handleRoleDelete}
+      />
+      <DuplicateProjectRoleModal
+        isOpen={popUp.duplicateRole.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("duplicateRole", isOpen)}
+        roleSlug={(popUp?.duplicateRole?.data as TProjectRole)?.slug}
       />
     </div>
   );

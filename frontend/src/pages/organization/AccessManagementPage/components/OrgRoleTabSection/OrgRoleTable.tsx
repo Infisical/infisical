@@ -34,6 +34,7 @@ import { isCustomOrgRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useDeleteOrgRole, useGetOrgRoles, useUpdateOrg } from "@app/hooks/api";
 import { TOrgRole } from "@app/hooks/api/roles/types";
+import { DuplicateOrgRoleModal } from "@app/pages/organization/RoleByIDPage/components/DuplicateOrgRoleModal";
 import { RoleModal } from "@app/pages/organization/RoleByIDPage/components/RoleModal";
 
 export const OrgRoleTable = () => {
@@ -44,6 +45,7 @@ export const OrgRoleTable = () => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "role",
     "deleteRole",
+    "duplicateRole",
     "upgradePlan"
   ] as const);
 
@@ -192,6 +194,25 @@ export const OrgRoleTable = () => {
                             </DropdownMenuItem>
                           )}
                         </OrgPermissionCan>
+                        <OrgPermissionCan
+                          I={OrgPermissionActions.Create}
+                          a={OrgPermissionSubjects.Role}
+                        >
+                          {(isAllowed) => (
+                            <DropdownMenuItem
+                              className={twMerge(
+                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                              )}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePopUpOpen("duplicateRole", role);
+                              }}
+                              disabled={!isAllowed}
+                            >
+                              Duplicate Role
+                            </DropdownMenuItem>
+                          )}
+                        </OrgPermissionCan>
                         {!isDefaultOrgRole && (
                           <OrgPermissionCan
                             I={OrgPermissionActions.Edit}
@@ -271,6 +292,11 @@ export const OrgRoleTable = () => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={(popUp.upgradePlan?.data as { description: string })?.description}
+      />
+      <DuplicateOrgRoleModal
+        isOpen={popUp.duplicateRole.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("duplicateRole", isOpen)}
+        roleId={(popUp?.duplicateRole?.data as TOrgRole)?.id}
       />
     </div>
   );
