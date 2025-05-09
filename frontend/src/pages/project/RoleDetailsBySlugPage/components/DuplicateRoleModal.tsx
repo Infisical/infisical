@@ -150,7 +150,9 @@ export const DuplicateRoleModal = ({ isOpen, onOpenChange, roleSlug }: Props) =>
         ) : role ? (
           <Content role={role!} onClose={() => onOpenChange(false)} />
         ) : (
-          <span>Error: could not find role with slug &#34;{roleSlug}&#34;</span>
+          <p className="w-full text-center text-red">
+            Error: could not find role with slug &#34;{roleSlug}&#34;
+          </p>
         )}
       </ModalContent>
     </Modal>
