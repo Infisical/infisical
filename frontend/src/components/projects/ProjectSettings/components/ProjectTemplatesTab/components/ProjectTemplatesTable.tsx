@@ -25,6 +25,7 @@ import {
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { useGetProjectTypeFromRoute, usePopUp } from "@app/hooks";
 import { TProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { DeleteProjectTemplateModal } from "./DeleteProjectTemplateModal";
 
@@ -40,6 +41,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
   const { isPending, data: projectTemplates = [] } = useListProjectTemplates(projectType, {
     enabled: subscription?.projectTemplates && Boolean(projectType)
   });
+
   const [search, setSearch] = useState("");
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["deleteTemplate"] as const);
@@ -52,7 +54,9 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
     [search, projectTemplates]
   );
 
-  const isSecretManagerTemplates = projectType === "secret-manager";
+  const isSecretManagerTemplates = projectType === ProjectType.SecretManager;
+
+  const colSpan = isSecretManagerTemplates ? 4 : 3;
 
   return (
     <div>
@@ -73,10 +77,10 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
             </Tr>
           </THead>
           <TBody>
-            {isPending && (
+            {subscription?.projectTemplates && isPending && (
               <TableSkeleton
                 innerKey="project-templates-table"
-                columns={4}
+                columns={colSpan}
                 key="project-templates"
               />
             )}
@@ -170,9 +174,10 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                 </Tr>
               );
             })}
-            {!isPending && filteredTemplates?.length === 0 && (
+            {(!subscription?.projectTemplates ||
+              (!isPending && filteredTemplates?.length === 0)) && (
               <Tr>
-                <Td colSpan={5}>
+                <Td colSpan={colSpan}>
                   <EmptyState
                     title={
                       search.trim()
