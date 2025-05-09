@@ -66,6 +66,8 @@ import { TIdentityAzureAuthServiceFactory } from "@app/services/identity-azure-a
 import { TIdentityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
 import { TIdentityJwtAuthServiceFactory } from "@app/services/identity-jwt-auth/identity-jwt-auth-service";
 import { TIdentityKubernetesAuthServiceFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-service";
+import { TIdentityLdapAuthServiceFactory } from "@app/services/identity-ldap-auth/identity-ldap-auth-service";
+import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { TIdentityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
 import { TIdentityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
@@ -146,6 +148,13 @@ declare module "fastify" {
       providerAuthToken: string;
       externalProviderAccessToken?: string;
     };
+    passportMachineIdentity: {
+      identityId: string;
+      user: {
+        uid: string;
+        mail?: string;
+      };
+    };
     kmipUser: {
       projectId: string;
       clientId: string;
@@ -153,7 +162,9 @@ declare module "fastify" {
     };
     auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
-    ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>>;
+    ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>> & {
+      allowedFields?: TAllowedFields[];
+    };
   }
 
   interface FastifyInstance {
@@ -199,6 +210,7 @@ declare module "fastify" {
       identityAzureAuth: TIdentityAzureAuthServiceFactory;
       identityOidcAuth: TIdentityOidcAuthServiceFactory;
       identityJwtAuth: TIdentityJwtAuthServiceFactory;
+      identityLdapAuth: TIdentityLdapAuthServiceFactory;
       accessApprovalPolicy: TAccessApprovalPolicyServiceFactory;
       accessApprovalRequest: TAccessApprovalRequestServiceFactory;
       secretApprovalPolicy: TSecretApprovalPolicyServiceFactory;

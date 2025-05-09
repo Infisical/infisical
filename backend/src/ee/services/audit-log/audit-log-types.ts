@@ -34,6 +34,7 @@ import { WorkflowIntegration } from "@app/services/workflow-integration/workflow
 
 import { KmipPermission } from "../kmip/kmip-enum";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
+import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 
 export type TListProjectAuditLogDTO = {
   filter: {
@@ -119,44 +120,60 @@ export enum EventType {
   CREATE_TOKEN_IDENTITY_TOKEN_AUTH = "create-token-identity-token-auth",
   UPDATE_TOKEN_IDENTITY_TOKEN_AUTH = "update-token-identity-token-auth",
   GET_TOKENS_IDENTITY_TOKEN_AUTH = "get-tokens-identity-token-auth",
+
   ADD_IDENTITY_TOKEN_AUTH = "add-identity-token-auth",
   UPDATE_IDENTITY_TOKEN_AUTH = "update-identity-token-auth",
   GET_IDENTITY_TOKEN_AUTH = "get-identity-token-auth",
   REVOKE_IDENTITY_TOKEN_AUTH = "revoke-identity-token-auth",
+
   LOGIN_IDENTITY_KUBERNETES_AUTH = "login-identity-kubernetes-auth",
   ADD_IDENTITY_KUBERNETES_AUTH = "add-identity-kubernetes-auth",
   UPDATE_IDENTITY_KUBENETES_AUTH = "update-identity-kubernetes-auth",
   GET_IDENTITY_KUBERNETES_AUTH = "get-identity-kubernetes-auth",
   REVOKE_IDENTITY_KUBERNETES_AUTH = "revoke-identity-kubernetes-auth",
+
   LOGIN_IDENTITY_OIDC_AUTH = "login-identity-oidc-auth",
   ADD_IDENTITY_OIDC_AUTH = "add-identity-oidc-auth",
   UPDATE_IDENTITY_OIDC_AUTH = "update-identity-oidc-auth",
   GET_IDENTITY_OIDC_AUTH = "get-identity-oidc-auth",
   REVOKE_IDENTITY_OIDC_AUTH = "revoke-identity-oidc-auth",
+
   LOGIN_IDENTITY_JWT_AUTH = "login-identity-jwt-auth",
   ADD_IDENTITY_JWT_AUTH = "add-identity-jwt-auth",
   UPDATE_IDENTITY_JWT_AUTH = "update-identity-jwt-auth",
   GET_IDENTITY_JWT_AUTH = "get-identity-jwt-auth",
   REVOKE_IDENTITY_JWT_AUTH = "revoke-identity-jwt-auth",
+
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
+
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID = "get-identity-universal-auth-client-secret-by-id",
+
   LOGIN_IDENTITY_GCP_AUTH = "login-identity-gcp-auth",
   ADD_IDENTITY_GCP_AUTH = "add-identity-gcp-auth",
   UPDATE_IDENTITY_GCP_AUTH = "update-identity-gcp-auth",
   REVOKE_IDENTITY_GCP_AUTH = "revoke-identity-gcp-auth",
   GET_IDENTITY_GCP_AUTH = "get-identity-gcp-auth",
+
   LOGIN_IDENTITY_AWS_AUTH = "login-identity-aws-auth",
   ADD_IDENTITY_AWS_AUTH = "add-identity-aws-auth",
   UPDATE_IDENTITY_AWS_AUTH = "update-identity-aws-auth",
   REVOKE_IDENTITY_AWS_AUTH = "revoke-identity-aws-auth",
   GET_IDENTITY_AWS_AUTH = "get-identity-aws-auth",
+
   LOGIN_IDENTITY_AZURE_AUTH = "login-identity-azure-auth",
   ADD_IDENTITY_AZURE_AUTH = "add-identity-azure-auth",
   UPDATE_IDENTITY_AZURE_AUTH = "update-identity-azure-auth",
   GET_IDENTITY_AZURE_AUTH = "get-identity-azure-auth",
   REVOKE_IDENTITY_AZURE_AUTH = "revoke-identity-azure-auth",
+
+  LOGIN_IDENTITY_LDAP_AUTH = "login-identity-ldap-auth",
+  ADD_IDENTITY_LDAP_AUTH = "add-identity-ldap-auth",
+  UPDATE_IDENTITY_LDAP_AUTH = "update-identity-ldap-auth",
+  GET_IDENTITY_LDAP_AUTH = "get-identity-ldap-auth",
+  REVOKE_IDENTITY_LDAP_AUTH = "revoke-identity-ldap-auth",
+
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
@@ -1029,6 +1046,55 @@ interface UpdateIdentityAzureAuthEvent {
 
 interface GetIdentityAzureAuthEvent {
   type: EventType.GET_IDENTITY_AZURE_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface LoginIdentityLdapAuthEvent {
+  type: EventType.LOGIN_IDENTITY_LDAP_AUTH;
+  metadata: {
+    identityId: string;
+    ldapUsername: string;
+    ldapEmail?: string;
+  };
+}
+
+interface AddIdentityLdapAuthEvent {
+  type: EventType.ADD_IDENTITY_LDAP_AUTH;
+  metadata: {
+    identityId: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+    allowedFields?: TAllowedFields[];
+    url: string;
+  };
+}
+
+interface UpdateIdentityLdapAuthEvent {
+  type: EventType.UPDATE_IDENTITY_LDAP_AUTH;
+  metadata: {
+    identityId: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+    allowedFields?: TAllowedFields[];
+    url?: string;
+  };
+}
+
+interface GetIdentityLdapAuthEvent {
+  type: EventType.GET_IDENTITY_LDAP_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface RevokeIdentityLdapAuthEvent {
+  type: EventType.REVOKE_IDENTITY_LDAP_AUTH;
   metadata: {
     identityId: string;
   };
@@ -2785,6 +2851,11 @@ export type Event =
   | UpdateIdentityJwtAuthEvent
   | GetIdentityJwtAuthEvent
   | DeleteIdentityJwtAuthEvent
+  | LoginIdentityLdapAuthEvent
+  | AddIdentityLdapAuthEvent
+  | UpdateIdentityLdapAuthEvent
+  | GetIdentityLdapAuthEvent
+  | RevokeIdentityLdapAuthEvent
   | CreateEnvironmentEvent
   | GetEnvironmentEvent
   | UpdateEnvironmentEvent

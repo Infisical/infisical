@@ -6,6 +6,7 @@ export enum IdentityAuthMethod {
   AWS_AUTH = "aws-auth",
   AZURE_AUTH = "azure-auth",
   OIDC_AUTH = "oidc-auth",
+  LDAP_AUTH = "ldap-auth",
   JWT_AUTH = "jwt-auth"
 }
 
