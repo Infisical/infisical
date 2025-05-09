@@ -11,8 +11,8 @@ import {
   useDeleteIdentityGcpAuth,
   useDeleteIdentityJwtAuth,
   useDeleteIdentityKubernetesAuth,
-  useDeleteIdentityOciAuth,
   useDeleteIdentityLdapAuth,
+  useDeleteIdentityOciAuth,
   useDeleteIdentityOidcAuth,
   useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth
@@ -24,8 +24,8 @@ import { ViewIdentityAzureAuthContent } from "./ViewIdentityAzureAuthContent";
 import { ViewIdentityGcpAuthContent } from "./ViewIdentityGcpAuthContent";
 import { ViewIdentityJwtAuthContent } from "./ViewIdentityJwtAuthContent";
 import { ViewIdentityKubernetesAuthContent } from "./ViewIdentityKubernetesAuthContent";
-import { ViewIdentityOciAuthContent } from "./ViewIdentityOciAuthContent";
 import { ViewIdentityLdapAuthContent } from "./ViewIdentityLdapAuthContent";
+import { ViewIdentityOciAuthContent } from "./ViewIdentityOciAuthContent";
 import { ViewIdentityOidcAuthContent } from "./ViewIdentityOidcAuthContent";
 import { ViewIdentityTokenAuthContent } from "./ViewIdentityTokenAuthContent";
 import { ViewIdentityUniversalAuthContent } from "./ViewIdentityUniversalAuthContent";

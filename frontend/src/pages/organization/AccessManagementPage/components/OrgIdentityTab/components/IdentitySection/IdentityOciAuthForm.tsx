@@ -203,7 +203,7 @@ export const IdentityOciAuthForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="user-1, user-2, ..." />
+                <Input {...field} placeholder="user1, user2, ..." />
               </FormControl>
             )}
           />
