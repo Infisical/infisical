@@ -1,9 +1,15 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TFolderCommits } from "@app/db/schemas";
+import {
+  TableName,
+  TFolderCommitChanges,
+  TFolderCommits,
+  TSecretFolderVersions,
+  TSecretVersionsV2
+} from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TFolderCommitDALFactory = ReturnType<typeof folderCommitDALFactory>;
 
@@ -56,10 +62,80 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findCommitsToRecreate = async (
+    folderId: string,
+    targetCommitNumber: number,
+    checkpointCommitNumber: number,
+    tx?: Knex
+  ): Promise<
+    (TFolderCommits & {
+      changes: (TFolderCommitChanges & { referencedSecretId?: string; referencedFolderId?: string })[];
+    })[]
+  > => {
+    try {
+      // First get all the commits in the range
+      const commits = await (tx || db.replicaNode())(TableName.FolderCommit)
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter({ folderId }, TableName.FolderCommit))
+        .andWhere(`${TableName.FolderCommit}.commitId`, ">", checkpointCommitNumber)
+        .andWhere(`${TableName.FolderCommit}.commitId`, "<=", targetCommitNumber)
+        .select(selectAllTableCols(TableName.FolderCommit))
+        .orderBy(`${TableName.FolderCommit}.commitId`, "asc");
+
+      // If no commits found, return empty array
+      if (!commits.length) {
+        return [];
+      }
+
+      // Get all the commit IDs
+      const commitIds = commits.map((commit) => commit.id);
+
+      // Get all changes for these commits in a single query
+      const allChanges = await (tx || db.replicaNode())(TableName.FolderCommitChanges)
+        .whereIn("folderCommitId", commitIds)
+        .leftJoin<TSecretVersionsV2>(
+          TableName.SecretVersionV2,
+          `${TableName.FolderCommitChanges}.secretVersionId`,
+          `${TableName.SecretVersionV2}.id`
+        )
+        .leftJoin<TSecretFolderVersions>(
+          TableName.SecretFolderVersion,
+          `${TableName.FolderCommitChanges}.folderVersionId`,
+          `${TableName.SecretFolderVersion}.id`
+        )
+        .select(selectAllTableCols(TableName.FolderCommitChanges))
+        .select(
+          db.ref("secretId").withSchema(TableName.SecretVersionV2).as("referencedSecretId"),
+          db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("referencedFolderId")
+        );
+
+      // Organize changes by commit ID
+      const changesByCommitId = allChanges.reduce(
+        (acc, change) => {
+          if (!acc[change.folderCommitId]) {
+            acc[change.folderCommitId] = [];
+          }
+          acc[change.folderCommitId].push(change);
+          return acc;
+        },
+        {} as Record<string, TFolderCommitChanges[]>
+      );
+
+      // Attach changes to each commit
+      return commits.map((commit) => ({
+        ...commit,
+        changes: changesByCommitId[commit.id] || []
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindCommitsToRecreate" });
+    }
+  };
+
   return {
     ...restOfOrm,
     findByFolderId,
     findLatestCommit,
-    getNumberOfCommitsSince
+    getNumberOfCommitsSince,
+    findCommitsToRecreate
   };
 };

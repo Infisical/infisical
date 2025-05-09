@@ -1,24 +1,52 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TFolderCheckpointResources, TFolderCheckpoints } from "@app/db/schemas";
+import {
+  TableName,
+  TFolderCheckpointResources,
+  TFolderCheckpoints,
+  TSecretFolderVersions,
+  TSecretVersionsV2
+} from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TFolderCheckpointResourcesDALFactory = ReturnType<typeof folderCheckpointResourcesDALFactory>;
 
-type ResourceWithCheckpointInfo = TFolderCheckpointResources & {
+export type ResourceWithCheckpointInfo = TFolderCheckpointResources & {
   folderCommitId: string;
 };
 
 export const folderCheckpointResourcesDALFactory = (db: TDbClient) => {
   const folderCheckpointResourcesOrm = ormify(db, TableName.FolderCheckpointResources);
 
-  const findByCheckpointId = async (folderCheckpointId: string, tx?: Knex): Promise<TFolderCheckpointResources[]> => {
+  const findByCheckpointId = async (
+    folderCheckpointId: string,
+    tx?: Knex
+  ): Promise<
+    (TFolderCheckpointResources & {
+      referencedSecretId?: string;
+      referencedFolderId?: string;
+    })[]
+  > => {
     try {
       const docs = await (tx || db.replicaNode())<TFolderCheckpointResources>(TableName.FolderCheckpointResources)
         .where({ folderCheckpointId })
-        .select(selectAllTableCols(TableName.FolderCheckpointResources));
+        .leftJoin<TSecretVersionsV2>(
+          TableName.SecretVersionV2,
+          `${TableName.FolderCheckpointResources}.secretVersionId`,
+          `${TableName.SecretVersionV2}.id`
+        )
+        .leftJoin<TSecretFolderVersions>(
+          TableName.SecretFolderVersion,
+          `${TableName.FolderCheckpointResources}.folderVersionId`,
+          `${TableName.SecretFolderVersion}.id`
+        )
+        .select(selectAllTableCols(TableName.FolderCheckpointResources))
+        .select(
+          db.ref("secretId").withSchema(TableName.SecretVersionV2).as("referencedSecretId"),
+          db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("referencedFolderId")
+        );
       return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByCheckpointId" });

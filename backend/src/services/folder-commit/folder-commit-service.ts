@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import { Knex } from "knex";
 
 import { TSecretFolders } from "@app/db/schemas";
@@ -20,17 +21,32 @@ import { TFolderCommitDALFactory } from "./folder-commit-dal";
 type TFolderCommitServiceFactoryDep = {
   folderCommitDAL: Pick<
     TFolderCommitDALFactory,
-    "create" | "findById" | "findByFolderId" | "findLatestCommit" | "transaction" | "getNumberOfCommitsSince"
+    | "create"
+    | "findById"
+    | "findByFolderId"
+    | "findLatestCommit"
+    | "transaction"
+    | "getNumberOfCommitsSince"
+    | "findCommitsToRecreate"
   >;
   folderCommitChangesDAL: Pick<TFolderCommitChangesDALFactory, "create" | "findByCommitId" | "insertMany">;
-  folderCheckpointDAL: Pick<TFolderCheckpointDALFactory, "create" | "findByFolderId" | "findLatestByFolderId">;
-  folderCheckpointResourcesDAL: Pick<TFolderCheckpointResourcesDALFactory, "insertMany">;
+  folderCheckpointDAL: Pick<
+    TFolderCheckpointDALFactory,
+    "create" | "findByFolderId" | "findLatestByFolderId" | "findNearestCheckpoint"
+  >;
+  folderCheckpointResourcesDAL: Pick<TFolderCheckpointResourcesDALFactory, "insertMany" | "findByCheckpointId">;
   folderTreeCheckpointDAL: Pick<TFolderTreeCheckpointDALFactory, "findByProjectId" | "findLatestByProjectId">;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByParentId" | "findByProjectId">;
-  folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestFolderVersions">;
-  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "findLatestVersionByFolderId">;
+  folderVersionDAL: Pick<
+    TSecretFolderVersionDALFactory,
+    "findLatestFolderVersions" | "findById" | "deleteById" | "create" | "updateById"
+  >;
+  secretVersionV2BridgeDAL: Pick<
+    TSecretVersionV2DALFactory,
+    "findLatestVersionByFolderId" | "findById" | "deleteById" | "create" | "updateById"
+  >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
@@ -100,15 +116,20 @@ export const folderCommitServiceFactory = ({
     tx?: Knex;
   }) => {
     let latestCommitId = folderCommitId;
+    const latestCheckpoint = await folderCheckpointDAL.findLatestByFolderId(folderId, tx);
     if (!latestCommitId) {
-      latestCommitId = (await folderCheckpointDAL.findLatestByFolderId(folderId, tx))?.folderCommitId;
+      latestCommitId = (await folderCommitDAL.findLatestCommit(folderId, tx))?.id;
     }
     if (!latestCommitId) {
       throw new BadRequestError({ message: "Latest commit ID not found" });
       return;
     }
-    if (!force) {
-      const commitsSinceLastCheckpoint = await folderCommitDAL.getNumberOfCommitsSince(folderId, latestCommitId, tx);
+    if (!force && latestCheckpoint) {
+      const commitsSinceLastCheckpoint = await folderCommitDAL.getNumberOfCommitsSince(
+        folderId,
+        latestCheckpoint.folderCommitId,
+        tx
+      );
       if (commitsSinceLastCheckpoint < Number(appCfg.CHECKPOINT_WINDOW)) {
         return;
       }
@@ -126,6 +147,175 @@ export const folderCommitServiceFactory = ({
         checkpointResources.map((resource) => ({ folderCheckpointId: newCheckpoint.id, ...resource })),
         tx
       );
+    }
+  };
+
+  const reconstructFolderState = async (
+    folderCommitId: string,
+    tx?: Knex
+  ): Promise<{ type: string; id: string; versionId: string }[]> => {
+    const targetCommit = await folderCommitDAL.findById(folderCommitId, tx);
+    if (!targetCommit) {
+      throw new NotFoundError({ message: `Commit with ID ${folderCommitId} not found` });
+    }
+
+    const nearestCheckpoint = await folderCheckpointDAL.findNearestCheckpoint(folderCommitId, tx);
+    if (!nearestCheckpoint) {
+      throw new NotFoundError({ message: `Nearest checkpoint not found for commit ${folderCommitId}` });
+    }
+
+    const checkpointResources = await folderCheckpointResourcesDAL.findByCheckpointId(nearestCheckpoint.id, tx);
+
+    const folderState: Record<string, { type: string; id: string; versionId: string }> = {};
+
+    // Add all checkpoint resources to initial state
+    checkpointResources.forEach((resource) => {
+      if (resource.secretVersionId && resource.referencedSecretId) {
+        folderState[`secret-${resource.referencedSecretId}`] = {
+          type: "secret",
+          id: resource.referencedSecretId,
+          versionId: resource.secretVersionId
+        };
+      } else if (resource.folderVersionId && resource.referencedFolderId) {
+        folderState[`folder-${resource.referencedFolderId}`] = {
+          type: "folder",
+          id: resource.referencedFolderId,
+          versionId: resource.folderVersionId
+        };
+      }
+    });
+
+    const commitsToRecreate = await folderCommitDAL.findCommitsToRecreate(
+      targetCommit.folderId,
+      targetCommit.commitId,
+      nearestCheckpoint.commitId,
+      tx
+    );
+
+    // Process commits to recreate final state
+    for (const commit of commitsToRecreate) {
+      // eslint-disable-next-line no-continue
+      if (!commit.changes) continue;
+
+      for (const change of commit.changes) {
+        if (change.secretVersionId && change.referencedSecretId) {
+          const key = `secret-${change.referencedSecretId}`;
+
+          if (change.changeType.toLowerCase() === "add") {
+            folderState[key] = {
+              type: "secret",
+              id: change.referencedSecretId,
+              versionId: change.secretVersionId
+            };
+          } else if (change.changeType.toLowerCase() === "delete") {
+            delete folderState[key];
+          }
+        } else if (change.folderVersionId && change.referencedFolderId) {
+          const key = `folder-${change.referencedFolderId}`;
+
+          if (change.changeType.toLowerCase() === "add") {
+            folderState[key] = {
+              type: "folder",
+              id: change.referencedFolderId,
+              versionId: change.folderVersionId
+            };
+          } else if (change.changeType.toLowerCase() === "delete") {
+            delete folderState[key];
+          }
+        }
+      }
+    }
+    return Object.values(folderState);
+  };
+
+  const compareFolderStates = async (currentCommitId: string, targetCommitId: string, tx?: Knex) => {
+    // Reconstruct state for both commits
+    const currentState = await reconstructFolderState(currentCommitId, tx);
+    const targetState = await reconstructFolderState(targetCommitId, tx);
+
+    // Create lookup maps for easier comparison
+    const currentMap: Record<string, { type: string; id: string; versionId: string }> = {};
+    const targetMap: Record<string, { type: string; id: string; versionId: string }> = {};
+
+    // Build lookup map for current state
+    currentState.forEach((resource) => {
+      const key = `${resource.type}-${resource.id}`;
+      currentMap[key] = resource;
+    });
+
+    // Build lookup map for target state
+    targetState.forEach((resource) => {
+      const key = `${resource.type}-${resource.id}`;
+      targetMap[key] = resource;
+    });
+
+    // Track differences
+    const differences: {
+      type: string;
+      id: string;
+      versionId: string;
+      changeType: "create" | "update" | "delete";
+    }[] = [];
+
+    // Find deletes and updates (resources in current but not in target, or with different versions)
+    Object.keys(currentMap).forEach((key) => {
+      const currentResource = currentMap[key];
+      const targetResource = targetMap[key];
+
+      if (!targetResource) {
+        // Resource exists in current but not in target - it's a delete
+        differences.push({
+          type: currentResource.type,
+          id: currentResource.id,
+          versionId: currentResource.versionId,
+          changeType: "delete"
+        });
+      } else if (currentResource.versionId !== targetResource.versionId) {
+        // Resource exists in both but with different versions - it's an update
+        differences.push({
+          type: targetResource.type,
+          id: targetResource.id,
+          versionId: targetResource.versionId,
+          changeType: "update"
+        });
+      }
+      // If versions are the same, it's unchanged - exclude from result
+    });
+
+    // Find creates (resources in target but not in current)
+    Object.keys(targetMap).forEach((key) => {
+      if (!currentMap[key]) {
+        const targetResource = targetMap[key];
+        differences.push({
+          type: targetResource.type,
+          id: targetResource.id,
+          versionId: targetResource.versionId,
+          changeType: "create"
+        });
+      }
+    });
+
+    return differences;
+  };
+
+  // Add a change to an existing commit
+  const addCommitChange = async (data: TCommitChangeDTO, tx?: Knex) => {
+    try {
+      if (!data.secretVersionId && !data.folderVersionId) {
+        throw new BadRequestError({ message: "Either secretVersionId or folderVersionId must be provided" });
+      }
+
+      const commit = await folderCommitDAL.findById(data.folderCommitId, tx);
+      if (!commit) {
+        throw new NotFoundError({ message: `Commit with ID ${data.folderCommitId} not found` });
+      }
+
+      return await folderCommitChangesDAL.create(data, tx);
+    } catch (error) {
+      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+        throw error;
+      }
+      throw new DatabaseError({ error, name: "AddCommitChange" });
     }
   };
 
@@ -159,31 +349,10 @@ export const folderCommitServiceFactory = ({
         tx
       );
 
-      await createFolderCheckpoint({ folderId: data.folderId, folderCommitId: newCommit.id, tx });
+      await createFolderCheckpoint({ folderId: data.folderId, tx });
       return newCommit;
     } catch (error) {
       throw new DatabaseError({ error, name: "CreateCommit" });
-    }
-  };
-
-  // Add a change to an existing commit
-  const addCommitChange = async (data: TCommitChangeDTO, tx?: Knex) => {
-    try {
-      if (!data.secretVersionId && !data.folderVersionId) {
-        throw new BadRequestError({ message: "Either secretVersionId or folderVersionId must be provided" });
-      }
-
-      const commit = await folderCommitDAL.findById(data.folderCommitId, tx);
-      if (!commit) {
-        throw new NotFoundError({ message: `Commit with ID ${data.folderCommitId} not found` });
-      }
-
-      return await folderCommitChangesDAL.create(data, tx);
-    } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
-        throw error;
-      }
-      throw new DatabaseError({ error, name: "AddCommitChange" });
     }
   };
 
@@ -297,7 +466,8 @@ export const folderCommitServiceFactory = ({
     getLatestTreeCheckpoint,
     initializeFolder,
     initializeProject,
-    createFolderCheckpoint
+    createFolderCheckpoint,
+    compareFolderStates
   };
 };
 
