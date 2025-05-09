@@ -6,6 +6,7 @@ import {
   TDeleteOCIVaultVariable,
   TOCIVaultListVariables,
   TOCIVaultSyncWithCredentials,
+  TUnmarkOCIVaultVariableFromDeletion,
   TUpdateOCIVaultVariable
 } from "@app/services/secret-sync/oci-vault/oci-vault-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -102,6 +103,14 @@ const deleteOCIVaultVariable = async ({ provider, secretId }: TDeleteOCIVaultVar
   });
 };
 
+const unmarkOCIVaultVariableFromDeletion = async ({ provider, secretId }: TUnmarkOCIVaultVariableFromDeletion) => {
+  const vaultsClient = new vault.VaultsClient({ authenticationDetailsProvider: provider });
+
+  return vaultsClient.cancelSecretDeletion({
+    secretId
+  });
+};
+
 export const OCIVaultSyncFns = {
   syncSecrets: async (secretSync: TOCIVaultSyncWithCredentials, secretMap: TSecretMap) => {
     const {
@@ -130,6 +139,28 @@ export const OCIVaultSyncFns = {
           throw new SecretSyncError({
             error,
             secretKey: key
+          });
+        }
+      } else {
+        // If a secret exists but is pending deletion, cancel the deletion and update the secret
+        const secretPendingDeletion = Object.values(variables).find(
+          (s) => s.secretName === key && s.lifecycleState === vault.models.SecretSummary.LifecycleState.PendingDeletion
+        );
+
+        if (secretPendingDeletion) {
+          await unmarkOCIVaultVariableFromDeletion({
+            provider,
+            compartmentId: compartmentOcid,
+            vaultId: vaultOcid,
+            secretId: secretPendingDeletion.id
+          });
+
+          await updateOCIVaultVariable({
+            provider,
+            compartmentId: compartmentOcid,
+            vaultId: vaultOcid,
+            secretId: secretPendingDeletion.id,
+            value
           });
         }
       }

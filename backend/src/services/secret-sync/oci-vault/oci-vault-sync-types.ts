@@ -42,3 +42,7 @@ export type TUpdateOCIVaultVariable = TOCIVaultListVariables & {
 export type TDeleteOCIVaultVariable = TOCIVaultListVariables & {
   secretId: string;
 };
+
+export type TUnmarkOCIVaultVariableFromDeletion = TOCIVaultListVariables & {
+  secretId: string;
+};
