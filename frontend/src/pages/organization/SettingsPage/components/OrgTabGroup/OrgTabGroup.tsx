@@ -67,13 +67,13 @@ export const OrgTabGroup = () => {
                   label: "SSH",
                   icon: "verified"
                 }
-              ].map(({ label, type, icon }) => (
+              ].map(({ label, type, icon }, index) => (
                 <li key={`project-template-${type}`}>
                   <Link
                     to={`/organization/${type}/settings`}
                     className="mt-1 flex items-center gap-x-2 hover:text-mineshaft-100"
                   >
-                    <span className="text-mineshaft-300">•</span>
+                    {index !== 0 && <span className="text-mineshaft-300">•</span>}
                     <DotLottieReact
                       src={`/lotties/${icon}.json`}
                       loop
