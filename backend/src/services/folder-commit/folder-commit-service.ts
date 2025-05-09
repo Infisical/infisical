@@ -14,6 +14,7 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TFolderCommitDALFactory } from "./folder-commit-dal";
@@ -38,14 +39,33 @@ type TFolderCommitServiceFactoryDep = {
   folderTreeCheckpointDAL: Pick<TFolderTreeCheckpointDALFactory, "findByProjectId" | "findLatestByProjectId">;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findByParentId" | "findByProjectId">;
+  folderDAL: Pick<
+    TSecretFolderDALFactory,
+    "findByParentId" | "findByProjectId" | "deleteById" | "create" | "updateById" | "update"
+  >;
   folderVersionDAL: Pick<
     TSecretFolderVersionDALFactory,
-    "findLatestFolderVersions" | "findById" | "deleteById" | "create" | "updateById"
+    | "findLatestFolderVersions"
+    | "findById"
+    | "deleteById"
+    | "create"
+    | "updateById"
+    | "find"
+    | "findByIdsWithLatestVersion"
   >;
   secretVersionV2BridgeDAL: Pick<
     TSecretVersionV2DALFactory,
-    "findLatestVersionByFolderId" | "findById" | "deleteById" | "create" | "updateById"
+    | "findLatestVersionByFolderId"
+    | "findById"
+    | "deleteById"
+    | "create"
+    | "updateById"
+    | "find"
+    | "findByIdsWithLatestVersion"
+  >;
+  secretV2BridgeDAL: Pick<
+    TSecretV2BridgeDALFactory,
+    "deleteById" | "create" | "updateById" | "update" | "insertMany" | "invalidateSecretCacheByProjectId"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
@@ -85,7 +105,8 @@ export const folderCommitServiceFactory = ({
   folderDAL,
   folderVersionDAL,
   secretVersionV2BridgeDAL,
-  projectDAL
+  projectDAL,
+  secretV2BridgeDAL
 }: TFolderCommitServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -356,6 +377,261 @@ export const folderCommitServiceFactory = ({
     }
   };
 
+  const applyFolderStateDifferences = async (
+    differences: Array<{
+      type: string;
+      id: string;
+      versionId: string;
+      oldVersionId?: string;
+      changeType: "create" | "update" | "delete";
+    }>,
+    actorInfo: {
+      actorType: string;
+      actorId?: string;
+      message?: string;
+    },
+    folderId: string,
+    projectId: string
+  ) => {
+    let result = {};
+    await folderCommitDAL.transaction(async (tx) => {
+      // Group differences by type for more efficient processing
+      const secretChanges = differences.filter((diff) => diff.type === "secret");
+      const folderChanges = differences.filter((diff) => diff.type === "folder");
+
+      const secretVersions = await secretVersionV2BridgeDAL.findByIdsWithLatestVersion(
+        folderId,
+        secretChanges.map((diff) => diff.id),
+        secretChanges.map((diff) => diff.versionId)
+      );
+      const folderVersions = await folderVersionDAL.findByIdsWithLatestVersion(
+        folderChanges.map((diff) => diff.id),
+        folderChanges.map((diff) => diff.versionId)
+      );
+
+      // Track all changes for commit recording
+      const commitChanges = [];
+
+      // Process secret changes
+      for (const change of secretChanges) {
+        const secretVersion = secretVersions[change.id];
+        switch (change.changeType) {
+          case "create":
+            if (secretVersion) {
+              const newSecret = [
+                {
+                  id: change.id,
+                  skipMultilineEncoding: secretVersion.skipMultilineEncoding,
+                  version: secretVersion.version + 1,
+                  type: secretVersion.type,
+                  key: secretVersion.key,
+                  reminderNote: secretVersion.reminderNote,
+                  reminderRepeatDays: secretVersion.reminderRepeatDays,
+                  encryptedValue: secretVersion.encryptedValue,
+                  encryptedComment: secretVersion.encryptedComment,
+                  userId: secretVersion.userId,
+                  metadata: secretVersion.metadata,
+                  folderId
+                }
+              ];
+              await secretV2BridgeDAL.insertMany(newSecret, tx);
+
+              const newVersion = await secretVersionV2BridgeDAL.create(
+                {
+                  folderId,
+                  secretId: secretVersion.secretId,
+                  version: secretVersion.version + 1,
+                  encryptedValue: secretVersion.encryptedValue,
+                  key: secretVersion.key,
+                  encryptedComment: secretVersion.encryptedComment,
+                  skipMultilineEncoding: secretVersion.skipMultilineEncoding,
+                  reminderNote: secretVersion.reminderNote,
+                  reminderRepeatDays: secretVersion.reminderRepeatDays,
+                  userId: secretVersion.userId,
+                  metadata: secretVersion.metadata,
+                  actorType: actorInfo.actorType,
+                  envId: secretVersion.envId,
+                  ...(actorInfo.actorType === ActorType.IDENTITY && { identityActorId: actorInfo.actorId }),
+                  ...(actorInfo.actorType === ActorType.USER && { userActorId: actorInfo.actorId })
+                },
+                tx
+              );
+
+              commitChanges.push({
+                type: "add",
+                secretVersionId: newVersion.id
+              });
+            }
+            break;
+
+          case "update":
+            // Update secret to specific version
+            if (secretVersion) {
+              await secretV2BridgeDAL.updateById(
+                change.id,
+                {
+                  skipMultilineEncoding: secretVersion?.skipMultilineEncoding,
+                  version: secretVersion?.version,
+                  type: secretVersion?.type,
+                  key: secretVersion?.key,
+                  reminderNote: secretVersion?.reminderNote,
+                  reminderRepeatDays: secretVersion?.reminderRepeatDays,
+                  encryptedValue: secretVersion?.encryptedValue,
+                  encryptedComment: secretVersion?.encryptedComment,
+                  userId: secretVersion?.userId,
+                  metadata: secretVersion?.metadata
+                },
+                tx
+              );
+
+              const newVersion = await secretVersionV2BridgeDAL.create(
+                {
+                  version: secretVersion.version + 1,
+                  encryptedValue: secretVersion.encryptedValue,
+                  key: secretVersion.key,
+                  encryptedComment: secretVersion.encryptedComment,
+                  skipMultilineEncoding: secretVersion.skipMultilineEncoding,
+                  reminderNote: secretVersion.reminderNote,
+                  reminderRepeatDays: secretVersion.reminderRepeatDays,
+                  userId: secretVersion.userId,
+                  metadata: secretVersion.metadata,
+                  actorType: actorInfo.actorType,
+                  envId: secretVersion.envId,
+                  folderId,
+                  secretId: secretVersion.secretId,
+                  ...(actorInfo.actorType === ActorType.IDENTITY && { identityActorId: actorInfo.actorId }),
+                  ...(actorInfo.actorType === ActorType.USER && { userActorId: actorInfo.actorId })
+                },
+                tx
+              );
+
+              commitChanges.push({
+                type: "add",
+                secretVersionId: newVersion.id
+              });
+            }
+            break;
+
+          case "delete":
+            await secretV2BridgeDAL.deleteById(change.id, tx);
+
+            commitChanges.push({
+              type: "delete",
+              secretVersionId: change.versionId
+            });
+            break;
+
+          default:
+            throw new BadRequestError({ message: `Unknown change type: ${change.changeType as string}` });
+        }
+      }
+
+      // process folder changes
+      for (const change of folderChanges) {
+        const folderVersion = folderVersions[change.id];
+        switch (change.changeType) {
+          case "create":
+            // Add new folder
+            if (folderVersion) {
+              const newFolder = {
+                id: change.id,
+                parentId: folderId,
+                envId: folderVersion.envId,
+                version: (folderVersion.version || 1) + 1,
+                name: folderVersion.name
+              };
+              await folderDAL.create(newFolder, tx);
+
+              const newFolderVersion = await folderVersionDAL.create(
+                {
+                  folderId: change.id,
+                  version: (folderVersion.version || 1) + 1,
+                  name: folderVersion.name,
+                  envId: folderVersion.envId
+                },
+                tx
+              );
+
+              commitChanges.push({
+                type: "add",
+                folderVersionId: newFolderVersion.id
+              });
+            }
+            break;
+
+          case "update":
+            // Update folder to specific version
+            if (change.versionId) {
+              await folderVersionDAL.findById(change.versionId, tx).then(async (versionDetails) => {
+                if (versionDetails) {
+                  await folderDAL.updateById(
+                    change.id,
+                    {
+                      parentId: folderId,
+                      envId: versionDetails.envId,
+                      version: (versionDetails.version || 1) + 1,
+                      name: versionDetails.name
+                    },
+                    tx
+                  );
+
+                  const newFolderVersion = await folderVersionDAL.create(
+                    {
+                      folderId: change.id,
+                      version: (versionDetails.version || 1) + 1,
+                      name: versionDetails.name,
+                      envId: versionDetails.envId
+                    },
+                    tx
+                  );
+
+                  commitChanges.push({
+                    type: "add",
+                    folderVersionId: newFolderVersion.id
+                  });
+                }
+              });
+            }
+            break;
+
+          case "delete":
+            await folderDAL.deleteById(change.id, tx);
+
+            commitChanges.push({
+              type: "delete",
+              folderVersionId: change.versionId
+            });
+            break;
+
+          default:
+            throw new BadRequestError({ message: `Unknown change type: ${change.changeType as string}` });
+        }
+      }
+
+      await createCommit(
+        {
+          actor: {
+            type: actorInfo.actorType,
+            metadata: { id: actorInfo.actorId }
+          },
+          message: actorInfo.message || "Rolled back folder state",
+          folderId,
+          changes: commitChanges
+        },
+        tx
+      );
+
+      result = {
+        secretChangesCount: secretChanges.length,
+        folderChangesCount: folderChanges.length,
+        totalChanges: differences.length
+      };
+      await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    });
+
+    return result;
+  };
+
   // Retrieve a commit by ID
   const getCommitById = async (id: string, tx?: Knex) => {
     return folderCommitDAL.findById(id, tx);
@@ -467,7 +743,8 @@ export const folderCommitServiceFactory = ({
     initializeFolder,
     initializeProject,
     createFolderCheckpoint,
-    compareFolderStates
+    compareFolderStates,
+    applyFolderStateDifferences
   };
 };
 

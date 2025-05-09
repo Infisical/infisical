@@ -18,6 +18,7 @@ import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
+import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
@@ -62,7 +63,7 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
   return { kmsService };
 };
 
-export const getMigrationPITServices = async ({ db }: { db: Knex }) => {
+export const getMigrationPITServices = async ({ db, keyStore }: { db: Knex; keyStore: TKeyStoreFactory }) => {
   const projectDAL = projectDALFactory(db);
   const folderCommitDAL = folderCommitDALFactory(db);
   const folderCommitChangesDAL = folderCommitChangesDALFactory(db);
@@ -74,6 +75,7 @@ export const getMigrationPITServices = async ({ db }: { db: Knex }) => {
   const folderVersionDAL = secretFolderVersionDALFactory(db);
   const secretVersionV2BridgeDAL = secretVersionV2BridgeDALFactory(db);
   const folderCheckpointResourcesDAL = folderCheckpointResourcesDALFactory(db);
+  const secretV2BridgeDAL = secretV2BridgeDALFactory({ db, keyStore });
 
   const folderCommitService = folderCommitServiceFactory({
     folderCommitDAL,
@@ -86,7 +88,8 @@ export const getMigrationPITServices = async ({ db }: { db: Knex }) => {
     folderVersionDAL,
     secretVersionV2BridgeDAL,
     projectDAL,
-    folderCheckpointResourcesDAL
+    folderCheckpointResourcesDAL,
+    secretV2BridgeDAL
   });
 
   return { folderCommitService };
