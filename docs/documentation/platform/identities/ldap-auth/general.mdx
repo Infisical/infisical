@@ -10,10 +10,10 @@ description: "Learn how to authenticate with Infisical using LDAP."
 
 **LDAP Auth** is an LDAP based authentication method that allows you to authenticate with Infisical using a machine identity configured with an [LDAP](https://en.wikipedia.org/wiki/Lightweight_Directory_Access_Protocol) directory.
 
-### Guide
+## Guide
 <Steps>
   <Step title="Creating an identity">
-    To create an identity, head to your Organization Settings > Access Control > Machine Identities and press **Create identity**.
+    To create an identity, head to your Organization Settings > Access Control > Identities and press **Create identity**.
 
     ![Create identity](/images/platform/identities/ldap/identities-org-create-identity.png)
 
@@ -58,7 +58,7 @@ description: "Learn how to authenticate with Infisical using LDAP."
     ![Configure LDAP auth](/images/platform/identities/ldap/identities-org-configure-ldap.png)
 
     <Step title="Authenticating with the identity">
-      After configuring LDAP auth for your identity, you can authenticate with the identity and obtain an access token, using your LDAP credentials.
+      After configuring LDAP auth for your identity, you can authenticate with the identity and obtain an access token using your LDAP credentials.
 
       ```bash
         curl --request POST \
