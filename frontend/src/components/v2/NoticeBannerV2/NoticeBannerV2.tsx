@@ -7,9 +7,10 @@ type Props = {
   title: string;
   children: ReactNode;
   className?: string;
+  titleClassName?: string;
 };
 
-export const NoticeBannerV2 = ({ title, children, className }: Props) => {
+export const NoticeBannerV2 = ({ title, children, className, titleClassName }: Props) => {
   return (
     <div
       className={twMerge(
@@ -17,7 +18,7 @@ export const NoticeBannerV2 = ({ title, children, className }: Props) => {
         className
       )}
     >
-      <div className="mb-1 flex items-center text-sm">
+      <div className={twMerge("mb-1 flex items-center text-sm", titleClassName)}>
         <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
         {title}
       </div>
