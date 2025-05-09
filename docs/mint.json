@@ -299,14 +299,14 @@
         {
           "group": "Machine Identities",
           "pages": [
+            "documentation/platform/identities/aws-auth",
+            "documentation/platform/identities/azure-auth",
+            "documentation/platform/identities/gcp-auth",
+            "documentation/platform/identities/jwt-auth",
+            "documentation/platform/identities/kubernetes-auth",
+            "documentation/platform/identities/oci-auth",
             "documentation/platform/identities/token-auth",
             "documentation/platform/identities/universal-auth",
-            "documentation/platform/identities/kubernetes-auth",
-            "documentation/platform/identities/gcp-auth",
-            "documentation/platform/identities/azure-auth",
-            "documentation/platform/identities/aws-auth",
-            "documentation/platform/identities/jwt-auth",
-
             {
               "group": "OIDC Auth",
               "pages": [
@@ -327,7 +327,7 @@
             }
           ]
         },
-        "documentation/platform/token",        
+        "documentation/platform/token",
         "documentation/platform/mfa",
         "documentation/platform/github-org-sync"
       ]
@@ -693,6 +693,16 @@
             "api-reference/endpoints/aws-auth/retrieve",
             "api-reference/endpoints/aws-auth/update",
             "api-reference/endpoints/aws-auth/revoke"
+          ]
+        },
+        {
+          "group": "OCI Auth",
+          "pages": [
+            "api-reference/endpoints/oci-auth/login",
+            "api-reference/endpoints/oci-auth/attach",
+            "api-reference/endpoints/oci-auth/retrieve",
+            "api-reference/endpoints/oci-auth/update",
+            "api-reference/endpoints/oci-auth/revoke"
           ]
         },
         {
