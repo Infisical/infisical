@@ -59,6 +59,9 @@ export const listOCICompartments = async (appConnection: TOCIConnection) => {
   const provider = await getOCIProvider(appConnection);
 
   const identityClient = new identity.IdentityClient({ authenticationDetailsProvider: provider });
+  const keyManagementClient = new keymanagement.KmsVaultClient({
+    authenticationDetailsProvider: provider
+  });
 
   const rootCompartment = await identityClient
     .getTenancy({
@@ -77,7 +80,24 @@ export const listOCICompartments = async (appConnection: TOCIConnection) => {
     lifecycleState: identity.models.Compartment.LifecycleState.Active
   });
 
-  return [rootCompartment, ...compartments.items];
+  const allCompartments = [rootCompartment, ...compartments.items];
+  const filteredCompartments = [];
+
+  for await (const compartment of allCompartments) {
+    try {
+      // Check if user can list vaults in this compartment
+      await keyManagementClient.listVaults({
+        compartmentId: compartment.id,
+        limit: 1
+      });
+
+      filteredCompartments.push(compartment);
+    } catch (error) {
+      // Do nothing
+    }
+  }
+
+  return filteredCompartments;
 };
 
 export const listOCIVaults = async (appConnection: TOCIConnection, compartmentOcid: string) => {
