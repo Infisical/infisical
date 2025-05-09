@@ -48,6 +48,7 @@ import {
   UpdateProjectDTO,
   Workspace
 } from "./types";
+import { subscriptionQueryKeys } from "../subscriptions/queries";
 
 export const fetchWorkspaceById = async (workspaceId: string) => {
   const { data } = await apiRequest.get<{ workspace: Workspace }>(
@@ -268,6 +269,9 @@ export const useCreateWorkspace = () => {
       queryClient.invalidateQueries({
         queryKey: workspaceKeys.getAllUserWorkspace(dto.data.project.type)
       });
+      queryClient.invalidateQueries({
+        queryKey: subscriptionQueryKeys.getOrgSubscription(dto.data.project.orgId)
+      });
     }
   });
 };
@@ -378,6 +382,9 @@ export const useDeleteWorkspace = () => {
       queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace(dto.type) });
       queryClient.invalidateQueries({
         queryKey: ["org-admin-projects"]
+      });
+      queryClient.invalidateQueries({
+        queryKey: subscriptionQueryKeys.getOrgSubscription(dto.orgId)
       });
     }
   });
