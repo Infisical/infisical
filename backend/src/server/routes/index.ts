@@ -1784,6 +1784,10 @@ export const registerRoutes = async (
     if (licenseSyncJob) {
       cronJobs.push(licenseSyncJob);
     }
+    const microsoftTeamsSyncJob = await microsoftTeamsService.initializeBackgroundSync();
+    if (microsoftTeamsSyncJob) {
+      cronJobs.push(microsoftTeamsSyncJob);
+    }
   }
 
   server.decorate<FastifyZodProvider["store"]>("store", {
