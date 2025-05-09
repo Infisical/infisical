@@ -238,7 +238,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
           db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
           db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
-          db.ref("id").as("ociId").withSchema(TableName.IdentityAwsAuth),
+          db.ref("id").as("ociId").withSchema(TableName.IdentityOciAuth),
           db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
           db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),

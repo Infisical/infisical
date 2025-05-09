@@ -161,11 +161,13 @@ export enum EventType {
   UPDATE_IDENTITY_AWS_AUTH = "update-identity-aws-auth",
   REVOKE_IDENTITY_AWS_AUTH = "revoke-identity-aws-auth",
   GET_IDENTITY_AWS_AUTH = "get-identity-aws-auth",
+
   LOGIN_IDENTITY_OCI_AUTH = "login-identity-oci-auth",
   ADD_IDENTITY_OCI_AUTH = "add-identity-oci-auth",
   UPDATE_IDENTITY_OCI_AUTH = "update-identity-oci-auth",
   REVOKE_IDENTITY_OCI_AUTH = "revoke-identity-oci-auth",
   GET_IDENTITY_OCI_AUTH = "get-identity-oci-auth",
+
   LOGIN_IDENTITY_AZURE_AUTH = "login-identity-azure-auth",
   ADD_IDENTITY_AZURE_AUTH = "add-identity-azure-auth",
   UPDATE_IDENTITY_AZURE_AUTH = "update-identity-azure-auth",
