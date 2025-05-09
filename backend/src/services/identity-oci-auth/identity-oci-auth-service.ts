@@ -29,6 +29,7 @@ import {
   TRevokeOciAuthDTO,
   TUpdateOciAuthDTO
 } from "./identity-oci-auth-types";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 type TIdentityOciAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
@@ -55,7 +56,7 @@ export const identityOciAuthServiceFactory = ({
 
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityOciAuth.identityId });
 
-    // TODO(andrey): Validate inputs
+    await blockLocalAndPrivateIpAddresses(headers.host);
 
     const { data } = await request.get<TOciGetUserResponse>(`https://${headers.host}/20160918/users/${userOcid}`, {
       headers
