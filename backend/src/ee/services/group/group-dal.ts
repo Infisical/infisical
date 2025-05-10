@@ -157,10 +157,23 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findGroupsByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.Groups)
+        .join(TableName.GroupProjectMembership, `${TableName.Groups}.id`, `${TableName.GroupProjectMembership}.groupId`)
+        .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
+        .select(selectAllTableCols(TableName.Groups));
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find groups by project id" });
+    }
+  };
+
   return {
     findGroups,
     findByOrgId,
     findAllGroupPossibleMembers,
+    findGroupsByProjectId,
     ...groupOrm
   };
 };
