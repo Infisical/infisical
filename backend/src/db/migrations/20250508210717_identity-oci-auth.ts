@@ -16,6 +16,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
       t.string("type").notNullable();
 
+      t.string("tenancyOcid").notNullable();
       t.string("allowedUsernames").notNullable();
     });
   }

@@ -293,6 +293,7 @@ export type DeleteIdentityAwsAuthDTO = {
 export type IdentityOciAuth = {
   identityId: string;
   type: "iam";
+  tenancyOcid: string;
   allowedUsernames: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
@@ -303,6 +304,7 @@ export type IdentityOciAuth = {
 export type AddIdentityOciAuthDTO = {
   organizationId: string;
   identityId: string;
+  tenancyOcid: string;
   allowedUsernames: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
@@ -315,6 +317,7 @@ export type AddIdentityOciAuthDTO = {
 export type UpdateIdentityOciAuthDTO = {
   organizationId: string;
   identityId: string;
+  tenancyOcid?: string;
   allowedUsernames?: string;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;

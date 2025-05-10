@@ -461,6 +461,7 @@ export const useAddIdentityOciAuth = () => {
   return useMutation<IdentityOciAuth, object, AddIdentityOciAuthDTO>({
     mutationFn: async ({
       identityId,
+      tenancyOcid,
       allowedUsernames,
       accessTokenTTL,
       accessTokenMaxTTL,
@@ -472,6 +473,7 @@ export const useAddIdentityOciAuth = () => {
       } = await apiRequest.post<{ identityOciAuth: IdentityOciAuth }>(
         `/api/v1/auth/oci-auth/identities/${identityId}`,
         {
+          tenancyOcid,
           allowedUsernames,
           accessTokenTTL,
           accessTokenMaxTTL,
@@ -497,6 +499,7 @@ export const useUpdateIdentityOciAuth = () => {
   return useMutation<IdentityOciAuth, object, UpdateIdentityOciAuthDTO>({
     mutationFn: async ({
       identityId,
+      tenancyOcid,
       allowedUsernames,
       accessTokenTTL,
       accessTokenMaxTTL,
@@ -508,6 +511,7 @@ export const useUpdateIdentityOciAuth = () => {
       } = await apiRequest.patch<{ identityOciAuth: IdentityOciAuth }>(
         `/api/v1/auth/oci-auth/identities/${identityId}`,
         {
+          tenancyOcid,
           allowedUsernames,
           accessTokenTTL,
           accessTokenMaxTTL,

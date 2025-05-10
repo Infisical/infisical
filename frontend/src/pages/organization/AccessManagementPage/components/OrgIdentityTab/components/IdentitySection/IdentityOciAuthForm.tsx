@@ -29,6 +29,7 @@ import { IdentityFormTab } from "./types";
 
 const schema = z
   .object({
+    tenancyOcid: z.string().trim().min(1, "Tenancy OCID is required."),
     allowedUsernames: z.string(),
     accessTokenTTL: z
       .string()
@@ -90,6 +91,7 @@ export const IdentityOciAuthForm = ({
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
+      tenancyOcid: "",
       allowedUsernames: "",
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
@@ -107,6 +109,7 @@ export const IdentityOciAuthForm = ({
   useEffect(() => {
     if (data) {
       reset({
+        tenancyOcid: data.tenancyOcid,
         allowedUsernames: data.allowedUsernames,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
@@ -121,6 +124,7 @@ export const IdentityOciAuthForm = ({
       });
     } else {
       reset({
+        tenancyOcid: "",
         allowedUsernames: "",
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
@@ -131,6 +135,7 @@ export const IdentityOciAuthForm = ({
   }, [data]);
 
   const onFormSubmit = async ({
+    tenancyOcid,
     allowedUsernames,
     accessTokenTTL,
     accessTokenMaxTTL,
@@ -143,6 +148,7 @@ export const IdentityOciAuthForm = ({
       if (data) {
         await updateMutateAsync({
           organizationId: orgId,
+          tenancyOcid,
           allowedUsernames,
           identityId,
           accessTokenTTL: Number(accessTokenTTL),
@@ -154,6 +160,7 @@ export const IdentityOciAuthForm = ({
         await addMutateAsync({
           organizationId: orgId,
           identityId,
+          tenancyOcid,
           allowedUsernames: allowedUsernames || "",
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
@@ -196,10 +203,20 @@ export const IdentityOciAuthForm = ({
         <TabPanel value={IdentityFormTab.Configuration}>
           <Controller
             control={control}
+            name="tenancyOcid"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Tenancy OCID" isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="ocid1.tenancy.oc1..example" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
             name="allowedUsernames"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Allowed Usernames"
+                isOptional
                 isError={Boolean(error)}
                 errorText={error?.message}
               >

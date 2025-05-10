@@ -59,6 +59,9 @@ export const ViewIdentityOciAuthContent = ({
       <IdentityAuthFieldDisplay label="Access Token Trusted IPs">
         {data.accessTokenTrustedIps.map((ip) => ip.ipAddress).join(", ")}
       </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay className="col-span-2" label="Tenancy OCID">
+        {data.tenancyOcid}
+      </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay className="col-span-2" label="Allowed Usernames">
         {data.allowedUsernames
           ?.split(",")

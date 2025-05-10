@@ -17,6 +17,7 @@ export const IdentityOciAuthsSchema = z.object({
   updatedAt: z.date(),
   identityId: z.string().uuid(),
   type: z.string(),
+  tenancyOcid: z.string(),
   allowedUsernames: z.string()
 });
 

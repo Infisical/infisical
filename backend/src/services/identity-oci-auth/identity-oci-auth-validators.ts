@@ -19,3 +19,12 @@ export const validateUsernames = z
     message: "One or more usernames are invalid"
   })
   .transform((arr) => arr.join(", "));
+
+export const validateTenancy = z
+  .string()
+  .trim()
+  .min(1, "Tenancy OCID cannot be empty.")
+  .refine(
+    (val) => new RE2("^ocid1\\.tenancy\\.oc1\\..+$").test(val),
+    "Invalid Tenancy OCID format. Must start with ocid1.tenancy.oc1."
+  );

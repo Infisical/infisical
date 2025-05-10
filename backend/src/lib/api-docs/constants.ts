@@ -279,6 +279,7 @@ export const OCI_AUTH = {
   },
   ATTACH: {
     identityId: "The ID of the identity to attach the configuration onto.",
+    tenancyOcid: "The OCID of your tenancy.",
     allowedUsernames:
       "The comma-separated list of trusted OCI account usernames that are allowed to authenticate with Infisical.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
@@ -288,6 +289,7 @@ export const OCI_AUTH = {
   },
   UPDATE: {
     identityId: "The ID of the identity to update the auth method for.",
+    tenancyOcid: "The OCID of your tenancy.",
     allowedUsernames:
       "The comma-separated list of trusted OCI account usernames that are allowed to authenticate with Infisical.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",

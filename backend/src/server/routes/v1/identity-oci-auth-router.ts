@@ -7,7 +7,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
-import { validateUsernames } from "@app/services/identity-oci-auth/identity-oci-auth-validators";
+import { validateTenancy, validateUsernames } from "@app/services/identity-oci-auth/identity-oci-auth-validators";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) => {
@@ -88,6 +88,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
       }),
       body: z
         .object({
+          tenancyOcid: validateTenancy.describe(OCI_AUTH.ATTACH.tenancyOcid),
           allowedUsernames: validateUsernames.describe(OCI_AUTH.ATTACH.allowedUsernames),
           accessTokenTrustedIps: z
             .object({
@@ -141,6 +142,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
           type: EventType.ADD_IDENTITY_OCI_AUTH,
           metadata: {
             identityId: identityOciAuth.identityId,
+            tenancyOcid: identityOciAuth.tenancyOcid,
             allowedUsernames: identityOciAuth.allowedUsernames,
             accessTokenTTL: identityOciAuth.accessTokenTTL,
             accessTokenMaxTTL: identityOciAuth.accessTokenMaxTTL,
@@ -175,6 +177,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
       }),
       body: z
         .object({
+          tenancyOcid: validateTenancy.describe(OCI_AUTH.UPDATE.tenancyOcid),
           allowedUsernames: validateUsernames.describe(OCI_AUTH.UPDATE.allowedUsernames),
           accessTokenTrustedIps: z
             .object({
@@ -221,6 +224,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
           type: EventType.UPDATE_IDENTITY_OCI_AUTH,
           metadata: {
             identityId: identityOciAuth.identityId,
+            tenancyOcid: identityOciAuth.tenancyOcid,
             allowedUsernames: identityOciAuth.allowedUsernames,
             accessTokenTTL: identityOciAuth.accessTokenTTL,
             accessTokenMaxTTL: identityOciAuth.accessTokenMaxTTL,

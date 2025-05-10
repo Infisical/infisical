@@ -12,6 +12,7 @@ export type TLoginOciAuthDTO = {
 
 export type TAttachOciAuthDTO = {
   identityId: string;
+  tenancyOcid: string;
   allowedUsernames: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
@@ -22,6 +23,7 @@ export type TAttachOciAuthDTO = {
 
 export type TUpdateOciAuthDTO = {
   identityId: string;
+  tenancyOcid?: string;
   allowedUsernames?: string;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;

@@ -1021,6 +1021,7 @@ interface AddIdentityOciAuthEvent {
   type: EventType.ADD_IDENTITY_OCI_AUTH;
   metadata: {
     identityId: string;
+    tenancyOcid: string;
     allowedUsernames: string;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
@@ -1040,6 +1041,7 @@ interface UpdateIdentityOciAuthEvent {
   type: EventType.UPDATE_IDENTITY_OCI_AUTH;
   metadata: {
     identityId: string;
+    tenancyOcid?: string;
     allowedUsernames?: string;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;

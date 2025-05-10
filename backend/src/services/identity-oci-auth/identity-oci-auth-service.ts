@@ -70,6 +70,12 @@ export const identityOciAuthServiceFactory = ({
       headers
     });
 
+    if (data.compartmentId !== identityOciAuth.tenancyOcid) {
+      throw new UnauthorizedError({
+        message: "Access denied: OCI account isn't part of tenancy."
+      });
+    }
+
     if (identityOciAuth.allowedUsernames) {
       const isAccountAllowed = identityOciAuth.allowedUsernames.split(",").some((name) => name.trim() === data.name);
 
@@ -121,6 +127,7 @@ export const identityOciAuthServiceFactory = ({
 
   const attachOciAuth = async ({
     identityId,
+    tenancyOcid,
     allowedUsernames,
     accessTokenTTL,
     accessTokenMaxTTL,
@@ -179,6 +186,7 @@ export const identityOciAuthServiceFactory = ({
         {
           identityId: identityMembershipOrg.identityId,
           type: "iam",
+          tenancyOcid,
           allowedUsernames,
           accessTokenMaxTTL,
           accessTokenTTL,
@@ -194,6 +202,7 @@ export const identityOciAuthServiceFactory = ({
 
   const updateOciAuth = async ({
     identityId,
+    tenancyOcid,
     allowedUsernames,
     accessTokenTTL,
     accessTokenMaxTTL,
@@ -250,6 +259,7 @@ export const identityOciAuthServiceFactory = ({
     });
 
     const updatedOciAuth = await identityOciAuthDAL.updateById(identityOciAuth.id, {
+      tenancyOcid,
       allowedUsernames,
       accessTokenMaxTTL,
       accessTokenTTL,
