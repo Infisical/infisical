@@ -19,30 +19,19 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-package report
 
-import "testing"
+//go:build gore2regex
 
-func TestRedact(t *testing.T) {
-	tests := []struct {
-		findings []Finding
-		redact   bool
-	}{
-		{
-			redact: true,
-			findings: []Finding{
-				{
-					Secret: "line containing secret",
-					Match:  "secret",
-				},
-			}},
-	}
-	for _, test := range tests {
-		for _, f := range test.findings {
-			f.Redact()
-			if f.Secret != "REDACTED" {
-				t.Error("redact not redacting: ", f.Secret)
-			}
-		}
-	}
+package regexp
+
+import (
+	re "github.com/wasilibs/go-re2"
+)
+
+const Version = "github.com/wasilibs/go-re2"
+
+type Regexp = re.Regexp
+
+func MustCompile(str string) *re.Regexp {
+	return re.MustCompile(str)
 }

@@ -26,20 +26,21 @@ import (
 	// "encoding/json"
 	"fmt"
 	"math"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/Infisical/infisical-merge/detect/cmd/scm"
+	"github.com/Infisical/infisical-merge/detect/logging"
+	"github.com/Infisical/infisical-merge/detect/report"
+
 	"github.com/charmbracelet/lipgloss"
-
-	"github.com/Infisical/infisical-merge/report"
-
 	"github.com/gitleaks/go-gitdiff/gitdiff"
-	"github.com/rs/zerolog/log"
 )
 
 // augmentGitFinding updates the start and end line numbers of a finding to include the
 // delta from the git diff
-func augmentGitFinding(finding report.Finding, textFragment *gitdiff.TextFragment, f *gitdiff.File) report.Finding {
+func augmentGitFinding(remote *RemoteInfo, finding report.Finding, textFragment *gitdiff.TextFragment, f *gitdiff.File) report.Finding {
 	if !strings.HasPrefix(finding.Match, "file detected") {
 		finding.StartLine += int(textFragment.NewPosition)
 		finding.EndLine += int(textFragment.NewPosition)
@@ -47,14 +48,74 @@ func augmentGitFinding(finding report.Finding, textFragment *gitdiff.TextFragmen
 
 	if f.PatchHeader != nil {
 		finding.Commit = f.PatchHeader.SHA
-		finding.Message = f.PatchHeader.Message()
 		if f.PatchHeader.Author != nil {
 			finding.Author = f.PatchHeader.Author.Name
 			finding.Email = f.PatchHeader.Author.Email
 		}
 		finding.Date = f.PatchHeader.AuthorDate.UTC().Format(time.RFC3339)
+		finding.Message = f.PatchHeader.Message()
+		// Results from `git diff` shouldn't have a link.
+		if finding.Commit != "" {
+			finding.Link = createScmLink(remote.Platform, remote.Url, finding)
+		}
 	}
 	return finding
+}
+
+var linkCleaner = strings.NewReplacer(
+	" ", "%20",
+	"%", "%25",
+)
+
+func createScmLink(scmPlatform scm.Platform, remoteUrl string, finding report.Finding) string {
+	if scmPlatform == scm.UnknownPlatform || scmPlatform == scm.NoPlatform {
+		return ""
+	}
+
+	// Clean the path.
+	var (
+		filePath = linkCleaner.Replace(finding.File)
+		ext      = strings.ToLower(filepath.Ext(filePath))
+	)
+
+	switch scmPlatform {
+	case scm.GitHubPlatform:
+		link := fmt.Sprintf("%s/blob/%s/%s", remoteUrl, finding.Commit, filePath)
+		if ext == ".ipynb" || ext == ".md" {
+			link += "?plain=1"
+		}
+		if finding.StartLine != 0 {
+			link += fmt.Sprintf("#L%d", finding.StartLine)
+		}
+		if finding.EndLine != finding.StartLine {
+			link += fmt.Sprintf("-L%d", finding.EndLine)
+		}
+		return link
+	case scm.GitLabPlatform:
+		link := fmt.Sprintf("%s/blob/%s/%s", remoteUrl, finding.Commit, filePath)
+		if finding.StartLine != 0 {
+			link += fmt.Sprintf("#L%d", finding.StartLine)
+		}
+		if finding.EndLine != finding.StartLine {
+			link += fmt.Sprintf("-%d", finding.EndLine)
+		}
+		return link
+	case scm.AzureDevOpsPlatform:
+		link := fmt.Sprintf("%s/commit/%s?path=/%s", remoteUrl, finding.Commit, filePath)
+		// Add line information if applicable
+		if finding.StartLine != 0 {
+			link += fmt.Sprintf("&line=%d", finding.StartLine)
+		}
+		if finding.EndLine != finding.StartLine {
+			link += fmt.Sprintf("&lineEnd=%d", finding.EndLine)
+		}
+		// This is a bit dirty, but Azure DevOps does not highlight the line when the lineStartColumn and lineEndColumn are not provided
+		link += "&lineStartColumn=1&lineEndColumn=10000000&type=2&lineStyle=plain&_a=files"
+		return link
+	default:
+		// This should never happen.
+		return ""
+	}
 }
 
 // shannonEntropy calculates the entropy of data using the formula defined here:
@@ -82,7 +143,7 @@ func shannonEntropy(data string) (entropy float64) {
 }
 
 // filter will dedupe and redact findings
-func filter(findings []report.Finding, redact bool) []report.Finding {
+func filter(findings []report.Finding, redact uint) []report.Finding {
 	var retFindings []report.Finding
 	for _, f := range findings {
 		include := true
@@ -96,15 +157,15 @@ func filter(findings []report.Finding, redact bool) []report.Finding {
 
 					genericMatch := strings.Replace(f.Match, f.Secret, "REDACTED", -1)
 					betterMatch := strings.Replace(fPrime.Match, fPrime.Secret, "REDACTED", -1)
-					log.Trace().Msgf("skipping %s finding (%s), %s rule takes precendence (%s)", f.RuleID, genericMatch, fPrime.RuleID, betterMatch)
+					logging.Trace().Msgf("skipping %s finding (%s), %s rule takes precedence (%s)", f.RuleID, genericMatch, fPrime.RuleID, betterMatch)
 					include = false
 					break
 				}
 			}
 		}
 
-		if redact {
-			f.Redact()
+		if redact > 0 {
+			f.Redact(redact)
 		}
 		if include {
 			retFindings = append(retFindings, f)
@@ -152,7 +213,7 @@ func printFinding(f report.Finding, noColor bool) {
 
 		lineEndIdx := matchInLineIDX + len(f.Match)
 		if len(f.Line)-1 <= lineEndIdx {
-			lineEndIdx = len(f.Line) - 1
+			lineEndIdx = len(f.Line)
 		}
 
 		lineEnd := f.Line[lineEndIdx:]
@@ -184,6 +245,9 @@ func printFinding(f report.Finding, noColor bool) {
 		fmt.Println("")
 		return
 	}
+	if len(f.Tags) > 0 {
+		fmt.Printf("%-12s %s\n", "Tags:", f.Tags)
+	}
 	fmt.Printf("%-12s %s\n", "File:", f.File)
 	fmt.Printf("%-12s %d\n", "Line:", f.StartLine)
 	if f.Commit == "" {
@@ -196,16 +260,12 @@ func printFinding(f report.Finding, noColor bool) {
 	fmt.Printf("%-12s %s\n", "Email:", f.Email)
 	fmt.Printf("%-12s %s\n", "Date:", f.Date)
 	fmt.Printf("%-12s %s\n", "Fingerprint:", f.Fingerprint)
+	if f.Link != "" {
+		fmt.Printf("%-12s %s\n", "Link:", f.Link)
+	}
 	fmt.Println("")
 }
 
-func containsDigit(s string) bool {
-	for _, c := range s {
-		switch c {
-		case '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			return true
-		}
-
-	}
-	return false
+func isWhitespace(ch byte) bool {
+	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
 }

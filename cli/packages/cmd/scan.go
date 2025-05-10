@@ -32,10 +32,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Infisical/infisical-merge/config"
 	"github.com/Infisical/infisical-merge/detect"
+	"github.com/Infisical/infisical-merge/detect/cmd/scm"
+	"github.com/Infisical/infisical-merge/detect/config"
+	"github.com/Infisical/infisical-merge/detect/logging"
+	"github.com/Infisical/infisical-merge/detect/report"
+	"github.com/Infisical/infisical-merge/detect/sources"
 	"github.com/Infisical/infisical-merge/packages/util"
-	"github.com/Infisical/infisical-merge/report"
 	"github.com/manifoldco/promptui"
 	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
@@ -240,9 +243,17 @@ var scanCmd = &cobra.Command{
 			log.Fatal().Err(err).Msg("")
 		}
 		// set redact flag
-		if detector.Redact, err = cmd.Flags().GetBool("redact"); err != nil {
+
+		redactFlag, err := cmd.Flags().GetBool("redact")
+		if err != nil {
 			log.Fatal().Err(err).Msg("")
 		}
+		if redactFlag {
+			detector.Redact = 100
+		} else {
+			detector.Redact = 0
+		}
+
 		if detector.MaxTargetMegaBytes, err = cmd.Flags().GetInt("max-target-megabytes"); err != nil {
 			log.Fatal().Err(err).Msg("")
 		}
@@ -293,31 +304,49 @@ var scanCmd = &cobra.Command{
 
 		// start the detector scan
 		if noGit {
-			findings, err = detector.DetectFiles(source)
+			paths, err := sources.DirectoryTargets(
+				source,
+				detector.Sema,
+				detector.FollowSymlinks,
+				detector.Config.Allowlists,
+			)
 			if err != nil {
+				logging.Fatal().Err(err).Send()
+			}
+
+			if findings, err = detector.DetectFiles(paths); err != nil {
 				// don't exit on error, just log it
-				log.Error().Err(err).Msg("")
+				logging.Error().Err(err).Msg("failed scan directory")
 			}
 		} else if fromPipe {
-			findings, err = detector.DetectReader(os.Stdin, 10)
-			if err != nil {
+			if findings, err = detector.DetectReader(os.Stdin, 10); err != nil {
 				// log fatal to exit, no need to continue since a report
 				// will not be generated when scanning from a pipe...for now
-				log.Fatal().Err(err).Msg("")
+				logging.Fatal().Err(err).Msg("failed scan input from stdin")
 			}
 		} else {
+			var (
+				gitCmd      *sources.GitCmd
+				scmPlatform scm.Platform
+				remote      *detect.RemoteInfo
+			)
+
 			var logOpts string
 			logOpts, err = cmd.Flags().GetString("log-opts")
-			if err != nil {
-				log.Fatal().Err(err).Msg("")
+
+			if gitCmd, err = sources.NewGitLogCmd(source, logOpts); err != nil {
+				logging.Fatal().Err(err).Msg("could not create Git cmd")
 			}
-			findings, err = detector.DetectGit(source, logOpts, detect.DetectType)
-			if err != nil {
+			if scmPlatform, err = scm.PlatformFromString("github"); err != nil {
+				logging.Fatal().Err(err).Send()
+			}
+			remote = detect.NewRemoteInfo(scmPlatform, source)
+
+			if findings, err = detector.DetectGit(gitCmd, remote); err != nil {
 				// don't exit on error, just log it
-				log.Error().Err(err).Msg("")
+				logging.Error().Err(err).Msg("failed to scan Git repository")
 			}
 		}
-
 		// log info about the scan
 		if err == nil {
 			log.Info().Msgf("scan completed in %s", FormatDuration(time.Since(start)))
@@ -341,9 +370,7 @@ var scanCmd = &cobra.Command{
 		reportPath, _ := cmd.Flags().GetString("report-path")
 		ext, _ := cmd.Flags().GetString("report-format")
 		if reportPath != "" {
-			if err := report.Write(findings, cfg, ext, reportPath); err != nil {
-				log.Fatal().Err(err).Msg("could not write")
-			}
+			reportFindings(findings, reportPath, ext, &cfg)
 		}
 
 		if err != nil {
@@ -375,7 +402,6 @@ var scanGitChangesCmd = &cobra.Command{
 		cfg.Path, _ = cmd.Flags().GetString("config")
 		exitCode, _ := cmd.Flags().GetInt("exit-code")
 		staged, _ := cmd.Flags().GetBool("staged")
-		start := time.Now()
 
 		// Setup detector
 		detector := detect.NewDetector(cfg)
@@ -397,9 +423,17 @@ var scanGitChangesCmd = &cobra.Command{
 			log.Fatal().Err(err).Msg("")
 		}
 		// set redact flag
-		if detector.Redact, err = cmd.Flags().GetBool("redact"); err != nil {
+
+		redactFlag, err := cmd.Flags().GetBool("redact")
+		if err != nil {
 			log.Fatal().Err(err).Msg("")
 		}
+		if redactFlag {
+			detector.Redact = 100
+		} else {
+			detector.Redact = 0
+		}
+
 		if detector.MaxTargetMegaBytes, err = cmd.Flags().GetInt("max-target-megabytes"); err != nil {
 			log.Fatal().Err(err).Msg("")
 		}
@@ -414,32 +448,22 @@ var scanGitChangesCmd = &cobra.Command{
 			}
 		}
 
-		// get log options for git scan
-		logOpts, err := cmd.Flags().GetString("log-opts")
-		if err != nil {
-			log.Fatal().Err(err).Msg("")
-		}
-
-		log.Info().Msgf("scanning for exposed secrets...")
-
 		// start git scan
-		var findings []report.Finding
-		if staged {
-			findings, err = detector.DetectGit(source, logOpts, detect.ProtectStagedType)
-		} else {
-			findings, err = detector.DetectGit(source, logOpts, detect.ProtectType)
-		}
-		if err != nil {
-			// don't exit on error, just log it
-			log.Error().Err(err).Msg("")
-		}
+		var (
+			findings []report.Finding
 
-		// log info about the scan
-		log.Info().Msgf("scan completed in %s", FormatDuration(time.Since(start)))
-		if len(findings) != 0 {
-			log.Warn().Msgf("leaks found: %d", len(findings))
-		} else {
-			log.Info().Msg("no leaks found")
+			gitCmd *sources.GitCmd
+			remote *detect.RemoteInfo
+		)
+
+		if gitCmd, err = sources.NewGitDiffCmd(source, staged); err != nil {
+			logging.Fatal().Err(err).Msg("could not create Git diff cmd")
+		}
+		remote = &detect.RemoteInfo{Platform: scm.NoPlatform}
+
+		if findings, err = detector.DetectGit(gitCmd, remote); err != nil {
+			// don't exit on error, just log it
+			logging.Error().Err(err).Msg("failed to scan Git repository")
 		}
 
 		Telemetry.CaptureEvent("cli-command:scan git-changes", posthog.NewProperties().Set("risks", len(findings)).Set("version", util.CLI_VERSION))
@@ -447,14 +471,42 @@ var scanGitChangesCmd = &cobra.Command{
 		reportPath, _ := cmd.Flags().GetString("report-path")
 		ext, _ := cmd.Flags().GetString("report-format")
 		if reportPath != "" {
-			if err = report.Write(findings, cfg, ext, reportPath); err != nil {
-				log.Fatal().Err(err).Msg("")
-			}
+			reportFindings(findings, reportPath, ext, &cfg)
 		}
 		if len(findings) != 0 {
 			os.Exit(exitCode)
 		}
 	},
+}
+
+func reportFindings(findings []report.Finding, reportPath string, ext string, cfg *config.Config) {
+
+	var reporter report.Reporter
+
+	switch ext {
+	case "csv":
+		reporter = &report.CsvReporter{}
+	case "json":
+		reporter = &report.JsonReporter{}
+	case "junit":
+		reporter = &report.JunitReporter{}
+	case "sarif":
+		reporter = &report.SarifReporter{
+			OrderedRules: cfg.GetOrderedRules(),
+		}
+	default:
+		logging.Fatal().Msgf("unknown report format %s", ext)
+	}
+
+	file, err := os.Create(reportPath)
+	if err != nil {
+		log.Fatal().Err(err).Msg("could not create file")
+	}
+
+	if err := reporter.Write(file, findings); err != nil {
+		log.Fatal().Err(err).Msg("could not write")
+	}
+
 }
 
 func fileExists(fileName string) bool {

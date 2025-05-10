@@ -20,53 +20,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package report
+//go:build !gore2regex
+
+package regexp
 
 import (
-	"strings"
+	re "regexp"
 )
 
-// Finding contains information about strings that
-// have been captured by a tree-sitter query.
-type Finding struct {
-	Description string
-	StartLine   int
-	EndLine     int
-	StartColumn int
-	EndColumn   int
+const Version = "stdlib"
 
-	Line string `json:"-"`
+type Regexp = re.Regexp
 
-	Match string
-
-	// Secret contains the full content of what is matched in
-	// the tree-sitter query.
-	Secret string
-
-	// File is the name of the file containing the finding
-	File        string
-	SymlinkFile string
-	Commit      string
-
-	// Entropy is the shannon entropy of Value
-	Entropy float32
-
-	Author  string
-	Email   string
-	Date    string
-	Message string
-	Tags    []string
-
-	// Rule is the name of the rule that was matched
-	RuleID string
-
-	// unique identifer
-	Fingerprint string
-}
-
-// Redact removes sensitive information from a finding.
-func (f *Finding) Redact() {
-	f.Line = strings.Replace(f.Line, f.Secret, "REDACTED", -1)
-	f.Match = strings.Replace(f.Match, f.Secret, "REDACTED", -1)
-	f.Secret = "REDACTED"
+func MustCompile(str string) *re.Regexp {
+	return re.MustCompile(str)
 }

@@ -1,0 +1,159 @@
+// MIT License
+
+// Copyright (c) 2019 Zachary Rice
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+package config
+
+import (
+	"fmt"
+	"strings"
+
+	"golang.org/x/exp/maps"
+
+	"github.com/Infisical/infisical-merge/detect/regexp"
+)
+
+type AllowlistMatchCondition int
+
+const (
+	AllowlistMatchOr AllowlistMatchCondition = iota
+	AllowlistMatchAnd
+)
+
+func (a AllowlistMatchCondition) String() string {
+	return [...]string{
+		"OR",
+		"AND",
+	}[a]
+}
+
+// Allowlist allows a rule to be ignored for specific
+// regexes, paths, and/or commits
+type Allowlist struct {
+	// Short human readable description of the allowlist.
+	Description string
+
+	// MatchCondition determines whether all criteria must match.
+	MatchCondition AllowlistMatchCondition
+
+	// Commits is a slice of commit SHAs that are allowed to be ignored. Defaults to "OR".
+	Commits []string
+
+	// Paths is a slice of path regular expressions that are allowed to be ignored.
+	Paths []*regexp.Regexp
+
+	// Can be `match` or `line`.
+	//
+	// If `match` the _Regexes_ will be tested against the match of the _Rule.Regex_.
+	//
+	// If `line` the _Regexes_ will be tested against the entire line.
+	//
+	// If RegexTarget is empty, it will be tested against the found secret.
+	RegexTarget string
+
+	// Regexes is slice of content regular expressions that are allowed to be ignored.
+	Regexes []*regexp.Regexp
+
+	// StopWords is a slice of stop words that are allowed to be ignored.
+	// This targets the _secret_, not the content of the regex match like the
+	// Regexes slice.
+	StopWords []string
+
+	// validated is an internal flag to track whether `Validate()` has been called.
+	validated bool
+}
+
+func (a *Allowlist) Validate() error {
+	if a.validated {
+		return nil
+	}
+
+	// Disallow empty allowlists.
+	if len(a.Commits) == 0 &&
+		len(a.Paths) == 0 &&
+		len(a.Regexes) == 0 &&
+		len(a.StopWords) == 0 {
+		return fmt.Errorf("must contain at least one check for: commits, paths, regexes, or stopwords")
+	}
+
+	// Deduplicate commits and stopwords.
+	if len(a.Commits) > 0 {
+		uniqueCommits := make(map[string]struct{})
+		for _, commit := range a.Commits {
+			uniqueCommits[commit] = struct{}{}
+		}
+		a.Commits = maps.Keys(uniqueCommits)
+	}
+	if len(a.StopWords) > 0 {
+		uniqueStopwords := make(map[string]struct{})
+		for _, stopWord := range a.StopWords {
+			uniqueStopwords[stopWord] = struct{}{}
+		}
+		a.StopWords = maps.Keys(uniqueStopwords)
+	}
+
+	a.validated = true
+	return nil
+}
+
+// CommitAllowed returns true if the commit is allowed to be ignored.
+func (a *Allowlist) CommitAllowed(c string) (bool, string) {
+	if a == nil || c == "" {
+		return false, ""
+	}
+
+	for _, commit := range a.Commits {
+		if commit == c {
+			return true, c
+		}
+	}
+	return false, ""
+}
+
+// PathAllowed returns true if the path is allowed to be ignored.
+func (a *Allowlist) PathAllowed(path string) bool {
+	if a == nil || path == "" {
+		return false
+	}
+	return anyRegexMatch(path, a.Paths)
+}
+
+// RegexAllowed returns true if the regex is allowed to be ignored.
+func (a *Allowlist) RegexAllowed(secret string) bool {
+	if a == nil || secret == "" {
+		return false
+	}
+	return anyRegexMatch(secret, a.Regexes)
+}
+
+func (a *Allowlist) ContainsStopWord(s string) (bool, string) {
+	if a == nil || s == "" {
+		return false, ""
+	}
+
+	s = strings.ToLower(s)
+	for _, stopWord := range a.StopWords {
+		if strings.Contains(s, strings.ToLower(stopWord)) {
+			return true, stopWord
+		}
+	}
+	return false, ""
+}
