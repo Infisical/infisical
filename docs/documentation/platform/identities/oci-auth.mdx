@@ -33,14 +33,14 @@ sequenceDiagram
 
 ## Concept
 
-At a high level, Infisical authenticates an OCI user by verifying its identity and checking that it meets specific requirements (e.g., its username is authorized) at the `/api/v1/auth/oci-auth/login` endpoint. If successful,
+At a high level, Infisical authenticates an OCI user by verifying its identity and checking that it meets specific requirements (e.g., its username is authorized, its part of a tenancy) at the `/api/v1/auth/oci-auth/login` endpoint. If successful,
 then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
 To be more specific:
 1. The client [signs](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/signingrequests.htm) a `/20160918/users/{userId}` request using an OCI user's [private key](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm#Required_Keys_and_OCIDs); this is done using the [OCI SDK](https://infisical.com/docs/documentation/platform/identities/oci-auth#accessing-the-infisical-api-with-the-identity) or API.
 2. The client sends the signed request's headers and their user OCID to Infisical at the `/api/v1/auth/oci-auth/login` endpoint.
 3. Infisical reconstructs the request and sends it to OCI via the [Get User](https://docs.oracle.com/en/engineered-systems/private-cloud-appliance/3.0-latest/ceapi/op-20160918-users-user_id-get.html) endpoint for verification and obtains the identity associated with the OCI user.
-4. Infisical checks the user's properties against set criteria such as **Allowed Usernames**.
+4. Infisical checks the user's properties against set criteria such as **Allowed Usernames** and **Tenancy OCID**.
 5. If all checks pass, Infisical returns a short-lived access token that the client can use to make authenticated requests to the Infisical API.
 
 ## Guide
@@ -77,6 +77,7 @@ Now create a new OCI Auth Method.
 ![identities create oci auth method](/images/platform/identities/identities-org-create-oci-auth-method.png)
 
 Here's some information about each field:
+- **Tenancy OCID:** The OCID of your tenancy. All users authenticating must be part of this Tenancy.
 - **Allowed Usernames:** A comma-separated list of trusted OCI users that are allowed to authenticate with Infisical.
 - **Access Token TTL (default is `2592000` equivalent to 30 days):** The lifetime for an access token in seconds. This value will be referenced at renewal time.
 - **Access Token Max TTL (default is `2592000` equivalent to 30 days):** The maximum lifetime for an access token in seconds. This value will be referenced at renewal time.
