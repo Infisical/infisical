@@ -1,0 +1,189 @@
+---
+title: "OCI Connection"
+description: "Learn how to configure an Oracle Cloud Infrastructure Connection for Infisical."
+---
+
+Infisical supports the use of [API Signing Key Authentication](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm) to connect with OCI.
+
+## Create OCI User
+
+<Steps>
+    <Step title="Search for 'Domains' and click as shown">
+        ![Search Domains](/images/app-connections/oci/search-domains.png)
+    </Step>
+    <Step title="Select domain">
+        Select the domain in which you want to create the Infisical user account.
+
+        ![Select Domain](/images/app-connections/oci/select-domain.png)
+    </Step>
+    <Step title="Navigate to 'Users'">
+        ![Select Users](/images/app-connections/oci/select-users.png)
+    </Step>
+    <Step title="Click 'Create user'">
+        ![Click Create User](/images/app-connections/oci/click-create-user.png)
+    </Step>
+    <Step title="Create user">
+        The name, email, and username can be anything.
+
+        ![Create User](/images/app-connections/oci/create-user.png)
+    </Step>
+    <Step title="Navigate to 'API keys'">
+        After you've created a user, you'll be redirected to the user's page. Navigate to 'API keys'.
+
+        ![Select API Keys](/images/app-connections/oci/select-api-keys.png)
+    </Step>
+    <Step title="Add API key">
+        Click on 'Add API key' and then download or import the private key. After you've obtained the private key, click 'Add'.
+
+        ![Add API Key](/images/app-connections/oci/add-api-key.png)
+    </Step>
+    <Step title="Store configuration">
+        After creating the API key, you'll be shown a modal with relevant information. Save the highlighted values (and the private key) for later steps.
+
+        ![User Info](/images/app-connections/oci/user-info.png)
+    </Step>
+</Steps>
+
+## Create OCI Group
+
+<Steps>
+    <Step title="Search for 'Domains' and click as shown">
+        ![Search Domains](/images/app-connections/oci/search-domains.png)
+    </Step>
+    <Step title="Select domain">
+        Select the domain in which you want to create the Infisical user account.
+
+        ![Select Domain](/images/app-connections/oci/select-domain.png)
+    </Step>
+    <Step title="Navigate to 'Groups'">
+        ![Select Groups](/images/app-connections/oci/select-groups.png)
+    </Step>
+    <Step title="Create group">
+        The name and description can be anything. **Ensure that you assign the user created in earlier steps to this group**.
+
+        ![Create Group](/images/app-connections/oci/create-group.png)
+    </Step>
+    <Step title="Store group name">
+        After creating the group, take note of its name. It will be used in later steps.
+    </Step>
+</Steps>
+
+## Create OCI Policy
+
+<Steps>
+    <Step title="Search for 'Policies' and click as shown">
+        ![Search Policies](/images/app-connections/oci/search-policies.png)
+    </Step>
+    <Step title="Click 'Create Policy'">
+        ![Click Create Policy](/images/app-connections/oci/click-create-policy.png)
+    </Step>
+    <Step title="Create policy">
+        The name and description can be anything. Click 'Show manual editor' and paste in the policy rules relevant to your task:
+
+        <Tabs>
+            <Tab title="Secret Sync">
+                ```
+                Allow group <group name> to manage secret-family in compartment <compartment name>
+                Allow group <group name> to use keys in compartment <compartment name>
+                Allow group <group name> to use vaults in compartment <compartment name>
+                Allow group <group name> to inspect compartments in tenancy
+                ```
+
+                - **Group Name:** The name of the group you created in earlier steps.
+                - **Compartment Name:** The name of the compartment which has your secrets vault.
+
+                If you'd like to grant Infisical access to all compartments, replace instances of `compartment <compartment name>` with `tenancy`.
+            </Tab>
+        </Tabs>
+
+        ![Create Policy](/images/app-connections/oci/create-policy.png)
+
+        <Note>
+            **You must create this policy on the root compartment**, otherwise some functionality may not work.
+        </Note>
+    </Step>
+</Steps>
+
+## Create OCI Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, go to **Organization Settings** and select the [**App Connections**](https://app.infisical.com/organization/app-connections) tab.
+
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Select OCI Connection">
+                Click the **+ Add Connection** button and select the **OCI Connection** option from the available integrations.
+
+                ![Select OCI Connection](/images/app-connections/oci/app-connection-option.png)
+            </Step>
+            <Step title="Fill out the OCI Connection Modal">
+                Complete the OCI Connection form by entering:
+                - A descriptive name for the connection
+                - An optional description for future reference
+                - The User OCID from [earlier steps](https://infisical.com/docs/integrations/app-connections/oci#create-oci-user)
+                - The Tenancy OCID from [earlier steps](https://infisical.com/docs/integrations/app-connections/oci#create-oci-user)
+                - The Region from [earlier steps](https://infisical.com/docs/integrations/app-connections/oci#create-oci-user)
+                - The Fingerprint from [earlier steps](https://infisical.com/docs/integrations/app-connections/oci#create-oci-user)
+                - The Private Key PEM from [earlier steps](https://infisical.com/docs/integrations/app-connections/oci#create-oci-user)
+
+                ![OCI Connection Modal](/images/app-connections/oci/app-connection-modal.png)
+            </Step>
+            <Step title="Connection Created">
+                After clicking Create, your **OCI Connection** is established and ready to use with your Infisical projects.
+
+                ![OCI Connection Created](/images/app-connections/oci/app-connection-created.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create an OCI Connection, make an API request to the [Create OCI Connection](/api-reference/endpoints/app-connections/oci/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/oci \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-oci-connection",
+                    "method": "access-key",
+                    "credentials": {
+                        "userOcid": "ocid1.user.oc1..aaaaaaaagrp35tbkvvad4y2j7sug7xonua7dl2gfp4at2u5i5xj4ghnitg3a",
+                        "tenancyOcid": "ocid1.tenancy.oc1..aaaaaaaaotfma465m4zumfe2ua64mj2m5dwmlw2llh4g4dnfttnakiifonta",
+                        "region": "us-ashburn-1",
+                        "fingerprint": "9c:f6:18:23:92:73:f8:e1:85:2c:6a:e3:2c:7d:ec:8f",
+                        "privateKey": "[PRIVATE KEY PEM]"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+              "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+              "name": "my-oci-connection",
+              "description": null,
+              "version": 1,
+              "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+              "createdAt": "2025-04-23T19:46:34.831Z",
+              "updatedAt": "2025-04-23T19:46:34.831Z",
+              "isPlatformManagedCredentials": false,
+              "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+              "app": "oci",
+              "method": "access-key",
+              "credentials": {
+                "userOcid": "ocid1.user.oc1..aaaaaaaagrp35tbkvvad4y2j7sug7xonua7dl2gfp4at2u5i5xj4ghnitg3a",
+                "tenancyOcid": "ocid1.tenancy.oc1..aaaaaaaaotfma465m4zumfe2ua64mj2m5dwmlw2llh4g4dnfttnakiifonta",
+                "region": "us-ashburn-1",
+                "fingerprint": "9c:f6:18:23:92:73:f8:e1:85:2c:6a:e3:2c:7d:ec:8f"
+              }
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

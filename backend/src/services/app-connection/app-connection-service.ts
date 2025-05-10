@@ -49,6 +49,8 @@ import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
+import { ValidateOCIConnectionCredentialsSchema } from "./oci";
+import { ociConnectionService } from "./oci/oci-connection-service";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
 import { teamcityConnectionService } from "./teamcity/teamcity-connection-service";
@@ -85,7 +87,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Auth0]: ValidateAuth0ConnectionCredentialsSchema,
   [AppConnection.HCVault]: ValidateHCVaultConnectionCredentialsSchema,
   [AppConnection.LDAP]: ValidateLdapConnectionCredentialsSchema,
-  [AppConnection.TeamCity]: ValidateTeamCityConnectionCredentialsSchema
+  [AppConnection.TeamCity]: ValidateTeamCityConnectionCredentialsSchema,
+  [AppConnection.OCI]: ValidateOCIConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -464,6 +467,7 @@ export const appConnectionServiceFactory = ({
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     hcvault: hcVaultConnectionService(connectAppConnectionById),
     windmill: windmillConnectionService(connectAppConnectionById),
-    teamcity: teamcityConnectionService(connectAppConnectionById)
+    teamcity: teamcityConnectionService(connectAppConnectionById),
+    oci: ociConnectionService(connectAppConnectionById)
   };
 };

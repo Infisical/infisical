@@ -15,7 +15,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Vercel]: "Vercel",
   [SecretSync.Windmill]: "Windmill",
   [SecretSync.HCVault]: "Hashicorp Vault",
-  [SecretSync.TeamCity]: "TeamCity"
+  [SecretSync.TeamCity]: "TeamCity",
+  [SecretSync.OCIVault]: "OCI Vault"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -32,5 +33,6 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Vercel]: AppConnection.Vercel,
   [SecretSync.Windmill]: AppConnection.Windmill,
   [SecretSync.HCVault]: AppConnection.HCVault,
-  [SecretSync.TeamCity]: AppConnection.TeamCity
+  [SecretSync.TeamCity]: AppConnection.TeamCity,
+  [SecretSync.OCIVault]: AppConnection.OCI
 };

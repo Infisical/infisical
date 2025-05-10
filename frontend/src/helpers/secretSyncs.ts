@@ -47,6 +47,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.TeamCity]: {
     name: "TeamCity",
     image: "TeamCity.png"
+  },
+  [SecretSync.OCIVault]: {
+    name: "OCI Vault",
+    image: "Oracle.png"
   }
 };
 
@@ -64,7 +68,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Vercel]: AppConnection.Vercel,
   [SecretSync.Windmill]: AppConnection.Windmill,
   [SecretSync.HCVault]: AppConnection.HCVault,
-  [SecretSync.TeamCity]: AppConnection.TeamCity
+  [SecretSync.TeamCity]: AppConnection.TeamCity,
+  [SecretSync.OCIVault]: AppConnection.OCI
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

@@ -77,6 +77,12 @@ import {
 } from "./ldap";
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import {
+  TOCIConnection,
+  TOCIConnectionConfig,
+  TOCIConnectionInput,
+  TValidateOCIConnectionCredentialsSchema
+} from "./oci";
+import {
   TPostgresConnection,
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
@@ -125,6 +131,7 @@ export type TAppConnection = { id: string } & (
   | THCVaultConnection
   | TLdapConnection
   | TTeamCityConnection
+  | TOCIConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -150,6 +157,7 @@ export type TAppConnectionInput = { id: string } & (
   | THCVaultConnectionInput
   | TLdapConnectionInput
   | TTeamCityConnectionInput
+  | TOCIConnectionInput
 );
 
 export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput;
@@ -180,7 +188,8 @@ export type TAppConnectionConfig =
   | TAuth0ConnectionConfig
   | THCVaultConnectionConfig
   | TLdapConnectionConfig
-  | TTeamCityConnectionConfig;
+  | TTeamCityConnectionConfig
+  | TOCIConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -200,7 +209,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateAuth0ConnectionCredentialsSchema
   | TValidateHCVaultConnectionCredentialsSchema
   | TValidateLdapConnectionCredentialsSchema
-  | TValidateTeamCityConnectionCredentialsSchema;
+  | TValidateTeamCityConnectionCredentialsSchema
+  | TValidateOCIConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

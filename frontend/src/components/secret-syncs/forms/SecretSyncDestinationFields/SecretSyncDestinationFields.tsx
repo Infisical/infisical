@@ -13,6 +13,7 @@ import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
+import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
@@ -52,6 +53,8 @@ export const SecretSyncDestinationFields = () => {
       return <HCVaultSyncFields />;
     case SecretSync.TeamCity:
       return <TeamCitySyncFields />;
+    case SecretSync.OCIVault:
+      return <OCIVaultSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

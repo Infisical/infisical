@@ -102,6 +102,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.project;
       secondaryText = destinationConfig.buildConfig;
       break;
+    case SecretSync.OCIVault:
+      primaryText = destinationConfig.compartmentOcid;
+      secondaryText = destinationConfig.vaultOcid;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

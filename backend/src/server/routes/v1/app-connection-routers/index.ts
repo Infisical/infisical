@@ -13,6 +13,7 @@ import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
+import { registerOCIConnectionRouter } from "./oci-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
@@ -40,5 +41,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Auth0]: registerAuth0ConnectionRouter,
     [AppConnection.HCVault]: registerHCVaultConnectionRouter,
     [AppConnection.LDAP]: registerLdapConnectionRouter,
-    [AppConnection.TeamCity]: registerTeamCityConnectionRouter
+    [AppConnection.TeamCity]: registerTeamCityConnectionRouter,
+    [AppConnection.OCI]: registerOCIConnectionRouter
   };

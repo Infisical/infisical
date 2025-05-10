@@ -28,6 +28,7 @@ import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
+import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "./oci-vault";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
@@ -47,7 +48,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Vercel]: VERCEL_SYNC_LIST_OPTION,
   [SecretSync.Windmill]: WINDMILL_SYNC_LIST_OPTION,
   [SecretSync.HCVault]: HC_VAULT_SYNC_LIST_OPTION,
-  [SecretSync.TeamCity]: TEAMCITY_SYNC_LIST_OPTION
+  [SecretSync.TeamCity]: TEAMCITY_SYNC_LIST_OPTION,
+  [SecretSync.OCIVault]: OCI_VAULT_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -148,6 +150,8 @@ export const SecretSyncFns = {
         return HCVaultSyncFns.syncSecrets(secretSync, secretMap);
       case SecretSync.TeamCity:
         return TeamCitySyncFns.syncSecrets(secretSync, secretMap);
+      case SecretSync.OCIVault:
+        return OCIVaultSyncFns.syncSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -213,6 +217,9 @@ export const SecretSyncFns = {
       case SecretSync.TeamCity:
         secretMap = await TeamCitySyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.OCIVault:
+        secretMap = await OCIVaultSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -270,6 +277,8 @@ export const SecretSyncFns = {
         return HCVaultSyncFns.removeSecrets(secretSync, secretMap);
       case SecretSync.TeamCity:
         return TeamCitySyncFns.removeSecrets(secretSync, secretMap);
+      case SecretSync.OCIVault:
+        return OCIVaultSyncFns.removeSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

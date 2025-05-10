@@ -67,6 +67,7 @@ import {
   THumanitecSyncListItem,
   THumanitecSyncWithCredentials
 } from "./humanitec";
+import { TOCIVaultSync, TOCIVaultSyncInput, TOCIVaultSyncListItem, TOCIVaultSyncWithCredentials } from "./oci-vault";
 import {
   TTeamCitySync,
   TTeamCitySyncInput,
@@ -95,7 +96,8 @@ export type TSecretSync =
   | TVercelSync
   | TWindmillSync
   | THCVaultSync
-  | TTeamCitySync;
+  | TTeamCitySync
+  | TOCIVaultSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -111,7 +113,8 @@ export type TSecretSyncWithCredentials =
   | TVercelSyncWithCredentials
   | TWindmillSyncWithCredentials
   | THCVaultSyncWithCredentials
-  | TTeamCitySyncWithCredentials;
+  | TTeamCitySyncWithCredentials
+  | TOCIVaultSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -127,7 +130,8 @@ export type TSecretSyncInput =
   | TVercelSyncInput
   | TWindmillSyncInput
   | THCVaultSyncInput
-  | TTeamCitySyncInput;
+  | TTeamCitySyncInput
+  | TOCIVaultSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -143,7 +147,8 @@ export type TSecretSyncListItem =
   | TVercelSyncListItem
   | TWindmillSyncListItem
   | THCVaultSyncListItem
-  | TTeamCitySyncListItem;
+  | TTeamCitySyncListItem
+  | TOCIVaultSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

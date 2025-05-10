@@ -10,6 +10,7 @@ import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
 import { HCVaultSyncDestinationCol } from "./HCVaultSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
+import { OCIVaultSyncDestinationCol } from "./OCIVaultSyncDestinationCol";
 import { TeamCitySyncDestinationCol } from "./TeamCitySyncDestinationCol";
 import { TerraformCloudSyncDestinationCol } from "./TerraformCloudSyncDestinationCol";
 import { VercelSyncDestinationCol } from "./VercelSyncDestinationCol";
@@ -49,6 +50,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <HCVaultSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.TeamCity:
       return <TeamCitySyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.OCIVault:
+      return <OCIVaultSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

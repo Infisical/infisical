@@ -6,14 +6,21 @@ type Props = {
   children?: ReactNode;
   className?: string;
   labelClassName?: string;
+  truncate?: boolean;
 };
 
-export const GenericFieldLabel = ({ label, children, className, labelClassName }: Props) => {
+export const GenericFieldLabel = ({
+  label,
+  children,
+  className,
+  labelClassName,
+  truncate
+}: Props) => {
   return (
-    <div className={className}>
+    <div className={twMerge("min-w-0", className)}>
       <p className={twMerge("text-xs font-medium text-mineshaft-400", labelClassName)}>{label}</p>
       {children ? (
-        <p className="text-sm text-mineshaft-100">{children}</p>
+        <p className={twMerge("text-sm text-mineshaft-100", truncate && "truncate")}>{children}</p>
       ) : (
         <p className="text-sm italic text-mineshaft-400/50">None</p>
       )}
