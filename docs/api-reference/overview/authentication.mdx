@@ -13,16 +13,16 @@ To interact with the Infisical API, you will need to obtain an access token. Fol
 <AccordionGroup>
 <Accordion title="Why can I not create, read, update, or delete an identity?">
   There are a few reasons for why this might happen:
-  
+
   - You have insufficient organization permissions to create, read, update, delete identities.
   - The identity you are trying to read, update, or delete is more privileged than yourself.
   - The role you are trying to create an identity for or update an identity to is more privileged than yours.
 </Accordion>
 <Accordion title="Why is the Infisical API rejecting my identity credentials?">
   There are a few reasons for why this might happen:
-  
+
   - The client secret or access token has expired.
-  - The identity is insufficently permissioned to interact with the resources you wish to access.
+  - The identity is insufficiently permissioned to interact with the resources you wish to access.
   - You are attempting to access a `/raw` secrets endpoint that requires your project to disable E2EE.
   - The client secret/access token is being used from an untrusted IP.
 </Accordion>

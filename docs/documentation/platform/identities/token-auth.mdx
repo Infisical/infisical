@@ -77,9 +77,9 @@ using the Token Auth authentication method.
 
   </Step>
   <Step title="Creating a Token">
-    In order to use the identity with Token Auth, you'll need to create an (access) token; you can think of this token akin 
+    In order to use the identity with Token Auth, you'll need to create an (access) token; you can think of this token akin
     to an API Key used to authenticate with the Infisical API. With that, press **Create Token**.
-    
+
     ![identities client secret create](/images/platform/identities/identities-token-auth-create-1.png)
 
     ![identities client secret create](/images/platform/identities/identities-token-auth-create-2.png)
@@ -106,7 +106,7 @@ using the Token Auth authentication method.
     to authenticate with the [Infisical API](/api-reference/overview/introduction).
 
     <Note>
-      Each identity access token has a time-to-live (TLL) which you can infer from the response of the login operation;
+      Each identity access token has a time-to-live (TTL) which you can infer from the response of the login operation;
       the default TTL is `7200` seconds which can be adjusted in the Token Auth configuration.
 
       If an identity access token expires, it can no longer authenticate with the Infisical API. In this case,
@@ -121,14 +121,14 @@ using the Token Auth authentication method.
 <AccordionGroup>
 <Accordion title="Why is the Infisical API rejecting my access token?">
   There are a few reasons for why this might happen:
-  
+
   - The access token has expired. If this is the case, you should obtain a new access token or consider extending the token's TTL.
-  - The identity is insufficently permissioned to interact with the resources you wish to access.
+  - The identity is insufficiently permissioned to interact with the resources you wish to access.
   - The access token is being used from an untrusted IP.
 </Accordion>
 <Accordion title="What is access token renewal and TTL/Max TTL?">
   A identity access token can have a time-to-live (TTL) or incremental lifetime after which it expires.
-  
+
   In certain cases, you may want to extend the lifespan of an access token; to do so, you must set a max TTL parameter.
 
 A token can be renewed any number of times where each call to renew it can extend the token's lifetime by increments of the access token's TTL.

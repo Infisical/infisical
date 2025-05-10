@@ -10,15 +10,15 @@ In this brief, we'll explore how to fetch a secret back from a project on [Infis
     <Step title="Create a project with a secret">
         To create a project, head to your Organization Overview and press **Add New Project**; we'll call the project **Demo App**.
         ![create project](../../images/getting-started/api/org-create-project-1.png)
-        
+
         ![create project](../../images/getting-started/api/org-create-project-2.png)
-        
+
         Next, let's head to the **Development** environment of the project and add a secret `FOO=BAR` to it.
-        
+
         ![explore project env](../../images/getting-started/api/project-explore-env.png)
-        
+
         ![create secret](../../images/getting-started/api/project-create-secret.png)
-        
+
         ![project dashboard](../../images/getting-started/api/project-dashboard.png)
 
         <Note>
@@ -29,13 +29,13 @@ In this brief, we'll explore how to fetch a secret back from a project on [Infis
         Next, we need to create an identity to represent your application. To create one, head to your Organization Settings > Access Control > Machine Identities and press **Create identity**.
 
         ![identities organization](../../images/platform/identities/identities-org.png)
-        
+
         When creating an identity, you specify an organization level [role](/documentation/platform/role-based-access-controls) for it to assume; you can configure roles in Organization Settings > Access Control > Organization Roles.
-        
+
         ![identities organization create](../../images/platform/identities/identities-org-create.png)
-        
+
         Once you've created an identity, you'll be prompted to configure the **Universal Auth** authentication method for it.
-        
+
         ![identities organization create auth method](../../images/platform/identities/identities-org-create-auth-method.png)
 
     </Step>
@@ -44,7 +44,7 @@ In this brief, we'll explore how to fetch a secret back from a project on [Infis
         of the identity and a **Client Secret** for it; you can think of these credentials akin to a username
         and password used to authenticate with the Infisical API. With that, press on the key icon on the identity to generate a **Client Secret**
         for it.
-        
+
         ![identities client secret create](../../images/platform/identities/identities-org-client-secret.png)
         ![identities client secret create](../../images/platform/identities/identities-org-client-secret-create-1.png)
         ![identities client secret create](../../images/platform/identities/identities-org-client-secret-create-2.png)
@@ -55,14 +55,14 @@ In this brief, we'll explore how to fetch a secret back from a project on [Infis
         Next, select the identity you want to add to the project and the role you want to assign it.
 
         ![identities project](../../images/platform/identities/identities-project.png)
-        
+
         ![identities project create](../../images/platform/identities/identities-project-create.png)
     </Step>
     <Step title="Get an access token for the Infisical API">
         To access the Infisical API as the identity, you should first perform a login operation
         that is to exchange the **Client ID** and **Client Secret** of the identity for an access token
         by making a request to the `/api/v1/auth/universal-auth/login` endpoint.
-        
+
         #### Sample request
 
         ```
@@ -71,9 +71,9 @@ In this brief, we'll explore how to fetch a secret back from a project on [Infis
         --data-urlencode 'clientSecret=<client_secret>' \
         --data-urlencode 'clientId=<client_id>'
         ```
-        
+
         #### Sample response
-        
+
         ```
         {
         "accessToken": "...",
@@ -83,9 +83,9 @@ In this brief, we'll explore how to fetch a secret back from a project on [Infis
         ```
 
         Next, we can use the access token to authenticate with the [Infisical API](/api-reference/overview/introduction) to read/write secrets
-        
+
         <Note>
-        Each identity access token has a time-to-live (TLL) which you can infer from the response of the login operation;
+        Each identity access token has a time-to-live (TTL) which you can infer from the response of the login operation;
         the default TTL is `7200` seconds which can be adjusted.
 
         If an identity access token expires, it can no longer authenticate with the Infisical API. In this case,
@@ -96,12 +96,12 @@ In this brief, we'll explore how to fetch a secret back from a project on [Infis
         Finally, you can fetch the secret `FOO=BAR` back from **Step 1** by including the access token in the previous step in another request to the `/api/v3/secrets/raw/{secretName}` endpoint.
 
         ### Sample request
-        
+
         ```
         curl --location --request GET 'http://localhost:8080/api/v3/secrets/raw/FOO?workspaceId=657830d579cfc8415d06ce5b&environment=dev' \
             --header 'Authorization: Bearer <access_token>'
         ```
-        
+
         ### Sample response
 
         ```
@@ -118,7 +118,7 @@ In this brief, we'll explore how to fetch a secret back from a project on [Infis
             }
         }
         ```
-        
+
         Note that you can fetch a list of secrets back by making a request to the `/api/v3/secrets/raw` endpoint.
     </Step>
 </Steps>

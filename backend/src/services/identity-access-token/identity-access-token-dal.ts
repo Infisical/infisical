@@ -36,6 +36,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           `${TableName.Identity}.id`,
           `${TableName.IdentityKubernetesAuth}.identityId`
         )
+        .leftJoin(TableName.IdentityOciAuth, `${TableName.Identity}.id`, `${TableName.IdentityOciAuth}.identityId`)
         .leftJoin(TableName.IdentityOidcAuth, `${TableName.Identity}.id`, `${TableName.IdentityOidcAuth}.identityId`)
         .leftJoin(TableName.IdentityTokenAuth, `${TableName.Identity}.id`, `${TableName.IdentityTokenAuth}.identityId`)
         .leftJoin(TableName.IdentityJwtAuth, `${TableName.Identity}.id`, `${TableName.IdentityJwtAuth}.identityId`)
@@ -46,6 +47,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityAwsAuth).as("accessTokenTrustedIpsAws"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityAzureAuth).as("accessTokenTrustedIpsAzure"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityKubernetesAuth).as("accessTokenTrustedIpsK8s"),
+          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityOciAuth).as("accessTokenTrustedIpsOci"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityOidcAuth).as("accessTokenTrustedIpsOidc"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityTokenAuth).as("accessTokenTrustedIpsToken"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityJwtAuth).as("accessTokenTrustedIpsJwt"),
@@ -63,6 +65,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         trustedIpsAwsAuth: doc.accessTokenTrustedIpsAws,
         trustedIpsAzureAuth: doc.accessTokenTrustedIpsAzure,
         trustedIpsKubernetesAuth: doc.accessTokenTrustedIpsK8s,
+        trustedIpsOciAuth: doc.accessTokenTrustedIpsOci,
         trustedIpsOidcAuth: doc.accessTokenTrustedIpsOidc,
         trustedIpsAccessTokenAuth: doc.accessTokenTrustedIpsToken,
         trustedIpsAccessJwtAuth: doc.accessTokenTrustedIpsJwt,

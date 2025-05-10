@@ -56,7 +56,7 @@ In the following steps, we explore how to create and use identities for your app
     <Step title="Obtaining the token reviewer JWT for Infisical">
 				<Tabs>
 					<Tab title="Option 1: Reviewer JWT Token">
-        
+
         <Note>
         **When to use this option**: Choose this approach when you want centralized authentication management. Only one service account needs special permissions, and your application service accounts remain unchanged.
         </Note>
@@ -190,7 +190,7 @@ In the following steps, we explore how to create and use identities for your app
     Here's some more guidance on each field:
 
     - Kubernetes Host / Base Kubernetes API URL: The host string, host:port pair, or URL to the base of the Kubernetes API server. This can usually be obtained by running `kubectl cluster-info`.
-    - Token Reviewer JWT: A long-lived service account JWT token for Infisical to access the [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/) to validate other service account JWT tokens submitted by applications/pods. This is the JWT token obtained from step 1.5(Reviewer Tab). If omitted, the client's own JWT will be used instead, which requires the client to have the `system:auth-delegator` ClusterRole binding. 
+    - Token Reviewer JWT: A long-lived service account JWT token for Infisical to access the [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/) to validate other service account JWT tokens submitted by applications/pods. This is the JWT token obtained from step 1.5(Reviewer Tab). If omitted, the client's own JWT will be used instead, which requires the client to have the `system:auth-delegator` ClusterRole binding.
       This is shown in step 1, option 2.
     - Allowed Service Account Names: A comma-separated list of trusted service account names that are allowed to authenticate with Infisical.
     - Allowed Namespaces: A comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.
@@ -257,7 +257,7 @@ In the following steps, we explore how to create and use identities for your app
     </Tip>
 
     <Note>
-    Each identity access token has a time-to-live (TLL) which you can infer from the response of the login operation;
+    Each identity access token has a time-to-live (TTL) which you can infer from the response of the login operation;
     the default TTL is `7200` seconds which can be adjusted.
 
     If an identity access token exceeds its max ttl, it can no longer authenticate with the Infisical API. In this case,
@@ -280,7 +280,7 @@ In the following steps, we explore how to create and use identities for your app
   There are a few reasons for why this might happen:
 
 - The access token has expired.
-- The identity is insufficently permissioned to interact with the resources you wish to access.
+- The identity is insufficiently permissioned to interact with the resources you wish to access.
 - The client access token is being used from an untrusted IP.
 
 </Accordion>

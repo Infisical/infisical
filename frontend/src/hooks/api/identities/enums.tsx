@@ -5,6 +5,7 @@ export enum IdentityAuthMethod {
   GCP_AUTH = "gcp-auth",
   AWS_AUTH = "aws-auth",
   AZURE_AUTH = "azure-auth",
+  OCI_AUTH = "oci-auth",
   OIDC_AUTH = "oidc-auth",
   LDAP_AUTH = "ldap-auth",
   JWT_AUTH = "jwt-auth"

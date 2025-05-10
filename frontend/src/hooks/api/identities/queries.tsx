@@ -14,6 +14,7 @@ import {
   IdentityLdapAuth,
   IdentityMembership,
   IdentityMembershipOrg,
+  IdentityOciAuth,
   IdentityOidcAuth,
   IdentityTokenAuth,
   IdentityUniversalAuth,
@@ -32,6 +33,7 @@ export const identitiesKeys = {
   getIdentityGcpAuth: (identityId: string) => [{ identityId }, "identity-gcp-auth"] as const,
   getIdentityOidcAuth: (identityId: string) => [{ identityId }, "identity-oidc-auth"] as const,
   getIdentityAwsAuth: (identityId: string) => [{ identityId }, "identity-aws-auth"] as const,
+  getIdentityOciAuth: (identityId: string) => [{ identityId }, "identity-oci-auth"] as const,
   getIdentityAzureAuth: (identityId: string) => [{ identityId }, "identity-azure-auth"] as const,
   getIdentityTokenAuth: (identityId: string) => [{ identityId }, "identity-token-auth"] as const,
   getIdentityJwtAuth: (identityId: string) => [{ identityId }, "identity-jwt-auth"] as const,
@@ -162,6 +164,27 @@ export const useGetIdentityAwsAuth = (
         `/api/v1/auth/aws-auth/identities/${identityId}`
       );
       return identityAwsAuth;
+    },
+    staleTime: 0,
+    gcTime: 0,
+    ...options,
+    enabled: Boolean(identityId) && (options?.enabled ?? true)
+  });
+};
+
+export const useGetIdentityOciAuth = (
+  identityId: string,
+  options?: TReactQueryOptions["options"]
+) => {
+  return useQuery({
+    queryKey: identitiesKeys.getIdentityOciAuth(identityId),
+    queryFn: async () => {
+      const {
+        data: { identityOciAuth }
+      } = await apiRequest.get<{ identityOciAuth: IdentityOciAuth }>(
+        `/api/v1/auth/oci-auth/identities/${identityId}`
+      );
+      return identityOciAuth;
     },
     staleTime: 0,
     gcTime: 0,

@@ -173,7 +173,7 @@ access the Infisical API using the Azure Auth authentication method.
             We recommend using one of Infisical's clients like SDKs or the Infisical Agent to authenticate with Infisical using Azure Auth as they handle the authentication process including retrieving the client access token.
         </Tip>
         <Note>
-        Each identity access token has a time-to-live (TLL) which you can infer from the response of the login operation;
+        Each identity access token has a time-to-live (TTL) which you can infer from the response of the login operation;
         the default TTL is `7200` seconds which can be adjusted.
         If an identity access token expires, it can no longer authenticate with the Infisical API. In this case,
         a new access token should be obtained by performing another login operation.

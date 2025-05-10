@@ -84,15 +84,15 @@ using the Universal Auth authentication method.
   <Step title="Creating a Client Secret">
     In order to use the identity, you'll need the non-sensitive **Client ID**
     of the identity and a **Client Secret** for it; you can think of these credentials akin to a username
-    and password used to authenticate with the Infisical API. 
+    and password used to authenticate with the Infisical API.
     With that, press **Create Client Secret**.
-    
+
     ![identities client secret create](/images/platform/identities/identities-universal-auth-create-1.png)
     ![identities client secret create](/images/platform/identities/identities-universal-auth-create-2.png)
     ![identities client secret create](/images/platform/identities/identities-universal-auth-create-3.png)
-    
+
     Feel free to input any (optional) details for the **Client Secret** configuration:
-    
+
     - Description: A description for the **Client Secret**.
     - TTL (default is `0`): The time-to-live for the **Client Secret**. By default, the TTL will be set to 0 which implies that the **Client Secret** will never expire; a value of `0` implies an infinite lifetime.
     - Max Number of Uses (default is `0`): The maximum number of times that the **Client Secret** can be used together with the **Client ID** to get back an access token; a value of `0` implies infinite number of uses.
@@ -113,10 +113,10 @@ using the Universal Auth authentication method.
     To access the Infisical API as the identity, you should first perform a login operation
     that is to exchange the **Client ID** and **Client Secret** of the identity for an access token
     by making a request to the `/api/v1/auth/universal-auth/login` endpoint.
-    
+
     <Tip>
       Choose the correct base URL based on your region:
-      
+
       - For Infisical Cloud US users: `https://app.infisical.com`
       - For Infisical Cloud EU users: `https://eu.infisical.com`
     </Tip>
@@ -144,7 +144,7 @@ using the Universal Auth authentication method.
     Next, you can use the access token to authenticate with the [Infisical API](/api-reference/overview/introduction)
 
     <Note>
-      Each identity access token has a time-to-live (TLL) which you can infer from the response of the login operation;
+      Each identity access token has a time-to-live (TTL) which you can infer from the response of the login operation;
       the default TTL is `7200` seconds which can be adjusted in the Universal Auth configuration.
 
       If an identity access token expires, it can no longer authenticate with the Infisical API. In this case,
@@ -159,14 +159,14 @@ using the Universal Auth authentication method.
 <AccordionGroup>
 <Accordion title="Why is the Infisical API rejecting my identity credentials?">
   There are a few reasons for why this might happen:
-  
+
   - The client secret or access token has expired.
-  - The identity is insufficently permissioned to interact with the resources you wish to access.
+  - The identity is insufficiently permissioned to interact with the resources you wish to access.
   - The client secret/access token is being used from an untrusted IP.
 </Accordion>
 <Accordion title="What is access token renewal and TTL/Max TTL?">
   A identity access token can have a time-to-live (TTL) or incremental lifetime after which it expires.
-  
+
   In certain cases, you may want to extend the lifespan of an access token; to do so, you must set a max TTL parameter.
 
 A token can be renewed any number of times where each call to renew it can extend the token's lifetime by increments of the access token's TTL.
