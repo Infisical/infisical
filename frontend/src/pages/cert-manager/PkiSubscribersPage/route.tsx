@@ -5,15 +5,5 @@ import { PkiSubscribersPage } from "./PkiSubscribersPage";
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/"
 )({
-  component: PkiSubscribersPage,
-  beforeLoad: ({ context }) => {
-    return {
-      breadcrumbs: [
-        ...context.breadcrumbs,
-        {
-          label: "Subscribers"
-        }
-      ]
-    };
-  }
+  component: PkiSubscribersPage
 });
