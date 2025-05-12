@@ -213,8 +213,8 @@ export const OCIVaultSyncFns = {
     for await (const [key, variable] of Object.entries(variables)) {
       // Only update / delete active secrets
       if (variable.lifecycleState === vault.models.SecretSummary.LifecycleState.Active) {
-        if (key in secretMap) {
-          if (variable.value !== secretMap[key].value && secretMap[key].value.length > 0) {
+        if (key in secretMap && secretMap[key].value.length > 0) {
+          if (variable.value !== secretMap[key].value) {
             try {
               await updateOCIVaultVariable({
                 compartmentId: compartmentOcid,
@@ -230,7 +230,7 @@ export const OCIVaultSyncFns = {
               });
             }
           }
-        } else if (!secretSync.syncOptions.disableSecretDeletion || !secretMap[key].value) {
+        } else if (!secretSync.syncOptions.disableSecretDeletion) {
           try {
             await deleteOCIVaultVariable({
               compartmentId: compartmentOcid,
