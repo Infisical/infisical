@@ -141,6 +141,13 @@ export const OCIVaultSyncFns = {
     // Create secrets
     for await (const entry of Object.entries(secretMap)) {
       const [key, { value }] = entry;
+
+      // skip secrets that don't have a value set
+      if (!value) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
       const existingVariable = Object.values(variables).find((v) => v.secretName === key);
 
       if (!existingVariable) {
@@ -207,7 +214,7 @@ export const OCIVaultSyncFns = {
       // Only update / delete active secrets
       if (variable.lifecycleState === vault.models.SecretSummary.LifecycleState.Active) {
         if (key in secretMap) {
-          if (variable.value !== secretMap[key].value) {
+          if (variable.value !== secretMap[key].value && secretMap[key].value.length > 0) {
             try {
               await updateOCIVaultVariable({
                 compartmentId: compartmentOcid,
@@ -223,7 +230,7 @@ export const OCIVaultSyncFns = {
               });
             }
           }
-        } else if (!secretSync.syncOptions.disableSecretDeletion) {
+        } else if (!secretSync.syncOptions.disableSecretDeletion || !secretMap[key].value) {
           try {
             await deleteOCIVaultVariable({
               compartmentId: compartmentOcid,
