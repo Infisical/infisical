@@ -1401,12 +1401,24 @@ export const registerRoutes = async (
     identityUaDAL,
     licenseService
   });
+
+  const gatewayService = gatewayServiceFactory({
+    permissionService,
+    gatewayDAL,
+    kmsService,
+    licenseService,
+    orgGatewayConfigDAL,
+    keyStore,
+    projectGatewayDAL
+  });
+
   const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({
     identityKubernetesAuthDAL,
     identityOrgMembershipDAL,
     identityAccessTokenDAL,
     permissionService,
     licenseService,
+    gatewayService,
     kmsService
   });
   const identityGcpAuthService = identityGcpAuthServiceFactory({
@@ -1459,16 +1471,6 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     licenseService,
     identityDAL
-  });
-
-  const gatewayService = gatewayServiceFactory({
-    permissionService,
-    gatewayDAL,
-    kmsService,
-    licenseService,
-    orgGatewayConfigDAL,
-    keyStore,
-    projectGatewayDAL
   });
 
   const dynamicSecretProviders = buildDynamicSecretProviders({

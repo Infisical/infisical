@@ -174,6 +174,8 @@ const setupProxyServer = async ({
   return new Promise((resolve, reject) => {
     const server = net.createServer();
 
+    let streamClosed = false;
+
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     server.on("connection", async (clientConn) => {
       try {
@@ -202,9 +204,15 @@ const setupProxyServer = async ({
 
             // Handle client connection close
             clientConn.on("end", () => {
-              writer.close().catch((err) => {
-                logger.error(err);
-              });
+              if (!streamClosed) {
+                try {
+                  writer.close().catch((err) => {
+                    logger.debug(err, "Error closing writer (already closed)");
+                  });
+                } catch (error) {
+                  logger.debug(error, "Error in writer close");
+                }
+              }
             });
 
             clientConn.on("error", (clientConnErr) => {
@@ -249,14 +257,29 @@ const setupProxyServer = async ({
         setupCopy();
         // Handle connection closure
         clientConn.on("close", () => {
-          stream.destroy().catch((err) => {
-            proxyErrorMsg.push((err as Error)?.message);
-          });
+          if (!streamClosed) {
+            streamClosed = true;
+            stream.destroy().catch((err) => {
+              logger.debug(err, "Stream already destroyed during close event");
+            });
+          }
         });
 
         const cleanup = async () => {
-          clientConn?.destroy();
-          await stream.destroy();
+          try {
+            clientConn?.destroy();
+          } catch (err) {
+            logger.debug(err, "Error destroying client connection");
+          }
+
+          if (!streamClosed) {
+            streamClosed = true;
+            try {
+              await stream.destroy();
+            } catch (err) {
+              logger.debug(err, "Error destroying stream (might be already closed)");
+            }
+          }
         };
 
         clientConn.on("error", (clientConnErr) => {
@@ -301,8 +324,17 @@ const setupProxyServer = async ({
         server,
         port: address.port,
         cleanup: async () => {
-          server.close();
-          await quicClient?.destroy();
+          try {
+            server.close();
+          } catch (err) {
+            logger.debug(err, "Error closing server");
+          }
+
+          try {
+            await quicClient?.destroy();
+          } catch (err) {
+            logger.debug(err, "Error destroying QUIC client");
+          }
         },
         getProxyError: () => proxyErrorMsg.join(",")
       });
@@ -320,10 +352,10 @@ interface ProxyOptions {
   orgId: string;
 }
 
-export const withGatewayProxy = async (
-  callback: (port: number) => Promise<void>,
+export const withGatewayProxy = async <T>(
+  callback: (port: number) => Promise<T>,
   options: ProxyOptions
-): Promise<void> => {
+): Promise<T> => {
   const { relayHost, relayPort, targetHost, targetPort, tlsOptions, identityId, orgId } = options;
 
   // Setup the proxy server
@@ -339,7 +371,7 @@ export const withGatewayProxy = async (
 
   try {
     // Execute the callback with the allocated port
-    await callback(port);
+    return await callback(port);
   } catch (err) {
     const proxyErrorMessage = getProxyError();
     if (proxyErrorMessage) {

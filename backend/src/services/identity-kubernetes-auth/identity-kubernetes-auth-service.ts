@@ -4,6 +4,7 @@ import https from "https";
 import jwt from "jsonwebtoken";
 
 import { IdentityAuthMethod, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -13,6 +14,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
+import { withGatewayProxy } from "@app/lib/gateway";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -43,6 +45,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  gatewayService: TGatewayServiceFactory;
 };
 
 export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKubernetesAuthServiceFactory>;
@@ -53,8 +56,43 @@ export const identityKubernetesAuthServiceFactory = ({
   identityAccessTokenDAL,
   permissionService,
   licenseService,
+  gatewayService,
   kmsService
 }: TIdentityKubernetesAuthServiceFactoryDep) => {
+  const $gatewayProxyWrapper = async <T>(
+    inputs: {
+      gatewayId: string;
+      targetHost: string;
+      targetPort: number;
+    },
+    gatewayCallback: (host: string, port: number) => Promise<T>
+  ): Promise<T> => {
+    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId);
+    const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
+
+    const callbackResult = await withGatewayProxy(
+      async (port) => {
+        const res = await gatewayCallback("localhost", port);
+        return res;
+      },
+      {
+        targetHost: inputs.targetHost,
+        targetPort: inputs.targetPort,
+        relayHost,
+        relayPort: Number(relayPort),
+        identityId: relayDetails.identityId,
+        orgId: relayDetails.orgId,
+        tlsOptions: {
+          ca: relayDetails.certChain,
+          cert: relayDetails.certificate,
+          key: relayDetails.privateKey.toString()
+        }
+      }
+    );
+
+    return callbackResult;
+  };
+
   const login = async ({ identityId, jwt: serviceAccountJwt }: TLoginKubernetesAuthDTO) => {
     const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
     if (!identityKubernetesAuth) {
@@ -92,46 +130,70 @@ export const identityKubernetesAuthServiceFactory = ({
       tokenReviewerJwt = serviceAccountJwt;
     }
 
-    const { data } = await axios
-      .post<TCreateTokenReviewResponse>(
-        `${identityKubernetesAuth.kubernetesHost}/apis/authentication.k8s.io/v1/tokenreviews`,
-        {
-          apiVersion: "authentication.k8s.io/v1",
-          kind: "TokenReview",
-          spec: {
-            token: serviceAccountJwt,
-            ...(identityKubernetesAuth.allowedAudience ? { audiences: [identityKubernetesAuth.allowedAudience] } : {})
-          }
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${tokenReviewerJwt}`
-          },
-          signal: AbortSignal.timeout(10000),
-          timeout: 10000,
-          // if ca cert, rejectUnauthorized: true
-          httpsAgent: new https.Agent({
-            ca: caCert,
-            rejectUnauthorized: !!caCert
-          })
-        }
-      )
-      .catch((err) => {
-        if (err instanceof AxiosError) {
-          if (err.response) {
-            const { message } = err?.response?.data as unknown as { message?: string };
+    const tokenReviewCallback = async (host: string = identityKubernetesAuth.kubernetesHost, port?: number) => {
+      let baseUrl = `https://${host}`;
 
-            if (message) {
-              throw new UnauthorizedError({
-                message,
-                name: "KubernetesTokenReviewRequestError"
-              });
+      if (port) {
+        baseUrl += `:${port}`;
+      }
+
+      const res = await axios
+        .post<TCreateTokenReviewResponse>(
+          `${baseUrl}/apis/authentication.k8s.io/v1/tokenreviews`,
+          {
+            apiVersion: "authentication.k8s.io/v1",
+            kind: "TokenReview",
+            spec: {
+              token: serviceAccountJwt,
+              ...(identityKubernetesAuth.allowedAudience ? { audiences: [identityKubernetesAuth.allowedAudience] } : {})
+            }
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${tokenReviewerJwt}`
+            },
+            signal: AbortSignal.timeout(10000),
+            timeout: 10000,
+            // if ca cert, rejectUnauthorized: true
+            httpsAgent: new https.Agent({
+              ca: caCert,
+              // rejectUnauthorized: !!caCert,
+              rejectUnauthorized: false
+            })
+          }
+        )
+        .catch((err) => {
+          if (err instanceof AxiosError) {
+            if (err.response) {
+              const { message } = err?.response?.data as unknown as { message?: string };
+
+              if (message) {
+                throw new UnauthorizedError({
+                  message,
+                  name: "KubernetesTokenReviewRequestError"
+                });
+              }
             }
           }
-        }
-        throw err;
-      });
+          throw err;
+        });
+
+      return res.data;
+    };
+
+    const [k8sHost, k8sPort] = identityKubernetesAuth.kubernetesHost.split(":");
+
+    const data = identityKubernetesAuth.gatewayId
+      ? await $gatewayProxyWrapper(
+          {
+            gatewayId: identityKubernetesAuth.gatewayId,
+            targetHost: k8sHost,
+            targetPort: k8sPort ? Number(k8sPort) : 443
+          },
+          tokenReviewCallback
+        )
+      : await tokenReviewCallback();
 
     if ("error" in data.status)
       throw new UnauthorizedError({ message: data.status.error, name: "KubernetesTokenReviewError" });
@@ -222,6 +284,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
   const attachKubernetesAuth = async ({
     identityId,
+    gatewayId,
     kubernetesHost,
     caCert,
     tokenReviewerJwt,
@@ -296,6 +359,7 @@ export const identityKubernetesAuthServiceFactory = ({
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,
+          gatewayId,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
           encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
             ? encryptor({ plainText: Buffer.from(tokenReviewerJwt) }).cipherTextBlob
@@ -318,6 +382,7 @@ export const identityKubernetesAuthServiceFactory = ({
     allowedNamespaces,
     allowedNames,
     allowedAudience,
+    gatewayId,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -378,6 +443,7 @@ export const identityKubernetesAuthServiceFactory = ({
       allowedNamespaces,
       allowedNames,
       allowedAudience,
+      gatewayId,
       accessTokenMaxTTL,
       accessTokenTTL,
       accessTokenNumUsesLimit,

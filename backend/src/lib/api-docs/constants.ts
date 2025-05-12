@@ -357,6 +357,7 @@ export const KUBERNETES_AUTH = {
     allowedNames: "The comma-separated list of trusted service account names that can authenticate with Infisical.",
     allowedAudience:
       "The optional audience claim that the service account JWT token must have to authenticate with Infisical.",
+    gatewayId: "The ID of the gateway to use when performing kubernetes API requests.",
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
@@ -373,6 +374,7 @@ export const KUBERNETES_AUTH = {
     allowedNames: "The new comma-separated list of trusted service account names that can authenticate with Infisical.",
     allowedAudience:
       "The new optional audience claim that the service account JWT token must have to authenticate with Infisical.",
+    gatewayId: "The ID of the gateway to use when performing kubernetes API requests.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The new lifetime for an acccess token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",

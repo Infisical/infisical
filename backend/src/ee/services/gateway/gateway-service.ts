@@ -590,13 +590,7 @@ export const gatewayServiceFactory = ({
     return gateways;
   };
 
-  // this has no permission check and used for dynamic secrets directly
-  // assumes permission check is already done
-  const fnGetGatewayClientTls = async (projectGatewayId: string) => {
-    const projectGateway = await projectGatewayDAL.findById(projectGatewayId);
-    if (!projectGateway) throw new NotFoundError({ message: `Project gateway with ID ${projectGatewayId} not found.` });
-
-    const { gatewayId } = projectGateway;
+  const fnGetGatewayClientTlsByGatewayId = async (gatewayId: string) => {
     const gateway = await gatewayDAL.findById(gatewayId);
     if (!gateway) throw new NotFoundError({ message: `Gateway with ID ${gatewayId} not found.` });
 
@@ -638,6 +632,17 @@ export const gatewayServiceFactory = ({
     };
   };
 
+  // this has no permission check and used for dynamic secrets directly
+  // assumes permission check is already done
+  const fnGetGatewayClientTls = async (projectGatewayId: string) => {
+    const projectGateway = await projectGatewayDAL.findById(projectGatewayId);
+    if (!projectGateway) throw new NotFoundError({ message: `Project gateway with ID ${projectGatewayId} not found.` });
+
+    const gatewayDetails = await fnGetGatewayClientTlsByGatewayId(projectGateway.gatewayId);
+
+    return gatewayDetails;
+  };
+
   return {
     getGatewayRelayDetails,
     exchangeAllocatedRelayAddress,
@@ -647,6 +652,7 @@ export const gatewayServiceFactory = ({
     deleteGatewayById,
     getProjectGateways,
     fnGetGatewayClientTls,
+    fnGetGatewayClientTlsByGatewayId,
     heartbeat
   };
 };
