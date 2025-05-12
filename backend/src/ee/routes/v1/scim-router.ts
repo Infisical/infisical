@@ -196,6 +196,9 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/Users",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         schemas: z.array(z.string()),

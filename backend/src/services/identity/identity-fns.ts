@@ -8,7 +8,8 @@ export const buildAuthMethods = ({
   oidcId,
   azureId,
   tokenId,
-  jwtId
+  jwtId,
+  ldapId
 }: {
   uaId?: string;
   gcpId?: string;
@@ -18,6 +19,7 @@ export const buildAuthMethods = ({
   azureId?: string;
   tokenId?: string;
   jwtId?: string;
+  ldapId?: string;
 }) => {
   return [
     ...[uaId ? IdentityAuthMethod.UNIVERSAL_AUTH : null],
@@ -27,6 +29,7 @@ export const buildAuthMethods = ({
     ...[oidcId ? IdentityAuthMethod.OIDC_AUTH : null],
     ...[azureId ? IdentityAuthMethod.AZURE_AUTH : null],
     ...[tokenId ? IdentityAuthMethod.TOKEN_AUTH : null],
-    ...[jwtId ? IdentityAuthMethod.JWT_AUTH : null]
+    ...[jwtId ? IdentityAuthMethod.JWT_AUTH : null],
+    ...[ldapId ? IdentityAuthMethod.LDAP_AUTH : null]
   ].filter((authMethod) => authMethod) as IdentityAuthMethod[];
 };

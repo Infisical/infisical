@@ -14,6 +14,7 @@ import {
   TIdentityUniversalAuths,
   TOrgRoles
 } from "@app/db/schemas";
+import { TIdentityLdapAuths } from "@app/db/schemas/identity-ldap-auths";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
@@ -81,6 +82,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           `${TableName.IdentityOrgMembership}.identityId`,
           `${TableName.IdentityJwtAuth}.identityId`
         )
+        .leftJoin<TIdentityLdapAuths>(
+          TableName.IdentityLdapAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityLdapAuth}.identityId`
+        )
 
         .select(
           selectAllTableCols(TableName.IdentityOrgMembership),
@@ -93,7 +99,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
           db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
-
+          db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth),
           db.ref("name").withSchema(TableName.Identity)
         );
 
@@ -200,6 +206,12 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           "paginatedIdentity.identityId",
           `${TableName.IdentityJwtAuth}.identityId`
         )
+        .leftJoin<TIdentityLdapAuths>(
+          TableName.IdentityLdapAuth,
+          "paginatedIdentity.identityId",
+          `${TableName.IdentityLdapAuth}.identityId`
+        )
+
         .select(
           db.ref("id").withSchema("paginatedIdentity"),
           db.ref("role").withSchema("paginatedIdentity"),
@@ -217,7 +229,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
           db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
-          db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth)
+          db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
+          db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth)
         )
         // cr stands for custom role
         .select(db.ref("id").as("crId").withSchema(TableName.OrgRoles))
@@ -259,6 +272,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           oidcId,
           azureId,
           tokenId,
+          ldapId,
           createdAt,
           updatedAt
         }) => ({
@@ -290,7 +304,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               oidcId,
               azureId,
               tokenId,
-              jwtId
+              jwtId,
+              ldapId
             })
           }
         }),
@@ -406,6 +421,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           `${TableName.IdentityOrgMembership}.identityId`,
           `${TableName.IdentityJwtAuth}.identityId`
         )
+        .leftJoin(
+          TableName.IdentityLdapAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityLdapAuth}.identityId`
+        )
         .select(
           db.ref("id").withSchema(TableName.IdentityOrgMembership),
           db.ref("total_count").withSchema("searchedIdentities"),
@@ -424,7 +444,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
           db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
-          db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth)
+          db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
+          db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth)
         )
         // cr stands for custom role
         .select(db.ref("id").as("crId").withSchema(TableName.OrgRoles))
@@ -467,6 +488,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           oidcId,
           azureId,
           tokenId,
+          ldapId,
           createdAt,
           updatedAt
         }) => ({
@@ -498,7 +520,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               oidcId,
               azureId,
               tokenId,
-              jwtId
+              jwtId,
+              ldapId
             })
           }
         }),

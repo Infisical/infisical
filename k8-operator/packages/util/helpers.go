@@ -7,14 +7,19 @@ import (
 	"time"
 )
 
-func ConvertIntervalToDuration(resyncInterval string) (time.Duration, error) {
-	length := len(resyncInterval)
+func ConvertIntervalToDuration(resyncInterval *string) (time.Duration, error) {
+
+	if resyncInterval == nil || *resyncInterval == "" {
+		return 0, nil
+	}
+
+	length := len(*resyncInterval)
 	if length < 2 {
 		return 0, fmt.Errorf("invalid format")
 	}
 
-	unit := resyncInterval[length-1:]
-	numberPart := resyncInterval[:length-1]
+	unit := (*resyncInterval)[length-1:]
+	numberPart := (*resyncInterval)[:length-1]
 
 	number, err := strconv.Atoi(numberPart)
 	if err != nil {
@@ -38,16 +43,6 @@ func ConvertIntervalToDuration(resyncInterval string) (time.Duration, error) {
 	default:
 		return 0, fmt.Errorf("invalid time unit")
 	}
-}
-
-func ConvertIntervalToTime(resyncInterval string) (time.Time, error) {
-	duration, err := ConvertIntervalToDuration(resyncInterval)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	// Add duration to current time
-	return time.Now().Add(duration), nil
 }
 
 func AppendAPIEndpoint(address string) string {

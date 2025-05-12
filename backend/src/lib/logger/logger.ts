@@ -84,7 +84,9 @@ const redactedKeys = [
   "secrets",
   "key",
   "password",
-  "config"
+  "config",
+  "bindPass",
+  "bindDN"
 ];
 
 const UNKNOWN_REQUEST_ID = "UNKNOWN_REQUEST_ID";

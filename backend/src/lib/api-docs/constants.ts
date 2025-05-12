@@ -18,6 +18,7 @@ export enum ApiDocsTags {
   KubernetesAuth = "Kubernetes Auth",
   JwtAuth = "JWT Auth",
   OidcAuth = "OIDC Auth",
+  LdapAuth = "LDAP Auth",
   Groups = "Groups",
   Organizations = "Organizations",
   Projects = "Projects",
@@ -181,6 +182,49 @@ export const UNIVERSAL_AUTH = {
   },
   REVOKE_ACCESS_TOKEN: {
     accessToken: "The access token to revoke."
+  }
+} as const;
+
+export const LDAP_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login.",
+    username: "The username of the LDAP user to login.",
+    password: "The password of the LDAP user to login."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    url: "The URL of the LDAP server.",
+    allowedFields:
+      "The comma-separated array of key/value pairs of required fields that the LDAP entry must have in order to authenticate.",
+    searchBase: "The base DN to search for the LDAP user.",
+    searchFilter: "The filter to use to search for the LDAP user.",
+    bindDN: "The DN of the user to bind to the LDAP server.",
+    bindPass: "The password of the user to bind to the LDAP server.",
+    ldapCaCertificate: "The PEM-encoded CA certificate for the LDAP server.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the configuration for.",
+    url: "The new URL of the LDAP server.",
+    allowedFields: "The comma-separated list of allowed fields to return from the LDAP user.",
+    searchBase: "The new base DN to search for the LDAP user.",
+    searchFilter: "The new filter to use to search for the LDAP user.",
+    bindDN: "The new DN of the user to bind to the LDAP server.",
+    bindPass: "The new password of the user to bind to the LDAP server.",
+    ldapCaCertificate: "The new PEM-encoded CA certificate for the LDAP server.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the configuration for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the configuration for."
   }
 } as const;
 
@@ -1434,7 +1478,7 @@ export const SSH_HOSTS = {
     loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
     allowedPrincipals: "A list of allowed principals that can log in as the login user.",
     loginMappings:
-      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project.",
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users or groups slugs in the Infisical SSH project.",
     userSshCaId:
       "The ID of the SSH CA to use for user certificates. If not specified, the default user SSH CA will be used if it exists.",
     hostSshCaId:
@@ -1449,7 +1493,7 @@ export const SSH_HOSTS = {
     loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
     allowedPrincipals: "A list of allowed principals that can log in as the login user.",
     loginMappings:
-      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project."
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users or groups slugs in the Infisical SSH project."
   },
   DELETE: {
     sshHostId: "The ID of the SSH host to delete."
@@ -1835,8 +1879,12 @@ export const KMS = {
 };
 
 export const ProjectTemplates = {
+  LIST: {
+    type: "The type of project template to list."
+  },
   CREATE: {
     name: "The name of the project template to be created. Must be slug-friendly.",
+    type: "The type of project template to be created.",
     description: "An optional description of the project template.",
     roles: "The roles to be created when the template is applied to a project.",
     environments: "The environments to be created when the template is applied to a project."

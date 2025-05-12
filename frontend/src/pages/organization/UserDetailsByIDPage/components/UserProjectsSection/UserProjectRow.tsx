@@ -5,8 +5,8 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { IconButton, Tag, Td, Tooltip, Tr } from "@app/components/v2";
+import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetUserWorkspaces } from "@app/hooks/api";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { OrgAccessControlTabSections } from "@app/types/org";
@@ -17,15 +17,6 @@ type Props = {
     popUpName: keyof UsePopUpState<["removeUserFromProject"]>,
     data?: object
   ) => void;
-};
-
-const formatRoleName = (role: string, customRoleName?: string) => {
-  if (role === ProjectMembershipRole.Custom) return customRoleName;
-  if (role === ProjectMembershipRole.Admin) return "Admin";
-  if (role === ProjectMembershipRole.Member) return "Developer";
-  if (role === ProjectMembershipRole.Viewer) return "Viewer";
-  if (role === ProjectMembershipRole.NoAccess) return "No Access";
-  return role;
 };
 
 export const UserProjectRow = ({
@@ -73,7 +64,7 @@ export const UserProjectRow = ({
       <Td>
         <Tag size="xs">{project.type}</Tag>
       </Td>
-      <Td>{`${formatRoleName(roles[0].role, roles[0].customRoleName)}${
+      <Td>{`${formatProjectRoleName(roles[0].role, roles[0].customRoleName)}${
         roles.length > 1 ? ` (+${roles.length - 1})` : ""
       }`}</Td>
       <Td>

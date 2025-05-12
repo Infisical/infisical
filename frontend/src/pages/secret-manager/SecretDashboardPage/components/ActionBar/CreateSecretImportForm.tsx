@@ -163,8 +163,8 @@ export const CreateSecretImportForm = ({
                   onValueChange={(val) => onChange(val === "true")}
                   className="w-full border border-mineshaft-500"
                 >
-                  <SelectItem value="false">Ignore secret approval polices</SelectItem>
-                  <SelectItem value="true">Respect secret approval polices</SelectItem>
+                  <SelectItem value="false">Ignore secret approval policies</SelectItem>
+                  <SelectItem value="true">Respect secret approval policies</SelectItem>
                 </Select>
               </FormControl>
             )}
