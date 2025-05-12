@@ -873,6 +873,8 @@ export const registerRoutes = async (
 
   const sshHostService = sshHostServiceFactory({
     userDAL,
+    groupDAL,
+    userGroupMembershipDAL,
     projectDAL,
     projectSshConfigDAL,
     sshCertificateAuthorityDAL,
@@ -895,7 +897,8 @@ export const registerRoutes = async (
     sshHostLoginUserMappingDAL,
     userDAL,
     permissionService,
-    licenseService
+    licenseService,
+    groupDAL
   });
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({
@@ -1795,6 +1798,10 @@ export const registerRoutes = async (
     const licenseSyncJob = await licenseService.initializeBackgroundSync();
     if (licenseSyncJob) {
       cronJobs.push(licenseSyncJob);
+    }
+    const microsoftTeamsSyncJob = await microsoftTeamsService.initializeBackgroundSync();
+    if (microsoftTeamsSyncJob) {
+      cronJobs.push(microsoftTeamsSyncJob);
     }
   }
 

@@ -23,59 +23,46 @@
 package report
 
 import (
-	"encoding/csv"
+	"fmt"
 	"io"
-	"strconv"
+	"os"
+	"text/template"
+
+	"github.com/Masterminds/sprig/v3"
 )
 
-// writeCsv writes the list of findings to a writeCloser.
-func writeCsv(f []Finding, w io.WriteCloser) error {
-	if len(f) == 0 {
-		return nil
-	}
-	defer w.Close()
-	cw := csv.NewWriter(w)
-	err := cw.Write([]string{"RuleID",
-		"Commit",
-		"File",
-		"SymlinkFile",
-		"Secret",
-		"Match",
-		"StartLine",
-		"EndLine",
-		"StartColumn",
-		"EndColumn",
-		"Author",
-		"Message",
-		"Date",
-		"Email",
-		"Fingerprint",
-	})
-	if err != nil {
-		return err
-	}
-	for _, f := range f {
-		err = cw.Write([]string{f.RuleID,
-			f.Commit,
-			f.File,
-			f.SymlinkFile,
-			f.Secret,
-			f.Match,
-			strconv.Itoa(f.StartLine),
-			strconv.Itoa(f.EndLine),
-			strconv.Itoa(f.StartColumn),
-			strconv.Itoa(f.EndColumn),
-			f.Author,
-			f.Message,
-			f.Date,
-			f.Email,
-			f.Fingerprint,
-		})
-		if err != nil {
-			return err
-		}
+type TemplateReporter struct {
+	template *template.Template
+}
+
+var _ Reporter = (*TemplateReporter)(nil)
+
+func NewTemplateReporter(templatePath string) (*TemplateReporter, error) {
+	if templatePath == "" {
+		return nil, fmt.Errorf("template path cannot be empty")
 	}
 
-	cw.Flush()
-	return cw.Error()
+	file, err := os.ReadFile(templatePath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading file: %w", err)
+	}
+	templateText := string(file)
+
+	// TODO: Add helper functions like escaping for JSON, XML, etc.
+	t := template.New("custom")
+	t = t.Funcs(sprig.TxtFuncMap())
+	t, err = t.Parse(templateText)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing file: %w", err)
+	}
+	return &TemplateReporter{template: t}, nil
+}
+
+// writeTemplate renders the findings using the user-provided template.
+// https://www.digitalocean.com/community/tutorials/how-to-use-templates-in-go
+func (t *TemplateReporter) Write(w io.WriteCloser, findings []Finding) error {
+	if err := t.template.Execute(w, findings); err != nil {
+		return err
+	}
+	return nil
 }
