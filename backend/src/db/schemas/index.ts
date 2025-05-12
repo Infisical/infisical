@@ -48,6 +48,7 @@ export * from "./identity-universal-auths";
 export * from "./incident-contacts";
 export * from "./integration-auths";
 export * from "./integrations";
+export * from "./internal-certificate-authorities";
 export * from "./internal-kms";
 export * from "./kmip-client-certificates";
 export * from "./kmip-clients";

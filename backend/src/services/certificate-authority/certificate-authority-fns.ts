@@ -5,6 +5,7 @@ import { NotFoundError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
+import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
   TDNParts,
   TGetCaCertChainDTO,
@@ -318,3 +319,10 @@ export const rebuildCaCrl = async ({
     }
   );
 };
+
+export const expandInternalCa = (
+  ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>
+) => ({
+  ...ca,
+  ...ca.internalCa
+});
