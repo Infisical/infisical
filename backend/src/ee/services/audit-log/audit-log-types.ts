@@ -1976,7 +1976,7 @@ interface CreatePkiSubscriber {
   type: EventType.CREATE_PKI_SUBSCRIBER;
   metadata: {
     pkiSubscriberId: string;
-    caId: string;
+    caId?: string;
     name: string;
     commonName: string;
     ttl: string;

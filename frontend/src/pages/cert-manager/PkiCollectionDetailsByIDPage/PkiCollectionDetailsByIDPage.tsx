@@ -57,7 +57,7 @@ export const PkiCollectionPage = () => {
       });
       handlePopUpClose("deletePkiCollection");
       navigate({
-        to: `/${ProjectType.CertificateManager}/$projectId/overview` as const,
+        to: `/${ProjectType.CertificateManager}/$projectId/certificates` as const,
         params: {
           projectId
         }
