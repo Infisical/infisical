@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { subject } from "@casl/ability";
 import { faCertificate, faEllipsis, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
@@ -26,6 +27,7 @@ import {
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
+  useProjectPermission,
   useWorkspace
 } from "@app/context";
 import { useGetPkiSubscriberCertificates } from "@app/hooks/api";
@@ -42,6 +44,7 @@ const PER_PAGE_INIT = 25;
 export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace.id;
+  const { permission } = useProjectPermission();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
@@ -73,6 +76,13 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
 
     return <Badge variant="success">Valid</Badge>;
   };
+
+  const canListPkiSubscriberCerts = permission.can(
+    ProjectPermissionPkiSubscriberActions.ListCerts,
+    subject(ProjectPermissionSub.PkiSubscribers, {
+      name: subscriberName
+    })
+  );
 
   return (
     <div>
@@ -156,7 +166,7 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
         )}
         {!isPending && !data?.certificates?.length && (
           <EmptyState
-            title="No certificates have been issued for this subscriber"
+            title={`${canListPkiSubscriberCerts ? "No certificates have been issued for this subscriber" : "You do not have permission to view this subscriber's certificates"}`}
             icon={faCertificate}
           />
         )}

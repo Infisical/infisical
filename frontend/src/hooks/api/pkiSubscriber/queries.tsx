@@ -77,8 +77,8 @@ export const useGetPkiSubscriberCertificates = ({
     queryKey: pkiSubscriberKeys.specificPkiSubscriberCertificates({
       subscriberName,
       projectId,
-      offset: 0,
-      limit: 25
+      offset,
+      limit
     }),
     queryFn: async () => {
       const params = new URLSearchParams({

@@ -1087,17 +1087,14 @@ export const projectServiceFactory = ({
     const subscribers = await pkiSubscriberDAL.find({ projectId });
 
     for (const subscriber of subscribers) {
-      try {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionPkiSubscriberActions.Read,
-          subject(ProjectPermissionSub.PkiSubscribers, {
-            name: subscriber.name
-          })
-        );
-
+      const canRead = permission.can(
+        ProjectPermissionPkiSubscriberActions.Read,
+        subject(ProjectPermissionSub.PkiSubscribers, {
+          name: subscriber.name
+        })
+      );
+      if (canRead) {
         allowedSubscribers.push(subscriber);
-      } catch {
-        // intentionally ignore subscribers where user lacks access
       }
     }
 
@@ -1203,17 +1200,15 @@ export const projectServiceFactory = ({
     const hosts = await sshHostDAL.findSshHostsWithLoginMappings(projectId);
 
     for (const host of hosts) {
-      try {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionSshHostActions.Read,
-          subject(ProjectPermissionSub.SshHosts, {
-            hostname: host.hostname
-          })
-        );
+      const canRead = permission.can(
+        ProjectPermissionSshHostActions.Read,
+        subject(ProjectPermissionSub.SshHosts, {
+          hostname: host.hostname
+        })
+      );
 
+      if (canRead) {
         allowedHosts.push(host);
-      } catch {
-        // intentionally ignore projects where user lacks access
       }
     }
 

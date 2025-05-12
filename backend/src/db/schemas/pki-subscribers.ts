@@ -12,7 +12,7 @@ export const PkiSubscribersSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   projectId: z.string(),
-  caId: z.string().uuid(),
+  caId: z.string().uuid().nullable().optional(),
   name: z.string(),
   commonName: z.string(),
   subjectAlternativeNames: z.string().array(),

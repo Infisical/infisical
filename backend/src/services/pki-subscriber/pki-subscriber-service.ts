@@ -2,6 +2,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import crypto, { KeyObject } from "crypto";
+import { z } from "zod";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
@@ -13,6 +14,7 @@ import {
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { isFQDN } from "@app/lib/validator/validate-url";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -262,6 +264,7 @@ export const pkiSubscriberServiceFactory = ({
       projectId
     });
     if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
+    if (!subscriber.caId) throw new BadRequestError({ message: "Subscriber does not have an assigned issuing CA" });
 
     const ca = await certificateAuthorityDAL.findById(subscriber.caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID '${subscriber.caId}' not found` });
@@ -365,7 +368,32 @@ export const pkiSubscriberServiceFactory = ({
       extensions.push(new x509.KeyUsagesExtension(keyUsagesBitValue, true));
     }
 
-    const selectedExtendedKeyUsages = subscriber.extendedKeyUsages as CertExtendedKeyUsage[];
+    if (subscriber.extendedKeyUsages.length) {
+      const extendedKeyUsagesExtension = new x509.ExtendedKeyUsageExtension(
+        subscriber.extendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku as CertExtendedKeyUsage]),
+        true
+      );
+      extensions.push(extendedKeyUsagesExtension);
+    }
+
+    let altNamesArray: { type: "email" | "dns"; value: string }[] = [];
+
+    if (subscriber.subjectAlternativeNames?.length) {
+      altNamesArray = subscriber.subjectAlternativeNames.map((altName) => {
+        if (z.string().email().safeParse(altName).success) {
+          return { type: "email", value: altName };
+        }
+
+        if (isFQDN(altName, { allow_wildcard: true })) {
+          return { type: "dns", value: altName };
+        }
+
+        throw new BadRequestError({ message: `Invalid SAN entry: ${altName}` });
+      });
+
+      const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
+      extensions.push(altNamesExtension);
+    }
 
     const serialNumber = createSerialNumber();
     const leafCert = await x509.X509CertificateGenerator.create({
@@ -421,7 +449,7 @@ export const pkiSubscriberServiceFactory = ({
           notBefore: notBeforeDate,
           notAfter: notAfterDate,
           keyUsages: selectedKeyUsages,
-          extendedKeyUsages: selectedExtendedKeyUsages
+          extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[]
         },
         tx
       );
@@ -470,6 +498,8 @@ export const pkiSubscriberServiceFactory = ({
       projectId
     });
     if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
+    if (!subscriber.caId) throw new BadRequestError({ message: "Subscriber does not have an assigned issuing CA" });
+
     const ca = await certificateAuthorityDAL.findById(subscriber.caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID '${subscriber.caId}' not found` });
 
@@ -731,13 +761,11 @@ export const pkiSubscriberServiceFactory = ({
       projectId
     });
     if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
-    const ca = await certificateAuthorityDAL.findById(subscriber.caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID '${subscriber.caId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId: ca.projectId,
+      projectId: subscriber.projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.CertificateManager
