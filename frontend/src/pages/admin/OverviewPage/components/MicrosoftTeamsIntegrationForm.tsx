@@ -52,7 +52,7 @@ export const MicrosoftTeamsIntegrationForm = ({ adminIntegrationsConfig }: Props
     });
 
     createNotification({
-      text: "Updated admin Microsoft Teams configuration",
+      text: "Updated admin Microsoft Teams configuration. It can take up to 5 minutes to take effect.",
       type: "success"
     });
   };

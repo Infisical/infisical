@@ -7,12 +7,15 @@ import { TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod } from "@app/services/auth/auth-type";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TGroupDALFactory } from "../group/group-dal";
+
 export type TListSshHostsDTO = Omit<TProjectPermission, "projectId">;
 
 export type TLoginMapping = {
   loginUser: string;
   allowedPrincipals: {
-    usernames: string[];
+    usernames?: string[];
+    groups?: string[];
   };
 };
 
@@ -63,7 +66,8 @@ type BaseCreateSshLoginMappingsDTO = {
   sshHostLoginUserDAL: Pick<TSshHostLoginUserDALFactory, "create" | "transaction">;
   sshHostLoginUserMappingDAL: Pick<TSshHostLoginUserMappingDALFactory, "insertMany">;
   userDAL: Pick<TUserDALFactory, "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getUserProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getUserProjectPermission" | "checkGroupProjectPermission">;
+  groupDAL: Pick<TGroupDALFactory, "findGroupsByProjectId">;
   projectId: string;
   actorAuthMethod: ActorAuthMethod;
   actorOrgId: string;
