@@ -246,12 +246,7 @@ export const identityServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    const metadata = await identityMetadataDAL.find({
-      identityId: id,
-      orgId: identity.orgId
-    });
-
-    return { ...identity, metadata };
+    return identity;
   };
 
   const deleteIdentity = async ({
