@@ -2,15 +2,14 @@ import ldapjs from "ldapjs";
 
 import { logger } from "@app/lib/logger";
 
-import { TLDAPConfig } from "./ldap-config-types";
+import { TLDAPConfig, TTestLDAPConfigDTO } from "./ldap-config-types";
 
 export const isValidLdapFilter = (filter: string) => {
   try {
     ldapjs.parseFilter(filter);
     return true;
   } catch (error) {
-    logger.error("Invalid LDAP filter");
-    logger.error(error);
+    logger.error(error, "Invalid LDAP filter");
     return false;
   }
 };
@@ -20,7 +19,7 @@ export const isValidLdapFilter = (filter: string) => {
  * @param ldapConfig - The LDAP configuration to test
  * @returns {Boolean} isConnected - Whether or not the connection was successful
  */
-export const testLDAPConfig = async (ldapConfig: TLDAPConfig): Promise<boolean> => {
+export const testLDAPConfig = async (ldapConfig: TTestLDAPConfigDTO): Promise<boolean> => {
   return new Promise((resolve) => {
     const ldapClient = ldapjs.createClient({
       url: ldapConfig.url,

@@ -11,6 +11,7 @@ import {
   IdentityGcpAuth,
   IdentityJwtAuth,
   IdentityKubernetesAuth,
+  IdentityLdapAuth,
   IdentityMembership,
   IdentityMembershipOrg,
   IdentityOidcAuth,
@@ -34,6 +35,7 @@ export const identitiesKeys = {
   getIdentityAzureAuth: (identityId: string) => [{ identityId }, "identity-azure-auth"] as const,
   getIdentityTokenAuth: (identityId: string) => [{ identityId }, "identity-token-auth"] as const,
   getIdentityJwtAuth: (identityId: string) => [{ identityId }, "identity-jwt-auth"] as const,
+  getIdentityLdapAuth: (identityId: string) => [{ identityId }, "identity-ldap-auth"] as const,
   getIdentityTokensTokenAuth: (identityId: string) =>
     [{ identityId }, "identity-tokens-token-auth"] as const,
   getIdentityProjectMemberships: (identityId: string) =>
@@ -223,6 +225,27 @@ export const useGetIdentityTokenAuth = (
         `/api/v1/auth/token-auth/identities/${identityId}`
       );
       return identityTokenAuth;
+    },
+    staleTime: 0,
+    gcTime: 0,
+    ...options,
+    enabled: Boolean(identityId) && (options?.enabled ?? true)
+  });
+};
+
+export const useGetIdentityLdapAuth = (
+  identityId: string,
+  options?: TReactQueryOptions["options"]
+) => {
+  return useQuery({
+    queryKey: identitiesKeys.getIdentityLdapAuth(identityId),
+    queryFn: async () => {
+      const {
+        data: { identityLdapAuth }
+      } = await apiRequest.get<{ identityLdapAuth: IdentityLdapAuth }>(
+        `/api/v1/auth/ldap-auth/identities/${identityId}`
+      );
+      return identityLdapAuth;
     },
     staleTime: 0,
     gcTime: 0,

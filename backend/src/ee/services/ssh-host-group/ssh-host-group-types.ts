@@ -9,12 +9,7 @@ export type TCreateSshHostGroupDTO = {
 export type TUpdateSshHostGroupDTO = {
   sshHostGroupId: string;
   name?: string;
-  loginMappings?: {
-    loginUser: string;
-    allowedPrincipals: {
-      usernames: string[];
-    };
-  }[];
+  loginMappings?: TLoginMapping[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetSshHostGroupDTO = {

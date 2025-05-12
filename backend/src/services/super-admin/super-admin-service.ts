@@ -246,7 +246,8 @@ export const superAdminServiceFactory = ({
 
       await microsoftTeamsService.initializeTeamsBot({
         botAppId: decryptedAppId.toString(),
-        botAppPassword: decryptedAppPassword.toString()
+        botAppPassword: decryptedAppPassword.toString(),
+        lastUpdatedAt: updatedServerCfg.updatedAt
       });
     }
 

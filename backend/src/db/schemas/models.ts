@@ -81,6 +81,7 @@ export enum TableName {
   IdentityAwsAuth = "identity_aws_auths",
   IdentityOidcAuth = "identity_oidc_auths",
   IdentityJwtAuth = "identity_jwt_auths",
+  IdentityLdapAuth = "identity_ldap_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
@@ -233,7 +234,8 @@ export enum IdentityAuthMethod {
   AWS_AUTH = "aws-auth",
   AZURE_AUTH = "azure-auth",
   OIDC_AUTH = "oidc-auth",
-  JWT_AUTH = "jwt-auth"
+  JWT_AUTH = "jwt-auth",
+  LDAP_AUTH = "ldap-auth"
 }
 
 export enum ProjectType {
