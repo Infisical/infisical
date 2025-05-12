@@ -157,3 +157,21 @@ description: "Learn how to configure an Oracle Cloud Infrastructure Vault Sync f
         ```
     </Tab>
 </Tabs>
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="How are non-active lifecycle states treated?">
+        When Infisical attempts to sync secrets, the sync will fail and attempt to re-sync if **any secret** has one of the following lifecycle states:
+        - SchedulingDeletion
+        - CancellingDeletion
+        - Deleting
+        - Creating
+        - Updating
+
+        We do this to prevent any desync issues.
+    </Accordion>
+    <Accordion title="What happens if I create / update a variable that's scheduled for deletion in OCI Vault?">
+        In the case that a variable is created or updated while it's scheduled for deletion in OCI Vault, we cancel the deletion and update the variable. This action may take up to a minute since Infisical must wait for OCI to completely cancel the deletion and then update the variable.
+    </Accordion>
+</AccordionGroup>

@@ -1,5 +1,6 @@
 import { secrets, vault } from "oci-sdk";
 
+import { delay } from "@app/lib/delay";
 import { getOCIProvider } from "@app/services/app-connection/oci";
 import {
   TCreateOCIVaultVariable,
@@ -121,11 +122,28 @@ export const OCIVaultSyncFns = {
     const provider = await getOCIProvider(connection);
     const variables = await listOCIVaultVariables({ provider, compartmentId: compartmentOcid, vaultId: vaultOcid });
 
+    // Throw an error if any keys are updating in OCI vault to prevent skipped updates
+    if (
+      Object.entries(variables).some(
+        ([, secret]) =>
+          secret.lifecycleState === vault.models.SecretSummary.LifecycleState.Updating ||
+          secret.lifecycleState === vault.models.SecretSummary.LifecycleState.CancellingDeletion ||
+          secret.lifecycleState === vault.models.SecretSummary.LifecycleState.Creating ||
+          secret.lifecycleState === vault.models.SecretSummary.LifecycleState.Deleting ||
+          secret.lifecycleState === vault.models.SecretSummary.LifecycleState.SchedulingDeletion
+      )
+    ) {
+      throw new SecretSyncError({
+        error: "Cannot sync while keys are updating in OCI Vault."
+      });
+    }
+
     // Create secrets
     for await (const entry of Object.entries(secretMap)) {
       const [key, { value }] = entry;
+      const existingVariable = Object.values(variables).find((v) => v.secretName === key);
 
-      if (!Object.values(variables).some((v) => v.secretName === key)) {
+      if (!existingVariable) {
         try {
           await createOCIVaultVariable({
             compartmentId: compartmentOcid,
@@ -141,27 +159,45 @@ export const OCIVaultSyncFns = {
             secretKey: key
           });
         }
-      } else {
+      } else if (existingVariable.lifecycleState === vault.models.SecretSummary.LifecycleState.PendingDeletion) {
         // If a secret exists but is pending deletion, cancel the deletion and update the secret
-        const secretPendingDeletion = Object.values(variables).find(
-          (s) => s.secretName === key && s.lifecycleState === vault.models.SecretSummary.LifecycleState.PendingDeletion
-        );
+        await unmarkOCIVaultVariableFromDeletion({
+          provider,
+          compartmentId: compartmentOcid,
+          vaultId: vaultOcid,
+          secretId: existingVariable.id
+        });
 
-        if (secretPendingDeletion) {
-          await unmarkOCIVaultVariableFromDeletion({
-            provider,
-            compartmentId: compartmentOcid,
-            vaultId: vaultOcid,
-            secretId: secretPendingDeletion.id
+        const vaultsClient = new vault.VaultsClient({ authenticationDetailsProvider: provider });
+        const MAX_RETRIES = 10;
+
+        for (let i = 0; i < MAX_RETRIES; i += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          await delay(5000);
+
+          // eslint-disable-next-line no-await-in-loop
+          const secret = await vaultsClient.getSecret({
+            secretId: existingVariable.id
           });
 
-          await updateOCIVaultVariable({
-            provider,
-            compartmentId: compartmentOcid,
-            vaultId: vaultOcid,
-            secretId: secretPendingDeletion.id,
-            value
-          });
+          if (secret.secret.lifecycleState === vault.models.SecretSummary.LifecycleState.Active) {
+            // eslint-disable-next-line no-await-in-loop
+            await updateOCIVaultVariable({
+              provider,
+              compartmentId: compartmentOcid,
+              vaultId: vaultOcid,
+              secretId: existingVariable.id,
+              value
+            });
+            break;
+          }
+
+          if (i === MAX_RETRIES - 1) {
+            throw new SecretSyncError({
+              error: "Failed to update secret after cancelling deletion.",
+              secretKey: key
+            });
+          }
         }
       }
     }
