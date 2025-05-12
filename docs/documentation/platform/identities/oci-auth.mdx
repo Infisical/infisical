@@ -43,6 +43,49 @@ To be more specific:
 4. Infisical checks the user's properties against set criteria such as **Allowed Usernames** and **Tenancy OCID**.
 5. If all checks pass, Infisical returns a short-lived access token that the client can use to make authenticated requests to the Infisical API.
 
+## Prerequisite
+
+In order to sign requests, you must have an OCI user with credentials such as the private key. If you're unaware of how to create a user and obtain the needed credentials, expand the menu below.
+
+<Accordion title="Creating an OCI user">
+    <Steps>
+        <Step title="Search for 'Domains' and click as shown">
+            ![Search Domains](/images/app-connections/oci/search-domains.png)
+        </Step>
+        <Step title="Select domain">
+            Select the domain in which you want to create the Infisical user account.
+
+            ![Select Domain](/images/app-connections/oci/select-domain.png)
+        </Step>
+        <Step title="Navigate to 'Users'">
+            ![Select Users](/images/app-connections/oci/select-users.png)
+        </Step>
+        <Step title="Click 'Create user'">
+            ![Click Create User](/images/app-connections/oci/click-create-user.png)
+        </Step>
+        <Step title="Create user">
+            The name, email, and username can be anything.
+
+            ![Create User](/images/app-connections/oci/create-user.png)
+        </Step>
+        <Step title="Navigate to 'API keys'">
+            After you've created a user, you'll be redirected to the user's page. Navigate to 'API keys'.
+
+            ![Select API Keys](/images/app-connections/oci/select-api-keys.png)
+        </Step>
+        <Step title="Add API key">
+            Click on 'Add API key' and then download or import the private key. After you've obtained the private key, click 'Add'.
+
+            ![Add API Key](/images/app-connections/oci/add-api-key.png)
+        </Step>
+        <Step title="Store configuration">
+            After creating the API key, you'll be shown a modal with relevant information. Save the highlighted values (and the private key) for later steps.
+
+            ![User Info](/images/app-connections/oci/user-info.png)
+        </Step>
+    </Steps>
+</Accordion>
+
 ## Guide
 
 In the following steps, we explore how to create and use identities for your workloads and applications on OCI to

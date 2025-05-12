@@ -1022,7 +1022,7 @@ interface AddIdentityOciAuthEvent {
   metadata: {
     identityId: string;
     tenancyOcid: string;
-    allowedUsernames: string;
+    allowedUsernames: string | null;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
@@ -1042,7 +1042,7 @@ interface UpdateIdentityOciAuthEvent {
   metadata: {
     identityId: string;
     tenancyOcid?: string;
-    allowedUsernames?: string;
+    allowedUsernames: string | null;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;

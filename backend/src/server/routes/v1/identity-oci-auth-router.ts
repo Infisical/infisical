@@ -143,7 +143,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
           metadata: {
             identityId: identityOciAuth.identityId,
             tenancyOcid: identityOciAuth.tenancyOcid,
-            allowedUsernames: identityOciAuth.allowedUsernames,
+            allowedUsernames: identityOciAuth.allowedUsernames || null,
             accessTokenTTL: identityOciAuth.accessTokenTTL,
             accessTokenMaxTTL: identityOciAuth.accessTokenMaxTTL,
             accessTokenTrustedIps: identityOciAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
@@ -214,7 +214,8 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        allowedUsernames: req.body.allowedUsernames || null
       });
 
       await server.services.auditLog.createAuditLog({
@@ -225,7 +226,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
           metadata: {
             identityId: identityOciAuth.identityId,
             tenancyOcid: identityOciAuth.tenancyOcid,
-            allowedUsernames: identityOciAuth.allowedUsernames,
+            allowedUsernames: identityOciAuth.allowedUsernames || null,
             accessTokenTTL: identityOciAuth.accessTokenTTL,
             accessTokenMaxTTL: identityOciAuth.accessTokenMaxTTL,
             accessTokenTrustedIps: identityOciAuth.accessTokenTrustedIps as TIdentityTrustedIp[],

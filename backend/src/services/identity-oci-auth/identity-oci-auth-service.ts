@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ForbiddenError } from "@casl/ability";
+import { AxiosError } from "axios";
 import jwt from "jsonwebtoken";
 import RE2 from "re2";
 
@@ -15,6 +16,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -60,15 +62,20 @@ export const identityOciAuthServiceFactory = ({
     await blockLocalAndPrivateIpAddresses(headers.host);
 
     // Validate OCI host format
-    if (!headers.host || !new RE2("^identity\\.[a-zA-Z0-9-]+\\.oraclecloud\\.com$").test(headers.host)) {
+    if (!headers.host || !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(headers.host)) {
       throw new BadRequestError({
         message: "Invalid OCI host format. Expected format: identity.<region>.oraclecloud.com"
       });
     }
 
-    const { data } = await request.get<TOciGetUserResponse>(`https://${headers.host}/20160918/users/${userOcid}`, {
-      headers
-    });
+    const { data } = await request
+      .get<TOciGetUserResponse>(`https://${headers.host}/20160918/users/${userOcid}`, {
+        headers
+      })
+      .catch((err: AxiosError) => {
+        logger.error(err.response, "OciIdentityLogin: Failed to authenticate with Oracle Cloud");
+        throw err;
+      });
 
     if (data.compartmentId !== identityOciAuth.tenancyOcid) {
       throw new UnauthorizedError({

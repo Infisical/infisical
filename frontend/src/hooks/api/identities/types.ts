@@ -294,7 +294,7 @@ export type IdentityOciAuth = {
   identityId: string;
   type: "iam";
   tenancyOcid: string;
-  allowedUsernames: string;
+  allowedUsernames?: string | null;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -305,7 +305,7 @@ export type AddIdentityOciAuthDTO = {
   organizationId: string;
   identityId: string;
   tenancyOcid: string;
-  allowedUsernames: string;
+  allowedUsernames?: string | null;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -318,7 +318,7 @@ export type UpdateIdentityOciAuthDTO = {
   organizationId: string;
   identityId: string;
   tenancyOcid?: string;
-  allowedUsernames?: string;
+  allowedUsernames?: string | null;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;

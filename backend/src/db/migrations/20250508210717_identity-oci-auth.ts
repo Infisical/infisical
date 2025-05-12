@@ -17,7 +17,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("type").notNullable();
 
       t.string("tenancyOcid").notNullable();
-      t.string("allowedUsernames").notNullable();
+      t.string("allowedUsernames").nullable();
     });
   }
 

@@ -29,8 +29,15 @@ import { IdentityFormTab } from "./types";
 
 const schema = z
   .object({
-    tenancyOcid: z.string().trim().min(1, "Tenancy OCID is required."),
-    allowedUsernames: z.string(),
+    tenancyOcid: z
+      .string()
+      .trim()
+      .min(1, "Tenancy OCID cannot be empty.")
+      .refine(
+        (val) => /^ocid1\.tenancy\.oc1\..+$/.test(val),
+        "Invalid Tenancy OCID format. Must start with ocid1.tenancy.oc1."
+      ),
+    allowedUsernames: z.string().optional(),
     accessTokenTTL: z
       .string()
       .refine(
@@ -110,7 +117,7 @@ export const IdentityOciAuthForm = ({
     if (data) {
       reset({
         tenancyOcid: data.tenancyOcid,
-        allowedUsernames: data.allowedUsernames,
+        allowedUsernames: data.allowedUsernames || undefined,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
         accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
@@ -125,7 +132,7 @@ export const IdentityOciAuthForm = ({
     } else {
       reset({
         tenancyOcid: "",
-        allowedUsernames: "",
+        allowedUsernames: undefined,
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
         accessTokenNumUsesLimit: "0",
@@ -161,7 +168,7 @@ export const IdentityOciAuthForm = ({
           organizationId: orgId,
           identityId,
           tenancyOcid,
-          allowedUsernames: allowedUsernames || "",
+          allowedUsernames: allowedUsernames || undefined,
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
