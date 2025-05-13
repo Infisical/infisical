@@ -9,6 +9,7 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretSyncActions,
@@ -74,6 +75,18 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionSshHostActions.IssueHostCert
     ],
     ProjectPermissionSub.SshHosts
+  );
+
+  can(
+    [
+      ProjectPermissionPkiSubscriberActions.Edit,
+      ProjectPermissionPkiSubscriberActions.Read,
+      ProjectPermissionPkiSubscriberActions.Create,
+      ProjectPermissionPkiSubscriberActions.Delete,
+      ProjectPermissionPkiSubscriberActions.IssueCert,
+      ProjectPermissionPkiSubscriberActions.ListCerts
+    ],
+    ProjectPermissionSub.PkiSubscribers
   );
 
   can(
@@ -338,6 +351,7 @@ const buildMemberPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificateTemplates);
 
   can([ProjectPermissionSshHostActions.Read], ProjectPermissionSub.SshHosts);
+  can([ProjectPermissionPkiSubscriberActions.Read], ProjectPermissionSub.PkiSubscribers);
 
   can(
     [

@@ -95,6 +95,15 @@ export enum ProjectPermissionSshHostActions {
   IssueHostCert = "issue-host-cert"
 }
 
+export enum ProjectPermissionPkiSubscriberActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueCert = "issue-cert",
+  ListCerts = "list-certs"
+}
+
 export enum ProjectPermissionSecretRotationActions {
   Read = "read",
   ReadGeneratedCredentials = "read-generated-credentials",
@@ -186,6 +195,7 @@ export enum ProjectPermissionSub {
   SshHostGroups = "ssh-host-groups",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
+  PkiSubscribers = "pki-subscribers",
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
@@ -218,6 +228,14 @@ export type SecretImportSubjectFields = {
 export type SecretRotationSubjectFields = {
   environment: string;
   secretPath: string;
+};
+
+export type SshHostSubjectFields = {
+  hostname: string;
+};
+
+export type PkiSubscriberSubjectFields = {
+  name: string;
 };
 
 export type ProjectPermissionSet =
@@ -282,7 +300,20 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshHostGroups]
-  | [ProjectPermissionSshHostActions, ProjectPermissionSub.SshHosts]
+  | [
+      ProjectPermissionSshHostActions,
+      (
+        | ProjectPermissionSub.SshHosts
+        | (ForcedSubject<ProjectPermissionSub.SshHosts> & SshHostSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionPkiSubscriberActions,
+      (
+        | ProjectPermissionSub.PkiSubscribers
+        | (ForcedSubject<ProjectPermissionSub.PkiSubscribers> & PkiSubscriberSubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]

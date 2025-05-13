@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { pkiSubscriberKeys } from "../pkiSubscriber/queries";
 import { workspaceKeys } from "../workspace";
 import { TCertificate, TDeleteCertDTO, TRevokeCertDTO } from "./types";
 
@@ -41,6 +42,9 @@ export const useRevokeCert = () => {
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({
         queryKey: workspaceKeys.forWorkspaceCertificates(projectSlug)
+      });
+      queryClient.invalidateQueries({
+        queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
       });
     }
   });

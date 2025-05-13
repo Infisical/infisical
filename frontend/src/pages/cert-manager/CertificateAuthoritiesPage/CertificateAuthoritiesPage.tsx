@@ -15,7 +15,10 @@ export const CertificateAuthoritiesPage = () => {
         <title>{t("common.head-title", { title: "Certificate Authorities" })}</title>
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-7xl">
-        <PageHeader title="Certificate Authorities" />
+        <PageHeader
+          title="Certificate Authorities"
+          description="Manage internal private certificate authorities for issuing and signing certificates, including root and intermediate CAs."
+        />
         <ProjectPermissionCan
           renderGuardBanner
           I={ProjectPermissionActions.Read}
