@@ -68,10 +68,7 @@ const Content = ({ role, onClose }: ContentProps) => {
 
       onClose();
     } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to duplicate role"
-      });
+      // query client creates notification
     }
   };
 
