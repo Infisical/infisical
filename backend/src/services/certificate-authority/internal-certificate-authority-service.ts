@@ -384,7 +384,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     );
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
-      if (status) {
+      if (status !== undefined) {
         await internalCertificateAuthorityDAL.update(
           {
             certificateAuthorityId: ca.id
@@ -394,7 +394,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         );
       }
 
-      if (requireTemplateForIssuance) {
+      if (requireTemplateForIssuance !== undefined) {
         await certificateAuthorityDAL.updateById(ca.id, { disableDirectIssuance: requireTemplateForIssuance }, tx);
       }
 

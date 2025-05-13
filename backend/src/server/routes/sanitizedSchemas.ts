@@ -276,4 +276,6 @@ export const SanitizedTagSchema = SecretTagsSchema.pick({
 
 export const InternalCertificateAuthorityResponseSchema = CertificateAuthoritiesSchema.merge(
   InternalCertificateAuthoritiesSchema
-);
+).extend({
+  requireTemplateForIssuance: z.boolean().optional()
+});
