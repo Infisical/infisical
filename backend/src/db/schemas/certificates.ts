@@ -25,7 +25,8 @@ export const CertificatesSchema = z.object({
   certificateTemplateId: z.string().uuid().nullable().optional(),
   keyUsages: z.string().array().nullable().optional(),
   extendedKeyUsages: z.string().array().nullable().optional(),
-  projectId: z.string()
+  projectId: z.string(),
+  pkiSubscriberId: z.string().uuid().nullable().optional()
 });
 
 export type TCertificates = z.infer<typeof CertificatesSchema>;

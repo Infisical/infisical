@@ -21,6 +21,7 @@ export type TSshHost = {
   hostCertTtl: string;
   loginMappings: TLoginMapping[];
 };
+
 export type TCreateSshHostDTO = {
   projectId: string;
   hostname: string;

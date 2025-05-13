@@ -32,7 +32,10 @@ export const CertificatesPage = () => {
         <title>{t("common.head-title", { title: "Certificates" })}</title>
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-7xl">
-        <PageHeader title="Certificates" />
+        <PageHeader
+          title="Certificates"
+          description="View and track issued certificates, monitor expiration dates, and manage certificate lifecycles."
+        />
         {/* If both are false, the section does not render. This is to prevent duplicate banners. */}
         {(canAccessCerts || canAccessPkiColl) && (
           <ProjectPermissionCan
