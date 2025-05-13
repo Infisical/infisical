@@ -62,7 +62,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (role) {
       reset({
         name: role.name,
-        description: role.description,
+        description: role.description || "",
         slug: role.slug
       });
     } else {
