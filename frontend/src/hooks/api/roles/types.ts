@@ -19,7 +19,7 @@ export type TProjectRole = {
   id: string;
   createdAt: string;
   updatedAt: string;
-  description?: string;
+  description?: string | null;
   permissions: TProjectPermission[];
 };
 
@@ -76,7 +76,7 @@ export type TDeleteOrgRoleDTO = {
 export type TCreateProjectRoleDTO = {
   projectId: string;
   name: string;
-  description?: string;
+  description?: string | null;
   slug: string;
   permissions: TProjectPermission[];
 };
