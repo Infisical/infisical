@@ -23,6 +23,10 @@ export const ROUTE_PATHS = Object.freeze({
         "/_authenticate/_inject-org-details/_org-layout/organization/settings/oauth/callback"
       )
     },
+    SsoPage: setRoute(
+      "/organization/sso",
+      "/_authenticate/_inject-org-details/_org-layout/organization/sso"
+    ),
     SecretScanning: setRoute(
       "/organization/secret-scanning",
       "/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning"

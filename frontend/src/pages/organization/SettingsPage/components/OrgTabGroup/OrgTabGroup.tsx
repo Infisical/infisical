@@ -10,9 +10,9 @@ import { ProjectType } from "@app/hooks/api/workspace/types";
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
 import { ImportTab } from "../ImportTab";
 import { KmipTab } from "../KmipTab/OrgKmipTab";
-import { OrgAuthTab } from "../OrgAuthTab";
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
+import { OrgSecurityTab } from "../OrgSecurityTab";
 import { OrgWorkflowIntegrationTab } from "../OrgWorkflowIntegrationTab/OrgWorkflowIntegrationTab";
 
 export const OrgTabGroup = () => {
@@ -21,7 +21,7 @@ export const OrgTabGroup = () => {
   });
   const tabs = [
     { name: "General", key: "tab-org-general", component: OrgGeneralTab },
-    { name: "Security", key: "tab-org-security", component: OrgAuthTab },
+    { name: "Security", key: "tab-org-security", component: OrgSecurityTab },
     { name: "Encryption", key: "tab-org-encryption", component: OrgEncryptionTab },
     {
       name: "Workflow Integrations",
