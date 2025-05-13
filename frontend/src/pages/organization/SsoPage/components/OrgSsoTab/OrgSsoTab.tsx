@@ -17,16 +17,12 @@ import { LoginMethod } from "@app/hooks/api/admin/types";
 import { LDAPModal } from "./LDAPModal";
 import { OIDCModal } from "./OIDCModal";
 import { OrgGeneralAuthSection } from "./OrgGeneralAuthSection";
-import { OrgGenericAuthSection } from "./OrgGenericAuthSection";
-import { OrgGithubSyncSection } from "./OrgGithubSyncSection";
 import { OrgLDAPSection } from "./OrgLDAPSection";
 import { OrgOIDCSection } from "./OrgOIDCSection";
-import { OrgScimSection } from "./OrgSCIMSection";
 import { OrgSSOSection } from "./OrgSSOSection";
-import { OrgUserAccessTokenLimitSection } from "./OrgUserAccessTokenLimitSection";
 import { SSOModal } from "./SSOModal";
 
-export const OrgAuthTab = withPermission(
+export const OrgSsoTab = withPermission(
   () => {
     const {
       config: { enabledLoginMethods }
@@ -167,8 +163,6 @@ export const OrgAuthTab = withPermission(
 
     return (
       <>
-        <OrgGenericAuthSection />
-        <OrgUserAccessTokenLimitSection />
         {shouldShowCreateIdentityProviderView ? (
           createIdentityProviderView
         ) : (
@@ -183,8 +177,6 @@ export const OrgAuthTab = withPermission(
             {isLdapConfigured && shouldDisplaySection(LoginMethod.LDAP) && <OrgLDAPSection />}
           </>
         )}
-        <OrgScimSection />
-        <OrgGithubSyncSection />
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
