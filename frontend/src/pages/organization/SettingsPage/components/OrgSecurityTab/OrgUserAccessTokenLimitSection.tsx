@@ -86,13 +86,12 @@ export const OrgUserAccessTokenLimitSection = () => {
   ];
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex w-full items-center justify-between">
-        <p className="text-xl font-semibold">User Token Expiration</p>
+        <p className="text-xl font-semibold">Session Length</p>
       </div>
       <p className="mb-4 mt-2 text-sm text-gray-400">
-        This defines the maximum time a user token will be valid. After this time, the user will
-        need to re-authenticate.
+        Specify the duration of each login session for users in this organization.
       </p>
       <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
         {(isAllowed) => (
