@@ -18,10 +18,8 @@ import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { AddPoliciesButton } from "./AddPoliciesButton";
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
-import {
-  GeneralPermissionConditions,
-  GeneralPermissionPolicies
-} from "./GeneralPermissionConditions";
+import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
+import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import { PkiSubscriberPermissionConditions } from "./PkiSubscriberPermissionConditions";
