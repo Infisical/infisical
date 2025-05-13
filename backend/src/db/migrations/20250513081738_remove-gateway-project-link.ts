@@ -18,6 +18,5 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.alterTable(TableName.DynamicSecret, (table) => {
     table.dropForeign("gatewayId");
     table.dropColumn("gatewayId");
-    table.dropIndex("gatewayId");
   });
 }
