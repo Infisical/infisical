@@ -9,6 +9,8 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable(TableName.DynamicSecret, (table) => {
     table.uuid("gatewayId").nullable();
     table.foreign("gatewayId").references("id").inTable(TableName.Gateway).onDelete("SET NULL");
+
+    table.index("gatewayId");
   });
 }
 
@@ -16,5 +18,6 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.alterTable(TableName.DynamicSecret, (table) => {
     table.dropForeign("gatewayId");
     table.dropColumn("gatewayId");
+    table.dropIndex("gatewayId");
   });
 }

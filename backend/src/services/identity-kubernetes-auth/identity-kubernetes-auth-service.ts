@@ -165,8 +165,7 @@ export const identityKubernetesAuthServiceFactory = ({
             // if ca cert, rejectUnauthorized: true
             httpsAgent: new https.Agent({
               ca: caCert,
-              // rejectUnauthorized: !!caCert,
-              rejectUnauthorized: false
+              rejectUnauthorized: !!caCert
             })
           }
         )
