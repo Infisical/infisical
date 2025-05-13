@@ -112,6 +112,7 @@
           "pages": [
             "documentation/platform/pki/overview",
             "documentation/platform/pki/private-ca",
+            "documentation/platform/pki/subscribers",
             "documentation/platform/pki/certificates",
             "documentation/platform/pki/pki-issuer",
             "documentation/platform/pki/est",
@@ -247,68 +248,88 @@
     {
       "group": "Authentication Methods",
       "pages": [
-        "documentation/platform/auth-methods/email-password",
-        "documentation/platform/token",
-        "documentation/platform/identities/token-auth",
-        "documentation/platform/identities/universal-auth",
-        "documentation/platform/identities/kubernetes-auth",
-        "documentation/platform/identities/gcp-auth",
-        "documentation/platform/identities/azure-auth",
-        "documentation/platform/identities/aws-auth",
-        "documentation/platform/identities/jwt-auth",
         {
-          "group": "OIDC Auth",
+          "group": "User Authentication",
           "pages": [
-            "documentation/platform/identities/oidc-auth/general",
-            "documentation/platform/identities/oidc-auth/github",
-            "documentation/platform/identities/oidc-auth/circleci",
-            "documentation/platform/identities/oidc-auth/gitlab",
-            "documentation/platform/identities/oidc-auth/terraform-cloud"
-          ]
-        },
-        "documentation/platform/mfa",
-        {
-          "group": "SSO",
-          "pages": [
-            "documentation/platform/sso/overview",
-            "documentation/platform/sso/google",
-            "documentation/platform/sso/github",
-            "documentation/platform/sso/gitlab",
-            "documentation/platform/sso/okta",
-            "documentation/platform/sso/azure",
-            "documentation/platform/sso/jumpcloud",
-            "documentation/platform/sso/keycloak-saml",
-            "documentation/platform/sso/google-saml",
-            "documentation/platform/sso/auth0-saml",
+            "documentation/platform/auth-methods/email-password",
             {
-              "group": "Keycloak OIDC",
+              "group": "SSO",
               "pages": [
-                "documentation/platform/sso/keycloak-oidc/overview",
-                "documentation/platform/sso/keycloak-oidc/group-membership-mapping"
+                "documentation/platform/sso/overview",
+                "documentation/platform/sso/google",
+                "documentation/platform/sso/github",
+                "documentation/platform/sso/gitlab",
+                "documentation/platform/sso/okta",
+                "documentation/platform/sso/azure",
+                "documentation/platform/sso/jumpcloud",
+                "documentation/platform/sso/keycloak-saml",
+                "documentation/platform/sso/google-saml",
+                "documentation/platform/sso/auth0-saml",
+                {
+                  "group": "Keycloak OIDC",
+                  "pages": [
+                    "documentation/platform/sso/keycloak-oidc/overview",
+                    "documentation/platform/sso/keycloak-oidc/group-membership-mapping"
+                  ]
+                },
+                "documentation/platform/sso/auth0-oidc",
+                "documentation/platform/sso/general-oidc"
               ]
             },
-            "documentation/platform/sso/auth0-oidc",
-            "documentation/platform/sso/general-oidc"
+            {
+              "group": "LDAP",
+              "pages": [
+                "documentation/platform/ldap/overview",
+                "documentation/platform/ldap/jumpcloud",
+                "documentation/platform/ldap/general"
+              ]
+            },
+            {
+              "group": "SCIM",
+              "pages": [
+                "documentation/platform/scim/overview",
+                "documentation/platform/scim/okta",
+                "documentation/platform/scim/azure",
+                "documentation/platform/scim/jumpcloud",
+                "documentation/platform/scim/group-mappings"
+              ]
+            }
           ]
         },
+
         {
-          "group": "LDAP",
+          "group": "Machine Identities",
           "pages": [
-            "documentation/platform/ldap/overview",
-            "documentation/platform/ldap/jumpcloud",
-            "documentation/platform/ldap/general"
+            "documentation/platform/identities/token-auth",
+            "documentation/platform/identities/universal-auth",
+            "documentation/platform/identities/kubernetes-auth",
+            "documentation/platform/identities/gcp-auth",
+            "documentation/platform/identities/azure-auth",
+            "documentation/platform/identities/aws-auth",
+            "documentation/platform/identities/jwt-auth",
+
+            {
+              "group": "OIDC Auth",
+              "pages": [
+                "documentation/platform/identities/oidc-auth/general",
+                "documentation/platform/identities/oidc-auth/github",
+                "documentation/platform/identities/oidc-auth/circleci",
+                "documentation/platform/identities/oidc-auth/gitlab",
+                "documentation/platform/identities/oidc-auth/terraform-cloud"
+              ]
+            },
+
+            {
+              "group": "LDAP Auth",
+              "pages": [
+                "documentation/platform/identities/ldap-auth/general",
+                "documentation/platform/identities/ldap-auth/jumpcloud"
+              ]
+            }
           ]
         },
-        {
-          "group": "SCIM",
-          "pages": [
-            "documentation/platform/scim/overview",
-            "documentation/platform/scim/okta",
-            "documentation/platform/scim/azure",
-            "documentation/platform/scim/jumpcloud",
-            "documentation/platform/scim/group-mappings"
-          ]
-        },
+        "documentation/platform/token",
+        "documentation/platform/mfa",
         "documentation/platform/github-org-sync"
       ]
     },
@@ -448,6 +469,7 @@
             "integrations/app-connections/humanitec",
             "integrations/app-connections/ldap",
             "integrations/app-connections/mssql",
+            "integrations/app-connections/oci",
             "integrations/app-connections/postgres",
             "integrations/app-connections/teamcity",
             "integrations/app-connections/terraform-cloud",
@@ -474,6 +496,7 @@
             "integrations/secret-syncs/github",
             "integrations/secret-syncs/hashicorp-vault",
             "integrations/secret-syncs/humanitec",
+            "integrations/secret-syncs/oci-vault",
             "integrations/secret-syncs/teamcity",
             "integrations/secret-syncs/terraform-cloud",
             "integrations/secret-syncs/vercel",
@@ -713,6 +736,16 @@
             "api-reference/endpoints/jwt-auth/retrieve",
             "api-reference/endpoints/jwt-auth/update",
             "api-reference/endpoints/jwt-auth/revoke"
+          ]
+        },
+        {
+          "group": "LDAP Auth",
+          "pages": [
+            "api-reference/endpoints/ldap-auth/login",
+            "api-reference/endpoints/ldap-auth/attach",
+            "api-reference/endpoints/ldap-auth/retrieve",
+            "api-reference/endpoints/ldap-auth/update",
+            "api-reference/endpoints/ldap-auth/revoke"
           ]
         },
         {
@@ -1141,6 +1174,18 @@
               ]
             },
             {
+              "group": "OCI",
+              "pages": [
+                "api-reference/endpoints/app-connections/oci/list",
+                "api-reference/endpoints/app-connections/oci/available",
+                "api-reference/endpoints/app-connections/oci/get-by-id",
+                "api-reference/endpoints/app-connections/oci/get-by-name",
+                "api-reference/endpoints/app-connections/oci/create",
+                "api-reference/endpoints/app-connections/oci/update",
+                "api-reference/endpoints/app-connections/oci/delete"
+              ]
+            },
+            {
               "group": "PostgreSQL",
               "pages": [
                 "api-reference/endpoints/app-connections/postgres/list",
@@ -1344,6 +1389,20 @@
               ]
             },
             {
+              "group": "OCI",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/oci-vault/list",
+                "api-reference/endpoints/secret-syncs/oci-vault/get-by-id",
+                "api-reference/endpoints/secret-syncs/oci-vault/get-by-name",
+                "api-reference/endpoints/secret-syncs/oci-vault/create",
+                "api-reference/endpoints/secret-syncs/oci-vault/update",
+                "api-reference/endpoints/secret-syncs/oci-vault/delete",
+                "api-reference/endpoints/secret-syncs/oci-vault/sync-secrets",
+                "api-reference/endpoints/secret-syncs/oci-vault/import-secrets",
+                "api-reference/endpoints/secret-syncs/oci-vault/remove-secrets"
+              ]
+            },
+            {
               "group": "TeamCity",
               "pages": [
                 "api-reference/endpoints/secret-syncs/teamcity/list",
@@ -1427,6 +1486,18 @@
     {
       "group": "Infisical PKI",
       "pages": [
+        {
+          "group": "Subscribers",
+          "pages": [
+            "api-reference/endpoints/pki/subscribers/list-certs",
+            "api-reference/endpoints/pki/subscribers/create",
+            "api-reference/endpoints/pki/subscribers/read",
+            "api-reference/endpoints/pki/subscribers/update",
+            "api-reference/endpoints/pki/subscribers/delete",
+            "api-reference/endpoints/pki/subscribers/issue-cert",
+            "api-reference/endpoints/pki/subscribers/sign-cert"
+          ]
+        },
         {
           "group": "Certificate Authorities",
           "pages": [

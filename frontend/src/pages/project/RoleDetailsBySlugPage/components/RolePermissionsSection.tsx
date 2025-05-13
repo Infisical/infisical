@@ -15,13 +15,16 @@ import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
-import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
-import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
-import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
 
+import { AddPoliciesButton } from "./AddPoliciesButton";
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
-import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
+import {
+  GeneralPermissionConditions,
+  GeneralPermissionPolicies
+} from "./GeneralPermissionConditions";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
+import { PermissionEmptyState } from "./PermissionEmptyState";
+import { PkiSubscriberPermissionConditions } from "./PkiSubscriberPermissionConditions";
 import {
   formRolePermission2API,
   isConditionalSubjects,
@@ -56,6 +59,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.SshHosts) {
       return <SshHostPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.PkiSubscribers) {
+      return <PkiSubscriberPermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;

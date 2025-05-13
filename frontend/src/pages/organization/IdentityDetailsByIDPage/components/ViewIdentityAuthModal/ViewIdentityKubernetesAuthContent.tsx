@@ -51,10 +51,10 @@ export const ViewIdentityKubernetesAuthContent = ({
       onEdit={() => handlePopUpOpen("identityAuthMethod")}
       onDelete={onDelete}
     >
-      <IdentityAuthFieldDisplay label="Access Token TLL (seconds)">
+      <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
         {data.accessTokenTTL}
       </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max TLL (seconds)">
+      <IdentityAuthFieldDisplay label="Access Token Max TTL (seconds)">
         {data.accessTokenMaxTTL}
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Access Token Max Number of Uses">

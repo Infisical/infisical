@@ -69,6 +69,7 @@ export * from "./organizations";
 export * from "./pki-alerts";
 export * from "./pki-collection-items";
 export * from "./pki-collections";
+export * from "./pki-subscribers";
 export * from "./project-bots";
 export * from "./project-environments";
 export * from "./project-gateways";

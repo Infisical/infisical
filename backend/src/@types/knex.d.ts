@@ -209,6 +209,9 @@ import {
   TPkiCollections,
   TPkiCollectionsInsert,
   TPkiCollectionsUpdate,
+  TPkiSubscribers,
+  TPkiSubscribersInsert,
+  TPkiSubscribersUpdate,
   TProjectBots,
   TProjectBotsInsert,
   TProjectBotsUpdate,
@@ -433,6 +436,11 @@ import {
   TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
 import {
+  TIdentityLdapAuths,
+  TIdentityLdapAuthsInsert,
+  TIdentityLdapAuthsUpdate
+} from "@app/db/schemas/identity-ldap-auths";
+import {
   TMicrosoftTeamsIntegrations,
   TMicrosoftTeamsIntegrationsInsert,
   TMicrosoftTeamsIntegrationsUpdate
@@ -558,6 +566,11 @@ declare module "knex/types/tables" {
       TPkiCollectionItems,
       TPkiCollectionItemsInsert,
       TPkiCollectionItemsUpdate
+    >;
+    [TableName.PkiSubscriber]: KnexOriginal.CompositeTableType<
+      TPkiSubscribers,
+      TPkiSubscribersInsert,
+      TPkiSubscribersUpdate
     >;
     [TableName.UserGroupMembership]: KnexOriginal.CompositeTableType<
       TUserGroupMembership,
@@ -734,6 +747,11 @@ declare module "knex/types/tables" {
       TIdentityJwtAuths,
       TIdentityJwtAuthsInsert,
       TIdentityJwtAuthsUpdate
+    >;
+    [TableName.IdentityLdapAuth]: KnexOriginal.CompositeTableType<
+      TIdentityLdapAuths,
+      TIdentityLdapAuthsInsert,
+      TIdentityLdapAuthsUpdate
     >;
     [TableName.IdentityUaClientSecret]: KnexOriginal.CompositeTableType<
       TIdentityUaClientSecrets,

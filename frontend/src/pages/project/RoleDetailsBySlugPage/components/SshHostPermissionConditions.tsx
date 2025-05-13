@@ -125,7 +125,7 @@ export const SshHostPermissionConditions = ({ position = 0, isDisabled }: Props)
                       errorText={error?.message}
                       className="mb-0 flex-grow"
                     >
-                      <Input {...field} />
+                      <Input {...field} onChange={(e) => field.onChange(e.target.value.trim())} />
                     </FormControl>
                   )}
                 />

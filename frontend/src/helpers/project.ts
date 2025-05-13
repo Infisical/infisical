@@ -61,6 +61,9 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
   return project;
 };
 export const getProjectHomePage = (workspace: Workspace) => {
+  if (workspace.type === ProjectType.CertificateManager) {
+    return `/${workspace.type}/$projectId/subscribers` as const;
+  }
   return `/${workspace.type}/$projectId/overview` as const;
 };
 

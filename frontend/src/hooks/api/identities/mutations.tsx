@@ -10,6 +10,7 @@ import {
   AddIdentityGcpAuthDTO,
   AddIdentityJwtAuthDTO,
   AddIdentityKubernetesAuthDTO,
+  AddIdentityLdapAuthDTO,
   AddIdentityOidcAuthDTO,
   AddIdentityTokenAuthDTO,
   AddIdentityUniversalAuthDTO,
@@ -25,6 +26,7 @@ import {
   DeleteIdentityGcpAuthDTO,
   DeleteIdentityJwtAuthDTO,
   DeleteIdentityKubernetesAuthDTO,
+  DeleteIdentityLdapAuthDTO,
   DeleteIdentityOidcAuthDTO,
   DeleteIdentityTokenAuthDTO,
   DeleteIdentityUniversalAuthClientSecretDTO,
@@ -36,6 +38,7 @@ import {
   IdentityGcpAuth,
   IdentityJwtAuth,
   IdentityKubernetesAuth,
+  IdentityLdapAuth,
   IdentityOidcAuth,
   IdentityTokenAuth,
   IdentityUniversalAuth,
@@ -47,6 +50,7 @@ import {
   UpdateIdentityGcpAuthDTO,
   UpdateIdentityJwtAuthDTO,
   UpdateIdentityKubernetesAuthDTO,
+  UpdateIdentityLdapAuthDTO,
   UpdateIdentityOidcAuthDTO,
   UpdateIdentityTokenAuthDTO,
   UpdateIdentityUniversalAuthDTO,
@@ -1045,6 +1049,119 @@ export const useRevokeIdentityTokenAuthToken = () => {
     onSuccess: (_, { identityId }) => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityTokensTokenAuth(identityId)
+      });
+    }
+  });
+};
+
+export const useAddIdentityLdapAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityLdapAuth, object, AddIdentityLdapAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      url,
+      bindDN,
+      bindPass,
+      searchBase,
+      searchFilter,
+      ldapCaCertificate,
+      allowedFields,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const { data } = await apiRequest.post<{ identityLdapAuth: IdentityLdapAuth }>(
+        `/api/v1/auth/ldap-auth/identities/${identityId}`,
+        {
+          url,
+          bindDN,
+          bindPass,
+          searchBase,
+          searchFilter,
+          ldapCaCertificate,
+          allowedFields,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+      return data.identityLdapAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityLdapAuth(identityId)
+      });
+    }
+  });
+};
+
+export const useUpdateIdentityLdapAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityLdapAuth, object, UpdateIdentityLdapAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      url,
+      bindDN,
+      bindPass,
+      searchBase,
+      searchFilter,
+      ldapCaCertificate,
+      allowedFields,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const { data } = await apiRequest.patch<{ identityLdapAuth: IdentityLdapAuth }>(
+        `/api/v1/auth/ldap-auth/identities/${identityId}`,
+        {
+          url,
+          bindDN,
+          bindPass,
+          searchBase,
+          searchFilter,
+          ldapCaCertificate,
+          allowedFields,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+      return data.identityLdapAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityLdapAuth(identityId)
+      });
+    }
+  });
+};
+
+export const useDeleteIdentityLdapAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityLdapAuth, object, DeleteIdentityLdapAuthDTO>({
+    mutationFn: async ({ identityId }) => {
+      const { data } = await apiRequest.delete(`/api/v1/auth/ldap-auth/identities/${identityId}`);
+      return data.identityLdapAuth;
+    },
+    onSuccess: (_, { organizationId, identityId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityLdapAuth(identityId)
       });
     }
   });

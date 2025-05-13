@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { useSearch } from "@tanstack/react-router";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { Link, useSearch } from "@tanstack/react-router";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
 import { ImportTab } from "../ImportTab";
 import { KmipTab } from "../KmipTab/OrgKmipTab";
-import { OrgAuthTab } from "../OrgAuthTab";
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
+import { OrgSecurityTab } from "../OrgSecurityTab";
 import { OrgWorkflowIntegrationTab } from "../OrgWorkflowIntegrationTab/OrgWorkflowIntegrationTab";
 
 export const OrgTabGroup = () => {
@@ -19,7 +21,7 @@ export const OrgTabGroup = () => {
   });
   const tabs = [
     { name: "General", key: "tab-org-general", component: OrgGeneralTab },
-    { name: "Security", key: "tab-org-security", component: OrgAuthTab },
+    { name: "Security", key: "tab-org-security", component: OrgSecurityTab },
     { name: "Encryption", key: "tab-org-encryption", component: OrgEncryptionTab },
     {
       name: "Workflow Integrations",
@@ -36,22 +38,52 @@ export const OrgTabGroup = () => {
       component: () => (
         <div>
           <NoticeBannerV2
-            className="mx-auto mt-10 max-w-4xl"
-            title="Project Templates New Location"
+            className="mx-auto"
+            titleClassName="text-base"
+            title="Project Templates Relocated"
           >
-            <p className="text-sm text-bunker-200">
-              Project templates have been moved to the Feature Settings page, under the &#34;Project
-              Templates&#34; tab.
+            <p className="mt-1 text-mineshaft-300">
+              Project templates have been relocated and are now product specific:
             </p>
-            <p className="mt-2 text-sm text-bunker-200">
-              Project templates are now product-specific, and can be configured for each project
-              type.
-            </p>
-            <img
-              src="/images/project-templates/project-templates-new-location.png"
-              className="mt-4 w-full max-w-4xl rounded"
-              alt="Project Templates New Location"
-            />
+            <ul className="mb-1 flex gap-x-4 text-mineshaft-200">
+              {[
+                {
+                  type: ProjectType.SecretManager,
+                  label: "Secret Management",
+                  icon: "sliding-carousel"
+                },
+                {
+                  type: ProjectType.CertificateManager,
+                  label: "Certificate Management",
+                  icon: "note"
+                },
+                {
+                  type: ProjectType.KMS,
+                  label: "KMS",
+                  icon: "unlock"
+                },
+                {
+                  type: ProjectType.SSH,
+                  label: "SSH",
+                  icon: "verified"
+                }
+              ].map(({ label, type, icon }, index) => (
+                <li key={`project-template-${type}`}>
+                  <Link
+                    to={`/organization/${type}/settings`}
+                    className="mt-1 flex items-center gap-x-2 hover:text-mineshaft-100"
+                  >
+                    {index !== 0 && <span className="text-mineshaft-300">•</span>}
+                    <DotLottieReact
+                      src={`/lotties/${icon}.json`}
+                      loop
+                      className="mt-0.5 h-5 w-5"
+                    />{" "}
+                    <span className="underline underline-offset-2">{label}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </NoticeBannerV2>
         </div>
       )

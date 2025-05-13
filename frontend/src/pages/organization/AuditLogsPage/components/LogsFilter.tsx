@@ -38,7 +38,7 @@ import { useGetUserWorkspaces } from "@app/hooks/api";
 import {
   eventToNameMap,
   secretEvents,
-  userAgentTTypeoNameMap
+  userAgentTypeToNameMap
 } from "@app/hooks/api/auditLogs/constants";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { UserAgentType } from "@app/hooks/api/auth/types";
@@ -47,7 +47,7 @@ import { LogFilterItem } from "./LogFilterItem";
 import { AuditLogFilterFormData, Presets } from "./types";
 
 const eventTypes = Object.entries(eventToNameMap).map(([value, label]) => ({ label, value }));
-const userAgentTypes = Object.entries(userAgentTTypeoNameMap).map(([value, label]) => ({
+const userAgentTypes = Object.entries(userAgentTypeToNameMap).map(([value, label]) => ({
   label,
   value
 }));
