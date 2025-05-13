@@ -242,7 +242,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber, ca } =
-        await server.services.certificateAuthority.issueCertFromCa({
+        await server.services.internalCertificateAuthority.issueCertFromCa({
           actor: req.permission.type,
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
@@ -355,7 +355,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { certificate, certificateChain, issuingCaCertificate, serialNumber, ca, commonName } =
-        await server.services.certificateAuthority.signCertFromCa({
+        await server.services.internalCertificateAuthority.signCertFromCa({
           isInternal: false,
           actor: req.permission.type,
           actorId: req.permission.id,

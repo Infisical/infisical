@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import {
-  CertificateAuthoritiesSchema,
   CertificatesSchema,
   PkiAlertsSchema,
   PkiCollectionsSchema,
@@ -28,7 +27,7 @@ import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscri
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { SanitizedProjectSchema } from "../sanitizedSchemas";
+import { InternalCertificateAuthorityResponseSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
 
 const projectWithEnv = SanitizedProjectSchema.extend({
   _id: z.string(),
@@ -366,7 +365,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          cas: z.array(CertificateAuthoritiesSchema)
+          cas: z.array(InternalCertificateAuthorityResponseSchema)
         })
       }
     },

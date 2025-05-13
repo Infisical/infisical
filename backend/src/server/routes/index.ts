@@ -959,7 +959,7 @@ export const registerRoutes = async (
   });
 
   const certificateEstService = certificateEstServiceFactory({
-    certificateAuthorityService,
+    internalCertificateAuthorityService,
     certificateTemplateService,
     certificateTemplateDAL,
     certificateAuthorityCertDAL,

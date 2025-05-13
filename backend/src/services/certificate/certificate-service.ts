@@ -17,7 +17,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
+import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
 import { buildCertificateChain, getCertificateCredentials, revocationReasonToCrlCode } from "./certificate-fns";
 import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import {
@@ -34,7 +34,7 @@ type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
@@ -62,7 +62,7 @@ export const certificateServiceFactory = ({
    */
   const getCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
-    const ca = await certificateAuthorityDAL.findById(cert.caId);
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(cert.caId);
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -80,7 +80,7 @@ export const certificateServiceFactory = ({
 
     return {
       cert,
-      ca
+      ca: expandInternalCa(ca)
     };
   };
 
@@ -95,7 +95,7 @@ export const certificateServiceFactory = ({
     actorOrgId
   }: TGetCertPrivateKeyDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
-    const ca = await certificateAuthorityDAL.findById(cert.caId);
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(cert.caId);
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -120,7 +120,7 @@ export const certificateServiceFactory = ({
     });
 
     return {
-      ca,
+      ca: expandInternalCa(ca),
       cert,
       certPrivateKey
     };
@@ -131,7 +131,7 @@ export const certificateServiceFactory = ({
    */
   const deleteCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
-    const ca = await certificateAuthorityDAL.findById(cert.caId);
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(cert.caId);
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -151,7 +151,7 @@ export const certificateServiceFactory = ({
 
     return {
       deletedCert,
-      ca
+      ca: expandInternalCa(ca)
     };
   };
 
@@ -169,7 +169,7 @@ export const certificateServiceFactory = ({
     actorOrgId
   }: TRevokeCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
-    const ca = await certificateAuthorityDAL.findById(cert.caId);
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(cert.caId);
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -210,7 +210,7 @@ export const certificateServiceFactory = ({
       kmsService
     });
 
-    return { revokedAt, cert, ca };
+    return { revokedAt, cert, ca: expandInternalCa(ca) };
   };
 
   /**
@@ -219,7 +219,7 @@ export const certificateServiceFactory = ({
    */
   const getCertBody = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
-    const ca = await certificateAuthorityDAL.findById(cert.caId);
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(cert.caId);
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -273,7 +273,7 @@ export const certificateServiceFactory = ({
       certificateChain,
       serialNumber: certObj.serialNumber,
       cert,
-      ca
+      ca: expandInternalCa(ca)
     };
   };
 
@@ -283,7 +283,7 @@ export const certificateServiceFactory = ({
    */
   const getCertBundle = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBundleDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
-    const ca = await certificateAuthorityDAL.findById(cert.caId);
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(cert.caId);
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -351,7 +351,7 @@ export const certificateServiceFactory = ({
       privateKey: certPrivateKey,
       serialNumber,
       cert,
-      ca
+      ca: expandInternalCa(ca)
     };
   };
 

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 import { z } from "zod";
 
-import { CertificateAuthoritiesSchema, CertificateTemplatesSchema } from "@app/db/schemas";
+import { CertificateTemplatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
@@ -16,6 +16,8 @@ import {
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+import { InternalCertificateAuthorityResponseSchema } from "../sanitizedSchemas";
 
 export const registerCaRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -68,7 +70,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         ),
       response: {
         200: z.object({
-          ca: CertificateAuthoritiesSchema
+          ca: InternalCertificateAuthorityResponseSchema
         })
       }
     },
@@ -115,7 +117,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          ca: CertificateAuthoritiesSchema
+          ca: InternalCertificateAuthorityResponseSchema
         })
       }
     },
@@ -198,7 +200,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          ca: CertificateAuthoritiesSchema
+          ca: InternalCertificateAuthorityResponseSchema
         })
       }
     },
@@ -247,7 +249,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          ca: CertificateAuthoritiesSchema
+          ca: InternalCertificateAuthorityResponseSchema
         })
       }
     },

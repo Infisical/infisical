@@ -75,12 +75,12 @@ export const certificateAuthorityQueueFactory = ({
     const { caId } = job.data;
     logger.info(`secretReminderQueue.process: [secretDocument=${caId}]`);
 
-    const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 
-    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+    const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
 
     const keyId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -106,7 +106,7 @@ export const certificateAuthorityQueueFactory = ({
     });
 
     const crl = await x509.X509CrlGenerator.create({
-      issuer: ca.dn,
+      issuer: ca.internalCa.dn,
       thisUpdate: new Date(),
       nextUpdate: new Date("2025/12/12"), // TODO: depends on configured rebuild interval
       entries: revokedCerts.map((revokedCert) => {
@@ -115,7 +115,7 @@ export const certificateAuthorityQueueFactory = ({
           revocationDate: new Date(revokedCert.revokedAt as Date),
           reason: revokedCert.revocationReason as number,
           invalidity: new Date("2022/01/01"),
-          issuer: ca.dn
+          issuer: ca.internalCa?.dn
         };
       }),
       signingAlgorithm: alg,

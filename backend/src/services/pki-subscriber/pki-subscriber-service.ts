@@ -29,6 +29,7 @@ import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-a
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import {
   createSerialNumber,
+  expandInternalCa,
   getCaCertChain,
   getCaCredentials,
   keyAlgorithmToAlgCfg,
@@ -57,7 +58,7 @@ type TPkiSubscriberServiceFactoryDep = {
     TPkiSubscriberDALFactory,
     "create" | "findById" | "updateById" | "deleteById" | "transaction" | "find" | "findOne"
   >;
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa" | "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;
@@ -266,8 +267,8 @@ export const pkiSubscriberServiceFactory = ({
     if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
     if (!subscriber.caId) throw new BadRequestError({ message: "Subscriber does not have an assigned issuing CA" });
 
-    const ca = await certificateAuthorityDAL.findById(subscriber.caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID '${subscriber.caId}' not found` });
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(subscriber.caId);
+    if (!ca?.internalCa) throw new NotFoundError({ message: `CA with ID '${subscriber.caId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -287,12 +288,13 @@ export const pkiSubscriberServiceFactory = ({
 
     if (subscriber.status !== PkiSubscriberStatus.ACTIVE)
       throw new BadRequestError({ message: "Subscriber is not active" });
-    if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
-    if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
-    if (ca.requireTemplateForIssuance) {
+    if (ca.internalCa?.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
+    if (!ca.internalCa?.activeCaCertId)
+      throw new BadRequestError({ message: "CA does not have a certificate installed" });
+    if (ca.disableDirectIssuance) {
       throw new BadRequestError({ message: "Certificate template is required for issuance" });
     }
-    const caCert = await certificateAuthorityCertDAL.findById(ca.activeCaCertId);
+    const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -323,7 +325,7 @@ export const pkiSubscriberServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
-    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+    const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
     const leafKeys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
@@ -500,8 +502,8 @@ export const pkiSubscriberServiceFactory = ({
     if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
     if (!subscriber.caId) throw new BadRequestError({ message: "Subscriber does not have an assigned issuing CA" });
 
-    const ca = await certificateAuthorityDAL.findById(subscriber.caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID '${subscriber.caId}' not found` });
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(subscriber.caId);
+    if (!ca?.internalCa) throw new NotFoundError({ message: `CA with ID '${subscriber.caId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -521,12 +523,13 @@ export const pkiSubscriberServiceFactory = ({
 
     if (subscriber.status !== PkiSubscriberStatus.ACTIVE)
       throw new BadRequestError({ message: "Subscriber is not active" });
-    if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
-    if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
-    if (ca.requireTemplateForIssuance) {
+    if (ca.internalCa?.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
+    if (!ca.internalCa?.activeCaCertId)
+      throw new BadRequestError({ message: "CA does not have a certificate installed" });
+    if (ca.disableDirectIssuance) {
       throw new BadRequestError({ message: "Certificate template is required for issuance" });
     }
-    const caCert = await certificateAuthorityCertDAL.findById(ca.activeCaCertId);
+    const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -557,7 +560,7 @@ export const pkiSubscriberServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
-    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+    const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
 
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
 
@@ -691,7 +694,7 @@ export const pkiSubscriberServiceFactory = ({
     });
 
     const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
-      caCertId: ca.activeCaCertId,
+      caCertId: ca.internalCa.activeCaCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,
@@ -740,7 +743,7 @@ export const pkiSubscriberServiceFactory = ({
       certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
       issuingCaCertificate,
       serialNumber,
-      ca,
+      ca: expandInternalCa(ca),
       commonName: subscriber.commonName,
       subscriber
     };

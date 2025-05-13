@@ -1,11 +1,15 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { CertificateAuthoritiesSchema, TableName } from "@app/db/schemas";
+import { CertificateAuthoritiesSchema, TableName, TCertificateAuthorities } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
 
 export type TCertificateAuthorityDALFactory = ReturnType<typeof certificateAuthorityDALFactory>;
+
+export type TCertificateAuthorityWithAssociatedCa = Awaited<
+  ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>
+>;
 
 export const certificateAuthorityDALFactory = (db: TDbClient) => {
   const caOrm = ormify(db, TableName.CertificateAuthority);
@@ -109,8 +113,91 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findWithAssociatedCa = async (
+    filter: Parameters<(typeof caOrm)["find"]>[0] & { dn?: string },
+    { offset, limit, sort = [["createdAt", "desc"]] }: TFindOpt<TCertificateAuthorities> = {},
+    tx?: Knex
+  ) => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.CertificateAuthority)
+        .leftJoin(
+          TableName.InternalCertificateAuthority,
+          `${TableName.CertificateAuthority}.id`,
+          `${TableName.InternalCertificateAuthority}.certificateAuthorityId`
+        )
+        .where(filter)
+        .select(selectAllTableCols(TableName.CertificateAuthority))
+        .select(
+          db.ref("id").withSchema(TableName.InternalCertificateAuthority).as("internalCaId"),
+          db.ref("parentCaId").withSchema(TableName.InternalCertificateAuthority).as("internalParentCaId"),
+          db.ref("type").withSchema(TableName.InternalCertificateAuthority).as("internalType"),
+          db.ref("status").withSchema(TableName.InternalCertificateAuthority).as("internalStatus"),
+          db.ref("friendlyName").withSchema(TableName.InternalCertificateAuthority).as("internalFriendlyName"),
+          db.ref("organization").withSchema(TableName.InternalCertificateAuthority).as("internalOrganization"),
+          db.ref("ou").withSchema(TableName.InternalCertificateAuthority).as("internalOu"),
+          db.ref("country").withSchema(TableName.InternalCertificateAuthority).as("internalCountry"),
+          db.ref("province").withSchema(TableName.InternalCertificateAuthority).as("internalProvince"),
+          db.ref("locality").withSchema(TableName.InternalCertificateAuthority).as("internalLocality"),
+          db.ref("commonName").withSchema(TableName.InternalCertificateAuthority).as("internalCommonName"),
+          db.ref("dn").withSchema(TableName.InternalCertificateAuthority).as("internalDn"),
+          db.ref("serialNumber").withSchema(TableName.InternalCertificateAuthority).as("internalSerialNumber"),
+          db.ref("maxPathLength").withSchema(TableName.InternalCertificateAuthority).as("internalMaxPathLength"),
+          db.ref("keyAlgorithm").withSchema(TableName.InternalCertificateAuthority).as("internalKeyAlgorithm"),
+          db.ref("notBefore").withSchema(TableName.InternalCertificateAuthority).as("internalNotBefore"),
+          db.ref("notAfter").withSchema(TableName.InternalCertificateAuthority).as("internalNotAfter"),
+          db.ref("activeCaCertId").withSchema(TableName.InternalCertificateAuthority).as("internalActiveCaCertId"),
+          db
+            .ref("certificateAuthorityId")
+            .withSchema(TableName.InternalCertificateAuthority)
+            .as("internalCertificateAuthorityId")
+        );
+
+      if (limit) void query.limit(limit);
+      if (offset) void query.offset(offset);
+      if (sort) {
+        void query.orderBy(
+          sort.map(([column, order, nulls]) => ({
+            column,
+            order,
+            nulls
+          }))
+        );
+      }
+
+      return (await query).map((ca) => ({
+        ...CertificateAuthoritiesSchema.parse(ca),
+        internalCa: ca
+          ? {
+              id: ca.internalCaId,
+              parentCaId: ca.internalParentCaId,
+              type: ca.internalType,
+              status: ca.internalStatus,
+              friendlyName: ca.internalFriendlyName,
+              organization: ca.internalOrganization,
+              ou: ca.internalOu,
+              country: ca.internalCountry,
+              province: ca.internalProvince,
+              locality: ca.internalLocality,
+              commonName: ca.internalCommonName,
+              dn: ca.internalDn,
+              serialNumber: ca.internalSerialNumber,
+              maxPathLength: ca.internalMaxPathLength,
+              keyAlgorithm: ca.internalKeyAlgorithm,
+              notBefore: ca.internalNotBefore,
+              notAfter: ca.internalNotAfter,
+              activeCaCertId: ca.internalActiveCaCertId,
+              certificateAuthorityId: ca.internalCertificateAuthorityId
+            }
+          : undefined
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find - Certificate Authority" });
+    }
+  };
+
   return {
     ...caOrm,
+    findWithAssociatedCa,
     buildCertificateChain,
     findByIdWithAssociatedCa
   };

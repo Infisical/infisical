@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 import {
+  CertificateAuthoritiesSchema,
   DynamicSecretsSchema,
   IdentityProjectAdditionalPrivilegeSchema,
   IntegrationAuthsSchema,
+  InternalCertificateAuthoritiesSchema,
   ProjectRolesSchema,
   ProjectsSchema,
   SecretApprovalPoliciesSchema,
@@ -271,3 +273,7 @@ export const SanitizedTagSchema = SecretTagsSchema.pick({
 }).extend({
   name: z.string()
 });
+
+export const InternalCertificateAuthorityResponseSchema = CertificateAuthoritiesSchema.merge(
+  InternalCertificateAuthoritiesSchema
+);

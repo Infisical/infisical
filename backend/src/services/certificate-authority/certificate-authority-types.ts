@@ -148,7 +148,7 @@ export type TDNParts = {
 
 export type TGetCaCredentialsDTO = {
   caId: string;
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
@@ -172,7 +172,7 @@ export type TGetCaCertChainDTO = {
 
 export type TRebuildCaCrlDTO = {
   caId: string;
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
