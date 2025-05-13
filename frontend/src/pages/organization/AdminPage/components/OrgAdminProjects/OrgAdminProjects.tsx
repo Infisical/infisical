@@ -58,6 +58,15 @@ export const OrgAdminProjects = withPermission(
         await orgAdminAccessProject.mutateAsync({
           projectId
         });
+        if (type === ProjectType.CertificateManager) {
+          await navigate({
+            to: "/cert-manager/$projectId/subscribers" as const,
+            params: {
+              projectId
+            }
+          });
+          return;
+        }
         await navigate({
           to: `/${type}/$projectId/overview` as const,
           params: {

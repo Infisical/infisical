@@ -11,6 +11,7 @@ import {
   useDeleteIdentityGcpAuth,
   useDeleteIdentityJwtAuth,
   useDeleteIdentityKubernetesAuth,
+  useDeleteIdentityLdapAuth,
   useDeleteIdentityOidcAuth,
   useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth
@@ -22,6 +23,7 @@ import { ViewIdentityAzureAuthContent } from "./ViewIdentityAzureAuthContent";
 import { ViewIdentityGcpAuthContent } from "./ViewIdentityGcpAuthContent";
 import { ViewIdentityJwtAuthContent } from "./ViewIdentityJwtAuthContent";
 import { ViewIdentityKubernetesAuthContent } from "./ViewIdentityKubernetesAuthContent";
+import { ViewIdentityLdapAuthContent } from "./ViewIdentityLdapAuthContent";
 import { ViewIdentityOidcAuthContent } from "./ViewIdentityOidcAuthContent";
 import { ViewIdentityTokenAuthContent } from "./ViewIdentityTokenAuthContent";
 import { ViewIdentityUniversalAuthContent } from "./ViewIdentityUniversalAuthContent";
@@ -61,6 +63,7 @@ export const Content = ({
   const { mutateAsync: revokeAzureAuth } = useDeleteIdentityAzureAuth();
   const { mutateAsync: revokeOidcAuth } = useDeleteIdentityOidcAuth();
   const { mutateAsync: revokeJwtAuth } = useDeleteIdentityJwtAuth();
+  const { mutateAsync: revokeLdapAuth } = useDeleteIdentityLdapAuth();
 
   let Component: (props: ViewAuthMethodProps) => JSX.Element;
   let revokeMethod: (revokeOptions: TRevokeOptions) => Promise<any>;
@@ -99,6 +102,10 @@ export const Content = ({
     case IdentityAuthMethod.JWT_AUTH:
       revokeMethod = revokeJwtAuth;
       Component = ViewIdentityJwtAuthContent;
+      break;
+    case IdentityAuthMethod.LDAP_AUTH:
+      revokeMethod = revokeLdapAuth;
+      Component = ViewIdentityLdapAuthContent;
       break;
     default:
       throw new Error(`Unhandled Auth Method: ${authMethod}`);

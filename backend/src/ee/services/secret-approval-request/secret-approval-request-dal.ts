@@ -334,7 +334,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("secretId").withSchema(TableName.SecretApprovalRequestSecret).as("commitSecretId"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestSecret).as("commitId"),
           db.raw(
-            `DENSE_RANK() OVER (partition by ${TableName.Environment}."projectId" ORDER BY ${TableName.SecretApprovalRequest}."id" DESC) as rank`
+            `DENSE_RANK() OVER (PARTITION BY ${TableName.Environment}."projectId" ORDER BY ${TableName.SecretApprovalRequest}."createdAt" DESC) as rank`
           ),
           db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
           db.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
@@ -483,7 +483,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("secretId").withSchema(TableName.SecretApprovalRequestSecretV2).as("commitSecretId"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestSecretV2).as("commitId"),
           db.raw(
-            `DENSE_RANK() OVER (partition by ${TableName.Environment}."projectId" ORDER BY ${TableName.SecretApprovalRequest}."id" DESC) as rank`
+            `DENSE_RANK() OVER (PARTITION BY ${TableName.Environment}."projectId" ORDER BY ${TableName.SecretApprovalRequest}."createdAt" DESC) as rank`
           ),
           db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
           db.ref("allowedSelfApprovals").withSchema(TableName.SecretApprovalPolicy).as("policyAllowedSelfApprovals"),

@@ -14,6 +14,7 @@ import {
 } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { useGetPkiSubscriber, useIssuePkiSubscriberCert } from "@app/hooks/api";
+import { pkiSubscriberStatusToNameMap } from "@app/hooks/api/pkiSubscriber/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CertificateContent } from "../../CertificatesPage/components/CertificateContent";
@@ -44,6 +45,7 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
     subscriberName,
     projectId
   });
+
   const { mutateAsync: issuePkiSubscriberCert, isPending: isIssuingCert } =
     useIssuePkiSubscriberCert();
 
@@ -135,6 +137,12 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">{pkiSubscriber.name}</p>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Status</p>
+          <p className="text-sm text-mineshaft-300">
+            {pkiSubscriberStatusToNameMap[pkiSubscriber.status]}
+          </p>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Common Name</p>

@@ -28,6 +28,7 @@ const organizationRoutes = route("/organization", [
     index("organization/SettingsPage/route.tsx"),
     route("/oauth/callback", "organization/SettingsPage/OauthCallbackPage/route.tsx")
   ]),
+  route("/sso", "organization/SsoPage/route.tsx"),
   route("/secret-scanning", "organization/SecretScanningPage/route.tsx"),
   route("/groups/$groupId", "organization/GroupDetailsByIDPage/route.tsx"),
   route("/members/$membershipId", "organization/UserDetailsByIDPage/route.tsx"),
@@ -292,7 +293,7 @@ const certManagerRoutes = route("/cert-manager/$projectId", [
       index("cert-manager/PkiSubscribersPage/route.tsx"),
       route("/$subscriberName", "cert-manager/PkiSubscriberDetailsByIDPage/route.tsx")
     ]),
-    route("/overview", "cert-manager/CertificatesPage/route.tsx"),
+    route("/certificates", "cert-manager/CertificatesPage/route.tsx"),
     route("/certificate-authorities", "cert-manager/CertificateAuthoritiesPage/route.tsx"),
     route("/alerting", "cert-manager/AlertingPage/route.tsx"),
     route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),

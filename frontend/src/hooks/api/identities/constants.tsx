@@ -8,5 +8,6 @@ export const identityAuthToNameMap: { [I in IdentityAuthMethod]: string } = {
   [IdentityAuthMethod.AWS_AUTH]: "AWS Auth",
   [IdentityAuthMethod.AZURE_AUTH]: "Azure Auth",
   [IdentityAuthMethod.OIDC_AUTH]: "OIDC Auth",
+  [IdentityAuthMethod.LDAP_AUTH]: "LDAP Auth",
   [IdentityAuthMethod.JWT_AUTH]: "JWT Auth"
 };

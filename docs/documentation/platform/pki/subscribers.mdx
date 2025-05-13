@@ -12,10 +12,9 @@ In Infisical PKI, subscribers are logical representations of entities such as de
 
 ```mermaid
 graph TD
-    A[Root CA] --> B[Intermediate CA]
-    B --> C1[Certificate]
+A[Issuing CA] --> C1[Certificate]
     C1 --> S1[Subscriber]
-    B --> C2[Certificate]
+    A --> C2[Certificate]
     C2 --> S2[Subscriber]
 ```
 
@@ -25,7 +24,7 @@ graph TD
 
 The typical workflow for managing subscribers consists of the following steps:
 
-1. Creating a subscriber and defining attributes to be included on the X.509 certificates issued for it including common name, subject alternative names, TLL, etc.
+1. Creating a subscriber and defining which (issuing) CA will issue X.509 certificates for it as well as attributes to be included on the certificates including common name, subject alternative names, TLL, etc.
 2. Requesting for a certificate against the subscriber with or without a certificate signing request (CSR).
 3. Managing certificate lifecycle events such as certificate renewal and revocation. As part of the certificate revocation flow,
    you can also query for a Certificate Revocation List [CRL](https://en.wikipedia.org/wiki/Certificate_revocation_list), a time-stamped, signed

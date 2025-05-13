@@ -131,7 +131,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
           type: EventType.CREATE_PKI_SUBSCRIBER,
           metadata: {
             pkiSubscriberId: subscriber.id,
-            caId: subscriber.caId,
+            caId: subscriber.caId ?? undefined,
             name: subscriber.name,
             commonName: subscriber.commonName,
             ttl: subscriber.ttl,
@@ -216,7 +216,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
           type: EventType.UPDATE_PKI_SUBSCRIBER,
           metadata: {
             pkiSubscriberId: subscriber.id,
-            caId: subscriber.caId,
+            caId: subscriber.caId ?? undefined,
             name: subscriber.name,
             commonName: subscriber.commonName,
             ttl: subscriber.ttl,

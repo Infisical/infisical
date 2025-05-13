@@ -47,6 +47,13 @@ export enum EventType {
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
+
+  LOGIN_IDENTITY_LDAP_AUTH = "login-identity-ldap-auth",
+  ADD_IDENTITY_LDAP_AUTH = "add-identity-ldap-auth",
+  UPDATE_IDENTITY_LDAP_AUTH = "update-identity-ldap-auth",
+  GET_IDENTITY_LDAP_AUTH = "get-identity-ldap-auth",
+  REVOKE_IDENTITY_LDAP_AUTH = "revoke-identity-ldap-auth",
+
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",

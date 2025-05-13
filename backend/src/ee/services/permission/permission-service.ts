@@ -630,6 +630,34 @@ export const permissionServiceFactory = ({
     return { permission };
   };
 
+  const checkGroupProjectPermission = async ({
+    groupId,
+    projectId,
+    checkPermissions
+  }: {
+    groupId: string;
+    projectId: string;
+    checkPermissions: ProjectPermissionSet;
+  }) => {
+    const rawGroupProjectPermissions = await permissionDAL.getProjectGroupPermissions(projectId, groupId);
+    const groupPermissions = rawGroupProjectPermissions.map((groupProjectPermission) => {
+      const rolePermissions =
+        groupProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+      const rules = buildProjectPermissionRules(rolePermissions);
+      const permission = createMongoAbility<ProjectPermissionSet>(rules, {
+        conditionsMatcher
+      });
+
+      return {
+        permission,
+        id: groupProjectPermission.groupId,
+        name: groupProjectPermission.username,
+        membershipId: groupProjectPermission.id
+      };
+    });
+    return groupPermissions.some((groupPermission) => groupPermission.permission.can(...checkPermissions));
+  };
+
   return {
     getUserOrgPermission,
     getOrgPermission,
@@ -639,6 +667,7 @@ export const permissionServiceFactory = ({
     getOrgPermissionByRole,
     getProjectPermissionByRole,
     buildOrgPermission,
-    buildProjectPermissionRules
+    buildProjectPermissionRules,
+    checkGroupProjectPermission
   };
 };

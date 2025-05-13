@@ -6,7 +6,8 @@ export enum LoginMappingSource {
 export type TLoginMapping = {
   loginUser: string;
   allowedPrincipals: {
-    usernames: string[];
+    usernames?: string[];
+    groups?: string[];
   };
   source: LoginMappingSource;
 };

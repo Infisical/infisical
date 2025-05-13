@@ -118,7 +118,9 @@ export const ProjectLayout = () => {
                             )}
                           </Link>
                           <Link
-                            to={`/${ProjectType.CertificateManager}/$projectId/overview` as const}
+                            to={
+                              `/${ProjectType.CertificateManager}/$projectId/certificates` as const
+                            }
                             params={{
                               projectId: currentWorkspace.id
                             }}

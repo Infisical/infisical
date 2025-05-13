@@ -14,6 +14,11 @@ export type TLDAPConfig = {
   caCert: string;
 };
 
+export type TTestLDAPConfigDTO = Omit<
+  TLDAPConfig,
+  "organization" | "id" | "groupSearchBase" | "groupSearchFilter" | "isActive" | "uniqueUserAttribute" | "searchBase"
+>;
+
 export type TCreateLdapCfgDTO = {
   orgId: string;
   isActive: boolean;
