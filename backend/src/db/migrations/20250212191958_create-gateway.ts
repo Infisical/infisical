@@ -68,8 +68,8 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.Gateway);
   }
 
-  if (!(await knex.schema.hasTable(TableName.ProjectGateway))) {
-    await knex.schema.createTable(TableName.ProjectGateway, (t) => {
+  if (!(await knex.schema.hasTable("project_gateways"))) {
+    await knex.schema.createTable("project_gateways", (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
       t.string("projectId").notNullable();
@@ -81,7 +81,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    await createOnUpdateTrigger(knex, TableName.ProjectGateway);
+    await createOnUpdateTrigger(knex, "project_gateways");
   }
 
   if (await knex.schema.hasTable(TableName.DynamicSecret)) {
@@ -90,7 +90,7 @@ export async function up(knex: Knex): Promise<void> {
       // not setting a foreign constraint so that cascade effects are not triggered
       if (!doesGatewayColExist) {
         t.uuid("projectGatewayId");
-        t.foreign("projectGatewayId").references("id").inTable(TableName.ProjectGateway);
+        t.foreign("projectGatewayId").references("id").inTable("project_gateways");
       }
     });
   }
@@ -104,8 +104,8 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 
-  await knex.schema.dropTableIfExists(TableName.ProjectGateway);
-  await dropOnUpdateTrigger(knex, TableName.ProjectGateway);
+  await knex.schema.dropTableIfExists("project_gateways");
+  await dropOnUpdateTrigger(knex, "project_gateways");
 
   await knex.schema.dropTableIfExists(TableName.Gateway);
   await dropOnUpdateTrigger(knex, TableName.Gateway);

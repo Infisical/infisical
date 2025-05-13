@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   FormControl,
@@ -18,9 +19,14 @@ import {
   TabList,
   TabPanel,
   Tabs,
-  TextArea
+  TextArea,
+  Tooltip
 } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
+import {
+  OrgGatewayPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import {
   gatewaysQueryKeys,
   useAddIdentityKubernetesAuth,
@@ -103,7 +109,7 @@ export const IdentityKubernetesAuthForm = ({
       tokenReviewerJwt: "",
       allowedNames: "",
       allowedNamespaces: "",
-      gatewayId: null,
+      gatewayId: "",
       allowedAudience: "",
       caCert: "",
       accessTokenTTL: "2592000",
@@ -294,38 +300,60 @@ export const IdentityKubernetesAuthForm = ({
             )}
           />
 
-          <Controller
-            control={control}
-            name="gatewayId"
-            defaultValue=""
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                isError={Boolean(error?.message)}
-                errorText={error?.message}
-                label="Gateway"
-                isOptional
-              >
-                <Select
-                  value={value as string}
-                  onValueChange={onChange}
-                  className="w-full border border-mineshaft-500"
-                  dropdownContainerClassName="max-w-none"
-                  isLoading={isGatewayLoading}
-                  placeholder="Select Gateway"
-                  position="popper"
-                >
-                  <SelectItem value={null as unknown as string} onClick={() => onChange(undefined)}>
-                    Internet Gateway
-                  </SelectItem>
-                  {gateways?.map((el) => (
-                    <SelectItem value={el.id} key={el.id}>
-                      {el.name}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
+          <OrgPermissionCan
+            I={OrgGatewayPermissionActions.AttachGateways}
+            a={OrgPermissionSubjects.Gateway}
+          >
+            {(isAllowed) => (
+              <Controller
+                control={control}
+                name="gatewayId"
+                defaultValue=""
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                    label="Gateway"
+                    isOptional
+                  >
+                    <Tooltip
+                      isDisabled={isAllowed}
+                      content="Restricted access. You don't have permission to attach gateways to resources."
+                    >
+                      <div>
+                        <Select
+                          isDisabled={!isAllowed}
+                          value={value as string}
+                          onValueChange={(v) => {
+                            if (v !== "") {
+                              onChange(v);
+                            }
+                          }}
+                          className="w-full border border-mineshaft-500"
+                          dropdownContainerClassName="max-w-none"
+                          isLoading={isGatewayLoading}
+                          placeholder="Select Gateway"
+                          position="popper"
+                        >
+                          <SelectItem
+                            value={null as unknown as string}
+                            onClick={() => onChange(null)}
+                          >
+                            Internet Gateway
+                          </SelectItem>
+                          {gateways?.map((el) => (
+                            <SelectItem value={el.id} key={el.id}>
+                              {el.name}
+                            </SelectItem>
+                          ))}
+                        </Select>
+                      </div>
+                    </Tooltip>
+                  </FormControl>
+                )}
+              />
             )}
-          />
+          </OrgPermissionCan>
 
           <Controller
             control={control}

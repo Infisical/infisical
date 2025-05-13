@@ -123,7 +123,6 @@ export enum TableName {
   // Gateway
   OrgGatewayConfig = "org_gateway_config",
   Gateway = "gateways",
-  ProjectGateway = "project_gateways",
   // junction tables with tags
   SecretV2JnTag = "secret_v2_tag_junction",
   JnSecretTag = "secret_tag_junction",

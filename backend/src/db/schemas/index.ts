@@ -71,7 +71,6 @@ export * from "./pki-collection-items";
 export * from "./pki-collections";
 export * from "./project-bots";
 export * from "./project-environments";
-export * from "./project-gateways";
 export * from "./project-keys";
 export * from "./project-memberships";
 export * from "./project-roles";

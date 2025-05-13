@@ -4,9 +4,14 @@ import https from "https";
 import jwt from "jsonwebtoken";
 
 import { IdentityAuthMethod, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
+import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionGatewayActions,
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -46,6 +51,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayService: TGatewayServiceFactory;
+  gatewayDAL: Pick<TGatewayDALFactory, "find">;
 };
 
 export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKubernetesAuthServiceFactory>;
@@ -57,6 +63,7 @@ export const identityKubernetesAuthServiceFactory = ({
   permissionService,
   licenseService,
   gatewayService,
+  gatewayDAL,
   kmsService
 }: TIdentityKubernetesAuthServiceFactoryDep) => {
   const $gatewayProxyWrapper = async <T>(
@@ -343,6 +350,27 @@ export const identityKubernetesAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    if (gatewayId) {
+      const [gateway] = await gatewayDAL.find({ id: gatewayId });
+      if (!gateway) {
+        throw new NotFoundError({
+          message: `Gateway with ID ${gatewayId} not found`
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.orgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.orgId
@@ -437,6 +465,27 @@ export const identityKubernetesAuthServiceFactory = ({
         });
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
+
+    if (gatewayId) {
+      const [gateway] = await gatewayDAL.find({ id: gatewayId });
+      if (!gateway) {
+        throw new NotFoundError({
+          message: `Gateway with ID ${gatewayId} not found`
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.orgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
 
     const updateQuery: TIdentityKubernetesAuthsUpdate = {
       kubernetesHost,

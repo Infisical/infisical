@@ -32,7 +32,6 @@ import { externalKmsServiceFactory } from "@app/ee/services/external-kms/externa
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { gatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { orgGatewayConfigDALFactory } from "@app/ee/services/gateway/org-gateway-config-dal";
-import { projectGatewayDALFactory } from "@app/ee/services/gateway/project-gateway-dal";
 import { githubOrgSyncDALFactory } from "@app/ee/services/github-org-sync/github-org-sync-dal";
 import { githubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
@@ -434,7 +433,6 @@ export const registerRoutes = async (
 
   const orgGatewayConfigDAL = orgGatewayConfigDALFactory(db);
   const gatewayDAL = gatewayDALFactory(db);
-  const projectGatewayDAL = projectGatewayDALFactory(db);
   const secretReminderRecipientsDAL = secretReminderRecipientsDALFactory(db);
   const githubOrgSyncDAL = githubOrgSyncDALFactory(db);
 
@@ -1408,8 +1406,7 @@ export const registerRoutes = async (
     kmsService,
     licenseService,
     orgGatewayConfigDAL,
-    keyStore,
-    projectGatewayDAL
+    keyStore
   });
 
   const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({
@@ -1419,6 +1416,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     gatewayService,
+    gatewayDAL,
     kmsService
   });
   const identityGcpAuthService = identityGcpAuthServiceFactory({
@@ -1494,7 +1492,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     kmsService,
-    projectGatewayDAL,
+    gatewayDAL,
     resourceMetadataDAL
   });
 
