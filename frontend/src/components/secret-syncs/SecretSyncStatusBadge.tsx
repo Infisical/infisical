@@ -40,7 +40,14 @@ export const SecretSyncStatusBadge = ({ status }: Props) => {
 
   return (
     <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap" variant={variant}>
-      <FontAwesomeIcon icon={icon} />
+      <FontAwesomeIcon
+        icon={icon}
+        className={
+          [SecretSyncStatus.Pending, SecretSyncStatus.Running].includes(status)
+            ? "animate-spin"
+            : ""
+        }
+      />
       <span>{text}</span>
     </Badge>
   );

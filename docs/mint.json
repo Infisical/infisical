@@ -469,6 +469,7 @@
             "integrations/app-connections/humanitec",
             "integrations/app-connections/ldap",
             "integrations/app-connections/mssql",
+            "integrations/app-connections/oci",
             "integrations/app-connections/postgres",
             "integrations/app-connections/teamcity",
             "integrations/app-connections/terraform-cloud",
@@ -495,6 +496,7 @@
             "integrations/secret-syncs/github",
             "integrations/secret-syncs/hashicorp-vault",
             "integrations/secret-syncs/humanitec",
+            "integrations/secret-syncs/oci-vault",
             "integrations/secret-syncs/teamcity",
             "integrations/secret-syncs/terraform-cloud",
             "integrations/secret-syncs/vercel",
@@ -1172,6 +1174,18 @@
               ]
             },
             {
+              "group": "OCI",
+              "pages": [
+                "api-reference/endpoints/app-connections/oci/list",
+                "api-reference/endpoints/app-connections/oci/available",
+                "api-reference/endpoints/app-connections/oci/get-by-id",
+                "api-reference/endpoints/app-connections/oci/get-by-name",
+                "api-reference/endpoints/app-connections/oci/create",
+                "api-reference/endpoints/app-connections/oci/update",
+                "api-reference/endpoints/app-connections/oci/delete"
+              ]
+            },
+            {
               "group": "PostgreSQL",
               "pages": [
                 "api-reference/endpoints/app-connections/postgres/list",
@@ -1372,6 +1386,20 @@
                 "api-reference/endpoints/secret-syncs/humanitec/delete",
                 "api-reference/endpoints/secret-syncs/humanitec/sync-secrets",
                 "api-reference/endpoints/secret-syncs/humanitec/remove-secrets"
+              ]
+            },
+            {
+              "group": "OCI",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/oci-vault/list",
+                "api-reference/endpoints/secret-syncs/oci-vault/get-by-id",
+                "api-reference/endpoints/secret-syncs/oci-vault/get-by-name",
+                "api-reference/endpoints/secret-syncs/oci-vault/create",
+                "api-reference/endpoints/secret-syncs/oci-vault/update",
+                "api-reference/endpoints/secret-syncs/oci-vault/delete",
+                "api-reference/endpoints/secret-syncs/oci-vault/sync-secrets",
+                "api-reference/endpoints/secret-syncs/oci-vault/import-secrets",
+                "api-reference/endpoints/secret-syncs/oci-vault/remove-secrets"
               ]
             },
             {

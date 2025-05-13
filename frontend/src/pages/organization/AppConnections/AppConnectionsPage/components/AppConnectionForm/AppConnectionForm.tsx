@@ -22,6 +22,7 @@ import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
+import { OCIConnectionForm } from "./OCIConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
@@ -101,6 +102,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <LdapConnectionForm onSubmit={onSubmit} />;
     case AppConnection.TeamCity:
       return <TeamCityConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.OCI:
+      return <OCIConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -173,6 +176,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <LdapConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.TeamCity:
       return <TeamCityConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.OCI:
+      return <OCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
 
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);

@@ -2039,6 +2039,13 @@ export const AppConnections = {
     AZURE_CLIENT_SECRETS: {
       code: "The OAuth code to use to connect with Azure Client Secrets.",
       tenantId: "The Tenant ID to use to connect with Azure Client Secrets."
+    },
+    OCI: {
+      userOcid: "The OCID (Oracle Cloud Identifier) of the user making the request.",
+      tenancyOcid: "The OCID (Oracle Cloud Identifier) of the tenancy in Oracle Cloud Infrastructure.",
+      region: "The region identifier in Oracle Cloud Infrastructure where the vault is located.",
+      fingerprint: "The fingerprint of the public key uploaded to the user's API keys.",
+      privateKey: "The private key content in PEM format used to sign API requests."
     }
   }
 };
@@ -2186,6 +2193,11 @@ export const SecretSyncs = {
     TEAMCITY: {
       project: "The TeamCity project to sync secrets to.",
       buildConfig: "The TeamCity build configuration to sync secrets to."
+    },
+    OCI_VAULT: {
+      compartmentOcid: "The OCID (Oracle Cloud Identifier) of the compartment where the vault is located.",
+      vaultOcid: "The OCID (Oracle Cloud Identifier) of the vault to sync secrets to.",
+      keyOcid: "The OCID (Oracle Cloud Identifier) of the encryption key to use when creating secrets in the vault."
     }
   }
 };
