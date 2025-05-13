@@ -54,6 +54,8 @@ export const workspaceKeys = {
   }) => [...workspaceKeys.forWorkspaceCertificates(slug), { offset, limit }] as const,
   getWorkspacePkiAlerts: (workspaceId: string) =>
     [{ workspaceId }, "workspace-pki-alerts"] as const,
+  getWorkspacePkiSubscribers: (projectId: string) =>
+    [{ projectId }, "workspace-pki-subscribers"] as const,
   getWorkspacePkiCollections: (workspaceId: string) =>
     [{ workspaceId }, "workspace-pki-collections"] as const,
   getWorkspaceCertificateTemplates: (workspaceId: string) =>

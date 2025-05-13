@@ -335,7 +335,7 @@ export const sshHostServiceFactory = ({
     return host;
   };
 
-  const getSshHost = async ({ sshHostId, actorId, actorAuthMethod, actor, actorOrgId }: TGetSshHostDTO) => {
+  const getSshHostById = async ({ sshHostId, actorId, actorAuthMethod, actor, actorOrgId }: TGetSshHostDTO) => {
     const host = await sshHostDAL.findSshHostByIdWithLoginMappings(sshHostId);
     if (!host) {
       throw new NotFoundError({
@@ -631,7 +631,7 @@ export const sshHostServiceFactory = ({
     createSshHost,
     updateSshHost,
     deleteSshHost,
-    getSshHost,
+    getSshHostById,
     issueSshHostUserCert,
     issueSshHostHostCert,
     getSshHostUserCaPk,

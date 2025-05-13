@@ -9,5 +9,7 @@ export {
   ProjectPermissionIdentityActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionPkiSubscriberActions,
+  ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "./types";

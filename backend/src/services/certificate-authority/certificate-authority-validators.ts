@@ -10,6 +10,18 @@ const isValidDate = (dateString: string) => {
 
 export const validateCaDateField = z.string().trim().refine(isValidDate, { message: "Invalid date format" });
 
+export const validateAltNameField = z
+  .string()
+  .trim()
+  .refine(
+    (name) => {
+      return isFQDN(name) || z.string().email().safeParse(name).success || isValidIp(name);
+    },
+    {
+      message: "SAN must be a valid hostname, email address, or IP address"
+    }
+  );
+
 export const validateAltNamesField = z
   .string()
   .trim()
