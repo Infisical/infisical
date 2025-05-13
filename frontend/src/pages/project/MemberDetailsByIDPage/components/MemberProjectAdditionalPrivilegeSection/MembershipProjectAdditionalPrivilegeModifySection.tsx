@@ -1,11 +1,5 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
-import {
-  faCaretDown,
-  faChevronLeft,
-  faClock,
-  faPlus,
-  faSave
-} from "@fortawesome/free-solid-svg-icons";
+import { faCaretDown, faChevronLeft, faClock, faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, formatDistance } from "date-fns";
@@ -32,16 +26,15 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
 import {
   useCreateProjectUserAdditionalPrivilege,
   useGetProjectUserPrivilegeDetails,
   useUpdateProjectUserAdditionalPrivilege
 } from "@app/hooks/api";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/projectUserAdditionalPrivilege/types";
+import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
-import { PolicySelectionModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicySelectionModal";
 import {
   formRolePermission2API,
   PROJECT_PERMISSION_OBJECT,
@@ -83,8 +76,6 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
   projectMembershipId,
   isDisabled
 }: Props) => {
-  const { popUp, handlePopUpToggle } = usePopUp(["addPolicy"] as const);
-
   const isCreate = !privilegeId;
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
@@ -221,7 +212,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                 variant="outline_bg"
                 type="submit"
                 className={twMerge(
-                  "h-10 rounded-r-none border border-primary",
+                  "mr-4 h-10 border border-primary",
                   isDirty && "bg-primary text-black"
                 )}
                 isDisabled={isSubmitting || !isDirty || isDisabled}
@@ -230,15 +221,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
               >
                 Save
               </Button>
-              <Button
-                isDisabled={isDisabled}
-                className="h-10 rounded-l-none"
-                variant="outline_bg"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpToggle("addPolicy")}
-              >
-                Add Policies
-              </Button>
+              <AddPoliciesButton isDisabled={isDisabled} />
             </div>
           </div>
         </div>
@@ -377,10 +360,6 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
             </GeneralPermissionPolicies>
           ))}
         </div>
-        <PolicySelectionModal
-          isOpen={popUp.addPolicy.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("addPolicy", isOpen)}
-        />
       </FormProvider>
     </form>
   );
