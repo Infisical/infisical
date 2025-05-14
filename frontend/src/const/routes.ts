@@ -23,6 +23,10 @@ export const ROUTE_PATHS = Object.freeze({
         "/_authenticate/_inject-org-details/_org-layout/organization/settings/oauth/callback"
       )
     },
+    SsoPage: setRoute(
+      "/organization/sso",
+      "/_authenticate/_inject-org-details/_org-layout/organization/sso"
+    ),
     SecretScanning: setRoute(
       "/organization/secret-scanning",
       "/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning"
@@ -283,9 +287,13 @@ export const ROUTE_PATHS = Object.freeze({
       "/cert-manager/$projectId/ca/$caId",
       "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/ca/$caId"
     ),
-    OverviewPage: setRoute(
-      "/cert-manager/$projectId/overview",
-      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/overview"
+    SubscribersPage: setRoute(
+      "/cert-manager/$projectId/subscribers",
+      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers"
+    ),
+    CertificatesPage: setRoute(
+      "/cert-manager/$projectId/certificates",
+      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificates"
     ),
     CertificateAuthoritiesPage: setRoute(
       "/cert-manager/$projectId/certificate-authorities",
@@ -298,6 +306,10 @@ export const ROUTE_PATHS = Object.freeze({
     PkiCollectionDetailsByIDPage: setRoute(
       "/cert-manager/$projectId/pki-collections/$collectionId",
       "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/pki-collections/$collectionId"
+    ),
+    PkiSubscriberDetailsByIDPage: setRoute(
+      "/cert-manager/$projectId/subscribers/$subscriberName",
+      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName"
     )
   },
   Ssh: {

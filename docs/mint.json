@@ -112,6 +112,7 @@
           "pages": [
             "documentation/platform/pki/overview",
             "documentation/platform/pki/private-ca",
+            "documentation/platform/pki/subscribers",
             "documentation/platform/pki/certificates",
             "documentation/platform/pki/pki-issuer",
             "documentation/platform/pki/est",
@@ -349,7 +350,8 @@
           "group": "Linux Package",
           "pages": [
             "self-hosting/deployment-options/native/linux-package/installation",
-            "self-hosting/deployment-options/native/linux-package/commands-configuration"
+            "self-hosting/deployment-options/native/linux-package/commands-configuration",
+            "self-hosting/deployment-options/linux-upgrade"
           ]
         },
         "self-hosting/guides/upgrading-infisical",
@@ -444,6 +446,7 @@
           ]
         },
         "integrations/frameworks/terraform",
+        "integrations/frameworks/pulumi",
         "integrations/platforms/ansible",
         "integrations/platforms/apache-airflow"
       ]
@@ -468,6 +471,7 @@
             "integrations/app-connections/humanitec",
             "integrations/app-connections/ldap",
             "integrations/app-connections/mssql",
+            "integrations/app-connections/oci",
             "integrations/app-connections/postgres",
             "integrations/app-connections/teamcity",
             "integrations/app-connections/terraform-cloud",
@@ -494,6 +498,7 @@
             "integrations/secret-syncs/github",
             "integrations/secret-syncs/hashicorp-vault",
             "integrations/secret-syncs/humanitec",
+            "integrations/secret-syncs/oci-vault",
             "integrations/secret-syncs/teamcity",
             "integrations/secret-syncs/terraform-cloud",
             "integrations/secret-syncs/vercel",
@@ -1181,6 +1186,18 @@
               ]
             },
             {
+              "group": "OCI",
+              "pages": [
+                "api-reference/endpoints/app-connections/oci/list",
+                "api-reference/endpoints/app-connections/oci/available",
+                "api-reference/endpoints/app-connections/oci/get-by-id",
+                "api-reference/endpoints/app-connections/oci/get-by-name",
+                "api-reference/endpoints/app-connections/oci/create",
+                "api-reference/endpoints/app-connections/oci/update",
+                "api-reference/endpoints/app-connections/oci/delete"
+              ]
+            },
+            {
               "group": "PostgreSQL",
               "pages": [
                 "api-reference/endpoints/app-connections/postgres/list",
@@ -1384,6 +1401,20 @@
               ]
             },
             {
+              "group": "OCI",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/oci-vault/list",
+                "api-reference/endpoints/secret-syncs/oci-vault/get-by-id",
+                "api-reference/endpoints/secret-syncs/oci-vault/get-by-name",
+                "api-reference/endpoints/secret-syncs/oci-vault/create",
+                "api-reference/endpoints/secret-syncs/oci-vault/update",
+                "api-reference/endpoints/secret-syncs/oci-vault/delete",
+                "api-reference/endpoints/secret-syncs/oci-vault/sync-secrets",
+                "api-reference/endpoints/secret-syncs/oci-vault/import-secrets",
+                "api-reference/endpoints/secret-syncs/oci-vault/remove-secrets"
+              ]
+            },
+            {
               "group": "TeamCity",
               "pages": [
                 "api-reference/endpoints/secret-syncs/teamcity/list",
@@ -1467,6 +1498,18 @@
     {
       "group": "Infisical PKI",
       "pages": [
+        {
+          "group": "Subscribers",
+          "pages": [
+            "api-reference/endpoints/pki/subscribers/list-certs",
+            "api-reference/endpoints/pki/subscribers/create",
+            "api-reference/endpoints/pki/subscribers/read",
+            "api-reference/endpoints/pki/subscribers/update",
+            "api-reference/endpoints/pki/subscribers/delete",
+            "api-reference/endpoints/pki/subscribers/issue-cert",
+            "api-reference/endpoints/pki/subscribers/sign-cert"
+          ]
+        },
         {
           "group": "Certificate Authorities",
           "pages": [

@@ -4,6 +4,7 @@ import {
   faArrowUpRightFromSquare,
   faBook,
   faCheck,
+  faCheckCircle,
   faCog,
   faDoorClosed,
   faEnvelope,
@@ -118,6 +119,9 @@ export const MinimizedOrgSidebar = () => {
     [
       linkOptions({ to: "/organization/access-management" }).to,
       linkOptions({ to: "/organization/app-connections" }).to,
+      linkOptions({ to: "/organization/billing" }).to,
+      linkOptions({ to: "/organization/sso" }).to,
+      linkOptions({ to: "/organization/gateways" }).to,
       linkOptions({ to: "/organization/settings" }).to,
       linkOptions({ to: "/organization/audit-logs" }).to
     ] as string[]
@@ -385,6 +389,13 @@ export const MinimizedOrgSidebar = () => {
                   <Link to="/organization/audit-logs">
                     <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faBook} />}>
                       Audit Logs
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link to="/organization/sso">
+                    <DropdownMenuItem
+                      icon={<FontAwesomeIcon className="w-3" icon={faCheckCircle} />}
+                    >
+                      SSO Settings
                     </DropdownMenuItem>
                   </Link>
                   <Link to="/organization/settings">

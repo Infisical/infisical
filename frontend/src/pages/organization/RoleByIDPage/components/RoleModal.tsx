@@ -13,7 +13,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 const schema = z
   .object({
-    name: z.string(),
+    name: z.string().min(1, "Name required"),
     description: z.string(),
     slug: slugSchema({ min: 1 })
   })
@@ -71,12 +71,6 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const onFormSubmit = async ({ name, description, slug }: FormData) => {
     try {
-      console.log("onFormSubmit args: ", {
-        name,
-        description,
-        slug
-      });
-
       if (!orgId) return;
 
       if (role) {

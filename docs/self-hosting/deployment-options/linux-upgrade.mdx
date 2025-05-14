@@ -1,0 +1,390 @@
+---
+title: "Upgrading"
+description: "How to upgrade Infisical deployment using linux package"
+---
+
+This guide explains how to upgrade Infisical Linux package installations to newer versions. 
+The Infisical Linux package includes only the Infisical service component itself, as PostgreSQL and Redis databases are managed separately. 
+Upgrades for PostgreSQL and Redis are not covered in this guide as they depend on your specific database deployment method.
+
+## Upgrade Options
+
+There are two primary methods to upgrade Infisical:
+
+1. **Standard Upgrade (with brief downtime)**: The simplest approach that briefly takes Infisical offline during the upgrade.
+2. **Minimal-Downtime Upgrade**: For multi-node deployments where high availability is required.
+
+## Before You Begin
+
+### Checking Your Current Version
+
+Before upgrading, note your current Infisical version:
+
+```bash
+cat /opt/infisical-core/version-manifest.txt
+```
+
+Look for `infisical` component. This will be the version of Infisical currently installed.
+
+### Prerequisites
+
+- Verify that your PostgreSQL and Redis instances are up and running
+- Back up your PostgreSQL database before proceeding with any upgrade
+- Review release notes for the version you're upgrading to
+
+### Creating a Database Backup
+
+We strongly recommend backing up your database before upgrading. 
+Your backup approach may look different depending on how you configured PostgreSQL and whether it's self-managed or using a managed service. 
+Here is a sample of how you would perform a manual backup:
+
+```bash
+# Example PostgreSQL backup command (adjust parameters as needed)
+pg_dump -U <username> -h <db-host> -d <db-name> > infisical_backup.sql
+```
+
+### Database Migrations During Upgrade
+
+By default, Infisical runs database migrations automatically on startup.  
+
+- It uses database locks to ensure only one instance runs migrations at a time
+- Other instances will wait for the lock to be released before continuing startup
+- This prevents race conditions and database conflicts
+
+## Standard Upgrade (with Downtime)
+
+This method is suitable for single-node deployments or situations where a brief downtime is acceptable.
+
+<Steps>
+  <Step title="Stop the Infisical service">
+   ```bash
+   infisical-ctl stop
+   ```
+  </Step>
+  <Step title="Upgrade the Infisical package">
+To upgrade to the latest version:
+
+<Tabs>
+  <Tab title="Debian/Ubuntu">
+   ```bash
+   sudo apt-get update && sudo apt-get install -y infisical-core
+   ```
+  </Tab>
+  <Tab title="RHEL/CentOS/Amazon Linux">
+   ```bash
+   sudo yum update infisical-core
+   ```
+  </Tab>
+</Tabs>
+
+To upgrade to a specific version:
+   
+<Tabs>
+  <Tab title="Debian/Ubuntu">
+   ```bash
+   sudo apt-get install -y infisical-core=<version>
+   ```
+  </Tab>
+  <Tab title="RHEL/CentOS/Amazon Linux">
+   ```bash
+   sudo yum install infisical-core-<version>
+   ```
+  </Tab>
+</Tabs>
+
+  </Step>
+  <Step title="Apply configuration changes">
+   ```bash
+   infisical-ctl reconfigure
+   ```
+  </Step>
+
+  <Step title="Start Infisical">
+   ```bash
+   infisical-ctl start
+   ```
+  </Step>
+
+  <Step title="Verify the upgrade">
+   ```bash
+   infisical-ctl status
+   ```
+
+   Check the logs for any issues:
+   ```bash
+   infisical-ctl tail
+   ```
+  </Step>
+</Steps>
+
+## Minimal-Downtime Upgrade
+
+For multi-node setups where you need to maintain availability during upgrades, follow this procedure. This approach requires at least two Infisical nodes behind a load balancer.
+
+### Understanding Traffic Draining
+
+"Draining" a server means gracefully removing it from the pool of active servers without disrupting existing connections. When you drain a server:
+
+1. The load balancer stops sending new requests to the server
+2. Existing connections are allowed to complete naturally
+3. Once all connections finish, the server can be safely taken offline for maintenance
+
+This approach ensures users/machines do not experience sudden connection errors during the upgrade process.
+
+### Preparing for the Upgrade
+
+1. **Designate a deploy node**: Choose any single node that will run migrations. This node will be upgraded first.
+
+2. **Configure your load balancer**: Ensure your load balancer can perform health checks against Infisical's `api/status` endpoint.
+
+### Upgrade Process
+
+#### On the deploy node:
+
+<Steps>
+<Step title="Drain traffic from the node">
+   
+Drain the traffic on this node gracefully. You can do this in a number of ways depending on the load balancer you have configured. 
+Approaches for some common load balancers are provided below:
+
+<Tabs>
+   <Tab title="NGINX">
+      If using NGINX as a load balancer, you can remove the server from the upstream pool temporarily:
+      ```bash
+      # Edit your NGINX configuration to comment out or remove the server
+      sudo nano /path/to/your/nginx-config.conf
+      
+      # Reload NGINX to apply changes
+      sudo nginx -s reload
+      ```
+   </Tab>
+   <Tab title="HAProxy">
+      If using HAProxy, you can put the server in maintenance mode:
+      ```bash
+      # Using the HAProxy socket command
+      echo "disable server infisical_backend/infisical-node1" | socat stdio /var/lib/haproxy/stats
+      ```
+   </Tab>
+   <Tab title="AWS ALB/ELB">
+      Deregister the instance from the load balancer using the AWS console or CLI
+   </Tab>
+   <Tab title="Other load balancers">
+      Follow your load balancer's documentation for instructions on draining procedure
+   </Tab>
+</Tabs>
+</Step>
+
+<Step title="Verify no new traffic is arriving">
+Verify no new traffic is arriving before proceeding with the upgrade.
+</Step>
+
+<Step title="Stop Infisical on this node">
+```bash
+infisical-ctl stop
+```
+</Step>
+
+<Step title="Upgrade the Infisical package">
+   
+To upgrade to the latest version:
+
+<Tabs>
+  <Tab title="Debian/Ubuntu">
+   ```bash
+   sudo apt-get update && sudo apt-get install -y infisical-core
+   ```
+  </Tab>
+  <Tab title="RHEL/CentOS/Amazon Linux">
+   ```bash
+   sudo yum update infisical-core
+   ```
+  </Tab>
+</Tabs>
+
+To upgrade to a specific version:
+   
+<Tabs>
+  <Tab title="Debian/Ubuntu">
+   ```bash
+   sudo apt-get install -y infisical-core=<version>
+   ```
+  </Tab>
+  <Tab title="RHEL/CentOS/Amazon Linux">
+   ```bash
+   sudo yum install infisical-core-<version>
+   ```
+  </Tab>
+</Tabs>
+</Step>
+
+<Step title="Apply configuration and start the service">
+```bash
+infisical-ctl reconfigure
+```
+</Step>
+
+<Step title="Verify the upgrade and migration success">
+```bash
+infisical-ctl tail
+```
+Look for successful migration messages in the logs.
+</Step>
+
+<Step title="Return this node to load balancer pool">
+Re-enable the server in your load balancer using the same method you used to remove it.
+</Step>
+</Steps>
+
+#### On all remaining nodes (one at a time):
+
+<Steps>
+<Step title="Drain traffic from the node">
+Follow the same draining procedure as described for the deploy node:
+   
+- Remove the server from your load balancer's active pool
+- Wait for existing connections to complete
+- Verify the node is no longer receiving traffic
+</Step>
+
+<Step title="Stop Infisical on this node">
+```bash
+infisical-ctl stop
+```
+</Step>
+
+<Step title="Upgrade the Infisical package">
+To upgrade to the latest version:
+
+<Tabs>
+  <Tab title="Debian/Ubuntu">
+   ```bash
+   sudo apt-get update && sudo apt-get install -y infisical-core
+   ```
+  </Tab>
+  <Tab title="RHEL/CentOS/Amazon Linux">
+   ```bash
+   sudo yum update infisical-core
+   ```
+  </Tab>
+</Tabs>
+
+To upgrade to a specific version:
+   
+<Tabs>
+  <Tab title="Debian/Ubuntu">
+   ```bash
+   sudo apt-get install -y infisical-core=<version>
+   ```
+  </Tab>
+  <Tab title="RHEL/CentOS/Amazon Linux">
+   ```bash
+   sudo yum install infisical-core-<version>
+   ```
+  </Tab>
+</Tabs>
+</Step>
+
+<Step title="Apply configuration and start the service">
+```bash
+infisical-ctl reconfigure
+```
+</Step>
+
+<Step title="Verify the upgrade success">
+```bash
+infisical-ctl status
+infisical-ctl tail
+```
+</Step>
+
+<Step title="Wait for service to be fully operational">
+- Check logs to ensure the service has started successfully
+- Verify it can connect to the database and Redis
+</Step>
+
+<Step title="Return the node to service">
+Re-enable the server in your load balancer using the same method you used to remove it.
+</Step>
+
+<Step title="Verify traffic is flowing correctly">
+Check logs and monitoring to ensure traffic is flowing correctly.
+</Step>
+
+<Step title="Repeat for each remaining node">
+Repeat steps 1-7 for each remaining node, one at a time.
+</Step>
+
+<Step title="Verify application functionality">
+After all nodes are upgraded, verify that the application is functioning correctly:
+- Test core functionality
+- Check logs for any errors
+</Step>
+</Steps>
+
+## Rolling Back
+
+If you need to roll back to a previous version of Infisical, follow steps below.
+
+<Steps>
+<Step title="Stop the Infisical service">
+```bash
+infisical-ctl stop
+```
+</Step>
+
+<Step title="Install the previous version">
+For Debian/Ubuntu:
+```bash
+sudo apt-get install -y infisical-core=<previous-version>
+```
+
+For RHEL/CentOS/Amazon Linux:
+```bash
+sudo yum downgrade infisical-core-<previous-version>
+```
+</Step>
+
+<Step title="Restore your database from backup">
+Restore your Postgres/Redis database from backup.
+</Step>
+
+<Step title="Start the service">
+```bash
+infisical-ctl reconfigure
+```
+</Step>
+
+<Step title="Verify the rollback">
+```bash
+infisical-ctl status
+```
+</Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="Migration Issues">
+If you encounter database migration issues:
+
+1. Check the logs:
+   ```bash
+   infisical-ctl tail
+   ```
+
+2. Ensure the database user has sufficient privileges to create/modify tables.
+
+3. If migrations fail repeatedly, consider restoring from the backup you took prior to upgrading. 
+
+</Accordion>
+
+<Accordion title="Service Won't Start After Upgrade">
+1. Check for configuration errors:
+   ```bash
+   infisical-ctl tail
+   infisical-ctl status
+   ```
+
+2. Verify all required environment variables are set in your `/etc/infisical/infisical.rb` file.
+</Accordion>
+</AccordionGroup>
