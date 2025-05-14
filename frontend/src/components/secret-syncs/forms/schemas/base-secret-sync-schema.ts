@@ -16,7 +16,7 @@ export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefi
         (val) => !val || /^(?:[a-zA-Z0-9\-/]*)(?:\{\{secretKey\}\})(?:[a-zA-Z0-9\-/]*)$/.test(val),
         {
           message:
-            "Key schema must include {{secretKey}} and only contain letters, numbers, dashes, slashes, and the {{secretKey}} placeholder."
+            "Key schema must include one {{secretKey}} and only contain letters, numbers, dashes, slashes, and the {{secretKey}} placeholder."
         }
       )
   });

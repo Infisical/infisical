@@ -30,7 +30,7 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
       .optional()
       .refine((val) => !val || new RE2(/^(?:[a-zA-Z0-9\-/]*)(?:\{\{secretKey\}\})(?:[a-zA-Z0-9\-/]*)$/).test(val), {
         message:
-          "Key schema must include {{secretKey}} and only contain letters, numbers, dashes, slashes, and the {{secretKey}} placeholder."
+          "Key schema must include one {{secretKey}} and only contain letters, numbers, dashes, slashes, and the {{secretKey}} placeholder."
       })
       .describe(SecretSyncs.SYNC_OPTIONS(destination).keySchema),
     disableSecretDeletion: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).disableSecretDeletion)

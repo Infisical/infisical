@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import RE2 from "re2";
 
 import {
   AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
@@ -29,7 +30,7 @@ import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "./oci-vault";
-import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
+import * as teamcity from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
@@ -48,7 +49,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Vercel]: VERCEL_SYNC_LIST_OPTION,
   [SecretSync.Windmill]: WINDMILL_SYNC_LIST_OPTION,
   [SecretSync.HCVault]: HC_VAULT_SYNC_LIST_OPTION,
-  [SecretSync.TeamCity]: TEAMCITY_SYNC_LIST_OPTION,
+  [SecretSync.TeamCity]: teamcity.TEAMCITY_SYNC_LIST_OPTION,
   [SecretSync.OCIVault]: OCI_VAULT_SYNC_LIST_OPTION
 };
 
@@ -68,7 +69,7 @@ const addSchema = (unprocessedSecretMap: TSecretMap, schema?: string): TSecretMa
   const processedSecretMap: TSecretMap = {};
 
   for (const [key, value] of Object.entries(unprocessedSecretMap)) {
-    const newKey = schema.replace("{{secretKey}}", key);
+    const newKey = new RE2("{{secretKey}}").replace(schema, key);
     processedSecretMap[newKey] = value;
   }
 
@@ -167,7 +168,7 @@ export const SecretSyncFns = {
       case SecretSync.HCVault:
         return HCVaultSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.TeamCity:
-        return TeamCitySyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return teamcity.TeamCitySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.OCIVault:
         return OCIVaultSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
@@ -233,7 +234,7 @@ export const SecretSyncFns = {
         secretMap = await HCVaultSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.TeamCity:
-        secretMap = await TeamCitySyncFns.getSecrets(secretSync);
+        secretMap = await teamcity.TeamCitySyncFns.getSecrets(secretSync);
         break;
       case SecretSync.OCIVault:
         secretMap = await OCIVaultSyncFns.getSecrets(secretSync);
@@ -293,7 +294,7 @@ export const SecretSyncFns = {
       case SecretSync.HCVault:
         return HCVaultSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.TeamCity:
-        return TeamCitySyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return teamcity.TeamCitySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.OCIVault:
         return OCIVaultSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:

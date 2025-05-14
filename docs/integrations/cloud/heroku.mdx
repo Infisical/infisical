@@ -34,7 +34,7 @@ description: "How to sync secrets from Infisical to Heroku"
           - **No Import - Overwrite all values in Heroku**: Sync secrets and overwrite any existing secrets in Heroku.
           - **Import - Prefer values from Infisical**: Import secrets from Heroku to Infisical; if a secret with the same name already exists in Infisical, do nothing. Afterwards, sync secrets to Heroku.
           - **Import - Prefer values from Heroku**: Import secrets from Heroku to Infisical; if a secret with the same name already exists in Infisical, replace its value with the one from Heroku. Afterwards, sync secrets to Heroku.
-        - Key Schema: The schema used in forming the final destination key.
+        - Key Schema: Template that determines how secret names are transformed when syncing, using {{secretKey}} as a placeholder for the original secret name.
 
         ![integrations heroku](../../images/integrations/heroku/integrations-heroku.png)
       </Step>

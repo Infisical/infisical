@@ -126,12 +126,12 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
             tooltipClassName="max-w-md"
-            tooltipText="When a secret is synced, it's key will be injected into the key schema before it reaches the destination. This is useful for organization."
+            tooltipText="When a secret is synced, its key will be injected into the key schema before it reaches the destination. This is useful for organization."
             isError={Boolean(error)}
             isOptional
             errorText={error?.message}
             label="Key Schema"
-            helperText="Setting a Key Schema is recommended. This helps seperate synced secrets from regular secrets within a destination."
+            helperText="Setting a Key Schema is recommended. This helps separate synced secrets from regular secrets within a destination."
           >
             <Input value={value} onChange={onChange} placeholder="prefix/{{secretKey}}/suffix" />
           </FormControl>

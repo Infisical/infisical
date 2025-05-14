@@ -62,7 +62,7 @@ description: "Learn how to configure a GitHub Sync for Infisical."
                 <Note>
                     GitHub does not support importing secrets.
                 </Note>
-            - **Key Schema**: The schema used in forming the final destination key.
+            - **Key Schema**: Template that determines how secret names are transformed when syncing, using {{secretKey}} as a placeholder for the original secret name.
             - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
             - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
 
