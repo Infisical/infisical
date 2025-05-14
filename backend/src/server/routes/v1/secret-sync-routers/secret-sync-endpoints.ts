@@ -367,17 +367,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       querystring: z.object({
         importBehavior: z
           .nativeEnum(SecretSyncImportBehavior)
-          .describe(SecretSyncs.IMPORT_SECRETS(destination).importBehavior),
-        filterForSchema: z
-          .enum(["true", "false"])
-          .optional()
-          .default("false")
-          .transform((v) => v === "true"),
-        stripSchema: z
-          .enum(["true", "false"])
-          .optional()
-          .default("false")
-          .transform((v) => v === "true")
+          .describe(SecretSyncs.IMPORT_SECRETS(destination).importBehavior)
       }),
       response: {
         200: z.object({ secretSync: responseSchema })
@@ -386,15 +376,13 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { syncId } = req.params;
-      const { importBehavior, filterForSchema, stripSchema } = req.query;
+      const { importBehavior } = req.query;
 
       const secretSync = (await server.services.secretSync.triggerSecretSyncImportSecretsById(
         {
           syncId,
           destination,
-          importBehavior,
-          filterForSchema,
-          stripSchema
+          importBehavior
         },
         req.permission
       )) as T;

@@ -61,11 +61,6 @@ type TSyncSecretDeps = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
-interface TSyncSecretConfig {
-  filterForSchema?: boolean;
-  stripSchema?: boolean;
-}
-
 // Add schema to secret keys
 const addSchema = (unprocessedSecretMap: TSecretMap, schema?: string): TSecretMap => {
   if (!schema) return unprocessedSecretMap;
@@ -101,17 +96,22 @@ const stripSchema = (unprocessedSecretMap: TSecretMap, schema?: string): TSecret
   return strippedMap;
 };
 
-// Filter only for secrets with keys that match the schema
-const filterForSchema = (secretMap: TSecretMap, schema?: string): TSecretMap => {
-  if (!schema) return secretMap;
+// Checks if a key matches a schema
+export const matchesSchema = (key: string, schema?: string): boolean => {
+  if (!schema) return true;
 
   const [prefix, suffix] = schema.split("{{secretKey}}");
-  if (prefix === undefined || suffix === undefined) return secretMap;
+  if (prefix === undefined || suffix === undefined) return true;
 
+  return key.startsWith(prefix) && key.endsWith(suffix);
+};
+
+// Filter only for secrets with keys that match the schema
+const filterForSchema = (secretMap: TSecretMap, schema?: string): TSecretMap => {
   const filteredMap: TSecretMap = {};
 
   for (const [key, value] of Object.entries(secretMap)) {
-    if (key.startsWith(prefix) && key.endsWith(suffix)) {
+    if (matchesSchema(key, schema)) {
       filteredMap[key] = value;
     }
   }
@@ -178,8 +178,7 @@ export const SecretSyncFns = {
   },
   getSecrets: async (
     secretSync: TSecretSyncWithCredentials,
-    { kmsService, appConnectionDAL }: TSyncSecretDeps,
-    config?: TSyncSecretConfig
+    { kmsService, appConnectionDAL }: TSyncSecretDeps
   ): Promise<TSecretMap> => {
     let secretMap: TSecretMap;
     switch (secretSync.destination) {
@@ -245,17 +244,7 @@ export const SecretSyncFns = {
         );
     }
 
-    let processedSecretMap = secretMap;
-
-    if (config?.filterForSchema) {
-      processedSecretMap = filterForSchema(processedSecretMap);
-    }
-
-    if (config?.stripSchema) {
-      return stripSchema(processedSecretMap, secretSync.syncOptions.keySchema);
-    }
-
-    return processedSecretMap;
+    return stripSchema(filterForSchema(secretMap), secretSync.syncOptions.keySchema);
   },
   removeSecrets: (
     secretSync: TSecretSyncWithCredentials,

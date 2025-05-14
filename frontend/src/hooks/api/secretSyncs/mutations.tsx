@@ -86,12 +86,10 @@ export const useTriggerSecretSyncImportSecrets = () => {
     mutationFn: async ({
       syncId,
       destination,
-      importBehavior,
-      filterForSchema,
-      stripSchema
+      importBehavior
     }: TTriggerSecretSyncImportSecretsDTO) => {
       const { data } = await apiRequest.post(
-        `/api/v1/secret-syncs/${destination}/${syncId}/import-secrets?importBehavior=${importBehavior}&filterForSchema=${filterForSchema}&stripSchema=${stripSchema}`
+        `/api/v1/secret-syncs/${destination}/${syncId}/import-secrets?importBehavior=${importBehavior}`
       );
 
       return data;

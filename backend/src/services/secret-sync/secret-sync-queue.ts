@@ -319,12 +319,9 @@ export const secretSyncQueueFactory = ({
     );
   };
 
-  // TODO(andrey): Possibly add a "stripSchema" parameter for imports?
   const $importSecrets = async (
     secretSync: TSecretSyncWithCredentials,
-    importBehavior: SecretSyncImportBehavior,
-    filterForSchema: boolean,
-    stripSchema: boolean
+    importBehavior: SecretSyncImportBehavior
   ): Promise<TSecretMap> => {
     const { projectId, environment, folder } = secretSync;
 
@@ -333,17 +330,10 @@ export const secretSyncQueueFactory = ({
         "Invalid Secret Sync source configuration: folder no longer exists. Please update source environment and secret path."
       );
 
-    const importedSecrets = await SecretSyncFns.getSecrets(
-      secretSync,
-      {
-        appConnectionDAL,
-        kmsService
-      },
-      {
-        filterForSchema,
-        stripSchema
-      }
-    );
+    const importedSecrets = await SecretSyncFns.getSecrets(secretSync, {
+      appConnectionDAL,
+      kmsService
+    });
 
     if (!Object.keys(importedSecrets).length) return {};
 
@@ -454,9 +444,7 @@ export const secretSyncQueueFactory = ({
           secretSyncWithCredentials,
           initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeSource
             ? SecretSyncImportBehavior.PrioritizeSource
-            : SecretSyncImportBehavior.PrioritizeDestination,
-          false,
-          false
+            : SecretSyncImportBehavior.PrioritizeDestination
         );
 
         Object.entries(importedSecretMap).forEach(([key, secretData]) => {
@@ -548,7 +536,7 @@ export const secretSyncQueueFactory = ({
 
   const $handleImportSecretsJob = async (job: TSecretSyncImportSecretsDTO) => {
     const {
-      data: { syncId, auditLogInfo, importBehavior, filterForSchema, stripSchema }
+      data: { syncId, auditLogInfo, importBehavior }
     } = job;
 
     const secretSync = await secretSyncDAL.findById(syncId);
@@ -586,9 +574,7 @@ export const secretSyncQueueFactory = ({
             credentials
           }
         } as TSecretSyncWithCredentials,
-        importBehavior,
-        filterForSchema,
-        stripSchema
+        importBehavior
       );
 
       isSuccess = true;

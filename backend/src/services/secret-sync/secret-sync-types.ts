@@ -231,8 +231,6 @@ export type TQueueSecretSyncImportSecretsByIdDTO = {
   syncId: string;
   importBehavior: SecretSyncImportBehavior;
   auditLogInfo?: AuditLogInfo;
-  filterForSchema: boolean;
-  stripSchema: boolean;
 };
 
 export type TTriggerSecretSyncImportSecretsByIdDTO = {

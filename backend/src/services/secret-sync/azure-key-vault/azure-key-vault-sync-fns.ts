@@ -5,6 +5,7 @@ import { request } from "@app/lib/config/request";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSyncError } from "../secret-sync-errors";
@@ -192,7 +193,9 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for await (const deleteSecretKey of deleteSecrets.filter(
-      (secret) => !setSecrets.find((setSecret) => setSecret.key === secret)
+      (secret) =>
+        matchesSchema(secret, secretSync.syncOptions.keySchema) &&
+        !setSecrets.find((setSecret) => setSecret.key === secret)
     )) {
       await request.delete(`${secretSync.destinationConfig.vaultBaseUrl}/secrets/${deleteSecretKey}?api-version=7.3`, {
         headers: {
