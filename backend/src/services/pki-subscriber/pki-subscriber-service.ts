@@ -27,6 +27,7 @@ import {
 } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
   createSerialNumber,
   expandInternalCa,
@@ -36,7 +37,6 @@ import {
   parseDistinguishedName
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
-import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";

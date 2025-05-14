@@ -12,7 +12,7 @@ import {
   TGetCaCertChainsDTO,
   TGetCaCredentialsDTO,
   TRebuildCaCrlDTO
-} from "./certificate-authority-types";
+} from "./internal/internal-certificate-authority-types";
 
 /* eslint-disable no-bitwise */
 export const createSerialNumber = () => {

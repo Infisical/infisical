@@ -12,7 +12,12 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("certificateAuthorityId").nullable();
     });
 
-    await knex(TableName.InternalCertificateAuthority).insert(knex(TableName.CertificateAuthority).select("*"));
+    const caRows = await knex(TableName.CertificateAuthority).select("*");
+    if (caRows.length > 0) {
+      // @ts-expect-error intentional: migration
+      await knex(TableName.InternalCertificateAuthority).insert(caRows);
+    }
+
     await knex(TableName.InternalCertificateAuthority).update("certificateAuthorityId", knex.ref("id"));
 
     await knex.schema.alterTable(TableName.InternalCertificateAuthority, (t) => {
@@ -59,7 +64,20 @@ export async function up(knex: Knex): Promise<void> {
 
   if (!hasExternalCATable) {
     await knex.schema.createTable(TableName.ExternalCertificateAuthority, (t) => {
-      //
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.string("type").notNullable();
+      t.string("name").notNullable();
+      t.uuid("appConnectionId").nullable();
+      t.foreign("appConnectionId").references("id").inTable(TableName.AppConnection);
+      t.uuid("dnsAppConnectionId").nullable();
+      t.foreign("dnsAppConnectionId").references("id").inTable(TableName.AppConnection);
+      t.uuid("certificateAuthorityId")
+        .notNullable()
+        .references("id")
+        .inTable(TableName.CertificateAuthority)
+        .onDelete("CASCADE");
+      t.binary("credentials");
+      t.json("configuration");
     });
   }
 }
@@ -113,7 +131,7 @@ export async function down(knex: Knex): Promise<void> {
         "notAfter" = ica."notAfter",
         "activeCaCertId" = ica."activeCaCertId"
       FROM ${TableName.InternalCertificateAuthority} ica
-      WHERE ca.id = ica.id
+      WHERE ca.id = ica."certificateAuthorityId"
     `);
 
     await knex.schema.alterTable(TableName.CertificateAuthority, (t) => {

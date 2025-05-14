@@ -125,6 +125,11 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           `${TableName.CertificateAuthority}.id`,
           `${TableName.InternalCertificateAuthority}.certificateAuthorityId`
         )
+        .leftJoin(
+          TableName.ExternalCertificateAuthority,
+          `${TableName.CertificateAuthority}.id`,
+          `${TableName.ExternalCertificateAuthority}.certificateAuthorityId`
+        )
         .where(filter)
         .select(selectAllTableCols(TableName.CertificateAuthority))
         .select(
@@ -150,6 +155,14 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             .ref("certificateAuthorityId")
             .withSchema(TableName.InternalCertificateAuthority)
             .as("internalCertificateAuthorityId")
+        )
+        .select(
+          db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
+          db.ref("type").withSchema(TableName.ExternalCertificateAuthority).as("externalType"),
+          db
+            .ref("certificateAuthorityId")
+            .withSchema(TableName.ExternalCertificateAuthority)
+            .as("externalCertificateAuthorityId")
         );
 
       if (limit) void query.limit(limit);

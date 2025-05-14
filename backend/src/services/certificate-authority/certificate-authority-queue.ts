@@ -16,7 +16,7 @@ import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificat
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
-import { TRotateCaCrlTriggerDTO } from "./certificate-authority-types";
+import { TRotateCaCrlTriggerDTO } from "./internal/internal-certificate-authority-types";
 
 type TCertificateAuthorityQueueFactoryDep = {
   // TODO: Pick

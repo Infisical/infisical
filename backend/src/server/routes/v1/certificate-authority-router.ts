@@ -10,7 +10,11 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
-import { CaRenewalType, CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-types";
+import {
+  CaRenewalType,
+  CaStatus,
+  InternalCaType
+} from "@app/services/certificate-authority/certificate-authority-enums";
 import {
   validateAltNamesField,
   validateCaDateField
@@ -34,7 +38,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           projectSlug: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.projectSlug),
-          type: z.nativeEnum(CaType).describe(CERTIFICATE_AUTHORITIES.CREATE.type),
+          type: z.nativeEnum(InternalCaType).describe(CERTIFICATE_AUTHORITIES.CREATE.type),
           friendlyName: z.string().optional().describe(CERTIFICATE_AUTHORITIES.CREATE.friendlyName),
           commonName: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.commonName),
           organization: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.organization),
@@ -79,6 +83,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
+        isInternal: false,
         actorOrgId: req.permission.orgId,
         ...req.body
       });
@@ -209,6 +214,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         caId: req.params.caId,
         actor: req.permission.type,
         actorId: req.permission.id,
+        isInternal: false,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body

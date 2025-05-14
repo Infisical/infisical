@@ -30,19 +30,20 @@ import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-c
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { TCertificateAuthorityCrlDALFactory } from "../../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TCertificateSecretDALFactory } from "../../certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertStatus
-} from "../certificate/certificate-types";
-import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
-import { validateCertificateDetailsAgainstTemplate } from "../certificate-template/certificate-template-fns";
-import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
-import { TCertificateAuthorityDALFactory, TCertificateAuthorityWithAssociatedCa } from "./certificate-authority-dal";
+} from "../../certificate/certificate-types";
+import { TCertificateTemplateDALFactory } from "../../certificate-template/certificate-template-dal";
+import { validateCertificateDetailsAgainstTemplate } from "../../certificate-template/certificate-template-fns";
+import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
+import { TCertificateAuthorityDALFactory, TCertificateAuthorityWithAssociatedCa } from "../certificate-authority-dal";
+import { CaStatus, InternalCaType } from "../certificate-authority-enums";
 import {
   createDistinguishedName,
   createSerialNumber,
@@ -52,12 +53,11 @@ import {
   getCaCredentials,
   keyAlgorithmToAlgCfg,
   parseDistinguishedName
-} from "./certificate-authority-fns";
-import { TCertificateAuthorityQueueFactory } from "./certificate-authority-queue";
-import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
+} from "../certificate-authority-fns";
+import { TCertificateAuthorityQueueFactory } from "../certificate-authority-queue";
+import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
+import { TInternalCertificateAuthorityDALFactory } from "./internal-certificate-authority-dal";
 import {
-  CaStatus,
-  CaType,
   TCreateCaDTO,
   TDeleteCaDTO,
   TGetCaCertDTO,
@@ -71,8 +71,7 @@ import {
   TSignCertFromCaDTO,
   TSignIntermediateDTO,
   TUpdateCaDTO
-} from "./certificate-authority-types";
-import { TInternalCertificateAuthorityDALFactory } from "./internal-certificate-authority-dal";
+} from "./internal-certificate-authority-types";
 
 type TInternalCertificateAuthorityServiceFactoryDep = {
   certificateAuthorityDAL: Pick<
@@ -130,7 +129,6 @@ export const internalCertificateAuthorityServiceFactory = ({
   permissionService
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
   const createCa = async ({
-    projectSlug,
     type,
     friendlyName,
     commonName,
@@ -144,36 +142,38 @@ export const internalCertificateAuthorityServiceFactory = ({
     maxPathLength,
     keyAlgorithm,
     requireTemplateForIssuance,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
+    ...dto
   }: TCreateCaDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
-    let projectId = project.id;
+    let projectId: string;
+    if (!dto.isInternal) {
+      const project = await projectDAL.findProjectBySlug(dto.projectSlug, dto.actorOrgId);
+      if (!project) throw new NotFoundError({ message: `Project with slug '${dto.projectSlug}' not found` });
+      projectId = project.id;
 
-    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
-      projectId,
-      ProjectType.CertificateManager
-    );
-    if (certManagerProjectFromSplit) {
-      projectId = certManagerProjectFromSplit.id;
+      const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
+        projectId,
+        ProjectType.CertificateManager
+      );
+      if (certManagerProjectFromSplit) {
+        projectId = certManagerProjectFromSplit.id;
+      }
+
+      const { permission } = await permissionService.getProjectPermission({
+        actor: dto.actor,
+        actorId: dto.actorId,
+        projectId,
+        actorAuthMethod: dto.actorAuthMethod,
+        actorOrgId: dto.actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Create,
+        ProjectPermissionSub.CertificateAuthorities
+      );
+    } else {
+      projectId = dto.projectId;
     }
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.CertificateAuthorities
-    );
 
     const dn = createDistinguishedName({
       commonName,
@@ -216,10 +216,10 @@ export const internalCertificateAuthorityServiceFactory = ({
           locality,
           friendlyName: friendlyName || dn,
           commonName,
-          status: type === CaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
+          status: type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
           dn,
           keyAlgorithm,
-          ...(type === CaType.ROOT && {
+          ...(type === InternalCaType.ROOT && {
             maxPathLength,
             notBefore: notBeforeDate,
             notAfter: notAfterDate,
@@ -256,7 +256,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         tx
       );
 
-      if (type === CaType.ROOT) {
+      if (type === InternalCaType.ROOT) {
         // note: create self-signed cert only applicable for root CA
         const cert = await x509.X509CertificateGenerator.createSelfSigned({
           name: dn,
@@ -357,31 +357,25 @@ export const internalCertificateAuthorityServiceFactory = ({
    * Update CA with id [caId].
    * Note: Used to enable/disable CA
    */
-  const updateCaById = async ({
-    caId,
-    status,
-    requireTemplateForIssuance,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TUpdateCaDTO) => {
+  const updateCaById = async ({ caId, status, requireTemplateForIssuance, ...dto }: TUpdateCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
+    if (!dto.isInternal) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: dto.actor,
+        actorId: dto.actorId,
+        projectId: ca.projectId,
+        actorAuthMethod: dto.actorAuthMethod,
+        actorOrgId: dto.actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      ProjectPermissionSub.CertificateAuthorities
-    );
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        ProjectPermissionSub.CertificateAuthorities
+      );
+    }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (status !== undefined) {
@@ -451,7 +445,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    if (ca.internalCa.type === CaType.ROOT) throw new BadRequestError({ message: "Root CA cannot generate CSR" });
+    if (ca.internalCa.type === InternalCaType.ROOT)
+      throw new BadRequestError({ message: "Root CA cannot generate CSR" });
 
     const { caPrivateKey, caPublicKey } = await getCaCredentials({
       caId,
@@ -554,7 +549,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     let certificateChain = "";
 
     switch (ca.internalCa.type) {
-      case CaType.ROOT: {
+      case InternalCaType.ROOT: {
         if (new Date(notAfter) <= new Date(caCertObj.notAfter)) {
           throw new BadRequestError({
             message:
@@ -623,7 +618,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         certificate = cert.toString("pem");
         break;
       }
-      case CaType.INTERMEDIATE: {
+      case InternalCaType.INTERMEDIATE: {
         if (!ca.internalCa.parentCaId) {
           // TODO: look into optimal way to support renewal of intermediate CA with external parent CA
           throw new BadRequestError({
