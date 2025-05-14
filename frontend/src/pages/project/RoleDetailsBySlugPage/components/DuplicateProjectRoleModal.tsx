@@ -49,30 +49,26 @@ const Content = ({ role, onClose }: ContentProps) => {
   const navigate = useNavigate();
 
   const handleDuplicateRole = async (form: FormData) => {
-    try {
-      const newRole = await createRole.mutateAsync({
-        projectId: currentWorkspace.id,
-        permissions: role.permissions,
-        ...form
-      });
+    const newRole = await createRole.mutateAsync({
+      projectId: currentWorkspace.id,
+      permissions: role.permissions,
+      ...form
+    });
 
-      createNotification({
-        type: "success",
-        text: "Role duplicated successfully"
-      });
+    createNotification({
+      type: "success",
+      text: "Role duplicated successfully"
+    });
 
-      navigate({
-        to: `/${currentWorkspace.type}/$projectId/roles/$roleSlug` as const,
-        params: {
-          roleSlug: newRole.slug,
-          projectId: currentWorkspace.id
-        }
-      });
+    navigate({
+      to: `/${currentWorkspace.type}/$projectId/roles/$roleSlug` as const,
+      params: {
+        roleSlug: newRole.slug,
+        projectId: currentWorkspace.id
+      }
+    });
 
-      onClose();
-    } catch {
-      // query client creates notification
-    }
+    onClose();
   };
 
   return (
