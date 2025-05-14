@@ -776,12 +776,12 @@ export const projectServiceFactory = ({
       });
     }
 
-    const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.auditLogs || auditLogsRetentionDays > plan.auditLogsRetentionDays) {
-      throw new BadRequestError({
-        message: "Failed to update audit logs retention due to plan limit reached. Upgrade plan to increase."
-      });
-    }
+    // const plan = await licenseService.getPlan(project.orgId);
+    // if (!plan.auditLogs || auditLogsRetentionDays > plan.auditLogsRetentionDays) {
+    //   throw new BadRequestError({
+    //     message: "Failed to update audit logs retention due to plan limit reached. Upgrade plan to increase."
+    //   });
+    // }
 
     return projectDAL.updateById(project.id, { auditLogsRetentionDays });
   };
