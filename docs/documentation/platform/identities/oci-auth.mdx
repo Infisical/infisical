@@ -77,6 +77,11 @@ In order to sign requests, you must have an OCI user with credentials such as th
             Click on 'Add API key' and then download or import the private key. After you've obtained the private key, click 'Add'.
 
             ![Add API Key](/images/app-connections/oci/add-api-key.png)
+
+            <Note>
+              At the end of the downloaded private key file, you'll see `OCI_API_KEY`. This is not apart of the private key, and should not be included when you use the private key to sign requests.
+            </Note>
+
         </Step>
         <Step title="Store configuration">
             After creating the API key, you'll be shown a modal with relevant information. Save the highlighted values (and the private key) for later steps.
