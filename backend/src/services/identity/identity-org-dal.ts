@@ -8,6 +8,7 @@ import {
   TIdentityGcpAuths,
   TIdentityJwtAuths,
   TIdentityKubernetesAuths,
+  TIdentityOciAuths,
   TIdentityOidcAuths,
   TIdentityOrgMemberships,
   TIdentityTokenAuths,
@@ -62,6 +63,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           `${TableName.IdentityOrgMembership}.identityId`,
           `${TableName.IdentityKubernetesAuth}.identityId`
         )
+        .leftJoin<TIdentityOciAuths>(
+          TableName.IdentityOciAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityOciAuth}.identityId`
+        )
         .leftJoin<TIdentityOidcAuths>(
           TableName.IdentityOidcAuth,
           `${TableName.IdentityOrgMembership}.identityId`,
@@ -95,6 +101,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
           db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
           db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
+          db.ref("id").as("ociId").withSchema(TableName.IdentityOciAuth),
           db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
           db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
@@ -186,6 +193,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           "paginatedIdentity.identityId",
           `${TableName.IdentityKubernetesAuth}.identityId`
         )
+        .leftJoin<TIdentityOciAuths>(
+          TableName.IdentityOciAuth,
+          "paginatedIdentity.identityId",
+          `${TableName.IdentityOciAuth}.identityId`
+        )
         .leftJoin<TIdentityOidcAuths>(
           TableName.IdentityOidcAuth,
           "paginatedIdentity.identityId",
@@ -226,6 +238,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
           db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
           db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
+          db.ref("id").as("ociId").withSchema(TableName.IdentityOciAuth),
           db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
           db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
@@ -269,6 +282,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           gcpId,
           jwtId,
           kubernetesId,
+          ociId,
           oidcId,
           azureId,
           tokenId,
@@ -301,6 +315,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               awsId,
               gcpId,
               kubernetesId,
+              ociId,
               oidcId,
               azureId,
               tokenId,
@@ -402,6 +417,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           `${TableName.IdentityKubernetesAuth}.identityId`
         )
         .leftJoin(
+          TableName.IdentityOciAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityOciAuth}.identityId`
+        )
+        .leftJoin(
           TableName.IdentityOidcAuth,
           `${TableName.IdentityOrgMembership}.identityId`,
           `${TableName.IdentityOidcAuth}.identityId`
@@ -441,6 +461,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
           db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
           db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
+          db.ref("id").as("ociId").withSchema(TableName.IdentityOciAuth),
           db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
           db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
@@ -485,6 +506,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           gcpId,
           jwtId,
           kubernetesId,
+          ociId,
           oidcId,
           azureId,
           tokenId,
@@ -517,6 +539,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               awsId,
               gcpId,
               kubernetesId,
+              ociId,
               oidcId,
               azureId,
               tokenId,

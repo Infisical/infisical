@@ -5,6 +5,7 @@ export const buildAuthMethods = ({
   gcpId,
   awsId,
   kubernetesId,
+  ociId,
   oidcId,
   azureId,
   tokenId,
@@ -15,6 +16,7 @@ export const buildAuthMethods = ({
   gcpId?: string;
   awsId?: string;
   kubernetesId?: string;
+  ociId?: string;
   oidcId?: string;
   azureId?: string;
   tokenId?: string;
@@ -26,6 +28,7 @@ export const buildAuthMethods = ({
     ...[gcpId ? IdentityAuthMethod.GCP_AUTH : null],
     ...[awsId ? IdentityAuthMethod.AWS_AUTH : null],
     ...[kubernetesId ? IdentityAuthMethod.KUBERNETES_AUTH : null],
+    ...[ociId ? IdentityAuthMethod.OCI_AUTH : null],
     ...[oidcId ? IdentityAuthMethod.OIDC_AUTH : null],
     ...[azureId ? IdentityAuthMethod.AZURE_AUTH : null],
     ...[tokenId ? IdentityAuthMethod.TOKEN_AUTH : null],

@@ -162,6 +162,8 @@ import { identityKubernetesAuthDALFactory } from "@app/services/identity-kuberne
 import { identityKubernetesAuthServiceFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-service";
 import { identityLdapAuthDALFactory } from "@app/services/identity-ldap-auth/identity-ldap-auth-dal";
 import { identityLdapAuthServiceFactory } from "@app/services/identity-ldap-auth/identity-ldap-auth-service";
+import { identityOciAuthDALFactory } from "@app/services/identity-oci-auth/identity-oci-auth-dal";
+import { identityOciAuthServiceFactory } from "@app/services/identity-oci-auth/identity-oci-auth-service";
 import { identityOidcAuthDALFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-dal";
 import { identityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
@@ -355,6 +357,7 @@ export const registerRoutes = async (
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
   const identityAwsAuthDAL = identityAwsAuthDALFactory(db);
   const identityGcpAuthDAL = identityGcpAuthDALFactory(db);
+  const identityOciAuthDAL = identityOciAuthDALFactory(db);
   const identityOidcAuthDAL = identityOidcAuthDALFactory(db);
   const identityJwtAuthDAL = identityJwtAuthDALFactory(db);
   const identityAzureAuthDAL = identityAzureAuthDALFactory(db);
@@ -1451,6 +1454,14 @@ export const registerRoutes = async (
     licenseService
   });
 
+  const identityOciAuthService = identityOciAuthServiceFactory({
+    identityAccessTokenDAL,
+    identityOciAuthDAL,
+    identityOrgMembershipDAL,
+    licenseService,
+    permissionService
+  });
+
   const identityOidcAuthService = identityOidcAuthServiceFactory({
     identityOidcAuthDAL,
     identityOrgMembershipDAL,
@@ -1737,6 +1748,7 @@ export const registerRoutes = async (
     identityGcpAuth: identityGcpAuthService,
     identityAwsAuth: identityAwsAuthService,
     identityAzureAuth: identityAzureAuthService,
+    identityOciAuth: identityOciAuthService,
     identityOidcAuth: identityOidcAuthService,
     identityJwtAuth: identityJwtAuthService,
     identityLdapAuth: identityLdapAuthService,

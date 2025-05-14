@@ -119,6 +119,9 @@ import {
   TIdentityMetadata,
   TIdentityMetadataInsert,
   TIdentityMetadataUpdate,
+  TIdentityOciAuths,
+  TIdentityOciAuthsInsert,
+  TIdentityOciAuthsUpdate,
   TIdentityOidcAuths,
   TIdentityOidcAuthsInsert,
   TIdentityOidcAuthsUpdate,
@@ -737,6 +740,11 @@ declare module "knex/types/tables" {
       TIdentityAzureAuths,
       TIdentityAzureAuthsInsert,
       TIdentityAzureAuthsUpdate
+    >;
+    [TableName.IdentityOciAuth]: KnexOriginal.CompositeTableType<
+      TIdentityOciAuths,
+      TIdentityOciAuthsInsert,
+      TIdentityOciAuthsUpdate
     >;
     [TableName.IdentityOidcAuth]: KnexOriginal.CompositeTableType<
       TIdentityOidcAuths,

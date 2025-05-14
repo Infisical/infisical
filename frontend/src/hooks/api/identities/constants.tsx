@@ -7,6 +7,7 @@ export const identityAuthToNameMap: { [I in IdentityAuthMethod]: string } = {
   [IdentityAuthMethod.GCP_AUTH]: "GCP Auth",
   [IdentityAuthMethod.AWS_AUTH]: "AWS Auth",
   [IdentityAuthMethod.AZURE_AUTH]: "Azure Auth",
+  [IdentityAuthMethod.OCI_AUTH]: "OCI Auth",
   [IdentityAuthMethod.OIDC_AUTH]: "OIDC Auth",
   [IdentityAuthMethod.LDAP_AUTH]: "LDAP Auth",
   [IdentityAuthMethod.JWT_AUTH]: "JWT Auth"
