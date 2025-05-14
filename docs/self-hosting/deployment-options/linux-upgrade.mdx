@@ -1,6 +1,6 @@
 ---
-title: "Upgrading Linux Package"
-description: "Learn how to upgrade your Infisical deployment on Linux"
+title: "Upgrading"
+description: "How to upgrade Infisical deployment using linux package"
 ---
 
 This guide explains how to upgrade Infisical Linux package installations to newer versions. 
@@ -141,43 +141,50 @@ This approach ensures users/machines do not experience sudden connection errors 
 
 #### On the deploy node:
 
-1. **Drain traffic from the node**:
+<Steps>
+<Step title="Drain traffic from the node">
    
-   Depending on your load balancer, use one of the following approaches to drain the node:
-   <Tabs>
-      <Tab title="NGINX">
-         If using NGINX as a load balancer, you can remove the server from the upstream pool temporarily:
-         ```bash
-         # Edit your NGINX configuration to comment out or remove the server
-         sudo nano /path/to/your/nginx-config.conf
-         
-         # Reload NGINX to apply changes
-         sudo nginx -s reload
-         ```
-      </Tab>
-      <Tab title="HAProxy">
-         If using HAProxy, you can put the server in maintenance mode:
-         ```bash
-         # Using the HAProxy socket command
-         echo "disable server infisical_backend/infisical-node1" | socat stdio /var/lib/haproxy/stats
-         ```
-      </Tab>
-      <Tab title="AWS ALB/ELB">
-         Deregister the instance from the load balancer using the AWS console or CLI
-      </Tab>
-      <Tab title="Other load balancers">
-         Follow your load balancer's documentation for instructions on draining procedure
-      </Tab>
-   </Tabs>
+Drain the traffic on this node gracefully. You can do this in a number of ways depending on the load balancer you have configured. 
+Approaches for some common load balancers are provided below:
 
-2. **Verify no new traffic is arriving ** before proceeding with the upgrade.
+<Tabs>
+   <Tab title="NGINX">
+      If using NGINX as a load balancer, you can remove the server from the upstream pool temporarily:
+      ```bash
+      # Edit your NGINX configuration to comment out or remove the server
+      sudo nano /path/to/your/nginx-config.conf
+      
+      # Reload NGINX to apply changes
+      sudo nginx -s reload
+      ```
+   </Tab>
+   <Tab title="HAProxy">
+      If using HAProxy, you can put the server in maintenance mode:
+      ```bash
+      # Using the HAProxy socket command
+      echo "disable server infisical_backend/infisical-node1" | socat stdio /var/lib/haproxy/stats
+      ```
+   </Tab>
+   <Tab title="AWS ALB/ELB">
+      Deregister the instance from the load balancer using the AWS console or CLI
+   </Tab>
+   <Tab title="Other load balancers">
+      Follow your load balancer's documentation for instructions on draining procedure
+   </Tab>
+</Tabs>
+</Step>
 
-3. **Stop Infisical on this node**:
-   ```bash
-   infisical-ctl stop
-   ```
+<Step title="Verify no new traffic is arriving">
+Verify no new traffic is arriving before proceeding with the upgrade.
+</Step>
 
-4. **Upgrade the Infisical package**:
+<Step title="Stop Infisical on this node">
+```bash
+infisical-ctl stop
+```
+</Step>
+
+<Step title="Upgrade the Infisical package">
    
 To upgrade to the latest version:
 
@@ -208,39 +215,44 @@ To upgrade to a specific version:
    ```
   </Tab>
 </Tabs>
+</Step>
 
-5. **Apply configuration and start the service**:
-   ```bash
-   infisical-ctl reconfigure
-   ```
+<Step title="Apply configuration and start the service">
+```bash
+infisical-ctl reconfigure
+```
+</Step>
 
-6. **Verify the upgrade and migration success**:
-   ```bash
-   infisical-ctl tail
-   ```
-   Look for successful migration messages in the logs.
+<Step title="Verify the upgrade and migration success">
+```bash
+infisical-ctl tail
+```
+Look for successful migration messages in the logs.
+</Step>
 
-7. **Return the node to service** once you've verified it's running correctly:
-   
-   Re-enable the server in your load balancer using the same method you used to remove it.
+<Step title="Return this node to load balancer pool">
+Re-enable the server in your load balancer using the same method you used to remove it.
+</Step>
+</Steps>
 
 #### On all remaining nodes (one at a time):
 
-1. **Drain traffic from the node** being upgraded:
+<Steps>
+<Step title="Drain traffic from the node">
+Follow the same draining procedure as described for the deploy node:
    
-   Follow the same draining procedure as described for the deploy node:
-   
-   - Remove the server from your load balancer's active pool
-   - Wait for existing connections to complete
-   - Verify the node is no longer receiving traffic
+- Remove the server from your load balancer's active pool
+- Wait for existing connections to complete
+- Verify the node is no longer receiving traffic
+</Step>
 
-2. **Stop Infisical on this node**:
-   ```bash
-   infisical-ctl stop
-   ```
+<Step title="Stop Infisical on this node">
+```bash
+infisical-ctl stop
+```
+</Step>
 
-3. **Upgrade the Infisical package**:
-   
+<Step title="Upgrade the Infisical package">
 To upgrade to the latest version:
 
 <Tabs>
@@ -270,38 +282,89 @@ To upgrade to a specific version:
    ```
   </Tab>
 </Tabs>
+</Step>
 
-4. **Apply configuration and start the service**:
-   ```bash
-   infisical-ctl reconfigure
-   ```
+<Step title="Apply configuration and start the service">
+```bash
+infisical-ctl reconfigure
+```
+</Step>
 
-5. **Verify the upgrade success**:
-   ```bash
-   infisical-ctl status
-   infisical-ctl tail
-   ```
+<Step title="Verify the upgrade success">
+```bash
+infisical-ctl status
+infisical-ctl tail
+```
+</Step>
 
-6. **Wait for service to be fully operational**:
-   - Check logs to ensure the service has started successfully
-   - Verify it can connect to the database and Redis
+<Step title="Wait for service to be fully operational">
+- Check logs to ensure the service has started successfully
+- Verify it can connect to the database and Redis
+</Step>
 
-7. **Return the node to service**:
-   
-   Re-enable the server in your load balancer using the same method you used to remove it.
+<Step title="Return the node to service">
+Re-enable the server in your load balancer using the same method you used to remove it.
+</Step>
 
-8. **Verify traffic is flowing correctly** by checking logs and monitoring.
+<Step title="Verify traffic is flowing correctly">
+Check logs and monitoring to ensure traffic is flowing correctly.
+</Step>
 
-8. **Repeat** steps 1-7 for each remaining node, one at a time.
+<Step title="Repeat for each remaining node">
+Repeat steps 1-7 for each remaining node, one at a time.
+</Step>
 
-9. **After all nodes are upgraded**, verify that the application is functioning correctly:
-   - Test core functionality
-   - Check logs for any errors
+<Step title="Verify application functionality">
+After all nodes are upgraded, verify that the application is functioning correctly:
+- Test core functionality
+- Check logs for any errors
+</Step>
+</Steps>
+
+## Rolling Back
+
+If you need to roll back to a previous version of Infisical, follow steps below.
+
+<Steps>
+<Step title="Stop the Infisical service">
+```bash
+infisical-ctl stop
+```
+</Step>
+
+<Step title="Install the previous version">
+For Debian/Ubuntu:
+```bash
+sudo apt-get install -y infisical-core=<previous-version>
+```
+
+For RHEL/CentOS/Amazon Linux:
+```bash
+sudo yum downgrade infisical-core-<previous-version>
+```
+</Step>
+
+<Step title="Restore your database from backup">
+Restore your Postgres/Redis database from backup.
+</Step>
+
+<Step title="Start the service">
+```bash
+infisical-ctl reconfigure
+```
+</Step>
+
+<Step title="Verify the rollback">
+```bash
+infisical-ctl status
+```
+</Step>
+</Steps>
 
 ## Troubleshooting
 
-### Migration Issues
-
+<AccordionGroup>
+<Accordion title="Migration Issues">
 If you encounter database migration issues:
 
 1. Check the logs:
@@ -311,48 +374,17 @@ If you encounter database migration issues:
 
 2. Ensure the database user has sufficient privileges to create/modify tables.
 
-3. If migrations fail repeatedly, consider restoring from the backup you took prior to upgrading.
+3. If migrations fail repeatedly, consider restoring from the backup you took prior to upgrading. 
 
-### Service Won't Start After Upgrade
+</Accordion>
 
+<Accordion title="Service Won't Start After Upgrade">
 1. Check for configuration errors:
    ```bash
-   infisical-ctl status
    infisical-ctl tail
+   infisical-ctl status
    ```
 
 2. Verify all required environment variables are set in your `/etc/infisical/infisical.rb` file.
-
-
-## Rolling Back
-
-If you need to roll back to a previous version of Infisical, follow steps below.
-
-1. Stop the Infisical service:
-   ```bash
-   infisical-ctl stop
-   ```
-
-2. Install the previous version:
-   
-   For Debian/Ubuntu:
-   ```bash
-   sudo apt-get install -y infisical-core=<previous-version>
-   ```
-
-   For RHEL/CentOS/Amazon Linux:
-   ```bash
-   sudo yum downgrade infisical-core-<previous-version>
-   ```
-
-3. Restore your database from backup. 
-
-4. Start the service:
-   ```bash
-   infisical-ctl reconfigure
-   ```
-
-5. Verify the rollback:
-   ```bash
-   infisical-ctl status
-   ```
+</Accordion>
+</AccordionGroup>
