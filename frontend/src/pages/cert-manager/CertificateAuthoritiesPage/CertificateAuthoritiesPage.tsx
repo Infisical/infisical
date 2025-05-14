@@ -17,7 +17,7 @@ export const CertificateAuthoritiesPage = () => {
       <div className="mx-auto mb-6 w-full max-w-7xl">
         <PageHeader
           title="Certificate Authorities"
-          description="Manage internal private certificate authorities for issuing and signing certificates, including root and intermediate CAs."
+          description="Manage certificate authorities for issuing and signing certificates"
         />
         <ProjectPermissionCan
           renderGuardBanner

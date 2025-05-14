@@ -78,6 +78,7 @@ export async function up(knex: Knex): Promise<void> {
         .onDelete("CASCADE");
       t.binary("credentials");
       t.json("configuration");
+      t.string("status").notNullable();
     });
   }
 }

@@ -133,6 +133,7 @@ import { certificateAuthorityDALFactory } from "@app/services/certificate-author
 import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
 import { certificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import { externalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
 import { internalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-dal";
 import { internalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
@@ -820,6 +821,7 @@ export const registerRoutes = async (
 
   const certificateAuthorityDAL = certificateAuthorityDALFactory(db);
   const internalCertificateAuthorityDAL = internalCertificateAuthorityDALFactory(db);
+  const externalCertificateAuthorityDAL = externalCertificateAuthorityDALFactory(db);
   const certificateAuthorityCertDAL = certificateAuthorityCertDALFactory(db);
   const certificateAuthoritySecretDAL = certificateAuthoritySecretDALFactory(db);
   const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
@@ -902,23 +904,6 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     groupDAL
-  });
-
-  const certificateAuthorityService = certificateAuthorityServiceFactory({
-    certificateAuthorityDAL,
-    certificateAuthorityCertDAL,
-    certificateAuthoritySecretDAL,
-    certificateAuthorityCrlDAL,
-    certificateTemplateDAL,
-    certificateAuthorityQueue,
-    certificateDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    pkiCollectionDAL,
-    pkiCollectionItemDAL,
-    projectDAL,
-    kmsService,
-    permissionService
   });
 
   const internalCertificateAuthorityService = internalCertificateAuthorityServiceFactory({
@@ -1693,6 +1678,16 @@ export const registerRoutes = async (
     secretQueueService,
     queueService,
     appConnectionDAL
+  });
+
+  const certificateAuthorityService = certificateAuthorityServiceFactory({
+    certificateAuthorityDAL,
+    projectDAL,
+    permissionService,
+    appConnectionDAL,
+    appConnectionService,
+    externalCertificateAuthorityDAL,
+    internalCertificateAuthorityService
   });
 
   await secretRotationV2QueueServiceFactory({

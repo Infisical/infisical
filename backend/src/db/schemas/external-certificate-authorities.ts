@@ -17,7 +17,8 @@ export const ExternalCertificateAuthoritiesSchema = z.object({
   dnsAppConnectionId: z.string().uuid().nullable().optional(),
   certificateAuthorityId: z.string().uuid(),
   credentials: zodBuffer.nullable().optional(),
-  configuration: z.unknown().nullable().optional()
+  configuration: z.unknown().nullable().optional(),
+  status: z.string()
 });
 
 export type TExternalCertificateAuthorities = z.infer<typeof ExternalCertificateAuthoritiesSchema>;

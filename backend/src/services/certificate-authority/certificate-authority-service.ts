@@ -6,7 +6,14 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
+import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
 import { TProjectDALFactory } from "../project/project-dal";
+import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
+import {
+  TCreateAcmeCertificateAuthorityDTO,
+  TUpdateAcmeCertificateAuthorityDTO
+} from "./acme/acme-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import {
@@ -14,9 +21,13 @@ import {
   TCreateCertificateAuthorityDTO,
   TUpdateCertificateAuthorityDTO
 } from "./certificate-authority-types";
+import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
 import { TInternalCertificateAuthorityServiceFactory } from "./internal/internal-certificate-authority-service";
+import { TCreateInternalCertificateAuthorityDTO } from "./internal/internal-certificate-authority-types";
 
 type TCertificateAuthorityServiceFactoryDep = {
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
     | "transaction"
@@ -28,6 +39,7 @@ type TCertificateAuthorityServiceFactoryDep = {
     | "findByIdWithAssociatedCa"
     | "findWithAssociatedCa"
   >;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
   projectDAL: Pick<
     TProjectDALFactory,
@@ -42,10 +54,20 @@ export const certificateAuthorityServiceFactory = ({
   certificateAuthorityDAL,
   projectDAL,
   permissionService,
-  internalCertificateAuthorityService
+  internalCertificateAuthorityService,
+  appConnectionDAL,
+  appConnectionService,
+  externalCertificateAuthorityDAL
 }: TCertificateAuthorityServiceFactoryDep) => {
+  const acmeFns = AcmeCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL
+  });
+
   const createCertificateAuthority = async (
-    { type, projectId, configuration, disableDirectIssuance }: TCreateCertificateAuthorityDTO,
+    { type, projectId, name, disableDirectIssuance, configuration, status }: TCreateCertificateAuthorityDTO,
     actor: OrgServiceActor
   ) => {
     let finalProjectId: string = projectId;
@@ -74,7 +96,7 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.INTERNAL) {
       const ca = await internalCertificateAuthorityService.createCa({
-        ...configuration,
+        ...(configuration as TCreateInternalCertificateAuthorityDTO["configuration"]),
         isInternal: true,
         projectId: finalProjectId,
         requireTemplateForIssuance: disableDirectIssuance
@@ -92,8 +114,20 @@ export const certificateAuthorityServiceFactory = ({
         disableDirectIssuance: ca.disableDirectIssuance,
         name: ca.internalCa?.friendlyName,
         projectId,
+        status,
         configuration: ca.internalCa
       } as TCertificateAuthority;
+    }
+
+    if (type === CaType.ACME) {
+      return acmeFns.createCertificateAuthority({
+        name,
+        projectId: finalProjectId,
+        configuration: configuration as TCreateAcmeCertificateAuthorityDTO["configuration"],
+        disableDirectIssuance,
+        status,
+        actor
+      });
     }
   };
 
@@ -135,9 +169,25 @@ export const certificateAuthorityServiceFactory = ({
         disableDirectIssuance: certificateAuthority.disableDirectIssuance,
         name: certificateAuthority.internalCa.friendlyName,
         projectId: certificateAuthority.projectId,
-        configuration: certificateAuthority.internalCa
+        configuration: certificateAuthority.internalCa,
+        status: certificateAuthority.internalCa.status
       } as TCertificateAuthority;
     }
+
+    if (certificateAuthority.externalCa?.type !== type) {
+      throw new NotFoundError({
+        message: `Could not find external certificate authority with ID "${certificateAuthorityId}" and type "${type}"`
+      });
+    }
+
+    return {
+      id: certificateAuthority.id,
+      type,
+      disableDirectIssuance: certificateAuthority.disableDirectIssuance,
+      name: certificateAuthority.externalCa.name,
+      projectId: certificateAuthority.projectId,
+      configuration: certificateAuthority.externalCa.configuration
+    } as TCertificateAuthority;
   };
 
   const listCertificateAuthoritiesByProjectId = async (
@@ -187,13 +237,26 @@ export const certificateAuthorityServiceFactory = ({
           disableDirectIssuance: ca.disableDirectIssuance,
           name: ca.internalCa.friendlyName,
           projectId: ca.projectId,
-          configuration: ca.internalCa
+          configuration: ca.internalCa,
+          status: ca.internalCa.status
         })) as TCertificateAuthority[];
     }
+
+    return cas
+      .filter((ca): ca is typeof ca & { externalCa: NonNullable<typeof ca.externalCa> } => Boolean(ca.externalCa))
+      .map((ca) => ({
+        id: ca.id,
+        type,
+        disableDirectIssuance: ca.disableDirectIssuance,
+        name: ca.externalCa.name,
+        projectId: ca.projectId,
+        configuration: ca.externalCa.configuration,
+        status: ca.externalCa.status
+      })) as TCertificateAuthority[];
   };
 
   const updateCertificateAuthority = async (
-    { id, type, configuration, disableDirectIssuance }: TUpdateCertificateAuthorityDTO,
+    { id, type, configuration, disableDirectIssuance, status }: TUpdateCertificateAuthorityDTO,
     actor: OrgServiceActor
   ) => {
     const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
@@ -243,9 +306,22 @@ export const certificateAuthorityServiceFactory = ({
         disableDirectIssuance: updatedCa.disableDirectIssuance,
         name: updatedCa.internalCa?.friendlyName,
         projectId: updatedCa.projectId,
-        configuration: updatedCa.internalCa
+        configuration: updatedCa.internalCa,
+        status: updatedCa.internalCa?.status
       } as TCertificateAuthority;
     }
+
+    if (type === CaType.ACME) {
+      return acmeFns.updateCertificateAuthority({
+        id,
+        configuration: configuration as TUpdateAcmeCertificateAuthorityDTO["configuration"],
+        disableDirectIssuance,
+        actor,
+        status
+      });
+    }
+
+    throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
   const deleteCertificateAuthority = async ({ id, type }: { id: string; type: CaType }, actor: OrgServiceActor) => {
@@ -276,6 +352,12 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (certificateAuthority.externalCa && certificateAuthority.externalCa.type !== type) {
+      throw new BadRequestError({
+        message: "Certificate authority cannot be deleted due to mismatching type"
+      });
+    }
+
     await certificateAuthorityDAL.deleteById(id);
 
     if (type === CaType.INTERNAL) {
@@ -285,9 +367,20 @@ export const certificateAuthorityServiceFactory = ({
         disableDirectIssuance: certificateAuthority.disableDirectIssuance,
         name: certificateAuthority.internalCa?.friendlyName,
         projectId: certificateAuthority.projectId,
-        configuration: certificateAuthority.internalCa
+        configuration: certificateAuthority.internalCa,
+        status: certificateAuthority.internalCa?.status
       } as TCertificateAuthority;
     }
+
+    return {
+      id: certificateAuthority.id,
+      type,
+      disableDirectIssuance: certificateAuthority.disableDirectIssuance,
+      name: certificateAuthority.externalCa?.name,
+      projectId: certificateAuthority.projectId,
+      configuration: certificateAuthority.externalCa?.configuration,
+      status: certificateAuthority.externalCa?.status
+    } as TCertificateAuthority;
   };
 
   return {

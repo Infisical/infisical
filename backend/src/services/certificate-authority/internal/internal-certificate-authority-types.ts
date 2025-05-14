@@ -13,12 +13,17 @@ import { CaRenewalType, CaStatus, InternalCaType } from "../certificate-authorit
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
 import {
   CreateInternalCertificateAuthoritySchema,
-  InternalCertificateAuthoritySchema
+  InternalCertificateAuthoritySchema,
+  UpdateInternalCertificateAuthoritySchema
 } from "./internal-certificate-authority-schemas";
 
 export type TInternalCertificateAuthority = z.infer<typeof InternalCertificateAuthoritySchema>;
 
 export type TInternalCertificateAuthorityInput = z.infer<typeof CreateInternalCertificateAuthoritySchema>;
+
+export type TCreateInternalCertificateAuthorityDTO = z.infer<typeof CreateInternalCertificateAuthoritySchema>;
+
+export type TUpdateInternalCertificateAuthorityDTO = z.infer<typeof UpdateInternalCertificateAuthoritySchema>;
 
 export type TCreateCaDTO =
   | {

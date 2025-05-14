@@ -21,6 +21,11 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         `${TableName.CertificateAuthority}.id`,
         `${TableName.InternalCertificateAuthority}.certificateAuthorityId`
       )
+      .leftJoin(
+        TableName.ExternalCertificateAuthority,
+        `${TableName.CertificateAuthority}.id`,
+        `${TableName.ExternalCertificateAuthority}.certificateAuthorityId`
+      )
       .where(`${TableName.CertificateAuthority}.id`, caId)
       .select(selectAllTableCols(TableName.CertificateAuthority))
       .select(
@@ -47,6 +52,18 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           .withSchema(TableName.InternalCertificateAuthority)
           .as("internalCertificateAuthorityId")
       )
+      .select(
+        db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
+        db.ref("name").withSchema(TableName.ExternalCertificateAuthority).as("externalName"),
+        db.ref("type").withSchema(TableName.ExternalCertificateAuthority).as("externalType"),
+        db.ref("status").withSchema(TableName.ExternalCertificateAuthority).as("externalStatus"),
+        db.ref("configuration").withSchema(TableName.ExternalCertificateAuthority).as("externalConfiguration"),
+        db
+          .ref("dnsAppConnectionId")
+          .withSchema(TableName.ExternalCertificateAuthority)
+          .as("externalDnsAppConnectionId"),
+        db.ref("appConnectionId").withSchema(TableName.ExternalCertificateAuthority).as("externalAppConnectionId")
+      )
       .first();
 
     const data = {
@@ -72,6 +89,17 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             notAfter: result.internalNotAfter,
             activeCaCertId: result.internalActiveCaCertId,
             certificateAuthorityId: result.internalCertificateAuthorityId
+          }
+        : undefined,
+      externalCa: result
+        ? {
+            id: result.externalCaId,
+            name: result.externalName,
+            type: result.externalType,
+            status: result.externalStatus,
+            configuration: result.externalConfiguration,
+            dnsAppConnectionId: result.externalDnsAppConnectionId,
+            appConnectionId: result.externalAppConnectionId
           }
         : undefined
     };
@@ -158,11 +186,15 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         )
         .select(
           db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
+          db.ref("name").withSchema(TableName.ExternalCertificateAuthority).as("externalName"),
           db.ref("type").withSchema(TableName.ExternalCertificateAuthority).as("externalType"),
+          db.ref("status").withSchema(TableName.ExternalCertificateAuthority).as("externalStatus"),
+          db.ref("configuration").withSchema(TableName.ExternalCertificateAuthority).as("externalConfiguration"),
           db
-            .ref("certificateAuthorityId")
+            .ref("dnsAppConnectionId")
             .withSchema(TableName.ExternalCertificateAuthority)
-            .as("externalCertificateAuthorityId")
+            .as("externalDnsAppConnectionId"),
+          db.ref("appConnectionId").withSchema(TableName.ExternalCertificateAuthority).as("externalAppConnectionId")
         );
 
       if (limit) void query.limit(limit);
@@ -200,6 +232,17 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
               notAfter: ca.internalNotAfter,
               activeCaCertId: ca.internalActiveCaCertId,
               certificateAuthorityId: ca.internalCertificateAuthorityId
+            }
+          : undefined,
+        externalCa: ca
+          ? {
+              id: ca.externalCaId,
+              name: ca.externalName,
+              type: ca.externalType,
+              status: ca.externalStatus,
+              configuration: ca.externalConfiguration,
+              dnsAppConnectionId: ca.externalDnsAppConnectionId,
+              appConnectionId: ca.externalAppConnectionId
             }
           : undefined
       }));
