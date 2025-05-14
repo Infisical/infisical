@@ -7,7 +7,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
-import { Alert, Button, Tooltip } from "@app/components/v2";
+import { Button, DeleteActionModal, Tooltip } from "@app/components/v2";
+import { usePopUp } from "@app/hooks";
 import {
   useGetMyDuplicateAccount,
   useLogoutUser,
@@ -24,6 +25,7 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
   const { t } = useTranslation();
   const navigate = useNavigate();
   const logout = useLogoutUser(true);
+  const { popUp, handlePopUpToggle } = usePopUp(["removeDuplicateConfirm"] as const);
   const handleLogout = useCallback(async () => {
     try {
       console.log("Logging out...");
@@ -65,13 +67,14 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
               <span className="text-slate-300">Your current account is: </span>{" "}
               <b>{duplicateAccounts?.data?.myAccount?.username}</b>.
             </p>
-            <Alert variant="warning" hideTitle>
-              <div>
+            <div className="mb-4 mt-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
+              <p className="mb-2 mt-1 text-sm text-bunker-300">
                 We&apos;ve detected multiple accounts using variations of the same email address.
-                Confirm to retain this account <b>{duplicateAccounts?.data?.myAccount?.username}</b>
-                . Upon confirmation other accounts will be <b>removed</b>.
-              </div>
-            </Alert>
+              </p>
+            </div>
+          </div>
+          <div className="mb-4 w-full border-b border-mineshaft-400 pb-1 text-sm text-mineshaft-200">
+            Your other accounts
           </div>
           <div className="thin-scrollbar flex h-full max-h-60 w-full flex-col items-stretch gap-2 overflow-auto rounded-md">
             {duplicateAccounts?.data?.duplicateAccounts?.map((el) => {
@@ -84,7 +87,10 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
                   <div className="group flex flex-grow flex-col">
                     <div className="truncate text-sm transition-colors">{el.username}</div>
                     <div className="mt-2 text-xs">
-                      Last login: {format(new Date(el.updatedAt), "Pp")}
+                      Last logged in at {format(new Date(el.updatedAt), "Pp")}
+                    </div>
+                    <div className="mt-2 text-xs">
+                      Organizations: {el?.organizations?.map((i) => i.slug)?.join(",")}
                     </div>
                   </div>
                   <div>
@@ -109,26 +115,16 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
               <Button
                 className="flex-1 flex-grow"
                 isLoading={removeDuplicateEmails.isPending}
-                onClick={() =>
-                  removeDuplicateEmails.mutate(undefined, {
-                    onSuccess: () => {
-                      createNotification({
-                        type: "success",
-                        text: "Removed duplicate accounts"
-                      });
-                      onRemoveDuplicateLater();
-                    }
-                  })
-                }
+                onClick={() => handlePopUpToggle("removeDuplicateConfirm", true)}
               >
-                Confirm
+                Delete all other accounts
               </Button>
               <Button
                 variant="outline_bg"
                 onClick={() => onRemoveDuplicateLater()}
                 className="flex-1 flex-grow"
               >
-                Ask Again Later?
+                Remind me later
               </Button>
             </div>
             <Button
@@ -144,6 +140,25 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
         </form>
       </div>
       <div className="pb-28" />
+      <DeleteActionModal
+        isOpen={popUp.removeDuplicateConfirm.isOpen}
+        subTitle={`This account ${duplicateAccounts?.data?.myAccount?.username} will be kept. Upon confirmation other accounts will be removed.`}
+        title="Confirmation Required"
+        onChange={(isOpen) => handlePopUpToggle("removeDuplicateConfirm", isOpen)}
+        deleteKey="remove"
+        buttonText="Confirm"
+        onDeleteApproved={() =>
+          removeDuplicateEmails.mutateAsync(undefined, {
+            onSuccess: () => {
+              createNotification({
+                type: "success",
+                text: "Removed duplicate accounts"
+              });
+              onRemoveDuplicateLater();
+            }
+          })
+        }
+      />
     </div>
   );
 };

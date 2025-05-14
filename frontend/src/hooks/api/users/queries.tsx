@@ -39,7 +39,16 @@ export const useGetUser = () =>
 
 export const fetchUserDuplicateAccounts = async () => {
   const { data } = await apiRequest.get<{
-    users: Array<User & { isMyAccount: boolean; devices: { ip: string; userAgent: string }[] }>;
+    users: Array<
+      User & {
+        isMyAccount: boolean;
+        organizations: { name: string; slug: string }[];
+        devices: {
+          ip: string;
+          userAgent: string;
+        }[];
+      }
+    >;
   }>("/api/v1/user/duplicate-accounts");
   return data.users;
 };

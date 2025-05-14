@@ -30,6 +30,7 @@ type TUserServiceFactoryDep = {
     | "createUserAction"
     | "findUserEncKeyByUserId"
     | "delete"
+    | "findAllMyAccounts"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "findByUserId">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
@@ -140,7 +141,7 @@ export const userServiceFactory = ({
   };
 
   const getAllMyAccounts = async (email: string, userId: string) => {
-    const users = await userDAL.find({ email });
+    const users = await userDAL.findAllMyAccounts(email);
     return users?.map((el) => ({ ...el, isMyAccount: el.id === userId }));
   };
 

@@ -55,7 +55,10 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          users: UsersSchema.extend({ isMyAccount: z.boolean() }).array()
+          users: UsersSchema.extend({
+            isMyAccount: z.boolean(),
+            organizations: z.object({ name: z.string(), slug: z.string() }).array()
+          }).array()
         })
       }
     },

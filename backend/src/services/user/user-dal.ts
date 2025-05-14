@@ -8,10 +8,11 @@ import {
   TUserEncryptionKeys,
   TUserEncryptionKeysInsert,
   TUserEncryptionKeysUpdate,
-  TUsers
+  TUsers,
+  UsersSchema
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 export type TUserDALFactory = ReturnType<typeof userDALFactory>;
 
@@ -168,6 +169,38 @@ export const userDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findAllMyAccounts = async (email: string) => {
+    try {
+      const doc = await db(TableName.Users)
+        .where({ email })
+        .leftJoin(TableName.OrgMembership, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.Organization, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
+        .select(selectAllTableCols(TableName.Users))
+        .select(
+          db.ref("name").withSchema(TableName.Organization).as("orgName"),
+          db.ref("slug").withSchema(TableName.Organization).as("orgSlug")
+        );
+      const formattedDoc = sqlNestRelationships({
+        data: doc,
+        key: "id",
+        parentMapper: (el) => UsersSchema.parse(el),
+        childrenMapper: [
+          {
+            key: "orgSlug",
+            label: "organizations" as const,
+            mapper: ({ orgSlug, orgName }) => ({
+              slug: orgSlug,
+              name: orgName
+            })
+          }
+        ]
+      });
+      return formattedDoc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Upsert user enc key" });
+    }
+  };
+
   // USER ACTION FUNCTIONS
   // ---------------------
   const findOneUserAction = (filter: TUserActionsUpdate, tx?: Knex) => {
@@ -200,6 +233,7 @@ export const userDALFactory = (db: TDbClient) => {
     createUserEncryption,
     findOneUserAction,
     createUserAction,
-    getUsersByFilter
+    getUsersByFilter,
+    findAllMyAccounts
   };
 };
