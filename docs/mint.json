@@ -445,6 +445,7 @@
           ]
         },
         "integrations/frameworks/terraform",
+        "integrations/frameworks/pulumi",
         "integrations/platforms/ansible",
         "integrations/platforms/apache-airflow"
       ]
