@@ -82,6 +82,8 @@ export type TTriggerSecretSyncImportSecretsDTO = {
   syncId: string;
   importBehavior: SecretSyncImportBehavior;
   projectId: string;
+  filterForSchema: boolean;
+  stripSchema: boolean;
 };
 
 export type TTriggerSecretSyncRemoveSecretsDTO = {

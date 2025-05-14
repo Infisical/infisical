@@ -3,7 +3,7 @@ import { Controller, useFormContext } from "react-hook-form";
 import { faQuestionCircle, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { FormControl, Select, SelectItem, Switch, Tooltip } from "@app/components/v2";
+import { FormControl, Input, Select, SelectItem, Switch, Tooltip } from "@app/components/v2";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, useSecretSyncOption } from "@app/hooks/api/secretSyncs";
 
@@ -122,6 +122,22 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
           )}
         </>
       )}
+      <Controller
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl
+            tooltipClassName="max-w-md"
+            tooltipText="When a secret is synced, it's key will be injected into the key schema before it reaches the destination. This is useful for organization."
+            isError={Boolean(error)}
+            isOptional
+            errorText={error?.message}
+            label="Key Schema"
+          >
+            <Input value={value} onChange={onChange} placeholder="prefix/{{secretKey}}/suffix" />
+          </FormControl>
+        )}
+        control={control}
+        name="syncOptions.keySchema"
+      />
       {AdditionalSyncOptionsFieldsComponent}
       <Controller
         control={control}
@@ -161,34 +177,6 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
           );
         }}
       />
-      {/* <Controller
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            isOptional
-            errorText={error?.message}
-            label="Prepend Prefix"
-          >
-            <Input className="uppercase" value={value} onChange={onChange} placeholder="INF_" />
-          </FormControl>
-        )}
-        control={control}
-        name="syncOptions.prependPrefix"
-      />
-      <Controller
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            isOptional
-            errorText={error?.message}
-            label="Append Suffix"
-          >
-            <Input className="uppercase" value={value} onChange={onChange} placeholder="_INF" />
-          </FormControl>
-        )}
-        control={control}
-        name="syncOptions.appendSuffix"
-      /> */}
     </>
   );
 };

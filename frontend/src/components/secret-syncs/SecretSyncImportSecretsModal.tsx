@@ -10,7 +10,8 @@ import {
   ModalClose,
   ModalContent,
   Select,
-  SelectItem
+  SelectItem,
+  Switch
 } from "@app/components/v2";
 import { SECRET_SYNC_IMPORT_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import {
@@ -31,30 +32,49 @@ type ContentProps = {
 };
 
 const FormSchema = z.object({
-  importBehavior: z.nativeEnum(SecretSyncImportBehavior)
+  importBehavior: z.nativeEnum(SecretSyncImportBehavior),
+  filterForSchema: z.boolean(),
+  stripSchema: z.boolean()
 });
 
 type TFormData = z.infer<typeof FormSchema>;
 
 const Content = ({ secretSync, onComplete }: ContentProps) => {
-  const { id: syncId, destination, projectId } = secretSync;
+  const {
+    id: syncId,
+    destination,
+    projectId,
+    syncOptions: { keySchema }
+  } = secretSync;
   const destinationName = SECRET_SYNC_MAP[destination].name;
 
   const {
     handleSubmit,
     control,
     formState: { isSubmitting, isDirty }
-  } = useForm<TFormData>({ resolver: zodResolver(FormSchema) });
+  } = useForm<TFormData>({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      filterForSchema: false,
+      stripSchema: false
+    }
+  });
 
   const triggerImportSecrets = useTriggerSecretSyncImportSecrets();
 
-  const handleTriggerImportSecrets = async ({ importBehavior }: TFormData) => {
+  const handleTriggerImportSecrets = async ({
+    importBehavior,
+    filterForSchema,
+    stripSchema
+  }: TFormData) => {
     try {
       await triggerImportSecrets.mutateAsync({
         syncId,
         destination,
         importBehavior,
-        projectId
+        projectId,
+        filterForSchema,
+        stripSchema
       });
 
       createNotification({
@@ -131,6 +151,64 @@ const Content = ({ secretSync, onComplete }: ContentProps) => {
           </FormControl>
         )}
       />
+      {keySchema && (
+        <>
+          <Controller
+            control={control}
+            name="filterForSchema"
+            defaultValue
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                tooltipClassName="max-w-md"
+                tooltipText={
+                  <div className="flex flex-col gap-2">
+                    <p>
+                      If enabled, Infisical will only import destination secrets that match your key
+                      schema:
+                    </p>
+                    <code className="text-mineshaft-300">{keySchema}</code>
+                  </div>
+                }
+                label="Filter Keys for Schema"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Switch
+                  id="filter-for-schema"
+                  thumbClassName="bg-mineshaft-800"
+                  isChecked={value}
+                  onCheckedChange={onChange}
+                >
+                  Only import destination secrets that match schema
+                </Switch>
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="stripSchema"
+            defaultValue
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                tooltipClassName="max-w-md"
+                tooltipText="If enabled, Infisical will strip secret keys according to your schema. Keys that do not match the schema will not be affected."
+                label="Strip Schema"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Switch
+                  id="strip-schema"
+                  thumbClassName="bg-mineshaft-800"
+                  isChecked={value}
+                  onCheckedChange={onChange}
+                >
+                  Strip schema from imported secret keys
+                </Switch>
+              </FormControl>
+            )}
+          />
+        </>
+      )}
       <div className="mt-8 flex w-full items-center justify-between gap-2">
         <ModalClose asChild>
           <Button colorSchema="secondary" variant="plain">
