@@ -24,8 +24,11 @@ and removed from any Infisical groups not present in the claim.
 
 <Steps>
     <Step title="Configure a groups claim in your OIDC provider">
-       1. To enable OIDC Group Membership Mapping, you must configure a `groups` claim in your OIDC provider with the following format.
+       To enable OIDC Group Membership Mapping, you must configure a `groups` claim in your OIDC provider.
 
+        Add a `groups` property with a list of the user's OIDC group names to your token.
+
+        Example of expected token payload:
         ```json
         {
             // "email": "john@provider.com",

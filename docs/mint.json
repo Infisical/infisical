@@ -266,18 +266,23 @@
                 "documentation/platform/sso/google-saml",
                 "documentation/platform/sso/auth0-saml",
                 {
-                  "group": "Keycloak OIDC",
+                  "group": "OIDC",
                   "pages": [
-                    "documentation/platform/sso/keycloak-oidc/overview",
-                    "documentation/platform/sso/keycloak-oidc/group-membership-mapping"
-                  ]
-                },
-                "documentation/platform/sso/auth0-oidc",
-                {
-                  "group": "General OIDC",
-                  "pages": [
-                    "documentation/platform/sso/general-oidc/overview",
-                    "documentation/platform/sso/general-oidc/group-membership-mapping"
+                    {
+                      "group": "Keycloak OIDC",
+                      "pages": [
+                        "documentation/platform/sso/keycloak-oidc/overview",
+                        "documentation/platform/sso/keycloak-oidc/group-membership-mapping"
+                      ]
+                    },
+                    "documentation/platform/sso/auth0-oidc",
+                    {
+                      "group": "General OIDC",
+                      "pages": [
+                        "documentation/platform/sso/general-oidc/overview",
+                        "documentation/platform/sso/general-oidc/group-membership-mapping"
+                      ]
+                    }
                   ]
                 }
               ]
