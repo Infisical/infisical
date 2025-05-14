@@ -126,7 +126,6 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionSecretActions.DescribeAndReadValue,
       ProjectPermissionSecretActions.DescribeSecret,
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Create,
@@ -207,7 +206,6 @@ const buildMemberPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionSecretActions.DescribeAndReadValue,
       ProjectPermissionSecretActions.DescribeSecret,
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Edit,
@@ -386,9 +384,10 @@ const buildMemberPermissionRules = () => {
 const buildViewerPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
-  can(ProjectPermissionSecretActions.DescribeAndReadValue, ProjectPermissionSub.Secrets);
-  can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets);
-  can(ProjectPermissionSecretActions.ReadValue, ProjectPermissionSub.Secrets);
+  can(
+    [ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSecretActions.ReadValue],
+    ProjectPermissionSub.Secrets
+  );
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
   can(ProjectPermissionDynamicSecretActions.ReadRootCredential, ProjectPermissionSub.DynamicSecrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);

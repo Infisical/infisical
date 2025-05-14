@@ -19,6 +19,7 @@ import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@a
 import { useDeleteProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { RoleDetailsSection } from "./components/RoleDetailsSection";
@@ -40,7 +41,8 @@ const Page = () => {
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "role",
-    "deleteRole"
+    "deleteRole",
+    "duplicateRole"
   ] as const);
 
   const onDeleteRoleSubmit = async () => {
@@ -118,6 +120,24 @@ const Page = () => {
                     )}
                   </ProjectPermissionCan>
                   <ProjectPermissionCan
+                    I={ProjectPermissionActions.Create}
+                    a={ProjectPermissionSub.Role}
+                  >
+                    {(isAllowed) => (
+                      <DropdownMenuItem
+                        className={twMerge(
+                          !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                        )}
+                        onClick={() => {
+                          handlePopUpOpen("duplicateRole");
+                        }}
+                        disabled={!isAllowed}
+                      >
+                        Duplicate Role
+                      </DropdownMenuItem>
+                    )}
+                  </ProjectPermissionCan>
+                  <ProjectPermissionCan
                     I={ProjectPermissionActions.Delete}
                     a={ProjectPermissionSub.Role}
                   >
@@ -154,6 +174,11 @@ const Page = () => {
         onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() => onDeleteRoleSubmit()}
+      />
+      <DuplicateProjectRoleModal
+        isOpen={popUp.duplicateRole.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("duplicateRole", isOpen)}
+        roleSlug={roleSlug}
       />
     </div>
   );
