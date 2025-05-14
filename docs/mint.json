@@ -350,7 +350,8 @@
           "group": "Linux Package",
           "pages": [
             "self-hosting/deployment-options/native/linux-package/installation",
-            "self-hosting/deployment-options/native/linux-package/commands-configuration"
+            "self-hosting/deployment-options/native/linux-package/commands-configuration",
+            "self-hosting/deployment-options/linux-upgrade"
           ]
         },
         "self-hosting/guides/upgrading-infisical",
