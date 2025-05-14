@@ -143,9 +143,11 @@ import { externalMigrationServiceFactory } from "@app/services/external-migratio
 import { folderCheckpointDALFactory } from "@app/services/folder-checkpoint/folder-checkpoint-dal";
 import { folderCheckpointResourcesDALFactory } from "@app/services/folder-checkpoint-resources/folder-checkpoint-resources-dal";
 import { folderCommitDALFactory } from "@app/services/folder-commit/folder-commit-dal";
+import { folderCommitQueueServiceFactory } from "@app/services/folder-commit/folder-commit-queue";
 import { folderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { folderCommitChangesDALFactory } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
 import { folderTreeCheckpointDALFactory } from "@app/services/folder-tree-checkpoint/folder-tree-checkpoint-dal";
+import { folderTreeCheckpointResourcesDALFactory } from "@app/services/folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
@@ -563,6 +565,14 @@ export const registerRoutes = async (
   const folderCheckpointResourcesDAL = folderCheckpointResourcesDALFactory(db);
   const folderTreeCheckpointDAL = folderTreeCheckpointDALFactory(db);
   const folderCommitDAL = folderCommitDALFactory(db);
+  const folderTreeCheckpointResourcesDAL = folderTreeCheckpointResourcesDALFactory(db);
+  const folderCommitQueueService = folderCommitQueueServiceFactory({
+    queueService,
+    folderTreeCheckpointDAL,
+    folderTreeCheckpointResourcesDAL,
+    folderCommitDAL,
+    folderDAL
+  });
   const folderCommitService = folderCommitServiceFactory({
     folderCommitDAL,
     folderCommitChangesDAL,
@@ -575,7 +585,9 @@ export const registerRoutes = async (
     secretVersionV2BridgeDAL,
     projectDAL,
     folderCheckpointResourcesDAL,
-    secretV2BridgeDAL
+    secretV2BridgeDAL,
+    folderTreeCheckpointResourcesDAL,
+    folderCommitQueueService
   });
   const scimService = scimServiceFactory({
     licenseService,

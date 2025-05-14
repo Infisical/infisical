@@ -9,6 +9,7 @@ import { folderCommitDALFactory } from "@app/services/folder-commit/folder-commi
 import { folderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { folderCommitChangesDALFactory } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
 import { folderTreeCheckpointDALFactory } from "@app/services/folder-tree-checkpoint/folder-tree-checkpoint-dal";
+import { folderTreeCheckpointResourcesDALFactory } from "@app/services/folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
@@ -76,6 +77,7 @@ export const getMigrationPITServices = async ({ db, keyStore }: { db: Knex; keyS
   const secretVersionV2BridgeDAL = secretVersionV2BridgeDALFactory(db);
   const folderCheckpointResourcesDAL = folderCheckpointResourcesDALFactory(db);
   const secretV2BridgeDAL = secretV2BridgeDALFactory({ db, keyStore });
+  const folderTreeCheckpointResourcesDAL = folderTreeCheckpointResourcesDALFactory(db);
 
   const folderCommitService = folderCommitServiceFactory({
     folderCommitDAL,
@@ -89,7 +91,8 @@ export const getMigrationPITServices = async ({ db, keyStore }: { db: Knex; keyS
     secretVersionV2BridgeDAL,
     projectDAL,
     folderCheckpointResourcesDAL,
-    secretV2BridgeDAL
+    secretV2BridgeDAL,
+    folderTreeCheckpointResourcesDAL
   });
 
   return { folderCommitService };

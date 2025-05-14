@@ -42,6 +42,75 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findLatestCommitByFolderIds = async (folderIds: string[], tx?: Knex): Promise<TFolderCommits[] | undefined> => {
+    try {
+      // First get max commitId for each folderId
+      const maxCommitIdSubquery = (tx || db.replicaNode())(TableName.FolderCommit)
+        .select("folderId")
+        .max("commitId as maxCommitId")
+        .whereIn("folderId", folderIds)
+        .groupBy("folderId");
+
+      // Join with main table to get complete records for each max commitId
+      const docs = await (tx || db.replicaNode())(TableName.FolderCommit)
+        .select(selectAllTableCols(TableName.FolderCommit))
+        // eslint-disable-next-line func-names
+        .join<TFolderCommits>(maxCommitIdSubquery.as("latest"), function () {
+          this.on(`${TableName.FolderCommit}.folderId`, "=", "latest.folderId").andOn(
+            `${TableName.FolderCommit}.commitId`,
+            "=",
+            "latest.maxCommitId"
+          );
+        });
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindLatestCommitByFolderIds" });
+    }
+  };
+
+  const findLatestEnvCommit = async (envId: string, tx?: Knex): Promise<TFolderCommits | undefined> => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
+        .where(`${TableName.FolderCommit}.envId`, "=", envId)
+        .select(selectAllTableCols(TableName.FolderCommit))
+        .orderBy("commitId", "desc")
+        .first();
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindLatestCommit" });
+    }
+  };
+
+  const findMultipleLatestCommits = async (folderIds: string[], tx?: Knex): Promise<TFolderCommits[]> => {
+    try {
+      const knexInstance = tx || db.replicaNode();
+
+      // Get the latest commitId for each folderId
+      const subquery = knexInstance(TableName.FolderCommit)
+        .whereIn("folderId", folderIds)
+        .groupBy("folderId")
+        .select("folderId")
+        .max("commitId as maxCommitId");
+
+      // Then fetch the complete rows matching those latest commits
+      const docs = await knexInstance(TableName.FolderCommit)
+        // eslint-disable-next-line func-names
+        .innerJoin<TFolderCommits>(subquery.as("latest"), function () {
+          this.on(`${TableName.FolderCommit}.folderId`, "=", "latest.folderId").andOn(
+            `${TableName.FolderCommit}.commitId`,
+            "=",
+            "latest.maxCommitId"
+          );
+        })
+        .select(selectAllTableCols(TableName.FolderCommit));
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindMultipleLatestCommits" });
+    }
+  };
+
   const getNumberOfCommitsSince = async (folderId: string, folderCommitId: string, tx?: Knex): Promise<number> => {
     try {
       const referencedCommit = await (tx || db.replicaNode())(TableName.FolderCommit)
@@ -52,6 +121,26 @@ export const folderCommitDALFactory = (db: TDbClient) => {
       if (referencedCommit?.commitId) {
         const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
           .where({ folderId })
+          .where("commitId", ">", referencedCommit.commitId)
+          .count();
+        return Number(doc?.[0].count);
+      }
+      return 0;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "getNumberOfCommitsSince" });
+    }
+  };
+
+  const getEnvNumberOfCommitsSince = async (envId: string, folderCommitId: string, tx?: Knex): Promise<number> => {
+    try {
+      const referencedCommit = await (tx || db.replicaNode())(TableName.FolderCommit)
+        .where({ id: folderCommitId })
+        .select("commitId")
+        .first();
+
+      if (referencedCommit?.commitId) {
+        const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
+          .where(`${TableName.FolderCommit}.envId`, "=", envId)
           .where("commitId", ">", referencedCommit.commitId)
           .count();
         return Number(doc?.[0].count);
@@ -131,11 +220,77 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findLatestCommitBetween = async ({
+    folderId,
+    startCommitId,
+    endCommitId,
+    tx
+  }: {
+    folderId: string;
+    startCommitId?: string;
+    endCommitId: string;
+    tx?: Knex;
+  }): Promise<TFolderCommits | undefined> => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
+        .where("commitId", "<=", endCommitId)
+        .where({ folderId })
+        .where((qb) => {
+          if (startCommitId) {
+            void qb.where("commitId", ">=", startCommitId);
+          }
+        })
+        .select(selectAllTableCols(TableName.FolderCommit))
+        .orderBy("commitId", "desc")
+        .first();
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindLatestCommitBetween" });
+    }
+  };
+
+  const findAllCommitsBetween = async ({
+    envId,
+    startCommitId,
+    endCommitId,
+    tx
+  }: {
+    folderId?: string;
+    envId?: string;
+    startCommitId?: string;
+    endCommitId: string;
+    tx?: Knex;
+  }): Promise<TFolderCommits[]> => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.FolderCommit)
+        .where("commitId", "<=", endCommitId)
+        .where((qb) => {
+          if (envId) {
+            void qb.where(`${TableName.FolderCommit}.envId`, "=", envId);
+          }
+          if (startCommitId) {
+            void qb.where("commitId", ">=", startCommitId);
+          }
+        })
+        .select(selectAllTableCols(TableName.FolderCommit))
+        .orderBy("commitId", "desc");
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindLatestCommitBetween" });
+    }
+  };
+
   return {
     ...restOfOrm,
     findByFolderId,
     findLatestCommit,
     getNumberOfCommitsSince,
-    findCommitsToRecreate
+    findCommitsToRecreate,
+    findMultipleLatestCommits,
+    findAllCommitsBetween,
+    findLatestCommitBetween,
+    findLatestEnvCommit,
+    getEnvNumberOfCommitsSince,
+    findLatestCommitByFolderIds
   };
 };

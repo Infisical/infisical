@@ -8,11 +8,7 @@ import { ormify, selectAllTableCols } from "@app/lib/knex";
 export type TFolderTreeCheckpointDALFactory = ReturnType<typeof folderTreeCheckpointDALFactory>;
 
 type TreeCheckpointWithCommitInfo = TFolderTreeCheckpoints & {
-  actorMetadata: unknown;
-  actorType: string;
-  message?: string | null;
-  commitDate: Date;
-  folderId: string;
+  commitId: number;
 };
 
 export const folderTreeCheckpointDALFactory = (db: TDbClient) => {
@@ -30,82 +26,61 @@ export const folderTreeCheckpointDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByProjectId = async (
-    projectId: string,
-    limit?: number,
-    tx?: Knex
-  ): Promise<TreeCheckpointWithCommitInfo[]> => {
-    try {
-      const query = (tx || db.replicaNode())<
-        TFolderTreeCheckpoints &
-          Pick<TFolderCommits, "actorMetadata" | "actorType" | "message" | "folderId"> & { commitDate: Date }
-      >(TableName.FolderTreeCheckpoint)
-        .join(
-          TableName.FolderCommit,
-          `${TableName.FolderTreeCheckpoint}.folderCommitId`,
-          `${TableName.FolderCommit}.id`
-        )
-        .join(TableName.SecretFolder, `${TableName.FolderCommit}.folderId`, `${TableName.SecretFolder}.id`)
-        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-        .where({ projectId })
-        .select(selectAllTableCols(TableName.FolderTreeCheckpoint))
-        .select(
-          db.ref("actorMetadata").withSchema(TableName.FolderCommit),
-          db.ref("actorType").withSchema(TableName.FolderCommit),
-          db.ref("message").withSchema(TableName.FolderCommit),
-          db.ref("createdAt").withSchema(TableName.FolderCommit).as("commitDate"),
-          db.ref("folderId").withSchema(TableName.FolderCommit)
-        )
-        .orderBy(`${TableName.FolderTreeCheckpoint}.createdAt`, "desc");
-
-      if (limit) {
-        void query.limit(limit);
-      }
-
-      const docs = await query;
-      return docs;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindByProjectId" });
-    }
-  };
-
-  const findLatestByProjectId = async (
-    projectId: string,
+  const findNearestCheckpoint = async (
+    folderCommitId: string,
+    envId: string,
     tx?: Knex
   ): Promise<TreeCheckpointWithCommitInfo | undefined> => {
     try {
-      const doc = await (tx || db.replicaNode())<
-        TFolderTreeCheckpoints &
-          Pick<TFolderCommits, "actorMetadata" | "actorType" | "message" | "folderId"> & { commitDate: Date }
-      >(TableName.FolderTreeCheckpoint)
-        .join(
+      const targetCommit = await (tx || db.replicaNode())(TableName.FolderCommit)
+        .where({ id: folderCommitId })
+        .select("id", "commitId", "folderId")
+        .first();
+
+      if (!targetCommit) {
+        return undefined;
+      }
+
+      const nearestCheckpoint = await (tx || db.replicaNode())(TableName.FolderTreeCheckpoint)
+        .join<TFolderCommits>(
           TableName.FolderCommit,
           `${TableName.FolderTreeCheckpoint}.folderCommitId`,
           `${TableName.FolderCommit}.id`
         )
-        .join(TableName.SecretFolder, `${TableName.FolderCommit}.folderId`, `${TableName.SecretFolder}.id`)
-        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-        .where({ projectId })
+        .where(`${TableName.FolderCommit}.commitId`, "<=", targetCommit.commitId.toString())
+        .where(`${TableName.FolderCommit}.envId`, envId)
         .select(selectAllTableCols(TableName.FolderTreeCheckpoint))
-        .select(
-          db.ref("actorMetadata").withSchema(TableName.FolderCommit),
-          db.ref("actorType").withSchema(TableName.FolderCommit),
-          db.ref("message").withSchema(TableName.FolderCommit),
-          db.ref("createdAt").withSchema(TableName.FolderCommit).as("commitDate"),
-          db.ref("folderId").withSchema(TableName.FolderCommit)
+        .select(db.ref("commitId").withSchema(TableName.FolderCommit))
+        .orderBy(`${TableName.FolderCommit}.commitId`, "desc")
+        .first();
+
+      return nearestCheckpoint;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindNearestCheckpoint" });
+    }
+  };
+
+  const findLatestByEnvId = async (envId: string, tx?: Knex): Promise<TFolderTreeCheckpoints | undefined> => {
+    try {
+      const doc = await (tx || db.replicaNode())<TFolderTreeCheckpoints>(TableName.FolderTreeCheckpoint)
+        .join<TFolderCommits>(
+          TableName.FolderCommit,
+          `${TableName.FolderTreeCheckpoint}.folderCommitId`,
+          `${TableName.FolderCommit}.id`
         )
+        .where(`${TableName.FolderCommit}.envId`, envId)
         .orderBy(`${TableName.FolderTreeCheckpoint}.createdAt`, "desc")
         .first();
       return doc;
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindLatestByProjectId" });
+      throw new DatabaseError({ error, name: "FindLatestByFolderId" });
     }
   };
 
   return {
     ...folderTreeCheckpointOrm,
     findByCommitId,
-    findByProjectId,
-    findLatestByProjectId
+    findNearestCheckpoint,
+    findLatestByEnvId
   };
 };

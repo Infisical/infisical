@@ -13,10 +13,12 @@ export async function up(knex: Knex): Promise<void> {
       t.string("actorType").notNullable();
       t.string("message");
       t.uuid("folderId").notNullable();
-      t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
+      t.uuid("envId").notNullable();
+      t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
       t.timestamps(true, true, true);
 
       t.index("folderId");
+      t.index("envId");
     });
   }
 
@@ -88,7 +90,6 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("folderTreeCheckpointId").notNullable();
       t.foreign("folderTreeCheckpointId").references("id").inTable(TableName.FolderTreeCheckpoint).onDelete("CASCADE");
       t.uuid("folderId").notNullable();
-      t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
       t.uuid("folderCommitId").notNullable();
       t.foreign("folderCommitId").references("id").inTable(TableName.FolderCommit).onDelete("CASCADE");
       t.timestamps(true, true, true);

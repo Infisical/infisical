@@ -14,6 +14,7 @@ export const FolderCommitsSchema = z.object({
   actorType: z.string(),
   message: z.string().nullable().optional(),
   folderId: z.string().uuid(),
+  envId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
