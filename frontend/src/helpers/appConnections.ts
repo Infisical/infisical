@@ -30,6 +30,7 @@ import {
   VercelConnectionMethod,
   WindmillConnectionMethod
 } from "@app/hooks/api/appConnections/types";
+import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
@@ -61,7 +62,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Auth0]: { name: "Auth0", image: "Auth0.png", size: 40 },
   [AppConnection.HCVault]: { name: "Hashicorp Vault", image: "Vault.png", size: 65 },
   [AppConnection.LDAP]: { name: "LDAP", image: "LDAP.png", size: 65 },
-  [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" }
+  [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" },
+  [AppConnection.OCI]: { name: "OCI", image: "Oracle.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -74,6 +76,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case GitHubConnectionMethod.OAuth:
       return { name: "OAuth", icon: faPassport };
     case AwsConnectionMethod.AccessKey:
+    case OCIConnectionMethod.AccessKey:
       return { name: "Access Key", icon: faKey };
     case AwsConnectionMethod.AssumeRole:
       return { name: "Assume Role", icon: faUser };

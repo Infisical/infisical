@@ -63,7 +63,7 @@ const Page = () => {
 
       handlePopUpClose("deleteCa");
       navigate({
-        to: `/${ProjectType.CertificateManager}/$projectId/overview` as const,
+        to: `/${ProjectType.CertificateManager}/$projectId/certificates` as const,
         params: {
           projectId
         }

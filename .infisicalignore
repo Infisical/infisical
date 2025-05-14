@@ -28,3 +28,15 @@ frontend/src/pages/secret-manager/OverviewPage/components/SecretOverviewTableRow
 docs/cli/commands/user.mdx:generic-api-key:51
 frontend/src/pages/secret-manager/OverviewPage/components/SecretOverviewTableRow/SecretOverviewTableRow.tsx:generic-api-key:76
 docs/integrations/app-connections/hashicorp-vault.mdx:generic-api-key:188
+cli/detect/config/gitleaks.toml:gcp-api-key:567
+cli/detect/config/gitleaks.toml:gcp-api-key:569
+cli/detect/config/gitleaks.toml:gcp-api-key:570
+cli/detect/config/gitleaks.toml:gcp-api-key:572
+cli/detect/config/gitleaks.toml:gcp-api-key:574
+cli/detect/config/gitleaks.toml:gcp-api-key:575
+cli/detect/config/gitleaks.toml:gcp-api-key:576
+cli/detect/config/gitleaks.toml:gcp-api-key:577
+cli/detect/config/gitleaks.toml:gcp-api-key:578
+cli/detect/config/gitleaks.toml:gcp-api-key:579
+cli/detect/config/gitleaks.toml:gcp-api-key:581
+cli/detect/config/gitleaks.toml:gcp-api-key:582

@@ -1169,7 +1169,7 @@ export const certificateAuthorityServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
-    if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
+    if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
     if (ca.requireTemplateForIssuance && !certificateTemplate) {
       throw new BadRequestError({ message: "Certificate template is required for issuance" });
@@ -1520,7 +1520,7 @@ export const certificateAuthorityServiceFactory = ({
       );
     }
 
-    if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
+    if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
     if (ca.requireTemplateForIssuance && !certificateTemplate) {
       throw new BadRequestError({ message: "Certificate template is required for issuance" });

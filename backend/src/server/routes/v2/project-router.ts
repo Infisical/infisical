@@ -24,6 +24,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
+import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -492,6 +493,38 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/:projectId/pki-subscribers",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiSubscribers],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_PKI_SUBSCRIBERS.projectId)
+      }),
+      response: {
+        200: z.object({
+          subscribers: z.array(sanitizedPkiSubscriber)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const subscribers = await server.services.project.listProjectPkiSubscribers({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId
+      });
+
+      return { subscribers };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:projectId/certificate-templates",
     config: {
       rateLimit: readLimit
@@ -628,6 +661,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHosts],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_HOSTS.projectId)
       }),
@@ -666,6 +701,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHostGroups],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_HOST_GROUPS.projectId)
       }),

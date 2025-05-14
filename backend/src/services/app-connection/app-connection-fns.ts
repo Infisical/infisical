@@ -53,6 +53,7 @@ import {
 } from "./humanitec";
 import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnectionCredentials } from "./ldap";
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
+import { getOCIConnectionListItem, OCIConnectionMethod, validateOCIConnectionCredentials } from "./oci";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import {
   getTeamCityConnectionListItem,
@@ -91,7 +92,8 @@ export const listAppConnectionOptions = () => {
     getAuth0ConnectionListItem(),
     getHCVaultConnectionListItem(),
     getLdapConnectionListItem(),
-    getTeamCityConnectionListItem()
+    getTeamCityConnectionListItem(),
+    getOCIConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -160,7 +162,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Windmill]: validateWindmillConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.HCVault]: validateHCVaultConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LDAP]: validateLdapConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.TeamCity]: validateTeamCityConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.TeamCity]: validateTeamCityConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -176,6 +179,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case GitHubConnectionMethod.OAuth:
       return "OAuth";
     case AwsConnectionMethod.AccessKey:
+    case OCIConnectionMethod.AccessKey:
       return "Access Key";
     case AwsConnectionMethod.AssumeRole:
       return "Assume Role";
@@ -250,5 +254,6 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Auth0]: platformManagedCredentialsNotSupported,
   [AppConnection.HCVault]: platformManagedCredentialsNotSupported,
   [AppConnection.LDAP]: platformManagedCredentialsNotSupported, // we could support this in the future
-  [AppConnection.TeamCity]: platformManagedCredentialsNotSupported
+  [AppConnection.TeamCity]: platformManagedCredentialsNotSupported,
+  [AppConnection.OCI]: platformManagedCredentialsNotSupported
 };
