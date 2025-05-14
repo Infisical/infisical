@@ -43,6 +43,7 @@ description: "Learn how to configure a Vercel Sync for Infisical."
                 - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
                 - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Vercel when keys conflict.
                 - **Import Secrets (Prioritize Vercel)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Vercel over Infisical when keys conflict.
+            - **Key Schema**: The schema used in forming the final destination key.
             - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
             - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
 

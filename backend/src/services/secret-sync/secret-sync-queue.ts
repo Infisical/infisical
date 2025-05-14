@@ -439,7 +439,6 @@ export const secretSyncQueueFactory = ({
       const secretMap = await $getInfisicalSecrets(secretSync);
 
       if (!lastSyncedAt && initialSyncBehavior !== SecretSyncInitialSyncBehavior.OverwriteDestination) {
-        // TODO(andrey): Possibly add a way to filter / strip schemas on initial sync?
         const importedSecretMap = await $importSecrets(
           secretSyncWithCredentials,
           initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeSource

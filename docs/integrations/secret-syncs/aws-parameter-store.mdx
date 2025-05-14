@@ -40,6 +40,7 @@ description: "Learn how to configure an AWS Parameter Store Sync for Infisical."
                 - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
                 - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Parameter Store when keys conflict.
                 - **Import Secrets (Prioritize AWS Parameter Store)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Parameter Store over Infisical when keys conflict.
+            - **Key Schema**: The schema used in forming the final destination key.
             - **KMS Key**: The AWS KMS key ID or alias to encrypt parameters with.
             - **Tags**: Optional resource tags to add to parameters synced by Infisical.
             - **Sync Secret Metadata as Resource Tags**: If enabled, metadata attached to secrets will be added as resource tags to parameters synced by Infisical.

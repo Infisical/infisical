@@ -131,6 +131,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
             isOptional
             errorText={error?.message}
             label="Key Schema"
+            helperText="Setting a Key Schema is recommended. This helps seperate synced secrets from regular secrets within a destination."
           >
             <Input value={value} onChange={onChange} placeholder="prefix/{{secretKey}}/suffix" />
           </FormControl>
