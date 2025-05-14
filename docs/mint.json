@@ -273,7 +273,13 @@
                   ]
                 },
                 "documentation/platform/sso/auth0-oidc",
-                "documentation/platform/sso/general-oidc"
+                {
+                  "group": "General OIDC",
+                  "pages": [
+                    "documentation/platform/sso/general-oidc/overview",
+                    "documentation/platform/sso/general-oidc/group-membership-mapping"
+                  ]
+                }
               ]
             },
             {
