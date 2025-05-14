@@ -4,19 +4,19 @@ description: "Learn how to configure Infisical with custom certificates"
 ---
 
 By default, the Infisical Docker image includes certificates from well-known public certificate authorities.
-However, some integrations with Infisical may need to communicate with your internal services that use private certificate authorities. 
+However, some integrations with Infisical may need to communicate with your internal services that use private certificate authorities.
 To configure trust for custom certificates, follow these steps. This is particularly useful for connecting Infisical with self-hosted services like GitLab.
 
 ## Prerequisites
 
 - Docker
 - Standalone [Infisical image](https://hub.docker.com/r/infisical/infisical)
-- Certificate public key `.pem` files
+- Certificate public key `.crt` files
 
 ## Setup
 
-1. Place all your public key `.pem` files into a single directory.
-2. Mount the directory containing the `.pem` files to the `usr/local/share/ca-certificates/` path in the Infisical container.
+1. Place all your public key `.crt` files into a single directory.
+2. Mount the directory containing the `.crt` files to the `/usr/local/share/ca-certificates/` path in the Infisical container.
 3. Set the following environment variable on your Infisical container:
    ```
    NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
