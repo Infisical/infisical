@@ -1,5 +1,6 @@
 ---
 title: "General OIDC"
+sidebarTitle: "Overview"
 description: "Learn how to configure OIDC for Infisical SSO with any OIDC-compliant identity provider"
 ---
 
@@ -29,7 +30,7 @@ Prerequisites:
    </Step>
    <Step title="Finish configuring OIDC in Infisical">
       2.1. Back in Infisical, head to the **Single Sign-On (SSO)** page and select the **General** tab. Select **Connect** for **OIDC**.
-      ![OIDC SSO Connect](../../../images/sso/connect-oidc.png)
+      ![OIDC SSO Connect](../../../../images/sso/connect-oidc.png)
 
       2.2. You can configure OIDC either through the Discovery URL (Recommended) or by inputting custom endpoints.
 
@@ -39,10 +40,10 @@ Prerequisites:
       Note that the Discovery Document URL typically takes the form: `https://<idp-domain>/.well-known/openid-configuration`.
       </Note>
 
-      ![OIDC general discovery config](../../../images/sso/general-oidc/discovery-oidc-form.png)
+      ![OIDC general discovery config](../../../../images/sso/general-oidc/discovery-oidc-form.png)
 
       To configure OIDC via the custom endpoints, set the **Configuration Type** field to **Custom** and input the required endpoint fields.
-      ![OIDC general custom config](../../../images/sso/general-oidc/custom-oidc-form.png)
+      ![OIDC general custom config](../../../../images/sso/general-oidc/custom-oidc-form.png)
 
       2.3. Select the appropriate JWT signature algorithm for your IdP. Currently, the supported options are RS256, RS512, HS256, and EdDSA.
 
@@ -55,7 +56,7 @@ Prerequisites:
      <Step title="Enable OIDC SSO in Infisical">
       Enabling OIDC SSO allows members in your organization to log into Infisical via the configured Identity Provider
 
-      ![OIDC general enable OIDC](../../../images/sso/general-oidc/org-oidc-enable.png)
+      ![OIDC general enable OIDC](../../../../images/sso/general-oidc/org-oidc-enable.png)
     </Step>
 
     <Step title="Enforce OIDC SSO in Infisical">
