@@ -38,11 +38,11 @@ const Page = () => {
       <div className="mx-auto mb-6 w-full max-w-7xl">
         <PageHeader
           title="Access Control"
-          description="Manage fine-grained access for users, groups, roles, and identities within your project resources."
+          description="Manage fine-grained access for user identities, groups, roles, and machine identities within your project resources."
         />
         <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
           <TabList>
-            <Tab value={ProjectAccessControlTabs.Member}>Users</Tab>
+            <Tab value={ProjectAccessControlTabs.Member}>User Identities</Tab>
             <Tab value={ProjectAccessControlTabs.Groups}>Groups</Tab>
             <Tab value={ProjectAccessControlTabs.Identities}>
               <div className="flex items-center">
