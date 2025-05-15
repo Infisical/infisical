@@ -1,6 +1,10 @@
 import { ReactNode } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { faQuestionCircle, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCircleInfo,
+  faQuestionCircle,
+  faTriangleExclamation
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { FormControl, Input, Select, SelectItem, Switch, Tooltip } from "@app/components/v2";
@@ -131,9 +135,31 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
             isOptional
             errorText={error?.message}
             label="Key Schema"
-            helperText="Setting a Key Schema is recommended. This helps separate synced secrets from regular secrets within a destination."
+            helperText={
+              <Tooltip
+                className="max-w-md"
+                content={
+                  <span>
+                    We highly recommend using a{" "}
+                    <a
+                      href="https://infisical.com/docs/integrations/secret-syncs/overview#key-schemas"
+                      target="_blank"
+                    >
+                      Key Schema
+                    </a>{" "}
+                    to ensure that Infisical only manages the specific keys you intend, keeping
+                    everything else untouched.
+                  </span>
+                }
+              >
+                <div>
+                  <span>Infisical strongly advises setting a Key Schema</span>{" "}
+                  <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                </div>
+              </Tooltip>
+            }
           >
-            <Input value={value} onChange={onChange} placeholder="prefix/{{secretKey}}/suffix" />
+            <Input value={value} onChange={onChange} placeholder="INFISICAL_{{secretKey}}" />
           </FormControl>
         )}
         control={control}
