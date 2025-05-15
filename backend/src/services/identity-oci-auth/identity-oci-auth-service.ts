@@ -58,7 +58,7 @@ export const identityOciAuthServiceFactory = ({
 
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityOciAuth.identityId });
 
-    // Validate OCI host format
+    // Validate OCI host format. Ensures that the host is in "identity.<region>.oraclecloud.com" format.
     if (!headers.host || !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(headers.host)) {
       throw new BadRequestError({
         message: "Invalid OCI host format. Expected format: identity.<region>.oraclecloud.com"
