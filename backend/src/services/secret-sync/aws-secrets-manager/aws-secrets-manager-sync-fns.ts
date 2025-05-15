@@ -27,6 +27,7 @@ import {
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/services/secret-sync/aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAwsSecretsManagerSyncWithCredentials } from "./aws-secrets-manager-sync-types";
@@ -399,6 +400,9 @@ export const AwsSecretsManagerSyncFns = {
       if (syncOptions.disableSecretDeletion) return;
 
       for await (const secretKey of Object.keys(awsSecretsRecord)) {
+        // eslint-disable-next-line no-continue
+        if (!matchesSchema(secretKey, syncOptions.keySchema)) continue;
+
         if (!(secretKey in secretMap) || !secretMap[secretKey].value) {
           try {
             await deleteSecret(client, secretKey);

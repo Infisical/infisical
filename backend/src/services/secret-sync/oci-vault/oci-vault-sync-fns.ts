@@ -11,6 +11,7 @@ import {
   TUpdateOCIVaultVariable
 } from "@app/services/secret-sync/oci-vault/oci-vault-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 const listOCIVaultVariables = async ({ provider, compartmentId, vaultId, onlyActive }: TOCIVaultListVariables) => {
@@ -211,6 +212,9 @@ export const OCIVaultSyncFns = {
 
     // Update and delete secrets
     for await (const [key, variable] of Object.entries(variables)) {
+      // eslint-disable-next-line no-continue
+      if (!matchesSchema(key, secretSync.syncOptions.keySchema)) continue;
+
       // Only update / delete active secrets
       if (variable.lifecycleState === vault.models.SecretSummary.LifecycleState.Active) {
         if (key in secretMap && secretMap[key].value.length > 0) {

@@ -1,6 +1,7 @@
 import { request } from "@app/lib/config/request";
 import { getTeamCityInstanceUrl } from "@app/services/app-connection/teamcity";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 import {
   TDeleteTeamCityVariable,
@@ -125,6 +126,9 @@ export const TeamCitySyncFns = {
     const variables = await listTeamCityVariables({ instanceUrl, accessToken, project, buildConfig });
 
     for await (const [key, variable] of Object.entries(variables)) {
+      // eslint-disable-next-line no-continue
+      if (!matchesSchema(key, secretSync.syncOptions.keySchema)) continue;
+
       if (!(key in secretMap)) {
         try {
           await deleteTeamCityVariable({

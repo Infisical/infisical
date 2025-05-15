@@ -4,6 +4,7 @@ import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { getGcpConnectionAuthToken } from "@app/services/app-connection/gcp";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
 import { TSecretMap } from "../secret-sync-types";
@@ -153,6 +154,9 @@ export const GcpSyncFns = {
     }
 
     for await (const key of Object.keys(gcpSecrets)) {
+      // eslint-disable-next-line no-continue
+      if (!matchesSchema(key, secretSync.syncOptions.keySchema)) continue;
+
       try {
         if (!(key in secretMap) || !secretMap[key].value) {
           // eslint-disable-next-line no-continue

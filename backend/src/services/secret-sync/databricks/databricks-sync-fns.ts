@@ -11,6 +11,7 @@ import {
   TDatabricksSyncWithCredentials
 } from "@app/services/secret-sync/databricks/databricks-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
 import { TSecretMap } from "../secret-sync-types";
@@ -115,6 +116,9 @@ export const databricksSyncFactory = ({ kmsService, appConnectionDAL }: TDatabri
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for await (const secret of databricksSecretKeys) {
+      // eslint-disable-next-line no-continue
+      if (!matchesSchema(secret.key, secretSync.syncOptions.keySchema)) continue;
+
       if (!(secret.key in secretMap)) {
         await deleteDatabricksSecrets({
           key: secret.key,

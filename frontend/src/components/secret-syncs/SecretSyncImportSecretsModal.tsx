@@ -44,7 +44,9 @@ const Content = ({ secretSync, onComplete }: ContentProps) => {
     handleSubmit,
     control,
     formState: { isSubmitting, isDirty }
-  } = useForm<TFormData>({ resolver: zodResolver(FormSchema) });
+  } = useForm<TFormData>({
+    resolver: zodResolver(FormSchema)
+  });
 
   const triggerImportSecrets = useTriggerSecretSyncImportSecrets();
 

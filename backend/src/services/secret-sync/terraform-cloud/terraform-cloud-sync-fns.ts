@@ -4,6 +4,7 @@ import { AxiosResponse } from "axios";
 import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
@@ -231,6 +232,9 @@ export const TerraformCloudSyncFns = {
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for (const terraformCloudVariable of terraformCloudVariables) {
+      // eslint-disable-next-line no-continue
+      if (!matchesSchema(terraformCloudVariable.key, secretSync.syncOptions.keySchema)) continue;
+
       if (!Object.prototype.hasOwnProperty.call(secretMap, terraformCloudVariable.key)) {
         await deleteVariable(secretSync, terraformCloudVariable);
       }
