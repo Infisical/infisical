@@ -268,62 +268,70 @@ export const MinimizedOrgSidebar = () => {
               </DropdownMenu>
             </div>
             <div className="space-y-1">
-              <Link to="/organization/secret-manager/overview">
-                {({ isActive }) => (
-                  <MenuIconButton
-                    isSelected={
-                      isActive ||
-                      window.location.pathname.startsWith(
-                        `/organization/${ProjectType.SecretManager}`
-                      )
-                    }
-                    icon="sliding-carousel"
-                  >
-                    Secrets
-                  </MenuIconButton>
-                )}
-              </Link>
-              <Link to="/organization/cert-manager/overview">
-                {({ isActive }) => (
-                  <MenuIconButton
-                    isSelected={
-                      isActive ||
-                      window.location.pathname.startsWith(
-                        `/organization/${ProjectType.CertificateManager}`
-                      )
-                    }
-                    icon="note"
-                  >
-                    PKI
-                  </MenuIconButton>
-                )}
-              </Link>
-              <Link to="/organization/kms/overview">
-                {({ isActive }) => (
-                  <MenuIconButton
-                    isSelected={
-                      isActive ||
-                      window.location.pathname.startsWith(`/organization/${ProjectType.KMS}`)
-                    }
-                    icon="unlock"
-                  >
-                    KMS
-                  </MenuIconButton>
-                )}
-              </Link>
-              <Link to="/organization/ssh/overview">
-                {({ isActive }) => (
-                  <MenuIconButton
-                    isSelected={
-                      isActive ||
-                      window.location.pathname.startsWith(`/organization/${ProjectType.SSH}`)
-                    }
-                    icon="verified"
-                  >
-                    SSH
-                  </MenuIconButton>
-                )}
-              </Link>
+              {currentOrg.secretsProductEnabled && (
+                <Link to="/organization/secret-manager/overview">
+                  {({ isActive }) => (
+                    <MenuIconButton
+                      isSelected={
+                        isActive ||
+                        window.location.pathname.startsWith(
+                          `/organization/${ProjectType.SecretManager}`
+                        )
+                      }
+                      icon="sliding-carousel"
+                    >
+                      Secrets
+                    </MenuIconButton>
+                  )}
+                </Link>
+              )}
+              {currentOrg.pkiProductEnabled && (
+                <Link to="/organization/cert-manager/overview">
+                  {({ isActive }) => (
+                    <MenuIconButton
+                      isSelected={
+                        isActive ||
+                        window.location.pathname.startsWith(
+                          `/organization/${ProjectType.CertificateManager}`
+                        )
+                      }
+                      icon="note"
+                    >
+                      PKI
+                    </MenuIconButton>
+                  )}
+                </Link>
+              )}
+              {currentOrg.kmsProductEnabled && (
+                <Link to="/organization/kms/overview">
+                  {({ isActive }) => (
+                    <MenuIconButton
+                      isSelected={
+                        isActive ||
+                        window.location.pathname.startsWith(`/organization/${ProjectType.KMS}`)
+                      }
+                      icon="unlock"
+                    >
+                      KMS
+                    </MenuIconButton>
+                  )}
+                </Link>
+              )}
+              {currentOrg.sshProductEnabled && (
+                <Link to="/organization/ssh/overview">
+                  {({ isActive }) => (
+                    <MenuIconButton
+                      isSelected={
+                        isActive ||
+                        window.location.pathname.startsWith(`/organization/${ProjectType.SSH}`)
+                      }
+                      icon="verified"
+                    >
+                      SSH
+                    </MenuIconButton>
+                  )}
+                </Link>
+              )}
               <div className="w-full bg-mineshaft-500" style={{ height: "1px" }} />
               <Link to="/organization/secret-scanning">
                 {({ isActive }) => (

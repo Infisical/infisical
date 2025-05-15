@@ -275,7 +275,11 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
             },
             { message: "Duration value must be at least 1" }
           )
-          .optional()
+          .optional(),
+        secretsProductEnabled: z.boolean().optional(),
+        pkiProductEnabled: z.boolean().optional(),
+        kmsProductEnabled: z.boolean().optional(),
+        sshProductEnabled: z.boolean().optional()
       }),
       response: {
         200: z.object({
@@ -286,6 +290,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      console.log("REQ BODY");
+      console.log(req.body);
+
       const organization = await server.services.org.updateOrg({
         actor: req.permission.type,
         actorId: req.permission.id,

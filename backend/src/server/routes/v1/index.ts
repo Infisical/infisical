@@ -110,7 +110,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(registerPkiCollectionRouter, { prefix: "/collections" });
       await pkiRouter.register(registerPkiSubscriberRouter, { prefix: "/subscribers" });
     },
-    { prefix: "/pki" }
+    { prefix: "/pki" } // TODO(andrey): Block this if PKI PRODUCT disabled?
   );
 
   await server.register(registerProjectBotRouter, { prefix: "/bot" });
@@ -129,7 +129,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(registerUserEngagementRouter, { prefix: "/user-engagement" });
   await server.register(registerDashboardRouter, { prefix: "/dashboard" });
-  await server.register(registerCmekRouter, { prefix: "/kms" });
+  await server.register(registerCmekRouter, { prefix: "/kms" }); // TODO(andrey): Block this if KMS PRODUCT disabled?
   await server.register(registerExternalGroupOrgRoleMappingRouter, { prefix: "/external-group-mappings" });
 
   await server.register(

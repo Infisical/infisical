@@ -20,6 +20,10 @@ export type Organization = {
   allowSecretSharingOutsideOrganization?: boolean;
   userTokenExpiration?: string;
   userRole: string;
+  secretsProductEnabled: boolean;
+  pkiProductEnabled: boolean;
+  kmsProductEnabled: boolean;
+  sshProductEnabled: boolean;
 };
 
 export type UpdateOrgDTO = {
@@ -34,6 +38,10 @@ export type UpdateOrgDTO = {
   allowSecretSharingOutsideOrganization?: boolean;
   bypassOrgAuthEnabled?: boolean;
   userTokenExpiration?: string;
+  secretsProductEnabled?: boolean;
+  pkiProductEnabled?: boolean;
+  kmsProductEnabled?: boolean;
+  sshProductEnabled?: boolean;
 };
 
 export type BillingDetails = {

@@ -9,7 +9,7 @@ export const registerV3Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSignupRouter, { prefix: "/signup" });
   await server.register(registerLoginRouter, { prefix: "/auth" });
   await server.register(registerUserRouter, { prefix: "/users" });
-  await server.register(registerSecretRouter, { prefix: "/secrets" });
+  await server.register(registerSecretRouter, { prefix: "/secrets" }); // TODO(andrey): Block this if SECRETS PRODUCT disabled?
   await server.register(registerSecretBlindIndexRouter, { prefix: "/workspaces" });
   await server.register(registerExternalMigrationRouter, { prefix: "/migrate" });
 };
