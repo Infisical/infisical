@@ -13,10 +13,11 @@ export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefi
       .string()
       .optional()
       .refine(
-        (val) => !val || /^(?:[a-zA-Z0-9\-/]*)(?:\{\{secretKey\}\})(?:[a-zA-Z0-9\-/]*)$/.test(val),
+        (val) =>
+          !val || /^(?:[a-zA-Z0-9_\-/]*)(?:\{\{secretKey\}\})(?:[a-zA-Z0-9_\-/]*)$/.test(val),
         {
           message:
-            "Key schema must include one {{secretKey}} and only contain letters, numbers, dashes, slashes, and the {{secretKey}} placeholder."
+            "Key schema must include one {{secretKey}} and only contain letters, numbers, dashes, underscores, slashes, and the {{secretKey}} placeholder."
         }
       )
   });
