@@ -5,6 +5,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 
+import { ExternalCaSection } from "./components/ExternalCaSection";
 import { CaSection } from "./components";
 
 export const CertificateAuthoritiesPage = () => {
@@ -25,6 +26,7 @@ export const CertificateAuthoritiesPage = () => {
           a={ProjectPermissionSub.CertificateAuthorities}
         >
           <CaSection />
+          <ExternalCaSection />
         </ProjectPermissionCan>
       </div>
     </div>

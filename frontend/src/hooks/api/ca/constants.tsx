@@ -1,10 +1,10 @@
 import { SshCaStatus } from "../sshCa";
 import { SshCertTemplateStatus } from "../sshCertificateTemplates";
-import { CaStatus, CaType } from "./enums";
+import { CaStatus, InternalCaType } from "./enums";
 
-export const caTypeToNameMap: { [K in CaType]: string } = {
-  [CaType.ROOT]: "Root",
-  [CaType.INTERMEDIATE]: "Intermediate"
+export const caTypeToNameMap: { [K in InternalCaType]: string } = {
+  [InternalCaType.ROOT]: "Root",
+  [InternalCaType.INTERMEDIATE]: "Intermediate"
 };
 
 export const caStatusToNameMap: { [K in CaStatus]: string } = {

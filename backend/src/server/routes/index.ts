@@ -971,20 +971,6 @@ export const registerRoutes = async (
     projectDAL
   });
 
-  const pkiSubscriberService = pkiSubscriberServiceFactory({
-    pkiSubscriberDAL,
-    certificateAuthorityDAL,
-    certificateAuthorityCertDAL,
-    certificateAuthoritySecretDAL,
-    certificateAuthorityCrlDAL,
-    certificateDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    projectDAL,
-    kmsService,
-    permissionService
-  });
-
   const projectTemplateService = projectTemplateServiceFactory({
     licenseService,
     permissionService,
@@ -1688,6 +1674,23 @@ export const registerRoutes = async (
     appConnectionService,
     externalCertificateAuthorityDAL,
     internalCertificateAuthorityService
+  });
+
+  const pkiSubscriberService = pkiSubscriberServiceFactory({
+    pkiSubscriberDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCrlDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    projectDAL,
+    kmsService,
+    permissionService,
+    appConnectionDAL,
+    appConnectionService,
+    externalCertificateAuthorityDAL
   });
 
   await secretRotationV2QueueServiceFactory({

@@ -9,6 +9,7 @@ import {
   TCreateCaDTO,
   TCreateCertificateDTO,
   TCreateCertificateResponse,
+  TCreateUnifiedCertificateAuthorityDTO,
   TDeleteCaDTO,
   TImportCaCertificateDTO,
   TImportCaCertificateResponse,
@@ -16,8 +17,27 @@ import {
   TRenewCaResponse,
   TSignIntermediateDTO,
   TSignIntermediateResponse,
+  TUnifiedCertificateAuthority,
   TUpdateCaDTO
 } from "./types";
+
+export const useCreateUnifiedCa = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TUnifiedCertificateAuthority, object, TCreateUnifiedCertificateAuthorityDTO>({
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post<TUnifiedCertificateAuthority>(
+        `/api/v1/pki/ca/${body.type}`,
+        body
+      );
+      return data;
+    },
+    onSuccess: (_, { type, projectId }) => {
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByTypeAndProjectId(type, projectId)
+      });
+    }
+  });
+};
 
 export const useCreateCa = () => {
   const queryClient = useQueryClient();

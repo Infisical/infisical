@@ -20,10 +20,10 @@ import {
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import {
-  CaStatus,
+  CaType,
   useCreatePkiSubscriber,
   useGetPkiSubscriber,
-  useListWorkspaceCas,
+  useListCasByProjectId,
   useListWorkspacePkiSubscribers,
   useUpdatePkiSubscriber
 } from "@app/hooks/api";
@@ -74,10 +74,7 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace.id;
   const { data: subscribers } = useListWorkspacePkiSubscribers(projectId);
-  const { data: cas } = useListWorkspaceCas({
-    projectSlug: currentWorkspace?.slug ?? "",
-    status: CaStatus.ACTIVE
-  });
+  const { data: cas } = useListCasByProjectId(projectId);
 
   const { data: pkiSubscriber } = useGetPkiSubscriber({
     subscriberName:
@@ -276,11 +273,16 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                   onValueChange={(e) => onChange(e)}
                   className="w-full"
                 >
-                  {(cas || []).map(({ id, dn }) => (
-                    <SelectItem value={id} key={`ca-${id}`}>
-                      {dn}
-                    </SelectItem>
-                  ))}
+                  {(cas || []).map(({ id, name, type, configuration }) => {
+                    const displayName =
+                      type === CaType.INTERNAL ? `${name} (${configuration.dn})` : name;
+
+                    return (
+                      <SelectItem value={id} key={`ca-${id}`}>
+                        {displayName}
+                      </SelectItem>
+                    );
+                  })}
                 </Select>
               </FormControl>
             )}

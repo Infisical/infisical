@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { CertificateAuthoritiesSchema, TableName, TCertificateAuthorities } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
 
 export type TCertificateAuthorityDALFactory = ReturnType<typeof certificateAuthorityDALFactory>;
 
@@ -142,7 +142,7 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
   };
 
   const findWithAssociatedCa = async (
-    filter: Parameters<(typeof caOrm)["find"]>[0] & { dn?: string },
+    filter: Parameters<(typeof caOrm)["find"]>[0] & { dn?: string; type?: string },
     { offset, limit, sort = [["createdAt", "desc"]] }: TFindOpt<TCertificateAuthorities> = {},
     tx?: Knex
   ) => {
@@ -158,7 +158,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           `${TableName.CertificateAuthority}.id`,
           `${TableName.ExternalCertificateAuthority}.certificateAuthorityId`
         )
-        .where(filter)
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter(filter))
         .select(selectAllTableCols(TableName.CertificateAuthority))
         .select(
           db.ref("id").withSchema(TableName.InternalCertificateAuthority).as("internalCaId"),

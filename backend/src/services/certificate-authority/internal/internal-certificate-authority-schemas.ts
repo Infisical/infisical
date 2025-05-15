@@ -10,13 +10,34 @@ import {
 } from "../certificate-authority-schemas";
 import { validateCaDateField } from "../certificate-authority-validators";
 
-const InternalCertificateAuthorityConfigurationSchema = z
+const InternalCertificateAuthorityConfigurationSchema = z.object({
+  type: z.nativeEnum(InternalCaType),
+  friendlyName: z.string().optional(),
+  commonName: z.string().trim(),
+  organization: z.string().trim(),
+  ou: z.string().trim(),
+  dn: z.string().trim(),
+  parentCaId: z.string().uuid().nullable(),
+  serialNumber: z.string().trim(),
+  activeCaCertId: z.string().uuid().nullable(),
+  country: z.string().trim(),
+  province: z.string().trim(),
+  locality: z.string().trim(),
+  notBefore: z.date().optional(),
+  notAfter: z.date().optional(),
+  maxPathLength: z.number().min(-1),
+  keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
+});
+
+const CreateInternalCertificateAuthorityConfigurationSchema = z
   .object({
     type: z.nativeEnum(InternalCaType),
     friendlyName: z.string().optional(),
     commonName: z.string().trim(),
     organization: z.string().trim(),
     ou: z.string().trim(),
+    dn: z.string().trim(),
+    parentCaId: z.string().uuid().optional(),
     country: z.string().trim(),
     province: z.string().trim(),
     locality: z.string().trim(),
@@ -48,11 +69,11 @@ export const InternalCertificateAuthoritySchema = BaseCertificateAuthoritySchema
 export const CreateInternalCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(
   CaType.INTERNAL
 ).extend({
-  configuration: InternalCertificateAuthorityConfigurationSchema
+  configuration: CreateInternalCertificateAuthorityConfigurationSchema
 });
 
 export const UpdateInternalCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(
   CaType.INTERNAL
 ).extend({
-  configuration: InternalCertificateAuthorityConfigurationSchema.optional()
+  configuration: CreateInternalCertificateAuthorityConfigurationSchema.optional()
 });

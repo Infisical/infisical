@@ -17,7 +17,7 @@ import {
   // DatePicker
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { CaType, useCreateCa, useGetCaById, useUpdateCa } from "@app/hooks/api/ca";
+import { InternalCaType, useCreateCa, useGetCaById, useUpdateCa } from "@app/hooks/api/ca";
 import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -35,7 +35,7 @@ const getDateTenYearsFromToday = () => {
 
 const schema = z
   .object({
-    type: z.enum([CaType.ROOT, CaType.INTERMEDIATE]),
+    type: z.enum([InternalCaType.ROOT, InternalCaType.INTERMEDIATE]),
     friendlyName: z.string(),
     organization: z.string(),
     ou: z.string(),
@@ -63,8 +63,8 @@ type Props = {
 };
 
 const caTypes = [
-  { label: "Root", value: CaType.ROOT },
-  { label: "Intermediate", value: CaType.INTERMEDIATE }
+  { label: "Root", value: InternalCaType.ROOT },
+  { label: "Intermediate", value: InternalCaType.INTERMEDIATE }
 ];
 
 export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
@@ -85,7 +85,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      type: CaType.ROOT,
+      type: InternalCaType.ROOT,
       friendlyName: "",
       organization: "",
       ou: "",
@@ -119,7 +119,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
       });
     } else {
       reset({
-        type: CaType.ROOT,
+        type: InternalCaType.ROOT,
         friendlyName: "",
         organization: "",
         ou: "",
@@ -212,7 +212,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           <Controller
             control={control}
             name="type"
-            defaultValue={CaType.ROOT}
+            defaultValue={InternalCaType.ROOT}
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <FormControl label="CA Type" errorText={error?.message} isError={Boolean(error)}>
                 <Select
@@ -231,7 +231,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
               </FormControl>
             )}
           />
-          {caType === CaType.ROOT && (
+          {caType === InternalCaType.ROOT && (
             <>
               {/* <Controller
                 name="notAfter"

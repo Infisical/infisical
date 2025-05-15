@@ -280,6 +280,76 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
 
   server.route({
     method: "POST",
+    url: "/:subscriberName/order-certificate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiSubscribers],
+      description: "Issue certificate",
+      params: z.object({
+        subscriberName: z.string().describe(PKI_SUBSCRIBERS.ISSUE_CERT.subscriberName)
+      }),
+      body: z.object({
+        projectId: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.projectId)
+      }),
+      response: {
+        200: z.object({
+          certificate: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.certificate),
+          issuingCaCertificate: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.issuingCaCertificate),
+          certificateChain: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.certificateChain),
+          privateKey: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.privateKey),
+          serialNumber: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.serialNumber)
+        })
+      }
+    },
+    handler: async (req) => {
+      await server.services.pkiSubscriber.issueSubscriberCert({
+        subscriberName: req.params.subscriberName,
+        projectId: req.body.projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: subscriber.projectId,
+        event: {
+          type: EventType.ISSUE_PKI_SUBSCRIBER_CERT,
+          metadata: {
+            subscriberId: subscriber.id,
+            name: subscriber.name,
+            serialNumber
+          }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.IssueCert,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          subscriberId: subscriber.id,
+          commonName: subscriber.commonName,
+          ...req.auditLogInfo
+        }
+      });
+
+      return {
+        certificate,
+        certificateChain,
+        issuingCaCertificate,
+        privateKey,
+        serialNumber
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/:subscriberName/issue-certificate",
     config: {
       rateLimit: writeLimit

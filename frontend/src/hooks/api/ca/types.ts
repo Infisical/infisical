@@ -1,11 +1,59 @@
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "../certificates/enums";
-import { CaRenewalType, CaStatus, CaType } from "./enums";
+import { AcmeDnsProvider, CaRenewalType, CaStatus, CaType, InternalCaType } from "./enums";
+
+export type TAcmeCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.ACME;
+  status: CaStatus;
+  name: string;
+  disableDirectIssuance: boolean;
+  configuration: {
+    dnsAppConnectionId: string;
+    dnsProvider: AcmeDnsProvider;
+    directoryUrl: string;
+    accountEmail: string;
+  };
+};
+
+export type TInternalCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.INTERNAL;
+  status: CaStatus;
+  name: string;
+  disableDirectIssuance: boolean;
+  configuration: {
+    type: InternalCaType;
+    friendlyName?: string;
+    commonName: string;
+    organization: string;
+    ou: string;
+    country: string;
+    province: string;
+    locality: string;
+    maxPathLength: number;
+    keyAlgorithm: CertKeyAlgorithm;
+    notAfter?: string;
+    notBefore?: string;
+    dn: string;
+    parentCaId?: string;
+    serialNumber: string;
+    activeCaCertId: string;
+  };
+};
+
+export type TUnifiedCertificateAuthority =
+  | TAcmeCertificateAuthority
+  | TInternalCertificateAuthority;
+
+export type TCreateUnifiedCertificateAuthorityDTO = Omit<TUnifiedCertificateAuthority, "id">;
 
 export type TCertificateAuthority = {
   id: string;
   parentCaId?: string;
   projectId: string;
-  type: CaType;
+  type: InternalCaType;
   status: CaStatus;
   friendlyName: string;
   organization: string;

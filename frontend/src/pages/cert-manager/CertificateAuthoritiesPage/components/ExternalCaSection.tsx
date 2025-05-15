@@ -9,20 +9,16 @@ import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@a
 import { CaStatus, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { CaCertModal } from "./CaCertModal";
-import { CaInstallCertModal } from "./CaInstallCertModal";
-import { CaModal } from "./CaModal";
-import { CaTable } from "./CaTable";
+import { ExternalCaModal } from "./ExternalCaModal";
+import { ExternalCaTable } from "./ExternalCaTable";
 
-export const CaSection = () => {
+export const ExternalCaSection = () => {
   const { currentWorkspace } = useWorkspace();
   const { mutateAsync: deleteCa } = useDeleteCa();
   const { mutateAsync: updateCa } = useUpdateCa();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "ca",
-    "caCert",
-    "installCaCert",
     "deleteCa",
     "caStatus", // enable / disable
     "upgradePlan"
@@ -72,7 +68,7 @@ export const CaSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">Internal Certificate Authorities</p>
+        <p className="text-xl font-semibold text-mineshaft-100">External Certificate Authorities</p>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Create}
           a={ProjectPermissionSub.CertificateAuthorities}
@@ -90,10 +86,8 @@ export const CaSection = () => {
           )}
         </ProjectPermissionCan>
       </div>
-      <CaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CaCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CaTable handlePopUpOpen={handlePopUpOpen} />
+      <ExternalCaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <ExternalCaTable handlePopUpOpen={handlePopUpOpen} />
       <DeleteActionModal
         isOpen={popUp.deleteCa.isOpen}
         title={`Are you sure want to remove the CA ${

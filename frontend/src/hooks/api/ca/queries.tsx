@@ -3,10 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { TCertificateTemplate } from "../certificateTemplates/types";
-import { TCertificateAuthority } from "./types";
+import { CaType } from "./enums";
+import { TCertificateAuthority, TUnifiedCertificateAuthority } from "./types";
 
 export const caKeys = {
   getCaById: (caId: string) => [{ caId }, "ca"],
+  getCaByTypeAndId: (type: CaType, caId: string) => [{ type, caId }, "ca"],
+  listCasByTypeAndProjectId: (type: CaType, projectId: string) => [{ type, projectId }, "cas"],
+  listCasByProjectId: (projectId: string) => [{ projectId }, "cas"],
   getCaCerts: (caId: string) => [{ caId }, "ca-cert"],
   getCaCrls: (caId: string) => [{ caId }, "ca-crls"],
   getCaCert: (caId: string) => [{ caId }, "ca-cert"],
@@ -14,6 +18,47 @@ export const caKeys = {
   getCaCrl: (caId: string) => [{ caId }, "ca-crl"],
   getCaCertTemplates: (caId: string) => [{ caId }, "ca-cert-templates"],
   getCaEstConfig: (caId: string) => [{ caId }, "ca-est-config"]
+};
+
+export const useGetCaByTypeAndId = (type: CaType, caId: string) => {
+  return useQuery({
+    queryKey: caKeys.getCaByTypeAndId(type, caId),
+    queryFn: async () => {
+      const {
+        data: { certificateAuthority }
+      } = await apiRequest.get<{ certificateAuthority: TUnifiedCertificateAuthority }>(
+        `/api/v1/pki/ca/${type}/${caId}`
+      );
+      return certificateAuthority;
+    },
+    enabled: Boolean(caId)
+  });
+};
+
+export const useListCasByTypeAndProjectId = (type: CaType, projectId: string) => {
+  return useQuery({
+    queryKey: caKeys.listCasByTypeAndProjectId(type, projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        certificateAuthorities: TUnifiedCertificateAuthority[];
+      }>(`/api/v1/pki/ca/${type}?projectId=${projectId}`);
+
+      return data.certificateAuthorities;
+    }
+  });
+};
+
+export const useListCasByProjectId = (projectId: string) => {
+  return useQuery({
+    queryKey: caKeys.listCasByProjectId(projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        certificateAuthorities: TUnifiedCertificateAuthority[];
+      }>(`/api/v2/pki/ca?projectId=${projectId}`);
+
+      return data.certificateAuthorities;
+    }
+  });
 };
 
 export const useGetCaById = (caId: string) => {

@@ -218,17 +218,12 @@ export const certificateAuthorityServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    const cas = await certificateAuthorityDAL.findWithAssociatedCa({
-      [`${TableName.CertificateAuthority}.projectId` as "projectId"]: finalProjectId,
-      ...(type === CaType.INTERNAL && {
-        $notNull: [`${TableName.InternalCertificateAuthority}.id` as "id"]
-      }),
-      ...(type !== CaType.INTERNAL && {
-        [`${TableName.ExternalCertificateAuthority}.type` as "type"]: type
-      })
-    });
-
     if (type === CaType.INTERNAL) {
+      const cas = await certificateAuthorityDAL.findWithAssociatedCa({
+        [`${TableName.CertificateAuthority}.projectId` as "projectId"]: finalProjectId,
+        $notNull: [`${TableName.InternalCertificateAuthority}.id` as "id"]
+      });
+
       return cas
         .filter((ca): ca is typeof ca & { internalCa: NonNullable<typeof ca.internalCa> } => Boolean(ca.internalCa))
         .map((ca) => ({
@@ -242,17 +237,9 @@ export const certificateAuthorityServiceFactory = ({
         })) as TCertificateAuthority[];
     }
 
-    return cas
-      .filter((ca): ca is typeof ca & { externalCa: NonNullable<typeof ca.externalCa> } => Boolean(ca.externalCa))
-      .map((ca) => ({
-        id: ca.id,
-        type,
-        disableDirectIssuance: ca.disableDirectIssuance,
-        name: ca.externalCa.name,
-        projectId: ca.projectId,
-        configuration: ca.externalCa.configuration,
-        status: ca.externalCa.status
-      })) as TCertificateAuthority[];
+    if (type === CaType.ACME) {
+      return acmeFns.listCertificateAuthorities({ projectId: finalProjectId });
+    }
   };
 
   const updateCertificateAuthority = async (

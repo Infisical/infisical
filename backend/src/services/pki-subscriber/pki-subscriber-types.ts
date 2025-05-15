@@ -42,6 +42,10 @@ export type TIssuePkiSubscriberCertDTO = {
   subscriberName: string;
 } & TProjectPermission;
 
+export type TOrderPkiSubscriberCertDTO = {
+  subscriberName: string;
+} & TProjectPermission;
+
 export type TSignPkiSubscriberCertDTO = {
   subscriberName: string;
   csr: string;

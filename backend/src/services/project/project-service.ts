@@ -918,6 +918,7 @@ export const projectServiceFactory = ({
     const cas = await certificateAuthorityDAL.findWithAssociatedCa(
       {
         [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
+        $notNull: [`${TableName.InternalCertificateAuthority}.id` as "id"],
         ...(status && { [`${TableName.InternalCertificateAuthority}.status` as "status"]: status }),
         ...(friendlyName && {
           [`${TableName.InternalCertificateAuthority}.friendlyName` as "friendlyName"]: friendlyName
