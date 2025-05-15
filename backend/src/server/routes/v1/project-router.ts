@@ -511,7 +511,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspace = await server.services.project.updateAuditLogsRetention({
         actorId: req.permission.id,
