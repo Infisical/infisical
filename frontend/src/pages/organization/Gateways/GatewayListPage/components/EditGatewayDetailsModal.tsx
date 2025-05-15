@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
+import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import { useUpdateGatewayById } from "@app/hooks/api";
 import { TGateway } from "@app/hooks/api/gateways/types";
 
@@ -53,6 +54,16 @@ export const EditGatewayDetailsModal = ({ gatewayDetails, onClose }: Props) => {
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
+      <NoticeBannerV2 className="mx-auto mb-4" title="Project Linking">
+        <p className="mt-1 text-xs text-mineshaft-300">
+          Since the 15th May 2025, all gateways are automatically available for use in all projects
+          and you no longer need to link them.
+          <br />
+          Organization members with the &quot;Attach Gateways&quot; permission can use gateways
+          anywhere within the organization.
+        </p>
+      </NoticeBannerV2>
+
       <Controller
         control={control}
         name="name"

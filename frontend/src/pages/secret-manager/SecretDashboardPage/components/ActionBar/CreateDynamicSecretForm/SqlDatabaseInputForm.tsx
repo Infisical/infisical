@@ -329,7 +329,7 @@ export const SqlDatabaseInputForm = ({
                               className="w-full border border-mineshaft-500"
                               dropdownContainerClassName="max-w-none"
                               isLoading={isGatewaysLoading}
-                              placeholder="Internet gateway"
+                              placeholder="Default: Internet Gateway"
                               position="popper"
                             >
                               <SelectItem

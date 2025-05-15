@@ -281,7 +281,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                             className="w-full border border-mineshaft-500"
                             dropdownContainerClassName="max-w-none"
                             isLoading={isGatewaysLoading}
-                            placeholder="Internet Gateway"
+                            placeholder="Default: Internet Gateway"
                             position="popper"
                           >
                             <SelectItem

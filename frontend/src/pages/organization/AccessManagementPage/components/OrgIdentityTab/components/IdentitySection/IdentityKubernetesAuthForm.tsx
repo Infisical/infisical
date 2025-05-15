@@ -332,7 +332,7 @@ export const IdentityKubernetesAuthForm = ({
                           className="w-full border border-mineshaft-500"
                           dropdownContainerClassName="max-w-none"
                           isLoading={isGatewayLoading}
-                          placeholder="Select Gateway"
+                          placeholder="Default: Internet Gateway"
                           position="popper"
                         >
                           <SelectItem

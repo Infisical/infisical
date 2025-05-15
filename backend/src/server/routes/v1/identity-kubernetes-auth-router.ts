@@ -3,6 +3,7 @@ import { z } from "zod";
 import { IdentityKubernetesAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, KUBERNETES_AUTH } from "@app/lib/api-docs";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -101,7 +102,24 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       }),
       body: z
         .object({
-          kubernetesHost: z.string().trim().min(1).describe(KUBERNETES_AUTH.ATTACH.kubernetesHost),
+          kubernetesHost: z
+            .string()
+            .trim()
+            .min(1)
+            .describe(KUBERNETES_AUTH.ATTACH.kubernetesHost)
+            .refine(
+              (val) =>
+                characterValidator([
+                  CharacterType.Alphabets,
+                  CharacterType.Numbers,
+                  CharacterType.Colon,
+                  CharacterType.Period,
+                  CharacterType.ForwardSlash
+                ])(val),
+              {
+                message: "Kubernetes host must only contain alphabets, numbers, colons, periods, and forward slashes."
+              }
+            ),
           caCert: z.string().trim().default("").describe(KUBERNETES_AUTH.ATTACH.caCert),
           tokenReviewerJwt: z.string().trim().optional().describe(KUBERNETES_AUTH.ATTACH.tokenReviewerJwt),
           allowedNamespaces: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNamespaces), // TODO: validation
@@ -201,7 +219,28 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       }),
       body: z
         .object({
-          kubernetesHost: z.string().trim().min(1).optional().describe(KUBERNETES_AUTH.UPDATE.kubernetesHost),
+          kubernetesHost: z
+            .string()
+            .trim()
+            .min(1)
+            .optional()
+            .describe(KUBERNETES_AUTH.UPDATE.kubernetesHost)
+            .refine(
+              (val) => {
+                if (!val) return true;
+
+                return characterValidator([
+                  CharacterType.Alphabets,
+                  CharacterType.Numbers,
+                  CharacterType.Colon,
+                  CharacterType.Period,
+                  CharacterType.ForwardSlash
+                ])(val);
+              },
+              {
+                message: "Kubernetes host must only contain alphabets, numbers, colons, periods, and forward slashes."
+              }
+            ),
           caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.UPDATE.caCert),
           tokenReviewerJwt: z.string().trim().nullable().optional().describe(KUBERNETES_AUTH.UPDATE.tokenReviewerJwt),
           allowedNamespaces: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNamespaces), // TODO: validation
