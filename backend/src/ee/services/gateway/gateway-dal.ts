@@ -8,11 +8,14 @@ export type TGatewayDALFactory = ReturnType<typeof gatewayDALFactory>;
 export const gatewayDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.Gateway);
 
-  const find = async (filter: TFindFilter<TGateways>, { offset, limit, sort, tx }: TFindOpt<TGateways> = {}) => {
+  const find = async (
+    filter: TFindFilter<TGateways> & { orgId?: string },
+    { offset, limit, sort, tx }: TFindOpt<TGateways> = {}
+  ) => {
     try {
       const query = (tx || db)(TableName.Gateway)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        .where(buildFindFilter(filter, TableName.Gateway))
+        .where(buildFindFilter(filter, TableName.Gateway, ["orgId"]))
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Gateway}.identityId`)
         .join(
           TableName.IdentityOrgMembership,
@@ -22,6 +25,10 @@ export const gatewayDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.Gateway))
         .select(db.ref("orgId").withSchema(TableName.IdentityOrgMembership).as("identityOrgId"))
         .select(db.ref("name").withSchema(TableName.Identity).as("identityName"));
+
+      if (filter.orgId) {
+        void query.where(`${TableName.IdentityOrgMembership}.orgId`, filter.orgId);
+      }
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {

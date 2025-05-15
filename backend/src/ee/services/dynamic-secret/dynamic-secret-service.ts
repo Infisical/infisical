@@ -121,7 +121,7 @@ export const dynamicSecretServiceFactory = ({
     if (inputs && typeof inputs === "object" && "gatewayId" in inputs && inputs.gatewayId) {
       const gatewayId = inputs.gatewayId as string;
 
-      const [gateway] = await gatewayDAL.find({ id: gatewayId });
+      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
 
       if (!gateway) {
         throw new NotFoundError({
@@ -275,7 +275,7 @@ export const dynamicSecretServiceFactory = ({
     if (updatedInput && typeof updatedInput === "object" && "gatewayId" in updatedInput && updatedInput?.gatewayId) {
       const gatewayId = updatedInput.gatewayId as string;
 
-      const [gateway] = await gatewayDAL.find({ id: gatewayId });
+      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
       if (!gateway) {
         throw new NotFoundError({
           message: `Gateway with ID ${gatewayId} not found`
