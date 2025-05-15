@@ -121,7 +121,10 @@ export const authPaswordServiceFactory = ({
    */
   const sendPasswordResetEmail = async (email: string) => {
     const sendEmail = async () => {
-      const user = await userDAL.findUserByUsername(email);
+      const users = await userDAL.findUserByUsername(email);
+      // akhilmhdh: case sensitive email resolution
+      const user = users?.length > 1 ? users.find((el) => el.username === email) : users?.[0];
+      if (!user) throw new BadRequestError({ message: "Failed to find user data" });
 
       if (user && user.isAccepted) {
         const cfg = getConfig();
@@ -152,7 +155,10 @@ export const authPaswordServiceFactory = ({
    * */
   const verifyPasswordResetEmail = async (email: string, code: string) => {
     const cfg = getConfig();
-    const user = await userDAL.findUserByUsername(email);
+    const users = await userDAL.findUserByUsername(email);
+    // akhilmhdh: case sensitive email resolution
+    const user = users?.length > 1 ? users.find((el) => el.username === email) : users?.[0];
+    if (!user) throw new BadRequestError({ message: "Failed to find user data" });
 
     const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
 

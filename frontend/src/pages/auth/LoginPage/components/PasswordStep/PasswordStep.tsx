@@ -18,7 +18,8 @@ import { useToggle } from "@app/hooks";
 import { useOauthTokenExchange, useSelectOrganization } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
-import { fetchMyPrivateKey } from "@app/hooks/api/users/queries";
+import { fetchMyPrivateKey, fetchUserDuplicateAccounts } from "@app/hooks/api/users/queries";
+import { EmailDuplicationConfirmation } from "@app/pages/auth/SelectOrgPage/EmailDuplicationConfirmation";
 
 import { navigateUserToOrg, useNavigateToSelectOrganization } from "../../Login.utils";
 
@@ -40,6 +41,7 @@ export const PasswordStep = ({
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [removeDuplicateLater, setRemoveDuplicateLater] = useState(true);
   const { mutateAsync: selectOrganization } = useSelectOrganization();
   const { mutateAsync: oauthTokenExchange } = useOauthTokenExchange();
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
@@ -106,6 +108,13 @@ export const PasswordStep = ({
               );
             });
             navigate({ to: "/cli-redirect" });
+            return;
+          }
+
+          const userDuplicateAccount = await fetchUserDuplicateAccounts();
+          const hasDuplicate = userDuplicateAccount?.length > 1;
+          if (hasDuplicate) {
+            setRemoveDuplicateLater(false);
             return;
           }
 
@@ -303,6 +312,18 @@ export const PasswordStep = ({
           closeMfa={() => toggleShowMfa.off()}
         />
       </div>
+    );
+  }
+
+  if (!removeDuplicateLater) {
+    return (
+      <EmailDuplicationConfirmation
+        onRemoveDuplicateLater={() =>
+          navigateUserToOrg(navigate, organizationId).catch(() =>
+            createNotification({ text: "Failed to navigate user", type: "error" })
+          )
+        }
+      />
     );
   }
 

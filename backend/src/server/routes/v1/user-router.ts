@@ -48,6 +48,54 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/duplicate-accounts",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          users: UsersSchema.extend({
+            isMyAccount: z.boolean(),
+            organizations: z.object({ name: z.string(), slug: z.string() }).array()
+          }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    handler: async (req) => {
+      if (req.auth.authMode === AuthMode.JWT && req.auth.user.email) {
+        const users = await server.services.user.getAllMyAccounts(req.auth.user.email, req.permission.id);
+        return { users };
+      }
+      return { users: [] };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/remove-duplicate-accounts",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    handler: async (req) => {
+      if (req.auth.authMode === AuthMode.JWT && req.auth.user.email) {
+        await server.services.user.removeMyDuplicateAccounts(req.auth.user.email, req.permission.id);
+      }
+      return { message: "Removed all duplicate accounts" };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/private-key",
     config: {
       rateLimit: readLimit
