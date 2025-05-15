@@ -59,8 +59,6 @@ export const identityOciAuthServiceFactory = ({
 
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityOciAuth.identityId });
 
-    await blockLocalAndPrivateIpAddresses(headers.host);
-
     // Validate OCI host format
     if (!headers.host || !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(headers.host)) {
       throw new BadRequestError({
