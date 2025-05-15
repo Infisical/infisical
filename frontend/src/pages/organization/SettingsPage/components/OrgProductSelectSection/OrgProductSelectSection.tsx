@@ -1,5 +1,5 @@
 import { createNotification } from "@app/components/notifications";
-import { Switch } from "@app/components/v2";
+import { Checkbox, Switch } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
 import { useEffect, useState } from "react";
@@ -9,11 +9,11 @@ export const OrgProductSelectSection = () => {
     [key: string]: { name: string; enabled: boolean };
   }>({
     secretsProductEnabled: {
-      name: "Secrets",
+      name: "Secret Management",
       enabled: true
     },
     pkiProductEnabled: {
-      name: "PKI",
+      name: "Certificate Management",
       enabled: true
     },
     kmsProductEnabled: {
@@ -53,11 +53,6 @@ export const OrgProductSelectSection = () => {
       orgId: currentOrg.id,
       [key]: value
     });
-
-    createNotification({
-      text: `Successfully ${value ? "enabled" : "disabled"} ${toggledProducts[key].name}`,
-      type: "success"
-    });
   };
 
   return (
@@ -67,15 +62,17 @@ export const OrgProductSelectSection = () => {
         Select which products are available for your organization.
       </p>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         {Object.entries(toggledProducts).map(([key, product]) => (
           <Switch
             key={key}
             id={`enable-${key}`}
             onCheckedChange={(value) => onProductToggle(value, key)}
             isChecked={product.enabled}
+            className="ml-0"
+            containerClassName="flex-row-reverse gap-3 w-fit"
           >
-            <p className="mr-4 w-12">{product.name}</p>
+            {product.name}
           </Switch>
         ))}
       </div>
