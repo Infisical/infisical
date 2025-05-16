@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Switch } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
+import axios from "axios";
+import { createNotification } from "@app/components/notifications";
 
 export const OrgProductSelectSection = () => {
   const [toggledProducts, setToggledProducts] = useState<{
@@ -34,6 +36,8 @@ export const OrgProductSelectSection = () => {
     }
   });
 
+  const [isLoading, setIsLoading] = useState(false);
+
   const { currentOrg } = useOrganization();
   const { mutateAsync } = useUpdateOrg();
 
@@ -49,17 +53,29 @@ export const OrgProductSelectSection = () => {
   }, [currentOrg]);
 
   const onProductToggle = async (value: boolean, key: string) => {
+    setIsLoading(true);
+
     setToggledProducts((products) => ({
       ...products,
       [key]: { ...products[key], enabled: value }
     }));
 
+    try {
+      await mutateAsync({
+        orgId: currentOrg.id,
+        [key]: value
+      });
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        const { message = "Something went wrong" } = e.response?.data as { message: string };
+        createNotification({
+          type: "error",
+          text: message
+        });
+      }
+    }
 
-    // Update backend
-    await mutateAsync({
-      orgId: currentOrg.id,
-      [key]: value
-    });
+    setIsLoading(false);
   };
 
   return (
@@ -74,6 +90,7 @@ export const OrgProductSelectSection = () => {
           <Switch
             key={key}
             id={`enable-${key}`}
+            isDisabled={isLoading}
             onCheckedChange={(value) => onProductToggle(value, key)}
             isChecked={product.enabled}
             className="ml-0"
