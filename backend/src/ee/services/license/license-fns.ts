@@ -4,6 +4,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 
 import { TFeatureSet } from "./license-types";
+import { logger } from "@app/lib/logger";
 
 export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   _id: null,
@@ -98,9 +99,10 @@ export const setupLicenseRequestWithStore = (baseURL: string, refreshUrl: string
     (response) => response,
     async (err) => {
       const originalRequest = (err as AxiosError).config;
-
+      const errStatusCode = Number((err as AxiosError)?.response?.status);
+      logger.error((err as AxiosError)?.response?.data, "License server call error");
       // eslint-disable-next-line
-      if ((err as AxiosError)?.response?.status === 401 && !(originalRequest as any)._retry) {
+      if (errStatusCode > 400 && errStatusCode < 500 && !(originalRequest as any)._retry) {
         // eslint-disable-next-line
         (originalRequest as any)._retry = true; // injected
 
