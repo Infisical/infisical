@@ -1209,8 +1209,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId);
     }
 
-    if (!ca?.internalCa) {
-      throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    if (!ca?.internalCa?.id) {
+      throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -1475,7 +1475,8 @@ export const internalCertificateAuthorityServiceFactory = ({
           notBefore: notBeforeDate,
           notAfter: notAfterDate,
           keyUsages: selectedKeyUsages,
-          extendedKeyUsages: selectedExtendedKeyUsages
+          extendedKeyUsages: selectedExtendedKeyUsages,
+          projectId: ca.projectId
         },
         tx
       );
@@ -1560,8 +1561,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId);
     }
 
-    if (!ca?.internalCa) {
-      throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    if (!ca?.internalCa?.id) {
+      throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
     }
 
     if (!dto.isInternal) {
@@ -1854,6 +1855,20 @@ export const internalCertificateAuthorityServiceFactory = ({
       plainText: Buffer.from(new Uint8Array(leafCert.rawData))
     });
 
+    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+      caCertId: ca.internalCa.activeCaCertId,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
+    });
+
+    const certificateChainPem = `${issuingCaCertificate}\n${caCertChain}`.trim();
+
+    const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
+      plainText: Buffer.from(certificateChainPem)
+    });
+
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
@@ -1868,7 +1883,8 @@ export const internalCertificateAuthorityServiceFactory = ({
           notBefore: notBeforeDate,
           notAfter: notAfterDate,
           keyUsages: selectedKeyUsages,
-          extendedKeyUsages: selectedExtendedKeyUsages
+          extendedKeyUsages: selectedExtendedKeyUsages,
+          projectId: ca.projectId
         },
         tx
       );
@@ -1876,7 +1892,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       await certificateBodyDAL.create(
         {
           certId: cert.id,
-          encryptedCertificate
+          encryptedCertificate,
+          encryptedCertificateChain
         },
         tx
       );
@@ -1894,17 +1911,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       return cert;
     });
 
-    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
-      caCertId: ca.internalCa.activeCaCertId,
-      certificateAuthorityDAL,
-      certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
-    });
-
     return {
       certificate: leafCert,
-      certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
+      certificateChain: certificateChainPem,
       issuingCaCertificate,
       serialNumber,
       ca: expandInternalCa(ca),
@@ -1923,7 +1932,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     actorOrgId
   }: TGetCaCertificateTemplatesDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca?.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,

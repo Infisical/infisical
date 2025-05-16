@@ -4,10 +4,12 @@ export {
   useCreateCertificate,
   useCreateUnifiedCa,
   useDeleteCa,
+  useDeleteUnifiedCa,
   useImportCaCertificate,
   useRenewCa,
   useSignIntermediate,
-  useUpdateCa
+  useUpdateCa,
+  useUpdateUnifiedCa
 } from "./mutations";
 export {
   useGetCaById,

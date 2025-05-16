@@ -5,7 +5,7 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
   TCertificateAuthority,
   TCertificateAuthorityInput
@@ -26,11 +26,13 @@ export const registerCertificateAuthorityEndpoints = <
   createSchema: z.ZodType<{
     name: string;
     projectId: string;
+    status: CaStatus;
     configuration: I["configuration"];
     disableDirectIssuance: boolean;
   }>;
   updateSchema: z.ZodType<{
     name?: string;
+    status?: CaStatus;
     configuration?: I["configuration"];
     disableDirectIssuance?: boolean;
   }>;
@@ -63,18 +65,16 @@ export const registerCertificateAuthorityEndpoints = <
         req.permission
       )) as T[];
 
-      // await server.services.auditLog.createAuditLog({
-      //   ...req.auditLogInfo,
-      //   projectId,
-      //   event: {
-      //     type: EventType.GET_SECRET_SYNCS,
-      //     metadata: {
-      //       destination,
-      //       count: secretSyncs.length,
-      //       syncIds: secretSyncs.map((connection) => connection.id)
-      //     }
-      //   }
-      // });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.GET_CAS,
+          metadata: {
+            caIds: certificateAuthorities.map((ca) => ca.id)
+          }
+        }
+      });
 
       return { certificateAuthorities };
     }
@@ -105,17 +105,16 @@ export const registerCertificateAuthorityEndpoints = <
         req.permission
       )) as T;
 
-      // await server.services.auditLog.createAuditLog({
-      //   ...req.auditLogInfo,
-      //   projectId: secretSync.projectId,
-      //   event: {
-      //     type: EventType.GET_SECRET_SYNC,
-      //     metadata: {
-      //       syncId,
-      //       destination
-      //     }
-      //   }
-      // });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: certificateAuthority.projectId,
+        event: {
+          type: EventType.GET_CA,
+          metadata: {
+            caId: certificateAuthority.id
+          }
+        }
+      });
 
       return { certificateAuthority };
     }
@@ -142,18 +141,16 @@ export const registerCertificateAuthorityEndpoints = <
         req.permission
       )) as T;
 
-      // await server.services.auditLog.createAuditLog({
-      //   ...req.auditLogInfo,
-      //   projectId: secretSync.projectId,
-      //   event: {
-      //     type: EventType.CREATE_SECRET_SYNC,
-      //     metadata: {
-      //       syncId: secretSync.id,
-      //       destination,
-      //       ...req.body
-      //     }
-      //   }
-      // });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: certificateAuthority.projectId,
+        event: {
+          type: EventType.CREATE_CA,
+          metadata: {
+            caId: certificateAuthority.id
+          }
+        }
+      });
 
       return { certificateAuthority };
     }
@@ -181,22 +178,25 @@ export const registerCertificateAuthorityEndpoints = <
       const { certificateAuthorityId } = req.params;
 
       const certificateAuthority = (await server.services.certificateAuthority.updateCertificateAuthority(
-        { ...req.body, id: certificateAuthorityId, type: caType },
+        {
+          ...req.body,
+          id: certificateAuthorityId,
+          type: caType
+        },
         req.permission
       )) as T;
 
-      // await server.services.auditLog.createAuditLog({
-      //   ...req.auditLogInfo,
-      //   projectId: certificateAuthority.projectId,
-      //   event: {
-      //     type: EventType.UPDATE_SECRET_SYNC,
-      //     metadata: {
-      //       syncId,
-      //       destination,
-      //       ...req.body
-      //     }
-      //   }
-      // });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: certificateAuthority.projectId,
+        event: {
+          type: EventType.UPDATE_CA,
+          metadata: {
+            caId: certificateAuthority.id,
+            status: certificateAuthority.status
+          }
+        }
+      });
 
       return { certificateAuthority };
     }
@@ -227,18 +227,16 @@ export const registerCertificateAuthorityEndpoints = <
         req.permission
       )) as T;
 
-      // await server.services.auditLog.createAuditLog({
-      //   ...req.auditLogInfo,
-      //   orgId: req.permission.orgId,
-      //   event: {
-      //     type: EventType.DELETE_SECRET_SYNC,
-      //     metadata: {
-      //       destination,
-      //       syncId,
-      //       removeSecrets
-      //     }
-      //   }
-      // });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: certificateAuthority.projectId,
+        event: {
+          type: EventType.DELETE_CA,
+          metadata: {
+            caId: certificateAuthority.id
+          }
+        }
+      });
 
       return { certificateAuthority };
     }

@@ -9,9 +9,7 @@ export type TCertificateAuthority = TInternalCertificateAuthority | TAcmeCertifi
 
 export type TCertificateAuthorityInput = TInternalCertificateAuthorityInput | TAcmeCertificateAuthorityInput;
 
-export type TCreateCertificateAuthorityDTO = Omit<TCertificateAuthority, "type" | "id"> & {
-  type: CaType;
-};
+export type TCreateCertificateAuthorityDTO = Omit<TCertificateAuthority, "id">;
 
 export type TUpdateCertificateAuthorityDTO = Partial<Omit<TCreateCertificateAuthorityDTO, "projectId">> & {
   type: CaType;

@@ -39,7 +39,7 @@ export const certificateAuthorityCrlServiceFactory = ({
     if (!caCrl) throw new NotFoundError({ message: `CRL with ID '${crlId}' not found` });
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caCrl.caId);
-    if (!ca?.internalCa) throw new NotFoundError({ message: `CA with ID '${caCrl.caId}' not found` });
+    if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caCrl.caId}' not found` });
 
     const keyId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -67,7 +67,7 @@ export const certificateAuthorityCrlServiceFactory = ({
    */
   const getCaCrls = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCrlsDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca?.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,

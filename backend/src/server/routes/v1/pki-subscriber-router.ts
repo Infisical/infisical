@@ -311,28 +311,27 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId
       });
 
-      // await server.services.auditLog.createAuditLog({
-      //   ...req.auditLogInfo,
-      //   projectId: subscriber.projectId,
-      //   event: {
-      //     type: EventType.ISSUE_PKI_SUBSCRIBER_CERT,
-      //     metadata: {
-      //       subscriberId: subscriber.id,
-      //       name: subscriber.name,
-      //       serialNumber
-      //     }
-      //   }
-      // });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: subscriber.projectId,
+        event: {
+          type: EventType.ISSUE_PKI_SUBSCRIBER_CERT,
+          metadata: {
+            subscriberId: subscriber.id,
+            name: subscriber.name
+          }
+        }
+      });
 
-      // await server.services.telemetry.sendPostHogEvents({
-      //   event: PostHogEventTypes.IssueCert,
-      //   distinctId: getTelemetryDistinctId(req),
-      //   properties: {
-      //     subscriberId: subscriber.id,
-      //     commonName: subscriber.commonName,
-      //     ...req.auditLogInfo
-      //   }
-      // });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.IssueCert,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          subscriberId: subscriber.id,
+          commonName: subscriber.commonName,
+          ...req.auditLogInfo
+        }
+      });
 
       return {
         message: "Successfully placed order for certificate"

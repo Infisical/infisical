@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
+import RE2 from "re2";
 
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -52,8 +53,11 @@ export const constructPemChainFromCerts = (certificates: x509.X509Certificate[])
     .join("\n")
     .trim();
 
-export const splitPemChain = (pemText: string) =>
-  pemText.match(/-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----/g) || [];
+export const splitPemChain = (pemText: string) => {
+  const re2Pattern = new RE2("-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----", "g");
+
+  return re2Pattern.match(pemText) || [];
+};
 
 /**
  * Return the public and private key of certificate

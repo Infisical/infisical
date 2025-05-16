@@ -1,6 +1,11 @@
-import { faBan, faCertificate, faEllipsis, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faBan,
+  faCertificate,
+  faEllipsis,
+  faPencil,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -24,7 +29,6 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { CaStatus, CaType, useListCasByTypeAndProjectId } from "@app/hooks/api";
 import { caStatusToNameMap, getCaStatusBadgeVariant } from "@app/hooks/api/ca/constants";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -32,7 +36,7 @@ type Props = {
     popUpName: keyof UsePopUpState<["ca", "deleteCa", "caStatus", "upgradePlan"]>,
     data?: {
       caId?: string;
-      dn?: string;
+      type?: CaType;
       status?: CaStatus;
       description?: string;
     }
@@ -40,7 +44,6 @@ type Props = {
 };
 
 export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
-  const navigate = useNavigate();
   const { currentWorkspace } = useWorkspace();
   const { data, isPending } = useListCasByTypeAndProjectId(CaType.ACME, currentWorkspace.id);
 
@@ -66,15 +69,12 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                   <Tr
                     className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                     key={`ca-${ca.id}`}
-                    onClick={() =>
-                      navigate({
-                        to: `/${ProjectType.CertificateManager}/$projectId/ca/$caId` as const,
-                        params: {
-                          projectId: currentWorkspace.id,
-                          caId: ca.id
-                        }
-                      })
-                    }
+                    onClick={() => {
+                      handlePopUpOpen("ca", {
+                        caId: ca.id,
+                        type: ca.type
+                      });
+                    }}
                   >
                     <Td>{ca.name}</Td>
                     <Td>{ca.type}</Td>
@@ -93,6 +93,29 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                           </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="p-1">
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={ProjectPermissionSub.CertificateAuthorities}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                className={twMerge(
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("ca", {
+                                    caId: ca.id,
+                                    type: ca.type
+                                  });
+                                }}
+                                disabled={!isAllowed}
+                                icon={<FontAwesomeIcon icon={faPencil} />}
+                              >
+                                Edit CA
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
                           {(ca.status === CaStatus.ACTIVE || ca.status === CaStatus.DISABLED) && (
                             <ProjectPermissionCan
                               I={ProjectPermissionActions.Edit}
@@ -108,6 +131,7 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                                     e.stopPropagation();
                                     handlePopUpOpen("caStatus", {
                                       caId: ca.id,
+                                      type: ca.type,
                                       status:
                                         ca.status === CaStatus.ACTIVE
                                           ? CaStatus.DISABLED
@@ -133,10 +157,10 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                                 )}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  // handlePopUpOpen("deleteCa", {
-                                  //   caId: ca.id,
-                                  //   dn: ca.dn
-                                  // });
+                                  handlePopUpOpen("deleteCa", {
+                                    caId: ca.id,
+                                    type: ca.type
+                                  });
                                 }}
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faTrash} />}

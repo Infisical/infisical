@@ -10,7 +10,10 @@ export type TAcmeCertificateAuthority = {
   disableDirectIssuance: boolean;
   configuration: {
     dnsAppConnectionId: string;
-    dnsProvider: AcmeDnsProvider;
+    dnsProviderConfig: {
+      provider: AcmeDnsProvider.ROUTE53;
+      hostedZoneId: string;
+    };
     directoryUrl: string;
     accountEmail: string;
   };
@@ -48,6 +51,16 @@ export type TUnifiedCertificateAuthority =
   | TInternalCertificateAuthority;
 
 export type TCreateUnifiedCertificateAuthorityDTO = Omit<TUnifiedCertificateAuthority, "id">;
+export type TUpdateUnifiedCertificateAuthorityDTO = Partial<TUnifiedCertificateAuthority> & {
+  id: string;
+  type: CaType;
+};
+
+export type TDeleteUnifiedCertificateAuthorityDTO = {
+  caId: string;
+  type: CaType;
+  projectId: string;
+};
 
 export type TCertificateAuthority = {
   id: string;

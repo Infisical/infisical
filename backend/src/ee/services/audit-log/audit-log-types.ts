@@ -225,6 +225,7 @@ export enum EventType {
   REMOVE_HOST_FROM_SSH_HOST_GROUP = "remove-host-from-ssh-host-group",
   CREATE_CA = "create-certificate-authority",
   GET_CA = "get-certificate-authority",
+  GET_CAS = "get-certificate-authorities",
   UPDATE_CA = "update-certificate-authority",
   DELETE_CA = "delete-certificate-authority",
   RENEW_CA = "renew-certificate-authority",
@@ -1718,7 +1719,7 @@ interface CreateCa {
   type: EventType.CREATE_CA;
   metadata: {
     caId: string;
-    dn: string;
+    dn?: string;
   };
 }
 
@@ -1726,7 +1727,14 @@ interface GetCa {
   type: EventType.GET_CA;
   metadata: {
     caId: string;
-    dn: string;
+    dn?: string;
+  };
+}
+
+interface GetCAs {
+  type: EventType.GET_CAS;
+  metadata: {
+    caIds: string[];
   };
 }
 
@@ -1734,7 +1742,7 @@ interface UpdateCa {
   type: EventType.UPDATE_CA;
   metadata: {
     caId: string;
-    dn: string;
+    dn?: string;
     status: CaStatus;
   };
 }
@@ -1743,7 +1751,7 @@ interface DeleteCa {
   type: EventType.DELETE_CA;
   metadata: {
     caId: string;
-    dn: string;
+    dn?: string;
   };
 }
 
@@ -2031,7 +2039,7 @@ interface IssuePkiSubscriberCert {
   metadata: {
     subscriberId: string;
     name: string;
-    serialNumber: string;
+    serialNumber?: string;
   };
 }
 
@@ -2987,6 +2995,7 @@ export type Event =
   | IssueSshHostHostCert
   | CreateCa
   | GetCa
+  | GetCAs
   | UpdateCa
   | DeleteCa
   | RenewCa

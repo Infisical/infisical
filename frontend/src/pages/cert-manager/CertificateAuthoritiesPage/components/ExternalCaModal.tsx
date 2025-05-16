@@ -23,23 +23,27 @@ import {
   CaStatus,
   CaType,
   useCreateUnifiedCa,
-  useGetCaById,
-  useUpdateCa
+  useGetCaByTypeAndId,
+  useUpdateUnifiedCa
 } from "@app/hooks/api/ca";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
   .object({
-    type: z.enum([CaType.ACME]),
+    type: z.nativeEnum(CaType),
     name: z.string(),
     disableDirectIssuance: z.boolean(),
-    status: z.enum([CaStatus.ACTIVE, CaStatus.DISABLED]),
+    status: z.nativeEnum(CaStatus),
     configuration: z.object({
       dnsAppConnection: z.object({
         id: z.string(),
         name: z.string()
       }),
-      dnsProvider: z.nativeEnum(AcmeDnsProvider),
+      // currently specific to Route53 but can be extended to others by differentiating via the provider property
+      dnsProviderConfig: z.object({
+        provider: z.nativeEnum(AcmeDnsProvider),
+        hostedZoneId: z.string()
+      }),
       directoryUrl: z.string(),
       accountEmail: z.string()
     })
@@ -58,11 +62,13 @@ const caTypes = [{ label: "ACME", value: CaType.ACME }];
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
 
-  const { data: ca } = useGetCaById((popUp?.ca?.data as { caId: string })?.caId || "");
+  const { data: ca } = useGetCaByTypeAndId(
+    (popUp?.ca?.data as { type: CaType })?.type || "",
+    (popUp?.ca?.data as { caId: string })?.caId || ""
+  );
 
-  // SHEEN TODO: finish up CA management
   const { mutateAsync: createMutateAsync } = useCreateUnifiedCa();
-  const { mutateAsync: updateMutateAsync } = useUpdateCa();
+  const { mutateAsync: updateMutateAsync } = useUpdateUnifiedCa();
 
   const {
     control,
@@ -82,7 +88,10 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           id: "",
           name: ""
         },
-        dnsProvider: AcmeDnsProvider.ROUTE53,
+        dnsProviderConfig: {
+          provider: AcmeDnsProvider.ROUTE53,
+          hostedZoneId: ""
+        },
         directoryUrl: "",
         accountEmail: ""
       }
@@ -90,7 +99,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   const caType = watch("type");
-  const dnsProvider = watch("configuration.dnsProvider");
+  const dnsProvider = watch("configuration.dnsProviderConfig.provider");
 
   const { data: availableConnections, isPending } = useListAvailableAppConnections(
     AppConnection.AWS,
@@ -101,11 +110,30 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   useEffect(() => {
     if (ca) {
-      // reset({
-      //   type: ca.type,
-      //   name: ca.name,
-      //   disableDirectIssuance: ca.disableDirectIssuance
-      // });
+      if (ca.type !== CaType.INTERNAL && availableConnections?.length) {
+        const selectedConnection = availableConnections?.find(
+          (connection) => connection.id === ca?.configuration.dnsAppConnectionId
+        );
+
+        reset({
+          type: ca.type,
+          name: ca.name,
+          status: ca.status,
+          disableDirectIssuance: ca.disableDirectIssuance,
+          configuration: {
+            dnsAppConnection: {
+              id: ca.configuration.dnsAppConnectionId,
+              name: selectedConnection?.name || ""
+            },
+            dnsProviderConfig: {
+              provider: ca.configuration.dnsProviderConfig.provider,
+              hostedZoneId: ca.configuration.dnsProviderConfig.hostedZoneId
+            },
+            directoryUrl: ca.configuration.directoryUrl,
+            accountEmail: ca.configuration.accountEmail
+          }
+        });
+      }
     } else {
       reset({
         type: CaType.ACME,
@@ -117,13 +145,16 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             id: "",
             name: ""
           },
-          dnsProvider: AcmeDnsProvider.ROUTE53,
+          dnsProviderConfig: {
+            provider: AcmeDnsProvider.ROUTE53,
+            hostedZoneId: ""
+          },
           directoryUrl: "",
           accountEmail: ""
         }
       });
     }
-  }, [ca]);
+  }, [ca, availableConnections]);
 
   const onFormSubmit = async ({
     type,
@@ -135,17 +166,20 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     try {
       if (!currentWorkspace?.slug) return;
 
-      if (ca) {
-        // update
-        // await updateMutateAsync({
-        //   projectSlug: currentWorkspace.slug,
-        //   caId: ca.id,
-        //   name,
-        //   disableDirectIssuance,
-        //   status
-        // });
+      if (ca && type !== CaType.INTERNAL) {
+        await updateMutateAsync({
+          id: ca.id,
+          projectId: currentWorkspace.id,
+          name,
+          type,
+          status,
+          disableDirectIssuance,
+          configuration: {
+            ...configuration,
+            dnsAppConnectionId: configuration.dnsAppConnection.id
+          }
+        });
       } else {
-        // create
         await createMutateAsync({
           projectId: currentWorkspace.id,
           name,
@@ -217,7 +251,12 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             defaultValue=""
             name="name"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Name" isError={Boolean(error)} errorText={error?.message}>
+              <FormControl
+                label="Name"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                isRequired
+              >
                 <Input {...field} placeholder="my-external-ca" isDisabled={Boolean(ca)} />
               </FormControl>
             )}
@@ -226,7 +265,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             <>
               <Controller
                 control={control}
-                name="configuration.dnsProvider"
+                name="configuration.dnsProviderConfig.provider"
                 defaultValue={AcmeDnsProvider.ROUTE53}
                 render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                   <FormControl
@@ -278,12 +317,28 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               <Controller
                 control={control}
                 defaultValue=""
+                name="configuration.dnsProviderConfig.hostedZoneId"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Hosted Zone ID"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isRequired
+                  >
+                    <Input {...field} placeholder="Z040441124N1GOOMCQYX1" />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                defaultValue=""
                 name="configuration.directoryUrl"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label="Directory URL"
                     isError={Boolean(error)}
                     errorText={error?.message}
+                    isRequired
                   >
                     <Input
                       {...field}
@@ -301,6 +356,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     label="Account Email"
                     isError={Boolean(error)}
                     errorText={error?.message}
+                    isRequired
                   >
                     <Input {...field} placeholder="user@infisical.com" />
                   </FormControl>

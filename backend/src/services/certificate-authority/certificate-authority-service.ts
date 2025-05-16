@@ -14,7 +14,10 @@ import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TProjectDALFactory } from "../project/project-dal";
-import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
+import {
+  AcmeCertificateAuthorityFns,
+  castDbEntryToAcmeCertificateAuthority
+} from "./acme/acme-certificate-authority-fns";
 import {
   TCreateAcmeCertificateAuthorityDTO,
   TUpdateAcmeCertificateAuthorityDTO
@@ -153,6 +156,8 @@ export const certificateAuthorityServiceFactory = ({
         actor
       });
     }
+
+    throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
   const findCertificateAuthorityById = async (
@@ -181,9 +186,9 @@ export const certificateAuthorityServiceFactory = ({
     );
 
     if (type === CaType.INTERNAL) {
-      if (!certificateAuthority.internalCa) {
+      if (!certificateAuthority.internalCa?.id) {
         throw new NotFoundError({
-          message: `Could not find internal certificate authority with ID "${certificateAuthorityId}"`
+          message: `Internal certificate authority with ID "${certificateAuthorityId}" not found`
         });
       }
 
@@ -204,14 +209,11 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
-    return {
-      id: certificateAuthority.id,
-      type,
-      disableDirectIssuance: certificateAuthority.disableDirectIssuance,
-      name: certificateAuthority.externalCa.name,
-      projectId: certificateAuthority.projectId,
-      configuration: certificateAuthority.externalCa.configuration
-    } as TCertificateAuthority;
+    if (type === CaType.ACME) {
+      return castDbEntryToAcmeCertificateAuthority(certificateAuthority);
+    }
+
+    throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
   const listCertificateAuthoritiesByProjectId = async (
@@ -264,10 +266,12 @@ export const certificateAuthorityServiceFactory = ({
     if (type === CaType.ACME) {
       return acmeFns.listCertificateAuthorities({ projectId: finalProjectId });
     }
+
+    throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
   const updateCertificateAuthority = async (
-    { id, type, configuration, disableDirectIssuance, status }: TUpdateCertificateAuthorityDTO,
+    { id, type, configuration, disableDirectIssuance, status, name }: TUpdateCertificateAuthorityDTO,
     actor: OrgServiceActor
   ) => {
     const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
@@ -292,9 +296,9 @@ export const certificateAuthorityServiceFactory = ({
     );
 
     if (type === CaType.INTERNAL) {
-      if (!certificateAuthority.internalCa) {
+      if (!certificateAuthority.internalCa?.id) {
         throw new NotFoundError({
-          message: `Could not find internal certificate authority with ID "${id}"`
+          message: `Internal certificate authority with ID "${id}" not found`
         });
       }
 
@@ -328,7 +332,8 @@ export const certificateAuthorityServiceFactory = ({
         configuration: configuration as TUpdateAcmeCertificateAuthorityDTO["configuration"],
         disableDirectIssuance,
         actor,
-        status
+        status,
+        name
       });
     }
 
@@ -357,15 +362,15 @@ export const certificateAuthorityServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    if (!certificateAuthority.internalCa && type === CaType.INTERNAL) {
+    if (!certificateAuthority.internalCa?.id && type === CaType.INTERNAL) {
       throw new BadRequestError({
-        message: "Certificate authority cannot be deleted due to mismatching type"
+        message: "Internal certificate authority cannot be deleted"
       });
     }
 
-    if (certificateAuthority.externalCa && certificateAuthority.externalCa.type !== type) {
+    if (certificateAuthority.externalCa?.id && certificateAuthority.externalCa.type !== type) {
       throw new BadRequestError({
-        message: "Certificate authority cannot be deleted due to mismatching type"
+        message: "External certificate authority cannot be deleted"
       });
     }
 
@@ -383,15 +388,11 @@ export const certificateAuthorityServiceFactory = ({
       } as TCertificateAuthority;
     }
 
-    return {
-      id: certificateAuthority.id,
-      type,
-      disableDirectIssuance: certificateAuthority.disableDirectIssuance,
-      name: certificateAuthority.externalCa?.name,
-      projectId: certificateAuthority.projectId,
-      configuration: certificateAuthority.externalCa?.configuration,
-      status: certificateAuthority.externalCa?.status
-    } as TCertificateAuthority;
+    if (type === CaType.ACME) {
+      return castDbEntryToAcmeCertificateAuthority(certificateAuthority);
+    }
+
+    throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
   return {

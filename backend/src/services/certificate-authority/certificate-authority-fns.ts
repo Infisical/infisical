@@ -114,7 +114,7 @@ export const getCaCredentials = async ({
   kmsService
 }: TGetCaCredentialsDTO) => {
   const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-  if (!ca?.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+  if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
 
   const caSecret = await certificateAuthoritySecretDAL.findOne({ caId });
   if (!caSecret) throw new NotFoundError({ message: `CA secret for CA with ID '${caId}' not found` });
@@ -257,7 +257,7 @@ export const rebuildCaCrl = async ({
   kmsService
 }: TRebuildCaCrlDTO) => {
   const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-  if (!ca?.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+  if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
 
   const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 

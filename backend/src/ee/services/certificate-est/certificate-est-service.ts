@@ -228,9 +228,9 @@ export const certificateEstServiceFactory = ({
     }
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certTemplate.caId);
-    if (!ca?.internalCa) {
+    if (!ca?.internalCa?.id) {
       throw new NotFoundError({
-        message: `Certificate Authority with ID '${certTemplate.caId}' not found`
+        message: `Internal Certificate Authority with ID '${certTemplate.caId}' not found`
       });
     }
 

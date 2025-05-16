@@ -10,9 +10,13 @@ import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
 
 export const AcmeCertificateAuthorityConfigurationSchema = z.object({
   dnsAppConnectionId: z.string().trim(),
-  dnsProvider: z.nativeEnum(AcmeDnsProvider),
-  directoryUrl: z.string().trim(),
-  accountEmail: z.string().trim()
+  // soon, differentiate via the provider property
+  dnsProviderConfig: z.object({
+    provider: z.nativeEnum(AcmeDnsProvider),
+    hostedZoneId: z.string().trim().min(1)
+  }),
+  directoryUrl: z.string().trim().min(1),
+  accountEmail: z.string().trim().min(1)
 });
 
 export const AcmeCertificateAuthorityCredentialsSchema = z.object({

@@ -29,7 +29,6 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
-import { TCertificateAuthority } from "../certificate-authority-types";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
 import { AcmeCertificateAuthorityCredentialsSchema } from "./acme-certificate-authority-schemas";
@@ -62,12 +61,13 @@ type DBConfigurationColumn = {
   dnsProvider: string;
   directoryUrl: string;
   accountEmail: string;
+  hostedZoneId: string;
 };
 
 export const castDbEntryToAcmeCertificateAuthority = (
   ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>
 ): TAcmeCertificateAuthority & { credentials: unknown } => {
-  if (!ca.externalCa) {
+  if (!ca.externalCa?.id) {
     throw new BadRequestError({ message: "Malformed ACME certificate authority" });
   }
 
@@ -82,7 +82,10 @@ export const castDbEntryToAcmeCertificateAuthority = (
     credentials: ca.externalCa.credentials,
     configuration: {
       dnsAppConnectionId: ca.externalCa.dnsAppConnectionId as string,
-      dnsProvider: dbConfigurationCol.dnsProvider as AcmeDnsProvider,
+      dnsProviderConfig: {
+        provider: dbConfigurationCol.dnsProvider as AcmeDnsProvider,
+        hostedZoneId: dbConfigurationCol.hostedZoneId
+      },
       directoryUrl: dbConfigurationCol.directoryUrl,
       accountEmail: dbConfigurationCol.accountEmail
     },
@@ -90,7 +93,12 @@ export const castDbEntryToAcmeCertificateAuthority = (
   };
 };
 
-export const route53InsertTxtRecord = async (connection: TAwsConnectionConfig, domain: string, value: string) => {
+export const route53InsertTxtRecord = async (
+  connection: TAwsConnectionConfig,
+  hostedZoneId: string,
+  domain: string,
+  value: string
+) => {
   const config = await getAwsConnectionConfig(connection, AWSRegion.US_WEST_1); // REGION is irrelevant because Route53 is global
   const route53Client = new Route53Client({
     credentials: config.credentials!,
@@ -98,7 +106,7 @@ export const route53InsertTxtRecord = async (connection: TAwsConnectionConfig, d
   });
 
   const command = new ChangeResourceRecordSetsCommand({
-    HostedZoneId: "Z040441124N1GOOMCQYX1", // SHEEN TODO: Get this from user input
+    HostedZoneId: hostedZoneId,
     ChangeBatch: {
       Comment: "Set ACME challenge TXT record",
       Changes: [
@@ -118,7 +126,12 @@ export const route53InsertTxtRecord = async (connection: TAwsConnectionConfig, d
   await route53Client.send(command);
 };
 
-export const route53DeleteTxtRecord = async (connection: TAwsConnectionConfig, domain: string, value: string) => {
+export const route53DeleteTxtRecord = async (
+  connection: TAwsConnectionConfig,
+  hostedZoneId: string,
+  domain: string,
+  value: string
+) => {
   const config = await getAwsConnectionConfig(connection, AWSRegion.US_WEST_1); // REGION is irrelevant because Route53 is global
   const route53Client = new Route53Client({
     credentials: config.credentials!,
@@ -126,7 +139,7 @@ export const route53DeleteTxtRecord = async (connection: TAwsConnectionConfig, d
   });
 
   const command = new ChangeResourceRecordSetsCommand({
-    HostedZoneId: "Z040441124N1GOOMCQYX1", // SHEEN TODO: same here
+    HostedZoneId: hostedZoneId,
     ChangeBatch: {
       Comment: "Delete ACME challenge TXT record",
       Changes: [
@@ -173,14 +186,14 @@ export const AcmeCertificateAuthorityFns = ({
     disableDirectIssuance: boolean;
     actor: OrgServiceActor;
   }) => {
-    const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProvider } = configuration;
+    const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig } = configuration;
     const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
     if (!appConnection) {
       throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
     }
 
-    if (dnsProvider === AcmeDnsProvider.Route53 && appConnection.app !== AppConnection.AWS) {
+    if (dnsProviderConfig.provider === AcmeDnsProvider.Route53 && appConnection.app !== AppConnection.AWS) {
       throw new BadRequestError({
         message: `App connection with ID '${dnsAppConnectionId}' is not an AWS connection`
       });
@@ -207,7 +220,8 @@ export const AcmeCertificateAuthorityFns = ({
           configuration: {
             directoryUrl,
             accountEmail,
-            dnsProvider
+            dnsProvider: dnsProviderConfig.provider,
+            hostedZoneId: dnsProviderConfig.hostedZoneId
           },
           status
         },
@@ -217,19 +231,11 @@ export const AcmeCertificateAuthorityFns = ({
       return certificateAuthorityDAL.findByIdWithAssociatedCa(ca.id, tx);
     });
 
-    if (!caEntity.externalCa) {
+    if (!caEntity.externalCa?.id) {
       throw new BadRequestError({ message: "Failed to create external certificate authority" });
     }
 
-    return {
-      id: caEntity.id,
-      type: CaType.ACME,
-      disableDirectIssuance: caEntity.disableDirectIssuance,
-      name: caEntity.externalCa.name,
-      projectId,
-      status,
-      configuration: caEntity.externalCa.configuration
-    } as TCertificateAuthority;
+    return castDbEntryToAcmeCertificateAuthority(caEntity);
   };
 
   const updateCertificateAuthority = async ({
@@ -237,24 +243,26 @@ export const AcmeCertificateAuthorityFns = ({
     status,
     configuration,
     disableDirectIssuance,
-    actor
+    actor,
+    name
   }: {
     id: string;
     status?: CaStatus;
     configuration: TUpdateAcmeCertificateAuthorityDTO["configuration"];
     disableDirectIssuance?: boolean;
     actor: OrgServiceActor;
+    name?: string;
   }) => {
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
-        const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProvider } = configuration;
+        const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig } = configuration;
         const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
         if (!appConnection) {
           throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
         }
 
-        if (dnsProvider === AcmeDnsProvider.Route53 && appConnection.app !== AppConnection.AWS) {
+        if (dnsProviderConfig.provider === AcmeDnsProvider.Route53 && appConnection.app !== AppConnection.AWS) {
           throw new BadRequestError({
             message: `App connection with ID '${dnsAppConnectionId}' is not an AWS connection`
           });
@@ -273,24 +281,29 @@ export const AcmeCertificateAuthorityFns = ({
             type: CaType.ACME
           },
           {
-            configuration: { directoryUrl, accountEmail, dnsProvider, dnsAppConnectionId }
+            dnsAppConnectionId,
+            configuration: {
+              directoryUrl,
+              accountEmail,
+              dnsProvider: dnsProviderConfig.provider,
+              hostedZoneId: dnsProviderConfig.hostedZoneId
+            }
           },
           tx
         );
       }
 
-      if (status) {
-        await externalCertificateAuthorityDAL.update(
-          {
-            certificateAuthorityId: id,
-            type: CaType.ACME
-          },
-          {
-            status
-          },
-          tx
-        );
-      }
+      await externalCertificateAuthorityDAL.update(
+        {
+          certificateAuthorityId: id,
+          type: CaType.ACME
+        },
+        {
+          name,
+          status
+        },
+        tx
+      );
 
       if (disableDirectIssuance !== undefined) {
         await certificateAuthorityDAL.updateById(
@@ -305,19 +318,11 @@ export const AcmeCertificateAuthorityFns = ({
       return certificateAuthorityDAL.findByIdWithAssociatedCa(id, tx);
     });
 
-    if (!updatedCa.externalCa) {
+    if (!updatedCa.externalCa?.id) {
       throw new BadRequestError({ message: "Failed to update external certificate authority" });
     }
 
-    return {
-      id: updatedCa.id,
-      type: CaType.ACME,
-      disableDirectIssuance: updatedCa.disableDirectIssuance,
-      name: updatedCa.externalCa.name,
-      projectId: updatedCa.projectId,
-      status: updatedCa.externalCa.status,
-      configuration: updatedCa.externalCa.configuration
-    };
+    return castDbEntryToAcmeCertificateAuthority(updatedCa);
   };
 
   const listCertificateAuthorities = async ({ projectId }: { projectId: string }) => {
@@ -329,7 +334,7 @@ export const AcmeCertificateAuthorityFns = ({
     return cas.map(castDbEntryToAcmeCertificateAuthority);
   };
 
-  const orderCertificate = async (subscriberId: string) => {
+  const orderSubscriberCertificate = async (subscriberId: string) => {
     const subscriber = await pkiSubscriberDAL.findById(subscriberId);
     if (!subscriber.caId) {
       throw new BadRequestError({ message: "Subscriber does not have a CA" });
@@ -341,6 +346,9 @@ export const AcmeCertificateAuthorityFns = ({
     }
 
     const acmeCa = castDbEntryToAcmeCertificateAuthority(ca);
+    if (acmeCa.status !== CaStatus.ACTIVE) {
+      throw new BadRequestError({ message: "CA is disabled" });
+    }
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -421,16 +429,26 @@ export const AcmeCertificateAuthorityFns = ({
         const recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
         const recordValue = `"${keyAuthorization}"`; // must be double quoted
 
-        if (acmeCa.configuration.dnsProvider === AcmeDnsProvider.Route53) {
-          await route53InsertTxtRecord(connection as TAwsConnection, recordName, recordValue);
+        if (acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.Route53) {
+          await route53InsertTxtRecord(
+            connection as TAwsConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
         }
       },
       challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
         const recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
         const recordValue = `"${keyAuthorization}"`; // must be double quoted
 
-        if (acmeCa.configuration.dnsProvider === AcmeDnsProvider.Route53) {
-          await route53DeleteTxtRecord(connection as TAwsConnection, recordName, recordValue);
+        if (acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.Route53) {
+          await route53DeleteTxtRecord(
+            connection as TAwsConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
         }
       }
     });
@@ -466,7 +484,7 @@ export const AcmeCertificateAuthorityFns = ({
           notAfter: certObj.notAfter,
           keyUsages: subscriber.keyUsages as CertKeyUsage[],
           extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[],
-          caCertId: "s" // SHEEN TODO: merge Andrey's PR and then remove this
+          projectId: ca.projectId
         },
         tx
       );
@@ -494,6 +512,6 @@ export const AcmeCertificateAuthorityFns = ({
     createCertificateAuthority,
     updateCertificateAuthority,
     listCertificateAuthorities,
-    orderCertificate
+    orderSubscriberCertificate
   };
 };

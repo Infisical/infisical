@@ -25,19 +25,19 @@ export const pkiAlertDALFactory = (db: TDbClient) => {
         recipientEmails: string;
       };
 
-      // SHEEN TODO: FIX REGRESION HERE
       // gets CAs and certificates as part of PKI collection items
       const combinedQuery = db
         .replicaNode()
         .select(
           db.raw("? as type", [PkiItemType.CA]),
           `${PkiItemType.CA}.id`,
-          `${PkiItemType.CA}.notAfter as expiryDate`,
-          `${PkiItemType.CA}.serialNumber`,
-          `${PkiItemType.CA}.friendlyName`,
+          "ic.notAfter as expiryDate",
+          "ic.serialNumber",
+          "ic.friendlyName",
           "pci.pkiCollectionId"
         )
         .from(`${TableName.CertificateAuthority} as ${PkiItemType.CA}`)
+        .join(`${TableName.InternalCertificateAuthority} as ic`, `${PkiItemType.CA}.id`, "ic.certificateAuthorityId")
         .join(`${TableName.PkiCollectionItem} as pci`, `${PkiItemType.CA}.id`, "pci.caId")
         .unionAll((qb) => {
           void qb

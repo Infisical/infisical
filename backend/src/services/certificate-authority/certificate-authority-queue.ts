@@ -4,7 +4,7 @@ import crypto from "crypto";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -114,6 +114,11 @@ export const certificateAuthorityQueueFactory = ({
   };
 
   const orderCertificateForSubscriber = async ({ subscriberId, caType }: TOrderCertificateForSubscriberDTO) => {
+    const entry = await keyStore.getItem(KeyStorePrefixes.CaOrderCertificateForSubscriberLock(subscriberId));
+    if (entry) {
+      throw new BadRequestError({ message: `Certificate order already in progress for subscriber ${subscriberId}` });
+    }
+
     await queueService.queue(
       QueueName.CaLifecycle,
       QueueJobs.CaOrderCertificateForSubscriber,
@@ -137,8 +142,6 @@ export const certificateAuthorityQueueFactory = ({
       try {
         lock = await keyStore.acquireLock(
           [KeyStorePrefixes.CaOrderCertificateForSubscriberLock(subscriberId)],
-          // scott: not sure on this duration; syncs can take excessive amounts of time so we need to keep it locked,
-          // but should always release below...
           5 * 60 * 1000
         );
       } catch (e) {
@@ -148,7 +151,7 @@ export const certificateAuthorityQueueFactory = ({
 
       try {
         if (caType === CaType.ACME) {
-          await acmeFns.orderCertificate(subscriberId);
+          await acmeFns.orderSubscriberCertificate(subscriberId);
         }
       } catch (e) {
         logger.error(e, `CaOrderCertificate Failed [subscriberId=${subscriberId}] [job=${job.name}]`);

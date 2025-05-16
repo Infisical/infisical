@@ -6,7 +6,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { CaStatus, useDeleteCa, useUpdateCa } from "@app/hooks/api";
+import { CaStatus, CaType, useDeleteUnifiedCa, useUpdateUnifiedCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { ExternalCaModal } from "./ExternalCaModal";
@@ -14,8 +14,8 @@ import { ExternalCaTable } from "./ExternalCaTable";
 
 export const ExternalCaSection = () => {
   const { currentWorkspace } = useWorkspace();
-  const { mutateAsync: deleteCa } = useDeleteCa();
-  const { mutateAsync: updateCa } = useUpdateCa();
+  const { mutateAsync: deleteCa } = useDeleteUnifiedCa();
+  const { mutateAsync: updateCa } = useUpdateUnifiedCa();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "ca",
@@ -24,11 +24,11 @@ export const ExternalCaSection = () => {
     "upgradePlan"
   ] as const);
 
-  const onRemoveCaSubmit = async (caId: string) => {
+  const onRemoveCaSubmit = async (caId: string, type: CaType) => {
     try {
       if (!currentWorkspace?.slug) return;
 
-      await deleteCa({ caId, projectSlug: currentWorkspace.slug });
+      await deleteCa({ caId, type, projectId: currentWorkspace.id });
 
       createNotification({
         text: "Successfully deleted CA",
@@ -44,11 +44,19 @@ export const ExternalCaSection = () => {
     }
   };
 
-  const onUpdateCaStatus = async ({ caId, status }: { caId: string; status: CaStatus }) => {
+  const onUpdateCaStatus = async ({
+    caId,
+    type,
+    status
+  }: {
+    caId: string;
+    type: CaType;
+    status: CaStatus;
+  }) => {
     try {
       if (!currentWorkspace?.slug) return;
 
-      await updateCa({ caId, projectSlug: currentWorkspace.slug, status });
+      await updateCa({ id: caId, type, status });
 
       createNotification({
         text: `Successfully ${status === CaStatus.ACTIVE ? "enabled" : "disabled"} CA`,
@@ -96,7 +104,12 @@ export const ExternalCaSection = () => {
         subTitle="This action will delete other CAs and certificates below it in your CA hierarchy."
         onChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
         deleteKey="confirm"
-        onDeleteApproved={() => onRemoveCaSubmit((popUp?.deleteCa?.data as { caId: string })?.caId)}
+        onDeleteApproved={() =>
+          onRemoveCaSubmit(
+            (popUp?.deleteCa?.data as { caId: string })?.caId,
+            (popUp?.deleteCa?.data as { type: CaType })?.type
+          )
+        }
       />
       <DeleteActionModal
         isOpen={popUp.caStatus.isOpen}
@@ -111,9 +124,12 @@ export const ExternalCaSection = () => {
             : "This action will prevent the CA from issuing new certificates."
         }
         onChange={(isOpen) => handlePopUpToggle("caStatus", isOpen)}
+        buttonText="Proceed"
         deleteKey="confirm"
         onDeleteApproved={() =>
-          onUpdateCaStatus(popUp?.caStatus?.data as { caId: string; status: CaStatus })
+          onUpdateCaStatus(
+            popUp?.caStatus?.data as { caId: string; type: CaType; status: CaStatus }
+          )
         }
       />
       <UpgradePlanModal

@@ -320,6 +320,10 @@ export const pkiSubscriberServiceFactory = ({
       throw new BadRequestError({ message: "CA does not support ordering of certificates" });
     }
 
+    if (ca.externalCa?.status !== CaStatus.ACTIVE) {
+      throw new BadRequestError({ message: "CA is disabled" });
+    }
+
     if (ca.externalCa?.id && ca.externalCa.type === CaType.ACME) {
       await certificateAuthorityQueue.orderCertificateForSubscriber({
         subscriberId: subscriber.id,
