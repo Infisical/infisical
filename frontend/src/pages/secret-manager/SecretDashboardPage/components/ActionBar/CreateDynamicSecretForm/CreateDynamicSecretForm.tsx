@@ -10,7 +10,7 @@ import {
   SiSnowflake
 } from "react-icons/si";
 import { VscAzure } from "react-icons/vsc";
-import { faAws } from "@fortawesome/free-brands-svg-icons";
+import { faAws, faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { faClock, faDatabase } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
@@ -24,6 +24,7 @@ import { AwsIamInputForm } from "./AwsIamInputForm";
 import { AzureEntraIdInputForm } from "./AzureEntraIdInputForm";
 import { CassandraInputForm } from "./CassandraInputForm";
 import { ElasticSearchInputForm } from "./ElasticSearchInputForm";
+import { GcpIamInputForm } from "./GcpIamInputForm";
 import { LdapInputForm } from "./LdapInputForm";
 import { MongoAtlasInputForm } from "./MongoAtlasInputForm";
 import { MongoDBDatabaseInputForm } from "./MongoDBInputForm";
@@ -124,6 +125,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <FontAwesomeIcon icon={faClock} size="lg" />,
     provider: DynamicSecretProviders.Totp,
     title: "TOTP"
+  },
+  {
+    icon: <FontAwesomeIcon icon={faGoogle} size="lg" />,
+    provider: DynamicSecretProviders.GcpIam,
+    title: "GCP IAM"
   }
 ];
 
@@ -463,6 +469,26 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <TotpInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
+                />
+              </motion.div>
+            )}
+
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.GcpIam && (
+              <motion.div
+                key="dynamic-gcp-iam-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <GcpIamInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
