@@ -15,7 +15,10 @@ export const SecretSharingSection = () => {
     setIsLoading(true);
 
     try {
-      if (!currentWorkspace?.id) return;
+      if (!currentWorkspace?.id) {
+        setIsLoading(false);
+        return;
+      }
 
       await updateProject({
         projectID: currentWorkspace.id,
