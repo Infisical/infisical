@@ -37,6 +37,7 @@ export type Workspace = {
   createdAt: string;
   roles?: TProjectRole[];
   hasDeleteProtection: boolean;
+  secretSharing: boolean;
 };
 
 export type WorkspaceEnv = {
@@ -73,9 +74,10 @@ export type CreateWorkspaceDTO = {
 
 export type UpdateProjectDTO = {
   projectID: string;
-  newProjectName: string;
+  newProjectName?: string;
   newProjectDescription?: string;
   newSlug?: string;
+  secretSharing?: boolean;
 };
 
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };

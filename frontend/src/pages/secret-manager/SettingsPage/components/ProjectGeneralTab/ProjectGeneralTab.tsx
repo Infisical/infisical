@@ -4,6 +4,7 @@ import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { AuditLogsRetentionSection } from "../AuditLogsRetentionSection";
 import { AutoCapitalizationSection } from "../AutoCapitalizationSection";
+import { SecretSharingSection } from "../SecretSharingSection";
 import { BackfillSecretReferenceSecretion } from "../BackfillSecretReferenceSection";
 import { DeleteProjectProtection } from "../DeleteProjectProtection";
 import { DeleteProjectSection } from "../DeleteProjectSection";
@@ -22,6 +23,7 @@ export const ProjectGeneralTab = () => {
       {isSecretManager && <EnvironmentSection />}
       {isSecretManager && <SecretTagsSection />}
       {isSecretManager && <AutoCapitalizationSection />}
+      {isSecretManager && <SecretSharingSection />}
       {isSecretManager && <PointInTimeVersionLimitSection />}
       <AuditLogsRetentionSection />
       {isSecretManager && <BackfillSecretReferenceSecretion />}
