@@ -8,6 +8,8 @@ export async function up(knex: Knex): Promise<void> {
     t.boolean("pkiProductEnabled").defaultTo(true);
     t.boolean("kmsProductEnabled").defaultTo(true);
     t.boolean("sshProductEnabled").defaultTo(true);
+    t.boolean("scannerProductEnabled").defaultTo(true);
+    t.boolean("shareSecretsProductEnabled").defaultTo(true);
   });
 }
 
@@ -17,5 +19,7 @@ export async function down(knex: Knex): Promise<void> {
     t.dropColumn("pkiProductEnabled");
     t.dropColumn("kmsProductEnabled");
     t.dropColumn("sshProductEnabled");
+    t.dropColumn("scannerProductEnabled");
+    t.dropColumn("shareSecretsProductEnabled");
   });
 }

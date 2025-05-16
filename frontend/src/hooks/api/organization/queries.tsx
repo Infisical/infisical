@@ -116,7 +116,9 @@ export const useUpdateOrg = () => {
       secretsProductEnabled,
       pkiProductEnabled,
       kmsProductEnabled,
-      sshProductEnabled
+      sshProductEnabled,
+      scannerProductEnabled,
+      shareSecretsProductEnabled
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
         name,
@@ -132,7 +134,9 @@ export const useUpdateOrg = () => {
         secretsProductEnabled,
         pkiProductEnabled,
         kmsProductEnabled,
-        sshProductEnabled
+        sshProductEnabled,
+        scannerProductEnabled,
+        shareSecretsProductEnabled
       });
     },
     onSuccess: () => {

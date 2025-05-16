@@ -1,8 +1,8 @@
-import { createNotification } from "@app/components/notifications";
-import { Checkbox, Switch } from "@app/components/v2";
+import { useEffect, useState } from "react";
+
+import { Switch } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
-import { useEffect, useState } from "react";
 
 export const OrgProductSelectSection = () => {
   const [toggledProducts, setToggledProducts] = useState<{
@@ -23,6 +23,14 @@ export const OrgProductSelectSection = () => {
     sshProductEnabled: {
       name: "SSH",
       enabled: true
+    },
+    scannerProductEnabled: {
+      name: "Scanner",
+      enabled: true
+    },
+    shareSecretsProductEnabled: {
+      name: "Share Secrets",
+      enabled: true
     }
   });
 
@@ -30,14 +38,14 @@ export const OrgProductSelectSection = () => {
   const { mutateAsync } = useUpdateOrg();
 
   useEffect(() => {
-    for (const [key, value] of Object.entries(currentOrg)) {
+    Object.entries(currentOrg).forEach(([key, value]) => {
       if (key in toggledProducts && typeof value === "boolean") {
         setToggledProducts((products) => ({
           ...products,
           [key]: { ...products[key], enabled: value }
         }));
       }
-    }
+    });
   }, [currentOrg]);
 
   const onProductToggle = async (value: boolean, key: string) => {
@@ -62,7 +70,7 @@ export const OrgProductSelectSection = () => {
         Select which products are available for your organization.
       </p>
 
-      <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {Object.entries(toggledProducts).map(([key, product]) => (
           <Switch
             key={key}

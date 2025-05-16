@@ -24,6 +24,8 @@ export type Organization = {
   pkiProductEnabled: boolean;
   kmsProductEnabled: boolean;
   sshProductEnabled: boolean;
+  scannerProductEnabled: boolean;
+  shareSecretsProductEnabled: boolean;
 };
 
 export type UpdateOrgDTO = {
@@ -42,6 +44,8 @@ export type UpdateOrgDTO = {
   pkiProductEnabled?: boolean;
   kmsProductEnabled?: boolean;
   sshProductEnabled?: boolean;
+  scannerProductEnabled?: boolean;
+  shareSecretsProductEnabled?: boolean;
 };
 
 export type BillingDetails = {

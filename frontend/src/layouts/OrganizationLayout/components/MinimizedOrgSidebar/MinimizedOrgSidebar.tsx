@@ -332,21 +332,27 @@ export const MinimizedOrgSidebar = () => {
                   )}
                 </Link>
               )}
-              <div className="w-full bg-mineshaft-500" style={{ height: "1px" }} />
-              <Link to="/organization/secret-scanning">
-                {({ isActive }) => (
-                  <MenuIconButton isSelected={isActive} icon="secret-scan">
-                    Scanner
-                  </MenuIconButton>
-                )}
-              </Link>
-              <Link to="/organization/secret-sharing">
-                {({ isActive }) => (
-                  <MenuIconButton isSelected={isActive} icon="lock-closed">
-                    Share
-                  </MenuIconButton>
-                )}
-              </Link>
+              {(currentOrg.scannerProductEnabled || currentOrg.shareSecretsProductEnabled) && (
+                <div className="w-full bg-mineshaft-500" style={{ height: "1px" }} />
+              )}
+              {currentOrg.scannerProductEnabled && (
+                <Link to="/organization/secret-scanning">
+                  {({ isActive }) => (
+                    <MenuIconButton isSelected={isActive} icon="secret-scan">
+                      Scanner
+                    </MenuIconButton>
+                  )}
+                </Link>
+              )}
+              {currentOrg.shareSecretsProductEnabled && (
+                <Link to="/organization/secret-sharing">
+                  {({ isActive }) => (
+                    <MenuIconButton isSelected={isActive} icon="lock-closed">
+                      Share
+                    </MenuIconButton>
+                  )}
+                </Link>
+              )}
               <div className="my-1 w-full bg-mineshaft-500" style={{ height: "1px" }} />
               <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
                 <DropdownMenuTrigger

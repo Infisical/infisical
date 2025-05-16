@@ -79,6 +79,8 @@ export type TUpdateOrgDTO = {
     pkiProductEnabled: boolean;
     kmsProductEnabled: boolean;
     sshProductEnabled: boolean;
+    scannerProductEnabled: boolean;
+    shareSecretsProductEnabled: boolean;
   }>;
 } & TOrgPermission;
 
