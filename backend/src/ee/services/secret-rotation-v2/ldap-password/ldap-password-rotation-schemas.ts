@@ -1,4 +1,3 @@
-import RE2 from "re2";
 import { z } from "zod";
 
 import { LdapPasswordRotationMethod } from "@app/ee/services/secret-rotation-v2/ldap-password/ldap-password-rotation-types";
@@ -28,7 +27,7 @@ const LdapPasswordRotationParametersSchema = z.object({
     .string()
     .trim()
     .min(1, "DN/UPN required")
-    .refine((value) => new RE2(DistinguishedNameRegex).test(value) || new RE2(UserPrincipalNameRegex).test(value), {
+    .refine((value) => DistinguishedNameRegex.test(value) || UserPrincipalNameRegex.test(value), {
       message: "Invalid DN/UPN format"
     })
     .describe(SecretRotations.PARAMETERS.LDAP_PASSWORD.dn),

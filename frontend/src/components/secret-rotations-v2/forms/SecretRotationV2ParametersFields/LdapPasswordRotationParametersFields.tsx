@@ -2,7 +2,7 @@ import { Controller, useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { DEFAULT_PASSWORD_REQUIREMENTS } from "@app/components/secret-rotations-v2/forms/schemas/shared";
-import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
+import { FormControl, Input, SecretInput, Select, SelectItem } from "@app/components/v2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
 
@@ -84,7 +84,7 @@ export const LdapPasswordRotationParametersFields = () => {
               isError={Boolean(error)}
               errorText={error?.message}
               label="Target Principal's DN/UPN"
-              tooltipText="The DN/UPN of the principal that you want to peform password rotation on."
+              tooltipText="The DN/UPN of the principal that you want to perform password rotation on."
               tooltipClassName="max-w-sm"
               helperText={isUpdate ? "Cannot be updated." : undefined}
             >
@@ -108,7 +108,11 @@ export const LdapPasswordRotationParametersFields = () => {
                 errorText={error?.message}
                 label="Target Principal's Password"
               >
-                <Input value={value} onChange={onChange} placeholder="***********************" />
+                <SecretInput
+                  containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
               </FormControl>
             )}
           />

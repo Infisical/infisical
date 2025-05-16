@@ -15,7 +15,7 @@ export type TLdapPasswordRotation = TSecretRotationV2Base & {
   type: SecretRotation.LdapPassword;
   parameters: {
     dn: string;
-    method?: LdapPasswordRotationMethod;
+    rotationMethod?: LdapPasswordRotationMethod;
     passwordRequirements?: TPasswordRequirements;
   };
   secretsMapping: {
