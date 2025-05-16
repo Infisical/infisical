@@ -810,6 +810,11 @@ export const FOLDERS = {
     workspaceId: "The ID of the project where the folder is located.",
     description: "An optional description label for the folder."
   },
+  MOVE: {
+    projectId: "The ID of the project to move the folder from.",
+    folderId: "The ID of the folder to move.",
+    newPath: "The new path of the folder."
+  },
   DELETE: {
     folderIdOrName: "The ID or name of the folder to delete.",
     workspaceId: "The ID of the project to delete the folder from.",
