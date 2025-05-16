@@ -97,6 +97,7 @@ export const secretSharingServiceFactory = ({
     const expiresAtTimestamp = new Date(expiresAt).getTime();
     const lifetime = expiresAtTimestamp - new Date().getTime();
 
+    // org.maxSharedSecretLifetime is in seconds
     if (org.maxSharedSecretLifetime && lifetime / 1000 > org.maxSharedSecretLifetime) {
       throw new BadRequestError({ message: "Secret lifetime exceeds organization limit" });
     }

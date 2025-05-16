@@ -30,8 +30,8 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
           allowSecretSharingOutsideOrganization={
             currentOrg?.allowSecretSharingOutsideOrganization ?? true
           }
-          maxSharedSecretLifetime={currentOrg.maxSharedSecretLifetime}
-          maxSharedSecretViewLimit={currentOrg.maxSharedSecretViewLimit}
+          maxSharedSecretLifetime={currentOrg?.maxSharedSecretLifetime}
+          maxSharedSecretViewLimit={currentOrg?.maxSharedSecretViewLimit}
         />
       </ModalContent>
     </Modal>

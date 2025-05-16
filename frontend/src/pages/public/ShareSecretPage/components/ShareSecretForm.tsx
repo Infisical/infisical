@@ -62,6 +62,7 @@ export const ShareSecretForm = ({
   const privateSharedSecretCreator = useCreateSharedSecret();
   const createSharedSecret = isPublic ? publicSharedSecretCreator : privateSharedSecretCreator;
 
+  // Note: maxSharedSecretLifetime is in seconds
   const filteredExpiresInOptions = maxSharedSecretLifetime
     ? expiresInOptions.filter((v) => v.value / 1000 <= maxSharedSecretLifetime)
     : expiresInOptions;
