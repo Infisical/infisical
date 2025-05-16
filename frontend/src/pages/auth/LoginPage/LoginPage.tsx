@@ -37,7 +37,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
     if (isLoggedIn()) {
       handleRedirects();
     } else {
-      setStep(1);
+      setStep(0);
     }
   }, []);
 
