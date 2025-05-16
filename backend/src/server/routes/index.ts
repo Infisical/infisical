@@ -847,7 +847,9 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     projectDAL,
     kmsService,
-    permissionService
+    permissionService,
+    pkiCollectionDAL,
+    pkiCollectionItemDAL
   });
 
   const sshCertificateAuthorityService = sshCertificateAuthorityServiceFactory({
