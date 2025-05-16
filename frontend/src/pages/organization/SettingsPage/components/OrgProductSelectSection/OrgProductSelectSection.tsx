@@ -54,7 +54,6 @@ export const OrgProductSelectSection = () => {
       [key]: { ...products[key], enabled: value }
     }));
 
-    console.log(key, value);
 
     // Update backend
     await mutateAsync({
