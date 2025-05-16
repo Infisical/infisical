@@ -25,7 +25,8 @@ import {
   getNextUtcRotationInterval,
   getSecretRotationRotateSecretJobOptions,
   listSecretRotationOptions,
-  parseRotationErrorMessage
+  parseRotationErrorMessage,
+  throwOnImmutableParameterUpdate
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-fns";
 import {
   SECRET_ROTATION_CONNECTION_MAP,
@@ -46,6 +47,7 @@ import {
   TSecretRotationV2,
   TSecretRotationV2GeneratedCredentials,
   TSecretRotationV2Raw,
+  TSecretRotationV2TemporaryParameters,
   TSecretRotationV2WithConnection,
   TUpdateSecretRotationV2DTO
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
@@ -112,7 +114,8 @@ const MAX_GENERATED_CREDENTIALS_LENGTH = 2;
 
 type TRotationFactoryImplementation = TRotationFactory<
   TSecretRotationV2WithConnection,
-  TSecretRotationV2GeneratedCredentials
+  TSecretRotationV2GeneratedCredentials,
+  TSecretRotationV2TemporaryParameters
 >;
 const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplementation> = {
   [SecretRotation.PostgresCredentials]: sqlCredentialsRotationFactory as TRotationFactoryImplementation,
@@ -400,6 +403,7 @@ export const secretRotationV2ServiceFactory = ({
       environment,
       rotateAtUtc = { hours: 0, minutes: 0 },
       secretsMapping,
+      temporaryParameters,
       ...payload
     }: TCreateSecretRotationV2DTO,
     actor: OrgServiceActor
@@ -546,7 +550,7 @@ export const secretRotationV2ServiceFactory = ({
 
           return createdRotation;
         });
-      });
+      }, temporaryParameters);
 
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
       await snapshotService.performSnapshot(folder.id);
@@ -585,10 +589,7 @@ export const secretRotationV2ServiceFactory = ({
     }
   };
 
-  const updateSecretRotation = async (
-    { type, rotationId, ...payload }: TUpdateSecretRotationV2DTO,
-    actor: OrgServiceActor
-  ) => {
+  const updateSecretRotation = async (dto: TUpdateSecretRotationV2DTO, actor: OrgServiceActor) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.secretRotation)
@@ -596,12 +597,16 @@ export const secretRotationV2ServiceFactory = ({
         message: "Failed to update secret rotation due to plan restriction. Upgrade plan to update secret rotations."
       });
 
+    const { type, rotationId, ...payload } = dto;
+
     const secretRotation = await secretRotationV2DAL.findById(rotationId);
 
     if (!secretRotation)
       throw new NotFoundError({
         message: `Could not find ${SECRET_ROTATION_NAME_MAP[type]} Rotation with ID ${rotationId}`
       });
+
+    throwOnImmutableParameterUpdate(dto, secretRotation);
 
     const { folder, environment, projectId, folderId, connection } = secretRotation;
     const secretsMapping = secretRotation.secretsMapping as TSecretRotationV2["secretsMapping"];
@@ -877,6 +882,7 @@ export const secretRotationV2ServiceFactory = ({
       const inactiveIndex = (activeIndex + 1) % MAX_GENERATED_CREDENTIALS_LENGTH;
 
       const inactiveCredentials = generatedCredentials[inactiveIndex];
+      const activeCredentials = generatedCredentials[activeIndex];
 
       const rotationFactory = SECRET_ROTATION_FACTORY_MAP[type as SecretRotation](
         {
@@ -887,73 +893,77 @@ export const secretRotationV2ServiceFactory = ({
         kmsService
       );
 
-      const updatedRotation = await rotationFactory.rotateCredentials(inactiveCredentials, async (newCredentials) => {
-        const updatedCredentials = [...generatedCredentials];
-        updatedCredentials[inactiveIndex] = newCredentials;
+      const updatedRotation = await rotationFactory.rotateCredentials(
+        inactiveCredentials,
+        async (newCredentials) => {
+          const updatedCredentials = [...generatedCredentials];
+          updatedCredentials[inactiveIndex] = newCredentials;
 
-        const encryptedUpdatedCredentials = await encryptSecretRotationCredentials({
-          projectId,
-          generatedCredentials: updatedCredentials as TSecretRotationV2GeneratedCredentials,
-          kmsService
-        });
-
-        return secretRotationV2DAL.transaction(async (tx) => {
-          const secretsPayload = rotationFactory.getSecretsPayload(newCredentials);
-
-          const { encryptor } = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.SecretManager,
-            projectId
+          const encryptedUpdatedCredentials = await encryptSecretRotationCredentials({
+            projectId,
+            generatedCredentials: updatedCredentials as TSecretRotationV2GeneratedCredentials,
+            kmsService
           });
 
-          // update mapped secrets with new credential values
-          await fnSecretBulkUpdate({
-            folderId,
-            orgId: connection.orgId,
-            tx,
-            inputSecrets: secretsPayload.map(({ key, value }) => ({
-              filter: {
-                key,
-                folderId,
-                type: SecretType.Shared
-              },
-              data: {
-                encryptedValue: encryptor({
-                  plainText: Buffer.from(value)
-                }).cipherTextBlob,
-                references: []
-              }
-            })),
-            secretDAL: secretV2BridgeDAL,
-            secretVersionDAL: secretVersionV2BridgeDAL,
-            secretVersionTagDAL: secretVersionTagV2BridgeDAL,
-            secretTagDAL,
-            resourceMetadataDAL
-          });
+          return secretRotationV2DAL.transaction(async (tx) => {
+            const secretsPayload = rotationFactory.getSecretsPayload(newCredentials);
 
-          const currentTime = new Date();
+            const { encryptor } = await kmsService.createCipherPairWithDataKey({
+              type: KmsDataKey.SecretManager,
+              projectId
+            });
 
-          return secretRotationV2DAL.updateById(
-            secretRotation.id,
-            {
-              encryptedGeneratedCredentials: encryptedUpdatedCredentials,
-              activeIndex: inactiveIndex,
-              isLastRotationManual: isManualRotation,
-              lastRotatedAt: currentTime,
-              lastRotationAttemptedAt: currentTime,
-              nextRotationAt: calculateNextRotationAt({
-                ...(secretRotation as TSecretRotationV2),
-                rotationStatus: SecretRotationStatus.Success,
+            // update mapped secrets with new credential values
+            await fnSecretBulkUpdate({
+              folderId,
+              orgId: connection.orgId,
+              tx,
+              inputSecrets: secretsPayload.map(({ key, value }) => ({
+                filter: {
+                  key,
+                  folderId,
+                  type: SecretType.Shared
+                },
+                data: {
+                  encryptedValue: encryptor({
+                    plainText: Buffer.from(value)
+                  }).cipherTextBlob,
+                  references: []
+                }
+              })),
+              secretDAL: secretV2BridgeDAL,
+              secretVersionDAL: secretVersionV2BridgeDAL,
+              secretVersionTagDAL: secretVersionTagV2BridgeDAL,
+              secretTagDAL,
+              resourceMetadataDAL
+            });
+
+            const currentTime = new Date();
+
+            return secretRotationV2DAL.updateById(
+              secretRotation.id,
+              {
+                encryptedGeneratedCredentials: encryptedUpdatedCredentials,
+                activeIndex: inactiveIndex,
+                isLastRotationManual: isManualRotation,
                 lastRotatedAt: currentTime,
-                isManualRotation
-              }),
-              rotationStatus: SecretRotationStatus.Success,
-              lastRotationJobId: jobId,
-              encryptedLastRotationMessage: null
-            },
-            tx
-          );
-        });
-      });
+                lastRotationAttemptedAt: currentTime,
+                nextRotationAt: calculateNextRotationAt({
+                  ...(secretRotation as TSecretRotationV2),
+                  rotationStatus: SecretRotationStatus.Success,
+                  lastRotatedAt: currentTime,
+                  isManualRotation
+                }),
+                rotationStatus: SecretRotationStatus.Success,
+                lastRotationJobId: jobId,
+                encryptedLastRotationMessage: null
+              },
+              tx
+            );
+          });
+        },
+        activeCredentials
+      );
 
       await auditLogService.createAuditLog({
         ...(auditLogInfo ?? {

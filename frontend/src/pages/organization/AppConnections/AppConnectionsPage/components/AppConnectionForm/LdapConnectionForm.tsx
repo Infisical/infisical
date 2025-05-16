@@ -19,7 +19,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
-import { DistinguishedNameRegex } from "@app/helpers/string";
+import { DistinguishedNameRegex, UserPrincipalNameRegex } from "@app/helpers/string";
 import {
   LdapConnectionMethod,
   LdapConnectionProvider,
@@ -55,8 +55,13 @@ const formSchema = z.discriminatedUnion("method", [
       dn: z
         .string()
         .trim()
-        .regex(DistinguishedNameRegex, "Invalid Distinguished Name format")
-        .min(1, "Distinguished Name (DN) required"),
+        .min(1, "DN/UPN required")
+        .refine(
+          (value) => DistinguishedNameRegex.test(value) || UserPrincipalNameRegex.test(value),
+          {
+            message: "Invalid DN/UPN format"
+          }
+        ),
       password: z.string().trim().min(1, "Password required"),
       sslRejectUnauthorized: z.boolean(),
       sslCertificate: z
@@ -223,7 +228,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     <FormControl
                       errorText={error?.message}
                       isError={Boolean(error?.message)}
-                      label="Binding Distinguished Name (DN)"
+                      label="Binding DN/UPN"
                     >
                       <Input {...field} placeholder="CN=John,OU=Users,DC=example,DC=com" />
                     </FormControl>

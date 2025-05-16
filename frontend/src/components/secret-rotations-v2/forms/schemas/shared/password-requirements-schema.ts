@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export type TPasswordRequirements = z.infer<typeof PasswordRequirementsSchema>;
+
 export const PasswordRequirementsSchema = z
   .object({
     length: z

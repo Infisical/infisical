@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 
 type Props = {
-  label: "Parameters" | "Secrets Mapping";
+  label: "Parameters" | "Secrets Mapping" | "Password Requirements";
   children: ReactNode;
 };
 

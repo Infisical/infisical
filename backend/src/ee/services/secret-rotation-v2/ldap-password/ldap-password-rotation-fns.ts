@@ -1,4 +1,4 @@
-import ldap from "ldapjs";
+import ldap, { Client, SearchOptions } from "ldapjs";
 
 import {
   TRotationFactory,
@@ -8,26 +8,73 @@ import {
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { logger } from "@app/lib/logger";
+import { DistinguishedNameRegex } from "@app/lib/regex";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { getLdapConnectionClient, LdapProvider, TLdapConnection } from "@app/services/app-connection/ldap";
 
 import { generatePassword } from "../shared/utils";
 import {
+  LdapPasswordRotationMethod,
   TLdapPasswordRotationGeneratedCredentials,
+  TLdapPasswordRotationInput,
   TLdapPasswordRotationWithConnection
 } from "./ldap-password-rotation-types";
 
 const getEncodedPassword = (password: string) => Buffer.from(`"${password}"`, "utf16le");
 
+const getDN = async (dn: string, client: Client): Promise<string> => {
+  if (DistinguishedNameRegex.test(dn)) return dn;
+
+  const opts: SearchOptions = {
+    filter: `(userPrincipalName=${dn})`,
+    scope: "sub",
+    attributes: ["dn"]
+  };
+
+  const base = dn
+    .split("@")[1]
+    .split(".")
+    .map((dc) => `dc=${dc}`)
+    .join(",");
+
+  return new Promise((resolve, reject) => {
+    // Perform the search
+    client.search(base, opts, (err, res) => {
+      if (err) {
+        logger.error(err, "LDAP Failed to get DN");
+        reject(new Error(`Provider Resolve DN Error: ${err.message}`));
+      }
+
+      let userDn: string | null;
+
+      res.on("searchEntry", (entry) => {
+        userDn = entry.objectName;
+      });
+
+      res.on("error", (error) => {
+        logger.error(error, "LDAP Failed to get DN");
+        reject(new Error(`Provider Resolve DN Error: ${error.message}`));
+      });
+
+      res.on("end", () => {
+        if (userDn) {
+          resolve(userDn);
+        } else {
+          reject(new Error(`Unable to resolve DN for ${dn}.`));
+        }
+      });
+    });
+  });
+};
+
 export const ldapPasswordRotationFactory: TRotationFactory<
   TLdapPasswordRotationWithConnection,
-  TLdapPasswordRotationGeneratedCredentials
+  TLdapPasswordRotationGeneratedCredentials,
+  TLdapPasswordRotationInput["temporaryParameters"]
 > = (secretRotation, appConnectionDAL, kmsService) => {
-  const {
-    connection,
-    parameters: { dn, passwordRequirements },
-    secretsMapping
-  } = secretRotation;
+  const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
+
+  const { dn, passwordRequirements } = parameters;
 
   const $verifyCredentials = async (credentials: Pick<TLdapConnection["credentials"], "dn" | "password">) => {
     try {
@@ -40,13 +87,21 @@ export const ldapPasswordRotationFactory: TRotationFactory<
     }
   };
 
-  const $rotatePassword = async () => {
+  const $rotatePassword = async (currentPassword?: string) => {
     const { credentials, orgId } = connection;
 
     if (!credentials.url.startsWith("ldaps")) throw new Error("Password Rotation requires an LDAPS connection");
 
-    const client = await getLdapConnectionClient(credentials);
-    const isPersonalRotation = credentials.dn === dn;
+    const client = await getLdapConnectionClient(
+      currentPassword
+        ? {
+            ...credentials,
+            password: currentPassword,
+            dn
+          }
+        : credentials
+    );
+    const isConnectionRotation = credentials.dn === dn;
 
     const password = generatePassword(passwordRequirements);
 
@@ -58,8 +113,8 @@ export const ldapPasswordRotationFactory: TRotationFactory<
           const encodedPassword = getEncodedPassword(password);
 
           // service account vs personal password rotation require different changes
-          if (isPersonalRotation) {
-            const currentEncodedPassword = getEncodedPassword(credentials.password);
+          if (isConnectionRotation || currentPassword) {
+            const currentEncodedPassword = getEncodedPassword(currentPassword || credentials.password);
 
             changes = [
               new ldap.Change({
@@ -93,8 +148,9 @@ export const ldapPasswordRotationFactory: TRotationFactory<
     }
 
     try {
+      const userDn = await getDN(dn, client);
       await new Promise((resolve, reject) => {
-        client.modify(dn, changes, (err) => {
+        client.modify(userDn, changes, (err) => {
           if (err) {
             logger.error(err, "LDAP Password Rotation Failed");
             reject(new Error(`Provider Modify Error: ${err.message}`));
@@ -110,7 +166,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
 
     await $verifyCredentials({ dn, password });
 
-    if (isPersonalRotation) {
+    if (isConnectionRotation) {
       const updatedCredentials: TLdapConnection["credentials"] = {
         ...credentials,
         password
@@ -128,29 +184,41 @@ export const ldapPasswordRotationFactory: TRotationFactory<
     return { dn, password };
   };
 
-  const issueCredentials: TRotationFactoryIssueCredentials<TLdapPasswordRotationGeneratedCredentials> = async (
-    callback
-  ) => {
-    const credentials = await $rotatePassword();
+  const issueCredentials: TRotationFactoryIssueCredentials<
+    TLdapPasswordRotationGeneratedCredentials,
+    TLdapPasswordRotationInput["temporaryParameters"]
+  > = async (callback, temporaryParameters) => {
+    const credentials = await $rotatePassword(
+      parameters.rotationMethod === LdapPasswordRotationMethod.TargetPrincipal
+        ? temporaryParameters?.password
+        : undefined
+    );
 
     return callback(credentials);
   };
 
   const revokeCredentials: TRotationFactoryRevokeCredentials<TLdapPasswordRotationGeneratedCredentials> = async (
-    _,
+    credentialsToRevoke,
     callback
   ) => {
+    const currentPassword = credentialsToRevoke[activeIndex].password;
+
     // we just rotate to a new password, essentially revoking old credentials
-    await $rotatePassword();
+    await $rotatePassword(
+      parameters.rotationMethod === LdapPasswordRotationMethod.TargetPrincipal ? currentPassword : undefined
+    );
 
     return callback();
   };
 
   const rotateCredentials: TRotationFactoryRotateCredentials<TLdapPasswordRotationGeneratedCredentials> = async (
     _,
-    callback
+    callback,
+    activeCredentials
   ) => {
-    const credentials = await $rotatePassword();
+    const credentials = await $rotatePassword(
+      parameters.rotationMethod === LdapPasswordRotationMethod.TargetPrincipal ? activeCredentials.password : undefined
+    );
 
     return callback(credentials);
   };
