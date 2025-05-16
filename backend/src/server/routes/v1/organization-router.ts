@@ -281,7 +281,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         kmsProductEnabled: z.boolean().optional(),
         sshProductEnabled: z.boolean().optional(),
         scannerProductEnabled: z.boolean().optional(),
-        shareSecretsProductEnabled: z.boolean().optional()
+        shareSecretsProductEnabled: z.boolean().optional(),
+        maxSharedSecretLifetime: z.number().optional(),
+        maxSharedSecretViewLimit: z.number().nullable().optional()
       }),
       response: {
         200: z.object({

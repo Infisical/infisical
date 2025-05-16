@@ -42,12 +42,16 @@ type Props = {
   isPublic: boolean; // whether or not this is a public (non-authenticated) secret sharing form
   value?: string;
   allowSecretSharingOutsideOrganization?: boolean;
+  maxSharedSecretLifetime?: number;
+  maxSharedSecretViewLimit?: number | null;
 };
 
 export const ShareSecretForm = ({
   isPublic,
   value,
-  allowSecretSharingOutsideOrganization = true
+  allowSecretSharingOutsideOrganization = true,
+  maxSharedSecretLifetime,
+  maxSharedSecretViewLimit
 }: Props) => {
   const [secretLink, setSecretLink] = useState("");
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
@@ -57,6 +61,14 @@ export const ShareSecretForm = ({
   const publicSharedSecretCreator = useCreatePublicSharedSecret();
   const privateSharedSecretCreator = useCreateSharedSecret();
   const createSharedSecret = isPublic ? publicSharedSecretCreator : privateSharedSecretCreator;
+
+  const filteredExpiresInOptions = maxSharedSecretLifetime
+    ? expiresInOptions.filter((v) => v.value / 1000 <= maxSharedSecretLifetime)
+    : expiresInOptions;
+
+  const filteredViewLimitOptions = maxSharedSecretViewLimit
+    ? viewLimitOptions.filter((v) => v.value > 0 && v.value <= maxSharedSecretViewLimit)
+    : viewLimitOptions;
 
   const {
     control,
@@ -183,7 +195,9 @@ export const ShareSecretForm = ({
       <Controller
         control={control}
         name="expiresIn"
-        defaultValue="3600000"
+        defaultValue={filteredExpiresInOptions[
+          Math.min(filteredExpiresInOptions.length - 1, 2)
+        ].value.toString()}
         render={({ field: { onChange, ...field }, fieldState: { error } }) => (
           <FormControl label="Expires In" errorText={error?.message} isError={Boolean(error)}>
             <Select
@@ -192,7 +206,7 @@ export const ShareSecretForm = ({
               onValueChange={(e) => onChange(e)}
               className="w-full"
             >
-              {expiresInOptions.map(({ label, value: expiresInValue }) => (
+              {filteredExpiresInOptions.map(({ label, value: expiresInValue }) => (
                 <SelectItem value={String(expiresInValue || "")} key={label}>
                   {label}
                 </SelectItem>
@@ -204,7 +218,9 @@ export const ShareSecretForm = ({
       <Controller
         control={control}
         name="viewLimit"
-        defaultValue="-1"
+        defaultValue={filteredViewLimitOptions[
+          filteredViewLimitOptions.length - 1
+        ].value.toString()}
         render={({ field: { onChange, ...field }, fieldState: { error } }) => (
           <FormControl label="Max Views" errorText={error?.message} isError={Boolean(error)}>
             <Select
@@ -213,7 +229,7 @@ export const ShareSecretForm = ({
               onValueChange={(e) => onChange(e)}
               className="w-full"
             >
-              {viewLimitOptions.map(({ label, value: viewLimitValue }) => (
+              {filteredViewLimitOptions.map(({ label, value: viewLimitValue }) => (
                 <SelectItem value={String(viewLimitValue || "")} key={label}>
                   {label}
                 </SelectItem>

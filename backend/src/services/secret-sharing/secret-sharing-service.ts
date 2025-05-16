@@ -93,6 +93,19 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Shared secret value too long" });
     }
 
+    // Check lifetime is within org allowance
+    const expiresAtTimestamp = new Date(expiresAt).getTime();
+    const lifetime = expiresAtTimestamp - new Date().getTime();
+
+    if (org.maxSharedSecretLifetime && lifetime / 1000 > org.maxSharedSecretLifetime) {
+      throw new BadRequestError({ message: "Secret lifetime exceeds organization limit" });
+    }
+
+    // Check max view count is within org allowance
+    if (org.maxSharedSecretViewLimit && (!expiresAfterViews || expiresAfterViews > org.maxSharedSecretViewLimit)) {
+      throw new BadRequestError({ message: "Secret max views parameter exceeds organization limit" });
+    }
+
     const encryptWithRoot = kmsService.encryptWithRootKey();
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 

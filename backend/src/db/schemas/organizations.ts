@@ -34,7 +34,9 @@ export const OrganizationsSchema = z.object({
   kmsProductEnabled: z.boolean().default(true).nullable().optional(),
   sshProductEnabled: z.boolean().default(true).nullable().optional(),
   scannerProductEnabled: z.boolean().default(true).nullable().optional(),
-  shareSecretsProductEnabled: z.boolean().default(true).nullable().optional()
+  shareSecretsProductEnabled: z.boolean().default(true).nullable().optional(),
+  maxSharedSecretLifetime: z.number().default(2592000).nullable().optional(),
+  maxSharedSecretViewLimit: z.number().nullable().optional()
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

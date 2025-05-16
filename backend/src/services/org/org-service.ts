@@ -361,7 +361,9 @@ export const orgServiceFactory = ({
       kmsProductEnabled,
       sshProductEnabled,
       scannerProductEnabled,
-      shareSecretsProductEnabled
+      shareSecretsProductEnabled,
+      maxSharedSecretLifetime,
+      maxSharedSecretViewLimit
     }
   }: TUpdateOrgDTO) => {
     const appCfg = getConfig();
@@ -469,7 +471,9 @@ export const orgServiceFactory = ({
       kmsProductEnabled,
       sshProductEnabled,
       scannerProductEnabled,
-      shareSecretsProductEnabled
+      shareSecretsProductEnabled,
+      maxSharedSecretLifetime,
+      maxSharedSecretViewLimit
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;
