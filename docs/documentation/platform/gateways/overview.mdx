@@ -158,14 +158,4 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
     To confirm your Gateway is working, check the deployment status by looking for the message **"Gateway started successfully"** in the Gateway logs. This indicates the Gateway is running properly. Next, verify its registration by opening your Infisical dashboard, navigating to **Organization Access Control**, and selecting the **Gateways** tab. Your newly deployed Gateway should appear in the list.
     ![Gateway List](../../../images/platform/gateways/gateway-list.png)
   </Step>
-
- <Step title="Link Gateway to Projects">
-    To enable Infisical features like dynamic secrets or secret rotation to access private resources through the Gateway, you need to link the Gateway to the relevant projects. 
-    
-    Start by accessing the **Gateway settings** then locate the Gateway in the list, click the options menu (**:**), and select **Edit Details**. 
-    ![Edit Gateway Option](../../../images/platform/gateways/edit-gateway.png) 
-    In the edit modal that appears, choose the projects you want the Gateway to access and click **Save** to confirm your selections. 
-    ![Project Assignment Modal](../../../images/platform/gateways/assign-project.png) 
-    Once added to a project, the Gateway becomes available for use by any feature that supports Gateways within that project.
-  </Step>
 </Steps>

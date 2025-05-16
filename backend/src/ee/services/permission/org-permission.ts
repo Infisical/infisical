@@ -41,7 +41,8 @@ export enum OrgPermissionGatewayActions {
   CreateGateways = "create-gateways",
   ListGateways = "list-gateways",
   EditGateways = "edit-gateways",
-  DeleteGateways = "delete-gateways"
+  DeleteGateways = "delete-gateways",
+  AttachGateways = "attach-gateways"
 }
 
 export enum OrgPermissionIdentityActions {
@@ -337,6 +338,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionGatewayActions.CreateGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.EditGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.DeleteGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
 
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
@@ -378,6 +380,7 @@ const buildMemberPermission = () => {
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
   can(OrgPermissionGatewayActions.ListGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.CreateGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
 
   return rules;
 };

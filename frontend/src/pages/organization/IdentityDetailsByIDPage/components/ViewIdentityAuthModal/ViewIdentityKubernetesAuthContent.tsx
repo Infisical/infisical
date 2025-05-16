@@ -1,8 +1,10 @@
+import { useMemo } from "react";
 import { faBan, faEye } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 
 import { Badge, EmptyState, Spinner, Tooltip } from "@app/components/v2";
-import { useGetIdentityKubernetesAuth } from "@app/hooks/api";
+import { gatewaysQueryKeys, useGetIdentityKubernetesAuth } from "@app/hooks/api";
 import { IdentityKubernetesAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityKubernetesAuthForm";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
@@ -16,7 +18,13 @@ export const ViewIdentityKubernetesAuthContent = ({
   onDelete,
   popUp
 }: ViewAuthMethodProps) => {
+  const { data: gateways } = useQuery(gatewaysQueryKeys.list());
+
   const { data, isPending } = useGetIdentityKubernetesAuth(identityId);
+
+  const selectedGateway = useMemo(() => {
+    return gateways?.find((gateway) => gateway.id === data?.gatewayId) || null;
+  }, [gateways, data?.gatewayId]);
 
   if (isPending) {
     return (
@@ -69,6 +77,7 @@ export const ViewIdentityKubernetesAuthContent = ({
       >
         {data.kubernetesHost}
       </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay label="Gateway">{selectedGateway?.name}</IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay className="col-span-2" label="Token Reviewer JWT">
         {data.tokenReviewerJwt ? (
           <Tooltip
