@@ -75,6 +75,12 @@ export type TUpdateOrgDTO = {
     allowSecretSharingOutsideOrganization: boolean;
     bypassOrgAuthEnabled: boolean;
     userTokenExpiration: string;
+    secretsProductEnabled: boolean;
+    pkiProductEnabled: boolean;
+    kmsProductEnabled: boolean;
+    sshProductEnabled: boolean;
+    scannerProductEnabled: boolean;
+    shareSecretsProductEnabled: boolean;
   }>;
 } & TOrgPermission;
 
