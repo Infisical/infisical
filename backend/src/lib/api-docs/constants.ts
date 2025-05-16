@@ -608,7 +608,8 @@ export const PROJECTS = {
     projectDescription: "An optional description label for the project.",
     autoCapitalization: "Disable or enable auto-capitalization for the project.",
     slug: "An optional slug for the project. (must be unique within the organization)",
-    hasDeleteProtection: "Enable or disable delete protection for the project."
+    hasDeleteProtection: "Enable or disable delete protection for the project.",
+    secretSharing: "Enable or disable secret sharing for the project."
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
