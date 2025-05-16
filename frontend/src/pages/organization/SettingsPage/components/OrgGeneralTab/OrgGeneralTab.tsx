@@ -14,7 +14,7 @@ export const OrgGeneralTab = () => {
         <OrgIncidentContactsSection />
         {membership && membership.role === "admin" && <OrgDeleteSection />}
       </div>
-      <OrgProductSelectSection />
+      {membership && membership.role === "admin" && <OrgProductSelectSection />}
     </>
   );
 };
