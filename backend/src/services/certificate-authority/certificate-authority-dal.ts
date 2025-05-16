@@ -58,6 +58,7 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         db.ref("type").withSchema(TableName.ExternalCertificateAuthority).as("externalType"),
         db.ref("status").withSchema(TableName.ExternalCertificateAuthority).as("externalStatus"),
         db.ref("configuration").withSchema(TableName.ExternalCertificateAuthority).as("externalConfiguration"),
+        db.ref("credentials").withSchema(TableName.ExternalCertificateAuthority).as("externalCredentials"),
         db
           .ref("dnsAppConnectionId")
           .withSchema(TableName.ExternalCertificateAuthority)
@@ -99,7 +100,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             status: result.externalStatus,
             configuration: result.externalConfiguration,
             dnsAppConnectionId: result.externalDnsAppConnectionId,
-            appConnectionId: result.externalAppConnectionId
+            appConnectionId: result.externalAppConnectionId,
+            credentials: result.externalCredentials
           }
         : undefined
     };
@@ -195,6 +197,7 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             .ref("dnsAppConnectionId")
             .withSchema(TableName.ExternalCertificateAuthority)
             .as("externalDnsAppConnectionId"),
+          db.ref("credentials").withSchema(TableName.ExternalCertificateAuthority).as("externalCredentials"),
           db.ref("appConnectionId").withSchema(TableName.ExternalCertificateAuthority).as("externalAppConnectionId")
         );
 
@@ -243,7 +246,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
               status: ca.externalStatus,
               configuration: ca.externalConfiguration,
               dnsAppConnectionId: ca.externalDnsAppConnectionId,
-              appConnectionId: ca.externalAppConnectionId
+              appConnectionId: ca.externalAppConnectionId,
+              credentials: ca.externalCredentials
             }
           : undefined
       }));

@@ -8,6 +8,11 @@ import { OrgServiceActor } from "@app/lib/types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
+import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
 import {
@@ -46,6 +51,14 @@ type TCertificateAuthorityServiceFactoryDep = {
     "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction" | "getProjectFromSplitId"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
+  >;
+  pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -57,13 +70,24 @@ export const certificateAuthorityServiceFactory = ({
   internalCertificateAuthorityService,
   appConnectionDAL,
   appConnectionService,
-  externalCertificateAuthorityDAL
+  externalCertificateAuthorityDAL,
+  certificateDAL,
+  certificateBodyDAL,
+  certificateSecretDAL,
+  kmsService,
+  pkiSubscriberDAL
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
     appConnectionService,
     certificateAuthorityDAL,
-    externalCertificateAuthorityDAL
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    pkiSubscriberDAL,
+    projectDAL
   });
 
   const createCertificateAuthority = async (

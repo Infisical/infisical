@@ -15,6 +15,10 @@ export const AcmeCertificateAuthorityConfigurationSchema = z.object({
   accountEmail: z.string().trim()
 });
 
+export const AcmeCertificateAuthorityCredentialsSchema = z.object({
+  accountKey: z.string()
+});
+
 export const AcmeCertificateAuthoritySchema = BaseCertificateAuthoritySchema(CaType.ACME).extend({
   type: z.literal(CaType.ACME),
   configuration: AcmeCertificateAuthorityConfigurationSchema

@@ -3,11 +3,12 @@ import * as x509 from "@peculiar/x509";
 import acme from "acme-client";
 import { KeyObject } from "crypto";
 
-import { TableName, TPkiSubscribers } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
+import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection, TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
@@ -21,6 +22,7 @@ import {
   CertStatus
 } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -30,6 +32,7 @@ import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TCertificateAuthority } from "../certificate-authority-types";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
+import { AcmeCertificateAuthorityCredentialsSchema } from "./acme-certificate-authority-schemas";
 import {
   TAcmeCertificateAuthority,
   TCreateAcmeCertificateAuthorityDTO,
@@ -47,7 +50,11 @@ type TAcmeCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
+  >;
+  pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
 };
 
@@ -59,7 +66,7 @@ type DBConfigurationColumn = {
 
 export const castDbEntryToAcmeCertificateAuthority = (
   ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>
-): TAcmeCertificateAuthority => {
+): TAcmeCertificateAuthority & { credentials: unknown } => {
   if (!ca.externalCa) {
     throw new BadRequestError({ message: "Malformed ACME certificate authority" });
   }
@@ -72,6 +79,7 @@ export const castDbEntryToAcmeCertificateAuthority = (
     disableDirectIssuance: ca.disableDirectIssuance,
     name: ca.externalCa.name,
     projectId: ca.projectId,
+    credentials: ca.externalCa.credentials,
     configuration: {
       dnsAppConnectionId: ca.externalCa.dnsAppConnectionId as string,
       dnsProvider: dbConfigurationCol.dnsProvider as AcmeDnsProvider,
@@ -147,7 +155,8 @@ export const AcmeCertificateAuthorityFns = ({
   certificateBodyDAL,
   certificateSecretDAL,
   kmsService,
-  projectDAL
+  projectDAL,
+  pkiSubscriberDAL
 }: TAcmeCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -320,20 +329,66 @@ export const AcmeCertificateAuthorityFns = ({
     return cas.map(castDbEntryToAcmeCertificateAuthority);
   };
 
-  // SHEEN TODO: need to execute this from a job
-  const orderCertificate = async (
-    subscriber: TPkiSubscribers,
-    ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>,
-    actor: OrgServiceActor
-  ) => {
+  const orderCertificate = async (subscriberId: string) => {
+    const subscriber = await pkiSubscriberDAL.findById(subscriberId);
+    if (!subscriber.caId) {
+      throw new BadRequestError({ message: "Subscriber does not have a CA" });
+    }
+
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(subscriber.caId);
+    if (!ca.externalCa || ca.externalCa.type !== CaType.ACME) {
+      throw new BadRequestError({ message: "CA is not an ACME CA" });
+    }
+
     const acmeCa = castDbEntryToAcmeCertificateAuthority(ca);
 
-    // SHEEN TODO: need to save this in credentials field and reuse
-    const privateRsaKey = await acme.crypto.createPrivateRsaKey();
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId: ca.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    let accountKey: Buffer | undefined;
+    if (acmeCa.credentials) {
+      const decryptedCredentials = await kmsDecryptor({
+        cipherTextBlob: acmeCa.credentials as Buffer
+      });
+
+      const parsedCredentials = await AcmeCertificateAuthorityCredentialsSchema.parseAsync(
+        JSON.parse(decryptedCredentials.toString("utf8"))
+      );
+
+      accountKey = Buffer.from(parsedCredentials.accountKey, "base64");
+    }
+    if (!accountKey) {
+      accountKey = await acme.crypto.createPrivateRsaKey();
+      const newCredentials = {
+        accountKey: accountKey.toString("base64")
+      };
+      const { cipherTextBlob: encryptedNewCredentials } = await kmsEncryptor({
+        plainText: Buffer.from(JSON.stringify(newCredentials))
+      });
+      await externalCertificateAuthorityDAL.update(
+        {
+          certificateAuthorityId: acmeCa.id
+        },
+        {
+          credentials: encryptedNewCredentials
+        }
+      );
+    }
 
     const acmeClient = new acme.Client({
       directoryUrl: acmeCa.configuration.directoryUrl,
-      accountKey: privateRsaKey
+      accountKey
     });
 
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
@@ -349,13 +404,8 @@ export const AcmeCertificateAuthorityFns = ({
       skLeaf
     );
 
-    // SHEEN TODO: need to update this to remove dependence on ACTOR
     const appConnection = await appConnectionDAL.findById(acmeCa.configuration.dnsAppConnectionId);
-    const connection = await appConnectionService.connectAppConnectionById(
-      appConnection.app as AppConnection,
-      acmeCa.configuration.dnsAppConnectionId,
-      actor
-    );
+    const connection = await decryptAppConnection(appConnection, kmsService);
 
     const pem = await acmeClient.auto({
       csr: certificateCsr,
@@ -385,20 +435,9 @@ export const AcmeCertificateAuthorityFns = ({
       }
     });
 
-    console.log("PEM IS", pem);
-
     const [leafCert, parentCert] = acme.crypto.splitPemChain(pem);
     const certObj = new x509.X509Certificate(leafCert);
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
-
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
-      kmsId: certificateManagerKmsId
-    });
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
       plainText: Buffer.from(new Uint8Array(certObj.rawData))
     });

@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { PkiSubscribersSchema } from "@app/db/schemas";
 
 export const sanitizedPkiSubscriber = PkiSubscribersSchema.pick({
@@ -11,4 +13,6 @@ export const sanitizedPkiSubscriber = PkiSubscribersSchema.pick({
   ttl: true,
   keyUsages: true,
   extendedKeyUsages: true
+}).extend({
+  supportsImmediateCertIssuance: z.boolean().optional()
 });

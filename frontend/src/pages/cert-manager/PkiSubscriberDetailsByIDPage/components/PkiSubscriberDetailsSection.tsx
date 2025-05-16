@@ -13,7 +13,11 @@ import {
   useWorkspace
 } from "@app/context";
 import { useTimedReset } from "@app/hooks";
-import { useGetPkiSubscriber, useIssuePkiSubscriberCert } from "@app/hooks/api";
+import {
+  useGetPkiSubscriber,
+  useIssuePkiSubscriberCert,
+  useOrderPkiSubscriberCert
+} from "@app/hooks/api";
 import { pkiSubscriberStatusToNameMap } from "@app/hooks/api/pkiSubscriber/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -49,23 +53,34 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
   const { mutateAsync: issuePkiSubscriberCert, isPending: isIssuingCert } =
     useIssuePkiSubscriberCert();
 
+  const { mutateAsync: orderPkiSubscriberCert } = useOrderPkiSubscriberCert();
+
   const onIssuePkiSubscriberCert = async () => {
     try {
-      const response = await issuePkiSubscriberCert({ subscriberName, projectId });
+      if (pkiSubscriber?.supportsImmediateCertIssuance) {
+        const response = await issuePkiSubscriberCert({ subscriberName, projectId });
 
-      setCertificateDetails({
-        serialNumber: response.serialNumber,
-        certificate: response.certificate,
-        certificateChain: response.certificateChain,
-        privateKey: response.privateKey
-      });
+        setCertificateDetails({
+          serialNumber: response.serialNumber,
+          certificate: response.certificate,
+          certificateChain: response.certificateChain,
+          privateKey: response.privateKey
+        });
 
-      setIsModalOpen(true);
+        setIsModalOpen(true);
 
-      createNotification({
-        text: "Successfully issued certificate",
-        type: "success"
-      });
+        createNotification({
+          text: "Successfully issued certificate",
+          type: "success"
+        });
+      } else {
+        await orderPkiSubscriberCert({ subscriberName, projectId });
+
+        createNotification({
+          text: "Successfully ordered certificate. It will be issued after CA processing.",
+          type: "success"
+        });
+      }
     } catch (err) {
       console.error(err);
       createNotification({
@@ -158,7 +173,9 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
               onIssuePkiSubscriberCert();
             }}
           >
-            Issue Certificate
+            {pkiSubscriber?.supportsImmediateCertIssuance
+              ? "Issue Certificate"
+              : "Order Certificate"}
           </Button>
         )}
       </div>

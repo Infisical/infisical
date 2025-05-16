@@ -288,7 +288,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiSubscribers],
-      description: "Issue certificate",
+      description: "Order certificate",
       params: z.object({
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.ISSUE_CERT.subscriberName)
       }),
@@ -297,16 +297,12 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          certificate: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.certificate),
-          issuingCaCertificate: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.issuingCaCertificate),
-          certificateChain: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.certificateChain),
-          privateKey: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.privateKey),
-          serialNumber: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.serialNumber)
+          message: z.string().trim()
         })
       }
     },
     handler: async (req) => {
-      await server.services.pkiSubscriber.issueSubscriberCert({
+      const subscriber = await server.services.pkiSubscriber.orderSubscriberCert({
         subscriberName: req.params.subscriberName,
         projectId: req.body.projectId,
         actor: req.permission.type,
@@ -315,35 +311,31 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: subscriber.projectId,
-        event: {
-          type: EventType.ISSUE_PKI_SUBSCRIBER_CERT,
-          metadata: {
-            subscriberId: subscriber.id,
-            name: subscriber.name,
-            serialNumber
-          }
-        }
-      });
+      // await server.services.auditLog.createAuditLog({
+      //   ...req.auditLogInfo,
+      //   projectId: subscriber.projectId,
+      //   event: {
+      //     type: EventType.ISSUE_PKI_SUBSCRIBER_CERT,
+      //     metadata: {
+      //       subscriberId: subscriber.id,
+      //       name: subscriber.name,
+      //       serialNumber
+      //     }
+      //   }
+      // });
 
-      await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.IssueCert,
-        distinctId: getTelemetryDistinctId(req),
-        properties: {
-          subscriberId: subscriber.id,
-          commonName: subscriber.commonName,
-          ...req.auditLogInfo
-        }
-      });
+      // await server.services.telemetry.sendPostHogEvents({
+      //   event: PostHogEventTypes.IssueCert,
+      //   distinctId: getTelemetryDistinctId(req),
+      //   properties: {
+      //     subscriberId: subscriber.id,
+      //     commonName: subscriber.commonName,
+      //     ...req.auditLogInfo
+      //   }
+      // });
 
       return {
-        certificate,
-        certificateChain,
-        issuingCaCertificate,
-        privateKey,
-        serialNumber
+        message: "Successfully placed order for certificate"
       };
     }
   });

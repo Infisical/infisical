@@ -38,11 +38,8 @@ import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subsc
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
-import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { AcmeCertificateAuthorityFns } from "../certificate-authority/acme/acme-certificate-authority-fns";
-import { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
+import { TCertificateAuthorityQueueFactory } from "../certificate-authority/certificate-authority-queue";
 import { InternalCertificateAuthorityFns } from "../certificate-authority/internal/internal-certificate-authority-fns";
 import {
   PkiSubscriberStatus,
@@ -57,9 +54,6 @@ import {
 } from "./pki-subscriber-types";
 
 type TPkiSubscriberServiceFactoryDep = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
   pkiSubscriberDAL: Pick<
     TPkiSubscriberDALFactory,
     "create" | "findById" | "updateById" | "deleteById" | "transaction" | "find" | "findOne"
@@ -70,6 +64,7 @@ type TPkiSubscriberServiceFactoryDep = {
   >;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
+  certificateAuthorityQueue: Pick<TCertificateAuthorityQueueFactory, "orderCertificateForSubscriber">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "countCertificatesForPkiSubscriber" | "find">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -93,9 +88,7 @@ export const pkiSubscriberServiceFactory = ({
   projectDAL,
   kmsService,
   permissionService,
-  appConnectionDAL,
-  appConnectionService,
-  externalCertificateAuthorityDAL
+  certificateAuthorityQueue
 }: TPkiSubscriberServiceFactoryDep) => {
   const internalCaFns = InternalCertificateAuthorityFns({
     certificateAuthorityDAL,
@@ -107,18 +100,6 @@ export const pkiSubscriberServiceFactory = ({
     certificateSecretDAL,
     projectDAL,
     kmsService
-  });
-
-  const acmeCaFns = AcmeCertificateAuthorityFns({
-    appConnectionDAL,
-    appConnectionService,
-    certificateAuthorityDAL,
-    externalCertificateAuthorityDAL,
-    certificateDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    kmsService,
-    projectDAL
   });
 
   const createSubscriber = async ({
@@ -198,7 +179,18 @@ export const pkiSubscriberServiceFactory = ({
       })
     );
 
-    return subscriber;
+    let supportsImmediateCertIssuance = false;
+    if (subscriber.caId) {
+      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(subscriber.caId);
+      if (ca.internalCa?.id) {
+        supportsImmediateCertIssuance = true;
+      }
+    }
+
+    return {
+      ...subscriber,
+      supportsImmediateCertIssuance
+    };
   };
 
   const updateSubscriber = async ({
@@ -325,16 +317,16 @@ export const pkiSubscriberServiceFactory = ({
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(subscriber.caId);
     if (ca.internalCa?.id) {
-      throw new BadRequestError({ message: "CA does not support ordering certificates" });
+      throw new BadRequestError({ message: "CA does not support ordering of certificates" });
     }
 
     if (ca.externalCa?.id && ca.externalCa.type === CaType.ACME) {
-      return acmeCaFns.orderCertificate(subscriber, ca, {
-        type: actor,
-        id: actorId,
-        authMethod: actorAuthMethod,
-        orgId: actorOrgId
+      await certificateAuthorityQueue.orderCertificateForSubscriber({
+        subscriberId: subscriber.id,
+        caType: ca.externalCa.type
       });
+
+      return subscriber;
     }
 
     throw new BadRequestError({ message: "Unsupported CA type" });
@@ -378,15 +370,6 @@ export const pkiSubscriberServiceFactory = ({
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(subscriber.caId);
     if (ca.internalCa?.id) {
       return internalCaFns.issueCertificate(subscriber, ca);
-    }
-
-    if (ca.externalCa?.id && ca.externalCa.type === CaType.ACME) {
-      return acmeCaFns.orderCertificate(subscriber, ca, {
-        type: actor,
-        id: actorId,
-        authMethod: actorAuthMethod,
-        orgId: actorOrgId
-      });
     }
 
     throw new BadRequestError({ message: "CA does not support immediate issuance of certificates" });

@@ -25,6 +25,7 @@ export const pkiAlertDALFactory = (db: TDbClient) => {
         recipientEmails: string;
       };
 
+      // SHEEN TODO: FIX REGRESION HERE
       // gets CAs and certificates as part of PKI collection items
       const combinedQuery = db
         .replicaNode()

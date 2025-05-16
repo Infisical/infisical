@@ -16,6 +16,7 @@ export type TPkiSubscriber = {
   subjectAlternativeNames: string[];
   keyUsages: CertKeyUsage[];
   extendedKeyUsages: CertExtendedKeyUsage[];
+  supportsImmediateCertIssuance?: boolean;
 };
 
 export type TCreatePkiSubscriberDTO = {
@@ -48,6 +49,11 @@ export type TDeletePkiSubscriberDTO = {
 };
 
 export type TIssuePkiSubscriberCertDTO = {
+  subscriberName: string;
+  projectId: string;
+};
+
+export type TOrderPkiSubscriberCertDTO = {
   subscriberName: string;
   projectId: string;
 };

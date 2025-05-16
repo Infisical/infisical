@@ -9,7 +9,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
-import { CaRenewalType, CaStatus, InternalCaType } from "../certificate-authority-enums";
+import { CaRenewalType, CaStatus, CaType, InternalCaType } from "../certificate-authority-enums";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
 import {
   CreateInternalCertificateAuthoritySchema,
@@ -211,4 +211,9 @@ export type TRebuildCaCrlDTO = {
 export type TRotateCaCrlTriggerDTO = {
   caId: string;
   rotationIntervalDays: number;
+};
+
+export type TOrderCertificateForSubscriberDTO = {
+  subscriberId: string;
+  caType: CaType;
 };
