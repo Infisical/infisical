@@ -2,7 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
-import { DistinguishedNameRegex } from "@app/lib/regex";
+import { DistinguishedNameRegex, UserPrincipalNameRegex } from "@app/lib/regex";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   BaseAppConnectionSchema,
@@ -23,8 +23,10 @@ export const LdapConnectionSimpleBindCredentialsSchema = z.object({
   dn: z
     .string()
     .trim()
-    .regex(new RE2(DistinguishedNameRegex), "Invalid DN format, ie; CN=user,OU=users,DC=example,DC=com")
-    .min(1, "Distinguished Name (DN) required")
+    .min(1, "DN/UPN required")
+    .refine((value) => new RE2(DistinguishedNameRegex).test(value) || new RE2(UserPrincipalNameRegex).test(value), {
+      message: "Invalid DN/UPN format"
+    })
     .describe(AppConnections.CREDENTIALS.LDAP.dn),
   password: z.string().trim().min(1, "Password required").describe(AppConnections.CREDENTIALS.LDAP.password),
   sslRejectUnauthorized: z.boolean().optional().describe(AppConnections.CREDENTIALS.LDAP.sslRejectUnauthorized),

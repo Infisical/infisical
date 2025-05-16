@@ -2,40 +2,123 @@ import { Controller, useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { DEFAULT_PASSWORD_REQUIREMENTS } from "@app/components/secret-rotations-v2/forms/schemas/shared";
-import { FormControl, Input } from "@app/components/v2";
+import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
 
 export const LdapPasswordRotationParametersFields = () => {
-  const { control } = useFormContext<
+  const { control, watch, setValue } = useFormContext<
     TSecretRotationV2Form & {
       type: SecretRotation.LdapPassword;
     }
   >();
 
+  const [id, rotationMethod] = watch(["id", "parameters.rotationMethod"]);
+  const isUpdate = Boolean(id);
+
   return (
     <>
       <Controller
-        name="parameters.dn"
+        name="parameters.rotationMethod"
         control={control}
+        defaultValue={LdapPasswordRotationMethod.ConnectionPrincipal}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
-            isError={Boolean(error)}
+            tooltipText={
+              <>
+                <span>Determines how the rotation will be performed:</span>
+                <ul className="ml-4 mt-2 flex list-disc flex-col gap-2">
+                  <li>
+                    <span className="font-medium">Connection Principal</span> - The Connection
+                    principal will rotate the target principal&#39;s password.
+                  </li>
+                  <li>
+                    <span className="font-medium">Target Principal</span> - The target principal
+                    will rotate their own password.
+                  </li>
+                </ul>
+              </>
+            }
+            tooltipClassName="max-w-sm"
             errorText={error?.message}
-            label="Distinguished Name (DN)"
+            isError={Boolean(error?.message)}
+            label="Rotation Method"
+            helperText={isUpdate ? "Cannot be updated." : undefined}
           >
-            <Input
+            <Select
+              isDisabled={isUpdate}
               value={value}
-              onChange={onChange}
-              placeholder="CN=John,OU=Users,DC=example,DC=com"
-            />
+              onValueChange={(val) => {
+                setValue(
+                  "temporaryParameters",
+                  val === LdapPasswordRotationMethod.TargetPrincipal
+                    ? {
+                        password: ""
+                      }
+                    : undefined
+                );
+                onChange(val);
+              }}
+              className="w-full border border-mineshaft-500 capitalize"
+              position="popper"
+              dropdownContainerClassName="max-w-none"
+            >
+              {Object.values(LdapPasswordRotationMethod).map((method) => {
+                return (
+                  <SelectItem value={method} className="capitalize" key={method}>
+                    {method.replace("-", " ")}
+                  </SelectItem>
+                );
+              })}
+            </Select>
           </FormControl>
         )}
       />
+      <div className="flex gap-3">
+        <Controller
+          name="parameters.dn"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              className="flex-1"
+              isError={Boolean(error)}
+              errorText={error?.message}
+              label="Target Principal's DN/UPN"
+              tooltipText="The DN/UPN of the principal that you want to peform password rotation on."
+              tooltipClassName="max-w-sm"
+              helperText={isUpdate ? "Cannot be updated." : undefined}
+            >
+              <Input
+                isDisabled={isUpdate}
+                value={value}
+                onChange={onChange}
+                placeholder="CN=John,OU=Users,DC=example,DC=com"
+              />
+            </FormControl>
+          )}
+        />
+        {rotationMethod === LdapPasswordRotationMethod.TargetPrincipal && !isUpdate && (
+          <Controller
+            name="temporaryParameters.password"
+            control={control}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                className="flex-1"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                label="Target Principal's Password"
+              >
+                <Input value={value} onChange={onChange} placeholder="***********************" />
+              </FormControl>
+            )}
+          />
+        )}
+      </div>
       <div className="flex flex-col gap-3">
         <div className="w-full border-b border-mineshaft-600">
           <span className="text-sm text-mineshaft-300">Password Requirements</span>
         </div>
-        <div className="grid grid-cols-2 gap-3 rounded border border-mineshaft-600 bg-mineshaft-700 px-3 py-2">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded border border-mineshaft-600 bg-mineshaft-700 px-3 pt-2">
           <Controller
             control={control}
             name="parameters.passwordRequirements.length"

@@ -1,12 +1,13 @@
 import { AxiosError } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./auth0-client-secret";
 import { AWS_IAM_USER_SECRET_ROTATION_LIST_OPTION } from "./aws-iam-user-secret";
 import { AZURE_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./azure-client-secret";
-import { LDAP_PASSWORD_ROTATION_LIST_OPTION } from "./ldap-password";
+import { LDAP_PASSWORD_ROTATION_LIST_OPTION, TLdapPasswordRotation } from "./ldap-password";
 import { MSSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mssql-credentials";
 import { POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-credentials";
 import { SecretRotation, SecretRotationStatus } from "./secret-rotation-v2-enums";
@@ -15,7 +16,8 @@ import {
   TSecretRotationV2,
   TSecretRotationV2GeneratedCredentials,
   TSecretRotationV2ListItem,
-  TSecretRotationV2Raw
+  TSecretRotationV2Raw,
+  TUpdateSecretRotationV2DTO
 } from "./secret-rotation-v2-types";
 
 const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2ListItem> = {
@@ -227,4 +229,31 @@ export const parseRotationErrorMessage = (err: unknown): string => {
   return errorMessage.length <= MAX_MESSAGE_LENGTH
     ? errorMessage
     : `${errorMessage.substring(0, MAX_MESSAGE_LENGTH - 3)}...`;
+};
+
+function haveUnequalProperties<T>(obj1: T, obj2: T, properties: (keyof T)[]): boolean {
+  return properties.some((prop) => obj1[prop] !== obj2[prop]);
+}
+
+export const throwOnImmutableParameterUpdate = (
+  updatePayload: TUpdateSecretRotationV2DTO,
+  secretRotation: TSecretRotationV2Raw
+) => {
+  if (!updatePayload.parameters) return;
+
+  switch (updatePayload.type) {
+    case SecretRotation.LdapPassword:
+      if (
+        haveUnequalProperties(
+          updatePayload.parameters as TLdapPasswordRotation["parameters"],
+          secretRotation.parameters as TLdapPasswordRotation["parameters"],
+          ["rotationMethod", "dn"]
+        )
+      ) {
+        throw new BadRequestError({ message: "Cannot update rotation method or DN" });
+      }
+      break;
+    default:
+    // do nothing
+  }
 };
