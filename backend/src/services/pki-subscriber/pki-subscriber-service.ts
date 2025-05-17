@@ -449,7 +449,8 @@ export const pkiSubscriberServiceFactory = ({
           notBefore: notBeforeDate,
           notAfter: notAfterDate,
           keyUsages: selectedKeyUsages,
-          extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[]
+          extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[],
+          projectId
         },
         tx
       );
@@ -718,7 +719,8 @@ export const pkiSubscriberServiceFactory = ({
           notBefore: notBeforeDate,
           notAfter: notAfterDate,
           keyUsages: selectedKeyUsages,
-          extendedKeyUsages: selectedExtendedKeyUsages
+          extendedKeyUsages: selectedExtendedKeyUsages,
+          projectId
         },
         tx
       );
