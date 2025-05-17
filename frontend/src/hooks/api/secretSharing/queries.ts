@@ -70,11 +70,17 @@ export const useGetSecretRequests = ({
 export const useGetActiveSharedSecretById = ({
   sharedSecretId,
   hashedHex,
-  password
+  password,
+  email,
+  token
 }: {
   sharedSecretId: string;
   hashedHex: string | null;
   password?: string;
+
+  // For secrets shared to specific emails (optional)
+  email?: string;
+  token?: string;
 }) => {
   return useQuery({
     queryKey: secretSharingKeys.getSecretById({ id: sharedSecretId, hashedHex, password }),
@@ -83,7 +89,9 @@ export const useGetActiveSharedSecretById = ({
         `/api/v1/secret-sharing/shared/public/${sharedSecretId}`,
         {
           ...(hashedHex && { hashedHex }),
-          password
+          password,
+          email,
+          token
         }
       );
 

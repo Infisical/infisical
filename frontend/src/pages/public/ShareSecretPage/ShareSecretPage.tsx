@@ -91,7 +91,7 @@ export const ShareSecretPage = () => {
                 Infisical
               </a>
               <br />
-              156 2nd st, 3rd Floor, San Francisco, California, 94105, United States. 🇺🇸
+              235 2nd st, San Francisco, California, 94105, United States. 🇺🇸
             </p>
           </div>
         </div>
