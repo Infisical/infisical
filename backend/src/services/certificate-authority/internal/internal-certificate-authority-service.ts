@@ -1209,6 +1209,10 @@ export const internalCertificateAuthorityServiceFactory = ({
       ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId);
     }
 
+    if (!ca) {
+      throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
+    }
+
     if (!ca?.internalCa?.id) {
       throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
     }
@@ -1559,6 +1563,10 @@ export const internalCertificateAuthorityServiceFactory = ({
 
       collectionId = certificateTemplate.pkiCollectionId as string;
       ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId);
+    }
+
+    if (!ca) {
+      throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
     }
 
     if (!ca?.internalCa?.id) {
