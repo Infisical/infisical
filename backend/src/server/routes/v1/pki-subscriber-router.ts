@@ -90,7 +90,8 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         ttl: z
           .string()
           .trim()
-          .refine((val) => ms(val) > 0, "TTL must be a positive number")
+          .refine((val) => !val || ms(val) > 0, "TTL must be a positive number")
+          .optional()
           .describe(PKI_SUBSCRIBERS.CREATE.ttl),
         subjectAlternativeNames: validateAltNameField
           .array()
@@ -134,7 +135,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
             caId: subscriber.caId ?? undefined,
             name: subscriber.name,
             commonName: subscriber.commonName,
-            ttl: subscriber.ttl,
+            ttl: subscriber.ttl ?? undefined,
             subjectAlternativeNames: subscriber.subjectAlternativeNames,
             keyUsages: subscriber.keyUsages as CertKeyUsage[],
             extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[]
@@ -179,7 +180,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         ttl: z
           .string()
           .trim()
-          .refine((val) => ms(val) > 0, "TTL must be a positive number")
+          .refine((val) => !val || ms(val) > 0, "TTL must be a positive number")
           .optional()
           .describe(PKI_SUBSCRIBERS.UPDATE.ttl),
         keyUsages: z
@@ -219,7 +220,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
             caId: subscriber.caId ?? undefined,
             name: subscriber.name,
             commonName: subscriber.commonName,
-            ttl: subscriber.ttl,
+            ttl: subscriber.ttl ?? undefined,
             subjectAlternativeNames: subscriber.subjectAlternativeNames,
             keyUsages: subscriber.keyUsages as CertKeyUsage[],
             extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[]
@@ -275,6 +276,67 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       });
 
       return subscriber;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:subscriberName/order-certificate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiSubscribers],
+      description: "Order certificate",
+      params: z.object({
+        subscriberName: z.string().describe(PKI_SUBSCRIBERS.ISSUE_CERT.subscriberName)
+      }),
+      body: z.object({
+        projectId: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.projectId)
+      }),
+      response: {
+        200: z.object({
+          message: z.string().trim()
+        })
+      }
+    },
+    handler: async (req) => {
+      const subscriber = await server.services.pkiSubscriber.orderSubscriberCert({
+        subscriberName: req.params.subscriberName,
+        projectId: req.body.projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: subscriber.projectId,
+        event: {
+          type: EventType.ISSUE_PKI_SUBSCRIBER_CERT,
+          metadata: {
+            subscriberId: subscriber.id,
+            name: subscriber.name
+          }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.IssueCert,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          subscriberId: subscriber.id,
+          commonName: subscriber.commonName,
+          ...req.auditLogInfo
+        }
+      });
+
+      return {
+        message: "Successfully placed order for certificate"
+      };
     }
   });
 

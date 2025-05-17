@@ -6,7 +6,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, IconButton, Tooltip } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useTimedReset } from "@app/hooks";
-import { CaStatus, CaType, useGetCaById } from "@app/hooks/api";
+import { CaStatus, InternalCaType, useGetCaById } from "@app/hooks/api";
 import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -82,7 +82,7 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
             </div>
           </div>
         </div>
-        {ca.type === CaType.INTERMEDIATE && ca.status !== CaStatus.PENDING_CERTIFICATE && (
+        {ca.type === InternalCaType.INTERMEDIATE && ca.status !== CaStatus.PENDING_CERTIFICATE && (
           <div className="mb-4">
             <p className="text-sm font-semibold text-mineshaft-300">Parent CA ID</p>
             <div className="group flex align-top">
@@ -156,7 +156,7 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
                   colorSchema="primary"
                   type="submit"
                   onClick={() => {
-                    if (ca.type === CaType.INTERMEDIATE && !ca.parentCaId) {
+                    if (ca.type === InternalCaType.INTERMEDIATE && !ca.parentCaId) {
                       // intermediate CA with external parent CA
                       handlePopUpOpen("installCaCert", {
                         caId,

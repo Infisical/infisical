@@ -68,6 +68,9 @@ import {
   TDynamicSecrets,
   TDynamicSecretsInsert,
   TDynamicSecretsUpdate,
+  TExternalCertificateAuthorities,
+  TExternalCertificateAuthoritiesInsert,
+  TExternalCertificateAuthoritiesUpdate,
   TExternalGroupOrgRoleMappings,
   TExternalGroupOrgRoleMappingsInsert,
   TExternalGroupOrgRoleMappingsUpdate,
@@ -155,6 +158,9 @@ import {
   TIntegrations,
   TIntegrationsInsert,
   TIntegrationsUpdate,
+  TInternalCertificateAuthorities,
+  TInternalCertificateAuthoritiesInsert,
+  TInternalCertificateAuthoritiesUpdate,
   TInternalKms,
   TInternalKmsInsert,
   TInternalKmsUpdate,
@@ -537,6 +543,16 @@ declare module "knex/types/tables" {
       TCertificateAuthorityCrl,
       TCertificateAuthorityCrlInsert,
       TCertificateAuthorityCrlUpdate
+    >;
+    [TableName.InternalCertificateAuthority]: KnexOriginal.CompositeTableType<
+      TInternalCertificateAuthorities,
+      TInternalCertificateAuthoritiesInsert,
+      TInternalCertificateAuthoritiesUpdate
+    >;
+    [TableName.ExternalCertificateAuthority]: KnexOriginal.CompositeTableType<
+      TExternalCertificateAuthorities,
+      TExternalCertificateAuthoritiesInsert,
+      TExternalCertificateAuthoritiesUpdate
     >;
     [TableName.Certificate]: KnexOriginal.CompositeTableType<TCertificates, TCertificatesInsert, TCertificatesUpdate>;
     [TableName.CertificateTemplate]: KnexOriginal.CompositeTableType<

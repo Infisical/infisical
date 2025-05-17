@@ -9,15 +9,77 @@ import {
   TCreateCaDTO,
   TCreateCertificateDTO,
   TCreateCertificateResponse,
+  TCreateUnifiedCertificateAuthorityDTO,
   TDeleteCaDTO,
+  TDeleteUnifiedCertificateAuthorityDTO,
   TImportCaCertificateDTO,
   TImportCaCertificateResponse,
   TRenewCaDTO,
   TRenewCaResponse,
   TSignIntermediateDTO,
   TSignIntermediateResponse,
-  TUpdateCaDTO
+  TUnifiedCertificateAuthority,
+  TUpdateCaDTO,
+  TUpdateUnifiedCertificateAuthorityDTO
 } from "./types";
+
+export const useUpdateUnifiedCa = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TUnifiedCertificateAuthority, object, TUpdateUnifiedCertificateAuthorityDTO>({
+    mutationFn: async ({ id, ...body }) => {
+      const {
+        data: { certificateAuthority }
+      } = await apiRequest.patch<{ certificateAuthority: TUnifiedCertificateAuthority }>(
+        `/api/v1/pki/ca/${body.type}/${id}`,
+        body
+      );
+
+      return certificateAuthority;
+    },
+    onSuccess: ({ projectId, type }) => {
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByTypeAndProjectId(type, projectId)
+      });
+    }
+  });
+};
+
+export const useCreateUnifiedCa = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TUnifiedCertificateAuthority, object, TCreateUnifiedCertificateAuthorityDTO>({
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post<TUnifiedCertificateAuthority>(
+        `/api/v1/pki/ca/${body.type}`,
+        body
+      );
+      return data;
+    },
+    onSuccess: (_, { type, projectId }) => {
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByTypeAndProjectId(type, projectId)
+      });
+    }
+  });
+};
+
+export const useDeleteUnifiedCa = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TUnifiedCertificateAuthority, object, TDeleteUnifiedCertificateAuthorityDTO>({
+    mutationFn: async ({ caId, type }) => {
+      const {
+        data: { certificateAuthority }
+      } = await apiRequest.delete<{ certificateAuthority: TUnifiedCertificateAuthority }>(
+        `/api/v1/pki/ca/${type}/${caId}`
+      );
+      return certificateAuthority;
+    },
+    onSuccess: (_, { type, projectId }) => {
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByTypeAndProjectId(type, projectId)
+      });
+    }
+  });
+};
 
 export const useCreateCa = () => {
   const queryClient = useQueryClient();

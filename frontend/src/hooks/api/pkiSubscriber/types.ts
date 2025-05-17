@@ -5,6 +5,11 @@ export enum PkiSubscriberStatus {
   DISABLED = "disabled"
 }
 
+export enum SubscriberOperationStatus {
+  SUCCESS = "success",
+  FAILED = "failed"
+}
+
 export type TPkiSubscriber = {
   id: string;
   projectId: string;
@@ -16,6 +21,10 @@ export type TPkiSubscriber = {
   subjectAlternativeNames: string[];
   keyUsages: CertKeyUsage[];
   extendedKeyUsages: CertExtendedKeyUsage[];
+  supportsImmediateCertIssuance?: boolean;
+  lastOperationStatus?: SubscriberOperationStatus;
+  lastOperationMessage?: string;
+  lastOperationAt?: string;
 };
 
 export type TCreatePkiSubscriberDTO = {
@@ -23,7 +32,7 @@ export type TCreatePkiSubscriberDTO = {
   caId: string;
   name: string;
   commonName: string;
-  ttl: string;
+  ttl?: string;
   subjectAlternativeNames: string[];
   keyUsages: CertKeyUsage[];
   extendedKeyUsages: CertExtendedKeyUsage[];
@@ -48,6 +57,11 @@ export type TDeletePkiSubscriberDTO = {
 };
 
 export type TIssuePkiSubscriberCertDTO = {
+  subscriberName: string;
+  projectId: string;
+};
+
+export type TOrderPkiSubscriberCertDTO = {
   subscriberName: string;
   projectId: string;
 };

@@ -11,7 +11,7 @@ export const CertificatesSchema = z.object({
   id: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  caId: z.string().uuid(),
+  caId: z.string().uuid().nullable().optional(),
   status: z.string(),
   serialNumber: z.string(),
   friendlyName: z.string(),
@@ -21,11 +21,12 @@ export const CertificatesSchema = z.object({
   revokedAt: z.date().nullable().optional(),
   revocationReason: z.number().nullable().optional(),
   altNames: z.string().nullable().optional(),
-  caCertId: z.string().uuid(),
+  caCertId: z.string().uuid().nullable().optional(),
   certificateTemplateId: z.string().uuid().nullable().optional(),
   keyUsages: z.string().array().nullable().optional(),
   extendedKeyUsages: z.string().array().nullable().optional(),
-  pkiSubscriberId: z.string().uuid().nullable().optional()
+  pkiSubscriberId: z.string().uuid().nullable().optional(),
+  projectId: z.string()
 });
 
 export type TCertificates = z.infer<typeof CertificatesSchema>;

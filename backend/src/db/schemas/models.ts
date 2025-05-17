@@ -13,6 +13,8 @@ export enum TableName {
   SshCertificate = "ssh_certificates",
   SshCertificateBody = "ssh_certificate_bodies",
   CertificateAuthority = "certificate_authorities",
+  ExternalCertificateAuthority = "external_certificate_authorities",
+  InternalCertificateAuthority = "internal_certificate_authorities",
   CertificateTemplateEstConfig = "certificate_template_est_configs",
   CertificateAuthorityCert = "certificate_authority_certs",
   CertificateAuthoritySecret = "certificate_authority_secret",

@@ -12,7 +12,7 @@ export type TCreatePkiSubscriberDTO = {
   name: string;
   commonName: string;
   status: PkiSubscriberStatus;
-  ttl: string;
+  ttl?: string;
   subjectAlternativeNames: string[];
   keyUsages: CertKeyUsage[];
   extendedKeyUsages: CertExtendedKeyUsage[];
@@ -42,6 +42,10 @@ export type TIssuePkiSubscriberCertDTO = {
   subscriberName: string;
 } & TProjectPermission;
 
+export type TOrderPkiSubscriberCertDTO = {
+  subscriberName: string;
+} & TProjectPermission;
+
 export type TSignPkiSubscriberCertDTO = {
   subscriberName: string;
   csr: string;
@@ -52,3 +56,8 @@ export type TListPkiSubscriberCertsDTO = {
   offset: number;
   limit: number;
 } & TProjectPermission;
+
+export enum SubscriberOperationStatus {
+  SUCCESS = "success",
+  FAILED = "failed"
+}

@@ -10,6 +10,7 @@ import { registerAdminRouter } from "./admin-router";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCaRouter } from "./certificate-authority-router";
+import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
 import { registerCertRouter } from "./certificate-router";
 import { registerCertificateTemplateRouter } from "./certificate-template-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
@@ -104,6 +105,16 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(
     async (pkiRouter) => {
       await pkiRouter.register(registerCaRouter, { prefix: "/ca" });
+      await pkiRouter.register(
+        async (caRouter) => {
+          for await (const [caType, router] of Object.entries(CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP)) {
+            await caRouter.register(router, { prefix: `/${caType}` });
+          }
+        },
+        {
+          prefix: "/ca"
+        }
+      );
       await pkiRouter.register(registerCertRouter, { prefix: "/certificates" });
       await pkiRouter.register(registerCertificateTemplateRouter, { prefix: "/certificate-templates" });
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
