@@ -79,6 +79,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const callbackResult = await withGatewayProxy(
       async (port) => {
+        // Needs to be https protocol or the kubernetes API server will fail with "Client sent an HTTP request to an HTTPS server"
         const res = await gatewayCallback("https://localhost", port);
         return res;
       },
