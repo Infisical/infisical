@@ -48,7 +48,7 @@ export const useGetCertBundle = (serialNumber: string) => {
         certificate: string;
         certificateChain: string;
         serialNumber: string;
-        privateKey: string;
+        privateKey: string | null;
       }>(`/api/v1/pki/certificates/${serialNumber}/bundle`);
       return data;
     },

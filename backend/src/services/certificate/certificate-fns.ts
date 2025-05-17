@@ -105,7 +105,7 @@ export const buildCertificateChain = async ({
   kmsService,
   kmsId
 }: TBuildCertificateChainDTO) => {
-  if (!encryptedCertificateChain && (!caCert || !caCertChain)) {
+  if (!encryptedCertificateChain && !caCert) {
     return null;
   }
 
