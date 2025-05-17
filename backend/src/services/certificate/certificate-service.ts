@@ -29,6 +29,7 @@ import {
   TGetCertPrivateKeyDTO,
   TRevokeCertDTO
 } from "./certificate-types";
+import { NotFoundError } from "@app/lib/errors";
 
 type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find">;
@@ -348,7 +349,10 @@ export const certificateServiceFactory = ({
       });
       privateKey = certPrivateKey;
     } catch (e) {
-      // This will error for older certificates
+      // Skip NotFound errors but throw all others
+      if (!(e instanceof NotFoundError)) {
+        throw e;
+      }
     }
 
     return {
