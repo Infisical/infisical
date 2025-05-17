@@ -60,7 +60,9 @@ export const secretSharingServiceFactory = ({
     }
 
     const fiveMins = 5 * 60 * 1000;
-    if (expiryTime - currentTime < fiveMins) {
+
+    // 1 second buffer
+    if (expiryTime - currentTime + 1000 < fiveMins) {
       throw new BadRequestError({ message: "Expiration time cannot be less than 5 mins" });
     }
   };

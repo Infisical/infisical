@@ -10,6 +10,7 @@ import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@a
 import { useUpdateOrg } from "@app/hooks/api";
 
 const MAX_SHARED_SECRET_LIFETIME_SECONDS = 30 * 24 * 60 * 60; // 30 days in seconds
+const MIN_SHARED_SECRET_LIFETIME_SECONDS = 5 * 60; // 5 minutes in seconds
 
 // Helper function to convert duration to seconds
 const durationToSeconds = (value: number, unit: "m" | "h" | "d"): number => {
@@ -77,6 +78,7 @@ const formSchema = z
 
     const durationInSeconds = durationToSeconds(maxLifetimeValue, maxLifetimeUnit);
 
+    // Check max limit
     if (durationInSeconds > MAX_SHARED_SECRET_LIFETIME_SECONDS) {
       let message = "Duration exceeds maximum allowed limit";
 
@@ -87,6 +89,17 @@ const formSchema = z
       } else if (maxLifetimeUnit === "d") {
         message = `Maximum allowed days is ${MAX_SHARED_SECRET_LIFETIME_SECONDS / (24 * 60 * 60)}`;
       }
+
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message,
+        path: ["maxLifetimeValue"]
+      });
+    }
+
+    // Check min limit
+    if (durationInSeconds < MIN_SHARED_SECRET_LIFETIME_SECONDS) {
+      const message = `Duration must be at least ${MIN_SHARED_SECRET_LIFETIME_SECONDS / 60} minutes`; // 5 minutes
 
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -187,6 +200,7 @@ export const OrgSecretShareLimitSection = () => {
                   <FormControl
                     isError={Boolean(error)}
                     errorText={error?.message}
+                    tooltipText="The max amount of time that can be set before the secret share link expires."
                     label="Max Lifetime"
                     className="w-full"
                   >

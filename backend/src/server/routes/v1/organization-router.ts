@@ -282,9 +282,14 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         sshProductEnabled: z.boolean().optional(),
         scannerProductEnabled: z.boolean().optional(),
         shareSecretsProductEnabled: z.boolean().optional(),
-        maxSharedSecretLifetime: z.number().max(2592000, "Max Shared Secret lifetime cannot exceed 30 days").optional(),
+        maxSharedSecretLifetime: z
+          .number()
+          .min(300, "Max Shared Secret lifetime cannot be under 5 minutes")
+          .max(2592000, "Max Shared Secret lifetime cannot exceed 30 days")
+          .optional(),
         maxSharedSecretViewLimit: z
           .number()
+          .min(1, "Max Shared Secret view count cannot be lower than 1")
           .max(1000, "Max Shared Secret view count cannot exceed 1000")
           .nullable()
           .optional()
