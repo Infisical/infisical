@@ -2917,7 +2917,7 @@ interface OrgUpdateEvent {
 
 interface ProjectCreateEvent {
   type: EventType.CREATE_PROJECT;
-  metadata: Record<string, string | boolean | object | number>; // The creation parameters
+  metadata: Record<string, string | boolean | object | number | null>; // The creation parameters
 }
 
 interface ProjectUpdateEvent {

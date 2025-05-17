@@ -406,7 +406,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         event: {
           type: EventType.UPDATE_PROJECT,
-          metadata: req.body
+          metadata: {
+            ...(req.body.name !== undefined && { name: req.body.name }),
+            ...(req.body.description !== undefined && { description: req.body.description }),
+            ...(req.body.autoCapitalization !== undefined && { autoCapitalization: req.body.autoCapitalization }),
+            ...(req.body.hasDeleteProtection !== undefined && { hasDeleteProtection: req.body.hasDeleteProtection }),
+            ...(req.body.slug !== undefined && { slug: req.body.slug }),
+            ...(req.body.secretSharing !== undefined && { secretSharing: req.body.secretSharing })
+          }
         }
       });
 
@@ -453,7 +460,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         event: {
           type: EventType.UPDATE_PROJECT,
-          metadata: req.body
+          metadata: {
+            autoCapitalization: req.body.autoCapitalization
+          }
         }
       });
 
@@ -501,7 +510,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         event: {
           type: EventType.UPDATE_PROJECT,
-          metadata: req.body
+          metadata: {
+            hasDeleteProtection: req.body.hasDeleteProtection
+          }
         }
       });
 
@@ -549,7 +560,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: workspace.id,
         event: {
           type: EventType.UPDATE_PROJECT,
-          metadata: req.body
+          metadata: {
+            pitVersionLimit: req.body.pitVersionLimit
+          }
         }
       });
 
@@ -597,7 +610,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: workspace.id,
         event: {
           type: EventType.UPDATE_PROJECT,
-          metadata: req.body
+          metadata: {
+            auditLogsRetentionDays: req.body.auditLogsRetentionDays
+          }
         }
       });
 
