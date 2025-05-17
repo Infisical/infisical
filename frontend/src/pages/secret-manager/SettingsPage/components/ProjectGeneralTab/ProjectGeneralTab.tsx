@@ -4,13 +4,13 @@ import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { AuditLogsRetentionSection } from "../AuditLogsRetentionSection";
 import { AutoCapitalizationSection } from "../AutoCapitalizationSection";
-import { SecretSharingSection } from "../SecretSharingSection";
 import { BackfillSecretReferenceSecretion } from "../BackfillSecretReferenceSection";
 import { DeleteProjectProtection } from "../DeleteProjectProtection";
 import { DeleteProjectSection } from "../DeleteProjectSection";
 import { EnvironmentSection } from "../EnvironmentSection";
 import { PointInTimeVersionLimitSection } from "../PointInTimeVersionLimitSection";
 import { RebuildSecretIndicesSection } from "../RebuildSecretIndicesSection/RebuildSecretIndicesSection";
+import { SecretSharingSection } from "../SecretSharingSection";
 import { SecretTagsSection } from "../SecretTagsSection";
 
 export const ProjectGeneralTab = () => {
