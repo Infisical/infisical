@@ -10,26 +10,7 @@ import {
 } from "../certificate-authority-schemas";
 import { validateCaDateField } from "../certificate-authority-validators";
 
-const InternalCertificateAuthorityConfigurationSchema = z.object({
-  type: z.nativeEnum(InternalCaType),
-  friendlyName: z.string().optional(),
-  commonName: z.string().trim(),
-  organization: z.string().trim(),
-  ou: z.string().trim(),
-  dn: z.string().trim(),
-  parentCaId: z.string().uuid().nullable(),
-  serialNumber: z.string().trim(),
-  activeCaCertId: z.string().uuid().nullable(),
-  country: z.string().trim(),
-  province: z.string().trim(),
-  locality: z.string().trim(),
-  notBefore: z.date().optional(),
-  notAfter: z.date().optional(),
-  maxPathLength: z.number().min(-1),
-  keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
-});
-
-const CreateInternalCertificateAuthorityConfigurationSchema = z
+const InternalCertificateAuthorityConfigurationSchema = z
   .object({
     type: z.nativeEnum(InternalCaType),
     friendlyName: z.string().optional(),
@@ -38,10 +19,11 @@ const CreateInternalCertificateAuthorityConfigurationSchema = z
     ou: z.string().trim(),
     dn: z.string().trim(),
     parentCaId: z.string().uuid().optional(),
+    serialNumber: z.string().trim().optional(),
+    activeCaCertId: z.string().uuid().optional(),
     country: z.string().trim(),
     province: z.string().trim(),
     locality: z.string().trim(),
-    // format: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format
     notBefore: validateCaDateField.optional(),
     notAfter: validateCaDateField.optional(),
     maxPathLength: z.number().min(-1),
@@ -69,11 +51,11 @@ export const InternalCertificateAuthoritySchema = BaseCertificateAuthoritySchema
 export const CreateInternalCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(
   CaType.INTERNAL
 ).extend({
-  configuration: CreateInternalCertificateAuthorityConfigurationSchema
+  configuration: InternalCertificateAuthorityConfigurationSchema
 });
 
 export const UpdateInternalCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(
   CaType.INTERNAL
 ).extend({
-  configuration: CreateInternalCertificateAuthorityConfigurationSchema.optional()
+  configuration: InternalCertificateAuthorityConfigurationSchema.optional()
 });

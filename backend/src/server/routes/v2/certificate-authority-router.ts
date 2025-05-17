@@ -53,17 +53,16 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         req.permission
       );
 
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: ca.projectId,
-      //     event: {
-      //       type: EventType.GET_CA,
-      //       metadata: {
-      //         caId: ca.id,
-      //         dn: ca.dn
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.query.projectId,
+        event: {
+          type: EventType.GET_CAS,
+          metadata: {
+            caIds: [...(internalCas ?? []).map((ca) => ca.id), ...(acmeCas ?? []).map((ca) => ca.id)]
+          }
+        }
+      });
 
       return {
         certificateAuthorities: [...(internalCas ?? []), ...(acmeCas ?? [])]
