@@ -96,61 +96,59 @@ export const OrgUserAccessTokenLimitSection = () => {
       <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
         {(isAllowed) => (
           <form onSubmit={handleSubmit(handleUserTokenExpirationSubmit)} autoComplete="off">
-            <div className="flex max-w-md gap-4">
-              <div className="flex-1">
-                <Controller
-                  control={control}
-                  name="expirationValue"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                      label="Expiration value"
+            <div className="flex max-w-sm gap-4">
+              <Controller
+                control={control}
+                name="expirationValue"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    label="Expiration value"
+                    className="w-full"
+                  >
+                    <Input
+                      {...field}
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={field.value}
+                      onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
+                      disabled={!isAllowed}
+                    />
+                  </FormControl>
+                )}
+              />
+
+              <Controller
+                control={control}
+                name="expirationUnit"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    label="Time unit"
+                  >
+                    <Select
+                      value={field.value}
+                      className="pr-2"
+                      onValueChange={field.onChange}
+                      placeholder="Select time unit"
+                      isDisabled={!isAllowed}
                     >
-                      <Input
-                        {...field}
-                        type="number"
-                        min={1}
-                        step={1}
-                        value={field.value}
-                        onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
-                        disabled={!isAllowed}
-                      />
-                    </FormControl>
-                  )}
-                />
-              </div>
-              <div className="flex-1">
-                <Controller
-                  control={control}
-                  name="expirationUnit"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                      label="Time unit"
-                    >
-                      <Select
-                        value={field.value}
-                        className="pr-2"
-                        onValueChange={field.onChange}
-                        placeholder="Select time unit"
-                        isDisabled={!isAllowed}
-                      >
-                        {timeUnits.map(({ value, label }) => (
-                          <SelectItem
-                            key={value}
-                            value={value}
-                            className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
-                          >
-                            <div className="ml-3 font-medium">{label}</div>
-                          </SelectItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-              </div>
+                      {timeUnits.map(({ value, label }) => (
+                        <SelectItem
+                          key={value}
+                          value={value}
+                          className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
+                        >
+                          <div className="ml-3 font-medium">{label}</div>
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
             </div>
             <Button
               colorSchema="secondary"

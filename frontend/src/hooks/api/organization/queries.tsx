@@ -118,7 +118,9 @@ export const useUpdateOrg = () => {
       kmsProductEnabled,
       sshProductEnabled,
       scannerProductEnabled,
-      shareSecretsProductEnabled
+      shareSecretsProductEnabled,
+      maxSharedSecretLifetime,
+      maxSharedSecretViewLimit
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
         name,
@@ -136,7 +138,9 @@ export const useUpdateOrg = () => {
         kmsProductEnabled,
         sshProductEnabled,
         scannerProductEnabled,
-        shareSecretsProductEnabled
+        shareSecretsProductEnabled,
+        maxSharedSecretLifetime,
+        maxSharedSecretViewLimit
       });
     },
     onSuccess: () => {
