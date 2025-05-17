@@ -6,15 +6,9 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import {
-  TCertificateAuthority,
-  TCertificateAuthorityInput
-} from "@app/services/certificate-authority/certificate-authority-types";
+import { TCertificateAuthority } from "@app/services/certificate-authority/certificate-authority-types";
 
-export const registerCertificateAuthorityEndpoints = <
-  T extends TCertificateAuthority,
-  I extends TCertificateAuthorityInput
->({
+export const registerCertificateAuthorityEndpoints = <T extends TCertificateAuthority>({
   server,
   caType,
   createSchema,
@@ -27,13 +21,13 @@ export const registerCertificateAuthorityEndpoints = <
     name: string;
     projectId: string;
     status: CaStatus;
-    configuration: I["configuration"];
+    configuration: T["configuration"];
     disableDirectIssuance: boolean;
   }>;
   updateSchema: z.ZodType<{
     name?: string;
     status?: CaStatus;
-    configuration?: I["configuration"];
+    configuration?: T["configuration"];
     disableDirectIssuance?: boolean;
   }>;
   responseSchema: z.ZodTypeAny;

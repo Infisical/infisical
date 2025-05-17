@@ -16,7 +16,7 @@ export const PkiSubscribersSchema = z.object({
   name: z.string(),
   commonName: z.string(),
   subjectAlternativeNames: z.string().array(),
-  ttl: z.string(),
+  ttl: z.string().nullable().optional(),
   keyUsages: z.string().array(),
   extendedKeyUsages: z.string().array(),
   status: z.string()

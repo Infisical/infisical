@@ -90,7 +90,8 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         ttl: z
           .string()
           .trim()
-          .refine((val) => ms(val) > 0, "TTL must be a positive number")
+          .refine((val) => !val || ms(val) > 0, "TTL must be a positive number")
+          .optional()
           .describe(PKI_SUBSCRIBERS.CREATE.ttl),
         subjectAlternativeNames: validateAltNameField
           .array()
@@ -134,7 +135,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
             caId: subscriber.caId ?? undefined,
             name: subscriber.name,
             commonName: subscriber.commonName,
-            ttl: subscriber.ttl,
+            ttl: subscriber.ttl ?? undefined,
             subjectAlternativeNames: subscriber.subjectAlternativeNames,
             keyUsages: subscriber.keyUsages as CertKeyUsage[],
             extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[]
@@ -219,7 +220,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
             caId: subscriber.caId ?? undefined,
             name: subscriber.name,
             commonName: subscriber.commonName,
-            ttl: subscriber.ttl,
+            ttl: subscriber.ttl ?? undefined,
             subjectAlternativeNames: subscriber.subjectAlternativeNames,
             keyUsages: subscriber.keyUsages as CertKeyUsage[],
             extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[]

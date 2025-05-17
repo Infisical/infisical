@@ -12,7 +12,7 @@ export type TCreatePkiSubscriberDTO = {
   name: string;
   commonName: string;
   status: PkiSubscriberStatus;
-  ttl: string;
+  ttl?: string;
   subjectAlternativeNames: string[];
   keyUsages: CertKeyUsage[];
   extendedKeyUsages: CertExtendedKeyUsage[];

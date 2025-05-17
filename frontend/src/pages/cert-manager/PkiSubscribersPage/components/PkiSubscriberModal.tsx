@@ -45,7 +45,7 @@ const schema = z
     caId: z.string().min(1, "Issuing CA is required"),
     commonName: z.string().trim().min(1, "Common Name is required"),
     subjectAlternativeNames: z.string(),
-    ttl: z.string().trim(),
+    ttl: z.string().trim().optional(),
     keyUsages: z.object({
       [CertKeyUsage.DIGITAL_SIGNATURE]: z.boolean().optional(),
       [CertKeyUsage.KEY_ENCIPHERMENT]: z.boolean().optional(),
@@ -90,6 +90,7 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -106,6 +107,9 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
       extendedKeyUsages: {}
     }
   });
+
+  const selectedCaId = watch("caId");
+  const selectedCa = cas?.find((ca) => ca.id === selectedCaId);
 
   useEffect(() => {
     if (pkiSubscriber) {
@@ -314,97 +318,101 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
               </FormControl>
             )}
           />
-          <Controller
-            control={control}
-            name="ttl"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="TTL"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                isRequired
-              >
-                <Input {...field} placeholder="2 days, 1d, 2h, 1y, ..." />
-              </FormControl>
-            )}
-          />
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="key-usages" className="data-[state=open]:border-none">
-              <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-                <div className="order-1 ml-3">Key Usage</div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <Controller
-                  control={control}
-                  name="keyUsages"
-                  render={({ field: { onChange, value }, fieldState: { error } }) => {
-                    return (
-                      <FormControl
-                        label="Key Usage"
-                        errorText={error?.message}
-                        isError={Boolean(error)}
-                      >
-                        <div className="mb-7 mt-2 grid grid-cols-2 gap-2">
-                          {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
-                            return (
-                              <Checkbox
-                                id={optionValue}
-                                key={optionValue}
-                                className="data-[state=checked]:bg-primary"
-                                isChecked={value[optionValue]}
-                                onCheckedChange={(state) => {
-                                  onChange({
-                                    ...value,
-                                    [optionValue]: state
-                                  });
-                                }}
-                              >
-                                {label}
-                              </Checkbox>
-                            );
-                          })}
-                        </div>
-                      </FormControl>
-                    );
-                  }}
-                />
-                <Controller
-                  control={control}
-                  name="extendedKeyUsages"
-                  render={({ field: { onChange, value }, fieldState: { error } }) => {
-                    return (
-                      <FormControl
-                        label="Extended Key Usage"
-                        errorText={error?.message}
-                        isError={Boolean(error)}
-                      >
-                        <div className="mb-7 mt-2 grid grid-cols-2 gap-2">
-                          {EXTENDED_KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
-                            return (
-                              <Checkbox
-                                id={optionValue}
-                                key={optionValue}
-                                className="data-[state=checked]:bg-primary"
-                                isChecked={value[optionValue]}
-                                onCheckedChange={(state) => {
-                                  onChange({
-                                    ...value,
-                                    [optionValue]: state
-                                  });
-                                }}
-                              >
-                                {label}
-                              </Checkbox>
-                            );
-                          })}
-                        </div>
-                      </FormControl>
-                    );
-                  }}
-                />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          {selectedCa?.type !== CaType.ACME && (
+            <Controller
+              control={control}
+              name="ttl"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="TTL"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  isRequired
+                >
+                  <Input {...field} placeholder="2 days, 1d, 2h, 1y, ..." />
+                </FormControl>
+              )}
+            />
+          )}
+          {selectedCa?.type !== CaType.ACME && (
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="key-usages" className="data-[state=open]:border-none">
+                <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
+                  <div className="order-1 ml-3">Key Usage</div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <Controller
+                    control={control}
+                    name="keyUsages"
+                    render={({ field: { onChange, value }, fieldState: { error } }) => {
+                      return (
+                        <FormControl
+                          label="Key Usage"
+                          errorText={error?.message}
+                          isError={Boolean(error)}
+                        >
+                          <div className="mb-7 mt-2 grid grid-cols-2 gap-2">
+                            {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
+                              return (
+                                <Checkbox
+                                  id={optionValue}
+                                  key={optionValue}
+                                  className="data-[state=checked]:bg-primary"
+                                  isChecked={value[optionValue]}
+                                  onCheckedChange={(state) => {
+                                    onChange({
+                                      ...value,
+                                      [optionValue]: state
+                                    });
+                                  }}
+                                >
+                                  {label}
+                                </Checkbox>
+                              );
+                            })}
+                          </div>
+                        </FormControl>
+                      );
+                    }}
+                  />
+                  <Controller
+                    control={control}
+                    name="extendedKeyUsages"
+                    render={({ field: { onChange, value }, fieldState: { error } }) => {
+                      return (
+                        <FormControl
+                          label="Extended Key Usage"
+                          errorText={error?.message}
+                          isError={Boolean(error)}
+                        >
+                          <div className="mb-7 mt-2 grid grid-cols-2 gap-2">
+                            {EXTENDED_KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
+                              return (
+                                <Checkbox
+                                  id={optionValue}
+                                  key={optionValue}
+                                  className="data-[state=checked]:bg-primary"
+                                  isChecked={value[optionValue]}
+                                  onCheckedChange={(state) => {
+                                    onChange({
+                                      ...value,
+                                      [optionValue]: state
+                                    });
+                                  }}
+                                >
+                                  {label}
+                                </Checkbox>
+                              );
+                            })}
+                          </div>
+                        </FormControl>
+                      );
+                    }}
+                  />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          )}
           <div className="mt-4 flex items-center">
             <Button
               className="mr-4"

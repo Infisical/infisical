@@ -1997,7 +1997,7 @@ interface CreatePkiSubscriber {
     caId?: string;
     name: string;
     commonName: string;
-    ttl: string;
+    ttl?: string;
     subjectAlternativeNames: string[];
     keyUsages: CertKeyUsage[];
     extendedKeyUsages: CertExtendedKeyUsage[];

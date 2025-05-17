@@ -440,7 +440,7 @@ export const pkiSubscriberServiceFactory = ({
 
     const caCertObj = new x509.X509Certificate(decryptedCaCert);
     const notBeforeDate = new Date();
-    const notAfterDate = new Date(new Date().getTime() + ms(subscriber.ttl));
+    const notAfterDate = new Date(new Date().getTime() + ms(subscriber.ttl ?? "0"));
     const caCertNotBeforeDate = new Date(caCertObj.notBefore);
     const caCertNotAfterDate = new Date(caCertObj.notAfter);
 

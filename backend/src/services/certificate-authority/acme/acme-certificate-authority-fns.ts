@@ -203,32 +203,44 @@ export const AcmeCertificateAuthorityFns = ({
     await appConnectionService.connectAppConnectionById(appConnection.app as AppConnection, dnsAppConnectionId, actor);
 
     const caEntity = await certificateAuthorityDAL.transaction(async (tx) => {
-      const ca = await certificateAuthorityDAL.create(
-        {
-          projectId,
-          disableDirectIssuance
-        },
-        tx
-      );
-
-      await externalCertificateAuthorityDAL.create(
-        {
-          certificateAuthorityId: ca.id,
-          dnsAppConnectionId,
-          type: CaType.ACME,
-          name,
-          configuration: {
-            directoryUrl,
-            accountEmail,
-            dnsProvider: dnsProviderConfig.provider,
-            hostedZoneId: dnsProviderConfig.hostedZoneId
+      try {
+        const ca = await certificateAuthorityDAL.create(
+          {
+            projectId,
+            disableDirectIssuance
           },
-          status
-        },
-        tx
-      );
+          tx
+        );
 
-      return certificateAuthorityDAL.findByIdWithAssociatedCa(ca.id, tx);
+        await externalCertificateAuthorityDAL.create(
+          {
+            certificateAuthorityId: ca.id,
+            dnsAppConnectionId,
+            type: CaType.ACME,
+            name,
+            projectId,
+            configuration: {
+              directoryUrl,
+              accountEmail,
+              dnsProvider: dnsProviderConfig.provider,
+              hostedZoneId: dnsProviderConfig.hostedZoneId
+            },
+            status
+          },
+          tx
+        );
+
+        return await certificateAuthorityDAL.findByIdWithAssociatedCa(ca.id, tx);
+      } catch (error) {
+        // @ts-expect-error We're expecting a database error
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        if (error?.error?.code === "23505") {
+          throw new BadRequestError({
+            message: "Certificate authority with the same name already exists in your project"
+          });
+        }
+        throw error;
+      }
     });
 
     if (!caEntity.externalCa?.id) {
