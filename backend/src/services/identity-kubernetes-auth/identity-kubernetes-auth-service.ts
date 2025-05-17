@@ -79,7 +79,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const callbackResult = await withGatewayProxy(
       async (port) => {
-        const res = await gatewayCallback("localhost", port);
+        const res = await gatewayCallback("https://localhost", port);
         return res;
       },
       {
@@ -138,11 +138,7 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     const tokenReviewCallback = async (host: string = identityKubernetesAuth.kubernetesHost, port?: number) => {
-      let baseUrl = `https://${host}`;
-
-      if (port) {
-        baseUrl += `:${port}`;
-      }
+      const baseUrl = port ? `${host}:${port}` : host;
 
       const res = await axios
         .post<TCreateTokenReviewResponse>(
