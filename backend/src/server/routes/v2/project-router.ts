@@ -206,19 +206,29 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      if (req.body.template) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          orgId: req.permission.orgId,
-          event: {
-            type: EventType.APPLY_PROJECT_TEMPLATE,
-            metadata: {
-              template: req.body.template,
-              projectId: project.id
-            }
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.CREATE_PROJECT,
+          metadata: {
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            actorOrgId: req.permission.orgId,
+            actorAuthMethod: req.permission.authMethod,
+            ...(req.body.projectName !== undefined && { workspaceName: req.body.projectName }),
+            ...(req.body.projectDescription !== undefined && { workspaceDescription: req.body.projectDescription }),
+            ...(req.body.slug !== undefined && { slug: req.body.slug }),
+            ...(req.body.kmsKeyId !== undefined && { kmsKeyId: req.body.kmsKeyId }),
+            ...(req.body.template !== undefined && { template: req.body.template }),
+            ...(req.body.type !== undefined && { type: req.body.type }),
+            ...(req.body.shouldCreateDefaultEnvs !== undefined && {
+              createDefaultEnvs: req.body.shouldCreateDefaultEnvs
+            })
           }
-        });
-      }
+        }
+      });
 
       return { project };
     }
@@ -260,6 +270,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.DELETE_PROJECT,
+          metadata: {}
+        }
       });
 
       return project;
@@ -339,6 +359,21 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.UPDATE_PROJECT,
+          metadata: {
+            ...(req.body.name !== undefined && { name: req.body.name }),
+            ...(req.body.description !== undefined && { description: req.body.description }),
+            ...(req.body.autoCapitalization !== undefined && { autoCapitalization: req.body.autoCapitalization }),
+            ...(req.body.hasDeleteProtection !== undefined && { hasDeleteProtection: req.body.hasDeleteProtection })
+          }
+        }
       });
 
       return project;
