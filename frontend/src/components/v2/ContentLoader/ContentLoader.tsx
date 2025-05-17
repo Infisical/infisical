@@ -2,6 +2,7 @@
 // if you pass array it will say it one by one giving user clear instruction on what's happening
 
 import { useEffect, useState } from "react";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
@@ -27,18 +28,11 @@ export const ContentLoader = ({ text, frequency = 2000, className }: Props) => {
   return (
     <div
       className={twMerge(
-        "container relative mx-auto flex h-screen w-full flex-col items-center justify-center space-y-8 px-8 text-mineshaft-50 dark:[color-scheme:dark]",
+        "container relative mx-auto flex h-screen w-full max-w-xs flex-col items-center justify-center space-y-8 px-8 text-mineshaft-50 dark:[color-scheme:dark]",
         className
       )}
     >
-      <img
-        src="/images/loading/loading.gif"
-        height={70}
-        width={120}
-        alt="loading animation"
-        decoding="async"
-        loading="lazy"
-      />
+      <DotLottieReact src="/lotties/infisical_loading.json" loop mode="forward" autoplay />
       {text && isTextArray && (
         <AnimatePresence mode="wait">
           <motion.div

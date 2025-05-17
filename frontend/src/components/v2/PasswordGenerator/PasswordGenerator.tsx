@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { faCheck, faCopy, faKey, faRefresh } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Button, Checkbox, IconButton, Slider } from "@app/components/v2";
+import { Button } from "@app/components/v2/Button";
+import { Checkbox } from "@app/components/v2/Checkbox";
+import { IconButton } from "@app/components/v2/IconButton";
+import { Slider } from "@app/components/v2/Slider";
 import { useTimedReset } from "@app/hooks";
 
 type PasswordOptionsType = {
