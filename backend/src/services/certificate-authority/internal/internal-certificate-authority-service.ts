@@ -1480,7 +1480,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           notAfter: notAfterDate,
           keyUsages: selectedKeyUsages,
           extendedKeyUsages: selectedExtendedKeyUsages,
-          projectId: ca.projectId
+          projectId: ca!.projectId
         },
         tx
       );
@@ -1892,7 +1892,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           notAfter: notAfterDate,
           keyUsages: selectedKeyUsages,
           extendedKeyUsages: selectedExtendedKeyUsages,
-          projectId: ca.projectId
+          projectId: ca!.projectId
         },
         tx
       );
