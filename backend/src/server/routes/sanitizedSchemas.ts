@@ -275,7 +275,12 @@ export const SanitizedTagSchema = SecretTagsSchema.pick({
 });
 
 export const InternalCertificateAuthorityResponseSchema = CertificateAuthoritiesSchema.merge(
-  InternalCertificateAuthoritiesSchema
+  InternalCertificateAuthoritiesSchema.omit({
+    notAfter: true,
+    notBefore: true
+  })
 ).extend({
-  requireTemplateForIssuance: z.boolean().optional()
+  requireTemplateForIssuance: z.boolean().optional(),
+  notAfter: z.string().optional(),
+  notBefore: z.string().optional()
 });
