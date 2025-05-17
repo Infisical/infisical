@@ -11,10 +11,13 @@ export const secretSharingKeys = {
   allSecretRequests: () => ["secretRequests"] as const,
   specificSecretRequests: ({ offset, limit }: { offset: number; limit: number }) =>
     [...secretSharingKeys.allSecretRequests(), { offset, limit }] as const,
-  getSecretById: (arg: { id: string; hashedHex: string | null; password?: string }) => [
-    "shared-secret",
-    arg
-  ],
+  getSecretById: (arg: {
+    id: string;
+    hashedHex: string | null;
+    password?: string;
+    email?: string;
+    token?: string;
+  }) => ["shared-secret", arg],
   getSecretRequestById: (arg: { id: string }) => ["secret-request", arg] as const
 };
 
@@ -83,7 +86,13 @@ export const useGetActiveSharedSecretById = ({
   token?: string;
 }) => {
   return useQuery({
-    queryKey: secretSharingKeys.getSecretById({ id: sharedSecretId, hashedHex, password }),
+    queryKey: secretSharingKeys.getSecretById({
+      id: sharedSecretId,
+      hashedHex,
+      password,
+      email,
+      token
+    }),
     queryFn: async () => {
       const { data } = await apiRequest.post<TViewSharedSecretResponse>(
         `/api/v1/secret-sharing/shared/public/${sharedSecretId}`,

@@ -52,10 +52,15 @@ const schema = z.object({
     .refine(
       (val) => {
         if (!val) return true;
-        return val.split(",").every((email) => z.string().email().safeParse(email.trim()).success);
+        const emails = val
+          .split(",")
+          .map((email) => email.trim())
+          .filter((email) => email !== "");
+        if (emails.length > 100) return false;
+        return emails.every((email) => z.string().email().safeParse(email).success);
       },
       {
-        message: "Must be a comma-separated list of valid emails or empty."
+        message: "Must be a comma-separated list of valid emails (max 100) or empty."
       }
     )
 });
@@ -249,7 +254,7 @@ export const ShareSecretForm = ({
                       v ? SecretSharingAccessType.Organization : SecretSharingAccessType.Anyone
                     )
                   }
-                  id="delete-secrets"
+                  id="org-access-only"
                 >
                   Limit access to people within organization
                 </Switch>
