@@ -180,7 +180,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         ttl: z
           .string()
           .trim()
-          .refine((val) => ms(val) > 0, "TTL must be a positive number")
+          .refine((val) => !val || ms(val) > 0, "TTL must be a positive number")
           .optional()
           .describe(PKI_SUBSCRIBERS.UPDATE.ttl),
         keyUsages: z

@@ -56,3 +56,8 @@ export type TListPkiSubscriberCertsDTO = {
   offset: number;
   limit: number;
 } & TProjectPermission;
+
+export enum SubscriberOperationStatus {
+  SUCCESS = "success",
+  FAILED = "failed"
+}

@@ -19,6 +19,7 @@ import { TAppConnectionServiceFactory } from "../app-connection/app-connection-s
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
+import { SubscriberOperationStatus } from "../pki-subscriber/pki-subscriber-types";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
@@ -47,7 +48,7 @@ type TCertificateAuthorityQueueFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   queueService: TQueueServiceFactory;
-  pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
+  pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById" | "updateById">;
 };
 
 export type TCertificateAuthorityQueueFactory = ReturnType<typeof certificateAuthorityQueueFactory>;
@@ -152,8 +153,20 @@ export const certificateAuthorityQueueFactory = ({
       try {
         if (caType === CaType.ACME) {
           await acmeFns.orderSubscriberCertificate(subscriberId);
+          await pkiSubscriberDAL.updateById(subscriberId, {
+            lastOperationStatus: SubscriberOperationStatus.SUCCESS,
+            lastOperationMessage: "Certificate ordered successfully",
+            lastOperationAt: new Date().toISOString()
+          });
         }
-      } catch (e) {
+      } catch (e: unknown) {
+        if (e instanceof Error) {
+          await pkiSubscriberDAL.updateById(subscriberId, {
+            lastOperationStatus: SubscriberOperationStatus.FAILED,
+            lastOperationMessage: e.message,
+            lastOperationAt: new Date().toISOString()
+          });
+        }
         logger.error(e, `CaOrderCertificate Failed [subscriberId=${subscriberId}] [job=${job.name}]`);
       } finally {
         await lock.release();

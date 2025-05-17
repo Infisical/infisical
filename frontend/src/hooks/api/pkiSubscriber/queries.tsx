@@ -39,13 +39,16 @@ export const pkiSubscriberKeys = {
     ] as const
 };
 
-export const useGetPkiSubscriber = ({
-  subscriberName,
-  projectId
-}: {
-  subscriberName: string;
-  projectId: string;
-}) => {
+export const useGetPkiSubscriber = (
+  {
+    subscriberName,
+    projectId
+  }: {
+    subscriberName: string;
+    projectId: string;
+  },
+  options?: TReactQueryOptions["options"]
+) => {
   return useQuery({
     queryKey: pkiSubscriberKeys.getPkiSubscriber({ subscriberName, projectId }),
     queryFn: async () => {
@@ -59,7 +62,8 @@ export const useGetPkiSubscriber = ({
       );
       return pkiSubscriber;
     },
-    enabled: Boolean(subscriberName) && Boolean(projectId)
+    enabled: Boolean(subscriberName) && Boolean(projectId),
+    ...options
   });
 };
 

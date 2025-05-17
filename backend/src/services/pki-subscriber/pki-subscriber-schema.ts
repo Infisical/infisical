@@ -12,7 +12,10 @@ export const sanitizedPkiSubscriber = PkiSubscribersSchema.pick({
   subjectAlternativeNames: true,
   ttl: true,
   keyUsages: true,
-  extendedKeyUsages: true
+  extendedKeyUsages: true,
+  lastOperationStatus: true,
+  lastOperationMessage: true,
+  lastOperationAt: true
 }).extend({
   supportsImmediateCertIssuance: z.boolean().optional()
 });

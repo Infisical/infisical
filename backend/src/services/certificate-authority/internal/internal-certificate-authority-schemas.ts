@@ -18,7 +18,7 @@ const InternalCertificateAuthorityConfigurationSchema = z
     organization: z.string().trim(),
     ou: z.string().trim(),
     dn: z.string().trim(),
-    parentCaId: z.string().uuid().optional(),
+    parentCaId: z.string().uuid().nullish(),
     serialNumber: z.string().trim().optional(),
     activeCaCertId: z.string().uuid().optional(),
     country: z.string().trim(),

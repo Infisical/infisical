@@ -5,6 +5,11 @@ export enum PkiSubscriberStatus {
   DISABLED = "disabled"
 }
 
+export enum SubscriberOperationStatus {
+  SUCCESS = "success",
+  FAILED = "failed"
+}
+
 export type TPkiSubscriber = {
   id: string;
   projectId: string;
@@ -17,6 +22,9 @@ export type TPkiSubscriber = {
   keyUsages: CertKeyUsage[];
   extendedKeyUsages: CertExtendedKeyUsage[];
   supportsImmediateCertIssuance?: boolean;
+  lastOperationStatus?: SubscriberOperationStatus;
+  lastOperationMessage?: string;
+  lastOperationAt?: string;
 };
 
 export type TCreatePkiSubscriberDTO = {

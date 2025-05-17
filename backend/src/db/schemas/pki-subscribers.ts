@@ -19,7 +19,10 @@ export const PkiSubscribersSchema = z.object({
   ttl: z.string().nullable().optional(),
   keyUsages: z.string().array(),
   extendedKeyUsages: z.string().array(),
-  status: z.string()
+  status: z.string(),
+  lastOperationStatus: z.string().nullable().optional(),
+  lastOperationMessage: z.string().nullable().optional(),
+  lastOperationAt: z.string().nullable().optional()
 });
 
 export type TPkiSubscribers = z.infer<typeof PkiSubscribersSchema>;

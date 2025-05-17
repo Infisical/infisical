@@ -88,6 +88,9 @@ export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.PkiSubscriber)) {
     await knex.schema.alterTable(TableName.PkiSubscriber, (t) => {
       t.string("ttl").nullable().alter();
+      t.string("lastOperationStatus");
+      t.text("lastOperationMessage");
+      t.string("lastOperationAt");
     });
   }
 }
@@ -163,5 +166,13 @@ export async function down(knex: Knex): Promise<void> {
 
   if (hasExternalCATable) {
     await knex.schema.dropTable(TableName.ExternalCertificateAuthority);
+  }
+
+  if (await knex.schema.hasTable(TableName.PkiSubscriber)) {
+    await knex.schema.alterTable(TableName.PkiSubscriber, (t) => {
+      t.dropColumn("lastOperationStatus");
+      t.dropColumn("lastOperationMessage");
+      t.dropColumn("lastOperationAt");
+    });
   }
 }

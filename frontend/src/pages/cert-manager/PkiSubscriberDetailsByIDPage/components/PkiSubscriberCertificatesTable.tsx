@@ -56,7 +56,7 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
       limit: perPage
     },
     {
-      refetchInterval: 10 * 1000 // 10 seconds
+      refetchInterval: 5000
     }
   );
 

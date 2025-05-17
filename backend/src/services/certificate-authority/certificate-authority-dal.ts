@@ -86,8 +86,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             serialNumber: result.internalSerialNumber,
             maxPathLength: result.internalMaxPathLength,
             keyAlgorithm: result.internalKeyAlgorithm,
-            notBefore: result.internalNotBefore,
-            notAfter: result.internalNotAfter,
+            notBefore: result.internalNotBefore?.toISOString(),
+            notAfter: result.internalNotAfter?.toISOString(),
             activeCaCertId: result.internalActiveCaCertId,
             certificateAuthorityId: result.internalCertificateAuthorityId
           }
@@ -232,8 +232,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
               serialNumber: ca.internalSerialNumber,
               maxPathLength: ca.internalMaxPathLength,
               keyAlgorithm: ca.internalKeyAlgorithm,
-              notBefore: ca.internalNotBefore,
-              notAfter: ca.internalNotAfter,
+              notBefore: ca.internalNotBefore?.toISOString(),
+              notAfter: ca.internalNotAfter?.toISOString(),
               activeCaCertId: ca.internalActiveCaCertId,
               certificateAuthorityId: ca.internalCertificateAuthorityId
             }
