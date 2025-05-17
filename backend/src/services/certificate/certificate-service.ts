@@ -337,18 +337,24 @@ export const certificateServiceFactory = ({
       encryptedCertificateChain: certBody.encryptedCertificateChain || undefined
     });
 
-    const { certPrivateKey } = await getCertificateCredentials({
-      certId: cert.id,
-      projectId: ca.projectId,
-      certificateSecretDAL,
-      projectDAL,
-      kmsService
-    });
+    let privateKey: string | null = null;
+    try {
+      const { certPrivateKey } = await getCertificateCredentials({
+        certId: cert.id,
+        projectId: ca.projectId,
+        certificateSecretDAL,
+        projectDAL,
+        kmsService
+      });
+      privateKey = certPrivateKey;
+    } catch (e) {
+      // This will error for older certificates
+    }
 
     return {
       certificate,
       certificateChain,
-      privateKey: certPrivateKey,
+      privateKey,
       serialNumber,
       cert,
       ca
