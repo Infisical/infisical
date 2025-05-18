@@ -5,6 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PKI_SUBSCRIBERS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -478,6 +479,72 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         certificateChain,
         issuingCaCertificate,
         serialNumber
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:subscriberName/active-certificate/bundle",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiSubscribers],
+      description: "Get active certificate bundle of a subscriber",
+      params: z.object({
+        subscriberName: z.string().describe(PKI_SUBSCRIBERS.GET_ACTIVE_CERT_BUNDLE.subscriberName)
+      }),
+      querystring: z.object({
+        projectId: z.string().trim().describe(PKI_SUBSCRIBERS.GET_ACTIVE_CERT_BUNDLE.projectId)
+      }),
+      response: {
+        200: z.object({
+          certificate: z.string().trim().describe(PKI_SUBSCRIBERS.GET_ACTIVE_CERT_BUNDLE.certificate),
+          certificateChain: z
+            .string()
+            .trim()
+            .nullable()
+            .describe(PKI_SUBSCRIBERS.GET_ACTIVE_CERT_BUNDLE.certificateChain),
+          privateKey: z.string().trim().describe(PKI_SUBSCRIBERS.GET_ACTIVE_CERT_BUNDLE.privateKey),
+          serialNumber: z.string().trim().describe(PKI_SUBSCRIBERS.GET_ACTIVE_CERT_BUNDLE.serialNumber)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req, reply) => {
+      const { certificate, certificateChain, serialNumber, cert, privateKey, subscriber } =
+        await server.services.pkiSubscriber.getSubscriberActiveCertBundle({
+          subscriberName: req.params.subscriberName,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.query
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: cert.projectId,
+        event: {
+          type: EventType.GET_SUBSCRIBER_ACTIVE_CERT_BUNDLE,
+          metadata: {
+            subscriberId: subscriber.id,
+            subscriberName: subscriber.name,
+            certId: cert.id,
+            serialNumber: cert.serialNumber
+          }
+        }
+      });
+
+      addNoCacheHeaders(reply);
+
+      return {
+        certificate,
+        certificateChain,
+        serialNumber,
+        privateKey
       };
     }
   });

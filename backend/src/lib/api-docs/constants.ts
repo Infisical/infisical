@@ -1755,6 +1755,14 @@ export const PKI_SUBSCRIBERS = {
     subscriberName: "The name of the PKI subscriber to get.",
     projectId: "The ID of the project to get the PKI subscriber for."
   },
+  GET_ACTIVE_CERT_BUNDLE: {
+    subscriberName: "The name of the PKI subscriber to get the active certificate bundle for.",
+    projectId: "The ID of the project to get the active certificate bundle for.",
+    certificate: "The active certificate for the subscriber.",
+    certificateChain: "The certificate chain of the active certificate for the subscriber.",
+    privateKey: "The private key of the active certificate for the subscriber.",
+    serialNumber: "The serial number of the active certificate for the subscriber."
+  },
   CREATE: {
     projectId: "The ID of the project to create the PKI subscriber in.",
     caId: "The ID of the CA that will issue certificates for the PKI subscriber.",
