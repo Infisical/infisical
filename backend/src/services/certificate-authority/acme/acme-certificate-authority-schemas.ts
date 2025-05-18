@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { CertificateAuthorities } from "@app/lib/api-docs/constants";
+
 import { CaType } from "../certificate-authority-enums";
 import {
   BaseCertificateAuthoritySchema,
@@ -9,21 +11,21 @@ import {
 import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
 
 export const AcmeCertificateAuthorityConfigurationSchema = z.object({
-  dnsAppConnectionId: z.string().trim(),
+  dnsAppConnectionId: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.ACME.dnsAppConnectionId),
   // soon, differentiate via the provider property
   dnsProviderConfig: z.object({
-    provider: z.nativeEnum(AcmeDnsProvider),
-    hostedZoneId: z.string().trim().min(1)
+    provider: z.nativeEnum(AcmeDnsProvider).describe(CertificateAuthorities.CONFIGURATIONS.ACME.provider),
+    hostedZoneId: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.hostedZoneId)
   }),
-  directoryUrl: z.string().trim().min(1),
-  accountEmail: z.string().trim().min(1)
+  directoryUrl: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.directoryUrl),
+  accountEmail: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.accountEmail)
 });
 
 export const AcmeCertificateAuthorityCredentialsSchema = z.object({
   accountKey: z.string()
 });
 
-export const AcmeCertificateAuthoritySchema = BaseCertificateAuthoritySchema(CaType.ACME).extend({
+export const AcmeCertificateAuthoritySchema = BaseCertificateAuthoritySchema.extend({
   type: z.literal(CaType.ACME),
   configuration: AcmeCertificateAuthorityConfigurationSchema
 });

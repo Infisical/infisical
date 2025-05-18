@@ -1474,6 +1474,16 @@
         {
           "group": "Certificate Authorities",
           "pages": [
+            {
+              "group": "ACME",
+              "pages": [
+                "api-reference/endpoints/certificate-authorities/acme/list",
+                "api-reference/endpoints/certificate-authorities/acme/create",
+                "api-reference/endpoints/certificate-authorities/acme/read",
+                "api-reference/endpoints/certificate-authorities/acme/update",
+                "api-reference/endpoints/certificate-authorities/acme/delete"
+              ]
+            },
             "api-reference/endpoints/certificate-authorities/list",
             "api-reference/endpoints/certificate-authorities/create",
             "api-reference/endpoints/certificate-authorities/read",

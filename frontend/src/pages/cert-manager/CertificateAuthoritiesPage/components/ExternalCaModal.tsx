@@ -27,11 +27,14 @@ import {
   useUpdateUnifiedCa
 } from "@app/hooks/api/ca";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { slugSchema } from "@app/lib/schemas";
 
 const schema = z
   .object({
     type: z.nativeEnum(CaType),
-    name: z.string(),
+    name: slugSchema({
+      field: "Name"
+    }),
     disableDirectIssuance: z.boolean(),
     status: z.nativeEnum(CaStatus),
     configuration: z.object({

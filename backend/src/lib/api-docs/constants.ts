@@ -5,6 +5,8 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
@@ -1963,6 +1965,46 @@ export const ProjectTemplates = {
   },
   DELETE: {
     templateId: "The ID of the project template to be deleted."
+  }
+};
+
+export const CertificateAuthorities = {
+  CREATE: (type: CaType) => ({
+    name: `The name of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority to create. Must be slug-friendly.`,
+    projectId: `The ID of the project to create the Certificate Authority in.`,
+    disableDirectIssuance: `Whether or not to disable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
+    status: `The status of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`
+  }),
+  UPDATE: (type: CaType) => ({
+    caId: `The ID of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority to update.`,
+    name: `The updated name of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority. Must be slug-friendly.`,
+    disableDirectIssuance: `Whether or not to disable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
+    status: `The updated status of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`
+  }),
+  CONFIGURATIONS: {
+    ACME: {
+      dnsAppConnectionId: `The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.`,
+      directoryUrl: `The directory URL for the ACME Certificate Authority.`,
+      accountEmail: `The email address for the ACME Certificate Authority.`,
+      provider: `The DNS provider for the ACME Certificate Authority.`,
+      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority.`
+    },
+    INTERNAL: {
+      type: "The type of CA to create.",
+      friendlyName: "A friendly name for the CA.",
+      organization: "The organization (O) for the CA.",
+      ou: "The organization unit (OU) for the CA.",
+      country: "The country name (C) for the CA.",
+      province: "The state of province name for the CA.",
+      locality: "The locality name for the CA.",
+      commonName: "The common name (CN) for the CA.",
+      notBefore: "The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+      notAfter: "The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+      maxPathLength:
+        "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
+      keyAlgorithm:
+        "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA."
+    }
   }
 };
 

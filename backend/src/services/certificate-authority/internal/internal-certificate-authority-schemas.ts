@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { CertificateAuthorities } from "@app/lib/api-docs/constants";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 import { CaType, InternalCaType } from "../certificate-authority-enums";
@@ -12,22 +13,24 @@ import { validateCaDateField } from "../certificate-authority-validators";
 
 const InternalCertificateAuthorityConfigurationSchema = z
   .object({
-    type: z.nativeEnum(InternalCaType),
-    friendlyName: z.string().optional(),
-    commonName: z.string().trim(),
-    organization: z.string().trim(),
-    ou: z.string().trim(),
+    type: z.nativeEnum(InternalCaType).describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.type),
+    friendlyName: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.friendlyName),
+    commonName: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.commonName),
+    organization: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.organization),
+    ou: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.ou),
+    country: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.country),
+    province: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.province),
+    locality: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.locality),
+    notBefore: validateCaDateField.optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.notBefore),
+    notAfter: validateCaDateField.optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.notAfter),
+    maxPathLength: z.number().min(-1).describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.maxPathLength),
+    keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.keyAlgorithm),
+
+    // no need for descriptions of the following fields because they are not exposed to the API user
     dn: z.string().trim(),
     parentCaId: z.string().uuid().nullish(),
     serialNumber: z.string().trim().optional(),
-    activeCaCertId: z.string().uuid().optional(),
-    country: z.string().trim(),
-    province: z.string().trim(),
-    locality: z.string().trim(),
-    notBefore: validateCaDateField.optional(),
-    notAfter: validateCaDateField.optional(),
-    maxPathLength: z.number().min(-1),
-    keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
+    activeCaCertId: z.string().uuid().optional()
   })
   .refine(
     (data) => {
@@ -43,7 +46,7 @@ const InternalCertificateAuthorityConfigurationSchema = z
     }
   );
 
-export const InternalCertificateAuthoritySchema = BaseCertificateAuthoritySchema(CaType.INTERNAL).extend({
+export const InternalCertificateAuthoritySchema = BaseCertificateAuthoritySchema.extend({
   type: z.literal(CaType.INTERNAL),
   configuration: InternalCertificateAuthorityConfigurationSchema
 });
