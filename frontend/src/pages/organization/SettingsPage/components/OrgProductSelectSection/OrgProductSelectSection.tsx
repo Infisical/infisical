@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
 
+import { createNotification } from "@app/components/notifications";
 import { Switch } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
-import axios from "axios";
-import { createNotification } from "@app/components/notifications";
 
 export const OrgProductSelectSection = () => {
   const [toggledProducts, setToggledProducts] = useState<{

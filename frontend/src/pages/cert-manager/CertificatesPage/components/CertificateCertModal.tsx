@@ -35,7 +35,7 @@ export const CertificateCertModal = ({ popUp, handlePopUpToggle }: Props) => {
         certificate: string;
         certificateChain: string;
         serialNumber: string;
-        privateKey?: string;
+        privateKey?: string | null;
       }
     | undefined = canReadPrivateKey ? bundleData : bodyData;
 
@@ -52,7 +52,7 @@ export const CertificateCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             serialNumber={data.serialNumber}
             certificate={data.certificate}
             certificateChain={data.certificateChain}
-            privateKey={data.privateKey}
+            privateKey={data.privateKey || undefined}
           />
         ) : (
           <div />
