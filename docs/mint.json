@@ -112,6 +112,7 @@
           "pages": [
             "documentation/platform/pki/overview",
             "documentation/platform/pki/private-ca",
+            "documentation/platform/pki/external-ca",
             "documentation/platform/pki/subscribers",
             "documentation/platform/pki/certificates",
             "documentation/platform/pki/pki-issuer",
