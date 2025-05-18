@@ -263,6 +263,7 @@ export enum EventType {
   ISSUE_PKI_SUBSCRIBER_CERT = "issue-pki-subscriber-cert",
   SIGN_PKI_SUBSCRIBER_CERT = "sign-pki-subscriber-cert",
   LIST_PKI_SUBSCRIBER_CERTS = "list-pki-subscriber-certs",
+  GET_SUBSCRIBER_ACTIVE_CERT_BUNDLE = "get-subscriber-active-cert-bundle",
   CREATE_KMS = "create-kms",
   UPDATE_KMS = "update-kms",
   DELETE_KMS = "delete-kms",
@@ -2061,6 +2062,16 @@ interface ListPkiSubscriberCerts {
   };
 }
 
+interface GetSubscriberActiveCertBundle {
+  type: EventType.GET_SUBSCRIBER_ACTIVE_CERT_BUNDLE;
+  metadata: {
+    subscriberId: string;
+    subscriberName: string;
+    certId: string;
+    serialNumber: string;
+  };
+}
+
 interface CreateKmsEvent {
   type: EventType.CREATE_KMS;
   metadata: {
@@ -3033,6 +3044,7 @@ export type Event =
   | IssuePkiSubscriberCert
   | SignPkiSubscriberCert
   | ListPkiSubscriberCerts
+  | GetSubscriberActiveCertBundle
   | CreateKmsEvent
   | UpdateKmsEvent
   | DeleteKmsEvent

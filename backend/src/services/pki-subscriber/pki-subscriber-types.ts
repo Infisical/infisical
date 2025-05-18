@@ -57,6 +57,10 @@ export type TListPkiSubscriberCertsDTO = {
   limit: number;
 } & TProjectPermission;
 
+export type TGetSubscriberActiveCertBundleDTO = {
+  subscriberName: string;
+} & TProjectPermission;
+
 export enum SubscriberOperationStatus {
   SUCCESS = "success",
   FAILED = "failed"

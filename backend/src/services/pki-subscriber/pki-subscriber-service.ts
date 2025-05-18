@@ -6,6 +6,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
+  ProjectPermissionCertificateActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -38,6 +39,7 @@ import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subsc
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
+import { getCertificateCredentials } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TCertificateAuthorityQueueFactory } from "../certificate-authority/certificate-authority-queue";
 import { InternalCertificateAuthorityFns } from "../certificate-authority/internal/internal-certificate-authority-fns";
@@ -46,6 +48,7 @@ import {
   TCreatePkiSubscriberDTO,
   TDeletePkiSubscriberDTO,
   TGetPkiSubscriberDTO,
+  TGetSubscriberActiveCertBundleDTO,
   TIssuePkiSubscriberCertDTO,
   TListPkiSubscriberCertsDTO,
   TOrderPkiSubscriberCertDTO,
@@ -66,9 +69,12 @@ type TPkiSubscriberServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityQueue: Pick<TCertificateAuthorityQueueFactory, "orderCertificateForSubscriber">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "countCertificatesForPkiSubscriber" | "find">;
-  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "create" | "transaction" | "countCertificatesForPkiSubscriber" | "findLatestActiveCertForSubscriber" | "find"
+  >;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create" | "findOne">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById" | "find">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey" | "encryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -691,6 +697,110 @@ export const pkiSubscriberServiceFactory = ({
     };
   };
 
+  const getSubscriberActiveCertBundle = async ({
+    subscriberName,
+    projectId,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TGetSubscriberActiveCertBundleDTO) => {
+    const subscriber = await pkiSubscriberDAL.findOne({
+      name: subscriberName,
+      projectId
+    });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: subscriber.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPkiSubscriberActions.ListCerts,
+      subject(ProjectPermissionSub.PkiSubscribers, {
+        name: subscriber.name
+      })
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionSub.Certificates
+    );
+
+    const cert = await certificateDAL.findLatestActiveCertForSubscriber({
+      subscriberId: subscriber.id
+    });
+
+    if (!cert) {
+      throw new NotFoundError({ message: "No active certificate found for subscriber" });
+    }
+
+    const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
+
+    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
+      projectId: cert.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKeyId
+    });
+    const decryptedCert = await kmsDecryptor({
+      cipherTextBlob: certBody.encryptedCertificate
+    });
+
+    const certObj = new x509.X509Certificate(decryptedCert);
+    const certificate = certObj.toString("pem");
+
+    let certificateChain = null;
+
+    // On newer certs the certBody.encryptedCertificateChain column will always exist.
+    // Older certs will have a caCertId which will be used as a fallback mechanism for structuring the chain.
+    if (certBody.encryptedCertificateChain) {
+      const decryptedCertChain = await kmsDecryptor({
+        cipherTextBlob: certBody.encryptedCertificateChain
+      });
+      certificateChain = decryptedCertChain.toString();
+    } else if (cert.caCertId) {
+      const { caCert, caCertChain } = await getCaCertChain({
+        caCertId: cert.caCertId,
+        certificateAuthorityDAL,
+        certificateAuthorityCertDAL,
+        projectDAL,
+        kmsService
+      });
+
+      certificateChain = `${caCert}\n${caCertChain}`.trim();
+    }
+
+    const { certPrivateKey } = await getCertificateCredentials({
+      certId: cert.id,
+      projectId: cert.projectId,
+      certificateSecretDAL,
+      projectDAL,
+      kmsService
+    });
+
+    return {
+      certificate,
+      certificateChain,
+      privateKey: certPrivateKey,
+      serialNumber: cert.serialNumber,
+      cert,
+      subscriber
+    };
+  };
+
   return {
     createSubscriber,
     getSubscriber,
@@ -699,6 +809,7 @@ export const pkiSubscriberServiceFactory = ({
     issueSubscriberCert,
     signSubscriberCert,
     listSubscriberCerts,
-    orderSubscriberCert
+    orderSubscriberCert,
+    getSubscriberActiveCertBundle
   };
 };
