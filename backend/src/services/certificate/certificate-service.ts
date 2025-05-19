@@ -29,6 +29,7 @@ import {
   TGetCertPrivateKeyDTO,
   TRevokeCertDTO
 } from "./certificate-types";
+import { NotFoundError } from "@app/lib/errors";
 
 type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find">;
@@ -337,18 +338,27 @@ export const certificateServiceFactory = ({
       encryptedCertificateChain: certBody.encryptedCertificateChain || undefined
     });
 
-    const { certPrivateKey } = await getCertificateCredentials({
-      certId: cert.id,
-      projectId: ca.projectId,
-      certificateSecretDAL,
-      projectDAL,
-      kmsService
-    });
+    let privateKey: string | null = null;
+    try {
+      const { certPrivateKey } = await getCertificateCredentials({
+        certId: cert.id,
+        projectId: ca.projectId,
+        certificateSecretDAL,
+        projectDAL,
+        kmsService
+      });
+      privateKey = certPrivateKey;
+    } catch (e) {
+      // Skip NotFound errors but throw all others
+      if (!(e instanceof NotFoundError)) {
+        throw e;
+      }
+    }
 
     return {
       certificate,
       certificateChain,
-      privateKey: certPrivateKey,
+      privateKey,
       serialNumber,
       cert,
       ca

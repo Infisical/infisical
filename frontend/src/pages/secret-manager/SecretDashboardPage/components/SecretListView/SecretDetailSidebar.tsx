@@ -398,11 +398,19 @@ export const SecretDetailSidebar = ({
                                   autoFocus={false}
                                 />
                                 <Tooltip
-                                  content="You don't have permission to view the secret value."
-                                  isDisabled={!secret?.secretValueHidden}
+                                  content={
+                                    !currentWorkspace.secretSharing
+                                      ? "This project does not allow secret sharing."
+                                      : "You don't have permission to view the secret value."
+                                  }
+                                  isDisabled={
+                                    !secret?.secretValueHidden && currentWorkspace.secretSharing
+                                  }
                                 >
                                   <Button
-                                    isDisabled={secret?.secretValueHidden}
+                                    isDisabled={
+                                      secret?.secretValueHidden || !currentWorkspace.secretSharing
+                                    }
                                     className="px-2 py-[0.43rem] font-normal"
                                     variant="outline_bg"
                                     leftIcon={<FontAwesomeIcon icon={faShare} />}

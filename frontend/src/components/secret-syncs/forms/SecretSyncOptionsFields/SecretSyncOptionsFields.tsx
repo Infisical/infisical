@@ -144,6 +144,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                     <a
                       href="https://infisical.com/docs/integrations/secret-syncs/overview#key-schemas"
                       target="_blank"
+                      rel="noopener noreferrer"
                     >
                       Key Schema
                     </a>{" "}

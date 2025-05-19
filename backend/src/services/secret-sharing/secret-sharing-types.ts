@@ -22,6 +22,7 @@ export type TSharedSecretPermission = {
   accessType?: SecretSharingAccessType;
   name?: string;
   password?: string;
+  emails?: string[];
 };
 
 export type TCreatePublicSharedSecretDTO = {
@@ -37,6 +38,10 @@ export type TGetActiveSharedSecretByIdDTO = {
   hashedHex?: string;
   orgId?: string;
   password?: string;
+
+  // For secrets shared with specific emails
+  email?: string;
+  hash?: string;
 };
 
 export type TValidateActiveSharedSecretDTO = TGetActiveSharedSecretByIdDTO & {

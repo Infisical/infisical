@@ -7,7 +7,9 @@ import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { ViewSharedSecretByIDPage } from "./ViewSharedSecretByIDPage";
 
 const SharedSecretByIDPageQuerySchema = z.object({
-  key: z.string().catch("")
+  key: z.string().catch(""),
+  email: z.string().optional(),
+  hash: z.string().optional()
 });
 
 export const Route = createFileRoute("/shared/secret/$secretId")({
