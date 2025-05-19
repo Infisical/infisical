@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-floating-promises */
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";

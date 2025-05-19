@@ -156,7 +156,7 @@ export const certificateAuthorityQueueFactory = ({
           await pkiSubscriberDAL.updateById(subscriberId, {
             lastOperationStatus: SubscriberOperationStatus.SUCCESS,
             lastOperationMessage: "Certificate ordered successfully",
-            lastOperationAt: new Date().toISOString()
+            lastOperationAt: new Date()
           });
         }
       } catch (e: unknown) {
@@ -164,7 +164,7 @@ export const certificateAuthorityQueueFactory = ({
           await pkiSubscriberDAL.updateById(subscriberId, {
             lastOperationStatus: SubscriberOperationStatus.FAILED,
             lastOperationMessage: e.message,
-            lastOperationAt: new Date().toISOString()
+            lastOperationAt: new Date()
           });
         }
         logger.error(e, `CaOrderCertificate Failed [subscriberId=${subscriberId}] [job=${job.name}]`);

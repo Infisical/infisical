@@ -140,7 +140,7 @@ export const certificateAuthorityServiceFactory = ({
         type,
         disableDirectIssuance: ca.disableDirectIssuance,
         name: ca.internalCa?.friendlyName,
-        projectId,
+        projectId: finalProjectId,
         status,
         configuration: ca.internalCa
       } as TCertificateAuthority;

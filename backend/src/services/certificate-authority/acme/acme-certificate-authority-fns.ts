@@ -6,6 +6,7 @@ import { KeyObject } from "crypto";
 import { TableName } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -405,6 +406,8 @@ export const AcmeCertificateAuthorityFns = ({
         }
       );
     }
+
+    await blockLocalAndPrivateIpAddresses(acmeCa.configuration.directoryUrl);
 
     const acmeClient = new acme.Client({
       directoryUrl: acmeCa.configuration.directoryUrl,

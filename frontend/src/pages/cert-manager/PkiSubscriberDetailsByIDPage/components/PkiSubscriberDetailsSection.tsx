@@ -66,7 +66,8 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
   const { mutateAsync: issuePkiSubscriberCert, isPending: isIssuingCert } =
     useIssuePkiSubscriberCert();
 
-  const { mutateAsync: orderPkiSubscriberCert } = useOrderPkiSubscriberCert();
+  const { mutateAsync: orderPkiSubscriberCert, isPending: isOrderingCert } =
+    useOrderPkiSubscriberCert();
 
   const onIssuePkiSubscriberCert = async () => {
     try {
@@ -90,8 +91,8 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
         await orderPkiSubscriberCert({ subscriberName, projectId });
 
         createNotification({
-          text: "Successfully ordered certificate. It will be issued after CA processing.",
-          type: "success"
+          text: "Successfully ordered certificate. It will be issued after CA processing which could take a few minutes.",
+          type: "info"
         });
       }
     } catch (err) {
@@ -198,7 +199,7 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
             className="mt-2 w-full"
             colorSchema="primary"
             type="button"
-            isLoading={isIssuingCert}
+            isLoading={isIssuingCert || isOrderingCert}
             onClick={() => {
               onIssuePkiSubscriberCert();
             }}

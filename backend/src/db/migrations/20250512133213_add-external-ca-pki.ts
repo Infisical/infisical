@@ -12,12 +12,8 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("certificateAuthorityId").nullable();
     });
 
-    const caRows = await knex(TableName.CertificateAuthority).select("*");
-    if (caRows.length > 0) {
-      // @ts-expect-error intentional: migration
-      await knex(TableName.InternalCertificateAuthority).insert(caRows);
-    }
-
+    // @ts-expect-error intentional: migration
+    await knex(TableName.InternalCertificateAuthority).insert(knex(TableName.CertificateAuthority).select("*"));
     await knex(TableName.InternalCertificateAuthority).update("certificateAuthorityId", knex.ref("id"));
 
     await knex.schema.alterTable(TableName.InternalCertificateAuthority, (t) => {
@@ -90,7 +86,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("ttl").nullable().alter();
       t.string("lastOperationStatus");
       t.text("lastOperationMessage");
-      t.string("lastOperationAt");
+      t.dateTime("lastOperationAt");
     });
   }
 }

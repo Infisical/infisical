@@ -710,6 +710,10 @@ export const pkiSubscriberServiceFactory = ({
       projectId
     });
 
+    if (!subscriber) {
+      throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

@@ -26,7 +26,7 @@ export const ExternalCaSection = () => {
 
   const onRemoveCaSubmit = async (caId: string, type: CaType) => {
     try {
-      if (!currentWorkspace?.slug) return;
+      if (!currentWorkspace?.id) return;
 
       await deleteCa({ caId, type, projectId: currentWorkspace.id });
 
@@ -67,7 +67,7 @@ export const ExternalCaSection = () => {
     } catch (err) {
       console.error(err);
       createNotification({
-        text: `Failed to ${status === CaStatus.ACTIVE ? "enabled" : "disabled"} CA`,
+        text: `Failed to ${status === CaStatus.ACTIVE ? "enable" : "disable"} CA`,
         type: "error"
       });
     }
@@ -84,7 +84,6 @@ export const ExternalCaSection = () => {
           {(isAllowed) => (
             <Button
               colorSchema="primary"
-              type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => handlePopUpOpen("ca")}
               isDisabled={!isAllowed}

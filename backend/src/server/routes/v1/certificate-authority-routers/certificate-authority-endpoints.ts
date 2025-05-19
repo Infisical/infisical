@@ -204,7 +204,7 @@ export const registerCertificateAuthorityEndpoints = <
 
   server.route({
     method: "DELETE",
-    url: `/:certificateAuthorityId`,
+    url: "/:certificateAuthorityId",
     config: {
       rateLimit: writeLimit
     },

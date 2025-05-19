@@ -11,13 +11,13 @@ import {
 import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
 
 export const AcmeCertificateAuthorityConfigurationSchema = z.object({
-  dnsAppConnectionId: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.ACME.dnsAppConnectionId),
+  dnsAppConnectionId: z.string().uuid().trim().describe(CertificateAuthorities.CONFIGURATIONS.ACME.dnsAppConnectionId),
   // soon, differentiate via the provider property
   dnsProviderConfig: z.object({
     provider: z.nativeEnum(AcmeDnsProvider).describe(CertificateAuthorities.CONFIGURATIONS.ACME.provider),
     hostedZoneId: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.hostedZoneId)
   }),
-  directoryUrl: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.directoryUrl),
+  directoryUrl: z.string().url().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.directoryUrl),
   accountEmail: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.accountEmail)
 });
 

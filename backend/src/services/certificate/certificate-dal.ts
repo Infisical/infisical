@@ -11,14 +11,18 @@ export const certificateDALFactory = (db: TDbClient) => {
   const certificateOrm = ormify(db, TableName.Certificate);
 
   const findLatestActiveCertForSubscriber = async ({ subscriberId }: { subscriberId: string }) => {
-    const cert = await db
-      .replicaNode()(TableName.Certificate)
-      .where({ pkiSubscriberId: subscriberId, status: CertStatus.ACTIVE })
-      .where("notAfter", ">", new Date())
-      .orderBy("notBefore", "desc")
-      .first();
+    try {
+      const cert = await db
+        .replicaNode()(TableName.Certificate)
+        .where({ pkiSubscriberId: subscriberId, status: CertStatus.ACTIVE })
+        .where("notAfter", ">", new Date())
+        .orderBy("notBefore", "desc")
+        .first();
 
-    return cert;
+      return cert;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find latest active certificate for subscriber" });
+    }
   };
 
   const countCertificatesInProject = async ({
