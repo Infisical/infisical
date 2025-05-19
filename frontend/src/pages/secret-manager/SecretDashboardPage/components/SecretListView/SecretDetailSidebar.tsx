@@ -94,8 +94,9 @@ export const SecretDetailSidebar = ({
   secretPath,
   handleSecretShare
 }: Props) => {
+  if (!secret) return <></>;
+
   const {
-    register,
     control,
     watch,
     handleSubmit,
@@ -103,9 +104,14 @@ export const SecretDetailSidebar = ({
     reset,
     formState: { isDirty, isSubmitting }
   } = useForm<TFormSchema>({
-    resolver: zodResolver(formSchema),
-    values: secret
+    resolver: zodResolver(formSchema)
   });
+
+  useEffect(() => {
+    if (secret) {
+      reset(secret);
+    }
+  }, [secret, reset]);
 
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
     "secretAccessUpgradePlan"
@@ -713,14 +719,25 @@ export const SecretDetailSidebar = ({
                   </FormControl>
                 </div>
               </div>
-              <FormControl label="Comments & Notes">
-                <TextArea
-                  className="border border-mineshaft-600 bg-bunker-800 text-sm"
-                  {...register("comment")}
-                  readOnly={isReadOnly}
-                  rows={5}
-                />
-              </FormControl>
+              <Controller
+                control={control}
+                name="comment"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Comments & Notes"
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                    className="mb-0"
+                  >
+                    <TextArea
+                      className="border border-mineshaft-600 bg-bunker-800 text-sm"
+                      readOnly={isReadOnly}
+                      rows={5}
+                      {...field}
+                    />
+                  </FormControl>
+                )}
+              />
               <FormControl>
                 {secretReminderRepeatDays && secretReminderRepeatDays > 0 ? (
                   <div className="flex items-center justify-between px-2">
@@ -921,7 +938,9 @@ export const SecretDetailSidebar = ({
                                 variant="outline_bg"
                                 size="sm"
                                 className="h-8 w-8 rounded-md"
-                                onClick={() => setValue("value", secretValue)}
+                                onClick={() =>
+                                  setValue("value", secretValue, { shouldDirty: true })
+                                }
                               >
                                 <FontAwesomeIcon icon={faArrowRotateRight} />
                               </IconButton>
