@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Accordion,
   AccordionContent,
@@ -17,9 +18,11 @@ import {
   SecretInput,
   Select,
   SelectItem,
-  TextArea
+  TextArea,
+  Tooltip
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { OrgPermissionSubjects } from "@app/context";
+import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys, useUpdateDynamicSecret } from "@app/hooks/api";
 import { SqlProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
@@ -60,7 +63,7 @@ const formSchema = z.object({
       revocationStatement: z.string().min(1),
       renewStatement: z.string().optional(),
       ca: z.string().optional(),
-      projectGatewayId: z.string().optional().nullable()
+      gatewayId: z.string().optional().nullable()
     })
     .partial(),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -147,15 +150,11 @@ export const EditDynamicSecretSqlProviderForm = ({
     }
   });
 
-  const { currentWorkspace } = useWorkspace();
-  const { data: projectGateways, isPending: isProjectGatewaysLoading } = useQuery(
-    gatewaysQueryKeys.listProjectGateways({ projectId: currentWorkspace.id })
-  );
+  const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
   const updateDynamicSecret = useUpdateDynamicSecret();
-  const selectedProjectGatewayId = watch("inputs.projectGatewayId");
-  const isGatewayInActive =
-    projectGateways?.findIndex((el) => el.projectGatewayId === selectedProjectGatewayId) === -1;
+  const selectedGatewayId = watch("inputs.gatewayId");
+  const isGatewayInActive = gateways?.findIndex((el) => el.id === selectedGatewayId) === -1;
 
   const handleUpdateDynamicSecret = async ({
     inputs,
@@ -177,7 +176,7 @@ export const EditDynamicSecretSqlProviderForm = ({
           defaultTTL,
           inputs: {
             ...inputs,
-            projectGatewayId: isGatewayInActive ? null : inputs.projectGatewayId
+            gatewayId: isGatewayInActive ? null : inputs.gatewayId
           },
           newName: newName === dynamicSecret.name ? undefined : newName,
           metadata
@@ -250,45 +249,60 @@ export const EditDynamicSecretSqlProviderForm = ({
         <div>
           <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
           <div>
-            <Controller
-              control={control}
-              name="inputs.projectGatewayId"
-              defaultValue=""
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error?.message) || isGatewayInActive}
-                  errorText={
-                    isGatewayInActive && selectedProjectGatewayId
-                      ? `Project Gateway ${selectedProjectGatewayId} is removed`
-                      : error?.message
-                  }
-                  label="Gateway"
-                  helperText=""
-                >
-                  <Select
-                    value={value || undefined}
-                    onValueChange={onChange}
-                    className="w-full border border-mineshaft-500"
-                    dropdownContainerClassName="max-w-none"
-                    isLoading={isProjectGatewaysLoading}
-                    placeholder="Internet Gateway"
-                    position="popper"
-                  >
-                    <SelectItem
-                      value={null as unknown as string}
-                      onClick={() => onChange(undefined)}
+            <OrgPermissionCan
+              I={OrgGatewayPermissionActions.AttachGateways}
+              a={OrgPermissionSubjects.Gateway}
+            >
+              {(isAllowed) => (
+                <Controller
+                  control={control}
+                  name="inputs.gatewayId"
+                  defaultValue=""
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <FormControl
+                      isError={Boolean(error?.message) || isGatewayInActive}
+                      errorText={
+                        isGatewayInActive && selectedGatewayId
+                          ? `Project Gateway ${selectedGatewayId} is removed`
+                          : error?.message
+                      }
+                      label="Gateway"
+                      helperText=""
                     >
-                      Internet Gateway
-                    </SelectItem>
-                    {projectGateways?.map((el) => (
-                      <SelectItem value={el.projectGatewayId} key={el.id}>
-                        {el.name}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                      <Tooltip
+                        isDisabled={isAllowed}
+                        content="Restricted access. You don't have permission to attach gateways to resources."
+                      >
+                        <div>
+                          <Select
+                            isDisabled={!isAllowed}
+                            value={value || undefined}
+                            onValueChange={onChange}
+                            className="w-full border border-mineshaft-500"
+                            dropdownContainerClassName="max-w-none"
+                            isLoading={isGatewaysLoading}
+                            placeholder="Default: Internet Gateway"
+                            position="popper"
+                          >
+                            <SelectItem
+                              value={null as unknown as string}
+                              onClick={() => onChange(undefined)}
+                            >
+                              Internet Gateway
+                            </SelectItem>
+                            {gateways?.map((el) => (
+                              <SelectItem value={el.id} key={el.id}>
+                                {el.name}
+                              </SelectItem>
+                            ))}
+                          </Select>
+                        </div>
+                      </Tooltip>
+                    </FormControl>
+                  )}
+                />
               )}
-            />
+            </OrgPermissionCan>
           </div>
           <div className="flex flex-col">
             <Controller

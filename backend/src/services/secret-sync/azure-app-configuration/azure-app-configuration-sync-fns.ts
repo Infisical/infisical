@@ -7,6 +7,7 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault";
 import { isAzureKeyVaultReference } from "@app/services/integration-auth/integration-sync-secret-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAzureAppConfigurationSyncWithCredentials } from "./azure-app-configuration-sync-types";
@@ -139,6 +140,9 @@ export const azureAppConfigurationSyncFactory = ({
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for await (const key of Object.keys(azureAppConfigSecrets)) {
+      // eslint-disable-next-line no-continue
+      if (!matchesSchema(key, secretSync.syncOptions.keySchema)) continue;
+
       const azureSecret = azureAppConfigSecrets[key];
       if (
         !(key in secretMap) ||

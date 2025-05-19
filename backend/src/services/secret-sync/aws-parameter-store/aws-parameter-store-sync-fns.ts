@@ -2,6 +2,7 @@ import AWS, { AWSError } from "aws-sdk";
 
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAwsParameterStoreSyncWithCredentials } from "./aws-parameter-store-sync-types";
@@ -388,6 +389,9 @@ export const AwsParameterStoreSyncFns = {
 
     for (const entry of Object.entries(awsParameterStoreSecretsRecord)) {
       const [key, parameter] = entry;
+
+      // eslint-disable-next-line no-continue
+      if (!matchesSchema(key, syncOptions.keySchema)) continue;
 
       if (!(key in secretMap) || !secretMap[key].value) {
         parametersToDelete.push(parameter);

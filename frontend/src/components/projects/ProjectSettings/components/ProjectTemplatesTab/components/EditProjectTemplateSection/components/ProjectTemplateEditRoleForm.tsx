@@ -1,5 +1,5 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
-import { faChevronLeft, faPlus, faSave } from "@fortawesome/free-solid-svg-icons";
+import { faChevronLeft, faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
@@ -9,12 +9,11 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { isCustomProjectRole } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
 import { TProjectTemplate, useUpdateProjectTemplate } from "@app/hooks/api/projectTemplates";
 import { slugSchema } from "@app/lib/schemas";
+import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
-import { PolicySelectionModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicySelectionModal";
 import {
   formRolePermission2API,
   PROJECT_PERMISSION_OBJECT,
@@ -44,8 +43,6 @@ export const ProjectTemplateEditRoleForm = ({
   role,
   isDisabled
 }: Props) => {
-  const { popUp, handlePopUpToggle } = usePopUp(["addPolicy"] as const);
-
   const formMethods = useForm<TFormSchema>({
     values: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : undefined,
     resolver: zodResolver(formSchema)
@@ -120,7 +117,7 @@ export const ProjectTemplateEditRoleForm = ({
                   variant="outline_bg"
                   type="submit"
                   className={twMerge(
-                    "h-10 rounded-r-none border border-primary",
+                    "mr-4 h-10 border border-primary",
                     isDirty && "bg-primary text-black"
                   )}
                   isDisabled={isSubmitting || !isDirty || isDisabled}
@@ -129,19 +126,7 @@ export const ProjectTemplateEditRoleForm = ({
                 >
                   Save
                 </Button>
-                <Button
-                  className="h-10 rounded-l-none"
-                  variant="outline_bg"
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  isDisabled={isDisabled}
-                  onClick={() => handlePopUpToggle("addPolicy")}
-                >
-                  Add Policies
-                </Button>
-                <PolicySelectionModal
-                  isOpen={popUp.addPolicy.isOpen}
-                  onOpenChange={(isOpen) => handlePopUpToggle("addPolicy", isOpen)}
-                />
+                <AddPoliciesButton isDisabled={isDisabled} />
               </div>
             </div>
           )}

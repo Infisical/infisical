@@ -660,7 +660,8 @@ export const projectServiceFactory = ({
       autoCapitalization: update.autoCapitalization,
       enforceCapitalization: update.autoCapitalization,
       hasDeleteProtection: update.hasDeleteProtection,
-      slug: update.slug
+      slug: update.slug,
+      secretSharing: update.secretSharing
     });
 
     return updatedProject;

@@ -290,6 +290,48 @@ export type DeleteIdentityAwsAuthDTO = {
   identityId: string;
 };
 
+export type IdentityOciAuth = {
+  identityId: string;
+  type: "iam";
+  tenancyOcid: string;
+  allowedUsernames?: string | null;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityOciAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  tenancyOcid: string;
+  allowedUsernames?: string | null;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityOciAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  tenancyOcid?: string;
+  allowedUsernames?: string | null;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type DeleteIdentityOciAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
 export type IdentityAzureAuth = {
   identityId: string;
   tenantId: string;
@@ -346,6 +388,7 @@ export type IdentityKubernetesAuth = {
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: IdentityTrustedIp[];
+  gatewayId?: string | null;
 };
 
 export type AddIdentityKubernetesAuthDTO = {
@@ -356,6 +399,7 @@ export type AddIdentityKubernetesAuthDTO = {
   allowedNamespaces: string;
   allowedNames: string;
   allowedAudience: string;
+  gatewayId?: string | null;
   caCert: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
@@ -373,6 +417,7 @@ export type UpdateIdentityKubernetesAuthDTO = {
   allowedNamespaces?: string;
   allowedNames?: string;
   allowedAudience?: string;
+  gatewayId?: string | null;
   caCert?: string;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;

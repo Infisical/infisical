@@ -13,6 +13,7 @@ import { THCVaultConnection } from "./hc-vault-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
+import { TOCIConnection } from "./oci-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
@@ -32,6 +33,7 @@ export * from "./hc-vault-connection";
 export * from "./humanitec-connection";
 export * from "./ldap-connection";
 export * from "./mssql-connection";
+export * from "./oci-connection";
 export * from "./postgres-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
@@ -56,7 +58,8 @@ export type TAppConnection =
   | TAuth0Connection
   | THCVaultConnection
   | TLdapConnection
-  | TTeamCityConnection;
+  | TTeamCityConnection
+  | TOCIConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -102,4 +105,5 @@ export type TAppConnectionMap = {
   [AppConnection.HCVault]: THCVaultConnection;
   [AppConnection.LDAP]: TLdapConnection;
   [AppConnection.TeamCity]: TTeamCityConnection;
+  [AppConnection.OCI]: TOCIConnection;
 };

@@ -267,14 +267,25 @@
                 "documentation/platform/sso/google-saml",
                 "documentation/platform/sso/auth0-saml",
                 {
-                  "group": "Keycloak OIDC",
+                  "group": "OIDC",
                   "pages": [
-                    "documentation/platform/sso/keycloak-oidc/overview",
-                    "documentation/platform/sso/keycloak-oidc/group-membership-mapping"
+                    {
+                      "group": "Keycloak OIDC",
+                      "pages": [
+                        "documentation/platform/sso/keycloak-oidc/overview",
+                        "documentation/platform/sso/keycloak-oidc/group-membership-mapping"
+                      ]
+                    },
+                    "documentation/platform/sso/auth0-oidc",
+                    {
+                      "group": "General OIDC",
+                      "pages": [
+                        "documentation/platform/sso/general-oidc/overview",
+                        "documentation/platform/sso/general-oidc/group-membership-mapping"
+                      ]
+                    }
                   ]
-                },
-                "documentation/platform/sso/auth0-oidc",
-                "documentation/platform/sso/general-oidc"
+                }
               ]
             },
             {
@@ -301,14 +312,14 @@
         {
           "group": "Machine Identities",
           "pages": [
+            "documentation/platform/identities/aws-auth",
+            "documentation/platform/identities/azure-auth",
+            "documentation/platform/identities/gcp-auth",
+            "documentation/platform/identities/jwt-auth",
+            "documentation/platform/identities/kubernetes-auth",
+            "documentation/platform/identities/oci-auth",
             "documentation/platform/identities/token-auth",
             "documentation/platform/identities/universal-auth",
-            "documentation/platform/identities/kubernetes-auth",
-            "documentation/platform/identities/gcp-auth",
-            "documentation/platform/identities/azure-auth",
-            "documentation/platform/identities/aws-auth",
-            "documentation/platform/identities/jwt-auth",
-
             {
               "group": "OIDC Auth",
               "pages": [
@@ -351,7 +362,8 @@
           "group": "Linux Package",
           "pages": [
             "self-hosting/deployment-options/native/linux-package/installation",
-            "self-hosting/deployment-options/native/linux-package/commands-configuration"
+            "self-hosting/deployment-options/native/linux-package/commands-configuration",
+            "self-hosting/deployment-options/linux-upgrade"
           ]
         },
         "self-hosting/guides/upgrading-infisical",
@@ -446,6 +458,7 @@
           ]
         },
         "integrations/frameworks/terraform",
+        "integrations/frameworks/pulumi",
         "integrations/platforms/ansible",
         "integrations/platforms/apache-airflow"
       ]
@@ -470,6 +483,7 @@
             "integrations/app-connections/humanitec",
             "integrations/app-connections/ldap",
             "integrations/app-connections/mssql",
+            "integrations/app-connections/oci",
             "integrations/app-connections/postgres",
             "integrations/app-connections/teamcity",
             "integrations/app-connections/terraform-cloud",
@@ -496,6 +510,7 @@
             "integrations/secret-syncs/github",
             "integrations/secret-syncs/hashicorp-vault",
             "integrations/secret-syncs/humanitec",
+            "integrations/secret-syncs/oci-vault",
             "integrations/secret-syncs/teamcity",
             "integrations/secret-syncs/terraform-cloud",
             "integrations/secret-syncs/vercel",
@@ -695,6 +710,16 @@
             "api-reference/endpoints/aws-auth/retrieve",
             "api-reference/endpoints/aws-auth/update",
             "api-reference/endpoints/aws-auth/revoke"
+          ]
+        },
+        {
+          "group": "OCI Auth",
+          "pages": [
+            "api-reference/endpoints/oci-auth/login",
+            "api-reference/endpoints/oci-auth/attach",
+            "api-reference/endpoints/oci-auth/retrieve",
+            "api-reference/endpoints/oci-auth/update",
+            "api-reference/endpoints/oci-auth/revoke"
           ]
         },
         {
@@ -1173,6 +1198,18 @@
               ]
             },
             {
+              "group": "OCI",
+              "pages": [
+                "api-reference/endpoints/app-connections/oci/list",
+                "api-reference/endpoints/app-connections/oci/available",
+                "api-reference/endpoints/app-connections/oci/get-by-id",
+                "api-reference/endpoints/app-connections/oci/get-by-name",
+                "api-reference/endpoints/app-connections/oci/create",
+                "api-reference/endpoints/app-connections/oci/update",
+                "api-reference/endpoints/app-connections/oci/delete"
+              ]
+            },
+            {
               "group": "PostgreSQL",
               "pages": [
                 "api-reference/endpoints/app-connections/postgres/list",
@@ -1373,6 +1410,20 @@
                 "api-reference/endpoints/secret-syncs/humanitec/delete",
                 "api-reference/endpoints/secret-syncs/humanitec/sync-secrets",
                 "api-reference/endpoints/secret-syncs/humanitec/remove-secrets"
+              ]
+            },
+            {
+              "group": "OCI",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/oci-vault/list",
+                "api-reference/endpoints/secret-syncs/oci-vault/get-by-id",
+                "api-reference/endpoints/secret-syncs/oci-vault/get-by-name",
+                "api-reference/endpoints/secret-syncs/oci-vault/create",
+                "api-reference/endpoints/secret-syncs/oci-vault/update",
+                "api-reference/endpoints/secret-syncs/oci-vault/delete",
+                "api-reference/endpoints/secret-syncs/oci-vault/sync-secrets",
+                "api-reference/endpoints/secret-syncs/oci-vault/import-secrets",
+                "api-reference/endpoints/secret-syncs/oci-vault/remove-secrets"
               ]
             },
             {

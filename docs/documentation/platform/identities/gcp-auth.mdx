@@ -168,7 +168,7 @@ access the Infisical API using the GCP ID Token authentication method.
             We recommend using one of Infisical's clients like SDKs or the Infisical Agent to authenticate with Infisical using GCP IAM Auth as they handle the authentication process including generating the signed JWT token.
         </Tip>
         <Note>
-        Each identity access token has a time-to-live (TLL) which you can infer from the response of the login operation;
+        Each identity access token has a time-to-live (TTL) which you can infer from the response of the login operation;
         the default TTL is `7200` seconds which can be adjusted.
         If an identity access token expires, it can no longer authenticate with the Infisical API. In this case,
         a new access token should be obtained by performing another login operation.
@@ -179,7 +179,7 @@ access the Infisical API using the GCP ID Token authentication method.
 
   </Tab>
 <Tab title="GCP IAM Auth">
-  
+
     ## Diagram
 
     The following sequence diagram illustrates the GCP IAM Auth workflow for authenticating GCP IAM service accounts with Infisical.
@@ -352,7 +352,7 @@ access the Infisical API using the GCP IAM authentication method.
             We recommend using one of Infisical's clients like SDKs or the Infisical Agent to authenticate with Infisical using GCP IAM Auth as they handle the authentication process including generating the signed JWT token.
         </Tip>
         <Note>
-        Each identity access token has a time-to-live (TLL) which you can infer from the response of the login operation;
+        Each identity access token has a time-to-live (TTL) which you can infer from the response of the login operation;
         the default TTL is `7200` seconds which can be adjusted.
         If an identity access token expires, it can no longer authenticate with the Infisical API. In this case,
         a new access token should be obtained by performing another login operation.
@@ -361,5 +361,5 @@ access the Infisical API using the GCP IAM authentication method.
 
 </Steps>
   </Tab>
-  
+
 </Tabs>

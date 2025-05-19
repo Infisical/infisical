@@ -16,6 +16,7 @@ export enum ApiDocsTags {
   UniversalAuth = "Universal Auth",
   GcpAuth = "GCP Auth",
   AwsAuth = "AWS Auth",
+  OciAuth = "OCI Auth",
   AzureAuth = "Azure Auth",
   KubernetesAuth = "Kubernetes Auth",
   JwtAuth = "JWT Auth",
@@ -273,6 +274,40 @@ export const AWS_AUTH = {
   }
 } as const;
 
+export const OCI_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login.",
+    userOcid: "The OCID of the user attempting login.",
+    headers: "The headers of the signed request."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    tenancyOcid: "The OCID of your tenancy.",
+    allowedUsernames:
+      "The comma-separated list of trusted OCI account usernames that are allowed to authenticate with Infisical.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the auth method for.",
+    tenancyOcid: "The OCID of your tenancy.",
+    allowedUsernames:
+      "The comma-separated list of trusted OCI account usernames that are allowed to authenticate with Infisical.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the auth method for."
+  }
+} as const;
+
 export const AZURE_AUTH = {
   LOGIN: {
     identityId: "The ID of the identity to login."
@@ -360,6 +395,7 @@ export const KUBERNETES_AUTH = {
     allowedNames: "The comma-separated list of trusted service account names that can authenticate with Infisical.",
     allowedAudience:
       "The optional audience claim that the service account JWT token must have to authenticate with Infisical.",
+    gatewayId: "The ID of the gateway to use when performing kubernetes API requests.",
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
@@ -376,6 +412,7 @@ export const KUBERNETES_AUTH = {
     allowedNames: "The new comma-separated list of trusted service account names that can authenticate with Infisical.",
     allowedAudience:
       "The new optional audience claim that the service account JWT token must have to authenticate with Infisical.",
+    gatewayId: "The ID of the gateway to use when performing kubernetes API requests.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The new lifetime for an acccess token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
@@ -573,7 +610,8 @@ export const PROJECTS = {
     projectDescription: "An optional description label for the project.",
     autoCapitalization: "Disable or enable auto-capitalization for the project.",
     slug: "An optional slug for the project. (must be unique within the organization)",
-    hasDeleteProtection: "Enable or disable delete protection for the project."
+    hasDeleteProtection: "Enable or disable delete protection for the project.",
+    secretSharing: "Enable or disable secret sharing for the project."
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
@@ -2102,6 +2140,13 @@ export const AppConnections = {
     AZURE_CLIENT_SECRETS: {
       code: "The OAuth code to use to connect with Azure Client Secrets.",
       tenantId: "The Tenant ID to use to connect with Azure Client Secrets."
+    },
+    OCI: {
+      userOcid: "The OCID (Oracle Cloud Identifier) of the user making the request.",
+      tenancyOcid: "The OCID (Oracle Cloud Identifier) of the tenancy in Oracle Cloud Infrastructure.",
+      region: "The region identifier in Oracle Cloud Infrastructure where the vault is located.",
+      fingerprint: "The fingerprint of the public key uploaded to the user's API keys.",
+      privateKey: "The private key content in PEM format used to sign API requests."
     }
   }
 };
@@ -2165,6 +2210,7 @@ export const SecretSyncs = {
     const destinationName = SECRET_SYNC_NAME_MAP[destination];
     return {
       initialSyncBehavior: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`,
+      keySchema: `Specify the format to use for structuring secret keys in the ${destinationName} destination.`,
       disableSecretDeletion: `Enable this flag to prevent removal of secrets from the ${destinationName} destination when syncing.`
     };
   },
@@ -2249,6 +2295,11 @@ export const SecretSyncs = {
     TEAMCITY: {
       project: "The TeamCity project to sync secrets to.",
       buildConfig: "The TeamCity build configuration to sync secrets to."
+    },
+    OCI_VAULT: {
+      compartmentOcid: "The OCID (Oracle Cloud Identifier) of the compartment where the vault is located.",
+      vaultOcid: "The OCID (Oracle Cloud Identifier) of the vault to sync secrets to.",
+      keyOcid: "The OCID (Oracle Cloud Identifier) of the encryption key to use when creating secrets in the vault."
     }
   }
 };

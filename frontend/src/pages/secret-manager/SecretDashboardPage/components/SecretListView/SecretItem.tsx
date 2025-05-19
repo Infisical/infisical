@@ -589,7 +589,7 @@ export const SecretItem = memo(
                     )}
                   </ProjectPermissionCan>
                   <IconButton
-                    isDisabled={secret.secretValueHidden}
+                    isDisabled={secret.secretValueHidden || !currentWorkspace.secretSharing}
                     className="w-0 overflow-hidden p-0 group-hover:w-5"
                     variant="plain"
                     size="md"

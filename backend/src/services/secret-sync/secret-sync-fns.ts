@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import RE2 from "re2";
 
 import {
   AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
@@ -28,6 +29,7 @@ import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
+import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "./oci-vault";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
@@ -47,7 +49,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Vercel]: VERCEL_SYNC_LIST_OPTION,
   [SecretSync.Windmill]: WINDMILL_SYNC_LIST_OPTION,
   [SecretSync.HCVault]: HC_VAULT_SYNC_LIST_OPTION,
-  [SecretSync.TeamCity]: TEAMCITY_SYNC_LIST_OPTION
+  [SecretSync.TeamCity]: TEAMCITY_SYNC_LIST_OPTION,
+  [SecretSync.OCIVault]: OCI_VAULT_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -59,45 +62,63 @@ type TSyncSecretDeps = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
-// const addAffixes = (secretSync: TSecretSyncWithCredentials, unprocessedSecretMap: TSecretMap) => {
-//   let secretMap = { ...unprocessedSecretMap };
-//
-//   const { appendSuffix, prependPrefix } = secretSync.syncOptions;
-//
-//   if (appendSuffix || prependPrefix) {
-//     secretMap = {};
-//     Object.entries(unprocessedSecretMap).forEach(([key, value]) => {
-//       secretMap[`${prependPrefix || ""}${key}${appendSuffix || ""}`] = value;
-//     });
-//   }
-//
-//   return secretMap;
-// };
-//
-// const stripAffixes = (secretSync: TSecretSyncWithCredentials, unprocessedSecretMap: TSecretMap) => {
-//   let secretMap = { ...unprocessedSecretMap };
-//
-//   const { appendSuffix, prependPrefix } = secretSync.syncOptions;
-//
-//   if (appendSuffix || prependPrefix) {
-//     secretMap = {};
-//     Object.entries(unprocessedSecretMap).forEach(([key, value]) => {
-//       let processedKey = key;
-//
-//       if (prependPrefix && processedKey.startsWith(prependPrefix)) {
-//         processedKey = processedKey.slice(prependPrefix.length);
-//       }
-//
-//       if (appendSuffix && processedKey.endsWith(appendSuffix)) {
-//         processedKey = processedKey.slice(0, -appendSuffix.length);
-//       }
-//
-//       secretMap[processedKey] = value;
-//     });
-//   }
-//
-//   return secretMap;
-// };
+// Add schema to secret keys
+const addSchema = (unprocessedSecretMap: TSecretMap, schema?: string): TSecretMap => {
+  if (!schema) return unprocessedSecretMap;
+
+  const processedSecretMap: TSecretMap = {};
+
+  for (const [key, value] of Object.entries(unprocessedSecretMap)) {
+    const newKey = new RE2("{{secretKey}}").replace(schema, key);
+    processedSecretMap[newKey] = value;
+  }
+
+  return processedSecretMap;
+};
+
+// Strip schema from secret keys
+const stripSchema = (unprocessedSecretMap: TSecretMap, schema?: string): TSecretMap => {
+  if (!schema) return unprocessedSecretMap;
+
+  const [prefix, suffix] = schema.split("{{secretKey}}");
+
+  const strippedMap: TSecretMap = {};
+
+  for (const [key, value] of Object.entries(unprocessedSecretMap)) {
+    if (!key.startsWith(prefix) || !key.endsWith(suffix)) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    const strippedKey = key.slice(prefix.length, key.length - suffix.length);
+    strippedMap[strippedKey] = value;
+  }
+
+  return strippedMap;
+};
+
+// Checks if a key matches a schema
+export const matchesSchema = (key: string, schema?: string): boolean => {
+  if (!schema) return true;
+
+  const [prefix, suffix] = schema.split("{{secretKey}}");
+  if (prefix === undefined || suffix === undefined) return true;
+
+  return key.startsWith(prefix) && key.endsWith(suffix);
+};
+
+// Filter only for secrets with keys that match the schema
+const filterForSchema = (secretMap: TSecretMap, schema?: string): TSecretMap => {
+  const filteredMap: TSecretMap = {};
+
+  for (const [key, value] of Object.entries(secretMap)) {
+    if (matchesSchema(key, schema)) {
+      filteredMap[key] = value;
+    }
+  }
+
+  return filteredMap;
+};
 
 export const SecretSyncFns = {
   syncSecrets: (
@@ -105,49 +126,51 @@ export const SecretSyncFns = {
     secretMap: TSecretMap,
     { kmsService, appConnectionDAL }: TSyncSecretDeps
   ): Promise<void> => {
-    // const affixedSecretMap = addAffixes(secretSync, secretMap);
+    const schemaSecretMap = addSchema(secretMap, secretSync.syncOptions.keySchema);
 
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
-        return AwsParameterStoreSyncFns.syncSecrets(secretSync, secretMap);
+        return AwsParameterStoreSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.AWSSecretsManager:
-        return AwsSecretsManagerSyncFns.syncSecrets(secretSync, secretMap);
+        return AwsSecretsManagerSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitHub:
-        return GithubSyncFns.syncSecrets(secretSync, secretMap);
+        return GithubSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.GCPSecretManager:
-        return GcpSyncFns.syncSecrets(secretSync, secretMap);
+        return GcpSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
           kmsService
-        }).syncSecrets(secretSync, secretMap);
+        }).syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
           appConnectionDAL,
           kmsService
-        }).syncSecrets(secretSync, secretMap);
+        }).syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
           kmsService
-        }).syncSecrets(secretSync, secretMap);
+        }).syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Humanitec:
-        return HumanitecSyncFns.syncSecrets(secretSync, secretMap);
+        return HumanitecSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.TerraformCloud:
-        return TerraformCloudSyncFns.syncSecrets(secretSync, secretMap);
+        return TerraformCloudSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Camunda:
         return camundaSyncFactory({
           appConnectionDAL,
           kmsService
-        }).syncSecrets(secretSync, secretMap);
+        }).syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Vercel:
-        return VercelSyncFns.syncSecrets(secretSync, secretMap);
+        return VercelSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Windmill:
-        return WindmillSyncFns.syncSecrets(secretSync, secretMap);
+        return WindmillSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.HCVault:
-        return HCVaultSyncFns.syncSecrets(secretSync, secretMap);
+        return HCVaultSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.TeamCity:
-        return TeamCitySyncFns.syncSecrets(secretSync, secretMap);
+        return TeamCitySyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.OCIVault:
+        return OCIVaultSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -213,63 +236,67 @@ export const SecretSyncFns = {
       case SecretSync.TeamCity:
         secretMap = await TeamCitySyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.OCIVault:
+        secretMap = await OCIVaultSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
         );
     }
 
-    return secretMap;
-    // return stripAffixes(secretSync, secretMap);
+    return stripSchema(filterForSchema(secretMap), secretSync.syncOptions.keySchema);
   },
   removeSecrets: (
     secretSync: TSecretSyncWithCredentials,
     secretMap: TSecretMap,
     { kmsService, appConnectionDAL }: TSyncSecretDeps
   ): Promise<void> => {
-    // const affixedSecretMap = addAffixes(secretSync, secretMap);
+    const schemaSecretMap = addSchema(secretMap, secretSync.syncOptions.keySchema);
 
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
-        return AwsParameterStoreSyncFns.removeSecrets(secretSync, secretMap);
+        return AwsParameterStoreSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.AWSSecretsManager:
-        return AwsSecretsManagerSyncFns.removeSecrets(secretSync, secretMap);
+        return AwsSecretsManagerSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitHub:
-        return GithubSyncFns.removeSecrets(secretSync, secretMap);
+        return GithubSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.GCPSecretManager:
-        return GcpSyncFns.removeSecrets(secretSync, secretMap);
+        return GcpSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
           kmsService
-        }).removeSecrets(secretSync, secretMap);
+        }).removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
           appConnectionDAL,
           kmsService
-        }).removeSecrets(secretSync, secretMap);
+        }).removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
           kmsService
-        }).removeSecrets(secretSync, secretMap);
+        }).removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Humanitec:
-        return HumanitecSyncFns.removeSecrets(secretSync, secretMap);
+        return HumanitecSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.TerraformCloud:
-        return TerraformCloudSyncFns.removeSecrets(secretSync, secretMap);
+        return TerraformCloudSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Camunda:
         return camundaSyncFactory({
           appConnectionDAL,
           kmsService
-        }).removeSecrets(secretSync, secretMap);
+        }).removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Vercel:
-        return VercelSyncFns.removeSecrets(secretSync, secretMap);
+        return VercelSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Windmill:
-        return WindmillSyncFns.removeSecrets(secretSync, secretMap);
+        return WindmillSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.HCVault:
-        return HCVaultSyncFns.removeSecrets(secretSync, secretMap);
+        return HCVaultSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.TeamCity:
-        return TeamCitySyncFns.removeSecrets(secretSync, secretMap);
+        return TeamCitySyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.OCIVault:
+        return OCIVaultSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

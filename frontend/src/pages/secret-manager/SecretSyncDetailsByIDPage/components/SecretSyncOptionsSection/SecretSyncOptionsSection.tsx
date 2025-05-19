@@ -21,12 +21,7 @@ type Props = {
 export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) => {
   const {
     destination,
-    syncOptions: {
-      // appendSuffix,
-      // prependPrefix,
-      initialSyncBehavior,
-      disableSecretDeletion
-    }
+    syncOptions: { initialSyncBehavior, disableSecretDeletion, keySchema }
   } = secretSync;
 
   let AdditionalSyncOptionsComponent: ReactNode;
@@ -54,6 +49,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Windmill:
     case SecretSync.HCVault:
     case SecretSync.TeamCity:
+    case SecretSync.OCIVault:
       AdditionalSyncOptionsComponent = null;
       break;
     default:
@@ -87,8 +83,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
             <GenericFieldLabel label="Initial Sync Behavior">
               {SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP[initialSyncBehavior](destination).name}
             </GenericFieldLabel>
-            {/* <SecretSyncLabel label="Prefix">{prependPrefix}</SecretSyncLabel>
-            <SecretSyncLabel label="Suffix">{appendSuffix}</SecretSyncLabel> */}
+            <GenericFieldLabel label="Key Schema">{keySchema}</GenericFieldLabel>
             {AdditionalSyncOptionsComponent}
             {disableSecretDeletion && (
               <GenericFieldLabel label="Secret Deletion">

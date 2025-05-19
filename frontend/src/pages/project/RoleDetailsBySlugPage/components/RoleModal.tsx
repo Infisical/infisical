@@ -17,7 +17,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 const schema = z
   .object({
-    name: z.string(),
+    name: z.string().min(1, "Name required"),
     description: z.string(),
     slug: slugSchema({ min: 1 })
   })
@@ -62,7 +62,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (role) {
       reset({
         name: role.name,
-        description: role.description,
+        description: role.description || "",
         slug: role.slug
       });
     } else {

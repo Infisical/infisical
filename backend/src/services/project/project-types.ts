@@ -93,6 +93,7 @@ export type TUpdateProjectDTO = {
     autoCapitalization?: boolean;
     hasDeleteProtection?: boolean;
     slug?: string;
+    secretSharing?: boolean;
   };
 } & Omit<TProjectPermission, "projectId">;
 

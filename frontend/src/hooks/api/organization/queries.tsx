@@ -112,7 +112,13 @@ export const useUpdateOrg = () => {
       selectedMfaMethod,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
-      userTokenExpiration
+      userTokenExpiration,
+      secretsProductEnabled,
+      pkiProductEnabled,
+      kmsProductEnabled,
+      sshProductEnabled,
+      scannerProductEnabled,
+      shareSecretsProductEnabled
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
         name,
@@ -124,7 +130,13 @@ export const useUpdateOrg = () => {
         selectedMfaMethod,
         allowSecretSharingOutsideOrganization,
         bypassOrgAuthEnabled,
-        userTokenExpiration
+        userTokenExpiration,
+        secretsProductEnabled,
+        pkiProductEnabled,
+        kmsProductEnabled,
+        sshProductEnabled,
+        scannerProductEnabled,
+        shareSecretsProductEnabled
       });
     },
     onSuccess: () => {

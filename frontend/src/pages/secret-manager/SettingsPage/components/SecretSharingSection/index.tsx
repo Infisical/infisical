@@ -1,0 +1,1 @@
+export { SecretSharingSection } from "./SecretSharingSection";

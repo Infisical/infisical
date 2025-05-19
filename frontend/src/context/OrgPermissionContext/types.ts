@@ -12,7 +12,8 @@ export enum OrgGatewayPermissionActions {
   CreateGateways = "create-gateways",
   ListGateways = "list-gateways",
   EditGateways = "edit-gateways",
-  DeleteGateways = "delete-gateways"
+  DeleteGateways = "delete-gateways",
+  AttachGateways = "attach-gateways"
 }
 
 export enum OrgPermissionSubjects {

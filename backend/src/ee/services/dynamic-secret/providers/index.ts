@@ -18,7 +18,7 @@ import { SqlDatabaseProvider } from "./sql-database";
 import { TotpProvider } from "./totp";
 
 type TBuildDynamicSecretProviderDTO = {
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTls">;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
 };
 
 export const buildDynamicSecretProviders = ({

@@ -11,6 +11,7 @@ import {
   AddIdentityJwtAuthDTO,
   AddIdentityKubernetesAuthDTO,
   AddIdentityLdapAuthDTO,
+  AddIdentityOciAuthDTO,
   AddIdentityOidcAuthDTO,
   AddIdentityTokenAuthDTO,
   AddIdentityUniversalAuthDTO,
@@ -27,6 +28,7 @@ import {
   DeleteIdentityJwtAuthDTO,
   DeleteIdentityKubernetesAuthDTO,
   DeleteIdentityLdapAuthDTO,
+  DeleteIdentityOciAuthDTO,
   DeleteIdentityOidcAuthDTO,
   DeleteIdentityTokenAuthDTO,
   DeleteIdentityUniversalAuthClientSecretDTO,
@@ -39,6 +41,7 @@ import {
   IdentityJwtAuth,
   IdentityKubernetesAuth,
   IdentityLdapAuth,
+  IdentityOciAuth,
   IdentityOidcAuth,
   IdentityTokenAuth,
   IdentityUniversalAuth,
@@ -51,6 +54,7 @@ import {
   UpdateIdentityJwtAuthDTO,
   UpdateIdentityKubernetesAuthDTO,
   UpdateIdentityLdapAuthDTO,
+  UpdateIdentityOciAuthDTO,
   UpdateIdentityOidcAuthDTO,
   UpdateIdentityTokenAuthDTO,
   UpdateIdentityUniversalAuthDTO,
@@ -452,6 +456,101 @@ export const useDeleteIdentityAwsAuth = () => {
   });
 };
 
+export const useAddIdentityOciAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityOciAuth, object, AddIdentityOciAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      tenancyOcid,
+      allowedUsernames,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityOciAuth }
+      } = await apiRequest.post<{ identityOciAuth: IdentityOciAuth }>(
+        `/api/v1/auth/oci-auth/identities/${identityId}`,
+        {
+          tenancyOcid,
+          allowedUsernames,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityOciAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOciAuth(identityId) });
+    }
+  });
+};
+
+export const useUpdateIdentityOciAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityOciAuth, object, UpdateIdentityOciAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      tenancyOcid,
+      allowedUsernames,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityOciAuth }
+      } = await apiRequest.patch<{ identityOciAuth: IdentityOciAuth }>(
+        `/api/v1/auth/oci-auth/identities/${identityId}`,
+        {
+          tenancyOcid,
+          allowedUsernames,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityOciAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOciAuth(identityId) });
+    }
+  });
+};
+
+export const useDeleteIdentityOciAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityOciAuth, object, DeleteIdentityOciAuthDTO>({
+    mutationFn: async ({ identityId }) => {
+      const {
+        data: { identityOciAuth }
+      } = await apiRequest.delete(`/api/v1/auth/oci-auth/identities/${identityId}`);
+      return identityOciAuth;
+    },
+    onSuccess: (_, { organizationId, identityId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOciAuth(identityId) });
+    }
+  });
+};
+
 export const useUpdateIdentityOidcAuth = () => {
   const queryClient = useQueryClient();
   return useMutation<IdentityOidcAuth, object, UpdateIdentityOidcAuthDTO>({
@@ -741,7 +840,8 @@ export const useAddIdentityKubernetesAuth = () => {
       accessTokenTTL,
       accessTokenMaxTTL,
       accessTokenNumUsesLimit,
-      accessTokenTrustedIps
+      accessTokenTrustedIps,
+      gatewayId
     }) => {
       const {
         data: { identityKubernetesAuth }
@@ -757,7 +857,8 @@ export const useAddIdentityKubernetesAuth = () => {
           accessTokenTTL,
           accessTokenMaxTTL,
           accessTokenNumUsesLimit,
-          accessTokenTrustedIps
+          accessTokenTrustedIps,
+          gatewayId
         }
       );
 
@@ -846,7 +947,8 @@ export const useUpdateIdentityKubernetesAuth = () => {
       accessTokenTTL,
       accessTokenMaxTTL,
       accessTokenNumUsesLimit,
-      accessTokenTrustedIps
+      accessTokenTrustedIps,
+      gatewayId
     }) => {
       const {
         data: { identityKubernetesAuth }
@@ -862,7 +964,8 @@ export const useUpdateIdentityKubernetesAuth = () => {
           accessTokenTTL,
           accessTokenMaxTTL,
           accessTokenNumUsesLimit,
-          accessTokenTrustedIps
+          accessTokenTrustedIps,
+          gatewayId
         }
       );
 

@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Accordion,
   AccordionContent,
@@ -18,9 +19,13 @@ import {
   SecretInput,
   Select,
   SelectItem,
-  TextArea
+  TextArea,
+  Tooltip
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import {
+  OrgGatewayPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
@@ -61,7 +66,7 @@ const formSchema = z.object({
     revocationStatement: z.string().min(1),
     renewStatement: z.string().optional(),
     ca: z.string().optional(),
-    projectGatewayId: z.string().optional()
+    gatewayId: z.string().optional()
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
@@ -164,8 +169,6 @@ export const SqlDatabaseInputForm = ({
   projectSlug,
   isSingleEnvironmentMode
 }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-
   const {
     control,
     setValue,
@@ -193,9 +196,7 @@ export const SqlDatabaseInputForm = ({
   });
 
   const createDynamicSecret = useCreateDynamicSecret();
-  const { data: projectGateways, isPending: isProjectGatewaysLoading } = useQuery(
-    gatewaysQueryKeys.listProjectGateways({ projectId: currentWorkspace.id })
-  );
+  const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
   const handleCreateDynamicSecret = async ({
     name,
@@ -301,40 +302,55 @@ export const SqlDatabaseInputForm = ({
               Configuration
             </div>
             <div>
-              <Controller
-                control={control}
-                name="provider.projectGatewayId"
-                defaultValue=""
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    label="Gateway"
-                  >
-                    <Select
-                      value={value}
-                      onValueChange={onChange}
-                      className="w-full border border-mineshaft-500"
-                      dropdownContainerClassName="max-w-none"
-                      isLoading={isProjectGatewaysLoading}
-                      placeholder="Internet gateway"
-                      position="popper"
-                    >
-                      <SelectItem
-                        value={null as unknown as string}
-                        onClick={() => onChange(undefined)}
+              <OrgPermissionCan
+                I={OrgGatewayPermissionActions.AttachGateways}
+                a={OrgPermissionSubjects.Gateway}
+              >
+                {(isAllowed) => (
+                  <Controller
+                    control={control}
+                    name="provider.gatewayId"
+                    defaultValue=""
+                    render={({ field: { value, onChange }, fieldState: { error } }) => (
+                      <FormControl
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        label="Gateway"
                       >
-                        Internet Gateway
-                      </SelectItem>
-                      {projectGateways?.map((el) => (
-                        <SelectItem value={el.projectGatewayId} key={el.projectGatewayId}>
-                          {el.name}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                        <Tooltip
+                          isDisabled={isAllowed}
+                          content="Restricted access. You don't have permission to attach gateways to resources."
+                        >
+                          <div>
+                            <Select
+                              isDisabled={!isAllowed}
+                              value={value}
+                              onValueChange={onChange}
+                              className="w-full border border-mineshaft-500"
+                              dropdownContainerClassName="max-w-none"
+                              isLoading={isGatewaysLoading}
+                              placeholder="Default: Internet Gateway"
+                              position="popper"
+                            >
+                              <SelectItem
+                                value={null as unknown as string}
+                                onClick={() => onChange(undefined)}
+                              >
+                                Internet Gateway
+                              </SelectItem>
+                              {gateways?.map((el) => (
+                                <SelectItem value={el.id} key={el.id}>
+                                  {el.name}
+                                </SelectItem>
+                              ))}
+                            </Select>
+                          </div>
+                        </Tooltip>
+                      </FormControl>
+                    )}
+                  />
                 )}
-              />
+              </OrgPermissionCan>
             </div>
             <div className="flex flex-col">
               <div className="pb-0.5 pl-1 text-sm text-mineshaft-400">Service</div>

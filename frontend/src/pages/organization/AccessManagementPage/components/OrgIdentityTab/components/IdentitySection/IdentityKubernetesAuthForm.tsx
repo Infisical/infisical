@@ -3,22 +3,32 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   FormControl,
   IconButton,
   Input,
+  Select,
+  SelectItem,
   Tab,
   TabList,
   TabPanel,
   Tabs,
-  TextArea
+  TextArea,
+  Tooltip
 } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import {
+  OrgGatewayPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
+import {
+  gatewaysQueryKeys,
   useAddIdentityKubernetesAuth,
   useGetIdentityKubernetesAuth,
   useUpdateIdentityKubernetesAuth
@@ -32,6 +42,7 @@ const schema = z
   .object({
     kubernetesHost: z.string().min(1),
     tokenReviewerJwt: z.string().optional(),
+    gatewayId: z.string().optional().nullable(),
     allowedNames: z.string(),
     allowedNamespaces: z.string(),
     allowedAudience: z.string(),
@@ -79,6 +90,8 @@ export const IdentityKubernetesAuthForm = ({
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityKubernetesAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
 
+  const { data: gateways, isPending: isGatewayLoading } = useQuery(gatewaysQueryKeys.list());
+
   const { data } = useGetIdentityKubernetesAuth(identityId ?? "", {
     enabled: isUpdate
   });
@@ -96,6 +109,7 @@ export const IdentityKubernetesAuthForm = ({
       tokenReviewerJwt: "",
       allowedNames: "",
       allowedNamespaces: "",
+      gatewayId: "",
       allowedAudience: "",
       caCert: "",
       accessTokenTTL: "2592000",
@@ -120,6 +134,7 @@ export const IdentityKubernetesAuthForm = ({
         allowedNamespaces: data.allowedNamespaces,
         allowedAudience: data.allowedAudience,
         caCert: data.caCert,
+        gatewayId: data.gatewayId || null,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
         accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
@@ -157,6 +172,7 @@ export const IdentityKubernetesAuthForm = ({
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
+    gatewayId,
     accessTokenTrustedIps
   }: FormData) => {
     try {
@@ -172,6 +188,7 @@ export const IdentityKubernetesAuthForm = ({
           allowedAudience,
           caCert,
           identityId,
+          gatewayId: gatewayId || null,
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
@@ -186,6 +203,7 @@ export const IdentityKubernetesAuthForm = ({
           allowedNames: allowedNames || "",
           allowedNamespaces: allowedNamespaces || "",
           allowedAudience: allowedAudience || "",
+          gatewayId: gatewayId || null,
           caCert: caCert || "",
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
@@ -217,6 +235,7 @@ export const IdentityKubernetesAuthForm = ({
           [
             "kubernetesHost",
             "tokenReviewerJwt",
+            "gatewayId",
             "accessTokenTTL",
             "accessTokenMaxTTL",
             "accessTokenNumUsesLimit",
@@ -280,6 +299,62 @@ export const IdentityKubernetesAuthForm = ({
               </FormControl>
             )}
           />
+
+          <OrgPermissionCan
+            I={OrgGatewayPermissionActions.AttachGateways}
+            a={OrgPermissionSubjects.Gateway}
+          >
+            {(isAllowed) => (
+              <Controller
+                control={control}
+                name="gatewayId"
+                defaultValue=""
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                    label="Gateway"
+                    isOptional
+                  >
+                    <Tooltip
+                      isDisabled={isAllowed}
+                      content="Restricted access. You don't have permission to attach gateways to resources."
+                    >
+                      <div>
+                        <Select
+                          isDisabled={!isAllowed}
+                          value={value as string}
+                          onValueChange={(v) => {
+                            if (v !== "") {
+                              onChange(v);
+                            }
+                          }}
+                          className="w-full border border-mineshaft-500"
+                          dropdownContainerClassName="max-w-none"
+                          isLoading={isGatewayLoading}
+                          placeholder="Default: Internet Gateway"
+                          position="popper"
+                        >
+                          <SelectItem
+                            value={null as unknown as string}
+                            onClick={() => onChange(null)}
+                          >
+                            Internet Gateway
+                          </SelectItem>
+                          {gateways?.map((el) => (
+                            <SelectItem value={el.id} key={el.id}>
+                              {el.name}
+                            </SelectItem>
+                          ))}
+                        </Select>
+                      </div>
+                    </Tooltip>
+                  </FormControl>
+                )}
+              />
+            )}
+          </OrgPermissionCan>
+
           <Controller
             control={control}
             name="allowedNames"

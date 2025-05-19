@@ -593,18 +593,27 @@ export const certificateServiceFactory = ({
       certificateChain = `${caCert}\n${caCertChain}`.trim();
     }
 
-    const { certPrivateKey } = await getCertificateCredentials({
-      certId: cert.id,
-      projectId: cert.projectId,
-      certificateSecretDAL,
-      projectDAL,
-      kmsService
-    });
+    let privateKey: string | null = null;
+    try {
+      const { certPrivateKey } = await getCertificateCredentials({
+        certId: cert.id,
+        projectId: cert.projectId,
+        certificateSecretDAL,
+        projectDAL,
+        kmsService
+      });
+      privateKey = certPrivateKey;
+    } catch (e) {
+      // Skip NotFound errors but throw all others
+      if (!(e instanceof NotFoundError)) {
+        throw e;
+      }
+    }
 
     return {
       certificate,
       certificateChain,
-      privateKey: certPrivateKey,
+      privateKey,
       serialNumber,
       cert
     };

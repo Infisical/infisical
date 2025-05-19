@@ -346,7 +346,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
               "Project slug can only contain lowercase letters and numbers, with optional single hyphens (-) or underscores (_) between words. Cannot start or end with a hyphen or underscore."
           })
           .optional()
-          .describe(PROJECTS.UPDATE.slug)
+          .describe(PROJECTS.UPDATE.slug),
+        secretSharing: z.boolean().optional().describe(PROJECTS.UPDATE.secretSharing)
       }),
       response: {
         200: z.object({
@@ -366,7 +367,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           description: req.body.description,
           autoCapitalization: req.body.autoCapitalization,
           hasDeleteProtection: req.body.hasDeleteProtection,
-          slug: req.body.slug
+          slug: req.body.slug,
+          secretSharing: req.body.secretSharing
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
@@ -511,7 +513,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspace = await server.services.project.updateAuditLogsRetention({
         actorId: req.permission.id,
