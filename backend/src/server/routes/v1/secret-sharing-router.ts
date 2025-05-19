@@ -64,7 +64,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         hashedHex: z.string().min(1).optional(),
         password: z.string().optional(),
         email: z.string().optional(),
-        token: z.string().optional()
+        hash: z.string().optional()
       }),
       response: {
         200: z.object({
@@ -92,7 +92,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         password: req.body.password,
         orgId: req.permission?.orgId,
         email: req.body.email,
-        token: req.body.token
+        hash: req.body.hash
       });
 
       if (sharedSecret.secret?.orgId) {

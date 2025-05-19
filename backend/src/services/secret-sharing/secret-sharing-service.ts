@@ -118,7 +118,7 @@ export const secretSharingServiceFactory = ({
         }
       }
 
-      // Generate salt for signing email tokens (if emails are provided)
+      // Generate salt for signing email hashes (if emails are provided)
       salt = crypto.randomBytes(32).toString("hex");
       encryptedSalt = encryptWithRoot(Buffer.from(salt));
     }
@@ -159,7 +159,7 @@ export const secretSharingServiceFactory = ({
       for await (const email of emails) {
         try {
           const hmac = crypto.createHmac("sha256", salt).update(email);
-          const token = hmac.digest("base64");
+          const hash = hmac.digest("hex");
 
           // Only show the username to emails which are part of the organization
           const respondentUsername = orgEmails.includes(email) ? user.username : undefined;
@@ -170,7 +170,7 @@ export const secretSharingServiceFactory = ({
             substitutions: {
               name,
               respondentUsername,
-              secretRequestUrl: `${appCfg.SITE_URL}/shared/secret/${idToReturn}?email=${encodeURIComponent(email)}&token=${token}`
+              secretRequestUrl: `${appCfg.SITE_URL}/shared/secret/${idToReturn}?email=${encodeURIComponent(email)}&hash=${hash}`
             },
             template: SmtpTemplates.SecretRequestCompleted
           });
@@ -460,7 +460,7 @@ export const secretSharingServiceFactory = ({
     orgId,
     password,
     email,
-    token
+    hash
   }: TGetActiveSharedSecretByIdDTO) => {
     const sharedSecret = isUuidV4(sharedSecretId)
       ? await secretSharingDAL.findOne({
@@ -512,22 +512,22 @@ export const secretSharingServiceFactory = ({
 
     if (sharedSecret.authorizedEmails && sharedSecret.encryptedSalt) {
       // Verify both params were passed
-      if (!email || !token) {
+      if (!email || !hash) {
         throw new BadRequestError({
-          message: "This secret is email protected. Parameters must include email and token."
+          message: "This secret is email protected. Parameters must include email and hash."
         });
 
         // Verify that email is authorized to view shared secret
       } else if (!(sharedSecret.authorizedEmails as string[]).includes(email)) {
         throw new UnauthorizedError({ message: "Email not authorized to view secret" });
 
-        // Verify that token matches
+        // Verify that hash matches
       } else {
         const salt = decryptWithRoot(sharedSecret.encryptedSalt).toString();
         const hmac = crypto.createHmac("sha256", salt).update(email);
-        const rebuiltToken = hmac.digest("base64");
+        const rebuiltHash = hmac.digest("hex");
 
-        if (rebuiltToken !== token) {
+        if (rebuiltHash !== hash) {
           throw new UnauthorizedError({ message: "Email not authorized to view secret" });
         }
       }

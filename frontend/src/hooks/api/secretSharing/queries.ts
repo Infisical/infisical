@@ -16,7 +16,7 @@ export const secretSharingKeys = {
     hashedHex: string | null;
     password?: string;
     email?: string;
-    token?: string;
+    hash?: string;
   }) => ["shared-secret", arg],
   getSecretRequestById: (arg: { id: string }) => ["secret-request", arg] as const
 };
@@ -75,7 +75,7 @@ export const useGetActiveSharedSecretById = ({
   hashedHex,
   password,
   email,
-  token
+  hash
 }: {
   sharedSecretId: string;
   hashedHex: string | null;
@@ -83,7 +83,7 @@ export const useGetActiveSharedSecretById = ({
 
   // For secrets shared to specific emails (optional)
   email?: string;
-  token?: string;
+  hash?: string;
 }) => {
   return useQuery({
     queryKey: secretSharingKeys.getSecretById({
@@ -91,7 +91,7 @@ export const useGetActiveSharedSecretById = ({
       hashedHex,
       password,
       email,
-      token
+      hash
     }),
     queryFn: async () => {
       const { data } = await apiRequest.post<TViewSharedSecretResponse>(
@@ -100,7 +100,7 @@ export const useGetActiveSharedSecretById = ({
           ...(hashedHex && { hashedHex }),
           password,
           email,
-          token
+          hash
         }
       );
 

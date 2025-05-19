@@ -42,9 +42,9 @@ export const ViewSharedSecretByIDPage = () => {
     from: ROUTE_PATHS.Public.ViewSharedSecretByIDPage.id,
     select: (el) => el.email
   });
-  const token = useSearch({
+  const hash = useSearch({
     from: ROUTE_PATHS.Public.ViewSharedSecretByIDPage.id,
-    select: (el) => el.token
+    select: (el) => el.hash
   });
   const [password, setPassword] = useState<string>();
   const { hashedHex, key } = extractDetailsFromUrl(urlEncodedKey);
@@ -59,7 +59,7 @@ export const ViewSharedSecretByIDPage = () => {
     hashedHex,
     password,
     email,
-    token
+    hash
   });
 
   const navigate = useNavigate();
