@@ -291,6 +291,15 @@ export const ShareSecretForm = ({
                     label="Expires In"
                     errorText={error?.message}
                     isError={Boolean(error)}
+                    helperText={
+                      expiresInOptions.length !== filteredExpiresInOptions.length ? (
+                        <span className="text-yellow-500">
+                          Limited to{" "}
+                          {filteredExpiresInOptions[filteredExpiresInOptions.length - 1].label} by
+                          organization
+                        </span>
+                      ) : undefined
+                    }
                   >
                     <Select
                       defaultValue={field.value}
@@ -298,8 +307,12 @@ export const ShareSecretForm = ({
                       onValueChange={(e) => onChange(e)}
                       className="w-full"
                     >
-                      {filteredExpiresInOptions.map(({ label, value: expiresInValue }) => (
-                        <SelectItem value={String(expiresInValue || "")} key={label}>
+                      {expiresInOptions.map(({ label, value: expiresInValue }) => (
+                        <SelectItem
+                          value={String(expiresInValue || "")}
+                          key={label}
+                          isDisabled={!filteredExpiresInOptions.some((v) => v.label === label)}
+                        >
                           {label}
                         </SelectItem>
                       ))}
@@ -315,6 +328,15 @@ export const ShareSecretForm = ({
                     label="Max Views"
                     errorText={error?.message}
                     isError={Boolean(error)}
+                    helperText={
+                      viewLimitOptions.length !== filteredViewLimitOptions.length ? (
+                        <span className="text-yellow-500">
+                          Limited to{" "}
+                          {filteredViewLimitOptions[filteredViewLimitOptions.length - 1].label} by
+                          organization
+                        </span>
+                      ) : undefined
+                    }
                   >
                     <Select
                       defaultValue={field.value}
@@ -322,8 +344,12 @@ export const ShareSecretForm = ({
                       onValueChange={(e) => onChange(e)}
                       className="w-full"
                     >
-                      {filteredViewLimitOptions.map(({ label, value: viewLimitValue }) => (
-                        <SelectItem value={String(viewLimitValue || "")} key={label}>
+                      {viewLimitOptions.map(({ label, value: viewLimitValue }) => (
+                        <SelectItem
+                          value={String(viewLimitValue || "")}
+                          key={label}
+                          isDisabled={!filteredViewLimitOptions.some((v) => v.label === label)}
+                        >
                           {label}
                         </SelectItem>
                       ))}
