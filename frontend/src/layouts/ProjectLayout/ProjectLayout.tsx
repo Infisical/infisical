@@ -46,6 +46,7 @@ export const ProjectLayout = () => {
   const isCertManager = currentWorkspace?.type === ProjectType.CertificateManager;
   const isCmek = currentWorkspace?.type === ProjectType.KMS;
   const isSSH = currentWorkspace?.type === ProjectType.SSH;
+  const isSecretScanning = currentWorkspace?.type === ProjectType.SecretScanning;
 
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({
     workspaceId,
@@ -239,6 +240,20 @@ export const ProjectLayout = () => {
                             }
                           </ProjectPermissionCan>
                         </>
+                      )}
+                      {isSecretScanning && (
+                        <Link
+                          to={`/${ProjectType.SecretScanning}/$projectId/data-sources` as const}
+                          params={{
+                            projectId: currentWorkspace.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive} icon="jigsaw-puzzle">
+                              Data Sources
+                            </MenuItem>
+                          )}
+                        </Link>
                       )}
                       {isSecretManager && (
                         <Link

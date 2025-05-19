@@ -12,6 +12,7 @@ import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
+  ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSet,
   ProjectPermissionSshHostActions,
@@ -198,6 +199,19 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SecretRotation
   );
 
+  can(
+    [
+      ProjectPermissionSecretScanningDataSourceActions.Create,
+      ProjectPermissionSecretScanningDataSourceActions.Edit,
+      ProjectPermissionSecretScanningDataSourceActions.Delete,
+      ProjectPermissionSecretScanningDataSourceActions.Read,
+      ProjectPermissionSecretScanningDataSourceActions.TriggerScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadResources
+    ],
+    ProjectPermissionSub.SecretScanningDataSources
+  );
+
   return rules;
 };
 
@@ -378,6 +392,19 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.SecretSyncs
   );
 
+  can(
+    [
+      ProjectPermissionSecretScanningDataSourceActions.Create,
+      ProjectPermissionSecretScanningDataSourceActions.Edit,
+      ProjectPermissionSecretScanningDataSourceActions.Delete,
+      ProjectPermissionSecretScanningDataSourceActions.Read,
+      ProjectPermissionSecretScanningDataSourceActions.TriggerScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadResources
+    ],
+    ProjectPermissionSub.SecretScanningDataSources
+  );
+
   return rules;
 };
 
@@ -412,6 +439,15 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
   can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
+
+  can(
+    [
+      ProjectPermissionSecretScanningDataSourceActions.Read,
+      ProjectPermissionSecretScanningDataSourceActions.ReadScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadResources
+    ],
+    ProjectPermissionSub.SecretScanningDataSources
+  );
 
   return rules;
 };

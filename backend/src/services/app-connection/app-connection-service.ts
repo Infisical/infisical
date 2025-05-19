@@ -43,6 +43,8 @@ import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
 import { ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
+import { ValidateGitLabConnectionCredentialsSchema } from "./gitlab";
+import { gitlabConnectionService } from "./gitlab/gitlab-connection-service";
 import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
@@ -88,7 +90,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.HCVault]: ValidateHCVaultConnectionCredentialsSchema,
   [AppConnection.LDAP]: ValidateLdapConnectionCredentialsSchema,
   [AppConnection.TeamCity]: ValidateTeamCityConnectionCredentialsSchema,
-  [AppConnection.OCI]: ValidateOCIConnectionCredentialsSchema
+  [AppConnection.OCI]: ValidateOCIConnectionCredentialsSchema,
+  [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -468,6 +471,7 @@ export const appConnectionServiceFactory = ({
     hcvault: hcVaultConnectionService(connectAppConnectionById),
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
-    oci: ociConnectionService(connectAppConnectionById)
+    oci: ociConnectionService(connectAppConnectionById),
+    gitlab: gitlabConnectionService(connectAppConnectionById)
   };
 };

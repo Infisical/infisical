@@ -195,7 +195,7 @@ export const useAccessTree = (
 
         folderEdges.push(
           createBaseEdge({
-            source: roleNode.id,
+            dataSource: roleNode.id,
             target: rootFolderNode.id,
             access: rootAccess
           })
@@ -221,7 +221,7 @@ export const useAccessTree = (
 
       folderEdges.push(
         createBaseEdge({
-          source: folder.parentId ?? roleNode.id,
+          dataSource: folder.parentId ?? roleNode.id,
           target: folder.id,
           access
         })
@@ -247,7 +247,7 @@ export const useAccessTree = (
 
         folderEdges.push(
           createBaseEdge({
-            source: key,
+            dataSource: key,
             target: showMoreButtonNode.id,
             access: PermissionAccess.Partial
           })

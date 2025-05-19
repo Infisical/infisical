@@ -1,3 +1,4 @@
+import { registerGitLabConnectionRouter } from "@app/server/routes/v1/app-connection-routers/gitlab-connection-router";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { registerAuth0ConnectionRouter } from "./auth0-connection-router";
@@ -42,5 +43,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.HCVault]: registerHCVaultConnectionRouter,
     [AppConnection.LDAP]: registerLdapConnectionRouter,
     [AppConnection.TeamCity]: registerTeamCityConnectionRouter,
-    [AppConnection.OCI]: registerOCIConnectionRouter
+    [AppConnection.OCI]: registerOCIConnectionRouter,
+    [AppConnection.GitLab]: registerGitLabConnectionRouter
   };

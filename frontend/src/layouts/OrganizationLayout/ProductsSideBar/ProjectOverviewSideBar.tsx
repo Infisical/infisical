@@ -42,6 +42,11 @@ export const ProjectOverviewSideBar = ({ type }: TProjectOverviewSideBarProps) =
       icon = "verified";
       link = "https://infisical.com/docs/documentation/platform/ssh/overview";
       break;
+    case ProjectType.SecretScanning:
+      label = "Secret Scanning";
+      icon = "secret-scan";
+      link = "https://infisical.com/docs/documentation/platform/secret-scanning/overview";
+      break;
     default:
       throw new Error("Unknown project type");
   }

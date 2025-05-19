@@ -2,17 +2,17 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
-  IntegrationsSchema,
-  ProjectEnvironmentsSchema,
-  ProjectMembershipsSchema,
-  ProjectRolesSchema,
-  ProjectSlackConfigsSchema,
-  ProjectSshConfigsSchema,
-  ProjectType,
-  SecretFoldersSchema,
-  SortDirection,
-  UserEncryptionKeysSchema,
-  UsersSchema
+    IntegrationsSchema,
+    ProjectEnvironmentsSchema,
+    ProjectMembershipsSchema,
+    ProjectRolesSchema,
+    ProjectSlackConfigsSchema,
+    ProjectSshConfigsSchema,
+    ProjectType,
+    SecretFoldersSchema,
+    SortDirection,
+    UserEncryptionKeysSchema,
+    UsersSchema
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -160,7 +160,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .default("false")
           .transform((value) => value === "true"),
         type: z
-          .enum([ProjectType.SecretManager, ProjectType.KMS, ProjectType.CertificateManager, ProjectType.SSH, "all"])
+          .enum([
+            ProjectType.SecretManager,
+            ProjectType.KMS,
+            ProjectType.CertificateManager,
+            ProjectType.SSH,
+            ProjectType.SecretScanning,
+            "all"
+          ])
           .optional()
       }),
       response: {

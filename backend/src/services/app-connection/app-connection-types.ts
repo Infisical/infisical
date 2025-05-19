@@ -58,6 +58,12 @@ import {
   TValidateGitHubConnectionCredentialsSchema
 } from "./github";
 import {
+  TGitLabConnection,
+  TGitLabConnectionConfig,
+  TGitLabConnectionInput,
+  TValidateGitLabConnectionCredentialsSchema
+} from "./gitlab";
+import {
   THCVaultConnection,
   THCVaultConnectionConfig,
   THCVaultConnectionInput,
@@ -132,6 +138,7 @@ export type TAppConnection = { id: string } & (
   | TLdapConnection
   | TTeamCityConnection
   | TOCIConnection
+  | TGitLabConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -158,6 +165,7 @@ export type TAppConnectionInput = { id: string } & (
   | TLdapConnectionInput
   | TTeamCityConnectionInput
   | TOCIConnectionInput
+  | TGitLabConnectionInput
 );
 
 export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput;
@@ -189,7 +197,8 @@ export type TAppConnectionConfig =
   | THCVaultConnectionConfig
   | TLdapConnectionConfig
   | TTeamCityConnectionConfig
-  | TOCIConnectionConfig;
+  | TOCIConnectionConfig
+  | TGitLabConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -210,7 +219,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateHCVaultConnectionCredentialsSchema
   | TValidateLdapConnectionCredentialsSchema
   | TValidateTeamCityConnectionCredentialsSchema
-  | TValidateOCIConnectionCredentialsSchema;
+  | TValidateOCIConnectionCredentialsSchema
+  | TValidateGitLabConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

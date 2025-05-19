@@ -155,7 +155,11 @@ export enum TableName {
   MicrosoftTeamsIntegrations = "microsoft_teams_integrations",
   ProjectMicrosoftTeamsConfigs = "project_microsoft_teams_configs",
   SecretReminderRecipients = "secret_reminder_recipients",
-  GithubOrgSyncConfig = "github_org_sync_configs"
+  GithubOrgSyncConfig = "github_org_sync_configs",
+  SecretScanningDataSource = "secret_scanning_data_sources",
+  SecretScanningResource = "secret_scanning_resources",
+  SecretScanningScan = "secret_scanning_scans",
+  SecretScanningFinding = "secret_scanning_findings"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
@@ -244,7 +248,8 @@ export enum ProjectType {
   SecretManager = "secret-manager",
   CertificateManager = "cert-manager",
   KMS = "kms",
-  SSH = "ssh"
+  SSH = "ssh",
+  SecretScanning = "secret-scanning"
 }
 
 export enum ActionProjectType {
@@ -252,6 +257,7 @@ export enum ActionProjectType {
   CertificateManager = ProjectType.CertificateManager,
   KMS = ProjectType.KMS,
   SSH = ProjectType.SSH,
+  SecretScanning = ProjectType.SecretScanning,
   // project operations that happen on all types
   Any = "any"
 }

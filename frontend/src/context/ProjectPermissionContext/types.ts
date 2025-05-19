@@ -113,6 +113,16 @@ export enum ProjectPermissionSecretRotationActions {
   RotateSecrets = "rotate-secrets"
 }
 
+export enum ProjectPermissionSecretScanningDataSourceActions {
+  Read = "read-data-source",
+  Create = "create-data-source",
+  Edit = "edit-data-source",
+  Delete = "delete-data-source",
+  TriggerScans = "trigger-data-source-scans",
+  ReadScans = "read-data-source-scans",
+  ReadResources = "read-data-source-resources"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -199,7 +209,8 @@ export enum ProjectPermissionSub {
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
-  Kmip = "kmip"
+  Kmip = "kmip",
+  SecretScanningDataSources = "secret-scanning-data-sources"
 }
 
 export type SecretSubjectFields = {
@@ -323,6 +334,10 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
-  | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip];
+  | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip]
+  | [
+      ProjectPermissionSecretScanningDataSourceActions,
+      ProjectPermissionSub.SecretScanningDataSources
+    ];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

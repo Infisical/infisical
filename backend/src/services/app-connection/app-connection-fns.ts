@@ -41,6 +41,7 @@ import {
 } from "./databricks";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
 import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
+import { getGitLabConnectionListItem, GitLabConnectionMethod, validateGitLabConnectionCredentials } from "./gitlab";
 import {
   getHCVaultConnectionListItem,
   HCVaultConnectionMethod,
@@ -93,7 +94,8 @@ export const listAppConnectionOptions = () => {
     getHCVaultConnectionListItem(),
     getLdapConnectionListItem(),
     getTeamCityConnectionListItem(),
-    getOCIConnectionListItem()
+    getOCIConnectionListItem(),
+    getGitLabConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -163,7 +165,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.HCVault]: validateHCVaultConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LDAP]: validateLdapConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TeamCity]: validateTeamCityConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -199,6 +202,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case WindmillConnectionMethod.AccessToken:
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
+    case GitLabConnectionMethod.AccessToken:
       return "Access Token";
     case Auth0ConnectionMethod.ClientCredentials:
       return "Client Credentials";
@@ -255,5 +259,6 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.HCVault]: platformManagedCredentialsNotSupported,
   [AppConnection.LDAP]: platformManagedCredentialsNotSupported, // we could support this in the future
   [AppConnection.TeamCity]: platformManagedCredentialsNotSupported,
-  [AppConnection.OCI]: platformManagedCredentialsNotSupported
+  [AppConnection.OCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.GitLab]: platformManagedCredentialsNotSupported
 };

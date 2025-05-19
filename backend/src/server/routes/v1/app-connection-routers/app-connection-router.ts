@@ -28,6 +28,7 @@ import {
 } from "@app/services/app-connection/databricks";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
+import { GitLabConnectionListItemSchema, SanitizedGitLabConnectionSchema } from "@app/services/app-connection/gitlab";
 import {
   HCVaultConnectionListItemSchema,
   SanitizedHCVaultConnectionSchema
@@ -78,7 +79,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedWindmillConnectionSchema.options,
   ...SanitizedLdapConnectionSchema.options,
   ...SanitizedTeamCityConnectionSchema.options,
-  ...SanitizedOCIConnectionSchema.options
+  ...SanitizedOCIConnectionSchema.options,
+  ...SanitizedGitLabConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -100,7 +102,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   WindmillConnectionListItemSchema,
   LdapConnectionListItemSchema,
   TeamCityConnectionListItemSchema,
-  OCIConnectionListItemSchema
+  OCIConnectionListItemSchema,
+  GitLabConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

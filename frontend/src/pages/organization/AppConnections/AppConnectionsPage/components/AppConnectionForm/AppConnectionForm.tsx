@@ -6,6 +6,7 @@ import {
   useUpdateAppConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { GitLabConnectionForm } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm/GitLabConnectionForm";
 import { DiscriminativePick } from "@app/types";
 
 import { AppConnectionHeader } from "../AppConnectionHeader";
@@ -104,6 +105,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <TeamCityConnectionForm onSubmit={onSubmit} />;
     case AppConnection.OCI:
       return <OCIConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.GitLab:
+      return <GitLabConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -178,7 +181,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <TeamCityConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.OCI:
       return <OCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
-
+    case AppConnection.GitLab:
+      return <GitLabConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

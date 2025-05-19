@@ -3,6 +3,11 @@ import {
   SECRET_ROTATION_CONNECTION_MAP,
   SECRET_ROTATION_NAME_MAP
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
+import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP,
+  SECRET_SCANNING_DATA_SOURCE_NAME_MAP
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
@@ -55,7 +60,8 @@ export enum ApiDocsTags {
   SshHostGroups = "SSH Host Groups",
   KmsKeys = "KMS Keys",
   KmsEncryption = "KMS Encryption",
-  KmsSigning = "KMS Signing"
+  KmsSigning = "KMS Signing",
+  SecretScanning = "Secret Scanning"
 }
 
 export const GROUPS = {
@@ -2084,6 +2090,10 @@ export const AppConnections = {
       region: "The region identifier in Oracle Cloud Infrastructure where the vault is located.",
       fingerprint: "The fingerprint of the public key uploaded to the user's API keys.",
       privateKey: "The private key content in PEM format used to sign API requests."
+    },
+    GITLAB: {
+      instanceUrl: "The GitLab instance URL to connect with (defaults to https://gitlab.com).",
+      accessToken: "The access token to use to connect with GitLab."
     }
   }
 };
@@ -2350,4 +2360,45 @@ export const SecretRotations = {
       secretAccessKey: "The name of the secret that the rotated secret access key will be mapped to."
     }
   }
+};
+
+export const SecretScanningDataSources = {
+  LIST: (type?: SecretScanningDataSource) => ({
+    projectId: `The ID of the project to list ${type ? SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type] : "Scanning"} Data Sources from.`
+  }),
+  GET_BY_ID: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`
+  }),
+  GET_BY_NAME: (type: SecretScanningDataSource) => ({
+    sourceName: `The name of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`,
+    projectId: `The ID of the project the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source is located in.`
+  }),
+  CREATE: (type: SecretScanningDataSource) => {
+    const sourceType = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
+    return {
+      name: `The name of the ${sourceType} Data Source to create. Must be slug-friendly.`,
+      description: `An optional description for the ${sourceType} Data Source.`,
+      projectId: `The ID of the project to create the ${sourceType} Data Source in.`,
+      connectionId: `The ID of the ${
+        APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
+      } Connection to use for this Data Source.`,
+      // scott: this description may need to be parameterized if we support different scan targets than repos
+      isAutoScanEnabled: `Whether scans should be automatically performed when a push occurs to repositories associated with this Data Source.`,
+      config: `The configuration parameters to use for this Data Source.`
+    };
+  },
+  UPDATE: (type: SecretScanningDataSource) => {
+    const typeName = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
+    return {
+      dataSourceId: `The ID of the ${typeName} Data Source to be updated.`,
+      name: `The updated name of the ${typeName} Data Source. Must be slug-friendly.`,
+      description: `The updated description of the ${typeName} Data Source.`,
+      // scott: this description may need to be parameterized if we support different scan targets than repos
+      isAutoScanEnabled: `Whether scans should be automatically performed when a push occurs to repositories associated with this Data Source.`,
+      config: `The updated configuration parameters to use for this Data Source.`
+    };
+  },
+  DELETE: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to be deleted.`
+  })
 };

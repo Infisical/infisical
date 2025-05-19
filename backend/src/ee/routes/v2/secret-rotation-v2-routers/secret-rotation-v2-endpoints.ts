@@ -126,7 +126,7 @@ export const registerSecretRotationEndpoints = <
       const { rotationId } = req.params;
 
       const secretRotation = (await server.services.secretRotationV2.findSecretRotationById(
-        { rotationId, type },
+        { sourceId: rotationId, type },
         req.permission
       )) as T;
 
@@ -136,7 +136,7 @@ export const registerSecretRotationEndpoints = <
         event: {
           type: EventType.GET_SECRET_ROTATION,
           metadata: {
-            rotationId,
+            sourceId: rotationId,
             type,
             secretPath: secretRotation.folder.path,
             environment: secretRotation.environment.slug
@@ -202,7 +202,7 @@ export const registerSecretRotationEndpoints = <
         event: {
           type: EventType.GET_SECRET_ROTATION,
           metadata: {
-            rotationId: secretRotation.id,
+            sourceId: secretRotation.id,
             type,
             secretPath,
             environment
@@ -244,7 +244,7 @@ export const registerSecretRotationEndpoints = <
         event: {
           type: EventType.CREATE_SECRET_ROTATION,
           metadata: {
-            rotationId: secretRotation.id,
+            sourceId: secretRotation.id,
             type,
             ...req.body
           }
@@ -278,7 +278,7 @@ export const registerSecretRotationEndpoints = <
       const { rotationId } = req.params;
 
       const secretRotation = (await server.services.secretRotationV2.updateSecretRotation(
-        { ...req.body, rotationId, type },
+        { ...req.body, sourceId: rotationId, type },
         req.permission
       )) as T;
 
@@ -288,7 +288,7 @@ export const registerSecretRotationEndpoints = <
         event: {
           type: EventType.UPDATE_SECRET_ROTATION,
           metadata: {
-            rotationId,
+            sourceId: rotationId,
             type,
             ...req.body
           }
@@ -332,7 +332,7 @@ export const registerSecretRotationEndpoints = <
       const { deleteSecrets, revokeGeneratedCredentials } = req.query;
 
       const secretRotation = (await server.services.secretRotationV2.deleteSecretRotation(
-        { type, rotationId, deleteSecrets, revokeGeneratedCredentials },
+        { type, sourceId: rotationId, deleteSecrets, revokeGeneratedCredentials },
         req.permission
       )) as T;
 
@@ -343,7 +343,7 @@ export const registerSecretRotationEndpoints = <
           type: EventType.DELETE_SECRET_ROTATION,
           metadata: {
             type,
-            rotationId,
+            sourceId: rotationId,
             deleteSecrets,
             revokeGeneratedCredentials
           }
@@ -385,7 +385,7 @@ export const registerSecretRotationEndpoints = <
         secretRotation: { activeIndex, projectId, folder, environment }
       } = await server.services.secretRotationV2.findSecretRotationGeneratedCredentialsById(
         {
-          rotationId,
+          sourceId: rotationId,
           type
         },
         req.permission
@@ -398,14 +398,14 @@ export const registerSecretRotationEndpoints = <
           type: EventType.GET_SECRET_ROTATION_GENERATED_CREDENTIALS,
           metadata: {
             type,
-            rotationId,
+            sourceId: rotationId,
             secretPath: folder.path,
             environment: environment.slug
           }
         }
       });
 
-      return { generatedCredentials: generatedCredentials as C, activeIndex, rotationId, type };
+      return { generatedCredentials: generatedCredentials as C, activeIndex, sourceId: rotationId, type };
     }
   });
 
@@ -432,7 +432,7 @@ export const registerSecretRotationEndpoints = <
 
       const secretRotation = (await server.services.secretRotationV2.rotateSecretRotation(
         {
-          rotationId,
+          sourceId: rotationId,
           type,
           auditLogInfo: req.auditLogInfo
         },

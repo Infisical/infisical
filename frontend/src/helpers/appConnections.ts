@@ -63,7 +63,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.HCVault]: { name: "Hashicorp Vault", image: "Vault.png", size: 65 },
   [AppConnection.LDAP]: { name: "LDAP", image: "LDAP.png", size: 65 },
   [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" },
-  [AppConnection.OCI]: { name: "OCI", image: "Oracle.png" }
+  [AppConnection.OCI]: { name: "OCI", image: "Oracle.png" },
+  [AppConnection.GitLab]: { name: "GitLab", image: "GitLab.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {

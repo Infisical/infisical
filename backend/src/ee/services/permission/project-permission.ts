@@ -123,6 +123,16 @@ export enum ProjectPermissionKmipActions {
   GenerateClientCertificates = "generate-client-certificates"
 }
 
+export enum ProjectPermissionSecretScanningDataSourceActions {
+  Read = "read-data-source",
+  Create = "create-data-source",
+  Edit = "edit-data-source",
+  Delete = "delete-data-source",
+  TriggerScans = "trigger-data-source-scans",
+  ReadScans = "read-data-source-scans",
+  ReadResources = "read-data-source-resources"
+}
+
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
@@ -158,7 +168,8 @@ export enum ProjectPermissionSub {
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
-  Kmip = "kmip"
+  Kmip = "kmip",
+  SecretScanningDataSources = "secret-scanning-data-sources"
 }
 
 export type SecretSubjectFields = {
@@ -281,7 +292,8 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
-  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms];
+  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
+  | [ProjectPermissionSecretScanningDataSourceActions, ProjectPermissionSub.SecretScanningDataSources];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
@@ -600,6 +612,14 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.Kmip).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionKmipActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z
+      .literal(ProjectPermissionSub.SecretScanningDataSources)
+      .describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretScanningDataSourceActions).describe(
       "Describe what action an entity can take."
     )
   })

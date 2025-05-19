@@ -9,6 +9,7 @@ import { TCamundaConnection } from "./camunda-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
+import { TGitLabConnection } from "./gitlab-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TLdapConnection } from "./ldap-connection";
@@ -29,6 +30,7 @@ export * from "./camunda-connection";
 export * from "./databricks-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
+export * from "./gitlab-connection";
 export * from "./hc-vault-connection";
 export * from "./humanitec-connection";
 export * from "./ldap-connection";
@@ -59,7 +61,8 @@ export type TAppConnection =
   | THCVaultConnection
   | TLdapConnection
   | TTeamCityConnection
-  | TOCIConnection;
+  | TOCIConnection
+  | TGitLabConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -106,4 +109,5 @@ export type TAppConnectionMap = {
   [AppConnection.LDAP]: TLdapConnection;
   [AppConnection.TeamCity]: TTeamCityConnection;
   [AppConnection.OCI]: TOCIConnection;
+  [AppConnection.GitLab]: TGitLabConnection;
 };
