@@ -94,8 +94,6 @@ export const SecretDetailSidebar = ({
   secretPath,
   handleSecretShare
 }: Props) => {
-  if (!secret) return <></>;
-
   const {
     control,
     watch,
@@ -104,14 +102,10 @@ export const SecretDetailSidebar = ({
     reset,
     formState: { isDirty, isSubmitting }
   } = useForm<TFormSchema>({
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(formSchema),
+    values: secret,
+    disabled: !secret
   });
-
-  useEffect(() => {
-    if (secret) {
-      reset(secret);
-    }
-  }, [secret, reset]);
 
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
     "secretAccessUpgradePlan"
