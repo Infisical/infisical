@@ -62,9 +62,6 @@ export const InternalCertificateAuthorityFns = ({
     if (ca.internalCa?.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa?.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
-    if (ca.disableDirectIssuance) {
-      throw new BadRequestError({ message: "Certificate template is required for issuance" });
-    }
 
     const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
 

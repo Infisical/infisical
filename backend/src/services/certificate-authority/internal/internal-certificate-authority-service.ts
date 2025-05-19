@@ -1235,7 +1235,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
     if (ca.disableDirectIssuance && !certificateTemplate) {
-      throw new BadRequestError({ message: "Certificate template is required for issuance" });
+      throw new BadRequestError({ message: "Certificate template or subscriber is required for issuance" });
     }
 
     const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
@@ -1593,7 +1593,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
     if (ca.disableDirectIssuance && !certificateTemplate) {
-      throw new BadRequestError({ message: "Certificate template is required for issuance" });
+      throw new BadRequestError({ message: "Certificate template or subscriber is required for issuance" });
     }
 
     const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
