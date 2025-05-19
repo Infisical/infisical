@@ -6,7 +6,6 @@ import { withPermission } from "@app/hoc";
 
 import { OrgGenericAuthSection } from "./OrgGenericAuthSection";
 import { OrgUserAccessTokenLimitSection } from "./OrgUserAccessTokenLimitSection";
-import { OrgSecretShareLimitSection } from "./OrgSecretShareLimitSection";
 
 export const OrgSecurityTab = withPermission(
   () => {
@@ -29,7 +28,6 @@ export const OrgSecurityTab = withPermission(
         </NoticeBannerV2>
         <OrgGenericAuthSection />
         <OrgUserAccessTokenLimitSection />
-        <OrgSecretShareLimitSection />
       </>
     );
   },
