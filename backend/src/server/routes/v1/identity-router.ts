@@ -228,6 +228,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           identity: IdentityOrgMembershipsSchema.extend({
+            orgId: z.string(),
             metadata: z
               .object({
                 id: z.string().trim().min(1),
