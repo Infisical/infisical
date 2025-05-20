@@ -1293,7 +1293,8 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.IpAllowList]: enabled,
   [ProjectPermissionSub.SecretRollback]: enabled,
   [ProjectPermissionSub.SecretRotation]: enabled,
-  [ProjectPermissionSub.ServiceTokens]: enabled
+  [ProjectPermissionSub.ServiceTokens]: enabled,
+  [ProjectPermissionSub.Commits]: enabled
 });
 
 const KmsPermissionSubjects = (enabled = false) => ({
@@ -1605,6 +1606,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.SecretSyncs,
           actions: [ProjectPermissionSecretSyncActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.Commits,
+          actions: [ProjectPermissionCommitsActions.Read]
         }
       ]
     },
@@ -1662,6 +1667,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.SecretSyncs,
           actions: Object.values(ProjectPermissionSecretSyncActions)
+        },
+        {
+          subject: ProjectPermissionSub.Commits,
+          actions: Object.values(ProjectPermissionCommitsActions)
         }
       ]
     },

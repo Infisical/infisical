@@ -423,7 +423,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
   can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Commits);
+  can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
 
   return rules;
 };
