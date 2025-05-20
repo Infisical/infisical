@@ -4,6 +4,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCmekActions,
+  ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
@@ -64,6 +65,11 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCertificateActions.ReadPrivateKey
     ],
     ProjectPermissionSub.Certificates
+  );
+
+  can(
+    [ProjectPermissionCommitsActions.Read, ProjectPermissionCommitsActions.PerformRollback],
+    ProjectPermissionSub.Commits
   );
 
   can(
@@ -243,6 +249,11 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.SecretImports
   );
 
+  can(
+    [ProjectPermissionCommitsActions.Read, ProjectPermissionCommitsActions.PerformRollback],
+    ProjectPermissionSub.Commits
+  );
+
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SecretApproval);
   can([ProjectPermissionSecretRotationActions.Read], ProjectPermissionSub.SecretRotation);
 
@@ -412,6 +423,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
   can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
+  can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
 
   return rules;
 };

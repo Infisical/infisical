@@ -10,6 +10,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -87,6 +88,7 @@ type TSecretReplicationServiceFactoryDep = {
 
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
 };
 
 export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicationServiceFactory>;
@@ -132,6 +134,7 @@ export const secretReplicationServiceFactory = ({
   secretVersionV2BridgeDAL,
   secretV2BridgeDAL,
   kmsService,
+  folderCommitService,
   resourceMetadataDAL
 }: TSecretReplicationServiceFactoryDep) => {
   const $getReplicatedSecrets = (
@@ -446,6 +449,7 @@ export const secretReplicationServiceFactory = ({
                     tx,
                     secretTagDAL,
                     resourceMetadataDAL,
+                    folderCommitService,
                     secretVersionTagDAL: secretVersionV2TagBridgeDAL,
                     inputSecrets: locallyCreatedSecrets.map((doc) => {
                       return {
@@ -466,6 +470,7 @@ export const secretReplicationServiceFactory = ({
                     orgId,
                     folderId: destinationReplicationFolderId,
                     secretVersionDAL: secretVersionV2BridgeDAL,
+                    folderCommitService,
                     secretDAL: secretV2BridgeDAL,
                     tx,
                     resourceMetadataDAL,

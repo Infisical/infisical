@@ -12,6 +12,7 @@ import {
 } from "@app/context";
 import {
   PermissionConditionOperators,
+  ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
@@ -79,6 +80,11 @@ const SecretSyncPolicyActionSchema = z.object({
   [ProjectPermissionSecretSyncActions.SyncSecrets]: z.boolean().optional(),
   [ProjectPermissionSecretSyncActions.ImportSecrets]: z.boolean().optional(),
   [ProjectPermissionSecretSyncActions.RemoveSecrets]: z.boolean().optional()
+});
+
+const CommitPolicyActionSchema = z.object({
+  [ProjectPermissionCommitsActions.Read]: z.boolean().optional(),
+  [ProjectPermissionCommitsActions.PerformRollback]: z.boolean().optional()
 });
 
 const SecretRotationPolicyActionSchema = z.object({
@@ -274,7 +280,8 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Kms]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Cmek]: CmekPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretSyncs]: SecretSyncPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.Kmip]: KmipPolicyActionSchema.array().default([])
+      [ProjectPermissionSub.Kmip]: KmipPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.Commits]: CommitPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -409,7 +416,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.SshCertificateTemplates,
         ProjectPermissionSub.SshCertificateAuthorities,
         ProjectPermissionSub.SshCertificates,
-        ProjectPermissionSub.SshHostGroups
+        ProjectPermissionSub.SshHostGroups,
+        ProjectPermissionSub.Commits
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -1048,6 +1056,13 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Remove", value: "delete" }
     ]
   },
+  [ProjectPermissionSub.Commits]: {
+    title: "Commits",
+    actions: [
+      { label: "View", value: ProjectPermissionCommitsActions.Read },
+      { label: "Perform Rollback", value: ProjectPermissionCommitsActions.PerformRollback }
+    ]
+  },
   [ProjectPermissionSub.Tags]: {
     title: "Tags",
     actions: [
@@ -1278,7 +1293,8 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.IpAllowList]: enabled,
   [ProjectPermissionSub.SecretRollback]: enabled,
   [ProjectPermissionSub.SecretRotation]: enabled,
-  [ProjectPermissionSub.ServiceTokens]: enabled
+  [ProjectPermissionSub.ServiceTokens]: enabled,
+  [ProjectPermissionSub.Commits]: enabled
 });
 
 const KmsPermissionSubjects = (enabled = false) => ({
@@ -1590,6 +1606,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.SecretSyncs,
           actions: [ProjectPermissionSecretSyncActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.Commits,
+          actions: [ProjectPermissionCommitsActions.Read]
         }
       ]
     },
@@ -1647,6 +1667,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.SecretSyncs,
           actions: Object.values(ProjectPermissionSecretSyncActions)
+        },
+        {
+          subject: ProjectPermissionSub.Commits,
+          actions: Object.values(ProjectPermissionCommitsActions)
         }
       ]
     },
