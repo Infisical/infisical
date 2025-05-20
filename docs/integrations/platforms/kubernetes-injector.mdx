@@ -192,6 +192,11 @@ data:
           {{- end }}
 ```
 
+Now apply the config map:
+```bash
+kubectl apply -f config-map.yaml
+```
+
 ### Injecting secrets into your pod
 
 To inject secrets into your pod, you will need to add the `org.infisical.com/inject: "true"` annotation to your pod's deployment.
