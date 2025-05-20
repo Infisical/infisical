@@ -1,8 +1,12 @@
 import { faWrench } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { Spinner, Tooltip } from "@app/components/v2";
+import { useSubscription } from "@app/context";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { usePopUp } from "@app/hooks";
 import { useAppConnectionOptions } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
@@ -11,7 +15,10 @@ type Props = {
 };
 
 export const AppConnectionsSelect = ({ onSelect }: Props) => {
+  const { subscription } = useSubscription();
   const { isPending, data: appConnectionOptions } = useAppConnectionOptions();
+
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
   if (isPending) {
     return (
@@ -25,29 +32,52 @@ export const AppConnectionsSelect = ({ onSelect }: Props) => {
   return (
     <div className="grid grid-cols-4 gap-2">
       {appConnectionOptions?.map((option) => {
-        const { image, name, size = 50 } = APP_CONNECTION_MAP[option.app];
+        const { image, name, size = 50, enterprise = false } = APP_CONNECTION_MAP[option.app];
 
         return (
-          <button
-            type="button"
-            key={option.app}
-            onClick={() => onSelect(option.app)}
-            className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
+          <Tooltip
+            content={
+              enterprise && !subscription.enterpriseAppConnections
+                ? "Enterprise Plan Only"
+                : undefined
+            }
           >
-            <img
-              src={`/images/integrations/${image}`}
-              style={{
-                width: `${size}px`
-              }}
-              className="mt-auto"
-              alt={`${name} logo`}
-            />
-            <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
-              {name}
-            </div>
-          </button>
+            <button
+              type="button"
+              key={option.app}
+              onClick={() =>
+                enterprise && !subscription.enterpriseAppConnections
+                  ? handlePopUpOpen("upgradePlan")
+                  : onSelect(option.app)
+              }
+              className={twMerge(
+                "group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600",
+                enterprise && !subscription.enterpriseAppConnections ? "border-0 bg-opacity-0" : ""
+              )}
+            >
+              {enterprise && !subscription.enterpriseAppConnections && (
+                <div className="absolute h-full w-full backdrop-blur-[1px]" />
+              )}
+              <img
+                src={`/images/integrations/${image}`}
+                style={{
+                  width: `${size}px`
+                }}
+                className="mt-auto"
+                alt={`${name} logo`}
+              />
+              <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
+                {name}
+              </div>
+            </button>
+          </Tooltip>
         );
       })}
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="You can use every App Connection if you switch to Infisical's Enterprise plan."
+      />
       <Tooltip
         side="bottom"
         className="max-w-sm py-4"

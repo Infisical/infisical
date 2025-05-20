@@ -1,13 +1,14 @@
 import { faWrench } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { Spinner, Tooltip } from "@app/components/v2";
-import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
-import { SecretSync, useSecretSyncOptions } from "@app/hooks/api/secretSyncs";
-import { twMerge } from "tailwind-merge";
-import { UpgradePlanModal } from "../license/UpgradePlanModal";
-import { usePopUp } from "@app/hooks";
 import { useSubscription } from "@app/context";
+import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
+import { usePopUp } from "@app/hooks";
+import { SecretSync, useSecretSyncOptions } from "@app/hooks/api/secretSyncs";
+
+import { UpgradePlanModal } from "../license/UpgradePlanModal";
 
 type Props = {
   onSelect: (destination: SecretSync) => void;
@@ -52,7 +53,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
               )}
             >
               {enterprise && !subscription.enterpriseSecretSyncs && (
-                <div className="absolute h-full w-full backdrop-blur-[1px]"></div>
+                <div className="absolute h-full w-full backdrop-blur-[1px]" />
               )}
               <img
                 src={`/images/integrations/${image}`}

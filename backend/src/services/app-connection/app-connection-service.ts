@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { generateHash } from "@app/lib/crypto/encryption";
@@ -17,9 +18,11 @@ import {
 import { auth0ConnectionService } from "@app/services/app-connection/auth0/auth0-connection-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { ValidateOCIConnectionCredentialsSchema } from "../../ee/services/app-connections/oci";
+import { ociConnectionService } from "../../ee/services/app-connections/oci/oci-connection-service";
 import { TAppConnectionDALFactory } from "./app-connection-dal";
-import { AppConnection } from "./app-connection-enums";
-import { APP_CONNECTION_NAME_MAP } from "./app-connection-maps";
+import { AppConnection, AppConnectionPlanType } from "./app-connection-enums";
+import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "./app-connection-maps";
 import {
   TAppConnection,
   TAppConnectionConfig,
@@ -49,8 +52,6 @@ import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
-import { ValidateOCIConnectionCredentialsSchema } from "./oci";
-import { ociConnectionService } from "./oci/oci-connection-service";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
 import { teamcityConnectionService } from "./teamcity/teamcity-connection-service";
@@ -65,6 +66,7 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -94,7 +96,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
 export const appConnectionServiceFactory = ({
   appConnectionDAL,
   permissionService,
-  kmsService
+  kmsService,
+  licenseService
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnectionsByOrg = async (actor: OrgServiceActor, app?: AppConnection) => {
     const { permission } = await permissionService.getOrgPermission(
@@ -191,6 +194,16 @@ export const appConnectionServiceFactory = ({
       OrgPermissionSubjects.AppConnections
     );
 
+    // Enterprise check
+    if (APP_CONNECTION_PLAN_MAP[app] === AppConnectionPlanType.Enterprise) {
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.enterpriseAppConnections)
+        throw new BadRequestError({
+          message:
+            "Failed to create app connection due to plan restriction. Upgrade plan to access enterprise app connections."
+        });
+    }
+
     const validatedCredentials = await validateAppConnectionCredentials({
       app,
       credentials,
@@ -252,6 +265,16 @@ export const appConnectionServiceFactory = ({
     const appConnection = await appConnectionDAL.findById(connectionId);
 
     if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+
+    // Enterprise check
+    if (APP_CONNECTION_PLAN_MAP[appConnection.app as AppConnection] === AppConnectionPlanType.Enterprise) {
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.enterpriseAppConnections)
+        throw new BadRequestError({
+          message:
+            "Failed to update app connection due to plan restriction. Upgrade plan to access enterprise app connections."
+        });
+    }
 
     const { permission } = await permissionService.getOrgPermission(
       actor.type,
@@ -399,6 +422,16 @@ export const appConnectionServiceFactory = ({
 
     if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
+    // Enterprise check
+    if (APP_CONNECTION_PLAN_MAP[app] === AppConnectionPlanType.Enterprise) {
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.enterpriseAppConnections)
+        throw new BadRequestError({
+          message:
+            "Failed to connect app connection due to plan restriction. Upgrade plan to access enterprise app connections."
+        });
+    }
+
     const { permission: orgPermission } = await permissionService.getOrgPermission(
       actor.type,
       actor.id,
@@ -468,6 +501,6 @@ export const appConnectionServiceFactory = ({
     hcvault: hcVaultConnectionService(connectAppConnectionById),
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
-    oci: ociConnectionService(connectAppConnectionById)
+    oci: ociConnectionService(connectAppConnectionById, licenseService)
   };
 };

@@ -73,6 +73,7 @@ export type TFeatureSet = {
   gateway: false;
   sshHostGroups: false;
   enterpriseSecretSyncs: false;
+  enterpriseAppConnections: false;
 };
 
 export type TOrgPlansTableDTO = {

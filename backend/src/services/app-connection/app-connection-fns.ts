@@ -8,6 +8,11 @@ import {
 } from "@app/services/app-connection/shared/sql";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import {
+  getOCIConnectionListItem,
+  OCIConnectionMethod,
+  validateOCIConnectionCredentials
+} from "../../ee/services/app-connections/oci";
 import { AppConnection } from "./app-connection-enums";
 import { TAppConnectionServiceFactoryDep } from "./app-connection-service";
 import {
@@ -53,7 +58,6 @@ import {
 } from "./humanitec";
 import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnectionCredentials } from "./ldap";
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
-import { getOCIConnectionListItem, OCIConnectionMethod, validateOCIConnectionCredentials } from "./oci";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import {
   getTeamCityConnectionListItem,

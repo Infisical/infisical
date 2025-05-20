@@ -51,4 +51,5 @@ export type SubscriptionPlan = {
   projectTemplates: boolean;
   kmip: boolean;
   enterpriseSecretSyncs: boolean;
+  enterpriseAppConnections: boolean;
 };
