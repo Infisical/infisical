@@ -4,13 +4,20 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Spinner, Tooltip } from "@app/components/v2";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, useSecretSyncOptions } from "@app/hooks/api/secretSyncs";
+import { twMerge } from "tailwind-merge";
+import { UpgradePlanModal } from "../license/UpgradePlanModal";
+import { usePopUp } from "@app/hooks";
+import { useSubscription } from "@app/context";
 
 type Props = {
   onSelect: (destination: SecretSync) => void;
 };
 
 export const SecretSyncSelect = ({ onSelect }: Props) => {
+  const { subscription } = useSubscription();
   const { isPending, data: secretSyncOptions } = useSecretSyncOptions();
+
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
   if (isPending) {
     return (
@@ -23,28 +30,49 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
 
   return (
     <div className="grid grid-cols-4 gap-2">
-      {secretSyncOptions?.map(({ destination }) => {
+      {secretSyncOptions?.map(({ destination, enterprise }) => {
         const { image, name } = SECRET_SYNC_MAP[destination];
         return (
-          <button
-            type="button"
-            key={destination}
-            onClick={() => onSelect(destination)}
-            className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
+          <Tooltip
+            content={
+              enterprise && !subscription.enterpriseSecretSyncs ? "Enterprise Plan Only" : undefined
+            }
           >
-            <img
-              src={`/images/integrations/${image}`}
-              height={40}
-              width={40}
-              className="mt-auto"
-              alt={`${name} logo`}
-            />
-            <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
-              {name}
-            </div>
-          </button>
+            <button
+              type="button"
+              key={destination}
+              onClick={() =>
+                enterprise && !subscription.enterpriseSecretSyncs
+                  ? handlePopUpOpen("upgradePlan")
+                  : onSelect(destination)
+              }
+              className={twMerge(
+                "group relative flex h-28 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600",
+                enterprise && !subscription.enterpriseSecretSyncs ? "border-0 bg-opacity-0" : ""
+              )}
+            >
+              {enterprise && !subscription.enterpriseSecretSyncs && (
+                <div className="absolute h-full w-full backdrop-blur-[1px]"></div>
+              )}
+              <img
+                src={`/images/integrations/${image}`}
+                height={40}
+                width={40}
+                className="mt-auto"
+                alt={`${name} logo`}
+              />
+              <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
+                {name}
+              </div>
+            </button>
+          </Tooltip>
         );
       })}
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="You can use every Secret Sync if you switch to Infisical's Enterprise plan."
+      />
       <Tooltip
         side="bottom"
         className="max-w-sm py-4"

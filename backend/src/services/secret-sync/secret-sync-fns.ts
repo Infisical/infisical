@@ -1,6 +1,7 @@
 import { AxiosError } from "axios";
 import RE2 from "re2";
 
+import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
 import {
   AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
   AwsParameterStoreSyncFns
@@ -29,7 +30,6 @@ import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
-import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "./oci-vault";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";

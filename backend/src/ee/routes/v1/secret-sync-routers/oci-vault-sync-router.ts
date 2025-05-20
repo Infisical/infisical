@@ -2,10 +2,10 @@ import {
   CreateOCIVaultSyncSchema,
   OCIVaultSyncSchema,
   UpdateOCIVaultSyncSchema
-} from "@app/services/secret-sync/oci-vault";
+} from "@app/ee/services/secret-sync/oci-vault";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 
-import { registerSyncSecretsEndpoints } from "./secret-sync-endpoints";
+import { registerSyncSecretsEndpoints } from "../../../../server/routes/v1/secret-sync-routers/secret-sync-endpoints";
 
 export const registerOCIVaultSyncRouter = async (server: FastifyZodProvider) =>
   registerSyncSecretsEndpoints({
