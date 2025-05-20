@@ -95,7 +95,7 @@ const expandSecretScanningDataSource = <
 
 export const secretScanningV2DALFactory = (db: TDbClient) => {
   const dataSourceOrm = ormify(db, TableName.SecretScanningDataSource);
-  const targetOrm = ormify(db, TableName.SecretScanningResource);
+  const resourcesOrm = ormify(db, TableName.SecretScanningResource);
   const scanOrm = ormify(db, TableName.SecretScanningScan);
   const findingOrm = ormify(db, TableName.SecretScanningFinding);
 
@@ -183,8 +183,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       updateById: updateDataSourceById,
       deleteById: deleteDataSourceById
     },
-    target: targetOrm,
-    scan: scanOrm,
+    resources: resourcesOrm,
+    scans: scanOrm,
     finding: findingOrm
   };
 };

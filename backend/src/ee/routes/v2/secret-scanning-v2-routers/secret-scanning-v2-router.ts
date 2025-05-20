@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { GitHubSecretScanningDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/github";
-import { GitLabSecretScanningDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/gitlab";
+import { GitLabDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/gitlab";
 import { SecretScanningDataSourceSchema } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-union-schema";
 import { ApiDocsTags, SecretScanningDataSources } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
@@ -11,7 +11,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 const SecretScanningDataSourceOptionsSchema = z.discriminatedUnion("type", [
   GitHubSecretScanningDataSourceListItemSchema,
-  GitLabSecretScanningDataSourceListItemSchema
+  GitLabDataSourceListItemSchema
 ]);
 
 export const registerSecretScanningV2Router = async (server: FastifyZodProvider) => {

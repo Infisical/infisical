@@ -12,6 +12,7 @@ import {
   TScanFullRepoEventPayload,
   TScanPushEventPayload
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
+import { TQueueSecretScanningDataSourceFullScan } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import {
@@ -51,7 +52,8 @@ export enum QueueName {
   ImportSecretsFromExternalSource = "import-secrets-from-external-source",
   AppConnectionSecretSync = "app-connection-secret-sync",
   SecretRotationV2 = "secret-rotation-v2",
-  InvalidateCache = "invalidate-cache"
+  InvalidateCache = "invalidate-cache",
+  SecretScanningV2 = "secret-scanning-v2"
 }
 
 export enum QueueJobs {
@@ -84,7 +86,9 @@ export enum QueueJobs {
   SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
-  InvalidateCache = "invalidate-cache"
+  InvalidateCache = "invalidate-cache",
+  SecretScanningV2FullScan = "secret-scanning-v2-full-scan",
+  SecretScanningV2PartialScan = "secret-scanning-v2-partial-scan"
 }
 
 export type TQueueJobTypes = {
@@ -244,6 +248,10 @@ export type TQueueJobTypes = {
         type: CacheType;
       };
     };
+  };
+  [QueueName.SecretScanningV2]: {
+    name: QueueJobs.SecretScanningV2FullScan;
+    payload: TQueueSecretScanningDataSourceFullScan;
   };
 };
 

@@ -3,17 +3,17 @@ import { z } from "zod";
 import { TGitLabConnection } from "@app/services/app-connection/gitlab";
 
 import {
-  CreateGitLabSecretScanningDataSourceSchema,
-  GitLabSecretScanningDataSourceListItemSchema,
-  GitLabSecretScanningDataSourceSchema
+  CreateGitLabDataSourceSchema,
+  GitLabDataSourceListItemSchema,
+  GitLabDataSourceSchema
 } from "./gitlab-secret-scanning-schemas";
 
-export type TGitLabSecretScanningDataSource = z.infer<typeof GitLabSecretScanningDataSourceSchema>;
+export type TGitLabDataSource = z.infer<typeof GitLabDataSourceSchema>;
 
-export type TGitLabSecretScanningDataSourceInput = z.infer<typeof CreateGitLabSecretScanningDataSourceSchema>;
+export type TGitLabDataSourceInput = z.infer<typeof CreateGitLabDataSourceSchema>;
 
-export type TGitLabSecretScanningDataSourceListItem = z.infer<typeof GitLabSecretScanningDataSourceListItemSchema>;
+export type TGitLabDataSourceListItem = z.infer<typeof GitLabDataSourceListItemSchema>;
 
-export type TGitLabSecretScanningDataSourceWithConnection = TGitLabSecretScanningDataSource & {
+export type TGitLabDataSourceWithConnection = TGitLabDataSource & {
   connection: TGitLabConnection;
 };

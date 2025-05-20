@@ -39,6 +39,14 @@ export type TDeleteSecretScanningDataSourceDTO = {
   projectId: string;
 };
 
+export type TTriggerSecretScanningDataSourceDTO = {
+  type: SecretScanningDataSource;
+  dataSourceId: string;
+  resourceId?: string;
+  // required for query invalidation
+  projectId: string;
+};
+
 export type TSecretRotationOptionMap = {
   [SecretScanningDataSource.GitHub]: TGitHubDataSourceOption;
   [SecretScanningDataSource.GitLab]: TGitLabDataSourceOption;

@@ -7,6 +7,7 @@ import {
   TCreateSecretScanningDataSourceDTO,
   TDeleteSecretScanningDataSourceDTO,
   TSecretScanningDataSourceResponse,
+  TTriggerSecretScanningDataSourceDTO,
   TUpdateSecretScanningDataSourceDTO
 } from "./types";
 
@@ -54,6 +55,24 @@ export const useDeleteSecretScanningDataSource = () => {
     mutationFn: async ({ type, dataSourceId }: TDeleteSecretScanningDataSourceDTO) => {
       const { data } = await apiRequest.delete<TSecretScanningDataSourceResponse>(
         `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}`
+      );
+
+      return data.dataSource;
+    },
+    onSuccess: (_, { projectId }) =>
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.listDataSources(projectId)
+        // TODO: single view
+      })
+  });
+};
+
+export const useTriggerSecretScanningDataSource = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ type, dataSourceId }: TTriggerSecretScanningDataSourceDTO) => {
+      const { data } = await apiRequest.post<TSecretScanningDataSourceResponse>(
+        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}/scan`
       );
 
       return data.dataSource;

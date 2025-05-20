@@ -8,16 +8,16 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
-export const GitLabSecretScanningDataSourceConfigSchema = z.object({
-  includeProjects: z.array(z.string()).default(["*"])
+export const GitLabDataSourceConfigSchema = z.object({
+  includeProjects: z.array(z.string()).nonempty("One or more projects required").default(["*"])
 });
 
-export const GitLabSecretScanningDataSourceSchema = BaseSecretScanningDataSourceSchema({
+export const GitLabDataSourceSchema = BaseSecretScanningDataSourceSchema({
   type: SecretScanningDataSource.GitLab,
   isConnectionRequired: true
 })
   .extend({
-    config: GitLabSecretScanningDataSourceConfigSchema
+    config: GitLabDataSourceConfigSchema
   })
   .describe(
     JSON.stringify({
@@ -25,12 +25,12 @@ export const GitLabSecretScanningDataSourceSchema = BaseSecretScanningDataSource
     })
   );
 
-export const CreateGitLabSecretScanningDataSourceSchema = BaseCreateSecretScanningDataSourceSchema({
+export const CreateGitLabDataSourceSchema = BaseCreateSecretScanningDataSourceSchema({
   type: SecretScanningDataSource.GitLab,
   isConnectionRequired: true
 })
   .extend({
-    config: GitLabSecretScanningDataSourceConfigSchema
+    config: GitLabDataSourceConfigSchema
   })
   .describe(
     JSON.stringify({
@@ -38,11 +38,9 @@ export const CreateGitLabSecretScanningDataSourceSchema = BaseCreateSecretScanni
     })
   );
 
-export const UpdateGitLabSecretScanningDataSourceSchema = BaseUpdateSecretScanningDataSourceSchema(
-  SecretScanningDataSource.GitLab
-)
+export const UpdateGitLabDataSourceSchema = BaseUpdateSecretScanningDataSourceSchema(SecretScanningDataSource.GitLab)
   .extend({
-    config: GitLabSecretScanningDataSourceConfigSchema.optional()
+    config: GitLabDataSourceConfigSchema.optional()
   })
   .describe(
     JSON.stringify({
@@ -50,7 +48,7 @@ export const UpdateGitLabSecretScanningDataSourceSchema = BaseUpdateSecretScanni
     })
   );
 
-export const GitLabSecretScanningDataSourceListItemSchema = z
+export const GitLabDataSourceListItemSchema = z
   .object({
     name: z.literal("GitLab"),
     connection: z.literal(AppConnection.GitLab),

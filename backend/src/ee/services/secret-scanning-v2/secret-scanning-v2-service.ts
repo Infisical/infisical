@@ -20,16 +20,17 @@ import {
   TFindSecretScanningDataSourceByNameDTO,
   TListSecretScanningDataSourcesByProjectId,
   TSecretScanningDataSource,
+  TTriggerSecretScanningDataSourceDTO,
   TUpdateSecretScanningDataSourceDTO
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
 
@@ -328,6 +329,49 @@ export const secretScanningV2ServiceFactory = ({
     return dataSource as TSecretScanningDataSource;
   };
 
+  const triggerSecretScanningDataSourceScan = async (
+    { type, dataSourceId }: TTriggerSecretScanningDataSourceDTO,
+    actor: OrgServiceActor
+  ) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.secretScanning)
+      throw new BadRequestError({
+        message:
+          "Failed to trigger scan for Secret Scanning Data Source due to plan restriction. Upgrade plan to enable Secret Scanning."
+      });
+
+    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
+
+    if (!dataSource)
+      throw new NotFoundError({
+        message: `Could not find ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source with ID "${dataSourceId}"`
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretScanning,
+      projectId: dataSource.projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretScanningDataSourceActions.Delete,
+      ProjectPermissionSub.SecretScanningDataSources
+    );
+
+    if (type !== dataSource.type)
+      throw new BadRequestError({
+        message: `Secret Rotation with ID "${dataSourceId}" is not configured for ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]}`
+      });
+
+    logger.warn("scan!");
+
+    return dataSource as TSecretScanningDataSource;
+  };
+
   return {
     listSecretScanningDataSourceOptions,
     listSecretScanningDataSourcesByProjectId,
@@ -335,6 +379,7 @@ export const secretScanningV2ServiceFactory = ({
     findSecretScanningDataSourceByName,
     createSecretScanningDataSource,
     updateSecretScanningDataSource,
-    deleteSecretScanningResource
+    deleteSecretScanningResource,
+    triggerSecretScanningDataSourceScan
   };
 };

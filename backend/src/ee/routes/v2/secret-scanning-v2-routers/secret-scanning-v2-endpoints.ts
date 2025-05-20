@@ -282,7 +282,7 @@ export const registerSecretScanningEndpoints = <
     schema: {
       hide: false,
       tags: [ApiDocsTags.SecretScanning],
-      description: `Delete the specified ${sourceType} Rotation.`,
+      description: `Delete the specified ${sourceType} Data Source.`,
       params: z.object({
         dataSourceId: z.string().uuid().describe(SecretScanningDataSources.DELETE(type).dataSourceId)
       }),
@@ -295,6 +295,48 @@ export const registerSecretScanningEndpoints = <
       const { dataSourceId } = req.params;
 
       const dataSource = (await server.services.secretScanningV2.deleteSecretScanningResource(
+        { type, dataSourceId },
+        req.permission
+      )) as T;
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: dataSource.projectId,
+        event: {
+          type: EventType.SECRET_SCANNING_DATA_SOURCE_DELETE,
+          metadata: {
+            type,
+            dataSourceId
+          }
+        }
+      });
+
+      return { dataSource };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: `/:dataSourceId/scan`,
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretScanning],
+      description: `Delete the specified ${sourceType} Rotation.`,
+      params: z.object({
+        dataSourceId: z.string().uuid().describe(SecretScanningDataSources.DELETE(type).dataSourceId)
+      }),
+      response: {
+        200: z.object({ dataSource: responseSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { dataSourceId } = req.params;
+
+      const dataSource = (await server.services.secretScanningV2.triggerSecretScanningDataSourceScan(
         { type, dataSourceId },
         req.permission
       )) as T;

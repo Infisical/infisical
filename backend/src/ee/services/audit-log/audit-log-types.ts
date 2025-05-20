@@ -13,6 +13,7 @@ import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/se
 import {
   TCreateSecretScanningDataSourceDTO,
   TDeleteSecretScanningDataSourceDTO,
+  TTriggerSecretScanningDataSourceDTO,
   TUpdateSecretScanningDataSourceDTO
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
@@ -387,7 +388,8 @@ export enum EventType {
   SECRET_SCANNING_DATA_SOURCE_CREATE = "secret-scanning-data-sources-create",
   SECRET_SCANNING_DATA_SOURCE_UPDATE = "secret-scanning-data-sources-update",
   SECRET_SCANNING_DATA_SOURCE_DELETE = "secret-scanning-data-sources-delete",
-  SECRET_SCANNING_DATA_SOURCE_GET = "secret-scanning-data-sources-get"
+  SECRET_SCANNING_DATA_SOURCE_GET = "secret-scanning-data-sources-get",
+  SECRET_SCANNING_DATA_SOURCE_SCAN = "secret-scanning-data-sources-scan"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -2957,6 +2959,11 @@ interface SecretScanningDataSourceDeleteEvent {
   metadata: TDeleteSecretScanningDataSourceDTO;
 }
 
+interface SecretScanningDataSourceScanEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN;
+  metadata: TTriggerSecretScanningDataSourceDTO;
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -3228,4 +3235,5 @@ export type Event =
   | SecretScanningDataSourceGetEvent
   | SecretScanningDataSourceCreateEvent
   | SecretScanningDataSourceUpdateEvent
-  | SecretScanningDataSourceDeleteEvent;
+  | SecretScanningDataSourceDeleteEvent
+  | SecretScanningDataSourceScanEvent;

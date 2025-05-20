@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -8,10 +9,11 @@ import {
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { DeleteSecretScanningDataSourceModal } from "@app/components/secret-scanning/DeleteSecretScanningDataSourceModal";
+import { EditSecretRotationV2Modal } from "@app/components/secret-scanning/EditSecretScanningDataSourceModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,20 +31,18 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
-  // SecretSyncStatus,
-  TSecretScanningDataSource
-} from "@app/hooks/api/secretScanningV2";
-
-import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
-import {
   SecretScanningDataSource,
+  TSecretScanningDataSource,
+  useTriggerSecretScanningDataSource,
   useUpdateSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
+
 import { DataSourceRow } from "./DataSourceRow";
+
 // import { getSecretSyncDestinationColValues } from "./helpers";
 
 enum DataSourcesOrderBy {
@@ -83,19 +83,16 @@ type Props = {
 
 export const DataSourcesTable = ({ dataSources }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-    "deleteDataSource"
-    // "importSecrets",
-    // "removeSecrets"
+    "deleteDataSource",
+    "editDataSource",
+    "triggerDataSourceScan"
   ] as const);
-  // const triggerSync = useTriggerSecretSyncSyncSecrets();
+  const triggerDataSourceScan = useTriggerSecretScanningDataSource();
   const updateDataSource = useUpdateSecretScanningDataSource();
 
   const [filters, setFilters] = useState<DataSourceFilters>({
-    types: [],
-    status: []
+    types: []
   });
-
-  const { currentWorkspace } = useWorkspace();
 
   const {
     search,
@@ -140,6 +137,8 @@ export const DataSourcesTable = ({ dataSources }: Props) => {
         .sort((a, b) => {
           const [dataSourceOne, dataSourceTwo] =
             orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
+
+          // TODO: platform
 
           switch (orderBy) {
             // case DataSourcesOrderBy.Type:
@@ -203,7 +202,7 @@ export const DataSourcesTable = ({ dataSources }: Props) => {
       await updateDataSource.mutateAsync({
         dataSourceId: dataSource.id,
         type: dataSource.type,
-        isAutoScanEnabled: isAutoScanEnabled,
+        isAutoScanEnabled,
         projectId: dataSource.projectId
       });
 
@@ -220,22 +219,20 @@ export const DataSourcesTable = ({ dataSources }: Props) => {
   };
 
   const handleTriggerScan = async (dataSource: TSecretScanningDataSource) => {
-    const dataSourceName = SECRET_SCANNING_DATA_SOURCE_MAP[dataSource.type].name;
-
     try {
-      // await triggerSync.mutateAsync({
-      //   dataSourceId: dataSource.id,
-      //   type: dataSource.type,
-      //   projectId: dataSource.projectId
-      // });
+      await triggerDataSourceScan.mutateAsync({
+        dataSourceId: dataSource.id,
+        type: dataSource.type,
+        projectId: dataSource.projectId
+      });
 
       createNotification({
-        text: `Successfully triggered ${dataSourceName} Sync`,
+        text: "Successfully triggered scan",
         type: "success"
       });
     } catch {
       createNotification({
-        text: `Failed to trigger ${dataSourceName} Sync`,
+        text: "Failed to trigger scan",
         type: "error"
       });
     }
@@ -417,21 +414,16 @@ export const DataSourcesTable = ({ dataSources }: Props) => {
           />
         )}
       </TableContainer>
-      {/* <DeleteSecretSyncModal
-        onOpenChange={(isOpen) => handlePopUpToggle("deleteSync", isOpen)}
-        isOpen={popUp.deleteSync.isOpen}
-        secretSync={popUp.deleteSync.data}
+      <DeleteSecretScanningDataSourceModal
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteDataSource", isOpen)}
+        isOpen={popUp.deleteDataSource.isOpen}
+        dataSource={popUp.deleteDataSource.data}
       />
-      <SecretSyncImportSecretsModal
-        onOpenChange={(isOpen) => handlePopUpToggle("importSecrets", isOpen)}
-        isOpen={popUp.importSecrets.isOpen}
-        secretSync={popUp.importSecrets.data}
+      <EditSecretRotationV2Modal
+        onOpenChange={(isOpen) => handlePopUpToggle("editDataSource", isOpen)}
+        isOpen={popUp.editDataSource.isOpen}
+        dataSource={popUp.editDataSource.data}
       />
-      <SecretSyncRemoveSecretsModal
-        onOpenChange={(isOpen) => handlePopUpToggle("removeSecrets", isOpen)}
-        isOpen={popUp.removeSecrets.isOpen}
-        secretSync={popUp.removeSecrets.data}
-      /> */}
     </div>
   );
 };

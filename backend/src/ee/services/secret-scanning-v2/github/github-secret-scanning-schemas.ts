@@ -9,7 +9,7 @@ import {
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 export const GitHubSecretScanningDataSourceConfigSchema = z.object({
-  includeRepos: z.array(z.string()).default(["*"])
+  includeRepos: z.array(z.string()).nonempty("One or more repositories required").default(["*"])
 });
 
 export const GitHubSecretScanningDataSourceSchema = BaseSecretScanningDataSourceSchema({

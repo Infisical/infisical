@@ -1,17 +1,9 @@
 import { ProjectMembershipRole } from "@app/db/schemas";
-import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
-import {
-  getNextUtcRotationInterval,
-  getSecretRotationRotateSecretJobOptions
-} from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-fns";
 import { SECRET_ROTATION_NAME_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
-import { TSecretRotationV2ServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-service";
-import {
-  TSecretRotationRotateSecretsJobPayload,
-  TSecretRotationSendNotificationJobPayload
-} from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { getConfig } from "@app/lib/config/env";
+import { TSecretRotationSendNotificationJobPayload } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
+import { TSecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -20,80 +12,37 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 type TSecretRotationV2QueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
-  secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "findSecretRotationsToQueue" | "findById">;
-  secretRotationV2Service: Pick<TSecretRotationV2ServiceFactory, "rotateGeneratedCredentials">;
+  secretScanningV2DAL: Pick<TSecretScanningV2DALFactory, "dataSources" | "scans">;
   smtpService: Pick<TSmtpService, "sendMail">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
-export const secretRotationV2QueueServiceFactory = async ({
+export const secretScanningV2QueueServiceFactory = async ({
   queueService,
-  secretRotationV2DAL,
-  secretRotationV2Service,
+  secretScanningV2DAL,
   projectMembershipDAL,
   projectDAL,
   smtpService
 }: TSecretRotationV2QueueServiceFactoryDep) => {
-  const appCfg = getConfig();
+  const queueDataSourceFullScan = async (dataSource: TSecretScanningDataSource) => {
+    const { id: scanId } = secretScanningV2DAL.scans.create({
+      d
+    });
 
-  if (appCfg.isRotationDevelopmentMode) {
-    logger.warn("Secret Rotation V2 is in development mode.");
-  }
+    queueService.queuePg(QueueName.SecretScanningV2FullScan);
+  };
 
-  await queueService.startPg<QueueName.SecretRotationV2>(
-    QueueJobs.SecretRotationV2QueueRotations,
-    async () => {
-      try {
-        const rotateBy = getNextUtcRotationInterval();
-
-        const currentTime = new Date();
-
-        const secretRotations = await secretRotationV2DAL.findSecretRotationsToQueue(rotateBy);
-
-        logger.info(
-          `secretRotationV2Queue: Queue Rotations [currentTime=${currentTime.toISOString()}] [rotateBy=${rotateBy.toISOString()}] [count=${
-            secretRotations.length
-          }]`
-        );
-
-        for await (const rotation of secretRotations) {
-          logger.info(
-            `secretRotationV2Queue: Queue Rotation [rotationId=${rotation.id}] [lastRotatedAt=${new Date(
-              rotation.lastRotatedAt
-            ).toISOString()}] [rotateAt=${new Date(rotation.nextRotationAt!).toISOString()}]`
-          );
-          await queueService.queuePg(
-            QueueJobs.SecretRotationV2RotateSecrets,
-            {
-              rotationId: rotation.id,
-              queuedAt: currentTime
-            },
-            getSecretRotationRotateSecretJobOptions(rotation)
-          );
-        }
-      } catch (error) {
-        logger.error(error, "secretRotationV2Queue: Queue Rotations Error:");
-        throw error;
-      }
-    },
-    {
-      batchSize: 1,
-      workerCount: 1,
-      pollingIntervalSeconds: appCfg.isRotationDevelopmentMode ? 0.5 : 30
-    }
-  );
-
-  await queueService.startPg<QueueName.SecretRotationV2>(
-    QueueJobs.SecretRotationV2RotateSecrets,
+  await queueService.startPg<QueueName.SecretScanningV2>(
+    QueueJobs.SecretScanningV2FullScan,
     async ([job]) => {
-      const { rotationId, queuedAt, isManualRotation } = job.data as TSecretRotationRotateSecretsJobPayload;
+      const { scanId } = job.data;
       const { retryCount, retryLimit } = job;
 
-      const logDetails = `[rotationId=${rotationId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
+      const logDetails = `[scanId=${scanId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
       try {
-        const secretRotation = await secretRotationV2DAL.findById(rotationId);
+        const secretRotation = await secretScanningV2DAL.findById(rotationId);
 
         if (!secretRotation) throw new Error(`Secret rotation ${rotationId} not found`);
 
@@ -182,12 +131,5 @@ export const secretRotationV2QueueServiceFactory = async ({
       workerCount: 2,
       pollingIntervalSeconds: 1
     }
-  );
-
-  await queueService.schedulePg(
-    QueueJobs.SecretRotationV2QueueRotations,
-    appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *",
-    undefined,
-    { tz: "UTC" }
   );
 };
