@@ -56,7 +56,10 @@ import {
   useSubscription,
   useWorkspace
 } from "@app/context";
-import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPermissionContext/types";
+import {
+  ProjectPermissionCommitsActions,
+  ProjectPermissionSecretRotationActions
+} from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   useCreateFolder,
@@ -779,8 +782,8 @@ export const ActionBar = ({
         </div>
         <div>
           <ProjectPermissionCan
-            I={ProjectPermissionActions.Read}
-            a={ProjectPermissionSub.SecretRollback}
+            I={isPITEnabled ? ProjectPermissionCommitsActions.Read : ProjectPermissionActions.Read}
+            a={isPITEnabled ? ProjectPermissionSub.Commits : ProjectPermissionSub.SecretRollback}
           >
             {(isAllowed) => (
               <Button

@@ -94,3 +94,25 @@ via the UI or API for the third-party service you intend to sync secrets to.
     Infisical is continuously expanding it's Secret Sync third-party service support. If the service you need isn't available,
     you can still use our Native Integrations in the interim, or contact us at team@infisical.com to make a request .
 </Note>
+
+## Key Schemas
+
+Key Schemas transform your secret keys by applying a prefix, suffix, or format pattern during sync to external destinations. This makes it clear which secrets are managed by Infisical and prevents accidental changes to unrelated secrets.
+
+**Example:**
+- Infisical key: `SECRET_1`
+- Schema: `INFISICAL_{{secretKey}}`
+- Synced key: `INFISICAL_SECRET_1`
+
+<div align="center">
+    ```mermaid
+    graph LR
+      A[Infisical: **SECRET_1**] -->|Apply Schema| B[Destination: **INFISICAL_SECRET_1**]
+      style B fill:#F4FFE6,stroke:#96D600,stroke-width:2px,color:black,rx:15px
+      style A fill:#E6F4FF,stroke:#0096D6,stroke-width:2px,color:black,rx:15px
+    ```
+</div>
+
+<Note>
+    When importing secrets from the destination into Infisical, the schema is stripped from imported secret keys.
+</Note>

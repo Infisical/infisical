@@ -5,6 +5,7 @@ import { DropdownMenuItem } from "@radix-ui/react-dropdown-menu";
 import { useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DeleteActionModal,
   DropdownMenu,
@@ -14,6 +15,10 @@ import {
   Spinner
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
+import {
+  ProjectPermissionCommitsActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { CommitWithChanges } from "@app/hooks/api/folderCommits";
 import { useCommitRevert, useGetCommitDetails } from "@app/hooks/api/folderCommits/queries";
@@ -259,42 +264,53 @@ export const CommitDetailsTab = ({
             </div>
           </div>
           <div className="flex items-center justify-start">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  ariaLabel="commit-options"
-                  variant="outline_bg"
-                  className="h-10 rounded border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-sm font-medium"
-                >
-                  <p className="mr-2">Restore Options</p>
-                  <FontAwesomeIcon icon={faAngleDown} />
-                </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                sideOffset={2}
-                className="animate-in fade-in-50 zoom-in-95 min-w-[200px] p-1"
-                style={{ marginTop: "0" }}
-              >
-                <DropdownMenuItem
-                  className="h-10 w-full cursor-pointer px-3 py-2 text-sm transition-colors hover:bg-mineshaft-700"
-                  onClick={() => goToRollbackPreview()}
-                >
-                  <div className="flex w-full items-center justify-start">
-                    <span>Restore entire folder</span>
-                  </div>
-                </DropdownMenuItem>
+            <ProjectPermissionCan
+              I={ProjectPermissionCommitsActions.Read}
+              a={ProjectPermissionSub.Commits}
+            >
+              {(isAllowed) => (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    asChild
+                    disabled={!isAllowed}
+                    className={`${!isAllowed ? "cursor-not-allowed" : ""}`}
+                  >
+                    <IconButton
+                      ariaLabel="commit-options"
+                      variant="outline_bg"
+                      className="h-10 rounded border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-sm font-medium"
+                    >
+                      <p className="mr-2">Restore Options</p>
+                      <FontAwesomeIcon icon={faAngleDown} />
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    sideOffset={2}
+                    className="animate-in fade-in-50 zoom-in-95 min-w-[200px] p-1"
+                    style={{ marginTop: "0" }}
+                  >
+                    <DropdownMenuItem
+                      className="h-10 w-full cursor-pointer px-3 py-2 text-sm transition-colors hover:bg-mineshaft-700"
+                      onClick={() => goToRollbackPreview()}
+                    >
+                      <div className="flex w-full items-center justify-start">
+                        <span>Restore entire folder</span>
+                      </div>
+                    </DropdownMenuItem>
 
-                <DropdownMenuItem
-                  className="h-10 w-full cursor-pointer px-3 py-2 text-sm transition-colors hover:bg-mineshaft-700"
-                  onClick={() => handlePopUpOpen("revertChanges")}
-                >
-                  <div className="flex w-full items-center justify-start">
-                    <span>Revert commit changes</span>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <DropdownMenuItem
+                      className="h-10 w-full cursor-pointer px-3 py-2 text-sm transition-colors hover:bg-mineshaft-700"
+                      onClick={() => handlePopUpOpen("revertChanges")}
+                    >
+                      <div className="flex w-full items-center justify-start">
+                        <span>Revert commit changes</span>
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </ProjectPermissionCan>
           </div>
         </div>
 

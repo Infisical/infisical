@@ -714,13 +714,15 @@ export const oidcConfigServiceFactory = ({
           }
         }
 
+        const groups = typeof claims.groups === "string" ? [claims.groups] : (claims.groups as string[] | undefined);
+
         oidcLogin({
           email: claims.email,
           externalId: claims.sub,
           firstName: claims.given_name ?? "",
           lastName: claims.family_name ?? "",
           orgId: org.id,
-          groups: claims.groups as string[] | undefined,
+          groups,
           callbackPort,
           manageGroupMemberships: oidcCfg.manageGroupMemberships
         })

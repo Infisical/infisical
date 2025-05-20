@@ -1,0 +1,180 @@
+---
+title: "OCI Vault Sync"
+description: "Learn how to configure an Oracle Cloud Infrastructure Vault Sync for Infisical."
+---
+
+**Prerequisites:**
+- Create an [OCI Connection](/integrations/app-connections/oci) with the required **Secret Sync** permissions
+- [Create](https://docs.oracle.com/en-us/iaas/Content/Identity/compartments/To_create_a_compartment.htm) or use an existing OCI Compartment (which the OCI Connection is authorized to access)
+- [Create](https://docs.oracle.com/en-us/iaas/Content/KeyManagement/Tasks/managingvaults_topic-To_create_a_new_vault.htm#createnewvault) or use an existing OCI Vault
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Add Sync">
+                Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+
+                ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+            </Step>
+            <Step title="Select 'OCI Vault'">
+                ![Select OCI Vault](/images/secret-syncs/oci-vault/select-option.png)
+            </Step>
+            <Step title="Configure source">
+                Configure the **Source** from where secrets should be retrieved, then click **Next**.
+
+                ![Configure Source](/images/secret-syncs/oci-vault/configure-source.png)
+
+                - **Environment**: The project environment to retrieve secrets from.
+                - **Secret Path**: The folder path to retrieve secrets from.
+
+                <Tip>
+                    If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+                </Tip>
+            </Step>
+            <Step title="Configure destination">
+                Configure the **Destination** to where secrets should be deployed, then click **Next**.
+
+                ![Configure Destination](/images/secret-syncs/oci-vault/configure-destination.png)
+
+                - **OCI Connection**: The OCI Connection to authenticate with.
+                - **Compartment**: The compartment where the vault is located.
+                - **Vault**: The vault to sync secrets to.
+                - **Encryption Key**: The encryption key to use when creating secrets in the vault.
+            </Step>
+            <Step title="Configure sync options">
+                Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
+
+                ![Configure Sync Options](/images/secret-syncs/oci-vault/configure-sync-options.png)
+
+                - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
+                    - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
+                    - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over OCI Vault when keys conflict.
+                    - **Import Secrets (Prioritize OCI Vault)**: Imports secrets from the destination endpoint before syncing, prioritizing values from OCI Vault over Infisical when keys conflict.
+                - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name.
+                <Note>
+                    We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
+                </Note>
+                - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+                - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
+            </Step>
+            <Step title="Configure details">
+                Configure the **Details** of your OCI Vault Sync, then click **Next**.
+
+                ![Configure Details](/images/secret-syncs/oci-vault/configure-details.png)
+
+                - **Name**: The name of your sync. Must be slug-friendly.
+                - **Description**: An optional description for your sync.
+            </Step>
+            <Step title="Review configuration">
+                Review your OCI Vault Sync configuration, then click **Create Sync**.
+
+                ![Review Configuration](/images/secret-syncs/oci-vault/review-configuration.png)
+            </Step>
+            <Step title="Sync created">
+                If enabled, your OCI Vault Sync will begin syncing your secrets to the destination endpoint.
+
+                ![Sync Created](/images/secret-syncs/oci-vault/sync-created.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create an **OCI Vault Sync**, make an API request to the [Create OCI Vault Sync](/api-reference/endpoints/secret-syncs/oci-vault/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/secret-syncs/oci-vault \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-oci-vault-sync",
+                    "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "description": "an example sync",
+                    "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "environment": "dev",
+                    "secretPath": "/my-secrets",
+                    "isEnabled": true,
+                    "syncOptions": {
+                        "initialSyncBehavior": "overwrite-destination"
+                    },
+                    "destinationConfig": {
+                        "compartmentOcid": "...",
+                        "vaultOcid": "...",
+                        "keyOcid": "..."
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-oci-vault-sync",
+                "description": "an example sync",
+                "isEnabled": true,
+                "version": 1,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "syncStatus": "succeeded",
+                "lastSyncJobId": "123",
+                "lastSyncMessage": null,
+                "lastSyncedAt": "2023-11-07T05:31:56Z",
+                "importStatus": null,
+                "lastImportJobId": null,
+                "lastImportMessage": null,
+                "lastImportedAt": null,
+                "removeStatus": null,
+                "lastRemoveJobId": null,
+                "lastRemoveMessage": null,
+                "lastRemovedAt": null,
+                "syncOptions": {
+                    "initialSyncBehavior": "overwrite-destination"
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connection": {
+                    "app": "oci",
+                    "name": "my-oci-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/my-secrets"
+                },
+                "destination": "oci-vault",
+                "destinationConfig": {
+                  "compartmentOcid": "...",
+                  "vaultOcid": "...",
+                  "keyOcid": "..."
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="How are non-active lifecycle states treated?">
+        When Infisical attempts to sync secrets, the sync will fail and attempt to re-sync if **any secret** has one of the following lifecycle states:
+        - SchedulingDeletion
+        - CancellingDeletion
+        - Deleting
+        - Creating
+        - Updating
+
+        We do this to prevent any desync issues.
+    </Accordion>
+    <Accordion title="What happens if I create / update a variable that's scheduled for deletion in OCI Vault?">
+        In the case that a variable is created or updated while it's scheduled for deletion in OCI Vault, we cancel the deletion and update the variable. This action may take up to a minute since Infisical must wait for OCI to completely cancel the deletion and then update the variable.
+    </Accordion>
+</AccordionGroup>

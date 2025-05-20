@@ -22,6 +22,14 @@ export enum ProjectPermissionCommitsActions {
   PerformRollback = "perform-rollback"
 }
 
+export enum ProjectPermissionCertificateActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  ReadPrivateKey = "read-private-key"
+}
+
 export enum ProjectPermissionSecretActions {
   DescribeAndReadValue = "read",
   DescribeSecret = "describeSecret",
@@ -84,6 +92,15 @@ export enum ProjectPermissionSshHostActions {
   IssueHostCert = "issue-host-cert"
 }
 
+export enum ProjectPermissionPkiSubscriberActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueCert = "issue-cert",
+  ListCerts = "list-certs"
+}
+
 export enum ProjectPermissionSecretSyncActions {
   Read = "read",
   Create = "create",
@@ -141,6 +158,7 @@ export enum ProjectPermissionSub {
   SshCertificateTemplates = "ssh-certificate-templates",
   SshHosts = "ssh-hosts",
   SshHostGroups = "ssh-host-groups",
+  PkiSubscribers = "pki-subscribers",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
   Kms = "kms",
@@ -186,6 +204,11 @@ export type IdentityManagementSubjectFields = {
 
 export type SshHostSubjectFields = {
   hostname: string;
+};
+
+export type PkiSubscriberSubjectFields = {
+  name: string;
+  // (dangtony98): consider adding [commonName] as a subject field in the future
 };
 
 export type ProjectPermissionSet =
@@ -238,7 +261,7 @@ export type ProjectPermissionSet =
       ProjectPermissionSub.Identity | (ForcedSubject<ProjectPermissionSub.Identity> & IdentityManagementSubjectFields)
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
-  | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
+  | [ProjectPermissionCertificateActions, ProjectPermissionSub.Certificates]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
@@ -246,6 +269,13 @@ export type ProjectPermissionSet =
   | [
       ProjectPermissionSshHostActions,
       ProjectPermissionSub.SshHosts | (ForcedSubject<ProjectPermissionSub.SshHosts> & SshHostSubjectFields)
+    ]
+  | [
+      ProjectPermissionPkiSubscriberActions,
+      (
+        | ProjectPermissionSub.PkiSubscribers
+        | (ForcedSubject<ProjectPermissionSub.PkiSubscribers> & PkiSubscriberSubjectFields)
+      )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.SshHostGroups]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
@@ -398,6 +428,21 @@ const SshHostConditionSchema = z
   })
   .partial();
 
+const PkiSubscriberConditionSchema = z
+  .object({
+    name: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
+  })
+  .partial();
+
 const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretApproval).describe("The entity this permission pertains to."),
@@ -485,7 +530,7 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Certificates).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCertificateActions).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -669,6 +714,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
     ).optional()
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.PkiSubscribers).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPkiSubscriberActions).describe(
+      "Describe what action an entity can take."
+    ),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    conditions: PkiSubscriberConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.SecretRotation).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretRotationActions).describe(
@@ -682,404 +737,6 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
 ]);
 
 export type TProjectPermissionV2Schema = z.infer<typeof ProjectPermissionV2Schema>;
-
-const buildAdminPermissionRules = () => {
-  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
-
-  // Admins get full access to everything
-  [
-    ProjectPermissionSub.SecretFolders,
-    ProjectPermissionSub.SecretImports,
-    ProjectPermissionSub.SecretApproval,
-    ProjectPermissionSub.Role,
-    ProjectPermissionSub.Integrations,
-    ProjectPermissionSub.Webhooks,
-    ProjectPermissionSub.ServiceTokens,
-    ProjectPermissionSub.Settings,
-    ProjectPermissionSub.Environments,
-    ProjectPermissionSub.Tags,
-    ProjectPermissionSub.AuditLogs,
-    ProjectPermissionSub.IpAllowList,
-    ProjectPermissionSub.CertificateAuthorities,
-    ProjectPermissionSub.Certificates,
-    ProjectPermissionSub.CertificateTemplates,
-    ProjectPermissionSub.PkiAlerts,
-    ProjectPermissionSub.PkiCollections,
-    ProjectPermissionSub.SshCertificateAuthorities,
-    ProjectPermissionSub.SshCertificates,
-    ProjectPermissionSub.SshCertificateTemplates,
-    ProjectPermissionSub.SshHostGroups
-  ].forEach((el) => {
-    can(
-      [
-        ProjectPermissionActions.Read,
-        ProjectPermissionActions.Edit,
-        ProjectPermissionActions.Create,
-        ProjectPermissionActions.Delete
-      ],
-      el
-    );
-  });
-
-  can(
-    [
-      ProjectPermissionSshHostActions.Edit,
-      ProjectPermissionSshHostActions.Read,
-      ProjectPermissionSshHostActions.Create,
-      ProjectPermissionSshHostActions.Delete,
-      ProjectPermissionSshHostActions.IssueHostCert
-    ],
-    ProjectPermissionSub.SshHosts
-  );
-
-  can(
-    [
-      ProjectPermissionMemberActions.Create,
-      ProjectPermissionMemberActions.Edit,
-      ProjectPermissionMemberActions.Delete,
-      ProjectPermissionMemberActions.Read,
-      ProjectPermissionMemberActions.GrantPrivileges,
-      ProjectPermissionMemberActions.AssumePrivileges
-    ],
-    ProjectPermissionSub.Member
-  );
-
-  can(
-    [
-      ProjectPermissionGroupActions.Create,
-      ProjectPermissionGroupActions.Edit,
-      ProjectPermissionGroupActions.Delete,
-      ProjectPermissionGroupActions.Read,
-      ProjectPermissionGroupActions.GrantPrivileges
-    ],
-    ProjectPermissionSub.Groups
-  );
-
-  can(
-    [
-      ProjectPermissionIdentityActions.Create,
-      ProjectPermissionIdentityActions.Edit,
-      ProjectPermissionIdentityActions.Delete,
-      ProjectPermissionIdentityActions.Read,
-      ProjectPermissionIdentityActions.GrantPrivileges,
-      ProjectPermissionIdentityActions.AssumePrivileges
-    ],
-    ProjectPermissionSub.Identity
-  );
-
-  can(
-    [
-      ProjectPermissionSecretActions.DescribeAndReadValue,
-      ProjectPermissionSecretActions.DescribeSecret,
-      ProjectPermissionSecretActions.ReadValue,
-      ProjectPermissionSecretActions.Create,
-      ProjectPermissionSecretActions.Edit,
-      ProjectPermissionSecretActions.Delete
-    ],
-    ProjectPermissionSub.Secrets
-  );
-
-  can(
-    [
-      ProjectPermissionDynamicSecretActions.ReadRootCredential,
-      ProjectPermissionDynamicSecretActions.EditRootCredential,
-      ProjectPermissionDynamicSecretActions.CreateRootCredential,
-      ProjectPermissionDynamicSecretActions.DeleteRootCredential,
-      ProjectPermissionDynamicSecretActions.Lease
-    ],
-    ProjectPermissionSub.DynamicSecrets
-  );
-
-  can([ProjectPermissionActions.Edit, ProjectPermissionActions.Delete], ProjectPermissionSub.Project);
-  can([ProjectPermissionActions.Read, ProjectPermissionActions.Create], ProjectPermissionSub.SecretRollback);
-  can([ProjectPermissionActions.Edit], ProjectPermissionSub.Kms);
-  can(
-    [
-      ProjectPermissionCmekActions.Create,
-      ProjectPermissionCmekActions.Edit,
-      ProjectPermissionCmekActions.Delete,
-      ProjectPermissionCmekActions.Read,
-      ProjectPermissionCmekActions.Encrypt,
-      ProjectPermissionCmekActions.Decrypt,
-      ProjectPermissionCmekActions.Sign,
-      ProjectPermissionCmekActions.Verify
-    ],
-    ProjectPermissionSub.Cmek
-  );
-  can(
-    [
-      ProjectPermissionSecretSyncActions.Create,
-      ProjectPermissionSecretSyncActions.Edit,
-      ProjectPermissionSecretSyncActions.Delete,
-      ProjectPermissionSecretSyncActions.Read,
-      ProjectPermissionSecretSyncActions.SyncSecrets,
-      ProjectPermissionSecretSyncActions.ImportSecrets,
-      ProjectPermissionSecretSyncActions.RemoveSecrets
-    ],
-    ProjectPermissionSub.SecretSyncs
-  );
-
-  can(
-    [
-      ProjectPermissionKmipActions.CreateClients,
-      ProjectPermissionKmipActions.UpdateClients,
-      ProjectPermissionKmipActions.DeleteClients,
-      ProjectPermissionKmipActions.ReadClients,
-      ProjectPermissionKmipActions.GenerateClientCertificates
-    ],
-    ProjectPermissionSub.Kmip
-  );
-
-  can(
-    [
-      ProjectPermissionSecretRotationActions.Create,
-      ProjectPermissionSecretRotationActions.Edit,
-      ProjectPermissionSecretRotationActions.Delete,
-      ProjectPermissionSecretRotationActions.Read,
-      ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
-      ProjectPermissionSecretRotationActions.RotateSecrets
-    ],
-    ProjectPermissionSub.SecretRotation
-  );
-
-  can(
-    [ProjectPermissionCommitsActions.Read, ProjectPermissionCommitsActions.PerformRollback],
-    ProjectPermissionSub.Commits
-  );
-
-  return rules;
-};
-
-export const projectAdminPermissions = buildAdminPermissionRules();
-
-const buildMemberPermissionRules = () => {
-  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
-
-  can(
-    [
-      ProjectPermissionSecretActions.DescribeAndReadValue,
-      ProjectPermissionSecretActions.DescribeSecret,
-      ProjectPermissionSecretActions.ReadValue,
-      ProjectPermissionSecretActions.Edit,
-      ProjectPermissionSecretActions.Create,
-      ProjectPermissionSecretActions.Delete
-    ],
-    ProjectPermissionSub.Secrets
-  );
-  can(
-    [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
-    ],
-    ProjectPermissionSub.SecretFolders
-  );
-  can(
-    [
-      ProjectPermissionDynamicSecretActions.ReadRootCredential,
-      ProjectPermissionDynamicSecretActions.EditRootCredential,
-      ProjectPermissionDynamicSecretActions.CreateRootCredential,
-      ProjectPermissionDynamicSecretActions.DeleteRootCredential,
-      ProjectPermissionDynamicSecretActions.Lease
-    ],
-    ProjectPermissionSub.DynamicSecrets
-  );
-  can(
-    [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
-    ],
-    ProjectPermissionSub.SecretImports
-  );
-
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.SecretApproval);
-  can([ProjectPermissionSecretRotationActions.Read], ProjectPermissionSub.SecretRotation);
-
-  can([ProjectPermissionActions.Read, ProjectPermissionActions.Create], ProjectPermissionSub.SecretRollback);
-
-  can([ProjectPermissionMemberActions.Read, ProjectPermissionMemberActions.Create], ProjectPermissionSub.Member);
-
-  can([ProjectPermissionGroupActions.Read], ProjectPermissionSub.Groups);
-
-  can(
-    [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
-    ],
-    ProjectPermissionSub.Integrations
-  );
-
-  can(
-    [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
-    ],
-    ProjectPermissionSub.Webhooks
-  );
-
-  can(
-    [
-      ProjectPermissionIdentityActions.Read,
-      ProjectPermissionIdentityActions.Edit,
-      ProjectPermissionIdentityActions.Create,
-      ProjectPermissionIdentityActions.Delete
-    ],
-    ProjectPermissionSub.Identity
-  );
-
-  can(
-    [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
-    ],
-    ProjectPermissionSub.ServiceTokens
-  );
-
-  can(
-    [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
-    ],
-    ProjectPermissionSub.Settings
-  );
-
-  can(
-    [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
-    ],
-    ProjectPermissionSub.Environments
-  );
-
-  can(
-    [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
-    ],
-    ProjectPermissionSub.Tags
-  );
-
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.Role);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.AuditLogs);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.IpAllowList);
-
-  // double check if all CRUD are needed for CA and Certificates
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.CertificateAuthorities);
-
-  can(
-    [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
-    ],
-    ProjectPermissionSub.Certificates
-  );
-
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.CertificateTemplates);
-
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiAlerts);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiCollections);
-
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificates);
-  can([ProjectPermissionActions.Create], ProjectPermissionSub.SshCertificates);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificateTemplates);
-
-  can([ProjectPermissionSshHostActions.Read], ProjectPermissionSub.SshHosts);
-
-  can(
-    [
-      ProjectPermissionCmekActions.Create,
-      ProjectPermissionCmekActions.Edit,
-      ProjectPermissionCmekActions.Delete,
-      ProjectPermissionCmekActions.Read,
-      ProjectPermissionCmekActions.Encrypt,
-      ProjectPermissionCmekActions.Decrypt,
-      ProjectPermissionCmekActions.Sign,
-      ProjectPermissionCmekActions.Verify
-    ],
-    ProjectPermissionSub.Cmek
-  );
-
-  can(
-    [
-      ProjectPermissionSecretSyncActions.Create,
-      ProjectPermissionSecretSyncActions.Edit,
-      ProjectPermissionSecretSyncActions.Delete,
-      ProjectPermissionSecretSyncActions.Read,
-      ProjectPermissionSecretSyncActions.SyncSecrets,
-      ProjectPermissionSecretSyncActions.ImportSecrets,
-      ProjectPermissionSecretSyncActions.RemoveSecrets
-    ],
-    ProjectPermissionSub.SecretSyncs
-  );
-
-  can(
-    [ProjectPermissionCommitsActions.Read, ProjectPermissionCommitsActions.PerformRollback],
-    ProjectPermissionSub.Commits
-  );
-
-  return rules;
-};
-
-export const projectMemberPermissions = buildMemberPermissionRules();
-
-const buildViewerPermissionRules = () => {
-  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
-
-  can(ProjectPermissionSecretActions.DescribeAndReadValue, ProjectPermissionSub.Secrets);
-  can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets);
-  can(ProjectPermissionSecretActions.ReadValue, ProjectPermissionSub.Secrets);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
-  can(ProjectPermissionDynamicSecretActions.ReadRootCredential, ProjectPermissionSub.DynamicSecrets);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
-  can(ProjectPermissionSecretRotationActions.Read, ProjectPermissionSub.SecretRotation);
-  can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
-  can(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
-  can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
-  can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
-  can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
-  can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
-
-  return rules;
-};
-
-export const projectViewerPermission = buildViewerPermissionRules();
-
-const buildNoAccessProjectPermission = () => {
-  const { rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
-  return rules;
-};
 
 export const buildServiceTokenProjectPermission = (
   scopes: Array<{ secretPath: string; environment: string }>,
@@ -1121,8 +778,6 @@ export const buildServiceTokenProjectPermission = (
 
   return build({ conditionsMatcher });
 };
-
-export const projectNoAccessPermissions = buildNoAccessProjectPermission();
 
 /* eslint-disable */
 

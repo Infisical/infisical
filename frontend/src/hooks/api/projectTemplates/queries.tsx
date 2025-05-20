@@ -6,14 +6,17 @@ import {
   TProjectTemplate,
   TProjectTemplateResponse
 } from "@app/hooks/api/projectTemplates/types";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 export const projectTemplateKeys = {
   all: ["project-template"] as const,
-  list: () => [...projectTemplateKeys.all, "list"] as const,
+  list: (projectType?: ProjectType) =>
+    [...projectTemplateKeys.all, "list", ...(projectType ? [projectType] : [])] as const,
   byId: (templateId: string) => [...projectTemplateKeys.all, templateId] as const
 };
 
 export const useListProjectTemplates = (
+  type?: ProjectType,
   options?: Omit<
     UseQueryOptions<
       TProjectTemplate[],
@@ -25,9 +28,11 @@ export const useListProjectTemplates = (
   >
 ) => {
   return useQuery({
-    queryKey: projectTemplateKeys.list(),
+    queryKey: projectTemplateKeys.list(type),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TListProjectTemplates>("/api/v1/project-templates");
+      const { data } = await apiRequest.get<TListProjectTemplates>("/api/v1/project-templates", {
+        params: { type }
+      });
 
       return data.projectTemplates;
     },

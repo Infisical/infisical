@@ -6,6 +6,7 @@ import { TSecretSharing } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { SecretSharingAccessType } from "@app/lib/types";
 import { isUuidV4 } from "@app/lib/validator";
 
@@ -60,7 +61,9 @@ export const secretSharingServiceFactory = ({
     }
 
     const fiveMins = 5 * 60 * 1000;
-    if (expiryTime - currentTime < fiveMins) {
+
+    // 1 second buffer
+    if (expiryTime - currentTime + 1000 < fiveMins) {
       throw new BadRequestError({ message: "Expiration time cannot be less than 5 mins" });
     }
   };
@@ -76,8 +79,11 @@ export const secretSharingServiceFactory = ({
     password,
     accessType,
     expiresAt,
-    expiresAfterViews
+    expiresAfterViews,
+    emails
   }: TCreateSharedSecretDTO) => {
+    const appCfg = getConfig();
+
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
     $validateSharedSecretExpiry(expiresAt);
@@ -93,7 +99,46 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Shared secret value too long" });
     }
 
+    // Check lifetime is within org allowance
+    const expiresAtTimestamp = new Date(expiresAt).getTime();
+    const lifetime = expiresAtTimestamp - new Date().getTime();
+
+    // org.maxSharedSecretLifetime is in seconds
+    if (org.maxSharedSecretLifetime && lifetime / 1000 > org.maxSharedSecretLifetime) {
+      throw new BadRequestError({ message: "Secret lifetime exceeds organization limit" });
+    }
+
+    // Check max view count is within org allowance
+    if (org.maxSharedSecretViewLimit && (!expiresAfterViews || expiresAfterViews > org.maxSharedSecretViewLimit)) {
+      throw new BadRequestError({ message: "Secret max views parameter exceeds organization limit" });
+    }
+
     const encryptWithRoot = kmsService.encryptWithRootKey();
+
+    let salt: string | undefined;
+    let encryptedSalt: Buffer | undefined;
+    const orgEmails = [];
+
+    if (emails && emails.length > 0) {
+      const allOrgMembers = await orgDAL.findAllOrgMembers(orgId);
+
+      // Check to see that all emails are a part of the organization (if enforced) while also collecting a list of emails which are in the org
+      for (const email of emails) {
+        if (allOrgMembers.some((v) => v.user.email === email)) {
+          orgEmails.push(email);
+          // If the email is not part of the org, but access type / org settings require it
+        } else if (!org.allowSecretSharingOutsideOrganization || accessType === SecretSharingAccessType.Organization) {
+          throw new BadRequestError({
+            message: "Organization does not allow sharing secrets to members outside of this organization"
+          });
+        }
+      }
+
+      // Generate salt for signing email hashes (if emails are provided)
+      salt = crypto.randomBytes(32).toString("hex");
+      encryptedSalt = encryptWithRoot(Buffer.from(salt));
+    }
+
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
     const id = crypto.randomBytes(32).toString("hex");
@@ -112,10 +157,44 @@ export const secretSharingServiceFactory = ({
       expiresAfterViews,
       userId: actorId,
       orgId,
-      accessType
+      accessType,
+      authorizedEmails: emails && emails.length > 0 ? JSON.stringify(emails) : undefined,
+      encryptedSalt
     });
 
     const idToReturn = `${Buffer.from(newSharedSecret.identifier!, "hex").toString("base64url")}`;
+
+    // Loop through recipients and send out emails with unique access links
+    if (emails && salt) {
+      const user = await userDAL.findById(actorId);
+
+      if (!user) {
+        throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
+      }
+
+      for await (const email of emails) {
+        try {
+          const hmac = crypto.createHmac("sha256", salt).update(email);
+          const hash = hmac.digest("hex");
+
+          // Only show the username to emails which are part of the organization
+          const respondentUsername = orgEmails.includes(email) ? user.username : undefined;
+
+          await smtpService.sendMail({
+            recipients: [email],
+            subjectLine: "A secret has been shared with you",
+            substitutions: {
+              name,
+              respondentUsername,
+              secretRequestUrl: `${appCfg.SITE_URL}/shared/secret/${idToReturn}?email=${encodeURIComponent(email)}&hash=${hash}`
+            },
+            template: SmtpTemplates.SecretRequestCompleted
+          });
+        } catch (e) {
+          logger.error(e, "Failed to send shared secret URL to a recipient's email.");
+        }
+      }
+    }
 
     return { id: idToReturn };
   };
@@ -390,8 +469,15 @@ export const secretSharingServiceFactory = ({
     });
   };
 
-  /** Get's password-less secret. validates all secret's requested (must be fresh). */
-  const getSharedSecretById = async ({ sharedSecretId, hashedHex, orgId, password }: TGetActiveSharedSecretByIdDTO) => {
+  /** Gets password-less secret. validates all secret's requested (must be fresh). */
+  const getSharedSecretById = async ({
+    sharedSecretId,
+    hashedHex,
+    orgId,
+    password,
+    email,
+    hash
+  }: TGetActiveSharedSecretByIdDTO) => {
     const sharedSecret = isUuidV4(sharedSecretId)
       ? await secretSharingDAL.findOne({
           id: sharedSecretId,
@@ -438,6 +524,32 @@ export const secretSharingServiceFactory = ({
       });
     }
 
+    const decryptWithRoot = kmsService.decryptWithRootKey();
+
+    if (sharedSecret.authorizedEmails && sharedSecret.encryptedSalt) {
+      // Verify both params were passed
+      if (!email || !hash) {
+        throw new BadRequestError({
+          message: "This secret is email protected. Parameters must include email and hash."
+        });
+
+        // Verify that email is authorized to view shared secret
+      } else if (!(sharedSecret.authorizedEmails as string[]).includes(email)) {
+        throw new UnauthorizedError({ message: "Email not authorized to view secret" });
+
+        // Verify that hash matches
+      } else {
+        const salt = decryptWithRoot(sharedSecret.encryptedSalt).toString();
+        const hmac = crypto.createHmac("sha256", salt).update(email);
+        const rebuiltHash = hmac.digest("hex");
+
+        if (rebuiltHash !== hash) {
+          throw new UnauthorizedError({ message: "Email not authorized to view secret" });
+        }
+      }
+    }
+
+    // Password checks
     const isPasswordProtected = Boolean(sharedSecret.password);
     const hasProvidedPassword = Boolean(password);
     if (isPasswordProtected) {
@@ -452,7 +564,6 @@ export const secretSharingServiceFactory = ({
     // If encryptedSecret is set, we know that this secret has been encrypted using KMS, and we can therefore do server-side decryption.
     let decryptedSecretValue: Buffer | undefined;
     if (sharedSecret.encryptedSecret) {
-      const decryptWithRoot = kmsService.decryptWithRootKey();
       decryptedSecretValue = decryptWithRoot(sharedSecret.encryptedSecret);
     }
 

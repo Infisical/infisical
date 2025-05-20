@@ -11,6 +11,7 @@ import { TGcpSync } from "./gcp-sync";
 import { TGitHubSync } from "./github-sync";
 import { THCVaultSync } from "./hc-vault-sync";
 import { THumanitecSync } from "./humanitec-sync";
+import { TOCIVaultSync } from "./oci-vault-sync";
 import { TTeamCitySync } from "./teamcity-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
 import { TVercelSync } from "./vercel-sync";
@@ -36,7 +37,8 @@ export type TSecretSync =
   | TVercelSync
   | TWindmillSync
   | THCVaultSync
-  | TTeamCitySync;
+  | TTeamCitySync
+  | TOCIVaultSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

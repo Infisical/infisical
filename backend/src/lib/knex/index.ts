@@ -32,13 +32,13 @@ export const buildFindFilter =
   <R extends object = object>(
     { $in, $notNull, $search, $complex, ...filter }: TFindFilter<R>,
     tableName?: TableName,
-    excludeKeys?: Array<keyof R>
+    excludeKeys?: string[]
   ) =>
   (bd: Knex.QueryBuilder<R, R>) => {
     const processedFilter = tableName
       ? Object.fromEntries(
           Object.entries(filter)
-            .filter(([key]) => !excludeKeys || !excludeKeys.includes(key as keyof R))
+            .filter(([key]) => !excludeKeys || !excludeKeys.includes(key))
             .map(([key, value]) => [`${tableName}.${key}`, value])
         )
       : filter;

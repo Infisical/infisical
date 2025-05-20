@@ -44,8 +44,27 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countCertificatesForPkiSubscriber = async (subscriberId: string) => {
+    try {
+      interface CountResult {
+        count: string;
+      }
+
+      const query = db
+        .replicaNode()(TableName.Certificate)
+        .where(`${TableName.Certificate}.pkiSubscriberId`, subscriberId);
+
+      const count = await query.count("*").first();
+
+      return parseInt((count as unknown as CountResult).count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count all subscriber certificates" });
+    }
+  };
+
   return {
     ...certificateOrm,
-    countCertificatesInProject
+    countCertificatesInProject,
+    countCertificatesForPkiSubscriber
   };
 };

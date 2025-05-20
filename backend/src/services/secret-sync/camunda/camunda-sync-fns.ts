@@ -12,6 +12,7 @@ import {
   TCamundaSyncWithCredentials
 } from "@app/services/secret-sync/camunda/camunda-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { TSecretMap } from "../secret-sync-types";
 
@@ -116,6 +117,9 @@ export const camundaSyncFactory = ({ kmsService, appConnectionDAL }: TCamundaSec
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for await (const secret of Object.keys(camundaSecrets)) {
+      // eslint-disable-next-line no-continue
+      if (!matchesSchema(secret, secretSync.syncOptions.keySchema)) continue;
+
       if (!(secret in secretMap) || !secretMap[secret].value) {
         try {
           await deleteCamundaSecret({

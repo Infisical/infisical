@@ -4,6 +4,7 @@ import sodium from "libsodium-wrappers";
 import { getGitHubClient } from "@app/services/app-connection/github";
 import { GitHubSyncScope, GitHubSyncVisibility } from "@app/services/secret-sync/github/github-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -222,6 +223,9 @@ export const GithubSyncFns = {
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for await (const encryptedSecret of encryptedSecrets) {
+      // eslint-disable-next-line no-continue
+      if (!matchesSchema(encryptedSecret.name, secretSync.syncOptions.keySchema)) continue;
+
       if (!(encryptedSecret.name in secretMap)) {
         await deleteSecret(client, secretSync, encryptedSecret);
       }

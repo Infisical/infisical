@@ -67,6 +67,9 @@ import { TIdentityAzureAuthServiceFactory } from "@app/services/identity-azure-a
 import { TIdentityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
 import { TIdentityJwtAuthServiceFactory } from "@app/services/identity-jwt-auth/identity-jwt-auth-service";
 import { TIdentityKubernetesAuthServiceFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-service";
+import { TIdentityLdapAuthServiceFactory } from "@app/services/identity-ldap-auth/identity-ldap-auth-service";
+import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
+import { TIdentityOciAuthServiceFactory } from "@app/services/identity-oci-auth/identity-oci-auth-service";
 import { TIdentityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
 import { TIdentityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
@@ -79,6 +82,7 @@ import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 import { TPkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
+import { TPkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env-service";
@@ -147,6 +151,13 @@ declare module "fastify" {
       providerAuthToken: string;
       externalProviderAccessToken?: string;
     };
+    passportMachineIdentity: {
+      identityId: string;
+      user: {
+        uid: string;
+        mail?: string;
+      };
+    };
     kmipUser: {
       projectId: string;
       clientId: string;
@@ -154,7 +165,9 @@ declare module "fastify" {
     };
     auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
-    ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>>;
+    ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>> & {
+      allowedFields?: TAllowedFields[];
+    };
   }
 
   interface FastifyInstance {
@@ -198,8 +211,10 @@ declare module "fastify" {
       identityGcpAuth: TIdentityGcpAuthServiceFactory;
       identityAwsAuth: TIdentityAwsAuthServiceFactory;
       identityAzureAuth: TIdentityAzureAuthServiceFactory;
+      identityOciAuth: TIdentityOciAuthServiceFactory;
       identityOidcAuth: TIdentityOidcAuthServiceFactory;
       identityJwtAuth: TIdentityJwtAuthServiceFactory;
+      identityLdapAuth: TIdentityLdapAuthServiceFactory;
       accessApprovalPolicy: TAccessApprovalPolicyServiceFactory;
       accessApprovalRequest: TAccessApprovalRequestServiceFactory;
       secretApprovalPolicy: TSecretApprovalPolicyServiceFactory;
@@ -221,6 +236,7 @@ declare module "fastify" {
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
       certificateEst: TCertificateEstServiceFactory;
       pkiCollection: TPkiCollectionServiceFactory;
+      pkiSubscriber: TPkiSubscriberServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
       trustedIp: TTrustedIpServiceFactory;

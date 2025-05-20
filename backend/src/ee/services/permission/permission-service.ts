@@ -12,6 +12,14 @@ import {
   TIdentityProjectMemberships,
   TProjectMemberships
 } from "@app/db/schemas";
+import {
+  cryptographicOperatorPermissions,
+  projectAdminPermissions,
+  projectMemberPermissions,
+  projectNoAccessPermissions,
+  projectViewerPermission,
+  sshHostBootstrapPermissions
+} from "@app/ee/services/permission/default-roles";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { objectify } from "@app/lib/fn";
@@ -32,14 +40,7 @@ import {
   TGetServiceTokenProjectPermissionArg,
   TGetUserProjectPermissionArg
 } from "./permission-service-types";
-import {
-  buildServiceTokenProjectPermission,
-  projectAdminPermissions,
-  projectMemberPermissions,
-  projectNoAccessPermissions,
-  ProjectPermissionSet,
-  projectViewerPermission
-} from "./project-permission";
+import { buildServiceTokenProjectPermission, ProjectPermissionSet } from "./project-permission";
 
 type TPermissionServiceFactoryDep = {
   orgRoleDAL: Pick<TOrgRoleDALFactory, "findOne">;
@@ -95,6 +96,10 @@ export const permissionServiceFactory = ({
             return projectViewerPermission;
           case ProjectMembershipRole.NoAccess:
             return projectNoAccessPermissions;
+          case ProjectMembershipRole.SshHostBootstrapper:
+            return sshHostBootstrapPermissions;
+          case ProjectMembershipRole.KmsCryptographicOperator:
+            return cryptographicOperatorPermissions;
           case ProjectMembershipRole.Custom: {
             return unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
               permissions as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
@@ -625,6 +630,34 @@ export const permissionServiceFactory = ({
     return { permission };
   };
 
+  const checkGroupProjectPermission = async ({
+    groupId,
+    projectId,
+    checkPermissions
+  }: {
+    groupId: string;
+    projectId: string;
+    checkPermissions: ProjectPermissionSet;
+  }) => {
+    const rawGroupProjectPermissions = await permissionDAL.getProjectGroupPermissions(projectId, groupId);
+    const groupPermissions = rawGroupProjectPermissions.map((groupProjectPermission) => {
+      const rolePermissions =
+        groupProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+      const rules = buildProjectPermissionRules(rolePermissions);
+      const permission = createMongoAbility<ProjectPermissionSet>(rules, {
+        conditionsMatcher
+      });
+
+      return {
+        permission,
+        id: groupProjectPermission.groupId,
+        name: groupProjectPermission.username,
+        membershipId: groupProjectPermission.id
+      };
+    });
+    return groupPermissions.some((groupPermission) => groupPermission.permission.can(...checkPermissions));
+  };
+
   return {
     getUserOrgPermission,
     getOrgPermission,
@@ -634,6 +667,7 @@ export const permissionServiceFactory = ({
     getOrgPermissionByRole,
     getProjectPermissionByRole,
     buildOrgPermission,
-    buildProjectPermissionRules
+    buildProjectPermissionRules,
+    checkGroupProjectPermission
   };
 };

@@ -33,7 +33,7 @@ In the following steps, we'll explore how to set up a project template.
     <Tab title="Infisical UI">
         <Steps>
             <Step title="Creating a Project Template">
-                Navigate to the Project Templates tab on the Organization Settings page and tap on the **Add Template** button.
+                Navigate to the **Project Templates** tab on the Feature Settings page for the project type you want to create a template for and tap on the **Add Template** button.
                 ![project template add button](/images/platform/project-templates/project-template-add-button.png)
 
                 Specify your template details. Here's some guidance on each field:
@@ -67,6 +67,7 @@ In the following steps, we'll explore how to set up a project template.
         --header 'Content-Type: application/json' \
         --data '{
             "name": "my-project-template",
+            "type": "secret-manager",
             "description": "...",
             "environments": "[...]",
             "roles": "[...]",

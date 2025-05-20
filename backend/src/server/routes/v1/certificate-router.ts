@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-floating-promises */
 import { z } from "zod";
 
 import { CertificatesSchema } from "@app/db/schemas";
@@ -5,6 +6,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -60,6 +62,111 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
 
       return {
         certificate: cert
+      };
+    }
+  });
+
+  // TODO: In the future add support for other formats outside of PEM (such as DER). Adding a "format" query param may be best.
+  server.route({
+    method: "GET",
+    url: "/:serialNumber/private-key",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Get certificate private key",
+      params: z.object({
+        serialNumber: z.string().trim().describe(CERTIFICATES.GET.serialNumber)
+      }),
+      response: {
+        200: z.string().trim()
+      }
+    },
+    handler: async (req, reply) => {
+      const { ca, cert, certPrivateKey } = await server.services.certificate.getCertPrivateKey({
+        serialNumber: req.params.serialNumber,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.GET_CERT_PRIVATE_KEY,
+          metadata: {
+            certId: cert.id,
+            cn: cert.commonName,
+            serialNumber: cert.serialNumber
+          }
+        }
+      });
+
+      addNoCacheHeaders(reply);
+
+      return certPrivateKey;
+    }
+  });
+
+  // TODO: In the future add support for other formats outside of PEM (such as DER). Adding a "format" query param may be best.
+  server.route({
+    method: "GET",
+    url: "/:serialNumber/bundle",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Get certificate bundle including the certificate, chain, and private key.",
+      params: z.object({
+        serialNumber: z.string().trim().describe(CERTIFICATES.GET_CERT.serialNumber)
+      }),
+      response: {
+        200: z.object({
+          certificate: z.string().trim().describe(CERTIFICATES.GET_CERT.certificate),
+          certificateChain: z.string().trim().nullable().describe(CERTIFICATES.GET_CERT.certificateChain),
+          privateKey: z.string().trim().nullable().describe(CERTIFICATES.GET_CERT.privateKey),
+          serialNumber: z.string().trim().describe(CERTIFICATES.GET_CERT.serialNumberRes)
+        })
+      }
+    },
+    handler: async (req, reply) => {
+      const { certificate, certificateChain, serialNumber, cert, ca, privateKey } =
+        await server.services.certificate.getCertBundle({
+          serialNumber: req.params.serialNumber,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.GET_CERT_BUNDLE,
+          metadata: {
+            certId: cert.id,
+            cn: cert.commonName,
+            serialNumber: cert.serialNumber
+          }
+        }
+      });
+
+      addNoCacheHeaders(reply);
+
+      return {
+        certificate,
+        certificateChain,
+        serialNumber,
+        privateKey
       };
     }
   });
@@ -411,7 +518,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATES.GET_CERT.certificate),
-          certificateChain: z.string().trim().describe(CERTIFICATES.GET_CERT.certificateChain),
+          certificateChain: z.string().trim().nullable().describe(CERTIFICATES.GET_CERT.certificateChain),
           serialNumber: z.string().trim().describe(CERTIFICATES.GET_CERT.serialNumberRes)
         })
       }
@@ -429,7 +536,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: ca.projectId,
         event: {
-          type: EventType.DELETE_CERT,
+          type: EventType.GET_CERT_BODY,
           metadata: {
             certId: cert.id,
             cn: cert.commonName,

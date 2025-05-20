@@ -30,7 +30,11 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub,
+  useWorkspace
+} from "@app/context";
 import { useListWorkspaceCertificates } from "@app/hooks/api";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -67,7 +71,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
       <Table>
         <THead>
           <Tr>
-            <Th>Friendly Name</Th>
+            <Th>Common Name</Th>
             <Th>Status</Th>
             <Th>Not Before</Th>
             <Th>Not After</Th>
@@ -81,7 +85,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
               const { variant, label } = getCertValidUntilBadgeDetails(certificate.notAfter);
               return (
                 <Tr className="h-10" key={`certificate-${certificate.id}`}>
-                  <Td>{certificate.friendlyName}</Td>
+                  <Td>{certificate.commonName}</Td>
                   <Td>
                     {certificate.status === CertStatus.REVOKED ? (
                       <Badge variant="danger">Revoked</Badge>
@@ -110,7 +114,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="p-1">
                         <ProjectPermissionCan
-                          I={ProjectPermissionActions.Read}
+                          I={ProjectPermissionCertificateActions.Read}
                           a={ProjectPermissionSub.Certificates}
                         >
                           {(isAllowed) => (
@@ -131,7 +135,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                           )}
                         </ProjectPermissionCan>
                         <ProjectPermissionCan
-                          I={ProjectPermissionActions.Read}
+                          I={ProjectPermissionCertificateActions.Read}
                           a={ProjectPermissionSub.Certificates}
                         >
                           {(isAllowed) => (
@@ -152,7 +156,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                           )}
                         </ProjectPermissionCan>
                         <ProjectPermissionCan
-                          I={ProjectPermissionActions.Delete}
+                          I={ProjectPermissionCertificateActions.Delete}
                           a={ProjectPermissionSub.Certificates}
                         >
                           {(isAllowed) => (
@@ -173,7 +177,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                           )}
                         </ProjectPermissionCan>
                         <ProjectPermissionCan
-                          I={ProjectPermissionActions.Delete}
+                          I={ProjectPermissionCertificateActions.Delete}
                           a={ProjectPermissionSub.Certificates}
                         >
                           {(isAllowed) => (

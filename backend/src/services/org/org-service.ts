@@ -355,7 +355,15 @@ export const orgServiceFactory = ({
       selectedMfaMethod,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
-      userTokenExpiration
+      userTokenExpiration,
+      secretsProductEnabled,
+      pkiProductEnabled,
+      kmsProductEnabled,
+      sshProductEnabled,
+      scannerProductEnabled,
+      shareSecretsProductEnabled,
+      maxSharedSecretLifetime,
+      maxSharedSecretViewLimit
     }
   }: TUpdateOrgDTO) => {
     const appCfg = getConfig();
@@ -457,7 +465,15 @@ export const orgServiceFactory = ({
       selectedMfaMethod,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
-      userTokenExpiration
+      userTokenExpiration,
+      secretsProductEnabled,
+      pkiProductEnabled,
+      kmsProductEnabled,
+      sshProductEnabled,
+      scannerProductEnabled,
+      shareSecretsProductEnabled,
+      maxSharedSecretLifetime,
+      maxSharedSecretViewLimit
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;

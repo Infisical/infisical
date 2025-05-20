@@ -8,18 +8,18 @@ export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefi
 ) => {
   const baseSyncOptionsSchema = z.object({
     initialSyncBehavior: z.nativeEnum(SecretSyncInitialSyncBehavior),
-    disableSecretDeletion: z.boolean().optional().default(false)
-    // scott: removed temporarily for evaluation of template formatting
-    // prependPrefix: z
-    //   .string()
-    //   .trim()
-    //   .transform((str) => str.toUpperCase())
-    //   .optional(),
-    // appendSuffix: z
-    //   .string()
-    //   .trim()
-    //   .transform((str) => str.toUpperCase())
-    //   .optional()
+    disableSecretDeletion: z.boolean().optional().default(false),
+    keySchema: z
+      .string()
+      .optional()
+      .refine(
+        (val) =>
+          !val || /^(?:[a-zA-Z0-9_\-/]*)(?:\{\{secretKey\}\})(?:[a-zA-Z0-9_\-/]*)$/.test(val),
+        {
+          message:
+            "Key schema must include one {{secretKey}} and only contain letters, numbers, dashes, underscores, slashes, and the {{secretKey}} placeholder."
+        }
+      )
   });
 
   const syncOptionsSchema = additionalSyncOptions

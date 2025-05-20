@@ -14,10 +14,12 @@ export enum ApiDocsTags {
   UniversalAuth = "Universal Auth",
   GcpAuth = "GCP Auth",
   AwsAuth = "AWS Auth",
+  OciAuth = "OCI Auth",
   AzureAuth = "Azure Auth",
   KubernetesAuth = "Kubernetes Auth",
   JwtAuth = "JWT Auth",
   OidcAuth = "OIDC Auth",
+  LdapAuth = "LDAP Auth",
   Groups = "Groups",
   Organizations = "Organizations",
   Projects = "Projects",
@@ -45,6 +47,7 @@ export enum ApiDocsTags {
   PkiCertificateTemplates = "PKI Certificate Templates",
   PkiCertificateCollections = "PKI Certificate Collections",
   PkiAlerting = "PKI Alerting",
+  PkiSubscribers = "PKI Subscribers",
   SshCertificates = "SSH Certificates",
   SshCertificateAuthorities = "SSH Certificate Authorities",
   SshCertificateTemplates = "SSH Certificate Templates",
@@ -184,6 +187,49 @@ export const UNIVERSAL_AUTH = {
   }
 } as const;
 
+export const LDAP_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login.",
+    username: "The username of the LDAP user to login.",
+    password: "The password of the LDAP user to login."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    url: "The URL of the LDAP server.",
+    allowedFields:
+      "The comma-separated array of key/value pairs of required fields that the LDAP entry must have in order to authenticate.",
+    searchBase: "The base DN to search for the LDAP user.",
+    searchFilter: "The filter to use to search for the LDAP user.",
+    bindDN: "The DN of the user to bind to the LDAP server.",
+    bindPass: "The password of the user to bind to the LDAP server.",
+    ldapCaCertificate: "The PEM-encoded CA certificate for the LDAP server.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the configuration for.",
+    url: "The new URL of the LDAP server.",
+    allowedFields: "The comma-separated list of allowed fields to return from the LDAP user.",
+    searchBase: "The new base DN to search for the LDAP user.",
+    searchFilter: "The new filter to use to search for the LDAP user.",
+    bindDN: "The new DN of the user to bind to the LDAP server.",
+    bindPass: "The new password of the user to bind to the LDAP server.",
+    ldapCaCertificate: "The new PEM-encoded CA certificate for the LDAP server.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the configuration for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the configuration for."
+  }
+} as const;
+
 export const AWS_AUTH = {
   LOGIN: {
     identityId: "The ID of the identity to login.",
@@ -215,6 +261,40 @@ export const AWS_AUTH = {
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     stsEndpoint: "The new endpoint URL for the AWS STS API.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the auth method for."
+  }
+} as const;
+
+export const OCI_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login.",
+    userOcid: "The OCID of the user attempting login.",
+    headers: "The headers of the signed request."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    tenancyOcid: "The OCID of your tenancy.",
+    allowedUsernames:
+      "The comma-separated list of trusted OCI account usernames that are allowed to authenticate with Infisical.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the auth method for.",
+    tenancyOcid: "The OCID of your tenancy.",
+    allowedUsernames:
+      "The comma-separated list of trusted OCI account usernames that are allowed to authenticate with Infisical.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
   },
@@ -313,6 +393,7 @@ export const KUBERNETES_AUTH = {
     allowedNames: "The comma-separated list of trusted service account names that can authenticate with Infisical.",
     allowedAudience:
       "The optional audience claim that the service account JWT token must have to authenticate with Infisical.",
+    gatewayId: "The ID of the gateway to use when performing kubernetes API requests.",
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
@@ -329,6 +410,7 @@ export const KUBERNETES_AUTH = {
     allowedNames: "The new comma-separated list of trusted service account names that can authenticate with Infisical.",
     allowedAudience:
       "The new optional audience claim that the service account JWT token must have to authenticate with Infisical.",
+    gatewayId: "The ID of the gateway to use when performing kubernetes API requests.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The new lifetime for an acccess token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
@@ -526,7 +608,8 @@ export const PROJECTS = {
     projectDescription: "An optional description label for the project.",
     autoCapitalization: "Disable or enable auto-capitalization for the project.",
     slug: "An optional slug for the project. (must be unique within the organization)",
-    hasDeleteProtection: "Enable or disable delete protection for the project."
+    hasDeleteProtection: "Enable or disable delete protection for the project.",
+    secretSharing: "Enable or disable secret sharing for the project."
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
@@ -595,6 +678,9 @@ export const PROJECTS = {
     commonName: "The common name of the certificate to filter by.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th certificate.",
     limit: "The number of certificates to return."
+  },
+  LIST_PKI_SUBSCRIBERS: {
+    projectId: "The ID of the project to list PKI subscribers for."
   }
 } as const;
 
@@ -1434,7 +1520,7 @@ export const SSH_HOSTS = {
     loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
     allowedPrincipals: "A list of allowed principals that can log in as the login user.",
     loginMappings:
-      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project.",
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users or groups slugs in the Infisical SSH project.",
     userSshCaId:
       "The ID of the SSH CA to use for user certificates. If not specified, the default user SSH CA will be used if it exists.",
     hostSshCaId:
@@ -1449,7 +1535,7 @@ export const SSH_HOSTS = {
     loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
     allowedPrincipals: "A list of allowed principals that can log in as the login user.",
     loginMappings:
-      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project."
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users or groups slugs in the Infisical SSH project."
   },
   DELETE: {
     sshHostId: "The ID of the SSH host to delete."
@@ -1619,7 +1705,8 @@ export const CERTIFICATES = {
     serialNumber: "The serial number of the certificate to get the certificate body and certificate chain for.",
     certificate: "The certificate body of the certificate.",
     certificateChain: "The certificate chain of the certificate.",
-    serialNumberRes: "The serial number of the certificate."
+    serialNumberRes: "The serial number of the certificate.",
+    privateKey: "The private key of the certificate."
   }
 };
 
@@ -1683,6 +1770,67 @@ export const ALERTS = {
   },
   DELETE: {
     alertId: "The ID of the alert to delete."
+  }
+};
+
+export const PKI_SUBSCRIBERS = {
+  GET: {
+    subscriberName: "The name of the PKI subscriber to get.",
+    projectId: "The ID of the project to get the PKI subscriber for."
+  },
+  CREATE: {
+    projectId: "The ID of the project to create the PKI subscriber in.",
+    caId: "The ID of the CA that will issue certificates for the PKI subscriber.",
+    name: "The name of the PKI subscriber.",
+    commonName: "The common name (CN) to be used on certificates issued for this subscriber.",
+    status: "The status of the PKI subscriber. This can be one of active or disabled.",
+    ttl: "The time to live for the certificates issued for this subscriber such as 1m, 1h, 1d, 1y, ...",
+    subjectAlternativeNames:
+      "A list of Subject Alternative Names (SANs) to be used on certificates issued for this subscriber; these can be host names or email addresses.",
+    keyUsages: "The key usage extension to be used on certificates issued for this subscriber.",
+    extendedKeyUsages: "The extended key usage extension to be used on certificates issued for this subscriber."
+  },
+  UPDATE: {
+    projectId: "The ID of the project to update the PKI subscriber in.",
+    subscriberName: "The name of the PKI subscriber to update.",
+    caId: "The ID of the CA that will issue certificates for the PKI subscriber to update to.",
+    name: "The name of the PKI subscriber to update to.",
+    commonName: "The common name (CN) to be used on certificates issued for this subscriber to update to.",
+    status: "The status of the PKI subscriber to update to. This can be one of active or disabled.",
+    ttl: "The time to live for the certificates issued for this subscriber such as 1m, 1h, 1d, 1y, ...",
+    subjectAlternativeNames:
+      "A comma-delimited list of Subject Alternative Names (SANs) to be used on certificates issued for this subscriber; these can be host names or email addresses.",
+    keyUsages: "The key usage extension to be used on certificates issued for this subscriber to update to.",
+    extendedKeyUsages:
+      "The extended key usage extension to be used on certificates issued for this subscriber to update to."
+  },
+  DELETE: {
+    subscriberName: "The name of the PKI subscriber to delete.",
+    projectId: "The ID of the project of the PKI subscriber to delete."
+  },
+  ISSUE_CERT: {
+    subscriberName: "The name of the PKI subscriber to issue the certificate for.",
+    projectId: "The ID of the project of the PKI subscriber to issue the certificate for.",
+    certificate: "The issued certificate.",
+    issuingCaCertificate: "The certificate of the issuing CA.",
+    certificateChain: "The certificate chain of the issued certificate.",
+    privateKey: "The private key of the issued certificate.",
+    serialNumber: "The serial number of the issued certificate."
+  },
+  SIGN_CERT: {
+    subscriberName: "The name of the PKI subscriber to sign the certificate for.",
+    projectId: "The ID of the project of the PKI subscriber to sign the certificate for.",
+    csr: "The CSR to be used to sign the certificate.",
+    certificate: "The signed certificate.",
+    issuingCaCertificate: "The certificate of the issuing CA.",
+    certificateChain: "The certificate chain of the signed certificate.",
+    serialNumber: "The serial number of the signed certificate."
+  },
+  LIST_CERTS: {
+    subscriberName: "The name of the PKI subscriber to list the certificates for.",
+    projectId: "The ID of the project of the PKI subscriber to list the certificates for.",
+    offset: "The offset to start from.",
+    limit: "The number of certificates to return."
   }
 };
 
@@ -1821,8 +1969,12 @@ export const KMS = {
 };
 
 export const ProjectTemplates = {
+  LIST: {
+    type: "The type of project template to list."
+  },
   CREATE: {
     name: "The name of the project template to be created. Must be slug-friendly.",
+    type: "The type of project template to be created.",
     description: "An optional description of the project template.",
     roles: "The roles to be created when the template is applied to a project.",
     environments: "The environments to be created when the template is applied to a project."
@@ -1925,6 +2077,13 @@ export const AppConnections = {
     AZURE_CLIENT_SECRETS: {
       code: "The OAuth code to use to connect with Azure Client Secrets.",
       tenantId: "The Tenant ID to use to connect with Azure Client Secrets."
+    },
+    OCI: {
+      userOcid: "The OCID (Oracle Cloud Identifier) of the user making the request.",
+      tenancyOcid: "The OCID (Oracle Cloud Identifier) of the tenancy in Oracle Cloud Infrastructure.",
+      region: "The region identifier in Oracle Cloud Infrastructure where the vault is located.",
+      fingerprint: "The fingerprint of the public key uploaded to the user's API keys.",
+      privateKey: "The private key content in PEM format used to sign API requests."
     }
   }
 };
@@ -1988,6 +2147,7 @@ export const SecretSyncs = {
     const destinationName = SECRET_SYNC_NAME_MAP[destination];
     return {
       initialSyncBehavior: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`,
+      keySchema: `Specify the format to use for structuring secret keys in the ${destinationName} destination.`,
       disableSecretDeletion: `Enable this flag to prevent removal of secrets from the ${destinationName} destination when syncing.`
     };
   },
@@ -2072,6 +2232,11 @@ export const SecretSyncs = {
     TEAMCITY: {
       project: "The TeamCity project to sync secrets to.",
       buildConfig: "The TeamCity build configuration to sync secrets to."
+    },
+    OCI_VAULT: {
+      compartmentOcid: "The OCID (Oracle Cloud Identifier) of the compartment where the vault is located.",
+      vaultOcid: "The OCID (Oracle Cloud Identifier) of the vault to sync secrets to.",
+      keyOcid: "The OCID (Oracle Cloud Identifier) of the encryption key to use when creating secrets in the vault."
     }
   }
 };

@@ -1,0 +1,1 @@
+export { OrgSsoTab } from "./OrgSsoTab";

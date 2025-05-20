@@ -9,9 +9,13 @@ const adminRoute = route("/admin", [
 
 const organizationRoutes = route("/organization", [
   route("/secret-manager/overview", "organization/SecretManagerOverviewPage/route.tsx"),
+  route("/secret-manager/settings", "organization/SecretManagerSettingsPage/route.tsx"),
   route("/cert-manager/overview", "organization/CertManagerOverviewPage/route.tsx"),
+  route("/cert-manager/settings", "organization/CertManagerSettingsPage/route.tsx"),
   route("/ssh/overview", "organization/SshOverviewPage/route.tsx"),
+  route("/ssh/settings", "organization/SshSettingsPage/route.tsx"),
   route("/kms/overview", "organization/KmsOverviewPage/route.tsx"),
+  route("/kms/settings", "organization/KmsSettingsPage/route.tsx"),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
   route("/admin", "organization/AdminPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
@@ -24,6 +28,7 @@ const organizationRoutes = route("/organization", [
     index("organization/SettingsPage/route.tsx"),
     route("/oauth/callback", "organization/SettingsPage/OauthCallbackPage/route.tsx")
   ]),
+  route("/sso", "organization/SsoPage/route.tsx"),
   route("/secret-scanning", "organization/SecretScanningPage/route.tsx"),
   route("/groups/$groupId", "organization/GroupDetailsByIDPage/route.tsx"),
   route("/members/$membershipId", "organization/UserDetailsByIDPage/route.tsx"),
@@ -294,7 +299,11 @@ const secretManagerIntegrationsRedirect = route("/integrations", [
 
 const certManagerRoutes = route("/cert-manager/$projectId", [
   layout("cert-manager-layout", "cert-manager/layout.tsx", [
-    route("/overview", "cert-manager/CertificatesPage/route.tsx"),
+    route("/subscribers", [
+      index("cert-manager/PkiSubscribersPage/route.tsx"),
+      route("/$subscriberName", "cert-manager/PkiSubscriberDetailsByIDPage/route.tsx")
+    ]),
+    route("/certificates", "cert-manager/CertificatesPage/route.tsx"),
     route("/certificate-authorities", "cert-manager/CertificateAuthoritiesPage/route.tsx"),
     route("/alerting", "cert-manager/AlertingPage/route.tsx"),
     route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),

@@ -137,6 +137,9 @@ import {
   TIdentityMetadata,
   TIdentityMetadataInsert,
   TIdentityMetadataUpdate,
+  TIdentityOciAuths,
+  TIdentityOciAuthsInsert,
+  TIdentityOciAuthsUpdate,
   TIdentityOidcAuths,
   TIdentityOidcAuthsInsert,
   TIdentityOidcAuthsUpdate,
@@ -227,6 +230,9 @@ import {
   TPkiCollections,
   TPkiCollectionsInsert,
   TPkiCollectionsUpdate,
+  TPkiSubscribers,
+  TPkiSubscribersInsert,
+  TPkiSubscribersUpdate,
   TProjectBots,
   TProjectBotsInsert,
   TProjectBotsUpdate,
@@ -451,6 +457,11 @@ import {
   TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
 import {
+  TIdentityLdapAuths,
+  TIdentityLdapAuthsInsert,
+  TIdentityLdapAuthsUpdate
+} from "@app/db/schemas/identity-ldap-auths";
+import {
   TMicrosoftTeamsIntegrations,
   TMicrosoftTeamsIntegrationsInsert,
   TMicrosoftTeamsIntegrationsUpdate
@@ -576,6 +587,11 @@ declare module "knex/types/tables" {
       TPkiCollectionItems,
       TPkiCollectionItemsInsert,
       TPkiCollectionItemsUpdate
+    >;
+    [TableName.PkiSubscriber]: KnexOriginal.CompositeTableType<
+      TPkiSubscribers,
+      TPkiSubscribersInsert,
+      TPkiSubscribersUpdate
     >;
     [TableName.UserGroupMembership]: KnexOriginal.CompositeTableType<
       TUserGroupMembership,
@@ -743,6 +759,11 @@ declare module "knex/types/tables" {
       TIdentityAzureAuthsInsert,
       TIdentityAzureAuthsUpdate
     >;
+    [TableName.IdentityOciAuth]: KnexOriginal.CompositeTableType<
+      TIdentityOciAuths,
+      TIdentityOciAuthsInsert,
+      TIdentityOciAuthsUpdate
+    >;
     [TableName.IdentityOidcAuth]: KnexOriginal.CompositeTableType<
       TIdentityOidcAuths,
       TIdentityOidcAuthsInsert,
@@ -752,6 +773,11 @@ declare module "knex/types/tables" {
       TIdentityJwtAuths,
       TIdentityJwtAuthsInsert,
       TIdentityJwtAuthsUpdate
+    >;
+    [TableName.IdentityLdapAuth]: KnexOriginal.CompositeTableType<
+      TIdentityLdapAuths,
+      TIdentityLdapAuthsInsert,
+      TIdentityLdapAuthsUpdate
     >;
     [TableName.IdentityUaClientSecret]: KnexOriginal.CompositeTableType<
       TIdentityUaClientSecrets,

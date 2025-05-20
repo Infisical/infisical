@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { AnyZodObject, z } from "zod";
 
 import { SecretSyncsSchema } from "@app/db/schemas/secret-syncs";
@@ -24,6 +25,14 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
       ? z.nativeEnum(SecretSyncInitialSyncBehavior)
       : z.literal(SecretSyncInitialSyncBehavior.OverwriteDestination)
     ).describe(SecretSyncs.SYNC_OPTIONS(destination).initialSyncBehavior),
+    keySchema: z
+      .string()
+      .optional()
+      .refine((val) => !val || new RE2(/^(?:[a-zA-Z0-9_\-/]*)(?:\{\{secretKey\}\})(?:[a-zA-Z0-9_\-/]*)$/).test(val), {
+        message:
+          "Key schema must include one {{secretKey}} and only contain letters, numbers, dashes, underscores, slashes, and the {{secretKey}} placeholder."
+      })
+      .describe(SecretSyncs.SYNC_OPTIONS(destination).keySchema),
     disableSecretDeletion: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).disableSecretDeletion)
   });
 

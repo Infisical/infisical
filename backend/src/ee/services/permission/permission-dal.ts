@@ -132,7 +132,7 @@ export const permissionDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getProjectGroupPermissions = async (projectId: string) => {
+  const getProjectGroupPermissions = async (projectId: string, filterGroupId?: string) => {
     try {
       const docs = await db
         .replicaNode()(TableName.GroupProjectMembership)
@@ -148,6 +148,11 @@ export const permissionDALFactory = (db: TDbClient) => {
           `groupCustomRoles.id`
         )
         .where(`${TableName.GroupProjectMembership}.projectId`, "=", projectId)
+        .where((bd) => {
+          if (filterGroupId) {
+            void bd.where(`${TableName.GroupProjectMembership}.groupId`, "=", filterGroupId);
+          }
+        })
         .select(
           db.ref("id").withSchema(TableName.GroupProjectMembership).as("membershipId"),
           db.ref("id").withSchema(TableName.Groups).as("groupId"),

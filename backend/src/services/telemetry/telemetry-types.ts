@@ -21,7 +21,8 @@ export enum PostHogEventTypes {
   IssueSshHostUserCert = "Issue SSH Host User Certificate",
   IssueSshHostHostCert = "Issue SSH Host Host Certificate",
   SignCert = "Sign PKI Certificate",
-  IssueCert = "Issue PKI Certificate"
+  IssueCert = "Issue PKI Certificate",
+  InvalidateCache = "Invalidate Cache"
 }
 
 export type TSecretModifiedEvent = {
@@ -188,6 +189,7 @@ export type TSignCertificateEvent = {
   properties: {
     caId?: string;
     certificateTemplateId?: string;
+    subscriberId?: string;
     commonName: string;
     userAgent?: string;
   };
@@ -198,7 +200,15 @@ export type TIssueCertificateEvent = {
   properties: {
     caId?: string;
     certificateTemplateId?: string;
+    subscriberId?: string;
     commonName: string;
+    userAgent?: string;
+  };
+};
+
+export type TInvalidateCacheEvent = {
+  event: PostHogEventTypes.InvalidateCache;
+  properties: {
     userAgent?: string;
   };
 };
@@ -221,4 +231,5 @@ export type TPostHogEvent = { distinctId: string } & (
   | TIssueSshHostHostCertEvent
   | TSignCertificateEvent
   | TIssueCertificateEvent
+  | TInvalidateCacheEvent
 );

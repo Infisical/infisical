@@ -25,6 +25,7 @@ import {
   TQueueSecretSyncSyncSecretsByIdDTO,
   TQueueSendSecretSyncActionFailedNotificationsDTO
 } from "@app/services/secret-sync/secret-sync-types";
+import { CacheType } from "@app/services/super-admin/super-admin-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 
 export enum QueueName {
@@ -50,7 +51,8 @@ export enum QueueName {
   ImportSecretsFromExternalSource = "import-secrets-from-external-source",
   AppConnectionSecretSync = "app-connection-secret-sync",
   SecretRotationV2 = "secret-rotation-v2",
-  FolderTreeCheckpoint = "folder-tree-checkpoint"
+  FolderTreeCheckpoint = "folder-tree-checkpoint",
+  InvalidateCache = "invalidate-cache"
 }
 
 export enum QueueJobs {
@@ -83,7 +85,8 @@ export enum QueueJobs {
   SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
-  CreateFolderTreeCheckpoint = "create-folder-tree-checkpoint"
+  CreateFolderTreeCheckpoint = "create-folder-tree-checkpoint",
+  InvalidateCache = "invalidate-cache"
 }
 
 export type TQueueJobTypes = {
@@ -242,6 +245,14 @@ export type TQueueJobTypes = {
         name: QueueJobs.SecretRotationV2SendNotification;
         payload: TSecretRotationSendNotificationJobPayload;
       };
+  [QueueName.InvalidateCache]: {
+    name: QueueJobs.InvalidateCache;
+    payload: {
+      data: {
+        type: CacheType;
+      };
+    };
+  };
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;

@@ -123,6 +123,7 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
     return (
       <SelectPrimitive.Item
         {...props}
+        disabled={isDisabled}
         className={twMerge(
           "relative mb-0.5 cursor-pointer select-none items-center overflow-hidden truncate rounded-md py-2 pl-10 pr-4 text-sm outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-700/80",
           isSelected && "bg-primary",

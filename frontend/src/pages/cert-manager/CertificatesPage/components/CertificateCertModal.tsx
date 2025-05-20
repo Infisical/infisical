@@ -1,5 +1,11 @@
 import { Modal, ModalContent } from "@app/components/v2";
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub,
+  useProjectPermission
+} from "@app/context";
 import { useGetCertBody } from "@app/hooks/api";
+import { useGetCertBundle } from "@app/hooks/api/certificates/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CertificateContent } from "./CertificateContent";
@@ -10,9 +16,28 @@ type Props = {
 };
 
 export const CertificateCertModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { data } = useGetCertBody(
-    (popUp?.certificateCert?.data as { serialNumber: string })?.serialNumber || ""
+  const { permission } = useProjectPermission();
+
+  const serialNumber =
+    (popUp?.certificateCert?.data as { serialNumber: string })?.serialNumber || "";
+
+  const canReadPrivateKey = permission.can(
+    ProjectPermissionCertificateActions.ReadPrivateKey,
+    ProjectPermissionSub.Certificates
   );
+
+  // useGetCertBundle fails unless user has the correct permissions
+  const { data: bundleData } = useGetCertBundle(serialNumber);
+  const { data: bodyData } = useGetCertBody(serialNumber);
+
+  const data:
+    | {
+        certificate: string;
+        certificateChain: string;
+        serialNumber: string;
+        privateKey?: string | null;
+      }
+    | undefined = canReadPrivateKey ? bundleData : bodyData;
 
   return (
     <Modal
@@ -27,6 +52,7 @@ export const CertificateCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             serialNumber={data.serialNumber}
             certificate={data.certificate}
             certificateChain={data.certificateChain}
+            privateKey={data.privateKey || undefined}
           />
         ) : (
           <div />

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
+  ProjectPermissionCertificateActions,
   ProjectPermissionCmekActions,
   ProjectPermissionSub
 } from "@app/context";
@@ -17,6 +18,7 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretSyncActions,
@@ -25,12 +27,21 @@ import {
   TPermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
 import { TProjectPermission } from "@app/hooks/api/roles/types";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const GeneralPolicyActionSchema = z.object({
   read: z.boolean().optional(),
   edit: z.boolean().optional(),
   delete: z.boolean().optional(),
   create: z.boolean().optional()
+});
+
+const CertificatePolicyActionSchema = z.object({
+  [ProjectPermissionCertificateActions.Create]: z.boolean().optional(),
+  [ProjectPermissionCertificateActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionCertificateActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionCertificateActions.Read]: z.boolean().optional(),
+  [ProjectPermissionCertificateActions.ReadPrivateKey]: z.boolean().optional()
 });
 
 const SecretPolicyActionSchema = z.object({
@@ -127,6 +138,15 @@ const SshHostPolicyActionSchema = z.object({
   [ProjectPermissionSshHostActions.IssueHostCert]: z.boolean().optional()
 });
 
+const PkiSubscriberPolicyActionSchema = z.object({
+  [ProjectPermissionPkiSubscriberActions.Read]: z.boolean().optional(),
+  [ProjectPermissionPkiSubscriberActions.Create]: z.boolean().optional(),
+  [ProjectPermissionPkiSubscriberActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionPkiSubscriberActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionPkiSubscriberActions.IssueCert]: z.boolean().optional(),
+  [ProjectPermissionPkiSubscriberActions.ListCerts]: z.boolean().optional()
+});
+
 const SecretRollbackPolicyActionSchema = z.object({
   read: z.boolean().optional(),
   create: z.boolean().optional()
@@ -176,7 +196,7 @@ const ConditionSchema = z
 
 export const projectRoleFormSchema = z.object({
   name: z.string().trim(),
-  description: z.string().trim().optional(),
+  description: z.string().trim().nullish(),
   slug: z
     .string()
     .trim()
@@ -225,7 +245,13 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.AuditLogs]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.IpAllowList]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.CertificateAuthorities]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.Certificates]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.Certificates]: CertificatePolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.PkiSubscribers]: PkiSubscriberPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.PkiAlerts]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.PkiCollections]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.CertificateTemplates]: GeneralPolicyActionSchema.array().default([]),
@@ -268,6 +294,7 @@ type TConditionalFields =
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.DynamicSecrets
+  | ProjectPermissionSub.PkiSubscribers
   | ProjectPermissionSub.SshHosts
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.Identity;
@@ -281,7 +308,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.SecretFolders ||
   subject === ProjectPermissionSub.Identity ||
   subject === ProjectPermissionSub.SshHosts ||
-  subject === ProjectPermissionSub.SecretRotation;
+  subject === ProjectPermissionSub.SecretRotation ||
+  subject === ProjectPermissionSub.PkiSubscribers;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -378,7 +406,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.AuditLogs,
         ProjectPermissionSub.IpAllowList,
         ProjectPermissionSub.CertificateAuthorities,
-        ProjectPermissionSub.Certificates,
         ProjectPermissionSub.PkiAlerts,
         ProjectPermissionSub.PkiCollections,
         ProjectPermissionSub.CertificateTemplates,
@@ -512,6 +539,25 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canEdit) formVal[subject as ProjectPermissionSub.Member]![0].edit = true;
       if (canCreate) formVal[subject as ProjectPermissionSub.Member]![0].create = true;
       if (canDelete) formVal[subject as ProjectPermissionSub.Member]![0].delete = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.Certificates) {
+      const canRead = action.includes(ProjectPermissionCertificateActions.Read);
+      const canEdit = action.includes(ProjectPermissionCertificateActions.Edit);
+      const canDelete = action.includes(ProjectPermissionCertificateActions.Delete);
+      const canCreate = action.includes(ProjectPermissionCertificateActions.Create);
+      const canReadPrivateKey = action.includes(ProjectPermissionCertificateActions.ReadPrivateKey);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      // from above statement we are sure it won't be undefined
+      if (canRead) formVal[subject]![0].read = true;
+      if (canEdit) formVal[subject]![0].edit = true;
+      if (canCreate) formVal[subject]![0].create = true;
+      if (canDelete) formVal[subject]![0].delete = true;
+      if (canReadPrivateKey)
+        formVal[subject]![0][ProjectPermissionCertificateActions.ReadPrivateKey] = true;
       return;
     }
 
@@ -695,6 +741,33 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         inverted
       });
     }
+
+    if (subject === ProjectPermissionSub.PkiSubscribers) {
+      if (!formVal[subject]) formVal[subject] = [];
+
+      formVal[subject]!.push({
+        [ProjectPermissionPkiSubscriberActions.Edit]: action.includes(
+          ProjectPermissionPkiSubscriberActions.Edit
+        ),
+        [ProjectPermissionPkiSubscriberActions.Delete]: action.includes(
+          ProjectPermissionPkiSubscriberActions.Delete
+        ),
+        [ProjectPermissionPkiSubscriberActions.Create]: action.includes(
+          ProjectPermissionPkiSubscriberActions.Create
+        ),
+        [ProjectPermissionPkiSubscriberActions.Read]: action.includes(
+          ProjectPermissionPkiSubscriberActions.Read
+        ),
+        [ProjectPermissionPkiSubscriberActions.IssueCert]: action.includes(
+          ProjectPermissionPkiSubscriberActions.IssueCert
+        ),
+        [ProjectPermissionPkiSubscriberActions.ListCerts]: action.includes(
+          ProjectPermissionPkiSubscriberActions.ListCerts
+        ),
+        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+        inverted
+      });
+    }
   });
 
   return formVal;
@@ -857,19 +930,19 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     title: "Dynamic Secrets",
     actions: [
       {
-        label: "Read root credentials",
+        label: "Read Root Credentials",
         value: ProjectPermissionDynamicSecretActions.ReadRootCredential
       },
       {
-        label: "Create root credentials",
+        label: "Create Root Credentials",
         value: ProjectPermissionDynamicSecretActions.CreateRootCredential
       },
       {
-        label: "Modify root credentials",
+        label: "Modify Root Credentials",
         value: ProjectPermissionDynamicSecretActions.EditRootCredential
       },
       {
-        label: "Remove root credentials",
+        label: "Remove Root Credentials",
         value: ProjectPermissionDynamicSecretActions.DeleteRootCredential
       },
       { label: "Manage Leases", value: ProjectPermissionDynamicSecretActions.Lease }
@@ -893,7 +966,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [{ label: "Modify", value: "edit" }]
   },
   [ProjectPermissionSub.Integrations]: {
-    title: "Integrations",
+    title: "Native Integrations",
     actions: [
       { label: "Read", value: "read" },
       { label: "Create", value: "create" },
@@ -1029,10 +1102,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.Certificates]: {
     title: "Certificates",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: ProjectPermissionCertificateActions.Read },
+      { label: "Read Private Key", value: ProjectPermissionCertificateActions.ReadPrivateKey },
+      { label: "Create", value: ProjectPermissionCertificateActions.Create },
+      { label: "Modify", value: ProjectPermissionCertificateActions.Edit },
+      { label: "Remove", value: ProjectPermissionCertificateActions.Delete }
     ]
   },
   [ProjectPermissionSub.CertificateTemplates]: {
@@ -1090,6 +1164,17 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Remove", value: "delete" }
     ]
   },
+  [ProjectPermissionSub.PkiSubscribers]: {
+    title: "PKI Subscribers",
+    actions: [
+      { label: "Read", value: ProjectPermissionPkiSubscriberActions.Read },
+      { label: "Create", value: ProjectPermissionPkiSubscriberActions.Create },
+      { label: "Modify", value: ProjectPermissionPkiSubscriberActions.Edit },
+      { label: "Remove", value: ProjectPermissionPkiSubscriberActions.Delete },
+      { label: "Issue Certificate", value: ProjectPermissionPkiSubscriberActions.IssueCert },
+      { label: "List Certificates", value: ProjectPermissionPkiSubscriberActions.ListCerts }
+    ]
+  },
   [ProjectPermissionSub.PkiCollections]: {
     title: "PKI Collections",
     actions: [
@@ -1109,7 +1194,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     ]
   },
   [ProjectPermissionSub.SecretApproval]: {
-    title: "Secret Protect policy",
+    title: "Secret Approval Policies",
     actions: [
       { label: "Read", value: "read" },
       { label: "Create", value: "create" },
@@ -1160,25 +1245,447 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     title: "KMIP",
     actions: [
       {
-        label: "Read clients",
+        label: "Read Clients",
         value: ProjectPermissionKmipActions.ReadClients
       },
       {
-        label: "Create clients",
+        label: "Create Clients",
         value: ProjectPermissionKmipActions.CreateClients
       },
       {
-        label: "Modify clients",
+        label: "Modify Clients",
         value: ProjectPermissionKmipActions.UpdateClients
       },
       {
-        label: "Delete clients",
+        label: "Delete Clients",
         value: ProjectPermissionKmipActions.DeleteClients
       },
       {
-        label: "Generate client certificates",
+        label: "Generate Client Certificates",
         value: ProjectPermissionKmipActions.GenerateClientCertificates
       }
     ]
   }
+};
+
+const SharedPermissionSubjects = {
+  [ProjectPermissionSub.AuditLogs]: true,
+  [ProjectPermissionSub.Groups]: true,
+  [ProjectPermissionSub.Member]: true,
+  [ProjectPermissionSub.Identity]: true,
+  [ProjectPermissionSub.Project]: true,
+  [ProjectPermissionSub.Role]: true,
+  [ProjectPermissionSub.Settings]: true
+};
+
+const SecretsManagerPermissionSubjects = (enabled = false) => ({
+  [ProjectPermissionSub.SecretFolders]: enabled,
+  [ProjectPermissionSub.SecretImports]: enabled,
+  [ProjectPermissionSub.DynamicSecrets]: enabled,
+  [ProjectPermissionSub.Secrets]: enabled,
+  [ProjectPermissionSub.SecretApproval]: enabled,
+  [ProjectPermissionSub.Integrations]: enabled,
+  [ProjectPermissionSub.SecretSyncs]: enabled,
+  [ProjectPermissionSub.Kms]: enabled,
+  [ProjectPermissionSub.Environments]: enabled,
+  [ProjectPermissionSub.Tags]: enabled,
+  [ProjectPermissionSub.Webhooks]: enabled,
+  [ProjectPermissionSub.IpAllowList]: enabled,
+  [ProjectPermissionSub.SecretRollback]: enabled,
+  [ProjectPermissionSub.SecretRotation]: enabled,
+  [ProjectPermissionSub.ServiceTokens]: enabled
+});
+
+const KmsPermissionSubjects = (enabled = false) => ({
+  [ProjectPermissionSub.Cmek]: enabled,
+  [ProjectPermissionSub.Kmip]: enabled
+});
+
+const CertificateManagerPermissionSubjects = (enabled = false) => ({
+  [ProjectPermissionSub.PkiCollections]: enabled,
+  [ProjectPermissionSub.PkiAlerts]: enabled,
+  [ProjectPermissionSub.PkiSubscribers]: enabled,
+  [ProjectPermissionSub.CertificateAuthorities]: enabled,
+  [ProjectPermissionSub.CertificateTemplates]: enabled,
+  [ProjectPermissionSub.Certificates]: enabled
+});
+
+const SshPermissionSubjects = (enabled = false) => ({
+  [ProjectPermissionSub.SshCertificateAuthorities]: enabled,
+  [ProjectPermissionSub.SshCertificates]: enabled,
+  [ProjectPermissionSub.SshCertificateTemplates]: enabled,
+  [ProjectPermissionSub.SshHosts]: enabled,
+  [ProjectPermissionSub.SshHostGroups]: enabled
+});
+
+// scott: this structure ensures we don't forget to add project permissions to their relevant project type
+export const ProjectTypePermissionSubjects: Record<
+  ProjectType,
+  Record<ProjectPermissionSub, boolean>
+> = {
+  [ProjectType.SecretManager]: {
+    ...SharedPermissionSubjects,
+    ...SecretsManagerPermissionSubjects(true),
+    ...KmsPermissionSubjects(),
+    ...CertificateManagerPermissionSubjects(),
+    ...SshPermissionSubjects()
+  },
+  [ProjectType.KMS]: {
+    ...SharedPermissionSubjects,
+    ...KmsPermissionSubjects(true),
+    ...SecretsManagerPermissionSubjects(),
+    ...CertificateManagerPermissionSubjects(),
+    ...SshPermissionSubjects()
+  },
+  [ProjectType.CertificateManager]: {
+    ...SharedPermissionSubjects,
+    ...CertificateManagerPermissionSubjects(true),
+    ...KmsPermissionSubjects(),
+    ...SecretsManagerPermissionSubjects(),
+    ...SshPermissionSubjects()
+  },
+  [ProjectType.SSH]: {
+    ...SharedPermissionSubjects,
+    ...SshPermissionSubjects(true),
+    ...CertificateManagerPermissionSubjects(),
+    ...KmsPermissionSubjects(),
+    ...SecretsManagerPermissionSubjects()
+  }
+};
+
+export type RoleTemplate = {
+  id: string;
+  name: string;
+  description: string;
+  permissions: { subject: ProjectPermissionSub; actions: string[] }[];
+};
+
+const projectManagerTemplate = (
+  additionalPermissions: RoleTemplate["permissions"] = []
+): RoleTemplate => ({
+  id: "project-manager",
+  name: "Project Management Policies",
+  description: "Grants access to manage project members and settings",
+  permissions: [
+    {
+      subject: ProjectPermissionSub.AuditLogs,
+      actions: Object.values(ProjectPermissionActions)
+    },
+    {
+      subject: ProjectPermissionSub.Groups,
+      actions: Object.values(ProjectPermissionGroupActions)
+    },
+    {
+      subject: ProjectPermissionSub.Member,
+      actions: Object.values(ProjectPermissionMemberActions)
+    },
+    {
+      subject: ProjectPermissionSub.Identity,
+      actions: Object.values(ProjectPermissionIdentityActions)
+    },
+    {
+      subject: ProjectPermissionSub.Project,
+      actions: [ProjectPermissionActions.Edit, ProjectPermissionActions.Delete]
+    },
+    { subject: ProjectPermissionSub.Role, actions: Object.values(ProjectPermissionActions) },
+    {
+      subject: ProjectPermissionSub.Settings,
+      actions: [ProjectPermissionActions.Read, ProjectPermissionActions.Edit]
+    },
+    ...additionalPermissions
+  ]
+});
+
+export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
+  [ProjectType.SSH]: [
+    {
+      id: "ssh-viewer",
+      name: "SSH Viewing Policies",
+      description: "Grants read access to SSH certificates and hosts",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.SshCertificateAuthorities,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.SshCertificates,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.SshCertificateTemplates,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.SshHosts,
+          actions: [ProjectPermissionSshHostActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.SshHostGroups,
+          actions: [ProjectPermissionActions.Read]
+        }
+      ]
+    },
+    {
+      id: "ssh-cert-editor",
+      name: "SSH Certificate Editing Policies",
+      description: "Grants read and edit access to SSH certificates",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.SshCertificateAuthorities,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.SshCertificates,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.SshCertificateTemplates,
+          actions: Object.values(ProjectPermissionActions)
+        }
+      ]
+    },
+    {
+      id: "ssh-host-editor",
+      name: "SSH Host Editing Policies",
+      description: "Grants read and edit access to SSH hosts",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.SshHosts,
+          actions: Object.values(ProjectPermissionSshHostActions)
+        },
+        {
+          subject: ProjectPermissionSub.SshHostGroups,
+          actions: Object.values(ProjectPermissionActions)
+        }
+      ]
+    },
+    projectManagerTemplate()
+  ],
+  [ProjectType.KMS]: [
+    {
+      id: "kms-viewer",
+      name: "KMS Viewing Policies",
+      description: "Grants read access to KMS keys and KMIP clients",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.Cmek,
+          actions: [ProjectPermissionCmekActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.Kmip,
+          actions: [ProjectPermissionKmipActions.ReadClients]
+        }
+      ]
+    },
+    {
+      id: "key-editor",
+      name: "KMS Key Editing Policies",
+      description: "Grants read and edit access to KMS keys",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.Cmek,
+          actions: Object.values(ProjectPermissionCmekActions)
+        }
+      ]
+    },
+    {
+      id: "kmip-editor",
+      name: "KMIP Client Editing Policies",
+      description: "Grants read and edit access to KMIP clients",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.Kmip,
+          actions: Object.values(ProjectPermissionKmipActions)
+        }
+      ]
+    },
+    projectManagerTemplate()
+  ],
+  [ProjectType.CertificateManager]: [
+    {
+      id: "cert-viewer",
+      name: "Certificate Viewing Policies",
+      description: "Grants read access to certificates and related resources",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.PkiCollections,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.PkiAlerts,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.CertificateAuthorities,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.CertificateTemplates,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.Certificates,
+          actions: [
+            ProjectPermissionCertificateActions.Read,
+            ProjectPermissionCertificateActions.ReadPrivateKey
+          ]
+        }
+      ]
+    },
+    {
+      id: "cert-editor",
+      name: "Certificate Editing Policies",
+      description: "Grants read and edit access to certificates and related resources",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.PkiCollections,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.PkiAlerts,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.CertificateAuthorities,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.CertificateTemplates,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.Certificates,
+          actions: Object.values(ProjectPermissionCertificateActions)
+        }
+      ]
+    },
+    projectManagerTemplate()
+  ],
+  [ProjectType.SecretManager]: [
+    {
+      id: "secret-viewer",
+      name: "Secret Viewing Policies",
+      description: "Grants read access to secrets and related resources",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.SecretRollback,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.SecretImports,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.Secrets,
+          actions: [
+            ProjectPermissionSecretActions.DescribeSecret,
+            ProjectPermissionSecretActions.ReadValue
+          ]
+        },
+        {
+          subject: ProjectPermissionSub.DynamicSecrets,
+          actions: [ProjectPermissionDynamicSecretActions.ReadRootCredential]
+        },
+        {
+          subject: ProjectPermissionSub.Environments,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.Tags,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.SecretRotation,
+          actions: [ProjectPermissionSecretRotationActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.Integrations,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.SecretSyncs,
+          actions: [ProjectPermissionSecretSyncActions.Read]
+        }
+      ]
+    },
+    {
+      id: "secret-editor",
+      name: "Secret Editing Policies",
+      description: "Grants read and edit access to secrets and related resources",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.Environments,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.DynamicSecrets,
+          actions: Object.values(ProjectPermissionDynamicSecretActions)
+        },
+        {
+          subject: ProjectPermissionSub.Secrets,
+          actions: [
+            ProjectPermissionSecretActions.DescribeSecret,
+            ProjectPermissionSecretActions.ReadValue,
+            ProjectPermissionSecretActions.Edit,
+            ProjectPermissionSecretActions.Create,
+            ProjectPermissionSecretActions.Delete
+          ]
+        },
+        {
+          subject: ProjectPermissionSub.SecretRollback,
+          actions: [ProjectPermissionActions.Read, ProjectPermissionActions.Create]
+        },
+        {
+          subject: ProjectPermissionSub.Tags,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.SecretImports,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.SecretRotation,
+          actions: Object.values(ProjectPermissionSecretRotationActions)
+        },
+        {
+          subject: ProjectPermissionSub.SecretFolders,
+          actions: [
+            ProjectPermissionActions.Create,
+            ProjectPermissionActions.Edit,
+            ProjectPermissionActions.Delete
+          ]
+        },
+        {
+          subject: ProjectPermissionSub.Integrations,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.SecretSyncs,
+          actions: Object.values(ProjectPermissionSecretSyncActions)
+        }
+      ]
+    },
+    projectManagerTemplate([
+      {
+        subject: ProjectPermissionSub.IpAllowList,
+        actions: Object.values(ProjectPermissionActions)
+      },
+      {
+        subject: ProjectPermissionSub.Kms,
+        actions: [ProjectPermissionActions.Edit]
+      },
+      {
+        subject: ProjectPermissionSub.SecretApproval,
+        actions: Object.values(ProjectPermissionActions)
+      },
+      {
+        subject: ProjectPermissionSub.ServiceTokens,
+        actions: Object.values(ProjectPermissionActions)
+      },
+      {
+        subject: ProjectPermissionSub.Webhooks,
+        actions: Object.values(ProjectPermissionActions)
+      }
+    ])
+  ]
 };

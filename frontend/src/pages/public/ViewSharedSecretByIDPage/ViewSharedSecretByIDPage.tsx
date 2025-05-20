@@ -38,6 +38,14 @@ export const ViewSharedSecretByIDPage = () => {
     from: ROUTE_PATHS.Public.ViewSharedSecretByIDPage.id,
     select: (el) => el.key
   });
+  const email = useSearch({
+    from: ROUTE_PATHS.Public.ViewSharedSecretByIDPage.id,
+    select: (el) => el.email
+  });
+  const hash = useSearch({
+    from: ROUTE_PATHS.Public.ViewSharedSecretByIDPage.id,
+    select: (el) => el.hash
+  });
   const [password, setPassword] = useState<string>();
   const { hashedHex, key } = extractDetailsFromUrl(urlEncodedKey);
 
@@ -49,7 +57,9 @@ export const ViewSharedSecretByIDPage = () => {
   } = useGetActiveSharedSecretById({
     sharedSecretId: id,
     hashedHex,
-    password
+    password,
+    email,
+    hash
   });
 
   const navigate = useNavigate();
@@ -57,15 +67,16 @@ export const ViewSharedSecretByIDPage = () => {
   const isUnauthorized =
     ((error as AxiosError)?.response?.data as { statusCode: number })?.statusCode === 401;
 
-  const isForbidden =
-    ((error as AxiosError)?.response?.data as { statusCode: number })?.statusCode === 403;
-
   const isInvalidCredential =
     ((error as AxiosError)?.response?.data as { message: string })?.message ===
     "Invalid credentials";
 
+  const isEmailUnauthorized =
+    ((error as AxiosError)?.response?.data as { message: string })?.message ===
+    "Email not authorized to view secret";
+
   useEffect(() => {
-    if (isUnauthorized && !isInvalidCredential) {
+    if (isUnauthorized && !isInvalidCredential && !isEmailUnauthorized) {
       // persist current URL in session storage so that we can come back to this after successful login
       sessionStorage.setItem(
         SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
@@ -85,10 +96,10 @@ export const ViewSharedSecretByIDPage = () => {
       });
     }
 
-    if (isForbidden) {
+    if (error) {
       createNotification({
         type: "error",
-        text: "You do not have access to this shared secret."
+        text: ((error as AxiosError)?.response?.data as { message: string })?.message
       });
     }
   }, [error]);
@@ -195,7 +206,7 @@ export const ViewSharedSecretByIDPage = () => {
               Infisical
             </a>
             <br />
-            156 2nd st, 3rd Floor, San Francisco, California, 94105, United States. 🇺🇸
+            235 2nd st, San Francisco, California, 94105, United States. 🇺🇸
           </p>
         </div>
       </div>

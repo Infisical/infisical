@@ -3,7 +3,12 @@ import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub,
+  useProjectPermission
+} from "@app/context";
 
 import { PkiCollectionSection } from "../AlertingPage/components";
 import { CertificatesSection } from "./components";
@@ -17,7 +22,7 @@ export const CertificatesPage = () => {
     ProjectPermissionSub.PkiCollections
   );
   const canAccessCerts = permission.can(
-    ProjectPermissionActions.Read,
+    ProjectPermissionCertificateActions.Read,
     ProjectPermissionSub.Certificates
   );
 
@@ -27,7 +32,10 @@ export const CertificatesPage = () => {
         <title>{t("common.head-title", { title: "Certificates" })}</title>
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-7xl">
-        <PageHeader title="Certificates" />
+        <PageHeader
+          title="Certificates"
+          description="View and track issued certificates, monitor expiration dates, and manage certificate lifecycles."
+        />
         {/* If both are false, the section does not render. This is to prevent duplicate banners. */}
         {(canAccessCerts || canAccessPkiColl) && (
           <ProjectPermissionCan
@@ -40,7 +48,7 @@ export const CertificatesPage = () => {
         )}
         <ProjectPermissionCan
           renderGuardBanner
-          I={ProjectPermissionActions.Read}
+          I={ProjectPermissionCertificateActions.Read}
           a={ProjectPermissionSub.Certificates}
         >
           <CertificatesSection />

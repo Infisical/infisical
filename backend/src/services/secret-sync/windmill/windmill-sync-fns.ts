@@ -1,6 +1,7 @@
 import { request } from "@app/lib/config/request";
 import { getWindmillInstanceUrl } from "@app/services/app-connection/windmill";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import {
   TDeleteWindmillVariable,
   TPostWindmillVariable,
@@ -128,7 +129,7 @@ export const WindmillSyncFns = {
     const {
       connection,
       destinationConfig: { path },
-      syncOptions: { disableSecretDeletion }
+      syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
 
     // url needs to be lowercase
@@ -169,6 +170,9 @@ export const WindmillSyncFns = {
     if (disableSecretDeletion) return;
 
     for await (const [key, variable] of Object.entries(variables)) {
+      // eslint-disable-next-line no-continue
+      if (!matchesSchema(key, keySchema)) continue;
+
       if (!(key in secretMap)) {
         try {
           await deleteWindmillVariable({

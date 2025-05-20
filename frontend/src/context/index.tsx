@@ -10,12 +10,15 @@ export {
 export type { TProjectPermission } from "./ProjectPermissionContext";
 export {
   ProjectPermissionActions,
+  ProjectPermissionCertificateActions,
   ProjectPermissionCmekActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionPkiSubscriberActions,
+  ProjectPermissionSshHostActions,
   ProjectPermissionSub,
   useProjectPermission
 } from "./ProjectPermissionContext";

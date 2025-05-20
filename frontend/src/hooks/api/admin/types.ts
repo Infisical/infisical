@@ -24,6 +24,7 @@ export type TServerConfig = {
   enabledLoginMethods: LoginMethod[];
   authConsentContent?: string;
   pageFrameContent?: string;
+  invalidatingCache: boolean;
 };
 
 export type TUpdateServerConfigDTO = {
@@ -84,3 +85,16 @@ export enum RootKeyEncryptionStrategy {
   Software = "SOFTWARE",
   HSM = "HSM"
 }
+
+export enum CacheType {
+  ALL = "all",
+  SECRETS = "secrets"
+}
+
+export type TInvalidateCacheDTO = {
+  type: CacheType;
+};
+
+export type TGetInvalidatingCacheStatus = {
+  invalidating: boolean;
+};

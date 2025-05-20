@@ -23,6 +23,7 @@ import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
@@ -40,11 +41,7 @@ export const SecretSyncReviewFields = () => {
     connection,
     environment,
     secretPath,
-    syncOptions: {
-      // appendSuffix, prependPrefix,
-      disableSecretDeletion,
-      initialSyncBehavior
-    },
+    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema },
     destination,
     isAutoSyncEnabled
   } = watch();
@@ -96,6 +93,9 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.TeamCity:
       DestinationFieldsComponent = <TeamCitySyncReviewFields />;
       break;
+    case SecretSync.OCIVault:
+      DestinationFieldsComponent = <OCIVaultSyncReviewFields />;
+      break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);
   }
@@ -133,8 +133,7 @@ export const SecretSyncReviewFields = () => {
           <GenericFieldLabel label="Initial Sync Behavior">
             {SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP[initialSyncBehavior](destinationName).name}
           </GenericFieldLabel>
-          {/* <SecretSyncLabel label="Prepend Prefix">{prependPrefix}</SecretSyncLabel>
-          <SecretSyncLabel label="Append Suffix">{appendSuffix}</SecretSyncLabel> */}
+          <GenericFieldLabel label="Key Schema">{keySchema}</GenericFieldLabel>
           {AdditionalSyncOptionsFieldsComponent}
           {disableSecretDeletion && (
             <GenericFieldLabel label="Secret Deletion">

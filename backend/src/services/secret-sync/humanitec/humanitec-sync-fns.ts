@@ -2,6 +2,7 @@ import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -199,6 +200,9 @@ export const HumanitecSyncFns = {
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for await (const humanitecSecret of humanitecSecrets) {
+      // eslint-disable-next-line no-continue
+      if (!matchesSchema(humanitecSecret.key, secretSync.syncOptions.keySchema)) continue;
+
       if (!secretMap[humanitecSecret.key]) {
         await deleteSecret(secretSync, humanitecSecret);
       }

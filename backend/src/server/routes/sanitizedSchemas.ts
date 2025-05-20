@@ -261,7 +261,8 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   pitVersionLimit: true,
   kmsCertificateKeyId: true,
   auditLogsRetentionDays: true,
-  hasDeleteProtection: true
+  hasDeleteProtection: true,
+  secretSharing: true
 });
 
 export const SanitizedTagSchema = SecretTagsSchema.pick({

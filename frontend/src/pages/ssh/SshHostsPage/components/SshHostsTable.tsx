@@ -3,7 +3,9 @@ import {
   faEllipsis,
   faPencil,
   faServer,
-  faTrash
+  faTrash,
+  faUser,
+  faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import FileSaver from "file-saver";
@@ -12,6 +14,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -27,7 +30,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSshHostActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { fetchSshHostUserCaPublicKey, useListWorkspaceSshHosts } from "@app/hooks/api";
 import { LoginMappingSource } from "@app/hooks/api/sshHost/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -101,43 +104,53 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
 
                           const hostLoginUserToPrincipals = hostMappings.reduce(
                             (acc, { loginUser, allowedPrincipals }) => {
-                              acc[loginUser] = new Set(allowedPrincipals.usernames);
+                              acc[loginUser] = {
+                                users: new Set(allowedPrincipals.usernames),
+                                groups: new Set(allowedPrincipals.groups)
+                              };
                               return acc;
                             },
-                            {} as Record<string, Set<string>>
+                            {} as Record<string, { users: Set<string>; groups: Set<string> }>
                           );
 
                           const entriesFromHost = hostMappings.map(
                             ({ loginUser, allowedPrincipals }) => ({
                               loginUser,
                               source: LoginMappingSource.HOST,
-                              usernames: allowedPrincipals.usernames
+                              users: allowedPrincipals.usernames,
+                              groups: allowedPrincipals.groups
                             })
                           );
 
                           const entriesFromGroup = groupMappings
                             .map(({ loginUser, allowedPrincipals }) => {
-                              const existing = hostLoginUserToPrincipals[loginUser] || new Set();
-                              const filteredUsernames = allowedPrincipals.usernames.filter(
-                                (u) => !existing.has(u)
+                              const existing = hostLoginUserToPrincipals[loginUser] || {};
+                              const filteredUsernames = allowedPrincipals.usernames?.filter(
+                                (u) => !existing.users?.has(u)
                               );
-                              return filteredUsernames.length > 0
+                              const filteredGroups = allowedPrincipals.groups?.filter(
+                                (g) => !existing.groups?.has(g)
+                              );
+                              return ((filteredGroups?.length || filteredUsernames?.length) ?? 0) >
+                                0
                                 ? {
                                     loginUser,
                                     source: LoginMappingSource.HOST_GROUP,
-                                    usernames: filteredUsernames
+                                    users: filteredUsernames,
+                                    groups: filteredGroups
                                   }
                                 : null;
                             })
                             .filter(Boolean) as {
                             loginUser: string;
                             source: LoginMappingSource;
-                            usernames: string[];
+                            users: string[];
+                            groups: string[];
                           }[];
 
                           return [...entriesFromHost, ...entriesFromGroup]
                             .sort((a, b) => a.loginUser.localeCompare(b.loginUser))
-                            .map(({ loginUser, usernames, source }) => (
+                            .map(({ loginUser, users, groups, source }) => (
                               <div key={`${host.id}-${loginUser}-${source}`} className="mb-2">
                                 <div className="text-mineshaft-200">
                                   {loginUser}
@@ -147,12 +160,40 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                                     </span>
                                   )}
                                 </div>
-                                {usernames.map((username) => (
+                                {users?.map((username) => (
                                   <div
                                     key={`${host.id}-${loginUser}-${source}-${username}`}
-                                    className="ml-4"
+                                    className="flex items-center gap-2"
                                   >
-                                    └─ {username}
+                                    <div className="flex items-center">
+                                      <span className="text-gray-400">└─</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <FontAwesomeIcon
+                                        icon={faUser}
+                                        className="text-xs text-yellow/80"
+                                      />
+                                      <span>{username}</span>
+                                      <Badge variant="primary">user</Badge>
+                                    </div>
+                                  </div>
+                                ))}
+                                {groups?.map((group) => (
+                                  <div
+                                    key={`${host.id}-${loginUser}-${source}-${group}`}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <div className="flex items-center">
+                                      <span className="text-gray-400">└─</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <FontAwesomeIcon
+                                        icon={faUsers}
+                                        className="text-xs text-green/80"
+                                      />
+                                      <span>{group}</span>
+                                      <Badge variant="success">group</Badge>
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -180,7 +221,7 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                             Download User CA Public Key
                           </DropdownMenuItem>
                           <ProjectPermissionCan
-                            I={ProjectPermissionActions.Edit}
+                            I={ProjectPermissionSshHostActions.Edit}
                             a={ProjectPermissionSub.SshHosts}
                           >
                             {(isAllowed) => (
@@ -202,7 +243,7 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                             )}
                           </ProjectPermissionCan>
                           <ProjectPermissionCan
-                            I={ProjectPermissionActions.Delete}
+                            I={ProjectPermissionSshHostActions.Delete}
                             a={ProjectPermissionSub.SshHosts}
                           >
                             {(isAllowed) => (

@@ -38,6 +38,7 @@ import {
 } from "@app/services/app-connection/humanitec";
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
+import { OCIConnectionListItemSchema, SanitizedOCIConnectionSchema } from "@app/services/app-connection/oci";
 import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
@@ -76,7 +77,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAzureClientSecretsConnectionSchema.options,
   ...SanitizedWindmillConnectionSchema.options,
   ...SanitizedLdapConnectionSchema.options,
-  ...SanitizedTeamCityConnectionSchema.options
+  ...SanitizedTeamCityConnectionSchema.options,
+  ...SanitizedOCIConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -97,7 +99,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AzureClientSecretsConnectionListItemSchema,
   WindmillConnectionListItemSchema,
   LdapConnectionListItemSchema,
-  TeamCityConnectionListItemSchema
+  TeamCityConnectionListItemSchema,
+  OCIConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

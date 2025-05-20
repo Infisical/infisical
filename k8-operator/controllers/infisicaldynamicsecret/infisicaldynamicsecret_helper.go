@@ -393,7 +393,7 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 
 		// Max TTL
 		if infisicalDynamicSecret.Status.MaxTTL != "" {
-			maxTTLDuration, err := util.ConvertIntervalToDuration(infisicalDynamicSecret.Status.MaxTTL)
+			maxTTLDuration, err := util.ConvertIntervalToDuration(&infisicalDynamicSecret.Status.MaxTTL)
 			if err != nil {
 				return defaultNextReconcile, fmt.Errorf("unable to parse MaxTTL duration: %w", err)
 			}

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { IdentityKubernetesAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, KUBERNETES_AUTH } from "@app/lib/api-docs";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -21,7 +22,8 @@ const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick(
   kubernetesHost: true,
   allowedNamespaces: true,
   allowedNames: true,
-  allowedAudience: true
+  allowedAudience: true,
+  gatewayId: true
 }).extend({
   caCert: z.string(),
   tokenReviewerJwt: z.string().optional().nullable()
@@ -100,12 +102,32 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       }),
       body: z
         .object({
-          kubernetesHost: z.string().trim().min(1).describe(KUBERNETES_AUTH.ATTACH.kubernetesHost),
+          kubernetesHost: z
+            .string()
+            .trim()
+            .min(1)
+            .describe(KUBERNETES_AUTH.ATTACH.kubernetesHost)
+            .refine(
+              (val) =>
+                characterValidator([
+                  CharacterType.Alphabets,
+                  CharacterType.Numbers,
+                  CharacterType.Colon,
+                  CharacterType.Period,
+                  CharacterType.ForwardSlash,
+                  CharacterType.Hyphen
+                ])(val),
+              {
+                message:
+                  "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, and forward slashes."
+              }
+            ),
           caCert: z.string().trim().default("").describe(KUBERNETES_AUTH.ATTACH.caCert),
           tokenReviewerJwt: z.string().trim().optional().describe(KUBERNETES_AUTH.ATTACH.tokenReviewerJwt),
           allowedNamespaces: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNamespaces), // TODO: validation
           allowedNames: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNames),
           allowedAudience: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedAudience),
+          gatewayId: z.string().uuid().optional().nullable().describe(KUBERNETES_AUTH.ATTACH.gatewayId),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -199,12 +221,36 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       }),
       body: z
         .object({
-          kubernetesHost: z.string().trim().min(1).optional().describe(KUBERNETES_AUTH.UPDATE.kubernetesHost),
+          kubernetesHost: z
+            .string()
+            .trim()
+            .min(1)
+            .optional()
+            .describe(KUBERNETES_AUTH.UPDATE.kubernetesHost)
+            .refine(
+              (val) => {
+                if (!val) return true;
+
+                return characterValidator([
+                  CharacterType.Alphabets,
+                  CharacterType.Numbers,
+                  CharacterType.Colon,
+                  CharacterType.Period,
+                  CharacterType.ForwardSlash,
+                  CharacterType.Hyphen
+                ])(val);
+              },
+              {
+                message:
+                  "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, and forward slashes."
+              }
+            ),
           caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.UPDATE.caCert),
           tokenReviewerJwt: z.string().trim().nullable().optional().describe(KUBERNETES_AUTH.UPDATE.tokenReviewerJwt),
           allowedNamespaces: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNamespaces), // TODO: validation
           allowedNames: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNames),
           allowedAudience: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedAudience),
+          gatewayId: z.string().uuid().optional().nullable().describe(KUBERNETES_AUTH.UPDATE.gatewayId),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
