@@ -2,7 +2,7 @@ import { Controller, useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { DEFAULT_PASSWORD_REQUIREMENTS } from "@app/components/secret-rotations-v2/forms/schemas/shared";
-import { FormControl, Input, SecretInput, Select, SelectItem } from "@app/components/v2";
+import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
 
@@ -43,7 +43,14 @@ export const LdapPasswordRotationParametersFields = () => {
             errorText={error?.message}
             isError={Boolean(error?.message)}
             label="Rotation Method"
-            helperText={isUpdate ? "Cannot be updated." : undefined}
+            helperText={
+              // eslint-disable-next-line no-nested-ternary
+              isUpdate
+                ? "Cannot be updated."
+                : value === LdapPasswordRotationMethod.ConnectionPrincipal
+                  ? "The connection principal will rotate the target principal's password"
+                  : "The target principal will rotate their own password"
+            }
           >
             <Select
               isDisabled={isUpdate}
@@ -108,10 +115,11 @@ export const LdapPasswordRotationParametersFields = () => {
                 errorText={error?.message}
                 label="Target Principal's Password"
               >
-                <SecretInput
-                  containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                <Input
                   value={value}
-                  onChange={(e) => onChange(e.target.value)}
+                  onChange={onChange}
+                  type="password"
+                  placeholder="****************"
                 />
               </FormControl>
             )}
@@ -122,7 +130,7 @@ export const LdapPasswordRotationParametersFields = () => {
         <div className="w-full border-b border-mineshaft-600">
           <span className="text-sm text-mineshaft-300">Password Requirements</span>
         </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded border border-mineshaft-600 bg-mineshaft-700 px-3 pt-2">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded border border-mineshaft-600 bg-mineshaft-700 px-3 pt-3">
           <Controller
             control={control}
             name="parameters.passwordRequirements.length"
@@ -132,7 +140,7 @@ export const LdapPasswordRotationParametersFields = () => {
                 label="Password Length"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                helperText="The length of the password to generate"
+                tooltipText="The length of the password to generate"
               >
                 <Input
                   type="number"
@@ -154,7 +162,7 @@ export const LdapPasswordRotationParametersFields = () => {
                 label="Digit Count"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                helperText="Minimum number of digits"
+                tooltipText="Minimum number of digits"
               >
                 <Input
                   type="number"
@@ -175,7 +183,7 @@ export const LdapPasswordRotationParametersFields = () => {
                 label="Lowercase Character Count"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                helperText="Minimum number of lowercase characters"
+                tooltipText="Minimum number of lowercase characters"
               >
                 <Input
                   type="number"
@@ -196,7 +204,7 @@ export const LdapPasswordRotationParametersFields = () => {
                 label="Uppercase Character Count"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                helperText="Minimum number of uppercase characters"
+                tooltipText="Minimum number of uppercase characters"
               >
                 <Input
                   type="number"
@@ -217,7 +225,7 @@ export const LdapPasswordRotationParametersFields = () => {
                 label="Symbol Count"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                helperText="Minimum number of symbols"
+                tooltipText="Minimum number of symbols"
               >
                 <Input
                   type="number"
@@ -238,7 +246,7 @@ export const LdapPasswordRotationParametersFields = () => {
                 label="Allowed Symbols"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                helperText="Symbols to use in generated password"
+                tooltipText="Symbols to use in generated password"
               >
                 <Input
                   placeholder="-_.~!*"
