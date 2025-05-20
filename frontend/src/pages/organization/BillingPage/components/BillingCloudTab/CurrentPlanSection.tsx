@@ -56,7 +56,8 @@ export const CurrentPlanSection = () => {
               data.rows.map(({ name, allowed, used }) => {
                 let toolTipText = null;
                 if (name === "Organization identity limit") {
-                  toolTipText = "Identity count consists of users and machine identities.";
+                  toolTipText =
+                    "Identity count is calculated by the total number of user identities and machine identities.";
                 }
 
                 return (
