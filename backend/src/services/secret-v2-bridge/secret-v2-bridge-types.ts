@@ -8,6 +8,7 @@ import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
+import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
@@ -178,9 +179,10 @@ export type TFnSecretBulkInsert = {
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   actor?: {
     type: string;
-    actorId: string;
+    actorId?: string;
   };
 };
 
@@ -206,9 +208,10 @@ export type TFnSecretBulkUpdate = {
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   actor?: {
     type: string;
-    actorId: string;
+    actorId?: string;
   };
   tx?: Knex;
 };
@@ -218,11 +221,14 @@ export type TFnSecretBulkDelete = {
   projectId: string;
   inputSecrets: Array<{ type: SecretType; secretKey: string }>;
   actorId: string;
+  actorType?: string;
   tx?: Knex;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "deleteMany">;
   secretQueueService: {
     removeSecretReminder: (data: TRemoveSecretReminderDTO, tx?: Knex) => Promise<void>;
   };
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  secretVersionDAL: Pick<TSecretVersionV2DALFactory, "findLatestVersionMany">;
 };
 
 export type THandleReminderDTO = {

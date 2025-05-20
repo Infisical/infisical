@@ -73,6 +73,7 @@ export const fnSecretBulkInsert = async ({
   resourceMetadataDAL,
   secretTagDAL,
   secretVersionTagDAL,
+  folderCommitService,
   actor,
   tx
 }: TFnSecretBulkInsert) => {
@@ -131,6 +132,30 @@ export const fnSecretBulkInsert = async ({
     tx
   );
 
+  const commitChanges = secretVersions
+    .filter(({ type }) => type === SecretType.Shared)
+    .map((sv) => ({
+      type: "add",
+      secretVersionId: sv.id
+    }));
+
+  if (commitChanges.length > 0) {
+    await folderCommitService.createCommit(
+      {
+        actor: {
+          type: actorType || ActorType.PLATFORM,
+          metadata: {
+            id: actor?.actorId
+          }
+        },
+        message: "Secret Created",
+        folderId,
+        changes: commitChanges
+      },
+      tx
+    );
+  }
+
   await secretDAL.upsertSecretReferences(
     inputSecrets.map(({ references = [], key }) => ({
       secretId: newSecretGroupedByKeyName[key][0].id,
@@ -185,6 +210,7 @@ export const fnSecretBulkUpdate = async ({
   orgId,
   secretDAL,
   secretVersionDAL,
+  folderCommitService,
   secretTagDAL,
   secretVersionTagDAL,
   resourceMetadataDAL,
@@ -259,6 +285,31 @@ export const fnSecretBulkUpdate = async ({
     ),
     tx
   );
+
+  const commitChanges = secretVersions
+    .filter(({ type }) => type === SecretType.Shared)
+    .map((sv) => ({
+      type: "add",
+      isUpdate: true,
+      secretVersionId: sv.id
+    }));
+  if (commitChanges.length > 0) {
+    await folderCommitService.createCommit(
+      {
+        actor: {
+          type: actorType || ActorType.PLATFORM,
+          metadata: {
+            id: actor?.actorId
+          }
+        },
+        message: "Secret Updated",
+        folderId,
+        changes: commitChanges
+      },
+      tx
+    );
+  }
+
   await secretDAL.upsertSecretReferences(
     inputSecrets
       .filter(({ data: { references } }) => Boolean(references))
@@ -337,8 +388,11 @@ export const fnSecretBulkDelete = async ({
   inputSecrets,
   tx,
   actorId,
+  actorType,
   secretDAL,
-  secretQueueService
+  secretQueueService,
+  folderCommitService,
+  secretVersionDAL
 }: TFnSecretBulkDelete) => {
   const deletedSecrets = await secretDAL.deleteMany(
     inputSecrets.map(({ type, secretKey }) => ({
@@ -357,6 +411,35 @@ export const fnSecretBulkDelete = async ({
         secretQueueService.removeSecretReminder({ secretId: id, repeatDays: reminderRepeatDays as number }, tx)
       )
   );
+
+  const secretVersions = await secretVersionDAL.findLatestVersionMany(
+    folderId,
+    deletedSecrets.map(({ id }) => id),
+    tx
+  );
+
+  const commitChanges = deletedSecrets
+    .filter(({ type }) => type === SecretType.Shared)
+    .map(({ id }) => ({
+      type: "delete",
+      secretVersionId: secretVersions[id].id
+    }));
+  if (commitChanges.length > 0) {
+    await folderCommitService.createCommit(
+      {
+        actor: {
+          type: actorType || ActorType.PLATFORM,
+          metadata: {
+            id: actorId
+          }
+        },
+        message: "Secret Deleted",
+        folderId,
+        changes: commitChanges
+      },
+      tx
+    );
+  }
 
   return deletedSecrets;
 };

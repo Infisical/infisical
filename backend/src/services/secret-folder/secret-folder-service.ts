@@ -10,6 +10,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
+import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
@@ -29,7 +30,8 @@ type TSecretFolderServiceFactoryDep = {
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   folderDAL: TSecretFolderDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs" | "find">;
-  folderVersionDAL: TSecretFolderVersionDALFactory;
+  folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestFolderVersions" | "create" | "insertMany" | "find">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
 };
 
@@ -41,6 +43,7 @@ export const secretFolderServiceFactory = ({
   permissionService,
   projectEnvDAL,
   folderVersionDAL,
+  folderCommitService,
   projectDAL
 }: TSecretFolderServiceFactoryDep) => {
   const createFolder = async ({
@@ -111,13 +114,30 @@ export const secretFolderServiceFactory = ({
           });
           parentFolderId = newFolders.at(-1)?.id as string;
           const docs = await folderDAL.insertMany(newFolders, tx);
-          await folderVersionDAL.insertMany(
+          const folderVersions = await folderVersionDAL.insertMany(
             docs.map((doc) => ({
               name: doc.name,
               envId: doc.envId,
               version: doc.version,
               folderId: doc.id
             })),
+            tx
+          );
+          await folderCommitService.createCommit(
+            {
+              actor: {
+                type: actor,
+                metadata: {
+                  id: actorId
+                }
+              },
+              message: "Folder created",
+              folderId: parentFolderId,
+              changes: folderVersions.map((fv) => ({
+                type: "add",
+                folderVersionId: fv.id
+              }))
+            },
             tx
           );
         }
@@ -127,12 +147,31 @@ export const secretFolderServiceFactory = ({
         { name, envId: env.id, version: 1, parentId: parentFolderId, description },
         tx
       );
-      await folderVersionDAL.create(
+      const folderVersion = await folderVersionDAL.create(
         {
           name: doc.name,
           envId: doc.envId,
           version: doc.version,
           folderId: doc.id
+        },
+        tx
+      );
+      await folderCommitService.createCommit(
+        {
+          actor: {
+            type: actor,
+            metadata: {
+              id: actorId
+            }
+          },
+          message: "Folder created",
+          folderId: parentFolderId,
+          changes: [
+            {
+              type: "add",
+              folderVersionId: folderVersion.id
+            }
+          ]
         },
         tx
       );
@@ -225,12 +264,32 @@ export const secretFolderServiceFactory = ({
             { name, description },
             tx
           );
-          await folderVersionDAL.create(
+          const folderVersion = await folderVersionDAL.create(
             {
               name: doc.name,
               envId: doc.envId,
               version: doc.version,
               folderId: doc.id
+            },
+            tx
+          );
+          await folderCommitService.createCommit(
+            {
+              actor: {
+                type: actor,
+                metadata: {
+                  id: actorId
+                }
+              },
+              message: "Folder updated",
+              folderId: parentFolder.id,
+              changes: [
+                {
+                  type: "add",
+                  isUpdate: true,
+                  folderVersionId: folderVersion.id
+                }
+              ]
             },
             tx
           );
@@ -321,12 +380,32 @@ export const secretFolderServiceFactory = ({
         { name, description },
         tx
       );
-      await folderVersionDAL.create(
+      const folderVersion = await folderVersionDAL.create(
         {
           name: doc.name,
           envId: doc.envId,
           version: doc.version,
           folderId: doc.id
+        },
+        tx
+      );
+      await folderCommitService.createCommit(
+        {
+          actor: {
+            type: actor,
+            metadata: {
+              id: actorId
+            }
+          },
+          message: "Folder updated",
+          folderId: parentFolder.id,
+          changes: [
+            {
+              type: "add",
+              isUpdate: true,
+              folderVersionId: folderVersion.id
+            }
+          ]
         },
         tx
       );
@@ -381,7 +460,30 @@ export const secretFolderServiceFactory = ({
         },
         tx
       );
+
       if (!doc) throw new NotFoundError({ message: `Failed to delete folder with ID '${idOrName}', not found` });
+
+      const folderVersions = await folderVersionDAL.findLatestFolderVersions([doc.id]);
+
+      await folderCommitService.createCommit(
+        {
+          actor: {
+            type: actor,
+            metadata: {
+              id: actorId
+            }
+          },
+          message: "Folder deleted",
+          folderId: parentFolder.id,
+          changes: [
+            {
+              type: "delete",
+              folderVersionId: folderVersions[doc.id].id
+            }
+          ]
+        },
+        tx
+      );
       return doc;
     });
 
@@ -665,6 +767,22 @@ export const secretFolderServiceFactory = ({
     return environmentFolders;
   };
 
+  const getFolderVersionsByIds = async ({
+    folderId,
+    folderVersions
+  }: {
+    folderId: string;
+    folderVersions: string[];
+  }) => {
+    const versions = await folderVersionDAL.find({
+      folderId,
+      $in: {
+        version: folderVersions.map((v) => Number.parseInt(v, 10))
+      }
+    });
+    return versions;
+  };
+
   return {
     createFolder,
     updateFolder,
@@ -675,6 +793,7 @@ export const secretFolderServiceFactory = ({
     getProjectFolderCount,
     getFoldersMultiEnv,
     getFoldersDeepByEnvs,
-    getProjectEnvironmentsFolders
+    getProjectEnvironmentsFolders,
+    getFolderVersionsByIds
   };
 };

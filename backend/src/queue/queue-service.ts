@@ -49,7 +49,8 @@ export enum QueueName {
   AccessTokenStatusUpdate = "access-token-status-update",
   ImportSecretsFromExternalSource = "import-secrets-from-external-source",
   AppConnectionSecretSync = "app-connection-secret-sync",
-  SecretRotationV2 = "secret-rotation-v2"
+  SecretRotationV2 = "secret-rotation-v2",
+  FolderTreeCheckpoint = "folder-tree-checkpoint"
 }
 
 export enum QueueJobs {
@@ -81,7 +82,8 @@ export enum QueueJobs {
   SecretSyncSendActionFailedNotifications = "secret-sync-send-action-failed-notifications",
   SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
-  SecretRotationV2SendNotification = "secret-rotation-v2-send-notification"
+  SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
+  CreateFolderTreeCheckpoint = "create-folder-tree-checkpoint"
 }
 
 export type TQueueJobTypes = {
@@ -190,6 +192,12 @@ export type TQueueJobTypes = {
   [QueueName.ProjectV3Migration]: {
     name: QueueJobs.ProjectV3Migration;
     payload: { projectId: string };
+  };
+  [QueueName.FolderTreeCheckpoint]: {
+    name: QueueJobs.CreateFolderTreeCheckpoint;
+    payload: {
+      envId: string;
+    };
   };
   [QueueName.ImportSecretsFromExternalSource]: {
     name: QueueJobs.ImportSecretsFromExternalSource;

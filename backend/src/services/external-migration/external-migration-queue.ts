@@ -3,6 +3,7 @@ import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
+import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectServiceFactory } from "../project/project-service";
@@ -10,6 +11,7 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectEnvServiceFactory } from "../project-env/project-env-service";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
@@ -36,6 +38,8 @@ export type TExternalMigrationQueueFactoryDep = {
   projectService: Pick<TProjectServiceFactory, "createProject">;
   projectEnvService: Pick<TProjectEnvServiceFactory, "createEnvironment">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "createManySecret">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "create">;
 
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
@@ -56,6 +60,8 @@ export const externalMigrationQueueFactory = ({
   secretTagDAL,
   secretVersionTagDAL,
   folderDAL,
+  folderCommitService,
+  folderVersionDAL,
   resourceMetadataDAL
 }: TExternalMigrationQueueFactoryDep) => {
   const startImport = async (dto: {
@@ -114,6 +120,8 @@ export const externalMigrationQueueFactory = ({
         projectService,
         projectEnvService,
         secretV2BridgeService,
+        folderCommitService,
+        folderVersionDAL,
         resourceMetadataDAL
       });
 
