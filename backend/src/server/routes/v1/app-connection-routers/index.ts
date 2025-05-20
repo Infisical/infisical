@@ -1,6 +1,6 @@
+import { registerOCIConnectionRouter } from "@app/ee/routes/v1/app-connection-routers/oci-connection-router";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
-import { registerOCIConnectionRouter } from "../../../../ee/routes/v1/app-connection-routers/oci-connection-router";
 import { registerAuth0ConnectionRouter } from "./auth0-connection-router";
 import { registerAwsConnectionRouter } from "./aws-connection-router";
 import { registerAzureAppConfigurationConnectionRouter } from "./azure-app-configuration-connection-router";

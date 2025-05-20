@@ -10,6 +10,7 @@ import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
   decryptAppConnection,
   encryptAppConnectionCredentials,
+  enterpriseAppCheck,
   getAppConnectionMethodName,
   listAppConnectionOptions,
   TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM,
@@ -21,8 +22,8 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { ValidateOCIConnectionCredentialsSchema } from "../../ee/services/app-connections/oci";
 import { ociConnectionService } from "../../ee/services/app-connections/oci/oci-connection-service";
 import { TAppConnectionDALFactory } from "./app-connection-dal";
-import { AppConnection, AppConnectionPlanType } from "./app-connection-enums";
-import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "./app-connection-maps";
+import { AppConnection } from "./app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "./app-connection-maps";
 import {
   TAppConnection,
   TAppConnectionConfig,
@@ -194,15 +195,12 @@ export const appConnectionServiceFactory = ({
       OrgPermissionSubjects.AppConnections
     );
 
-    // Enterprise check
-    if (APP_CONNECTION_PLAN_MAP[app] === AppConnectionPlanType.Enterprise) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.enterpriseAppConnections)
-        throw new BadRequestError({
-          message:
-            "Failed to create app connection due to plan restriction. Upgrade plan to access enterprise app connections."
-        });
-    }
+    await enterpriseAppCheck(
+      licenseService,
+      app,
+      actor.orgId,
+      "Failed to create app connection due to plan restriction. Upgrade plan to access enterprise app connections."
+    );
 
     const validatedCredentials = await validateAppConnectionCredentials({
       app,
@@ -266,15 +264,12 @@ export const appConnectionServiceFactory = ({
 
     if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
-    // Enterprise check
-    if (APP_CONNECTION_PLAN_MAP[appConnection.app as AppConnection] === AppConnectionPlanType.Enterprise) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.enterpriseAppConnections)
-        throw new BadRequestError({
-          message:
-            "Failed to update app connection due to plan restriction. Upgrade plan to access enterprise app connections."
-        });
-    }
+    await enterpriseAppCheck(
+      licenseService,
+      appConnection.app as AppConnection,
+      actor.orgId,
+      "Failed to update app connection due to plan restriction. Upgrade plan to access enterprise app connections."
+    );
 
     const { permission } = await permissionService.getOrgPermission(
       actor.type,
@@ -422,15 +417,12 @@ export const appConnectionServiceFactory = ({
 
     if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
-    // Enterprise check
-    if (APP_CONNECTION_PLAN_MAP[app] === AppConnectionPlanType.Enterprise) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.enterpriseAppConnections)
-        throw new BadRequestError({
-          message:
-            "Failed to connect app connection due to plan restriction. Upgrade plan to access enterprise app connections."
-        });
-    }
+    await enterpriseAppCheck(
+      licenseService,
+      app,
+      actor.orgId,
+      "Failed to connect app due to plan restriction. Upgrade plan to access enterprise app connections."
+    );
 
     const { permission: orgPermission } = await permissionService.getOrgPermission(
       actor.type,

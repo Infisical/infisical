@@ -8,7 +8,6 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
@@ -31,12 +30,11 @@ import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal
 import {
   SecretSync,
   SecretSyncImportBehavior,
-  SecretSyncInitialSyncBehavior,
-  SecretSyncPlanType
+  SecretSyncInitialSyncBehavior
 } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
-import { SECRET_SYNC_NAME_MAP, SECRET_SYNC_PLAN_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
+import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import {
   SecretSyncAction,
   SecretSyncStatus,
@@ -336,14 +334,12 @@ export const secretSyncQueueFactory = ({
       connection: { orgId }
     } = secretSync;
 
-    // Enterprise Check
-    if (SECRET_SYNC_PLAN_MAP[destination] === SecretSyncPlanType.Enterprise) {
-      const plan = await licenseService.getPlan(orgId);
-      if (!plan.enterpriseSecretSyncs)
-        throw new BadRequestError({
-          message: "Failed to import secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."
-        });
-    }
+    await enterpriseSyncCheck(
+      licenseService,
+      destination,
+      orgId,
+      "Failed to import secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."
+    );
 
     if (!environment || !folder)
       throw new Error(
@@ -420,14 +416,12 @@ export const secretSyncQueueFactory = ({
 
     if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
 
-    // Enterprise Check
-    if (SECRET_SYNC_PLAN_MAP[secretSync.destination as SecretSync] === SecretSyncPlanType.Enterprise) {
-      const plan = await licenseService.getPlan(secretSync.connection.orgId);
-      if (!plan.enterpriseSecretSyncs)
-        throw new BadRequestError({
-          message: "Failed to sync secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."
-        });
-    }
+    await enterpriseSyncCheck(
+      licenseService,
+      secretSync.destination as SecretSync,
+      secretSync.connection.orgId,
+      "Failed to sync secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."
+    );
 
     await secretSyncDAL.updateById(syncId, {
       syncStatus: SecretSyncStatus.Running
@@ -688,15 +682,12 @@ export const secretSyncQueueFactory = ({
 
     if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
 
-    // Enterprise Check
-    if (SECRET_SYNC_PLAN_MAP[secretSync.destination as SecretSync] === SecretSyncPlanType.Enterprise) {
-      const plan = await licenseService.getPlan(secretSync.connection.orgId);
-      if (!plan.enterpriseSecretSyncs)
-        throw new BadRequestError({
-          message:
-            "Failed to access secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
-        });
-    }
+    await enterpriseSyncCheck(
+      licenseService,
+      secretSync.destination as SecretSync,
+      secretSync.connection.orgId,
+      "Failed to remove secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."
+    );
 
     await secretSyncDAL.updateById(syncId, {
       removeStatus: SecretSyncStatus.Running

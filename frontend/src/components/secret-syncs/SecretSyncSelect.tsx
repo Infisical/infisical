@@ -35,13 +35,13 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
         const { image, name } = SECRET_SYNC_MAP[destination];
         return (
           <Tooltip
+            key={destination}
             content={
               enterprise && !subscription.enterpriseSecretSyncs ? "Enterprise Plan Only" : undefined
             }
           >
             <button
               type="button"
-              key={destination}
               onClick={() =>
                 enterprise && !subscription.enterpriseSecretSyncs
                   ? handlePopUpOpen("upgradePlan")

@@ -16,8 +16,8 @@ import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
-import { listSecretSyncOptions } from "@app/services/secret-sync/secret-sync-fns";
+import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+import { enterpriseSyncCheck, listSecretSyncOptions } from "@app/services/secret-sync/secret-sync-fns";
 import {
   SecretSyncStatus,
   TCreateSecretSyncDTO,
@@ -35,7 +35,7 @@ import {
 
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretSyncDALFactory } from "./secret-sync-dal";
-import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP, SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
+import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "./secret-sync-maps";
 import { TSecretSyncQueueFactory } from "./secret-sync-queue";
 
 type TSecretSyncServiceFactoryDep = {
@@ -194,15 +194,12 @@ export const secretSyncServiceFactory = ({
     { projectId, secretPath, environment, ...params }: TCreateSecretSyncDTO,
     actor: OrgServiceActor
   ) => {
-    // Enterprise check
-    if (SECRET_SYNC_PLAN_MAP[params.destination] === SecretSyncPlanType.Enterprise) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.enterpriseSecretSyncs)
-        throw new BadRequestError({
-          message:
-            "Failed to create secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
-        });
-    }
+    await enterpriseSyncCheck(
+      licenseService,
+      params.destination,
+      actor.orgId,
+      "Failed to create secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
+    );
 
     const { permission: projectPermission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -273,15 +270,12 @@ export const secretSyncServiceFactory = ({
         message: `Could not find ${SECRET_SYNC_NAME_MAP[destination]} Sync with ID ${syncId}`
       });
 
-    // Enterprise check
-    if (SECRET_SYNC_PLAN_MAP[secretSync.destination as SecretSync] === SecretSyncPlanType.Enterprise) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.enterpriseSecretSyncs)
-        throw new BadRequestError({
-          message:
-            "Failed to update secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
-        });
-    }
+    await enterpriseSyncCheck(
+      licenseService,
+      secretSync.destination as SecretSync,
+      actor.orgId,
+      "Failed to update secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
+    );
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -431,15 +425,12 @@ export const secretSyncServiceFactory = ({
         message: `Could not find ${SECRET_SYNC_NAME_MAP[destination]} Sync with ID "${syncId}"`
       });
 
-    // Enterprise check
-    if (SECRET_SYNC_PLAN_MAP[secretSync.destination as SecretSync] === SecretSyncPlanType.Enterprise) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.enterpriseSecretSyncs)
-        throw new BadRequestError({
-          message:
-            "Failed to trigger secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
-        });
-    }
+    await enterpriseSyncCheck(
+      licenseService,
+      secretSync.destination as SecretSync,
+      actor.orgId,
+      "Failed to trigger secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
+    );
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -496,15 +487,12 @@ export const secretSyncServiceFactory = ({
         message: `Could not find ${SECRET_SYNC_NAME_MAP[destination]} Sync with ID "${syncId}"`
       });
 
-    // Enterprise check
-    if (SECRET_SYNC_PLAN_MAP[secretSync.destination as SecretSync] === SecretSyncPlanType.Enterprise) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.enterpriseSecretSyncs)
-        throw new BadRequestError({
-          message:
-            "Failed to trigger secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
-        });
-    }
+    await enterpriseSyncCheck(
+      licenseService,
+      secretSync.destination as SecretSync,
+      actor.orgId,
+      "Failed to trigger secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
+    );
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -555,15 +543,12 @@ export const secretSyncServiceFactory = ({
         message: `Could not find ${SECRET_SYNC_NAME_MAP[destination]} Sync with ID "${syncId}"`
       });
 
-    // Enterprise check
-    if (SECRET_SYNC_PLAN_MAP[secretSync.destination as SecretSync] === SecretSyncPlanType.Enterprise) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.enterpriseSecretSyncs)
-        throw new BadRequestError({
-          message:
-            "Failed to trigger secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
-        });
-    }
+    await enterpriseSyncCheck(
+      licenseService,
+      secretSync.destination as SecretSync,
+      actor.orgId,
+      "Failed to trigger secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
+    );
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,

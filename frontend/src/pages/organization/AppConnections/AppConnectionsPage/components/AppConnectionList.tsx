@@ -36,6 +36,7 @@ export const AppConnectionsSelect = ({ onSelect }: Props) => {
 
         return (
           <Tooltip
+            key={option.app}
             content={
               enterprise && !subscription.enterpriseAppConnections
                 ? "Enterprise Plan Only"
@@ -44,7 +45,6 @@ export const AppConnectionsSelect = ({ onSelect }: Props) => {
           >
             <button
               type="button"
-              key={option.app}
               onClick={() =>
                 enterprise && !subscription.enterpriseAppConnections
                   ? handlePopUpOpen("upgradePlan")
