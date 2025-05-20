@@ -146,19 +146,16 @@ spec:
 ```
 
 
-
 ## Quick Start
 In this section we'll walk through a full example of how to inject secrets into a pod using the Infisical Agent Injector.
-In this example we'll create a PostgreSQL database deployment and use the Infisical Agent injector to inject the database credentials to be used for the deployment.
+In this example we'll create a basic nginx deployment and print a Infisical secret called `API_KEY` to the container logs.
 
 ### Create secrets in Infisical
-First you'll need to create the secrets in Infisical.
+First you'll need to create the secret in Infisical.
 
-- `POSTGRES_USER`: The username of the database user.
-- `POSTGRES_PASSWORD`: The password to use for the user.
-- `POSTGRES_DB`: The name of the database to create.
+- `API_KEY`: The API key to use for the nginx deployment.
 
-Once you've created the secrets, save your project ID, environment slug, and secret path, as these will be used in the next step.
+Once you've created the secret, save your project ID, environment slug, and secret path, as these will be used in the next step.
 
 ### Configuration
 To use the injector you must create a config map in the same namespace as the pod you want to inject secrets into. In this example we'll create a config map in the `test-namespace` namespace.
@@ -167,7 +164,7 @@ The agent injector will authenticate with Infisical using a [Kubernetes Auth](/d
 The agent injector will use the service account token of the pod to authenticate with Infisical.
 
 The `template-content` will be rendered as a [Go Template](https://pkg.go.dev/text/template) and will have access to the following variables. It follows the templating format and supports the same functions as the [Infisical Agent](/integrations/platforms/infisical-agent#quick-start-infisical-agent)
-The `destination-path` refers to the path within the pod that the secrets will be injected into. In this case we're injecting the secrets into a file called `/infisical/postgres-secrets`.
+The `destination-path` refers to the path within the pod that the secrets will be injected into. In this case we're injecting the secrets into a file called `/infisical/secrets`.
 
 
 Replace the `<your-project-id>`, `<your-environment-slug>`, with your project ID and the environment slug of where you created your secrets in Infisical. Replace `<your-infisical-machine-identity-id>` with the ID of your machine identity configured for Kubernetes Auth.
@@ -175,7 +172,7 @@ Replace the `<your-project-id>`, `<your-environment-slug>`, with your project ID
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: postgres-deployment-infisical-config-map
+  name: nginx-infisical-config-map
   namespace: test-namespace
 data:
   config.yaml: |
@@ -186,7 +183,7 @@ data:
         config:
           identity-id: "<your-infisical-machine-identity-id>"
     templates:
-      - destination-path: "/infisical/postgres-secrets"
+      - destination-path: "/infisical/secrets"
         template-content: |
           {{- with secret "<your-project-id>" "<your-environment-slug>" "/" }}
           {{- range . }}
@@ -201,60 +198,31 @@ To inject secrets into your pod, you will need to add the `org.infisical.com/inj
 
 The `org.infisical.com/agent-config-map` annotation will point to the config map we created in the previous step. It's important that the config map is in the same namespace as the pod.
 
-We are creating a Postgres deployment with a PVC to store the database data.
+We are creating a nginx deployment with a PVC to store the database data.
 
-```yaml postgres-deployment.yaml
+```yaml nginx.yaml
 ---
 apiVersion: v1
-kind: PersistentVolumeClaim
+kind: Pod
 metadata:
-  name: postgres-pvc
-  namespace: test-namespace
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: postgres-deployment
+  name: nginx-pod
   namespace: test-namespace
   labels:
-    app: postgres
+    app: nginx
+  annotations:
+    org.infisical.com/inject: "true"
+    org.infisical.com/inject-mode: "init"
+    org.infisical.com/agent-config-map: "nginx-infisical-config-map"
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: postgres
-  template:
-    metadata:
-      labels:
-        app: postgres
-      annotations:
-        org.infisical.com/inject: "true"
-        org.infisical.com/inject-mode: "init"
-        org.infisical.com/agent-config-map: "postgres-deployment-infisical-config-map"
-    spec:
-      containers:
-        - name: postgres
-          image: postgres:latest
-          command: ["/bin/bash", "-c"]
-          args:
-            - |
-              export $(cat /infisical/postgres-secrets | xargs)
-              exec docker-entrypoint.sh postgres
-          ports:
-            - containerPort: 5432
-          volumeMounts:
-            - name: postgres-data
-              mountPath: /var/lib/postgresql/data
-      volumes:
-        - name: postgres-data
-          persistentVolumeClaim:
-            claimName: postgres-pvc
+  containers:
+    - name: simple-app-demo
+      image: nginx:alpine
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          export $(cat /infisical/secrets | xargs)
+          echo "API_KEY is set to: $API_KEY"
+          nginx -g "daemon off;"
 ```
 
 ### Applying the deployment
@@ -262,9 +230,9 @@ spec:
 To apply the deployment, you can use the following command:
 
 ```bash
-kubectl apply -f postgres-deployment.yaml
+kubectl apply -f nginx.yaml
 ```
-It may take a few minutes for the pod to be ready and for the secrets to be injected. You can check the status of the pod by running:
+It may take a few minutes for the pod to be ready and for the Infisical secrets to be injected. You can check the status of the pod by running:
 
 ```bash
 kubectl get pods -n test-namespace
@@ -275,23 +243,55 @@ kubectl get pods -n test-namespace
 To verify the secrets are injected, you can check the pod's logs:
 
 ```bash
-$ kubectl exec -it deployment/postgres-deployment -n test-namespace -- cat /infisical/postgres-secrets
+$ kubectl exec -it pod/nginx-pod -n test-namespace -- cat /infisical/secrets
 
-Defaulted container "postgres" out of: postgres, infisical-agent-init (init)
-POSTGRES_USER=infisical-db-user
-POSTGRES_PASSWORD=demo-database-password
-POSTGRES_DB=demo-database
+Defaulted container "simple-app-demo" out of: simple-app-demo, infisical-agent-init (init)
+
+API_KEY=sk_api_... # The secret you created in Infisical
 ```
 
-You can also try connecting to the database using the credentials:
+Additionally you can now check that the `API_KEY` secret is being logged to the nginx container logs:
 ```bash
-$ kubectl exec -it deployment/postgres-deployment -n test-namespace -- bash -c "PGPASSWORD='<DB-USER-PASSWORD>' psql -U <DB-USERNAME> -d <DATABASE-NAME>"
-
-Defaulted container "postgres" out of: postgres, infisical-agent-init (init)
-psql (17.5 (Debian 17.5-1.pgdg120+1))
-Type "help" for help.
-
-infisical-db=#
+$ kubectl logs pod/nginx-pod -n test-namespace                              
+Defaulted container "simple-app-demo" out of: simple-app-demo, infisical-agent-init (init)
+API_KEY is set to: sk_api_... # The secret you created in Infisical
 ```
 
-If you're able to connect to the database using the credentials from Infisical, then you've successfully injected the secrets into your pod. On each pod update, the secrets will be injected again with the latest values from Infisical.
+
+## Troubleshooting
+
+
+<Accordion title="The pod is stuck in `Init` state">
+  If the pod is stuck in `Init` state, it means the Agent init container is failing to start or is stuck in a restart loop.
+  This could be due to a number of reasons, such as the machine identity not having the correct permissions, or trying to fetch secrets from a non-existent project/environment.
+  
+  You can check the logs of the infisical init container by running:
+  ```bash
+  # For deployments
+  kubectl logs deployment/your-deployment-name -c infisical-agent-init -n "<namespace>"
+
+  # For pods
+  kubectl logs pod/your-pod-name -c infisical-agent-init -n "<namespace>"
+  ```
+
+  You can also check the logs of the pod by running:
+  ```bash
+  kubectl logs deployment/postgres-deployment -n test-namespace
+  ```
+
+  When checking the logs of the agent init container, you may see something like the following:
+  ```bash
+  Starting infisical agent...
+  11:10AM INF starting Infisical agent...
+  11:10AM INF Infisical instance address set to https://daniel1.tunn.dev
+  11:10AM INF template engine started for template 1...
+  11:10AM INF attempting to authenticate...
+  11:10AM INF new access token saved to file at path '/home/infisical/config/identity-access-token'
+  11:10AM ERR unable to process template because template: literalTemplate:1:9: executing "literalTemplate" at <secret "3c0d3ff6-165c-4dc9-b52c-ff3ffaedfce311111" "dev" "/">: error calling secret: CallGetRawSecretsV3: Unsuccessful response [GET https://daniel1.tunn.dev/api/v3/secrets/raw?environment=dev&expandSecretReferences=true&include_imports=true&secretPath=%2F&workspaceId=3c0d3ff6-165c-4dc9-b52c-ff3ffaedfce311111] [status-code=404] [response={"reqId":"req-ljqNq567jchFrK","statusCode":404,"message":"Project with ID '3c0d3ff6-165c-4dc9-b52c-ff3ffaedfce311111' not found during bot lookup. Are you sure you are using the correct project ID?","error":"NotFound"}]
+  + echo 'Agent failed with exit code 1'
+  + exit 1
+  Agent failed with exit code 1
+  ```
+
+  In the above error, the project ID was invalid in the config map.
+</Accordion>
