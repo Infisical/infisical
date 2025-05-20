@@ -1,6 +1,7 @@
 import { Controller, useFormContext } from "react-hook-form";
 
 import { FormControl, Switch } from "@app/components/v2";
+import { AUTO_SYNC_DESCRIPTION_HELPER } from "@app/helpers/secretScanningV2";
 import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 import { TSecretScanningDataSourceForm } from "../schemas";
 import { GitLabDataSourceConfigFields } from "./GitLabDataSourceConfigFields";
@@ -13,9 +14,10 @@ const COMPONENT_MAP: Record<SecretScanningDataSource, React.FC> = {
 export const SecretScanningDataSourceConfigFields = () => {
   const { watch, control } = useFormContext<TSecretScanningDataSourceForm>();
 
-  const rotationType = watch("type");
+  const type = watch("type");
 
-  const Component = COMPONENT_MAP[rotationType];
+  const Component = COMPONENT_MAP[type];
+  const autoScanDescription = AUTO_SYNC_DESCRIPTION_HELPER[type];
 
   return (
     <>
@@ -29,7 +31,7 @@ export const SecretScanningDataSourceConfigFields = () => {
             <FormControl
               helperText={
                 value
-                  ? "Scans will automatically be triggered when changes are pushed to this data source." // scott: this may need to be templatized in the future based of type
+                  ? `Scans will automatically be triggered when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this data source.`
                   : "Manually trigger scans to detect secret leaks."
               }
               isError={Boolean(error)}

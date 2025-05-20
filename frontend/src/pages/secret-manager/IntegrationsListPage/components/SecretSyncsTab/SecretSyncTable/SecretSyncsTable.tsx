@@ -1,4 +1,3 @@
-import { useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -11,6 +10,7 @@ import {
   faWarning
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";

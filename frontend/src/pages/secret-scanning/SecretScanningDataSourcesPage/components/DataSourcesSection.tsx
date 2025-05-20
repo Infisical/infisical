@@ -1,34 +1,31 @@
 import { faArrowUpRightFromSquare, faBookOpen, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretScanningDataSourceModal } from "@app/components/secret-scanning";
-import { Button } from "@app/components/v2";
+import { Button, Spinner } from "@app/components/v2";
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
+import { useListSecretScanningDataSources } from "@app/hooks/api/secretScanningV2";
+import { DataSourcesTable } from "./DataSourcesTable";
 
 export const DataSourcesSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["addDataSource"] as const);
 
-  const navigate = useNavigate();
-
   const { currentWorkspace } = useWorkspace();
 
-  // const { data: secretSyncs = [], isPending: isSecretSyncsPending } = useListSecretSyncs(
-  //   currentWorkspace.id,
-  //   {
-  //     refetchInterval: 30000
-  //   }
-  // );
+  const { data: dataSources = [], isPending: isDataSourcesPending } =
+    useListSecretScanningDataSources(currentWorkspace.id, {
+      refetchInterval: 30000
+    });
 
-  // if (isSecretSyncsPending)
-  //   return (
-  //     <div className="flex h-[60vh] flex-col items-center justify-center gap-2">
-  //       <Spinner />
-  //     </div>
-  //   );
+  if (isDataSourcesPending)
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-2">
+        <Spinner />
+      </div>
+    );
 
   return (
     <>
@@ -73,7 +70,7 @@ export const DataSourcesSection = () => {
             )}
           </ProjectPermissionCan>
         </div>
-        {/* <SecretSyncsTable secretSyncs={secretSyncs} /> */}
+        <DataSourcesTable dataSources={dataSources} />
       </div>
       <CreateSecretScanningDataSourceModal
         isOpen={popUp.addDataSource.isOpen}

@@ -1,28 +1,22 @@
-import { useMemo } from "react";
 import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 import { apiRequest } from "@app/config/request";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
-import {
-  TSecretRotationGeneratedCredentialsResponseMap,
-  TSecretRotationOptionMap,
-  TViewSecretRotationGeneratedCredentialsResponse
-} from "@app/hooks/api/secretRotationsV2/types";
+import { TSecretRotationOptionMap } from "@app/hooks/api/secretRotationsV2/types";
 
-import { SecretScanningDataSource } from "./enums";
-import { TListSecretScanningDataSourceOptions, TSecretScanningDataSourceOption } from "./types";
+import {
+  TListSecretScanningDataSourceOptions,
+  TListSecretScanningDataSources,
+  TSecretScanningDataSource,
+  TSecretScanningDataSourceOption
+} from "./types";
 
 export const secretScanningV2Keys = {
   all: ["secret-scanning-v2"] as const,
   dataSource: () => [...secretScanningV2Keys.all, "data-source"] as const,
   dataSourceOptions: () => [...secretScanningV2Keys.dataSource(), "options"] as const,
-  listDataSources: ({
-    projectId,
-    type
-  }: {
-    projectId: string;
-    type?: SecretScanningDataSource;
-  }) => [...secretScanningV2Keys.dataSource(), "list", projectId, ...(type ? [type] : [])]
+  listDataSources: (projectId: string) => [...secretScanningV2Keys.dataSource(), "list", projectId]
 };
 
 export const useSecretScanningDataSourceOptions = (
@@ -62,26 +56,27 @@ export const useSecretRotationV2Option = <T extends SecretRotation>(type: T) => 
   );
 };
 
-export const useViewSecretRotationV2GeneratedCredentials = <T extends SecretRotation>(
-  { rotationId, type }: { rotationId: string; type: T },
+export const useListSecretScanningDataSources = (
+  projectId: string,
   options?: Omit<
     UseQueryOptions<
-      TViewSecretRotationGeneratedCredentialsResponse,
+      TSecretScanningDataSource[],
       unknown,
-      TViewSecretRotationGeneratedCredentialsResponse,
-      ReturnType<typeof secretScanningV2Keys.viewGeneratedCredentials>
+      TSecretScanningDataSource[],
+      ReturnType<typeof secretScanningV2Keys.listDataSources>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: secretScanningV2Keys.viewGeneratedCredentials({ sourceId: rotationId, type }),
+    queryKey: secretScanningV2Keys.listDataSources(projectId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TViewSecretRotationGeneratedCredentialsResponse>(
-        `/api/v2/secret-rotations/${type}/${rotationId}/generated-credentials`
+      const { data } = await apiRequest.get<TListSecretScanningDataSources>(
+        `/api/v2/secret-scanning/data-sources`,
+        { params: { projectId } }
       );
 
-      return data as TSecretRotationGeneratedCredentialsResponseMap[T];
+      return data.dataSources;
     },
     ...options
   });

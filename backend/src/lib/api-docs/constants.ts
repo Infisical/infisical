@@ -5,6 +5,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
+  AUTO_SYNC_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP,
   SECRET_SCANNING_DATA_SOURCE_NAME_MAP
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
@@ -2375,6 +2376,7 @@ export const SecretScanningDataSources = {
   }),
   CREATE: (type: SecretScanningDataSource) => {
     const sourceType = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
+    const autoScanDescription = AUTO_SYNC_DESCRIPTION_HELPER[type];
     return {
       name: `The name of the ${sourceType} Data Source to create. Must be slug-friendly.`,
       description: `An optional description for the ${sourceType} Data Source.`,
@@ -2382,19 +2384,19 @@ export const SecretScanningDataSources = {
       connectionId: `The ID of the ${
         APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
       } Connection to use for this Data Source.`,
-      // scott: this description may need to be parameterized if we support different scan targets than repos
-      isAutoScanEnabled: `Whether scans should be automatically performed when a push occurs to repositories associated with this Data Source.`,
+      isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
       config: `The configuration parameters to use for this Data Source.`
     };
   },
   UPDATE: (type: SecretScanningDataSource) => {
     const typeName = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
+    const autoScanDescription = AUTO_SYNC_DESCRIPTION_HELPER[type];
+
     return {
       dataSourceId: `The ID of the ${typeName} Data Source to be updated.`,
       name: `The updated name of the ${typeName} Data Source. Must be slug-friendly.`,
       description: `The updated description of the ${typeName} Data Source.`,
-      // scott: this description may need to be parameterized if we support different scan targets than repos
-      isAutoScanEnabled: `Whether scans should be automatically performed when a push occurs to repositories associated with this Data Source.`,
+      isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
       config: `The updated configuration parameters to use for this Data Source.`
     };
   },

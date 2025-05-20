@@ -6,6 +6,10 @@ import { TGitLabDataSource, TGitLabDataSourceOption } from "./gitlab-data-source
 
 export type TSecretScanningDataSource = TGitLabDataSource | TGitHubDataSource;
 
+export type TListSecretScanningDataSources = {
+  dataSources: TSecretScanningDataSource[];
+};
+
 export type TSecretScanningDataSourceOption = TGitLabDataSourceOption | TGitHubDataSourceOption;
 
 export type TListSecretScanningDataSourceOptions = {

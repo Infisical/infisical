@@ -24,3 +24,11 @@ export const SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP: Record<
   [SecretScanningDataSource.GitHub]: AppConnection.GitHub,
   [SecretScanningDataSource.GitLab]: AppConnection.GitLab
 };
+
+export const AUTO_SYNC_DESCRIPTION_HELPER: Record<
+  SecretScanningDataSource,
+  { verb: string; noun: string }
+> = {
+  [SecretScanningDataSource.GitHub]: { verb: "push", noun: "repositories" },
+  [SecretScanningDataSource.GitLab]: { verb: "push", noun: "projects" }
+};
