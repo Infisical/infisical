@@ -15,9 +15,9 @@ flowchart LR
         CSP --> CSD(Secrets Store CSI Driver)
     end
 
-    subgraph Application
+    subgraph Pod
         CSD --> V(Volume)
-        V <--> P(Pod)
+        V <--> P(Application)
     end
 
 ```

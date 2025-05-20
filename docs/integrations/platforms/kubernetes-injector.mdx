@@ -13,6 +13,21 @@ The Infisical Agent Injector will patch and modify your pod's deployment to cont
 The Infisical Agent Injector is built on [Kubernetes Mutating Admission Webhooks](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers), and will watch for `CREATE` and `UPDATE` events on pods in your cluster.
 The injector is namespace-agnostic, and will watch for pods in any namespace, but will only patch pods that have the `org.infisical.com/inject` annotation set to `true`.
 
+
+```mermaid
+flowchart LR
+    subgraph Secrets Management
+        SS(Infisical) --> INJ(Infisical Injector)
+    end
+
+    subgraph Pod
+        INJ --> INIT(Agent Init Container)
+        INIT --> V(Volume)
+        V <--> P(Application)
+    end
+    
+```
+
 ## Install the Infisical Agent Injector
 
 To install the Infisical Agent Injector, you will need to install our helm charts using [Helm](https://helm.sh/).
