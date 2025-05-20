@@ -22,6 +22,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
+import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetOrgMembershipProjectMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -54,7 +55,14 @@ export const UserProjectsTable = ({ membershipId, handlePopUpOpen }: Props) => {
     offset,
     orderDirection,
     toggleOrderDirection
-  } = usePagination(UserProjectsOrderBy.Name, { initPerPage: 10 });
+  } = usePagination(UserProjectsOrderBy.Name, {
+    initPerPage: getUserTablePreference("userProjectsTable", "perPage", 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("userProjectsTable", "perPage", newPerPage);
+  };
 
   const { data: projectMemberships = [], isPending } = useGetOrgMembershipProjectMemberships(
     orgId,
@@ -136,7 +144,7 @@ export const UserProjectsTable = ({ membershipId, handlePopUpOpen }: Props) => {
             page={page}
             perPage={perPage}
             onChangePage={setPage}
-            onChangePerPage={setPerPage}
+            onChangePerPage={handlePerPageChange}
           />
         )}
         {!isPending && !filteredProjectMemberships?.length && (

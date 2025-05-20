@@ -42,6 +42,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetOrgRoles, useSearchIdentities, useUpdateIdentity } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -76,7 +77,15 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     perPage,
     page,
     setPerPage
-  } = usePagination<OrgIdentityOrderBy>(OrgIdentityOrderBy.Name);
+  } = usePagination<OrgIdentityOrderBy>(OrgIdentityOrderBy.Name, {
+    initPerPage: getUserTablePreference("identityTable", "perPage", 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("identityTable", "perPage", newPerPage);
+  };
+
   const [filteredRoles, setFilteredRoles] = useState<string[]>([]);
 
   const organizationId = currentOrg?.id || "";
@@ -379,7 +388,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             page={page}
             perPage={perPage}
             onChangePage={(newPage) => setPage(newPage)}
-            onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+            onChangePerPage={handlePerPageChange}
           />
         )}
         {!isPending && data && data?.identities.length === 0 && (

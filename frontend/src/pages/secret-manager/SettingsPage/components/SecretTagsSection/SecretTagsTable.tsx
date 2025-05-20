@@ -25,9 +25,10 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useGetWsTags } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { useGetWsTags } from "@app/hooks/api/tags";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -61,7 +62,14 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
     offset,
     orderDirection,
     toggleOrderDirection
-  } = usePagination(TagsOrderBy.Slug, { initPerPage: 10 });
+  } = usePagination(TagsOrderBy.Slug, {
+    initPerPage: getUserTablePreference("secretTagsTable", "perPage", 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("secretTagsTable", "perPage", newPerPage);
+  };
 
   const filteredTags = useMemo(
     () =>
@@ -151,7 +159,7 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
             page={page}
             perPage={perPage}
             onChangePage={setPage}
-            onChangePerPage={setPerPage}
+            onChangePerPage={handlePerPageChange}
           />
         )}
         {!isPending && !filteredTags?.length && (

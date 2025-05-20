@@ -13,6 +13,7 @@ import {
   useOrganization,
   useServerConfig
 } from "@app/context";
+import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
 import { withPermission } from "@app/hoc";
 import { usePagination, usePopUp } from "@app/hooks";
 import {
@@ -27,8 +28,6 @@ import { ExportSecretScansModal } from "./components/ExportSecretScansModal";
 import { SecretScanningFilter } from "./components/SecretScanningFilters";
 import { SecretScanningFilterFormData, secretScanningFilterFormSchema } from "./components/types";
 import { SecretScanningLogsTable } from "./components";
-
-const PER_PAGE_INIT = 25;
 
 export const SecretScanningPage = withPermission(
   () => {
@@ -49,8 +48,13 @@ export const SecretScanningPage = withPermission(
 
     const { offset, limit, orderBy, setPage, perPage, page, setPerPage } = usePagination(
       SecretScanningOrderBy.CreatedAt,
-      { initPerPage: PER_PAGE_INIT }
+      { initPerPage: getUserTablePreference("secretScanningTable", "perPage", 20) }
     );
+
+    const handlePerPageChange = (newPerPage: number) => {
+      setPerPage(newPerPage);
+      setUserTablePreference("secretScanningTable", "perPage", newPerPage);
+    };
 
     const repositoryNames = watch("repositoryNames");
     const resolvedStatus = watch("resolved");
@@ -191,18 +195,16 @@ export const SecretScanningPage = withPermission(
                 </div>
               )}
               <SecretScanningLogsTable gitRisks={risksData?.risks} isPending={isPending} />
-              {!isPending &&
-                risksData?.totalCount !== undefined &&
-                risksData.totalCount >= PER_PAGE_INIT && (
-                  <Pagination
-                    className="rounded-md"
-                    count={risksData.totalCount}
-                    page={page}
-                    perPage={perPage}
-                    onChangePage={(newPage) => setPage(newPage)}
-                    onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
-                  />
-                )}
+              {!isPending && risksData?.totalCount !== undefined && (
+                <Pagination
+                  className="rounded-md"
+                  count={risksData.totalCount}
+                  page={page}
+                  perPage={perPage}
+                  onChangePage={(newPage) => setPage(newPage)}
+                  onChangePerPage={handlePerPageChange}
+                />
+              )}
             </div>
           </div>
         </div>

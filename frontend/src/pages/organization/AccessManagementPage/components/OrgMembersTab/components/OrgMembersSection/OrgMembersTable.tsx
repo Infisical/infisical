@@ -42,6 +42,7 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
+import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
   useFetchServerStatus,
@@ -170,7 +171,14 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
     setOrderBy,
     setOrderDirection,
     toggleOrderDirection
-  } = usePagination<OrgMembersOrderBy>(OrgMembersOrderBy.Name, { initPerPage: 20 });
+  } = usePagination<OrgMembersOrderBy>(OrgMembersOrderBy.Name, {
+    initPerPage: getUserTablePreference("orgMembersTable", "perPage", 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("orgMembersTable", "perPage", newPerPage);
+  };
 
   const filteredUsers = useMemo(
     () =>
@@ -513,7 +521,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
             page={page}
             perPage={perPage}
             onChangePage={setPage}
-            onChangePerPage={setPerPage}
+            onChangePerPage={handlePerPageChange}
           />
         )}
         {!isMembersLoading && !filteredUsers?.length && (

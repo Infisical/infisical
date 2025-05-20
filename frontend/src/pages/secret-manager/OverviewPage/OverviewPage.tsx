@@ -64,6 +64,7 @@ import {
   useWorkspace
 } from "@app/context";
 import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPermissionContext/types";
+import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   useCreateFolder,
@@ -180,7 +181,14 @@ export const OverviewPage = () => {
     page,
     setPerPage,
     orderBy
-  } = usePagination<DashboardSecretsOrderBy>(DashboardSecretsOrderBy.Name);
+  } = usePagination<DashboardSecretsOrderBy>(DashboardSecretsOrderBy.Name, {
+    initPerPage: getUserTablePreference("secretOverviewTable", "perPage", 100)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("secretOverviewTable", "perPage", newPerPage);
+  };
 
   const resetSelectedEntries = useCallback(() => {
     setSelectedEntries({
@@ -1416,7 +1424,7 @@ export const OverviewPage = () => {
               page={page}
               perPage={perPage}
               onChangePage={(newPage) => setPage(newPage)}
-              onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+              onChangePerPage={handlePerPageChange}
             />
           )}
         </div>

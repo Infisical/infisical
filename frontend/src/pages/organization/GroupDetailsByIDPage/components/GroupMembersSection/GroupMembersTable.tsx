@@ -25,6 +25,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useListGroupUsers, useOidcManageGroupMembershipsEnabled } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -57,7 +58,14 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
     offset,
     orderDirection,
     toggleOrderDirection
-  } = usePagination(GroupMembersOrderBy.Name, { initPerPage: 10 });
+  } = usePagination(GroupMembersOrderBy.Name, {
+    initPerPage: getUserTablePreference("groupMembersTable", "perPage", 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("groupMembersTable", "perPage", newPerPage);
+  };
 
   const { currentOrg } = useOrganization();
 
@@ -163,7 +171,7 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
             page={page}
             perPage={perPage}
             onChangePage={setPage}
-            onChangePerPage={setPerPage}
+            onChangePerPage={handlePerPageChange}
           />
         )}
         {!isPending && !filteredGroupMemberships?.length && (

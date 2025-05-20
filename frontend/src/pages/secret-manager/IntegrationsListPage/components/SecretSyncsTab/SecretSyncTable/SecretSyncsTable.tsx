@@ -38,6 +38,7 @@ import {
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
+import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
@@ -119,7 +120,14 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
     orderBy,
     setOrderDirection,
     setOrderBy
-  } = usePagination<SecretSyncsOrderBy>(SecretSyncsOrderBy.Name, { initPerPage: 20 });
+  } = usePagination<SecretSyncsOrderBy>(SecretSyncsOrderBy.Name, {
+    initPerPage: getUserTablePreference("secretSyncTable", "perPage", 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("secretSyncTable", "perPage", newPerPage);
+  };
 
   const filteredSecretSyncs = useMemo(
     () =>
@@ -465,7 +473,7 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
             page={page}
             perPage={perPage}
             onChangePage={setPage}
-            onChangePerPage={setPerPage}
+            onChangePerPage={handlePerPageChange}
           />
         )}
         {!filteredSecretSyncs?.length && (
