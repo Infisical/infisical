@@ -23,7 +23,7 @@ export const useCreateSecretScanningDataSource = () => {
     },
     onSuccess: (_, { projectId }) =>
       queryClient.invalidateQueries({
-        queryKey: secretScanningV2Keys.listDataSources({ projectId })
+        queryKey: secretScanningV2Keys.listDataSources(projectId)
         // TODO: single view
       })
   });
@@ -42,13 +42,13 @@ export const useUpdateSecretScanningDataSource = () => {
     },
     onSuccess: (_, { projectId }) =>
       queryClient.invalidateQueries({
-        queryKey: secretScanningV2Keys.listDataSources({ projectId })
+        queryKey: secretScanningV2Keys.listDataSources(projectId)
         // TODO: single view
       })
   });
 };
 
-export const useDeleteScanningDataSource = () => {
+export const useDeleteSecretScanningDataSource = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ type, dataSourceId }: TDeleteSecretScanningDataSourceDTO) => {
@@ -60,7 +60,7 @@ export const useDeleteScanningDataSource = () => {
     },
     onSuccess: (_, { projectId }) =>
       queryClient.invalidateQueries({
-        queryKey: secretScanningV2Keys.listDataSources({ projectId })
+        queryKey: secretScanningV2Keys.listDataSources(projectId)
         // TODO: single view
       })
   });

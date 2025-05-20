@@ -208,12 +208,12 @@ export const DataSourcesTable = ({ dataSources }: Props) => {
       });
 
       createNotification({
-        text: `Successfully ${isAutoScanEnabled ? "enabled" : "disabled"} auto-sync for ${destinationName} Sync`,
+        text: `Successfully ${isAutoScanEnabled ? "enabled" : "disabled"} auto-scan for ${destinationName} Data Source`,
         type: "success"
       });
     } catch {
       createNotification({
-        text: `Failed to ${isAutoScanEnabled ? "enable" : "disable"} auto-sync for ${destinationName} Sync`,
+        text: `Failed to ${isAutoScanEnabled ? "enable" : "disable"} auto-scan for ${destinationName} Data Source`,
         type: "error"
       });
     }
@@ -343,7 +343,7 @@ export const DataSourcesTable = ({ dataSources }: Props) => {
           <THead>
             <Tr>
               <Th className="w-40">Platform</Th>
-              <Th className="w-1/3">
+              <Th className="w-1/4">
                 <div className="flex items-center">
                   Name
                   <IconButton

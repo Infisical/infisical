@@ -130,7 +130,7 @@ export const DataSourceRow = ({
       <Td></Td>
       {/* <SecretSyncDestinationCol dataSource={dataSource} /> */}
       <Td>
-        <div className="flex items-center gap-1">
+        <div className="flex w-full items-center gap-1">
           {/* {syncStatus && (
             <Tooltip
               position="left"
@@ -179,8 +179,8 @@ export const DataSourceRow = ({
               className="text-xs"
               content={`Auto-Scan is disabled. Scans will not be automatically triggered when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this data source`}
             >
-              <div className="flex w-full">
-                <Badge className="ml-auto flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+              <div className="ml-auto">
+                <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
                   <FontAwesomeIcon icon={faBan} />
                   {true && "Auto-Scan Disabled"}
                   {/* TODO: base on status */}
@@ -262,7 +262,7 @@ export const DataSourceRow = ({
               </ProjectPermissionCan>
               <ProjectPermissionCan
                 I={ProjectPermissionSecretScanningDataSourceActions.Delete}
-                a={ProjectPermissionSub.SecretSyncs}
+                a={ProjectPermissionSub.SecretScanningDataSources}
               >
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem
