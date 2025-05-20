@@ -1,6 +1,6 @@
 ---
 title: "Kubernetes CSI"
-description: "How to use Infisical to inject secrets directly into Kubernetes pods."
+description: "How to use the Infisical Kubernetes CSI provider to inject secrets directly into Kubernetes pods."
 ---
 
 ## Overview
@@ -15,9 +15,9 @@ flowchart LR
         CSP --> CSD(Secrets Store CSI Driver)
     end
 
-    subgraph Application
+    subgraph Pod
         CSD --> V(Volume)
-        V <--> P(Pod)
+        V <--> P(Application)
     end
 
 ```
