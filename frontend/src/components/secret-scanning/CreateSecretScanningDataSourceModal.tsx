@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState } from "react";
 
 import { Modal, ModalContent } from "@app/components/v2";
 import {
@@ -10,6 +10,7 @@ import {
 
 import { SecretScanningDataSourceModalHeader } from "./SecretScanningDataSourceModalHeader";
 import { SecretScanningDataSourceSelect } from "./SecretScanningDataSourceSelect";
+import { SecretScanningDataSourceForm } from "./forms";
 
 type Props = {
   isOpen: boolean;
@@ -24,14 +25,13 @@ type ContentProps = {
 
 const Content = ({ setSelectedDataSource, selectedDataSource, ...props }: ContentProps) => {
   if (selectedDataSource) {
-    return null;
-    // return (
-    //   <SecretRotationV2Form
-    //     onCancel={() => setSelectedDataSource(null)}
-    //     type={selectedRotation}
-    //     {...props}
-    //   />
-    // );
+    return (
+      <SecretScanningDataSourceForm
+        onCancel={() => setSelectedDataSource(null)}
+        type={selectedDataSource}
+        {...props}
+      />
+    );
   }
 
   return <SecretScanningDataSourceSelect onSelect={setSelectedDataSource} />;

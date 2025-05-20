@@ -1,31 +1,32 @@
-import { useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
 import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
+import { FormProvider, useForm } from "react-hook-form";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { SecretRotationV2ConfigurationFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2ConfigurationFields";
-import { SecretRotationV2DetailsFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2DetailsFields";
-import { SecretRotationV2ParametersFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2ParametersFields";
-import { SecretRotationV2ReviewFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2ReviewFields";
-import { SecretRotationV2SecretsMappingFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2SecretsMappingFields";
 import { Button } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { IS_ROTATION_DUAL_CREDENTIALS } from "@app/helpers/secretRotationsV2";
-import {
-  SecretRotation as SecretScanningDataSource,
-  TSecretRotationV2 as TSecretScanningDataSource,
-  useSecretRotationV2Option
-} from "@app/hooks/api/secretRotationsV2";
-import { useUpdateSecretRotationV2 } from "@app/hooks/api/secretRotationsV2/mutations";
-import { useCreateSecretScanningDataSource } from "@app/hooks/api/secretScanningV2/mutations";
 
 import {
-  SecretRotationV2FormSchema,
-  TSecretRotationV2Form,
-  TSecretScanningDataSourceForm
-} from "./schemas";
+  useCreateSecretScanningDataSource,
+  useUpdateSecretScanningDataSource
+} from "@app/hooks/api/secretScanningV2/mutations";
+
+import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import {
+  SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP,
+  SECRET_SCANNING_DATA_SOURCE_MAP
+} from "@app/helpers/secretScanningV2";
+import {
+  SecretScanningDataSource,
+  TSecretScanningDataSource
+} from "@app/hooks/api/secretScanningV2";
+import { SecretScanningDataSourceSchema, TSecretScanningDataSourceForm } from "./schemas";
+import { SecretScanningDataSourceConfigFields } from "./SecretScanningDataSourceConfigFields";
+import { SecretScanningDataSourceConnectionField } from "./SecretScanningDataSourceConnectionField";
+import { SecretScanningDataSourceDetailsFields } from "./SecretScanningDataSourceDetailsFields";
+import { SecretScanningDataSourceReviewFields } from "./SecretScanningDataSourceReviewFields";
 
 type Props = {
   onComplete: (dataSource: TSecretScanningDataSource) => void;
@@ -36,81 +37,59 @@ type Props = {
 
 const FORM_TABS: { name: string; key: string; fields: (keyof TSecretScanningDataSourceForm)[] }[] =
   [
+    // scott: this may need to be shown based on type in the future
     {
       name: "Connection",
       key: "connection",
       fields: ["connection"]
     },
-    { name: "Configuration", key: "config", fields: ["config", "isAutoSyncEnabled"] },
+    { name: "Configuration", key: "config", fields: ["config", "isAutoScanEnabled"] },
     { name: "Details", key: "details", fields: ["name", "description"] },
     { name: "Review", key: "review", fields: [] }
   ];
 
-const DEFAULT_ROTATION_INTERVAL = 30;
-
 export const SecretScanningDataSourceForm = ({ type, onComplete, onCancel, dataSource }: Props) => {
   const createDataSource = useCreateSecretScanningDataSource();
-  const updateSecretRotation = useUpdateSecretRotationV2();
+  const updateDataSource = useUpdateSecretScanningDataSource();
   const { currentWorkspace } = useWorkspace();
-  const { name: rotationType } = [type];
+  const { name: sourceType } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
 
-  const { rotationOption } = useSecretRotationV2Option(type);
-
-  const formMethods = useForm<TSecretRotationV2Form>({
-    resolver: zodResolver(SecretRotationV2FormSchema),
-    defaultValues: dataSource
-      ? {
-          ...dataSource,
-          environment: currentWorkspace?.environments.find((env) => env.slug === envSlug),
-          secretPath
-        }
-      : {
-          type,
-          isAutoRotationEnabled: IS_ROTATION_DUAL_CREDENTIALS[type],
-          rotationInterval: DEFAULT_ROTATION_INTERVAL,
-          rotateAtUtc: {
-            hours: 0,
-            minutes: 0
-          },
-          environment: currentWorkspace?.environments.find((env) => env.slug === envSlug),
-          secretPath,
-          ...(rotationOption!.template as object) // can't infer type since we don't know which specific type it is
-        },
+  const formMethods = useForm<TSecretScanningDataSourceForm>({
+    resolver: zodResolver(SecretScanningDataSourceSchema),
+    defaultValues: dataSource ?? {
+      type,
+      isAutoScanEnabled: true // scott: this may need to be derived from type in future
+    },
     reValidateMode: "onChange"
   });
 
-  const onSubmit = async ({
-    environment,
-    connection,
+  console.log("formMethods", formMethods.formState.errors);
 
-    ...formData
-  }: TSecretRotationV2Form) => {
+  const onSubmit = async ({ connection, ...formData }: TSecretScanningDataSourceForm) => {
     const mutation = dataSource
-      ? updateSecretRotation.mutateAsync({
+      ? updateDataSource.mutateAsync({
           dataSourceId: dataSource.id,
           projectId: dataSource.projectId,
           ...formData
         })
       : createDataSource.mutateAsync({
           ...formData,
-
-          connectionId: connection.id,
-          environment: environment.slug,
+          connectionId: connection?.id,
           projectId: currentWorkspace.id
         });
     try {
       const rotation = await mutation;
 
       createNotification({
-        text: `Successfully ${dataSource ? "updated" : "created"} ${rotationType} Rotation`,
+        text: `Successfully ${dataSource ? "updated" : "created"} ${sourceType} Data Source`,
         type: "success"
       });
       onComplete(rotation);
     } catch (err: any) {
       createNotification({
-        title: `Failed to ${dataSource ? "update" : "create"} ${rotationType} Rotation`,
+        title: `Failed to ${dataSource ? "update" : "create"} ${sourceType} Data Source`,
         text: err.message,
         type: "error"
       });
@@ -186,22 +165,21 @@ export const SecretScanningDataSourceForm = ({ type, onComplete, onCancel, dataS
           </Tab.List>
           <Tab.Panels>
             <Tab.Panel>
-              <SecretRotationV2ConfigurationFields
-                isUpdate={Boolean(dataSource)}
-                environments={environments}
-              />
+              <p className="mb-4 text-sm text-bunker-300">
+                Select the{" "}
+                {APP_CONNECTION_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]].name}{" "}
+                Connection for this Data Source.
+              </p>
+              <SecretScanningDataSourceConnectionField />
             </Tab.Panel>
             <Tab.Panel>
-              <SecretRotationV2ParametersFields />
+              <SecretScanningDataSourceConfigFields />
             </Tab.Panel>
             <Tab.Panel>
-              <SecretRotationV2SecretsMappingFields />
+              <SecretScanningDataSourceDetailsFields />
             </Tab.Panel>
             <Tab.Panel>
-              <SecretRotationV2DetailsFields />
-            </Tab.Panel>
-            <Tab.Panel>
-              <SecretRotationV2ReviewFields />
+              <SecretScanningDataSourceReviewFields />
             </Tab.Panel>
           </Tab.Panels>
         </Tab.Group>
@@ -213,7 +191,7 @@ export const SecretScanningDataSourceForm = ({ type, onComplete, onCancel, dataS
           isDisabled={isSubmitting}
           colorSchema="secondary"
         >
-          {isFinalStep ? `${dataSource ? "Update" : "Create"} Secret Rotation` : "Next"}
+          {isFinalStep ? `${dataSource ? "Update" : "Create"} Data Source` : "Next"}
         </Button>
         <Button onClick={handlePrev} colorSchema="secondary">
           Back

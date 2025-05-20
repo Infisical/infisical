@@ -29,13 +29,13 @@ export const registerSecretScanningEndpoints = <
     name: string;
     projectId: string;
     connectionId?: string;
-    config: I["config"];
+    config: Partial<I["config"]>;
     description?: string | null;
     isAutoScanEnabled?: boolean;
   }>;
   updateSchema: z.ZodType<{
     name?: string;
-    config?: I["config"];
+    config?: Partial<I["config"]>;
     description?: string | null;
     isAutoScanEnabled?: boolean;
   }>;

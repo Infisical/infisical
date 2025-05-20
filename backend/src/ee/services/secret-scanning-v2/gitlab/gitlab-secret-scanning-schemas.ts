@@ -9,7 +9,7 @@ import {
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 export const GitLabSecretScanningDataSourceConfigSchema = z.object({
-  includeProjects: z.array(z.string()).optional().default(["*"])
+  includeProjects: z.array(z.string()).default(["*"])
 });
 
 export const GitLabSecretScanningDataSourceSchema = BaseSecretScanningDataSourceSchema({

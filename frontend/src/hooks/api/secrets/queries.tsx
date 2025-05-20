@@ -1,7 +1,7 @@
 /* eslint-disable no-param-reassign */
-import { useCallback, useMemo } from "react";
 import { useQueries, useQuery, UseQueryOptions } from "@tanstack/react-query";
 import axios from "axios";
+import { useCallback, useMemo } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
@@ -88,7 +88,7 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       path: el.secretPath,
       secretMetadata: el.secretMetadata,
       isRotatedSecret: el.isRotatedSecret,
-      dataSourceId: el.rotationId
+      rotationId: el.rotationId
     };
 
     if (el.type === SecretType.Personal) {

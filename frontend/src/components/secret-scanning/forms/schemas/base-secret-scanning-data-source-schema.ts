@@ -13,5 +13,5 @@ export const BaseSecretScanningDataSourceSchema = ({ isConnectionRequired }: Sch
     connection: isConnectionRequired
       ? z.object({ name: z.string(), id: z.string().uuid() })
       : z.null().or(z.undefined()),
-    isAutoSyncEnabled: z.boolean()
+    isAutoScanEnabled: z.boolean()
   });

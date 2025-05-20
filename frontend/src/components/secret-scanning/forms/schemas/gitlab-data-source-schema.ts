@@ -8,7 +8,7 @@ export const GitLabDataSourceSchema = z
   .object({
     type: z.literal(SecretScanningDataSource.GitLab),
     config: z.object({
-      includeProjects: z.string().array()
+      includeProjects: z.string().array().min(1, "One or more projects required")
     })
   })
   .merge(BaseSecretScanningDataSourceSchema({ isConnectionRequired: true }));

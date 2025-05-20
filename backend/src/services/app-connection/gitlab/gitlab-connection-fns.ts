@@ -7,7 +7,7 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { GitLabConnectionMethod } from "./gitlab-connection-enums";
-import { TGitLabConnectionConfig } from "./gitlab-connection-types";
+import { TGitLabConnection, TGitLabConnectionConfig } from "./gitlab-connection-types";
 
 export const getGitLabConnectionClient = async (config: TGitLabConnectionConfig) => {
   const { accessToken, instanceUrl } = config.credentials;
@@ -52,4 +52,17 @@ export const validateGitLabConnectionCredentials = async (config: TGitLabConnect
   }
 
   return config.credentials;
+};
+
+export const listGitLabConnectionProjects = async (appConnection: TGitLabConnection) => {
+  const client = await getGitLabConnectionClient(appConnection);
+
+  const projects = await client.Projects.all({
+    archived: false,
+    includePendingDelete: false,
+    membership: true,
+    includeHidden: false,
+    imported: false
+  });
+  return projects;
 };

@@ -43,7 +43,7 @@ export const registerV2EERoutes = async (server: FastifyZodProvider) => {
 
       // register service-specific secret rotation endpoints (gitlab/github, etc.)
       for await (const [type, router] of Object.entries(SECRET_SCANNING_REGISTER_ROUTER_MAP)) {
-        await secretScanningV2Router.register(router, { prefix: `/${type}` });
+        await secretScanningV2Router.register(router, { prefix: `data-sources/${type}` });
       }
     },
     { prefix: "/secret-scanning" }
