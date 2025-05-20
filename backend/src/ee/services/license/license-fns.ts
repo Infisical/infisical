@@ -2,9 +2,9 @@ import axios, { AxiosError } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
+import { logger } from "@app/lib/logger";
 
 import { TFeatureSet } from "./license-types";
-import { logger } from "@app/lib/logger";
 
 export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   _id: null,

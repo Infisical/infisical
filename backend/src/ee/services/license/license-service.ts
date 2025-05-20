@@ -379,7 +379,7 @@ export const licenseServiceFactory = ({
         message: `Organization with ID '${orgId}' not found`
       });
     }
-    if (instanceType !== InstanceType.OnPrem && instanceType !== InstanceType.EnterpriseOnPremOffline) {
+    if (instanceType === InstanceType.Cloud) {
       const { data } = await licenseServerCloudApi.request.get(
         `/api/license-server/v1/customers/${organization.customerId}/cloud-plan/billing`
       );
@@ -413,7 +413,7 @@ export const licenseServiceFactory = ({
     const projects = await projectDAL.find({ orgId });
     const projectCount = projects.length;
 
-    if (instanceType !== InstanceType.OnPrem && instanceType !== InstanceType.EnterpriseOnPremOffline) {
+    if (instanceType === InstanceType.Cloud) {
       const { data } = await licenseServerCloudApi.request.get<{
         head: { name: string }[];
         rows: { name: string; allowed: boolean }[];
