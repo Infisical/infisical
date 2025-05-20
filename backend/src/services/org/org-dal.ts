@@ -206,7 +206,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .where(`${TableName.OrgMembership}.orgId`, orgId)
         .count("*")
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .where({ isGhost: false })
+        .where({ isGhost: false, [`${TableName.OrgMembership}.isActive` as "isActive"]: true })
         .first();
 
       return parseInt((count as unknown as CountResult).count || "0", 10);

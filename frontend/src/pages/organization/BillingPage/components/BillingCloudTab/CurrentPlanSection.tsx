@@ -1,4 +1,9 @@
-import { faCircleCheck, faCircleXmark, faFileInvoice } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCircleCheck,
+  faCircleXmark,
+  faFileInvoice,
+  faInfoCircle
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
@@ -10,6 +15,7 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
@@ -48,9 +54,26 @@ export const CurrentPlanSection = () => {
               data &&
               data?.rows?.length > 0 &&
               data.rows.map(({ name, allowed, used }) => {
+                let toolTipText = null;
+                if (name === "Organization identity limit") {
+                  toolTipText =
+                    "Identity count is calculated by the total number of user identities and machine identities.";
+                }
+
                 return (
                   <Tr key={`current-plan-row-${name}`} className="h-12">
-                    <Td>{name}</Td>
+                    <Td>
+                      {name}
+                      {toolTipText && (
+                        <Tooltip content={toolTipText}>
+                          <FontAwesomeIcon
+                            icon={faInfoCircle}
+                            className="relative bottom-2 left-2"
+                            size="xs"
+                          />
+                        </Tooltip>
+                      )}
+                    </Td>
                     <Td>{displayCell(allowed)}</Td>
                     <Td>{used}</Td>
                   </Tr>
