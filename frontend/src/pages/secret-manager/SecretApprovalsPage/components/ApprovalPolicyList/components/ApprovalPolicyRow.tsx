@@ -23,6 +23,7 @@ import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { ApproverType } from "@app/hooks/api/secretApproval/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
+import { ProjectPermissionApprovalActions } from "@app/context/ProjectPermissionContext/types";
 
 interface IPolicy {
   id: string;
@@ -117,7 +118,7 @@ export const ApprovalPolicyRow = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="min-w-[100%] p-1">
             <ProjectPermissionCan
-              I={ProjectPermissionActions.Edit}
+              I={ProjectPermissionApprovalActions.Edit}
               a={ProjectPermissionSub.SecretApproval}
             >
               {(isAllowed) => (
@@ -136,7 +137,7 @@ export const ApprovalPolicyRow = ({
               )}
             </ProjectPermissionCan>
             <ProjectPermissionCan
-              I={ProjectPermissionActions.Delete}
+              I={ProjectPermissionApprovalActions.Delete}
               a={ProjectPermissionSub.SecretApproval}
             >
               {(isAllowed) => (

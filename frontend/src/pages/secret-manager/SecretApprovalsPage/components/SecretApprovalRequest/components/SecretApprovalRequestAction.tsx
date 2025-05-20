@@ -18,6 +18,11 @@ import {
   usePerformSecretApprovalRequestMerge,
   useUpdateSecretApprovalRequestStatus
 } from "@app/hooks/api";
+import {
+  ProjectPermissionApprovalActions,
+  ProjectPermissionSub,
+  useProjectPermission
+} from "@app/context";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 
 type Props = {
@@ -48,6 +53,12 @@ export const SecretApprovalRequestAction = ({
 
   const { mutateAsync: updateSecretStatusChange, isPending: isStatusChanging } =
     useUpdateSecretApprovalRequestStatus();
+    
+  const { permission } = useProjectPermission();
+  const canBypassApprovalPermission = permission.can(
+    ProjectPermissionApprovalActions.AllowChangeBypass,
+    ProjectPermissionSub.SecretApproval
+  );
 
   const [byPassApproval, setByPassApproval] = useState(false);
   const [bypassReason, setBypassReason] = useState("");
@@ -113,7 +124,7 @@ export const SecretApprovalRequestAction = ({
               At least {approvals} approving review required
               {Boolean(statusChangeByEmail) && `. Reopened by ${statusChangeByEmail}`}
             </span>
-            {isSoftEnforcement && !isMergable && (
+            {isSoftEnforcement && !isMergable && canBypassApprovalPermission && (
               <div className="mt-2 flex flex-col space-y-2">
                 <Checkbox
                   onCheckedChange={(checked) => setByPassApproval(checked === true)}

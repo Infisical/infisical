@@ -20,7 +20,8 @@ export {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub,
-  useProjectPermission
+  useProjectPermission,
+  ProjectPermissionApprovalActions
 } from "./ProjectPermissionContext";
 export { useServerConfig } from "./ServerConfigContext";
 export { useSubscription } from "./SubscriptionContext";

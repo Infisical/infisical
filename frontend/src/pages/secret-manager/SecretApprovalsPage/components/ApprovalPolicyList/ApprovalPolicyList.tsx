@@ -50,6 +50,7 @@ import { TAccessApprovalPolicy, Workspace } from "@app/hooks/api/types";
 
 import { AccessPolicyForm } from "./components/AccessPolicyModal";
 import { ApprovalPolicyRow } from "./components/ApprovalPolicyRow";
+import { ProjectPermissionApprovalActions } from "@app/context/ProjectPermissionContext/types";
 
 interface IProps {
   workspaceId: string;
@@ -61,8 +62,10 @@ const useApprovalPolicies = (permission: TProjectPermission, currentWorkspace?: 
       projectSlug: currentWorkspace?.slug as string,
       options: {
         enabled:
-          permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
-          !!currentWorkspace?.slug
+          permission.can(
+            ProjectPermissionApprovalActions.Read,
+            ProjectPermissionSub.SecretApproval
+          ) && !!currentWorkspace?.slug
       }
     }
   );
@@ -71,8 +74,10 @@ const useApprovalPolicies = (permission: TProjectPermission, currentWorkspace?: 
       workspaceId: currentWorkspace?.id as string,
       options: {
         enabled:
-          permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
-          !!currentWorkspace?.id
+          permission.can(
+            ProjectPermissionApprovalActions.Read,
+            ProjectPermissionSub.SecretApproval
+          ) && !!currentWorkspace?.id
       }
     }
   );
@@ -160,7 +165,7 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
         </div>
         <div>
           <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
+            I={ProjectPermissionApprovalActions.Create}
             a={ProjectPermissionSub.SecretApproval}
           >
             {(isAllowed) => (

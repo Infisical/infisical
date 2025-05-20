@@ -11,5 +11,6 @@ export {
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSshHostActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  ProjectPermissionApprovalActions
 } from "./types";
