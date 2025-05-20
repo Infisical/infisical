@@ -751,7 +751,7 @@ For organizations that work with US government agencies, FIPS compliance is almo
             stringData:
               # ... Other environment variables ...
               HSM_LIB_PATH: "/etc/fortanix-hsm/fortanix_pkcs11_4.37.2554.so"  # Path to the PKCS#11 library in the container
-              HSM_PIN: "MDE3YWUxO..."  # Your Fortanix app API key used for authentication
+              HSM_PIN: "<your-fortanix-api-key>"  # Your Fortanix app API key used for authentication
               HSM_SLOT: "0"            # Slot value (can be set to 0 for Fortanix HSM as it's arbitrary)
               HSM_KEY_LABEL: "hsm-key-label"  # Label to identify the encryption key in the HSM
               FORTANIX_PKCS11_CONFIG_PATH: "/etc/fortanix-hsm/pkcs11.conf"  # Path to Fortanix configuration file
