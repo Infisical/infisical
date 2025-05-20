@@ -212,21 +212,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: project.id,
         event: {
           type: EventType.CREATE_PROJECT,
-          metadata: {
-            actorId: req.permission.id,
-            actor: req.permission.type,
-            actorOrgId: req.permission.orgId,
-            actorAuthMethod: req.permission.authMethod,
-            ...(req.body.projectName !== undefined && { workspaceName: req.body.projectName }),
-            ...(req.body.projectDescription !== undefined && { workspaceDescription: req.body.projectDescription }),
-            ...(req.body.slug !== undefined && { slug: req.body.slug }),
-            ...(req.body.kmsKeyId !== undefined && { kmsKeyId: req.body.kmsKeyId }),
-            ...(req.body.template !== undefined && { template: req.body.template }),
-            ...(req.body.type !== undefined && { type: req.body.type }),
-            ...(req.body.shouldCreateDefaultEnvs !== undefined && {
-              createDefaultEnvs: req.body.shouldCreateDefaultEnvs
-            })
-          }
+          metadata: req.body
         }
       });
 
@@ -278,7 +264,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: project.id,
         event: {
           type: EventType.DELETE_PROJECT,
-          metadata: {}
+          metadata: {
+            projectId: project.id,
+            projectName: project.name
+          }
         }
       });
 
@@ -367,12 +356,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: project.id,
         event: {
           type: EventType.UPDATE_PROJECT,
-          metadata: {
-            ...(req.body.name !== undefined && { name: req.body.name }),
-            ...(req.body.description !== undefined && { description: req.body.description }),
-            ...(req.body.autoCapitalization !== undefined && { autoCapitalization: req.body.autoCapitalization }),
-            ...(req.body.hasDeleteProtection !== undefined && { hasDeleteProtection: req.body.hasDeleteProtection })
-          }
+          metadata: req.body
         }
       });
 

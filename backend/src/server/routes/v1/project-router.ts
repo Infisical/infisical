@@ -270,7 +270,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         event: {
           type: EventType.DELETE_PROJECT,
-          metadata: {}
+          metadata: {
+            projectId: workspace.id,
+            projectName: workspace.name
+          }
         }
       });
 
@@ -315,9 +318,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         event: {
           type: EventType.UPDATE_PROJECT,
-          metadata: {
-            name: req.body.name
-          }
+          metadata: req.body
         }
       });
 
@@ -406,14 +407,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         event: {
           type: EventType.UPDATE_PROJECT,
-          metadata: {
-            ...(req.body.name !== undefined && { name: req.body.name }),
-            ...(req.body.description !== undefined && { description: req.body.description }),
-            ...(req.body.autoCapitalization !== undefined && { autoCapitalization: req.body.autoCapitalization }),
-            ...(req.body.hasDeleteProtection !== undefined && { hasDeleteProtection: req.body.hasDeleteProtection }),
-            ...(req.body.slug !== undefined && { slug: req.body.slug }),
-            ...(req.body.secretSharing !== undefined && { secretSharing: req.body.secretSharing })
-          }
+          metadata: req.body
         }
       });
 
@@ -460,9 +454,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         event: {
           type: EventType.UPDATE_PROJECT,
-          metadata: {
-            autoCapitalization: req.body.autoCapitalization
-          }
+          metadata: req.body
         }
       });
 
@@ -510,9 +502,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         event: {
           type: EventType.UPDATE_PROJECT,
-          metadata: {
-            hasDeleteProtection: req.body.hasDeleteProtection
-          }
+          metadata: req.body
         }
       });
 
@@ -560,9 +550,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: workspace.id,
         event: {
           type: EventType.UPDATE_PROJECT,
-          metadata: {
-            pitVersionLimit: req.body.pitVersionLimit
-          }
+          metadata: req.body
         }
       });
 
@@ -610,9 +598,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: workspace.id,
         event: {
           type: EventType.UPDATE_PROJECT,
-          metadata: {
-            auditLogsRetentionDays: req.body.auditLogsRetentionDays
-          }
+          metadata: req.body
         }
       });
 

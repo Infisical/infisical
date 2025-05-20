@@ -1,3 +1,4 @@
+import { ProjectType } from "@app/db/schemas";
 import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
@@ -2912,22 +2913,55 @@ interface MicrosoftTeamsWorkflowIntegrationUpdateEvent {
 
 interface OrgUpdateEvent {
   type: EventType.UPDATE_ORG;
-  metadata: Record<string, string | boolean | object | number>; // The update parameters
+  metadata: {
+    name?: string;
+    slug?: string;
+    authEnforced?: boolean;
+    scimEnabled?: boolean;
+    defaultMembershipRoleSlug?: string;
+    enforceMfa?: boolean;
+    selectedMfaMethod?: string;
+    allowSecretSharingOutsideOrganization?: boolean;
+    bypassOrgAuthEnabled?: boolean;
+    userTokenExpiration?: string;
+    secretsProductEnabled?: boolean;
+    pkiProductEnabled?: boolean;
+    kmsProductEnabled?: boolean;
+    sshProductEnabled?: boolean;
+    scannerProductEnabled?: boolean;
+    shareSecretsProductEnabled?: boolean;
+  };
 }
 
 interface ProjectCreateEvent {
   type: EventType.CREATE_PROJECT;
-  metadata: Record<string, string | boolean | object | number | null>; // The creation parameters
+  metadata: {
+    projectName: string;
+    slug?: string;
+    type: ProjectType;
+  };
 }
 
 interface ProjectUpdateEvent {
   type: EventType.UPDATE_PROJECT;
-  metadata: Record<string, string | boolean | object | number>; // The update parameters
+  metadata: {
+    name?: string;
+    description?: string;
+    autoCapitalization?: boolean;
+    hasDeleteProtection?: boolean;
+    slug?: string;
+    secretSharing?: boolean;
+    pitVersionLimit?: number;
+    auditLogsRetentionDays?: number;
+  };
 }
 
 interface ProjectDeleteEvent {
   type: EventType.DELETE_PROJECT;
-  metadata: Record<string, string>;
+  metadata: {
+    projectId: string;
+    projectName: string;
+  };
 }
 
 export type Event =
