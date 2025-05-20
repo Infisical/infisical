@@ -259,7 +259,7 @@ func (r *InfisicalPushSecretReconciler) SetupWithManager(mgr ctrl.Manager) error
 		)
 
 	if !r.IsNamespaceScoped {
-		r.BaseLogger.Info("Watching ClusterGenerators for namespace scoped operator")
+		r.BaseLogger.Info("Watching ClusterGenerators for non-namespace scoped operator")
 		controllerManager.Watches(
 			&source.Kind{Type: &secretsv1alpha1.ClusterGenerator{}},
 			handler.EnqueueRequestsFromMapFunc(r.findPushSecretsForClusterGenerator),
