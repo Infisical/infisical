@@ -189,16 +189,15 @@ export const authPaswordServiceFactory = ({
       throw new BadRequestError({ message: `User encryption key not found for user with ID '${userId}'` });
     }
 
-    if (!user.hashedPassword) {
-      throw new BadRequestError({ message: "Unable to reset password, no password is set" });
-    }
-
     if (!user.authMethods?.includes(AuthMethod.EMAIL)) {
       throw new BadRequestError({ message: "Unable to reset password, no email authentication method is configured" });
     }
 
     // we check the old password if the user is resetting their password while logged in
     if (type === ResetPasswordV2Type.LoggedInReset) {
+      if (!user.hashedPassword) {
+        throw new BadRequestError({ message: "Unable to change password, no password is set" });
+      }
       if (!oldPassword) {
         throw new BadRequestError({ message: "Current password is required." });
       }
