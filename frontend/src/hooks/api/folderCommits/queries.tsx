@@ -112,14 +112,16 @@ const fetchRollback = async (
   commitId: string,
   projectId: string,
   deepRollback: boolean,
-  message?: string
+  message?: string,
+  envId?: string
 ) => {
   const { data } = await apiRequest.post<{ success: boolean }>(
     `/api/v1/pit/commits/${projectId}/${commitId}/rollback`,
     {
       folderId,
       deepRollback,
-      message
+      message,
+      envId
     }
   );
   return data;
@@ -164,7 +166,8 @@ export const useCommitRollback = ({
   folderId,
   deepRollback,
   environment,
-  directory
+  directory,
+  envId
 }: {
   workspaceId: string;
   commitId: string;
@@ -172,11 +175,12 @@ export const useCommitRollback = ({
   deepRollback: boolean;
   environment: string;
   directory: string;
+  envId: string;
 }) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (message: string) =>
-      fetchRollback(folderId, commitId, workspaceId, deepRollback, message),
+      fetchRollback(folderId, commitId, workspaceId, deepRollback, message, envId),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [

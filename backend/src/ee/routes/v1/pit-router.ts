@@ -440,7 +440,8 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         folderId: z.string().trim(),
         deepRollback: z.boolean().default(false),
-        message: z.string().trim().optional()
+        message: z.string().trim().optional(),
+        envId: z.string().trim()
       }),
       response: {
         200: z.object({
@@ -467,8 +468,8 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
 
       if (req.body.deepRollback) {
         await server.services.folderCommit.deepRollbackFolder(
-          latestCommit.id,
-          req.body.folderId,
+          req.params.commitId,
+          req.body.envId,
           req.permission.id,
           req.permission.type,
           req.params.workspaceId
