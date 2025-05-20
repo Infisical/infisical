@@ -102,7 +102,7 @@ export const setupLicenseRequestWithStore = (baseURL: string, refreshUrl: string
       const errStatusCode = Number((err as AxiosError)?.response?.status);
       logger.error((err as AxiosError)?.response?.data, "License server call error");
       // eslint-disable-next-line
-      if (errStatusCode > 400 && errStatusCode < 500 && !(originalRequest as any)._retry) {
+      if ((errStatusCode === 401 || errStatusCode === 403) && !(originalRequest as any)._retry) {
         // eslint-disable-next-line
         (originalRequest as any)._retry = true; // injected
 
