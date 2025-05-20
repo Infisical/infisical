@@ -17,11 +17,11 @@ export const SecretSharingSettingsPage = withPermission(
     return (
       <>
         <Helmet>
-          <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
+          <title>{t("common.head-title", { title: "Secret Share Settings" })}</title>
         </Helmet>
         <div className="flex w-full justify-center bg-bunker-800 text-white">
           <div className="w-full max-w-7xl">
-            <PageHeader title={t("settings.org.title")} />
+            <PageHeader title="Secret Share Settings" />
             <SecretSharingSettingsTabGroup />
           </div>
         </div>
