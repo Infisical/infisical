@@ -14,7 +14,8 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionApprovalActions } from "@app/context/ProjectPermissionContext/types";
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
 import { Approver } from "@app/hooks/api/accessApproval/types";
@@ -23,7 +24,6 @@ import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { ApproverType } from "@app/hooks/api/secretApproval/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
-import { ProjectPermissionApprovalActions } from "@app/context/ProjectPermissionContext/types";
 
 interface IPolicy {
   id: string;

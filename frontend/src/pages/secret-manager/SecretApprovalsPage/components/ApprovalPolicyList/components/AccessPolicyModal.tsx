@@ -126,8 +126,6 @@ export const AccessPolicyForm = ({
 
   const policyName = policyDetails[watch("policyType")]?.name || "Policy";
 
-  const approversRequired = watch("approvals") || 1;
-
   const handleCreatePolicy = async ({
     environment,
     groupApprovers,
@@ -431,7 +429,7 @@ export const AccessPolicyForm = ({
                   errorText={error?.message}
                 >
                   <Switch
-                    id="self-approvals"
+                    id="bypass-approvals"
                     thumbClassName="bg-mineshaft-800"
                     isChecked={value === EnforcementLevel.Soft}
                     onCheckedChange={(v) =>

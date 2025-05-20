@@ -10,6 +10,7 @@ export {
 export type { TProjectPermission } from "./ProjectPermissionContext";
 export {
   ProjectPermissionActions,
+  ProjectPermissionApprovalActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCmekActions,
   ProjectPermissionDynamicSecretActions,
@@ -20,8 +21,7 @@ export {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  ProjectPermissionApprovalActions
+  useProjectPermission
 } from "./ProjectPermissionContext";
 export { useServerConfig } from "./ServerConfigContext";
 export { useSubscription } from "./SubscriptionContext";

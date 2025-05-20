@@ -29,13 +29,13 @@ import {
   Tr
 } from "@app/components/v2";
 import {
-  ProjectPermissionActions,
   ProjectPermissionSub,
   TProjectPermission,
   useProjectPermission,
   useSubscription,
   useWorkspace
 } from "@app/context";
+import { ProjectPermissionApprovalActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteAccessApprovalPolicy,
@@ -50,7 +50,6 @@ import { TAccessApprovalPolicy, Workspace } from "@app/hooks/api/types";
 
 import { AccessPolicyForm } from "./components/AccessPolicyModal";
 import { ApprovalPolicyRow } from "./components/ApprovalPolicyRow";
-import { ProjectPermissionApprovalActions } from "@app/context/ProjectPermissionContext/types";
 
 interface IProps {
   workspaceId: string;

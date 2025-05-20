@@ -15,14 +15,14 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { Button, Checkbox, FormControl, Input } from "@app/components/v2";
 import {
-  usePerformSecretApprovalRequestMerge,
-  useUpdateSecretApprovalRequestStatus
-} from "@app/hooks/api";
-import {
   ProjectPermissionApprovalActions,
   ProjectPermissionSub,
   useProjectPermission
 } from "@app/context";
+import {
+  usePerformSecretApprovalRequestMerge,
+  useUpdateSecretApprovalRequestStatus
+} from "@app/hooks/api";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 
 type Props = {
@@ -53,7 +53,7 @@ export const SecretApprovalRequestAction = ({
 
   const { mutateAsync: updateSecretStatusChange, isPending: isStatusChanging } =
     useUpdateSecretApprovalRequestStatus();
-    
+
   const { permission } = useProjectPermission();
   const canBypassApprovalPermission = permission.can(
     ProjectPermissionApprovalActions.AllowChangeBypass,
