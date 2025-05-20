@@ -38,7 +38,7 @@ Enabling HSM encryption has a set of key benefits:
 ### Requirements
 - An Infisical instance with a version number that is equal to or greater than `v0.91.0`.
 - If you are using Docker, your instance must be using the `infisical/infisical-fips` image.
-- An HSM device from a provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), [Fortanix HSM SaaS](https://www.fortanix.com/platform/data-security-manager), or others.
+- An HSM device from a provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), [Fortanix HSM](https://www.fortanix.com/platform/data-security-manager), or others.
 
 
 ### FIPS Compliance
@@ -53,14 +53,14 @@ For organizations that work with US government agencies, FIPS compliance is almo
 
 <Steps>
     <Step title="Setting up an HSM Device">
-        To set up HSM encryption, you need to configure an HSM provider and HSM key. The HSM provider is used to connect to the HSM device, and the HSM key is used to encrypt Infisical's KMS keys. We recommend using a Cloud HSM provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), or [Fortanix HSM SaaS](https://fortanix.com/).
+        To set up HSM encryption, you need to configure an HSM provider and HSM key. The HSM provider is used to connect to the HSM device, and the HSM key is used to encrypt Infisical's KMS keys. We recommend using a Cloud HSM provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), or [Fortanix HSM](https://www.fortanix.com/platform/data-security-manager).
 
         You need to follow the instructions provided by the HSM provider to set up the HSM device. Once the HSM device is set up, the HSM device can be used within Infisical.
 
         After setting up the HSM from your provider, you will have a set of files that you can use to access the HSM. These files need to be present on the machine where Infisical is running.
         If you are using containers, you will need to mount the folder where these files are stored as a volume in the container.
 
-        The setup process for an HSM device varies depending on the provider. We have created guides for Thales Luna Cloud HSM and Fortanix HSM SaaS, which you can find below.
+        The setup process for an HSM device varies depending on the provider. We have created guides for Thales Luna Cloud HSM and Fortanix HSM, which you can find below.
         
     </Step>
     <Step title="Configure HSM on Infisical">
@@ -255,16 +255,18 @@ For organizations that work with US government agencies, FIPS compliance is almo
         </Steps>
         After following these steps, your Docker setup will be ready to use HSM encryption.
       </Tab>
-      <Tab title="Fortanix HSM SaaS">
+      <Tab title="Fortanix HSM">
         <Steps>
-          <Step title="Set up Fortanix HSM SaaS">
-            To use Fortanix HSM SaaS with Infisical, you need to:
+          <Step title="Set up Fortanix HSM">
+            To use Fortanix HSM with Infisical, you need to:
             
             1. Create an App in Fortanix:
                - Set Interface value to be PKCS#11
                - Select API key as authentication method
                - Assign app to a group
             
+              ![Fortanix HSM Setup](/images/platform/kms/hsm/fortanix-hsm-setup.png)
+
             2. Take note of the domain (e.g., apac.smartkey.io). You will need this to set up the configuration file for the Fortanix client.
           </Step>
           
@@ -279,7 +281,7 @@ For organizations that work with US government agencies, FIPS compliance is almo
             retry_timeout_millis = 60000
             ```
             
-            Note: Replace `apac.smartkey.io` with your actual Fortanix domain if different. For more details about the configuration file format and additional options, refer to the [Fortanix PKCS#11 Configuration File Documentation](https://support.fortanix.com/docs/clients-pkcs11-library#511-configuration-file-format). For more details about the configuration file format and additional options, refer to the [Fortanix PKCS#11 Configuration File Documentation](https://support.fortanix.com/docs/clients-pkcs11-library#511-configuration-file-format).
+            Note: Replace `apac.smartkey.io` with your actual Fortanix domain if different. For more details about the configuration file format and additional options, refer to the [Fortanix PKCS#11 Configuration File Documentation](https://support.fortanix.com/docs/clients-pkcs11-library#511-configuration-file-format).
           </Step>
           
           <Step title="Create a directory for Fortanix files">
@@ -298,15 +300,15 @@ For organizations that work with US government agencies, FIPS compliance is almo
           </Step>
           
           <Step title="Run Docker">
-            Run Docker with Fortanix HSM SaaS by mounting the directory and setting the required environment variables:
+            Run Docker with Fortanix HSM by mounting the directory and setting the required environment variables:
             
             ```bash
             docker run -p 80:8080 \
               -v /etc/fortanix-hsm:/etc/fortanix-hsm \
               -e HSM_LIB_PATH="/etc/fortanix-hsm/fortanix_pkcs11_4.37.2554.so" \  # Path to the PKCS#11 library
               -e HSM_PIN="MDE3YWUxO..." \  # Your Fortanix app API key used for authentication
-              -e HSM_SLOT=0 \              # Slot value (arbitrary for Fortanix HSM SaaS)
-              -e HSM_KEY_LABEL="my-random-label" \  # Label to identify the encryption key in the HSM
+              -e HSM_SLOT=0 \              # Slot value (arbitrary for Fortanix HSM)
+              -e HSM_KEY_LABEL="hsm-key-label" \  # Label to identify the encryption key in the HSM
               -e FORTANIX_PKCS11_CONFIG_PATH="/etc/fortanix-hsm/pkcs11.conf" \  # Path to Fortanix configuration file
               
               # The rest are unrelated to HSM setup...
@@ -319,11 +321,11 @@ For organizations that work with US government agencies, FIPS compliance is almo
             ```
             
             <Warning>
-              Note: Fortanix HSM SaaS integration only works for AMD64 CPU architectures.
+              Note: Fortanix HSM integration only works for AMD64 CPU architectures.
             </Warning>
           </Step>
         </Steps>
-        After following these steps, your Docker setup will be ready to use Fortanix HSM SaaS encryption.
+        After following these steps, your Docker setup will be ready to use Fortanix HSM encryption.
       </Tab>
     </Tabs>
   </Tab>
@@ -639,16 +641,18 @@ For organizations that work with US government agencies, FIPS compliance is almo
         </Steps>
         After following these steps, your Kubernetes setup will be ready to use HSM encryption.
       </Tab>
-      <Tab title="Fortanix HSM SaaS">
+      <Tab title="Fortanix HSM">
         <Steps>
-          <Step title="Set up Fortanix HSM SaaS">
-            First, you need to set up Fortanix HSM SaaS by:
+          <Step title="Set up Fortanix HSM">
+            First, you need to set up Fortanix HSM by:
             
             1. Creating an App in Fortanix:
                - Set Interface value to be PKCS#11
                - Select API key as authentication method
                - Assign app to a group
-            
+
+              ![Fortanix HSM Setup](/images/platform/kms/hsm/fortanix-hsm-setup.png)
+
             2. Take note of the domain (e.g., apac.smartkey.io). You will need this when setting up the configuration file.
           </Step>
           
@@ -748,8 +752,8 @@ For organizations that work with US government agencies, FIPS compliance is almo
               # ... Other environment variables ...
               HSM_LIB_PATH: "/etc/fortanix-hsm/fortanix_pkcs11_4.37.2554.so"  # Path to the PKCS#11 library in the container
               HSM_PIN: "MDE3YWUxO..."  # Your Fortanix app API key used for authentication
-              HSM_SLOT: "0"            # Slot value (can be set to 0 for Fortanix HSM SaaS as it's arbitrary)
-              HSM_KEY_LABEL: "my-random-label"  # Label to identify the encryption key in the HSM
+              HSM_SLOT: "0"            # Slot value (can be set to 0 for Fortanix HSM as it's arbitrary)
+              HSM_KEY_LABEL: "hsm-key-label"  # Label to identify the encryption key in the HSM
               FORTANIX_PKCS11_CONFIG_PATH: "/etc/fortanix-hsm/pkcs11.conf"  # Path to Fortanix configuration file
             ```
             
@@ -784,7 +788,7 @@ For organizations that work with US government agencies, FIPS compliance is almo
             ```
             
             <Warning>
-              Note: Fortanix HSM SaaS integration only works for AMD64 CPU architectures.
+              Note: Fortanix HSM integration only works for AMD64 CPU architectures.
             </Warning>
           </Step>
           
@@ -802,7 +806,7 @@ For organizations that work with US government agencies, FIPS compliance is almo
             ```
           </Step>
         </Steps>
-        After following these steps, your Kubernetes setup will be ready to use Fortanix HSM SaaS encryption.
+        After following these steps, your Kubernetes setup will be ready to use Fortanix HSM encryption.
       </Tab>
     </Tabs>
   </Tab>
