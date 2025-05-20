@@ -2178,10 +2178,14 @@ export const secretV2BridgeServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId: folder.projectId
     });
-    const secretVersions = await secretVersionDAL.findVersionsBySecretIdWithActors(secretId, folder.projectId, {
-      offset,
-      limit,
-      sort: [["createdAt", "desc"]]
+    const secretVersions = await secretVersionDAL.findVersionsBySecretIdWithActors({
+      secretId,
+      projectId: folder.projectId,
+      findOpt: {
+        offset,
+        limit,
+        sort: [["createdAt", "desc"]]
+      }
     });
     return secretVersions.map((el) => {
       const secretValueHidden = !hasSecretReadValueOrDescribePermission(
@@ -2856,6 +2860,73 @@ export const secretV2BridgeServiceFactory = ({
     };
   };
 
+  const getSecretVersionsByIds = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    secretId,
+    secretVersionNumbers,
+    folderId
+  }: TGetSecretVersionsDTO & {
+    secretVersionNumbers: string[];
+    folderId: string;
+  }) => {
+    const folder = await folderDAL.findById(folderId);
+    if (!folder) throw new NotFoundError({ message: `Folder with ID '${folderId}' not found` });
+
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
+
+    if (!folderWithPath) {
+      throw new NotFoundError({ message: `Folder with ID '${folder.id}' not found` });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: folder.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: folder.projectId
+    });
+    const secretVersions = await secretVersionDAL.findVersionsBySecretIdWithActors({
+      secretId,
+      projectId: folder.projectId,
+      secretVersions: secretVersionNumbers
+    });
+    return secretVersions.map((el) => {
+      const secretValueHidden = !hasSecretReadValueOrDescribePermission(
+        permission,
+        ProjectPermissionSecretActions.ReadValue,
+        {
+          environment: folder.environment.envSlug,
+          secretPath: folderWithPath.path,
+          secretName: el.key,
+          ...(el.tags?.length && {
+            secretTags: el.tags.map((tag) => tag.slug)
+          })
+        }
+      );
+
+      return reshapeBridgeSecret(
+        folder.projectId,
+        folder.environment.envSlug,
+        folderWithPath.path,
+        {
+          ...el,
+          value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
+          comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
+        },
+        secretValueHidden
+      );
+    });
+  };
+
   return {
     createSecret,
     deleteSecret,
@@ -2874,6 +2945,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretReferenceTree,
     getSecretsByFolderMappings,
     getSecretById,
-    getAccessibleSecrets
+    getAccessibleSecrets,
+    getSecretVersionsByIds
   };
 };

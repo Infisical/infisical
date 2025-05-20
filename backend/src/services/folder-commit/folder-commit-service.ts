@@ -1,12 +1,15 @@
 /* eslint-disable no-await-in-loop */
+import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { TSecretFolders, TSecretFolderVersions, TSecretVersionsV2 } from "@app/db/schemas";
+import { ActionProjectType, TSecretFolders, TSecretFolderVersions, TSecretVersionsV2 } from "@app/db/schemas";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { ActorType } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TFolderCheckpointDALFactory } from "../folder-checkpoint/folder-checkpoint-dal";
 import { TFolderCheckpointResourcesDALFactory } from "../folder-checkpoint-resources/folder-checkpoint-resources-dal";
 import { TFolderCommitChangesDALFactory } from "../folder-commit-changes/folder-commit-changes-dal";
@@ -22,7 +25,6 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TFolderCommitDALFactory } from "./folder-commit-dal";
 import { TFolderCommitQueueServiceFactory } from "./folder-commit-queue";
 
-// Define enums for better type safety
 export enum ChangeType {
   ADD = "add",
   DELETE = "delete",
@@ -35,7 +37,6 @@ enum ResourceType {
   FOLDER = "folder"
 }
 
-// Improved types for DTO objects
 type TCreateCommitDTO = {
   actor: {
     type: string;
@@ -50,6 +51,7 @@ type TCreateCommitDTO = {
     type: string;
     secretVersionId?: string;
     folderVersionId?: string;
+    isUpdate?: boolean;
   }[];
 };
 
@@ -69,6 +71,23 @@ export type ResourceChange = {
   commitId: number;
   createdAt?: Date;
   parentId?: string;
+  secretKey?: string;
+  secretVersion?: string;
+  folderName?: string;
+  folderVersion?: string;
+  fromVersion?: string;
+  versions?: {
+    secretKey?: string;
+    secretComment?: string;
+    skipMultilineEncoding?: boolean | null;
+    secretReminderRepeatDays?: number | null;
+    secretReminderNote?: string | null;
+    metadata?: unknown;
+    tags?: string[] | null;
+    secretReminderRecipients?: string[] | null;
+    secretValue?: string;
+    name?: string;
+  }[];
 };
 
 type ActorInfo = {
@@ -84,77 +103,21 @@ type StateChangeResult = {
 };
 
 type TFolderCommitServiceFactoryDep = {
-  folderCommitDAL: Pick<
-    TFolderCommitDALFactory,
-    | "create"
-    | "findById"
-    | "findByFolderId"
-    | "findLatestCommit"
-    | "transaction"
-    | "getNumberOfCommitsSince"
-    | "getEnvNumberOfCommitsSince"
-    | "findCommitsToRecreate"
-    | "findMultipleLatestCommits"
-    | "findLatestCommitBetween"
-    | "findAllCommitsBetween"
-    | "findLatestEnvCommit"
-    | "findLatestCommitByFolderIds"
-  >;
-  folderCommitChangesDAL: Pick<TFolderCommitChangesDALFactory, "create" | "findByCommitId" | "insertMany">;
-  folderCheckpointDAL: Pick<
-    TFolderCheckpointDALFactory,
-    "create" | "findByFolderId" | "findLatestByFolderId" | "findNearestCheckpoint"
-  >;
-  folderCheckpointResourcesDAL: Pick<TFolderCheckpointResourcesDALFactory, "insertMany" | "findByCheckpointId">;
-  folderTreeCheckpointDAL: Pick<
-    TFolderTreeCheckpointDALFactory,
-    "create" | "findNearestCheckpoint" | "findLatestByEnvId"
-  >;
-  folderTreeCheckpointResourcesDAL: Pick<
-    TFolderTreeCheckpointResourcesDALFactory,
-    "insertMany" | "findByTreeCheckpointId"
-  >;
-  userDAL: Pick<TUserDALFactory, "findById">;
-  identityDAL: Pick<TIdentityDALFactory, "findById">;
-  folderDAL: Pick<
-    TSecretFolderDALFactory,
-    | "findByParentId"
-    | "findByProjectId"
-    | "deleteById"
-    | "create"
-    | "updateById"
-    | "update"
-    | "find"
-    | "findById"
-    | "findByEnvId"
-    | "findFoldersByRootAndIds"
-  >;
-  folderVersionDAL: Pick<
-    TSecretFolderVersionDALFactory,
-    | "findLatestFolderVersions"
-    | "findById"
-    | "deleteById"
-    | "create"
-    | "updateById"
-    | "find"
-    | "findByIdsWithLatestVersion"
-  >;
-  secretVersionV2BridgeDAL: Pick<
-    TSecretVersionV2DALFactory,
-    | "findLatestVersionByFolderId"
-    | "findById"
-    | "deleteById"
-    | "create"
-    | "updateById"
-    | "find"
-    | "findByIdsWithLatestVersion"
-  >;
-  secretV2BridgeDAL: Pick<
-    secretV2BridgeDal.TSecretV2BridgeDALFactory,
-    "deleteById" | "create" | "updateById" | "update" | "insertMany" | "invalidateSecretCacheByProjectId"
-  >;
+  folderCommitDAL: TFolderCommitDALFactory;
+  folderCommitChangesDAL: TFolderCommitChangesDALFactory;
+  folderCheckpointDAL: TFolderCheckpointDALFactory;
+  folderCheckpointResourcesDAL: TFolderCheckpointResourcesDALFactory;
+  folderTreeCheckpointDAL: TFolderTreeCheckpointDALFactory;
+  folderTreeCheckpointResourcesDAL: TFolderTreeCheckpointResourcesDALFactory;
+  userDAL: TUserDALFactory;
+  identityDAL: TIdentityDALFactory;
+  folderDAL: TSecretFolderDALFactory;
+  folderVersionDAL: TSecretFolderVersionDALFactory;
+  secretVersionV2BridgeDAL: TSecretVersionV2DALFactory;
+  secretV2BridgeDAL: secretV2BridgeDal.TSecretV2BridgeDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   folderCommitQueueService?: Pick<TFolderCommitQueueServiceFactory, "scheduleTreeCheckpoint">;
+  permissionService?: TPermissionServiceFactory;
 };
 
 export const folderCommitServiceFactory = ({
@@ -171,9 +134,38 @@ export const folderCommitServiceFactory = ({
   projectDAL,
   secretV2BridgeDAL,
   folderTreeCheckpointResourcesDAL,
-  folderCommitQueueService
+  folderCommitQueueService,
+  permissionService
 }: TFolderCommitServiceFactoryDep) => {
   const appCfg = getConfig();
+
+  const checkProjectPermission = async ({
+    actor,
+    actorId,
+    projectId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    actor: ActorType;
+    actorId: string;
+    projectId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+  }) => {
+    if (!permissionService) {
+      throw new Error("Permission service not initialized");
+    }
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
+  };
 
   /**
    * Fetches all resources within a folder
@@ -255,7 +247,17 @@ export const folderCommitServiceFactory = ({
   const reconstructFolderState = async (
     folderCommitId: string,
     tx?: Knex
-  ): Promise<{ type: string; id: string; versionId: string }[]> => {
+  ): Promise<
+    {
+      type: string;
+      id: string;
+      versionId: string;
+      secretKey?: string;
+      secretVersion?: string;
+      folderName?: string;
+      folderVersion?: string;
+    }[]
+  > => {
     const targetCommit = await folderCommitDAL.findById(folderCommitId, tx);
     if (!targetCommit) {
       throw new NotFoundError({ message: `Commit with ID ${folderCommitId} not found` });
@@ -268,7 +270,18 @@ export const folderCommitServiceFactory = ({
 
     const checkpointResources = await folderCheckpointResourcesDAL.findByCheckpointId(nearestCheckpoint.id, tx);
 
-    const folderState: Record<string, { type: string; id: string; versionId: string }> = {};
+    const folderState: Record<
+      string,
+      {
+        type: string;
+        id: string;
+        versionId: string;
+        secretKey?: string;
+        secretVersion?: string;
+        folderName?: string;
+        folderVersion?: string;
+      }
+    > = {};
 
     // Add all checkpoint resources to initial state
     checkpointResources.forEach((resource) => {
@@ -276,13 +289,17 @@ export const folderCommitServiceFactory = ({
         folderState[`secret-${resource.referencedSecretId}`] = {
           type: "secret",
           id: resource.referencedSecretId,
-          versionId: resource.secretVersionId
+          versionId: resource.secretVersionId,
+          secretKey: resource.secretKey,
+          secretVersion: resource.secretVersion
         };
       } else if (resource.folderVersionId && resource.referencedFolderId) {
         folderState[`folder-${resource.referencedFolderId}`] = {
           type: "folder",
           id: resource.referencedFolderId,
-          versionId: resource.folderVersionId
+          versionId: resource.folderVersionId,
+          folderName: resource.folderName,
+          folderVersion: resource.folderVersion
         };
       }
     });
@@ -307,7 +324,9 @@ export const folderCommitServiceFactory = ({
             folderState[key] = {
               type: "secret",
               id: change.referencedSecretId,
-              versionId: change.secretVersionId
+              versionId: change.secretVersionId,
+              secretKey: change.secretKey,
+              secretVersion: change.secretVersion
             };
           } else if (change.changeType.toLowerCase() === "delete") {
             delete folderState[key];
@@ -319,7 +338,9 @@ export const folderCommitServiceFactory = ({
             folderState[key] = {
               type: "folder",
               id: change.referencedFolderId,
-              versionId: change.folderVersionId
+              versionId: change.folderVersionId,
+              folderName: change.folderName,
+              folderVersion: change.folderVersion
             };
           } else if (change.changeType.toLowerCase() === "delete") {
             delete folderState[key];
@@ -356,7 +377,11 @@ export const folderCommitServiceFactory = ({
         id: resource.id,
         versionId: resource.versionId,
         changeType: "create",
-        commitId: targetCommit.commitId
+        commitId: targetCommit.commitId,
+        secretKey: resource.secretKey,
+        secretVersion: resource.secretVersion,
+        folderName: resource.folderName,
+        folderVersion: resource.folderVersion
       })) as ResourceChange[];
     }
 
@@ -365,8 +390,32 @@ export const folderCommitServiceFactory = ({
     const targetState = await reconstructFolderState(targetCommitId, tx);
 
     // Create lookup maps for easier comparison
-    const currentMap: Record<string, { type: string; id: string; versionId: string }> = {};
-    const targetMap: Record<string, { type: string; id: string; versionId: string }> = {};
+    const currentMap: Record<
+      string,
+      {
+        type: string;
+        id: string;
+        versionId: string;
+        secretKey?: string;
+        secretVersion?: string;
+        folderName?: string;
+        folderVersion?: string;
+        fromVersion?: string;
+      }
+    > = {};
+    const targetMap: Record<
+      string,
+      {
+        type: string;
+        id: string;
+        versionId: string;
+        secretKey?: string;
+        secretVersion?: string;
+        folderName?: string;
+        folderVersion?: string;
+        fromVersion?: string;
+      }
+    > = {};
 
     // Build lookup maps
     currentState.forEach((resource) => {
@@ -393,7 +442,12 @@ export const folderCommitServiceFactory = ({
           id: currentResource.id,
           versionId: currentResource.versionId,
           changeType: ChangeType.DELETE,
-          commitId: targetCommit.commitId
+          commitId: targetCommit.commitId,
+          secretKey: currentResource.secretKey,
+          secretVersion: currentResource.secretVersion,
+          folderName: currentResource.folderName,
+          folderVersion: currentResource.folderVersion,
+          fromVersion: currentResource.versionId
         });
       } else if (currentResource.versionId !== targetResource.versionId) {
         differences.push({
@@ -401,12 +455,16 @@ export const folderCommitServiceFactory = ({
           id: targetResource.id,
           versionId: targetResource.versionId,
           changeType: ChangeType.UPDATE,
-          commitId: targetCommit.commitId
+          commitId: targetCommit.commitId,
+          secretKey: targetResource.secretKey,
+          secretVersion: targetResource.secretVersion,
+          folderName: targetResource.folderName,
+          folderVersion: targetResource.folderVersion,
+          fromVersion: currentResource.folderVersion || currentResource.secretVersion
         });
       }
     });
 
-    // Find creates
     Object.keys(targetMap).forEach((key) => {
       if (!currentMap[key]) {
         const targetResource = targetMap[key];
@@ -416,7 +474,11 @@ export const folderCommitServiceFactory = ({
           versionId: targetResource.versionId,
           changeType: ChangeType.CREATE,
           commitId: targetCommit.commitId,
-          createdAt: targetCommit.createdAt
+          createdAt: targetCommit.createdAt,
+          secretKey: targetResource.secretKey,
+          secretVersion: targetResource.secretVersion,
+          folderName: targetResource.folderName,
+          folderVersion: targetResource.folderVersion
         });
       }
     });
@@ -485,7 +547,8 @@ export const folderCommitServiceFactory = ({
           folderCommitId: newCommit.id,
           changeType: change.type,
           secretVersionId: change.secretVersionId,
-          folderVersionId: change.folderVersionId
+          folderVersionId: change.folderVersionId,
+          isUpdate: change.isUpdate || false
         })),
         tx
       );
@@ -515,10 +578,20 @@ export const folderCommitServiceFactory = ({
   ) => {
     const commitChanges = [];
 
+    // Collect all secretIds for batch lookup
+    const secretIds = changes.map((change) => secretVersions[change.id]?.secretId).filter(Boolean);
+
+    // Fetch all latest versions in one call
+    const latestVersionsMap = await secretVersionV2BridgeDAL.findLatestVersionMany(folderId, secretIds, tx);
+
     for (const change of changes) {
       const secretVersion = secretVersions[change.id];
       // eslint-disable-next-line no-continue
       if (!secretVersion) continue;
+
+      // Get the latest version from our batch result
+      const latestVersion = latestVersionsMap[secretVersion.secretId];
+      const nextVersion = latestVersion ? latestVersion.version + 1 : 1;
 
       switch (change.changeType) {
         case "create":
@@ -527,7 +600,7 @@ export const folderCommitServiceFactory = ({
               {
                 id: change.id,
                 skipMultilineEncoding: secretVersion.skipMultilineEncoding,
-                version: secretVersion.version + 1,
+                version: nextVersion,
                 type: secretVersion.type,
                 key: secretVersion.key,
                 reminderNote: secretVersion.reminderNote,
@@ -545,7 +618,7 @@ export const folderCommitServiceFactory = ({
               {
                 folderId,
                 secretId: secretVersion.secretId,
-                version: secretVersion.version + 1,
+                version: nextVersion,
                 encryptedValue: secretVersion.encryptedValue,
                 key: secretVersion.key,
                 encryptedComment: secretVersion.encryptedComment,
@@ -575,7 +648,7 @@ export const folderCommitServiceFactory = ({
               change.id,
               {
                 skipMultilineEncoding: secretVersion?.skipMultilineEncoding,
-                version: secretVersion?.version,
+                version: nextVersion,
                 type: secretVersion?.type,
                 key: secretVersion?.key,
                 reminderNote: secretVersion?.reminderNote,
@@ -590,7 +663,7 @@ export const folderCommitServiceFactory = ({
 
             const newVersion = await secretVersionV2BridgeDAL.create(
               {
-                version: secretVersion.version + 1,
+                version: nextVersion,
                 encryptedValue: secretVersion.encryptedValue,
                 key: secretVersion.key,
                 encryptedComment: secretVersion.encryptedComment,
@@ -611,14 +684,15 @@ export const folderCommitServiceFactory = ({
 
             commitChanges.push({
               type: ChangeType.ADD,
+              isUpdate: true,
               secretVersionId: newVersion.id
             });
           }
           break;
 
+        // Delete case remains unchanged
         case "delete":
           await secretV2BridgeDAL.deleteById(change.id, tx);
-
           commitChanges.push({
             type: ChangeType.DELETE,
             secretVersionId: change.versionId
@@ -724,8 +798,13 @@ export const folderCommitServiceFactory = ({
 
           case "update":
             if (change.versionId) {
-              const versionDetails = await folderVersionDAL.findById(change.versionId, tx);
-              if (versionDetails) {
+              const latestVersionDetails = await folderVersionDAL.findByIdsWithLatestVersion(
+                [change.versionId],
+                undefined,
+                tx
+              );
+              if (latestVersionDetails && Object.keys(latestVersionDetails).length > 0) {
+                const versionDetails = latestVersionDetails[0];
                 await folderDAL.updateById(
                   change.id,
                   {
@@ -749,6 +828,7 @@ export const folderCommitServiceFactory = ({
 
                 commitChanges.push({
                   type: ChangeType.ADD,
+                  isUpdate: true,
                   folderVersionId: newFolderVersion.id
                 });
               }
@@ -855,11 +935,103 @@ export const folderCommitServiceFactory = ({
     return folderCommitDAL.findByFolderId(folderId, tx);
   };
 
+  const getCommitsForFolder = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    projectId,
+    environment,
+    path
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+    projectId: string;
+    environment: string;
+    path: string;
+  }) => {
+    await checkProjectPermission({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      projectId
+    });
+    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+    if (!folder) {
+      throw new NotFoundError({
+        message: `Folder not found for project ID ${projectId}, environment ${environment}, path ${path}`
+      });
+    }
+    const folderCommits = await folderCommitDAL.findByFolderId(folder.id);
+    return folderCommits;
+  };
+
+  const getCommitsCount = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    projectId,
+    environment,
+    path
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+    projectId: string;
+    environment: string;
+    path: string;
+  }) => {
+    await checkProjectPermission({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      projectId
+    });
+
+    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+    if (!folder) {
+      throw new NotFoundError({
+        message: `Folder not found for project ID ${projectId}, environment ${environment}, path ${path}`
+      });
+    }
+    const folderCommits = await folderCommitDAL.findByFolderId(folder.id);
+    return { count: folderCommits.length, folderId: folder.id };
+  };
+
   /**
    * Get changes for a commit
    */
-  const getCommitChanges = async (commitId: string, tx?: Knex) => {
-    return folderCommitChangesDAL.findByCommitId(commitId, tx);
+  const getCommitChanges = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    projectId,
+    commitId
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+    projectId: string;
+    commitId: string;
+  }) => {
+    await checkProjectPermission({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      projectId
+    });
+    const changes = await folderCommitChangesDAL.findByCommitId(commitId);
+    const commit = await folderCommitDAL.findById(commitId);
+    return { ...commit, changes };
   };
 
   /**
@@ -1021,6 +1193,100 @@ export const folderCommitServiceFactory = ({
     );
   };
 
+  const deepCompareFolder = async ({
+    targetCommitId,
+    envId,
+    projectId,
+    tx
+  }: {
+    targetCommitId: string;
+    envId: string;
+    actorId: string;
+    actorType: ActorType;
+    projectId: string;
+    tx?: Knex;
+  }) => {
+    const targetCommit = await folderCommitDAL.findById(targetCommitId, tx);
+    if (!targetCommit) {
+      throw new NotFoundError({ message: `No commit found for commit ID ${targetCommitId}` });
+    }
+
+    const checkpoint = await folderTreeCheckpointDAL.findNearestCheckpoint(targetCommitId, envId, tx);
+    if (!checkpoint) {
+      throw new NotFoundError({ message: `No checkpoint found for commit ID ${targetCommitId}` });
+    }
+
+    const folderCheckpointCommits = await folderTreeCheckpointResourcesDAL.findByTreeCheckpointId(checkpoint.id, tx);
+    const folderCommits = await folderCommitDAL.findAllCommitsBetween({
+      envId,
+      endCommitId: targetCommit.commitId.toString(),
+      startCommitId: checkpoint.commitId.toString(),
+      tx
+    });
+
+    // Group commits by folderId and keep only the latest
+    const folderGroups = new Map<string, { createdAt: Date; id: string }>();
+
+    if (folderCheckpointCommits && folderCheckpointCommits.length > 0) {
+      for (const commit of folderCheckpointCommits) {
+        folderGroups.set(commit.folderId, {
+          createdAt: commit.createdAt,
+          id: commit.folderCommitId
+        });
+      }
+    }
+
+    if (folderCommits && folderCommits.length > 0) {
+      for (const commit of folderCommits) {
+        const { folderId, createdAt, id } = commit;
+        const existingCommit = folderGroups.get(folderId);
+
+        if (!existingCommit || createdAt.getTime() > existingCommit.createdAt.getTime()) {
+          folderGroups.set(folderId, { createdAt, id });
+        }
+      }
+    }
+
+    const folderDiffs = new Map<string, ResourceChange[]>();
+
+    // Process each folder to determine differences
+    await Promise.all(
+      Array.from(folderGroups.entries()).map(async ([folderId, commit]) => {
+        const latestFolderCommit = await folderCommitDAL.findLatestCommit(folderId, tx);
+        if (latestFolderCommit && latestFolderCommit.id !== commit.id) {
+          const diff = await compareFolderStates({
+            currentCommitId: latestFolderCommit.id,
+            targetCommitId: commit.id,
+            tx
+          });
+          if (diff?.length > 0) {
+            folderDiffs.set(folderId, diff);
+          }
+        }
+      })
+    );
+
+    // Apply changes in hierarchical order
+    const folderIds = Array.from(folderDiffs.keys());
+    const folders = await folderDAL.findFoldersByRootAndIds({ rootId: targetCommit.folderId, folderIds }, tx);
+    const sortedFolders = sortFoldersByHierarchy(folders);
+
+    const response = [];
+    for (const folder of sortedFolders) {
+      const diff = folderDiffs.get(folder.id);
+      if (diff) {
+        const folderPath = await folderDAL.findSecretPathByFolderIds(projectId, [folder.id]);
+        response.push({
+          folderId: folder.id,
+          folderName: folder.name,
+          changes: diff,
+          folderPath: folderPath?.[0]?.path
+        });
+      }
+    }
+    return response;
+  };
+
   /**
    * Roll back a folder tree to a specific commit
    */
@@ -1117,7 +1383,139 @@ export const folderCommitServiceFactory = ({
     }
   };
 
-  // Return the public interface
+  const getLatestCommit = async ({
+    folderId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    projectId
+  }: {
+    folderId: string;
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+    projectId: string;
+  }) => {
+    await checkProjectPermission({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      projectId
+    });
+    return folderCommitDAL.findLatestCommit(folderId);
+  };
+
+  /**
+   * Revert changes made in a specific commit
+   */
+  const revertCommitChanges = async ({
+    commitId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    projectId,
+    message = "Revert commit changes"
+  }: {
+    commitId: string;
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+    projectId: string;
+    message?: string;
+  }) => {
+    // Check permissions first
+    await checkProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    // Get the commit to revert
+    const commitToRevert = await folderCommitDAL.findById(commitId);
+    if (!commitToRevert) {
+      throw new NotFoundError({ message: `Commit with ID ${commitId} not found` });
+    }
+
+    // Get all commits for this folder
+    const allCommits = await folderCommitDAL.findByFolderId(commitToRevert.folderId);
+    if (!allCommits || allCommits.length === 0) {
+      throw new NotFoundError({ message: `No commits found for folder ${commitToRevert.folderId}` });
+    }
+
+    // Sort commits by commitId (which appears to be numeric)
+    const sortedCommits = allCommits.sort((a, b) => a.commitId - b.commitId);
+
+    // Find the index of the commit to revert
+    const commitIndex = sortedCommits.findIndex((c) => c.id === commitId);
+    if (commitIndex === -1) {
+      throw new NotFoundError({ message: `Commit ${commitId} not found in the commit history` });
+    }
+
+    // If it's the first commit, we can't revert it (nothing before it)
+    if (commitIndex === 0) {
+      throw new BadRequestError({ message: "Cannot revert the first commit" });
+    }
+
+    // Get the commit just before the one we want to revert
+    const previousCommit = sortedCommits[commitIndex - 1];
+
+    // Calculate the changes needed to go from current commit back to the previous one
+    const inverseChanges = await compareFolderStates({
+      currentCommitId: commitToRevert.id,
+      targetCommitId: previousCommit.id
+    });
+
+    const latestCommit = await folderCommitDAL.findLatestCommit(commitToRevert.folderId);
+    if (!latestCommit) {
+      throw new NotFoundError({ message: `Latest commit not found for folder ${commitToRevert.folderId}` });
+    }
+    const currentState = await reconstructFolderState(latestCommit.id);
+
+    const filteredChanges = inverseChanges.filter(
+      (change) =>
+        ((change.changeType === ChangeType.DELETE || change.changeType === ChangeType.UPDATE) &&
+          (currentState.some((c) => c.id === change.id) || currentState.some((c) => c.id === change.id))) ||
+        (change.changeType === ChangeType.CREATE &&
+          (currentState.every((c) => c.id !== change.id) || currentState.every((c) => c.id !== change.id)))
+    );
+
+    if (!filteredChanges || filteredChanges.length === 0) {
+      return {
+        success: true,
+        message: "No changes to revert",
+        originalCommitId: commitId
+      };
+    }
+
+    // Apply the changes to revert the commit
+    const revertResult = await applyFolderStateDifferences({
+      differences: filteredChanges,
+      actorInfo: {
+        actorType: actor,
+        actorId,
+        message: message || `Reverted changes from commit ${commitId}`
+      },
+      folderId: commitToRevert.folderId,
+      projectId,
+      reconstructNewFolders: false
+    });
+
+    return {
+      success: true,
+      message: "Changes reverted successfully",
+      originalCommitId: commitId,
+      revertCommitId: latestCommit?.id,
+      changesReverted: revertResult.totalChanges
+    };
+  };
+
   return {
     createCommit,
     addCommitChange,
@@ -1132,7 +1530,13 @@ export const folderCommitServiceFactory = ({
     compareFolderStates,
     applyFolderStateDifferences,
     createFolderTreeCheckpoint,
-    deepRollbackFolder
+    deepRollbackFolder,
+    getCommitsCount,
+    getLatestCommit,
+    deepCompareFolder,
+    reconstructFolderState,
+    getCommitsForFolder,
+    revertCommitChanges
   };
 };
 

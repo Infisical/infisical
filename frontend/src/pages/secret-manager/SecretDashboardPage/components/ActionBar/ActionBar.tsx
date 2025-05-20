@@ -123,6 +123,7 @@ type Props = {
       isImported: boolean;
     }[];
   }[];
+  isPITEnabled: boolean;
 };
 
 export const ActionBar = ({
@@ -142,6 +143,7 @@ export const ActionBar = ({
   onToggleRowType,
   protectedBranchPolicyName,
   importedBy,
+  isPITEnabled = false,
   usedBySecretSyncs
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
@@ -796,7 +798,7 @@ export const ActionBar = ({
                 className="h-10"
                 isDisabled={!isAllowed}
               >
-                {`${snapshotCount} ${snapshotCount === 1 ? "Snapshot" : "Snapshots"}`}
+                {`${snapshotCount} ${isPITEnabled ? "Commit" : "Snapshot"}${snapshotCount === 1 ? "" : "s"}`}
               </Button>
             )}
           </ProjectPermissionCan>

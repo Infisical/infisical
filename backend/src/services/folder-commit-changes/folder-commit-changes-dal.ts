@@ -1,7 +1,13 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TFolderCommitChanges, TFolderCommits } from "@app/db/schemas";
+import {
+  TableName,
+  TFolderCommitChanges,
+  TFolderCommits,
+  TSecretFolderVersions,
+  TSecretVersionsV2
+} from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -12,17 +18,67 @@ type CommitChangeWithCommitInfo = TFolderCommitChanges & {
   actorType: string;
   message?: string | null;
   folderId: string;
+  folderName?: string;
+  folderVersion?: string;
+  secretKey?: string;
+  secretVersion?: string;
+  secretId?: string;
+  folderChangeId?: string;
+  versions?: {
+    secretKey?: string;
+    secretComment?: string;
+    skipMultilineEncoding?: boolean | null;
+    secretReminderRepeatDays?: number | null;
+    secretReminderNote?: string | null;
+    metadata?: unknown;
+    tags?: string[] | null;
+    secretReminderRecipients?: string[] | null;
+    secretValue?: string;
+    name?: string;
+  }[];
 };
 
 export const folderCommitChangesDALFactory = (db: TDbClient) => {
   const folderCommitChangesOrm = ormify(db, TableName.FolderCommitChanges);
 
-  const findByCommitId = async (folderCommitId: string, tx?: Knex): Promise<TFolderCommitChanges[]> => {
+  const findByCommitId = async (folderCommitId: string, tx?: Knex): Promise<CommitChangeWithCommitInfo[]> => {
     try {
       const docs = await (tx || db.replicaNode())<TFolderCommitChanges>(TableName.FolderCommitChanges)
         .where({ folderCommitId })
-        .select(selectAllTableCols(TableName.FolderCommitChanges));
-      return docs;
+        .leftJoin<TFolderCommits>(
+          TableName.FolderCommit,
+          `${TableName.FolderCommitChanges}.folderCommitId`,
+          `${TableName.FolderCommit}.id`
+        )
+        .leftJoin<TSecretVersionsV2>(
+          TableName.SecretVersionV2,
+          `${TableName.FolderCommitChanges}.secretVersionId`,
+          `${TableName.SecretVersionV2}.id`
+        )
+        .leftJoin<TSecretFolderVersions>(
+          TableName.SecretFolderVersion,
+          `${TableName.FolderCommitChanges}.folderVersionId`,
+          `${TableName.SecretFolderVersion}.id`
+        )
+        .select(selectAllTableCols(TableName.FolderCommitChanges))
+        .select(
+          db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderName"),
+          db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("folderChangeId"),
+          db.ref("version").withSchema(TableName.SecretFolderVersion).as("folderVersion"),
+          db.ref("key").withSchema(TableName.SecretVersionV2).as("secretKey"),
+          db.ref("version").withSchema(TableName.SecretVersionV2).as("secretVersion"),
+          db.ref("secretId").withSchema(TableName.SecretVersionV2),
+          db.ref("actorMetadata").withSchema(TableName.FolderCommit),
+          db.ref("actorType").withSchema(TableName.FolderCommit),
+          db.ref("message").withSchema(TableName.FolderCommit),
+          db.ref("createdAt").withSchema(TableName.FolderCommit),
+          db.ref("folderId").withSchema(TableName.FolderCommit)
+        );
+      return docs.map((doc) => ({
+        ...doc,
+        folderVersion: doc.folderVersion?.toString(),
+        secretVersion: doc.secretVersion?.toString()
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByCommitId" });
     }

@@ -351,6 +351,7 @@ export const secretRotationQueueFactory = ({
               folderId: secretVersions[0].folderId,
               changes: secretVersions.map((sv) => ({
                 type: "add",
+                isUpdate: true,
                 secretVersionId: sv.id
               }))
             },

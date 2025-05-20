@@ -19,11 +19,36 @@ export const folderCommitDALFactory = (db: TDbClient) => {
 
   const findByFolderId = async (folderId: string, tx?: Knex): Promise<TFolderCommits[]> => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.FolderCommit)
+      const trx = tx || db.replicaNode();
+
+      // First, get all folder commits
+      const folderCommits = await trx(TableName.FolderCommit)
         .where({ folderId })
-        .select(selectAllTableCols(TableName.FolderCommit))
+        .select("*")
         .orderBy("createdAt", "desc");
-      return docs;
+
+      if (folderCommits.length === 0) return [];
+
+      // Get all commit IDs
+      const commitIds = folderCommits.map((commit) => commit.id);
+
+      // Then get all related changes
+      const changes = await trx(TableName.FolderCommitChanges).whereIn("folderCommitId", commitIds).select("*");
+
+      const changesMap = changes.reduce(
+        (acc, change) => {
+          const { folderCommitId } = change;
+          if (!acc[folderCommitId]) acc[folderCommitId] = [];
+          acc[folderCommitId].push(change);
+          return acc;
+        },
+        {} as Record<string, TFolderCommitChanges[]>
+      );
+
+      return folderCommits.map((commit) => ({
+        ...commit,
+        changes: changesMap[commit.id] || []
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByFolderId" });
     }
@@ -158,7 +183,14 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<
     (TFolderCommits & {
-      changes: (TFolderCommitChanges & { referencedSecretId?: string; referencedFolderId?: string })[];
+      changes: (TFolderCommitChanges & {
+        referencedSecretId?: string;
+        referencedFolderId?: string;
+        folderName?: string;
+        folderVersion?: string;
+        secretKey?: string;
+        secretVersion?: string;
+      })[];
     })[]
   > => {
     try {
@@ -195,7 +227,11 @@ export const folderCommitDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.FolderCommitChanges))
         .select(
           db.ref("secretId").withSchema(TableName.SecretVersionV2).as("referencedSecretId"),
-          db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("referencedFolderId")
+          db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("referencedFolderId"),
+          db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderName"),
+          db.ref("version").withSchema(TableName.SecretFolderVersion).as("folderVersion"),
+          db.ref("key").withSchema(TableName.SecretVersionV2).as("secretKey"),
+          db.ref("version").withSchema(TableName.SecretVersionV2).as("secretVersion")
         );
 
       // Organize changes by commit ID
@@ -280,6 +316,34 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findAllFolderCommitsAfter = async ({
+    envId,
+    startCommitId,
+    tx
+  }: {
+    folderId?: string;
+    envId?: string;
+    startCommitId?: string;
+    tx?: Knex;
+  }): Promise<TFolderCommits[]> => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.FolderCommit)
+        .where((qb) => {
+          if (envId) {
+            void qb.where(`${TableName.FolderCommit}.envId`, "=", envId);
+          }
+          if (startCommitId) {
+            void qb.where("commitId", ">=", startCommitId);
+          }
+        })
+        .select(selectAllTableCols(TableName.FolderCommit))
+        .orderBy("commitId", "desc");
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindLatestCommitBetween" });
+    }
+  };
+
   return {
     ...restOfOrm,
     findByFolderId,
@@ -291,6 +355,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     findLatestCommitBetween,
     findLatestEnvCommit,
     getEnvNumberOfCommitsSince,
-    findLatestCommitByFolderIds
+    findLatestCommitByFolderIds,
+    findAllFolderCommitsAfter
   };
 };

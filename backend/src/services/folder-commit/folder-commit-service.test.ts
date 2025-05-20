@@ -113,7 +113,8 @@ describe("folderCommitServiceFactory", () => {
     create: vi.fn().mockResolvedValue({}),
     updateById: vi.fn().mockResolvedValue({}),
     find: vi.fn().mockResolvedValue([]),
-    findByIdsWithLatestVersion: vi.fn().mockResolvedValue({})
+    findByIdsWithLatestVersion: vi.fn().mockResolvedValue({}),
+    findLatestVersionMany: vi.fn().mockResolvedValue({})
   };
 
   const mockSecretV2BridgeDAL = {
@@ -133,26 +134,44 @@ describe("folderCommitServiceFactory", () => {
     scheduleTreeCheckpoint: vi.fn().mockResolvedValue({})
   };
 
+  const mockPermissionService = {
+    getProjectPermission: vi.fn().mockResolvedValue({})
+  };
+
   let folderCommitService: TFolderCommitServiceFactory;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
     folderCommitService = folderCommitServiceFactory({
+      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       folderCommitDAL: mockFolderCommitDAL,
+      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       folderCommitChangesDAL: mockFolderCommitChangesDAL,
+      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       folderCheckpointDAL: mockFolderCheckpointDAL,
+      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       folderCheckpointResourcesDAL: mockFolderCheckpointResourcesDAL,
+      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       folderTreeCheckpointDAL: mockFolderTreeCheckpointDAL,
+      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       folderTreeCheckpointResourcesDAL: mockFolderTreeCheckpointResourcesDAL,
+      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       userDAL: mockUserDAL,
+      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       identityDAL: mockIdentityDAL,
+      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       folderDAL: mockFolderDAL,
+      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       folderVersionDAL: mockFolderVersionDAL,
+      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       secretVersionV2BridgeDAL: mockSecretVersionV2BridgeDAL,
       projectDAL: mockProjectDAL,
+      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       secretV2BridgeDAL: mockSecretV2BridgeDAL,
-      folderCommitQueueService: mockFolderCommitQueueService
+      folderCommitQueueService: mockFolderCommitQueueService,
+      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
+      permissionService: mockPermissionService
     });
   });
 
@@ -532,13 +551,31 @@ describe("folderCommitServiceFactory", () => {
       mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
 
       // These mocks need to return objects with an id field
-      mockSecretVersionV2BridgeDAL.findByIdsWithLatestVersion.mockResolvedValue(secretVersions);
-      mockFolderVersionDAL.findByIdsWithLatestVersion.mockResolvedValue(folderVersions);
+      mockSecretVersionV2BridgeDAL.findByIdsWithLatestVersion.mockResolvedValue(Object.values(secretVersions));
+      mockFolderVersionDAL.findByIdsWithLatestVersion.mockResolvedValue(Object.values(folderVersions));
       mockSecretV2BridgeDAL.insertMany.mockResolvedValue([{ id: "new-secret-1" }]);
       mockSecretVersionV2BridgeDAL.create.mockResolvedValue({ id: "new-secret-version-1" });
       mockFolderDAL.updateById.mockResolvedValue({ id: "updated-folder-1" });
       mockFolderVersionDAL.create.mockResolvedValue({ id: "new-folder-version-1" });
       mockFolderCommitDAL.create.mockResolvedValue({ id: "new-commit-id" });
+      mockSecretVersionV2BridgeDAL.findLatestVersionMany.mockResolvedValue([
+        {
+          id: "secret-version-1",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          type: "shared",
+          folderId: "folder-1",
+          secretId: "secret-1",
+          version: 1,
+          key: "SECRET_KEY",
+          encryptedValue: Buffer.from("encrypted"),
+          encryptedComment: Buffer.from("comment"),
+          skipMultilineEncoding: false,
+          userId: "user-1",
+          envId: "env-1",
+          metadata: {}
+        }
+      ]);
 
       // Mock transaction
       mockFolderCommitDAL.transaction.mockImplementation(<T>(callback: TransactionCallback<T>) => callback({} as Knex));

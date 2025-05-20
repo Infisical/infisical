@@ -30,7 +30,7 @@ type TSecretFolderServiceFactoryDep = {
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   folderDAL: TSecretFolderDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs" | "find">;
-  folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestFolderVersions" | "create" | "insertMany">;
+  folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestFolderVersions" | "create" | "insertMany" | "find">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
 };
@@ -286,6 +286,7 @@ export const secretFolderServiceFactory = ({
               changes: [
                 {
                   type: "add",
+                  isUpdate: true,
                   folderVersionId: folderVersion.id
                 }
               ]
@@ -401,6 +402,7 @@ export const secretFolderServiceFactory = ({
           changes: [
             {
               type: "add",
+              isUpdate: true,
               folderVersionId: folderVersion.id
             }
           ]
@@ -765,6 +767,22 @@ export const secretFolderServiceFactory = ({
     return environmentFolders;
   };
 
+  const getFolderVersionsByIds = async ({
+    folderId,
+    folderVersions
+  }: {
+    folderId: string;
+    folderVersions: string[];
+  }) => {
+    const versions = await folderVersionDAL.find({
+      folderId,
+      $in: {
+        version: folderVersions.map((v) => Number.parseInt(v, 10))
+      }
+    });
+    return versions;
+  };
+
   return {
     createFolder,
     updateFolder,
@@ -775,6 +793,7 @@ export const secretFolderServiceFactory = ({
     getProjectFolderCount,
     getFoldersMultiEnv,
     getFoldersDeepByEnvs,
-    getProjectEnvironmentsFolders
+    getProjectEnvironmentsFolders,
+    getFolderVersionsByIds
   };
 };

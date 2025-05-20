@@ -173,13 +173,21 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret version v2 completed`);
   };
 
-  const findVersionsBySecretIdWithActors = async (
-    secretId: string,
-    projectId: string,
-    { offset, limit, sort = [["createdAt", "desc"]] }: TFindOpt<TSecretVersionsV2> = {},
-    tx?: Knex
-  ) => {
+  const findVersionsBySecretIdWithActors = async ({
+    secretId,
+    projectId,
+    secretVersions,
+    findOpt = {},
+    tx
+  }: {
+    secretId: string;
+    projectId: string;
+    secretVersions?: string[];
+    findOpt?: TFindOpt<TSecretVersionsV2>;
+    tx?: Knex;
+  }) => {
     try {
+      const { offset, limit, sort = [["createdAt", "desc"]] } = findOpt;
       const query = (tx || db)(TableName.SecretVersionV2)
         .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.SecretVersionV2}.userActorId`)
         .leftJoin(
@@ -202,10 +210,12 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .where((qb) => {
           void qb.where(`${TableName.SecretVersionV2}.secretId`, secretId);
           void qb.where(`${TableName.ProjectMembership}.projectId`, projectId);
+          if (secretVersions?.length) void qb.whereIn(`${TableName.SecretVersionV2}.version`, secretVersions);
         })
         .orWhere((qb) => {
           void qb.where(`${TableName.SecretVersionV2}.secretId`, secretId);
           void qb.whereNull(`${TableName.ProjectMembership}.projectId`);
+          if (secretVersions?.length) void qb.whereIn(`${TableName.SecretVersionV2}.version`, secretVersions);
         })
         .select(
           selectAllTableCols(TableName.SecretVersionV2),

@@ -27,6 +27,10 @@ export const folderCheckpointResourcesDALFactory = (db: TDbClient) => {
     (TFolderCheckpointResources & {
       referencedSecretId?: string;
       referencedFolderId?: string;
+      folderName?: string;
+      folderVersion?: string;
+      secretKey?: string;
+      secretVersion?: string;
     })[]
   > => {
     try {
@@ -45,9 +49,17 @@ export const folderCheckpointResourcesDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.FolderCheckpointResources))
         .select(
           db.ref("secretId").withSchema(TableName.SecretVersionV2).as("referencedSecretId"),
-          db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("referencedFolderId")
+          db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("referencedFolderId"),
+          db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderName"),
+          db.ref("version").withSchema(TableName.SecretFolderVersion).as("folderVersion"),
+          db.ref("key").withSchema(TableName.SecretVersionV2).as("secretKey"),
+          db.ref("version").withSchema(TableName.SecretVersionV2).as("secretVersion")
         );
-      return docs;
+      return docs.map((doc) => ({
+        ...doc,
+        folderVersion: doc.folderVersion?.toString(),
+        secretVersion: doc.secretVersion?.toString()
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByCheckpointId" });
     }

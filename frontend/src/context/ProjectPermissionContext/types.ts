@@ -106,6 +106,11 @@ export enum PermissionConditionOperators {
   $ELEMENTMATCH = "$elemMatch"
 }
 
+export enum ProjectPermissionCommitsActions {
+  Read = "read",
+  PerformRollback = "perform-rollback"
+}
+
 export type IdentityManagementSubjectFields = {
   identityId: string;
 };
@@ -181,7 +186,8 @@ export enum ProjectPermissionSub {
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
-  Kmip = "kmip"
+  Kmip = "kmip",
+  Commits = "commits"
 }
 
 export type SecretSubjectFields = {
@@ -284,6 +290,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
-  | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip];
+  | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip]
+  | [ProjectPermissionCommitsActions, ProjectPermissionSub.Commits];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

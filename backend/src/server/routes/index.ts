@@ -587,7 +587,8 @@ export const registerRoutes = async (
     folderCheckpointResourcesDAL,
     secretV2BridgeDAL,
     folderTreeCheckpointResourcesDAL,
-    folderCommitQueueService
+    folderCommitQueueService,
+    permissionService
   });
   const scimService = scimServiceFactory({
     licenseService,

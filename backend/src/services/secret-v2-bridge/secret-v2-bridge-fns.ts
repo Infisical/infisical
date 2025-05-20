@@ -148,7 +148,7 @@ export const fnSecretBulkInsert = async ({
             id: actor?.actorId
           }
         },
-        message: "Secret Creation",
+        message: "Secret Created",
         folderId,
         changes: commitChanges
       },
@@ -290,6 +290,7 @@ export const fnSecretBulkUpdate = async ({
     .filter(({ type }) => type === SecretType.Shared)
     .map((sv) => ({
       type: "add",
+      isUpdate: true,
       secretVersionId: sv.id
     }));
   if (commitChanges.length > 0) {
@@ -301,7 +302,7 @@ export const fnSecretBulkUpdate = async ({
             id: actor?.actorId
           }
         },
-        message: "Secret Update",
+        message: "Secret Updated",
         folderId,
         changes: commitChanges
       },
@@ -432,7 +433,7 @@ export const fnSecretBulkDelete = async ({
             id: actorId
           }
         },
-        message: "Secret Delete",
+        message: "Secret Deleted",
         folderId,
         changes: commitChanges
       },

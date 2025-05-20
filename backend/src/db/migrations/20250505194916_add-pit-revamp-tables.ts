@@ -29,6 +29,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("folderCommitId").notNullable();
       t.foreign("folderCommitId").references("id").inTable(TableName.FolderCommit).onDelete("CASCADE");
       t.string("changeType").notNullable();
+      t.boolean("isUpdate").notNullable().defaultTo(false);
       t.uuid("secretVersionId");
       t.foreign("secretVersionId").references("id").inTable(TableName.SecretVersionV2).onDelete("CASCADE");
       t.uuid("folderVersionId");

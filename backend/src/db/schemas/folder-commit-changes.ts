@@ -11,6 +11,7 @@ export const FolderCommitChangesSchema = z.object({
   id: z.string().uuid(),
   folderCommitId: z.string().uuid(),
   changeType: z.string(),
+  isUpdate: z.boolean().default(false),
   secretVersionId: z.string().uuid().nullable().optional(),
   folderVersionId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
