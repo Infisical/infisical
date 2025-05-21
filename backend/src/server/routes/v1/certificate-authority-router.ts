@@ -85,6 +85,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         isInternal: false,
         actorOrgId: req.permission.orgId,
+        enableDirectIssuance: !req.body.requireTemplateForIssuance,
         ...req.body
       });
 
@@ -217,6 +218,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         isInternal: false,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        enableDirectIssuance: !req.body.requireTemplateForIssuance,
         ...req.body
       });
 

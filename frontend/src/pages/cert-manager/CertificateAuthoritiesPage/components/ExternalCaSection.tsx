@@ -6,7 +6,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { CaStatus, CaType, useDeleteUnifiedCa, useUpdateUnifiedCa } from "@app/hooks/api";
+import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { ExternalCaModal } from "./ExternalCaModal";
@@ -14,8 +14,8 @@ import { ExternalCaTable } from "./ExternalCaTable";
 
 export const ExternalCaSection = () => {
   const { currentWorkspace } = useWorkspace();
-  const { mutateAsync: deleteCa } = useDeleteUnifiedCa();
-  const { mutateAsync: updateCa } = useUpdateUnifiedCa();
+  const { mutateAsync: deleteCa } = useDeleteCa();
+  const { mutateAsync: updateCa } = useUpdateCa();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "ca",

@@ -2,14 +2,11 @@ export { AcmeDnsProvider, CaRenewalType, CaStatus, CaType, InternalCaType } from
 export {
   useCreateCa,
   useCreateCertificate,
-  useCreateUnifiedCa,
   useDeleteCa,
-  useDeleteUnifiedCa,
   useImportCaCertificate,
   useRenewCa,
   useSignIntermediate,
-  useUpdateCa,
-  useUpdateUnifiedCa
+  useUpdateCa
 } from "./mutations";
 export {
   useGetCa,

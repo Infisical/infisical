@@ -920,7 +920,7 @@ export const projectServiceFactory = ({
       {
         [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
         $notNull: [`${TableName.InternalCertificateAuthority}.id` as "id"],
-        ...(status && { [`${TableName.InternalCertificateAuthority}.status` as "status"]: status }),
+        ...(status && { [`${TableName.CertificateAuthority}.status` as "status"]: status }),
         ...(friendlyName && {
           [`${TableName.InternalCertificateAuthority}.friendlyName` as "friendlyName"]: friendlyName
         }),

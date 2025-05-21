@@ -39,10 +39,10 @@ export type TInternalCertificateAuthority = {
     keyAlgorithm: CertKeyAlgorithm;
     notAfter?: string;
     notBefore?: string;
-    dn: string;
+    dn?: string;
     parentCaId?: string;
-    serialNumber: string;
-    activeCaCertId: string;
+    serialNumber?: string;
+    activeCaCertId?: string;
   };
 };
 
@@ -50,14 +50,14 @@ export type TUnifiedCertificateAuthority =
   | TAcmeCertificateAuthority
   | TInternalCertificateAuthority;
 
-export type TCreateUnifiedCertificateAuthorityDTO = Omit<TUnifiedCertificateAuthority, "id">;
-export type TUpdateUnifiedCertificateAuthorityDTO = Partial<TUnifiedCertificateAuthority> & {
+export type TCreateCertificateAuthorityDTO = Omit<TUnifiedCertificateAuthority, "id">;
+export type TUpdateCertificateAuthorityDTO = Partial<TUnifiedCertificateAuthority> & {
   caName: string;
   projectId: string;
   type: CaType;
 };
 
-export type TDeleteUnifiedCertificateAuthorityDTO = {
+export type TDeleteCertificateAuthorityDTO = {
   caName: string;
   type: CaType;
   projectId: string;
@@ -85,22 +85,6 @@ export type TCertificateAuthority = {
   activeCaCertId?: string;
   createdAt: string;
   updatedAt: string;
-};
-
-export type TCreateCaDTO = {
-  projectSlug: string;
-  type: string;
-  friendlyName?: string;
-  organization: string;
-  ou: string;
-  country: string;
-  province: string;
-  locality: string;
-  commonName: string;
-  notAfter?: string;
-  maxPathLength: number;
-  keyAlgorithm: CertKeyAlgorithm;
-  requireTemplateForIssuance: boolean;
 };
 
 export type TUpdateCaDTO = {

@@ -127,7 +127,8 @@ export const certificateAuthorityServiceFactory = ({
         ...(configuration as TCreateInternalCertificateAuthorityDTO["configuration"]),
         isInternal: true,
         projectId: finalProjectId,
-        requireTemplateForIssuance: !enableDirectIssuance
+        enableDirectIssuance,
+        name
       });
 
       if (!ca.internalCa) {
@@ -312,8 +313,9 @@ export const certificateAuthorityServiceFactory = ({
       const updatedCa = await internalCertificateAuthorityService.updateCaById({
         ...configuration,
         isInternal: true,
-        requireTemplateForIssuance: !enableDirectIssuance,
+        enableDirectIssuance,
         caId: certificateAuthority.id,
+        status,
         name
       });
 

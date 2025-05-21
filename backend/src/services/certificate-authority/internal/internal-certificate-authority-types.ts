@@ -31,6 +31,7 @@ export type TCreateCaDTO =
       projectId: string;
       type: InternalCaType;
       friendlyName?: string;
+      name?: string;
       commonName: string;
       organization: string;
       ou: string;
@@ -39,15 +40,16 @@ export type TCreateCaDTO =
       locality: string;
       notBefore?: string;
       notAfter?: string;
-      maxPathLength: number;
+      maxPathLength?: number | null;
       keyAlgorithm: CertKeyAlgorithm;
-      requireTemplateForIssuance: boolean;
+      enableDirectIssuance: boolean;
     }
   | ({
       isInternal: false;
       projectSlug: string;
       type: InternalCaType;
       friendlyName?: string;
+      name?: string;
       commonName: string;
       organization: string;
       ou: string;
@@ -56,9 +58,9 @@ export type TCreateCaDTO =
       locality: string;
       notBefore?: string;
       notAfter?: string;
-      maxPathLength: number;
+      maxPathLength?: number | null;
       keyAlgorithm: CertKeyAlgorithm;
-      requireTemplateForIssuance: boolean;
+      enableDirectIssuance: boolean;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TGetCaDTO = {
@@ -71,14 +73,14 @@ export type TUpdateCaDTO =
       caId: string;
       name?: string;
       status?: CaStatus;
-      requireTemplateForIssuance?: boolean;
+      enableDirectIssuance?: boolean;
     }
   | ({
       isInternal: false;
       caId: string;
       name?: string;
       status?: CaStatus;
-      requireTemplateForIssuance?: boolean;
+      enableDirectIssuance?: boolean;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TDeleteCaDTO = {

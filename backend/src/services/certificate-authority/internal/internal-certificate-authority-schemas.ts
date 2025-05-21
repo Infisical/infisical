@@ -23,14 +23,12 @@ const InternalCertificateAuthorityConfigurationSchema = z
     locality: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.locality),
     notBefore: validateCaDateField.optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.notBefore),
     notAfter: validateCaDateField.optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.notAfter),
-    maxPathLength: z.number().min(-1).describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.maxPathLength),
+    maxPathLength: z.number().min(-1).nullish().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.maxPathLength),
     keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.keyAlgorithm),
-
-    // no need for descriptions of the following fields because they are not exposed to the API user
-    dn: z.string().trim(),
+    dn: z.string().trim().nullish(),
     parentCaId: z.string().uuid().nullish(),
-    serialNumber: z.string().trim().optional(),
-    activeCaCertId: z.string().uuid().optional()
+    serialNumber: z.string().trim().nullish(),
+    activeCaCertId: z.string().uuid().nullish()
   })
   .refine(
     (data) => {

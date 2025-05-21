@@ -16,7 +16,8 @@ import {
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { useDeleteCa, useGetCaById } from "@app/hooks/api";
+import { CaType, useDeleteCa, useGetCa } from "@app/hooks/api";
+import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -31,14 +32,18 @@ import {
 } from "./components";
 
 const Page = () => {
+  const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const params = useParams({
     from: ROUTE_PATHS.CertManager.CertAuthDetailsByIDPage.id
   });
-  const caId = params.caId as string;
-  const { data } = useGetCaById(caId);
+  const { caName } = params as { caName: string };
+  const { data } = useGetCa({
+    caName,
+    projectId: currentWorkspace?.id || "",
+    type: CaType.INTERNAL
+  }) as { data: TInternalCertificateAuthority };
 
-  const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
 
   const { mutateAsync: deleteCa } = useDeleteCa();
@@ -50,11 +55,15 @@ const Page = () => {
     "renewCa"
   ] as const);
 
-  const onRemoveCaSubmit = async (caIdToDelete: string) => {
+  const onRemoveCaSubmit = async () => {
     try {
       if (!currentWorkspace?.slug) return;
 
-      await deleteCa({ caId: caIdToDelete, projectSlug: currentWorkspace.slug });
+      await deleteCa({
+        caName,
+        projectId: currentWorkspace.id,
+        type: CaType.INTERNAL
+      });
 
       createNotification({
         text: "Successfully deleted CA",
@@ -63,7 +72,7 @@ const Page = () => {
 
       handlePopUpClose("deleteCa");
       navigate({
-        to: `/${ProjectType.CertificateManager}/$projectId/certificates` as const,
+        to: `/${ProjectType.CertificateManager}/$projectId/certificate-authorities` as const,
         params: {
           projectId
         }
@@ -80,7 +89,7 @@ const Page = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={data.friendlyName}>
+          <PageHeader title={data.name}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
@@ -101,12 +110,7 @@ const Page = () => {
                           ? "hover:!bg-red-500 hover:!text-white"
                           : "pointer-events-none cursor-not-allowed opacity-50"
                       )}
-                      onClick={() =>
-                        handlePopUpOpen("deleteCa", {
-                          caId: data.id,
-                          dn: data.dn
-                        })
-                      }
+                      onClick={() => handlePopUpOpen("deleteCa")}
                       disabled={!isAllowed}
                     >
                       Delete CA
@@ -118,12 +122,12 @@ const Page = () => {
           </PageHeader>
           <div className="flex">
             <div className="mr-4 w-96">
-              <CaDetailsSection caId={caId} handlePopUpOpen={handlePopUpOpen} />
+              <CaDetailsSection caName={data.name} handlePopUpOpen={handlePopUpOpen} />
             </div>
             <div className="w-full">
-              <CaCertificatesSection caId={caId} />
-              <CertificateTemplatesSection caId={caId} />
-              <CaCrlsSection caId={caId} />
+              <CaCertificatesSection caId={data.id} />
+              <CertificateTemplatesSection caId={data.id} />
+              <CaCrlsSection caId={data.id} />
             </div>
           </div>
         </div>
@@ -139,7 +143,7 @@ const Page = () => {
         subTitle="This action will delete other CAs and certificates below it in your CA hierarchy."
         onChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
         deleteKey="confirm"
-        onDeleteApproved={() => onRemoveCaSubmit((popUp?.deleteCa?.data as { caId: string })?.caId)}
+        onDeleteApproved={onRemoveCaSubmit}
       />
     </div>
   );

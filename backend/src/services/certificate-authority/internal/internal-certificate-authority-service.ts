@@ -143,7 +143,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     notAfter,
     maxPathLength,
     keyAlgorithm,
-    requireTemplateForIssuance,
+    enableDirectIssuance,
+    name,
     ...dto
   }: TCreateCaDTO) => {
     let projectId: string;
@@ -202,8 +203,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       const ca = await certificateAuthorityDAL.create(
         {
           projectId,
-          enableDirectIssuance: !requireTemplateForIssuance,
-          name: slugify(`${friendlyName || dn}-${alphaNumericNanoId(8)}`),
+          enableDirectIssuance,
+          name: name || slugify(`${(friendlyName || dn).slice(0, 16)}-${alphaNumericNanoId(8)}`),
           status: type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE
         },
         tx
@@ -360,7 +361,7 @@ export const internalCertificateAuthorityServiceFactory = ({
    * Update CA with id [caId].
    * Note: Used to enable/disable CA
    */
-  const updateCaById = async ({ caId, status, requireTemplateForIssuance, name, ...dto }: TUpdateCaDTO) => {
+  const updateCaById = async ({ caId, status, enableDirectIssuance, name, ...dto }: TUpdateCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
@@ -381,12 +382,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
-      if (requireTemplateForIssuance !== undefined || status !== undefined || name !== undefined) {
-        await certificateAuthorityDAL.updateById(
-          ca.id,
-          { enableDirectIssuance: !requireTemplateForIssuance, status, name },
-          tx
-        );
+      if (enableDirectIssuance !== undefined || status !== undefined || name !== undefined) {
+        await certificateAuthorityDAL.updateById(ca.id, { enableDirectIssuance, status, name }, tx);
       }
 
       return certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);

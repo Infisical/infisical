@@ -22,9 +22,9 @@ import {
   AcmeDnsProvider,
   CaStatus,
   CaType,
-  useCreateUnifiedCa,
+  useCreateCa,
   useGetCa,
-  useUpdateUnifiedCa
+  useUpdateCa
 } from "@app/hooks/api/ca";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
@@ -71,8 +71,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     type: (popUp?.ca?.data as { type: CaType })?.type || ""
   });
 
-  const { mutateAsync: createMutateAsync } = useCreateUnifiedCa();
-  const { mutateAsync: updateMutateAsync } = useUpdateUnifiedCa();
+  const { mutateAsync: createMutateAsync } = useCreateCa();
+  const { mutateAsync: updateMutateAsync } = useUpdateCa();
 
   const {
     control,
