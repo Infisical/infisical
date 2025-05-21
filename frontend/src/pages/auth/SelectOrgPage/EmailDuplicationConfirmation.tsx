@@ -64,7 +64,7 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
               Multiple Accounts Detected
             </h1>
             <p className="text-md mb-4 text-center text-white">
-              <span className="text-slate-300">You're currently logged in as</span>{" "}
+              <span className="text-slate-300">You&apos;re currently logged in as</span>{" "}
               <b>{duplicateAccounts?.data?.myAccount?.username}</b>.
             </p>
             <div className="mb-4 mt-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
