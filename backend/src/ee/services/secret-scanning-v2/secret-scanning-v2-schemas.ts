@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SecretScanningDataSourcesSchema } from "@app/db/schemas";
+import { SecretScanningDataSourcesSchema, SecretScanningFindingsSchema } from "@app/db/schemas";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { SecretScanningDataSources } from "@app/lib/api-docs";
@@ -71,3 +71,27 @@ export const BaseUpdateSecretScanningDataSourceSchema = (type: SecretScanningDat
       .describe(SecretScanningDataSources.UPDATE(type).description),
     isAutoScanEnabled: z.boolean().optional().describe(SecretScanningDataSources.UPDATE(type).isAutoScanEnabled)
   });
+
+export const RepositoryFindingSchema = SecretScanningFindingsSchema.omit({ details: true }).extend({
+  details: z.object({
+    description: z.string(),
+    startLine: z.number(),
+    endLine: z.number(),
+    startColumn: z.number(),
+    endColumn: z.number(),
+    match: z.string(),
+    secret: z.string(),
+    file: z.string(),
+    link: z.string(),
+    symlinkFile: z.string(),
+    commit: z.string(),
+    entropy: z.number(),
+    author: z.string(),
+    email: z.string(),
+    date: z.string(),
+    message: z.string(),
+    tags: z.string().array(),
+    ruleID: z.string(),
+    fingerprint: z.string()
+  })
+});

@@ -9,14 +9,14 @@ import { TImmutableDBKeys } from "./models";
 
 export const SecretScanningFindingsSchema = z.object({
   id: z.string().uuid(),
-  sourceName: z.string(),
-  sourceType: z.string(),
+  dataSourceName: z.string(),
+  dataSourceType: z.string(),
   resourceName: z.string(),
   resourceType: z.string(),
   rule: z.string(),
   severity: z.string(),
   status: z.string().default("unresolved"),
-  remarks: z.string(),
+  remarks: z.string().nullable().optional(),
   fingerprint: z.string(),
   details: z.unknown(),
   projectId: z.string(),

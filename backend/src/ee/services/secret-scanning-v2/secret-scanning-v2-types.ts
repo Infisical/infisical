@@ -1,4 +1,4 @@
-import { TSecretScanningResources } from "@app/db/schemas";
+import { TSecretScanningFindingsInsert, TSecretScanningResources } from "@app/db/schemas";
 import {
   TGitHubDataSource,
   TGitHubDataSourceInput,
@@ -71,24 +71,27 @@ export type TQueueSecretScanningDataSourceFullScan = {
   dataSourceId: string;
   resourceId: string;
   scanId: string;
-  resourceName: string;
 };
 
 export type TCloneRepository = {
   cloneUrl: string;
-  destinationPath: string;
+  repoPath: string;
 };
 
 export type TSecretScanningFactoryListRawResources<T extends TSecretScanningDataSourceWithConnection> = (
   dataSource: T
 ) => Promise<Pick<TSecretScanningResources, "externalId" | "name" | "type">[]>;
 
-export type TSecretScanningFactoryGetScanPath<T extends TSecretScanningDataSourceWithConnection> = (
-  dataSource: T,
-  resourcePath: string
-) => Promise<string>;
+export type TSecretScanningFactoryGetScanPath<T extends TSecretScanningDataSourceWithConnection> = (parameters: {
+  dataSource: T;
+  resourceName: string;
+  tempFolder: string;
+}) => Promise<string>;
 
 export type TSecretScanningFactory<T extends TSecretScanningDataSourceWithConnection> = () => {
   listRawResources: TSecretScanningFactoryListRawResources<T>;
   getScanPath: TSecretScanningFactoryGetScanPath<T>;
 };
+
+export type TFindingsPayload = Pick<TSecretScanningFindingsInsert, "details" | "fingerprint" | "severity" | "rule">[];
+export type TGetFindingsPayload = Promise<TFindingsPayload>;

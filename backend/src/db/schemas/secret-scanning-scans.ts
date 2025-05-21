@@ -10,6 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const SecretScanningScansSchema = z.object({
   id: z.string().uuid(),
   status: z.string().default("queued"),
+  statusMessage: z.string().nullable().optional(),
   type: z.string(),
   resourceId: z.string().uuid(),
   createdAt: z.date().nullable().optional()

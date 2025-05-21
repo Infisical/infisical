@@ -1,3 +1,10 @@
+import { join } from "path";
+
+import { createTempFolder } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
+import {
+  parseScanErrorMessage,
+  scanRepositoryAndGetFindings
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -9,13 +16,18 @@ import { TProjectMembershipDALFactory } from "@app/services/project-membership/p
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
-import { SecretScanningDataSource, SecretScanningScanType } from "./secret-scanning-v2-enums";
+import {
+  SecretScanningDataSource,
+  SecretScanningResource,
+  SecretScanningScanStatus,
+  SecretScanningScanType
+} from "./secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "./secret-scanning-v2-factory";
-import { TSecretScanningDataSourceWithConnection } from "./secret-scanning-v2-types";
+import { TFindingsPayload, TSecretScanningDataSourceWithConnection } from "./secret-scanning-v2-types";
 
 type TSecretRotationV2QueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
-  secretScanningV2DAL: Pick<TSecretScanningV2DALFactory, "dataSources" | "scans" | "resources">;
+  secretScanningV2DAL: TSecretScanningV2DALFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -63,8 +75,7 @@ export const secretScanningV2QueueServiceFactory = async ({
           await queueService.queuePg(QueueJobs.SecretScanningV2FullScan, {
             scanId: scan.id,
             resourceId: scan.resourceId,
-            dataSourceId: dataSource.id,
-            resourceName: resources.find((resource) => resource.id === scan.resourceId).name
+            dataSourceId: dataSource.id
           });
         }
       });
@@ -77,39 +88,102 @@ export const secretScanningV2QueueServiceFactory = async ({
   await queueService.startPg<QueueName.SecretScanningV2>(
     QueueJobs.SecretScanningV2FullScan,
     async ([job]) => {
-      const { scanId, resourceId, dataSourceId, resourceName } = job.data;
+      const { scanId, resourceId, dataSourceId } = job.data;
       const { retryCount, retryLimit } = job;
 
       const logDetails = `[scanId=${scanId}] [resourceId=${resourceId}] [dataSourceId=${dataSourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
+      const tempFolder = await createTempFolder();
+
       try {
+        await secretScanningV2DAL.scans.update(
+          { id: scanId },
+          {
+            status: SecretScanningScanStatus.Scanning
+          }
+        );
+
         const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
 
         if (!dataSource) throw new Error(`Data source with ID "${dataSourceId}" not found`);
+
+        const resource = await secretScanningV2DAL.resources.findById(resourceId);
+
+        if (!resource) throw new Error(`Resource with ID "${resourceId}" not found`);
 
         let connection: TAppConnection | null = null;
         if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
 
         const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]();
 
-        const path = await factory.getScanPath(
-          {
+        const findingsPath = join(tempFolder, "findings.json");
+
+        const scanPath = await factory.getScanPath({
+          dataSource: {
             ...dataSource,
             connection
           } as TSecretScanningDataSourceWithConnection,
-          resourceName
+          resourceName: resource.name,
+          tempFolder
+        });
+
+        let findingsPayload: TFindingsPayload;
+        switch (resource.type) {
+          case SecretScanningResource.Repository:
+            findingsPayload = await scanRepositoryAndGetFindings(scanPath, findingsPath);
+            break;
+          default:
+            throw new Error("Unhandled resource type");
+        }
+
+        await secretScanningV2DAL.findings.transaction(async (tx) => {
+          await secretScanningV2DAL.findings.insertMany(
+            findingsPayload.map((findings) => ({
+              ...findings,
+              projectId: dataSource.projectId,
+              dataSourceName: dataSource.name,
+              dataSourceType: dataSource.type,
+              resourceName: resource.name,
+              resourceType: resource.type,
+              scanId
+            })),
+            tx
+          );
+
+          await secretScanningV2DAL.scans.update(
+            { id: scanId },
+            {
+              status: SecretScanningScanStatus.Completed
+            }
+          );
+        });
+
+        // TODO: send notification
+
+        logger.info(
+          `secretScanningV2Queue: Scan Complete ${logDetails} inputPath=[${scanPath}] outputPath=[${findingsPath}]`
+        );
+      } catch (error) {
+        await secretScanningV2DAL.scans.update(
+          { id: scanId },
+          {
+            status: SecretScanningScanStatus.Failed,
+            statusMessage: parseScanErrorMessage(error)
+          }
         );
 
-        logger.info(`secretScanningV2Queue: Scan Complete ${logDetails} [path=${path}]`);
-      } catch (error) {
+        // TODO: send error notification
+
         logger.error(error, `secretScanningV2Queue: Scan Failed ${logDetails}`);
         throw error;
+      } finally {
+        // await deleteTempFolder(tempFolder);
       }
     },
     {
       batchSize: 1,
       workerCount: 2,
-      pollingIntervalSeconds: 0.5
+      pollingIntervalSeconds: 1
     }
   );
 

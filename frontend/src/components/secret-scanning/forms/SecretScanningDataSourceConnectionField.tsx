@@ -1,15 +1,15 @@
+import { Controller, useFormContext } from "react-hook-form";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
-import { Controller, useFormContext } from "react-hook-form";
 
 import { FilterableSelect, FormControl } from "@app/components/v2";
 import { OrgPermissionSubjects, useOrgPermission } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/helpers/secretScanningV2";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 
-import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/helpers/secretScanningV2";
 import { TSecretScanningDataSourceForm } from "./schemas";
 
 type Props = {
@@ -61,7 +61,7 @@ export const SecretScanningDataSourceConnectionField = ({
                   >
                     our docs
                   </a>{" "}
-                  to ensure your connection has the required permissions for secret rotation.
+                  to ensure your connection has the required permissions for secret scanning.
                 </p>
               )
             }
