@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { GitHubSecretScanningDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/github";
+import { GitHubDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/github";
 import { GitLabDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/gitlab";
 import { SecretScanningDataSourceSchema } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-union-schema";
 import { ApiDocsTags, SecretScanningDataSources } from "@app/lib/api-docs";
@@ -10,7 +10,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const SecretScanningDataSourceOptionsSchema = z.discriminatedUnion("type", [
-  GitHubSecretScanningDataSourceListItemSchema,
+  GitHubDataSourceListItemSchema,
   GitLabDataSourceListItemSchema
 ]);
 

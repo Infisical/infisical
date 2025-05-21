@@ -8,16 +8,16 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
-export const GitHubSecretScanningDataSourceConfigSchema = z.object({
+export const GitHubDataSourceConfigSchema = z.object({
   includeRepos: z.array(z.string()).nonempty("One or more repositories required").default(["*"])
 });
 
-export const GitHubSecretScanningDataSourceSchema = BaseSecretScanningDataSourceSchema({
+export const GitHubDataSourceSchema = BaseSecretScanningDataSourceSchema({
   type: SecretScanningDataSource.GitHub,
   isConnectionRequired: true
 })
   .extend({
-    config: GitHubSecretScanningDataSourceConfigSchema
+    config: GitHubDataSourceConfigSchema
   })
   .describe(
     JSON.stringify({
@@ -25,12 +25,12 @@ export const GitHubSecretScanningDataSourceSchema = BaseSecretScanningDataSource
     })
   );
 
-export const CreateGitHubSecretScanningDataSourceSchema = BaseCreateSecretScanningDataSourceSchema({
+export const CreateGitHubDataSourceSchema = BaseCreateSecretScanningDataSourceSchema({
   type: SecretScanningDataSource.GitHub,
   isConnectionRequired: true
 })
   .extend({
-    config: GitHubSecretScanningDataSourceConfigSchema
+    config: GitHubDataSourceConfigSchema
   })
   .describe(
     JSON.stringify({
@@ -38,11 +38,9 @@ export const CreateGitHubSecretScanningDataSourceSchema = BaseCreateSecretScanni
     })
   );
 
-export const UpdateGitHubSecretScanningDataSourceSchema = BaseUpdateSecretScanningDataSourceSchema(
-  SecretScanningDataSource.GitHub
-)
+export const UpdateGitHubDataSourceSchema = BaseUpdateSecretScanningDataSourceSchema(SecretScanningDataSource.GitHub)
   .extend({
-    config: GitHubSecretScanningDataSourceConfigSchema.optional()
+    config: GitHubDataSourceConfigSchema.optional()
   })
   .describe(
     JSON.stringify({
@@ -50,7 +48,7 @@ export const UpdateGitHubSecretScanningDataSourceSchema = BaseUpdateSecretScanni
     })
   );
 
-export const GitHubSecretScanningDataSourceListItemSchema = z
+export const GitHubDataSourceListItemSchema = z
   .object({
     name: z.literal("GitHub"),
     connection: z.literal(AppConnection.GitHub),

@@ -1,9 +1,9 @@
 import { TSecretScanningResources } from "@app/db/schemas";
 import {
-  TGitHubSecretScanningDataSource,
-  TGitHubSecretScanningDataSourceInput,
-  TGitHubSecretScanningDataSourceListItem,
-  TGitHubSecretScanningDataSourceWithConnection
+  TGitHubDataSource,
+  TGitHubDataSourceInput,
+  TGitHubDataSourceListItem,
+  TGitHubDataSourceWithConnection
 } from "@app/ee/services/secret-scanning-v2/github";
 import {
   TGitLabDataSource,
@@ -13,15 +13,13 @@ import {
 } from "@app/ee/services/secret-scanning-v2/gitlab";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 
-export type TSecretScanningDataSource = TGitHubSecretScanningDataSource | TGitLabDataSource;
+export type TSecretScanningDataSource = TGitHubDataSource | TGitLabDataSource;
 
-export type TSecretScanningDataSourceWithConnection =
-  | TGitHubSecretScanningDataSourceWithConnection
-  | TGitLabDataSourceWithConnection;
+export type TSecretScanningDataSourceWithConnection = TGitHubDataSourceWithConnection | TGitLabDataSourceWithConnection;
 
-export type TSecretScanningDataSourceInput = TGitHubSecretScanningDataSourceInput | TGitLabDataSourceInput;
+export type TSecretScanningDataSourceInput = TGitHubDataSourceInput | TGitLabDataSourceInput;
 
-export type TSecretScanningDataSourceListItem = TGitHubSecretScanningDataSourceListItem | TGitLabDataSourceListItem;
+export type TSecretScanningDataSourceListItem = TGitHubDataSourceListItem | TGitLabDataSourceListItem;
 
 // export type TSecretRotationV2Raw = NonNullable<Awaited<ReturnType<TSecretRotationV2DALFactory["findById"]>>>;
 
@@ -70,9 +68,27 @@ export type TTriggerSecretScanningDataSourceDTO = {
 };
 
 export type TQueueSecretScanningDataSourceFullScan = {
+  dataSourceId: string;
   resourceId: string;
+  scanId: string;
+  resourceName: string;
 };
 
-export type TSecretScanningFactory<T extends TSecretScanningDataSourceWithConnection> = {
-  listResources: (dataSource: T) => Pick<TSecretScanningResources, "externalId" | "name" | "type">[];
+export type TCloneRepository = {
+  cloneUrl: string;
+  destinationPath: string;
+};
+
+export type TSecretScanningFactoryListRawResources<T extends TSecretScanningDataSourceWithConnection> = (
+  dataSource: T
+) => Promise<Pick<TSecretScanningResources, "externalId" | "name" | "type">[]>;
+
+export type TSecretScanningFactoryGetScanPath<T extends TSecretScanningDataSourceWithConnection> = (
+  dataSource: T,
+  resourcePath: string
+) => Promise<string>;
+
+export type TSecretScanningFactory<T extends TSecretScanningDataSourceWithConnection> = () => {
+  listRawResources: TSecretScanningFactoryListRawResources<T>;
+  getScanPath: TSecretScanningFactoryGetScanPath<T>;
 };

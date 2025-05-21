@@ -3,17 +3,17 @@ import { z } from "zod";
 import { TGitHubConnection } from "@app/services/app-connection/github";
 
 import {
-  CreateGitHubSecretScanningDataSourceSchema,
-  GitHubSecretScanningDataSourceListItemSchema,
-  GitHubSecretScanningDataSourceSchema
+  CreateGitHubDataSourceSchema,
+  GitHubDataSourceListItemSchema,
+  GitHubDataSourceSchema
 } from "./github-secret-scanning-schemas";
 
-export type TGitHubSecretScanningDataSource = z.infer<typeof GitHubSecretScanningDataSourceSchema>;
+export type TGitHubDataSource = z.infer<typeof GitHubDataSourceSchema>;
 
-export type TGitHubSecretScanningDataSourceInput = z.infer<typeof CreateGitHubSecretScanningDataSourceSchema>;
+export type TGitHubDataSourceInput = z.infer<typeof CreateGitHubDataSourceSchema>;
 
-export type TGitHubSecretScanningDataSourceListItem = z.infer<typeof GitHubSecretScanningDataSourceListItemSchema>;
+export type TGitHubDataSourceListItem = z.infer<typeof GitHubDataSourceListItemSchema>;
 
-export type TGitHubSecretScanningDataSourceWithConnection = TGitHubSecretScanningDataSource & {
+export type TGitHubDataSourceWithConnection = TGitHubDataSource & {
   connection: TGitHubConnection;
 };

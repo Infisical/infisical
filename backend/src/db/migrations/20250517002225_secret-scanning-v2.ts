@@ -2,13 +2,16 @@ import { Knex } from "knex";
 
 import { TableName } from "@app/db/schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "@app/db/utils";
-import { SecretScanningFindingStatus } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  SecretScanningFindingStatus,
+  SecretScanningScanStatus
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.SecretScanningDataSource))) {
     await knex.schema.createTable(TableName.SecretScanningDataSource, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.string("name", 32).notNullable();
+      t.string("name", 48).notNullable();
       t.string("description");
       t.string("type").notNullable();
       t.jsonb("config").notNullable();
@@ -32,6 +35,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("dataSourceId").notNullable();
       t.foreign("dataSourceId").references("id").inTable(TableName.SecretScanningDataSource).onDelete("CASCADE");
       t.timestamps(true, true, true);
+      t.unique(["dataSourceId", "externalId"]);
     });
     await createOnUpdateTrigger(knex, TableName.SecretScanningResource);
   }
@@ -39,10 +43,10 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.SecretScanningScan))) {
     await knex.schema.createTable(TableName.SecretScanningScan, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.string("status").notNullable();
+      t.string("status").notNullable().defaultTo(SecretScanningScanStatus.Queued);
       t.string("type").notNullable();
-      t.uuid("targetId").notNullable();
-      t.foreign("targetId").references("id").inTable(TableName.SecretScanningResource).onDelete("CASCADE");
+      t.uuid("resourceId").notNullable();
+      t.foreign("resourceId").references("id").inTable(TableName.SecretScanningResource).onDelete("CASCADE");
       t.timestamp("createdAt").defaultTo(knex.fn.now());
     });
   }
@@ -52,8 +56,8 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("sourceName").notNullable();
       t.string("sourceType").notNullable();
-      t.string("targetName").notNullable();
-      t.string("targetType").notNullable();
+      t.string("resourceName").notNullable();
+      t.string("resourceType").notNullable();
       t.string("rule").notNullable();
       t.string("severity").notNullable();
       t.string("status").notNullable().defaultTo(SecretScanningFindingStatus.Unresolved);

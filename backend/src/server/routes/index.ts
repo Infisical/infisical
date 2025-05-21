@@ -87,6 +87,7 @@ import { secretScanningDALFactory } from "@app/ee/services/secret-scanning/secre
 import { secretScanningQueueFactory } from "@app/ee/services/secret-scanning/secret-scanning-queue";
 import { secretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { secretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
+import { secretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
 import { secretScanningV2ServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-service";
 import { secretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { snapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
@@ -1697,6 +1698,15 @@ export const registerRoutes = async (
     smtpService
   });
 
+  const secretScanningV2Queue = await secretScanningV2QueueServiceFactory({
+    secretScanningV2DAL,
+    queueService,
+    projectDAL,
+    projectMembershipDAL,
+    smtpService,
+    kmsService
+  });
+
   const secretScanningV2Service = secretScanningV2ServiceFactory({
     appConnectionDAL,
     permissionService,
@@ -1705,7 +1715,9 @@ export const registerRoutes = async (
     auditLogService,
     keyStore,
     queueService,
-    secretScanningV2DAL
+    secretScanningV2DAL,
+    secretScanningV2Queue,
+    kmsService
   });
 
   await superAdminService.initServerCfg();

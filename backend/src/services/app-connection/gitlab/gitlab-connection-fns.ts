@@ -9,12 +9,20 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { GitLabConnectionMethod } from "./gitlab-connection-enums";
 import { TGitLabConnection, TGitLabConnectionConfig } from "./gitlab-connection-types";
 
-export const getGitLabConnectionClient = async (config: TGitLabConnectionConfig) => {
-  const { accessToken, instanceUrl } = config.credentials;
+export const getGitLabConnectionUrl = async (config: TGitLabConnectionConfig) => {
+  const { instanceUrl } = config.credentials;
 
   const host = instanceUrl ? removeTrailingSlash(instanceUrl) : "https://www.gitlab.com";
 
   await blockLocalAndPrivateIpAddresses(host);
+
+  return host;
+};
+
+export const getGitLabConnectionClient = async (config: TGitLabConnectionConfig) => {
+  const { accessToken } = config.credentials;
+
+  const host = await getGitLabConnectionUrl(config);
 
   const client = new Gitlab<true>({
     host,

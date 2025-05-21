@@ -14,7 +14,7 @@ export const SecretScanningDataSourcesSchema = z.object({
   type: z.string(),
   config: z.unknown(),
   connectionId: z.string().uuid().nullable().optional(),
-  isAutoScanEnabled: z.boolean().default(false).nullable().optional(),
+  isAutoScanEnabled: z.boolean().default(true).nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()

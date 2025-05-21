@@ -20,19 +20,23 @@ import {
   TFindSecretScanningDataSourceByNameDTO,
   TListSecretScanningDataSourcesByProjectId,
   TSecretScanningDataSource,
+  TSecretScanningDataSourceWithConnection,
   TTriggerSecretScanningDataSourceDTO,
   TUpdateSecretScanningDataSourceDTO
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
+import { TAppConnection } from "@app/services/app-connection/app-connection-types";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
+import { TSecretScanningV2QueueServiceFactory } from "./secret-scanning-v2-queue";
 
 export type TSecretScanningV2ServiceFactoryDep = {
   secretScanningV2DAL: TSecretScanningV2DALFactory;
@@ -43,6 +47,8 @@ export type TSecretScanningV2ServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   queueService: Pick<TQueueServiceFactory, "queuePg">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
+  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "queueDataSourceFullScan">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TSecretScanningV2ServiceFactory = ReturnType<typeof secretScanningV2ServiceFactory>;
@@ -55,7 +61,9 @@ export const secretScanningV2ServiceFactory = ({
   auditLogService,
   keyStore,
   queueService,
-  appConnectionDAL
+  appConnectionDAL,
+  secretScanningV2Queue,
+  kmsService
 }: TSecretScanningV2ServiceFactoryDep) => {
   const listSecretScanningDataSourcesByProjectId = async (
     { projectId, type }: TListSecretScanningDataSourcesByProjectId,
@@ -358,7 +366,7 @@ export const secretScanningV2ServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.Delete,
+      ProjectPermissionSecretScanningDataSourceActions.TriggerScans,
       ProjectPermissionSub.SecretScanningDataSources
     );
 
@@ -367,7 +375,13 @@ export const secretScanningV2ServiceFactory = ({
         message: `Secret Rotation with ID "${dataSourceId}" is not configured for ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]}`
       });
 
-    logger.warn("scan!");
+    let connection: TAppConnection | null = null;
+    if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
+
+    await secretScanningV2Queue.queueDataSourceFullScan({
+      ...dataSource,
+      connection
+    } as TSecretScanningDataSourceWithConnection);
 
     return dataSource as TSecretScanningDataSource;
   };
