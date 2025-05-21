@@ -55,8 +55,8 @@ export default {
       });
 
       const smtp = mockSmtpServer();
-      const queue = queueServiceFactory(envConfig.REDIS_URL, { dbConnectionUrl: envConfig.DB_CONNECTION_URI });
-      const keyStore = keyStoreFactory(envConfig.REDIS_URL);
+      const queue = queueServiceFactory(envConfig, { dbConnectionUrl: envConfig.DB_CONNECTION_URI });
+      const keyStore = keyStoreFactory(envConfig);
 
       const hsmModule = initializeHsmModule(envConfig);
       hsmModule.initialize();
