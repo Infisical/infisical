@@ -386,7 +386,21 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     const reviewStatus = await accessApprovalRequestReviewerDAL.transaction(async (tx) => {
-      const review = await accessApprovalRequestReviewerDAL.findOne(
+      const isBreakGlassApprovalAttempt =
+        policy.enforcementLevel === EnforcementLevel.Soft &&
+        actorId === accessApprovalRequest.requestedByUserId &&
+        status === ApprovalStatus.APPROVED;
+
+      let reviewForThisActorProcessing: {
+        id: string;
+        requestId: string;
+        reviewerUserId: string;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+      };
+
+      const existingReviewByActorInTx = await accessApprovalRequestReviewerDAL.findOne(
         {
           requestId: accessApprovalRequest.id,
           reviewerUserId: actorId
@@ -394,69 +408,82 @@ export const accessApprovalRequestServiceFactory = ({
         tx
       );
 
-      if (review) {
-        throw new BadRequestError({ message: "You have already reviewed this request" });
-      }
-
-      const newReview = await accessApprovalRequestReviewerDAL.create(
-        {
-          status,
-          requestId: accessApprovalRequest.id,
-          reviewerUserId: actorId
-        },
-        tx
-      );
-
-      const allReviews = [...existingReviews, newReview];
-      const approvedReviews = allReviews.filter((r) => r.status === ApprovalStatus.APPROVED);
-
-      if (status === ApprovalStatus.APPROVED && approvedReviews.length >= policy.approvals) {
-        if (accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
-          throw new BadRequestError({ message: "Temporary range is required for temporary access" });
-        }
-
-        let privilegeId: string | null = null;
-
-        if (!accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
-          // Permanent access
-          const privilege = await additionalPrivilegeDAL.create(
-            {
-              userId: accessApprovalRequest.requestedByUserId,
-              projectId: accessApprovalRequest.projectId,
-              slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
-              permissions: JSON.stringify(accessApprovalRequest.permissions)
-            },
-            tx
-          );
-          privilegeId = privilege.id;
+      // Check if review exists for actor
+      if (existingReviewByActorInTx) {
+        // Check if breakglass re-approval
+        if (isBreakGlassApprovalAttempt && existingReviewByActorInTx.status === ApprovalStatus.APPROVED) {
+          reviewForThisActorProcessing = existingReviewByActorInTx;
         } else {
-          // Temporary access
-          const relativeTempAllocatedTimeInMs = ms(accessApprovalRequest.temporaryRange!);
-          const startTime = new Date();
-
-          const privilege = await additionalPrivilegeDAL.create(
-            {
-              userId: accessApprovalRequest.requestedByUserId,
-              projectId: accessApprovalRequest.projectId,
-              slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
-              permissions: JSON.stringify(accessApprovalRequest.permissions),
-              isTemporary: true, // Explicitly set to true for the privilege
-              temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
-              temporaryRange: accessApprovalRequest.temporaryRange!,
-              temporaryAccessStartTime: startTime,
-              temporaryAccessEndTime: new Date(startTime.getTime() + relativeTempAllocatedTimeInMs)
-            },
-            tx
-          );
-          privilegeId = privilege.id;
+          throw new BadRequestError({ message: "You have already reviewed this request" });
         }
-        await accessApprovalRequestDAL.updateById(accessApprovalRequest.id, { privilegeId }, tx);
+      } else {
+        reviewForThisActorProcessing = await accessApprovalRequestReviewerDAL.create(
+          {
+            status,
+            requestId: accessApprovalRequest.id,
+            reviewerUserId: actorId
+          },
+          tx
+        );
       }
 
-      const isSoftEnforcement = policy.enforcementLevel === EnforcementLevel.Soft;
-      const wasSelfRequestAndReview = actorId === accessApprovalRequest.requestedByUserId;
+      const otherReviews = existingReviews.filter((er) => er.reviewerUserId !== actorId);
+      const allUniqueReviews = [...otherReviews, reviewForThisActorProcessing];
 
-      if (isSoftEnforcement && wasSelfRequestAndReview && status === ApprovalStatus.APPROVED) {
+      const approvedReviews = allUniqueReviews.filter((r) => r.status === ApprovalStatus.APPROVED);
+      const meetsStandardApprovalThreshold = approvedReviews.length >= policy.approvals;
+
+      if (
+        reviewForThisActorProcessing.status === ApprovalStatus.APPROVED &&
+        (meetsStandardApprovalThreshold || isBreakGlassApprovalAttempt)
+      ) {
+        const currentRequestState = await accessApprovalRequestDAL.findById(accessApprovalRequest.id, tx);
+        let privilegeIdToSet = currentRequestState?.privilegeId || null;
+
+        if (!privilegeIdToSet) {
+          if (accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
+            throw new BadRequestError({ message: "Temporary range is required for temporary access" });
+          }
+
+          if (!accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
+            // Permanent access
+            const privilege = await additionalPrivilegeDAL.create(
+              {
+                userId: accessApprovalRequest.requestedByUserId,
+                projectId: accessApprovalRequest.projectId,
+                slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+                permissions: JSON.stringify(accessApprovalRequest.permissions)
+              },
+              tx
+            );
+            privilegeIdToSet = privilege.id;
+          } else {
+            // Temporary access
+            const relativeTempAllocatedTimeInMs = ms(accessApprovalRequest.temporaryRange!);
+            const startTime = new Date();
+
+            const privilege = await additionalPrivilegeDAL.create(
+              {
+                userId: accessApprovalRequest.requestedByUserId,
+                projectId: accessApprovalRequest.projectId,
+                slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+                permissions: JSON.stringify(accessApprovalRequest.permissions),
+                isTemporary: true, // Explicitly set to true for the privilege
+                temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
+                temporaryRange: accessApprovalRequest.temporaryRange!,
+                temporaryAccessStartTime: startTime,
+                temporaryAccessEndTime: new Date(startTime.getTime() + relativeTempAllocatedTimeInMs)
+              },
+              tx
+            );
+            privilegeIdToSet = privilege.id;
+          }
+          await accessApprovalRequestDAL.updateById(accessApprovalRequest.id, { privilegeId: privilegeIdToSet }, tx);
+        }
+      }
+
+      // Send notification if this was a breakglass approval
+      if (isBreakGlassApprovalAttempt) {
         const cfg = getConfig();
         const actingUser = await userDAL.findById(actorId, tx);
 
@@ -491,7 +518,7 @@ export const accessApprovalRequestServiceFactory = ({
           }
         }
       }
-      return newReview;
+      return reviewForThisActorProcessing;
     });
 
     return reviewStatus;

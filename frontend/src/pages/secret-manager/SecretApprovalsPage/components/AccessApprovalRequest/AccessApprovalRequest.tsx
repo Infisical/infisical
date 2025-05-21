@@ -86,6 +86,7 @@ export const AccessApprovalRequest = ({
     | (TAccessApprovalRequest & {
         user: { firstName?: string; lastName?: string; email?: string } | null;
         isRequestedByCurrentUser: boolean;
+        isSelfApproveAllowed: boolean;
         isApprover: boolean;
       })
     | null
@@ -351,18 +352,24 @@ export const AccessApprovalRequest = ({
                     role="button"
                     tabIndex={0}
                     onClick={() => {
-                      if (
+                      // Whether the request has already been approved / rejected / reviewed
+                      const isInactive =
                         details.isAccepted ||
                         details.isReviewedByUser ||
-                        details.isRejectedByAnyone ||
-                        (!details.isApprover &&
-                          !(
-                            details.isSoftEnforcement &&
-                            details.isRequestedByCurrentUser &&
-                            canBypassApprovalPermission
-                          ))
-                      )
-                        return;
+                        details.isRejectedByAnyone;
+
+                      // Whether the current user can bypass policy
+                      const canBypass =
+                        details.isSoftEnforcement &&
+                        details.isRequestedByCurrentUser &&
+                        canBypassApprovalPermission;
+
+                      // Whether the current user can approve
+                      const canApprove =
+                        details.isApprover &&
+                        (!details.isRequestedByCurrentUser || details.isSelfApproveAllowed);
+
+                      if (isInactive || (!canApprove && !canBypass)) return;
 
                       if (
                         membersGroupById?.[request.requestedByUserId].user ||
@@ -376,6 +383,7 @@ export const AccessApprovalRequest = ({
                               ? user
                               : membersGroupById?.[request.requestedByUserId].user,
                           isRequestedByCurrentUser: details.isRequestedByCurrentUser,
+                          isSelfApproveAllowed: details.isSelfApproveAllowed,
                           isApprover: details.isApprover
                         });
                       }
@@ -383,18 +391,24 @@ export const AccessApprovalRequest = ({
                       handlePopUpOpen("reviewRequest");
                     }}
                     onKeyDown={(evt) => {
-                      if (
+                      // Whether the request has already been approved / rejected / reviewed
+                      const isInactive =
                         details.isAccepted ||
                         details.isReviewedByUser ||
-                        details.isRejectedByAnyone ||
-                        (!details.isApprover &&
-                          !(
-                            details.isSoftEnforcement &&
-                            details.isRequestedByCurrentUser &&
-                            canBypassApprovalPermission
-                          ))
-                      )
-                        return;
+                        details.isRejectedByAnyone;
+
+                      // Whether the current user can bypass policy
+                      const canBypass =
+                        details.isSoftEnforcement &&
+                        details.isRequestedByCurrentUser &&
+                        canBypassApprovalPermission;
+
+                      // Whether the current user can approve
+                      const canApprove =
+                        details.isApprover &&
+                        (!details.isRequestedByCurrentUser || details.isSelfApproveAllowed);
+
+                      if (isInactive || (!canApprove && !canBypass)) return;
 
                       if (evt.key === "Enter") {
                         if (
@@ -409,6 +423,7 @@ export const AccessApprovalRequest = ({
                                 ? user
                                 : membersGroupById?.[request.requestedByUserId].user,
                             isRequestedByCurrentUser: details.isRequestedByCurrentUser,
+                            isSelfApproveAllowed: details.isSelfApproveAllowed,
                             isApprover: details.isApprover
                           });
                         }

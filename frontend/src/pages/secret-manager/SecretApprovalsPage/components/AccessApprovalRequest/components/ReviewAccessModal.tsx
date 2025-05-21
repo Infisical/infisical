@@ -26,6 +26,7 @@ export const ReviewAccessRequestModal = ({
   request: TAccessApprovalRequest & {
     user: { firstName?: string; lastName?: string; email?: string } | null;
     isRequestedByCurrentUser: boolean;
+    isSelfApproveAllowed: boolean;
     isApprover: boolean;
   };
   projectSlug: string;
@@ -155,7 +156,6 @@ export const ReviewAccessRequestModal = ({
             )}{" "}
             is requesting access to the following resource:
           </span>
-
           <div className="mb-2 mt-4 border-l border-blue-500 bg-blue-500/20 px-3 py-2 text-mineshaft-200">
             <div className="mb-1 lowercase">
               <span className="font-bold capitalize">Requested path: </span>
@@ -179,16 +179,16 @@ export const ReviewAccessRequestModal = ({
               </div>
             )}
           </div>
-
           <div className="space-x-2">
             <Button
               isLoading={isLoading === "approved"}
               isDisabled={
                 !!isLoading ||
-                (!request.isApprover &&
-                  !bypassApproval &&
-                  isSoftEnforcement &&
-                  canBypassApprovalPermission)
+                (!(
+                  request.isApprover &&
+                  (!request.isRequestedByCurrentUser || request.isSelfApproveAllowed)
+                ) &&
+                  !bypassApproval)
               }
               onClick={() => handleReview("approved")}
               className="mt-4"
@@ -207,10 +207,9 @@ export const ReviewAccessRequestModal = ({
               Reject Request
             </Button>
           </div>
-
           {isSoftEnforcement &&
             request.isRequestedByCurrentUser &&
-            !request.isApprover &&
+            !(request.isApprover && request.isSelfApproveAllowed) &&
             canBypassApprovalPermission && (
               <div className="mt-2 flex flex-col space-y-2">
                 <Checkbox
