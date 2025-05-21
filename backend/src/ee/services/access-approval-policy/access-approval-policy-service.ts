@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionApprovalActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -98,7 +98,7 @@ export const accessApprovalPolicyServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionApprovalActions.Create,
       ProjectPermissionSub.SecretApproval
     );
     const env = await projectEnvDAL.findOne({ slug: environment, projectId: project.id });
@@ -256,7 +256,10 @@ export const accessApprovalPolicyServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionApprovalActions.Edit,
+      ProjectPermissionSub.SecretApproval
+    );
 
     const updatedPolicy = await accessApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await accessApprovalPolicyDAL.updateById(
@@ -341,7 +344,7 @@ export const accessApprovalPolicyServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
+      ProjectPermissionApprovalActions.Delete,
       ProjectPermissionSub.SecretApproval
     );
 
@@ -432,7 +435,10 @@ export const accessApprovalPolicyServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionApprovalActions.Read,
+      ProjectPermissionSub.SecretApproval
+    );
 
     return policy;
   };

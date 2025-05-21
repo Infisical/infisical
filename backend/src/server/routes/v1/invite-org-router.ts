@@ -16,7 +16,12 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     schema: {
       body: z.object({
-        inviteeEmails: z.array(z.string().trim().email()),
+        inviteeEmails: z
+          .string()
+          .trim()
+          .email()
+          .array()
+          .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
         organizationId: z.string().trim(),
         projects: z
           .object({
@@ -115,7 +120,11 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        email: z.string().trim().email(),
+        email: z
+          .string()
+          .trim()
+          .email()
+          .refine((val) => val === val.toLowerCase(), "Email must be lowercase"),
         organizationId: z.string().trim(),
         code: z.string().trim()
       }),
