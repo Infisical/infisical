@@ -61,7 +61,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionApprovalActions.Edit,
       ProjectPermissionApprovalActions.Create,
       ProjectPermissionApprovalActions.Delete,
-      ProjectPermissionApprovalActions.AllowChangeBypass
+      ProjectPermissionApprovalActions.AllowChangeBypass,
+      ProjectPermissionApprovalActions.AllowAccessBypass
     ],
     ProjectPermissionSub.SecretApproval
   );

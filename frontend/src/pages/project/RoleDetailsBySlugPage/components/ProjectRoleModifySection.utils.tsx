@@ -58,7 +58,8 @@ const ApprovalPolicyActionSchema = z.object({
   [ProjectPermissionApprovalActions.Edit]: z.boolean().optional(),
   [ProjectPermissionApprovalActions.Delete]: z.boolean().optional(),
   [ProjectPermissionApprovalActions.Create]: z.boolean().optional(),
-  [ProjectPermissionApprovalActions.AllowChangeBypass]: z.boolean().optional()
+  [ProjectPermissionApprovalActions.AllowChangeBypass]: z.boolean().optional(),
+  [ProjectPermissionApprovalActions.AllowAccessBypass]: z.boolean().optional()
 });
 
 const CmekPolicyActionSchema = z.object({
@@ -578,6 +579,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canEdit = action.includes(ProjectPermissionApprovalActions.Edit);
       const canRead = action.includes(ProjectPermissionApprovalActions.Read);
       const canChangeBypass = action.includes(ProjectPermissionApprovalActions.AllowChangeBypass);
+      const canAccessBypass = action.includes(ProjectPermissionApprovalActions.AllowAccessBypass);
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
@@ -588,6 +590,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canRead) formVal[subject]![0][ProjectPermissionApprovalActions.Read] = true;
       if (canChangeBypass)
         formVal[subject]![0][ProjectPermissionApprovalActions.AllowChangeBypass] = true;
+      if (canAccessBypass)
+        formVal[subject]![0][ProjectPermissionApprovalActions.AllowAccessBypass] = true;
       return;
     }
 
@@ -1212,7 +1216,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Create", value: ProjectPermissionApprovalActions.Create },
       { label: "Modify", value: ProjectPermissionApprovalActions.Edit },
       { label: "Remove", value: ProjectPermissionApprovalActions.Delete },
-      { label: "Allow Change Bypass", value: ProjectPermissionApprovalActions.AllowChangeBypass }
+      { label: "Allow Change Bypass", value: ProjectPermissionApprovalActions.AllowChangeBypass },
+      { label: "Allow Access Bypass", value: ProjectPermissionApprovalActions.AllowAccessBypass }
     ]
   },
   [ProjectPermissionSub.SecretRotation]: {

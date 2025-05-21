@@ -1,5 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
+import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ms from "ms";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Checkbox, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
@@ -8,9 +11,6 @@ import { ProjectPermissionActions } from "@app/context";
 import { useReviewAccessRequest } from "@app/hooks/api";
 import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
-import { twMerge } from "tailwind-merge";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 
 export const ReviewAccessRequestModal = ({
   isOpen,
@@ -18,7 +18,8 @@ export const ReviewAccessRequestModal = ({
   request,
   projectSlug,
   selectedRequester,
-  selectedEnvSlug
+  selectedEnvSlug,
+  canBypassApprovalPermission
 }: {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -30,6 +31,7 @@ export const ReviewAccessRequestModal = ({
   projectSlug: string;
   selectedRequester: string | undefined;
   selectedEnvSlug: string | undefined;
+  canBypassApprovalPermission: boolean;
 }) => {
   const [isLoading, setIsLoading] = useState<"approved" | "rejected" | null>(null);
   const [bypassApproval, setBypassApproval] = useState(false);
@@ -182,7 +184,11 @@ export const ReviewAccessRequestModal = ({
             <Button
               isLoading={isLoading === "approved"}
               isDisabled={
-                !!isLoading || (!request.isApprover && !bypassApproval && isSoftEnforcement)
+                !!isLoading ||
+                (!request.isApprover &&
+                  !bypassApproval &&
+                  isSoftEnforcement &&
+                  canBypassApprovalPermission)
               }
               onClick={() => handleReview("approved")}
               className="mt-4"
@@ -202,39 +208,42 @@ export const ReviewAccessRequestModal = ({
             </Button>
           </div>
 
-          {isSoftEnforcement && request.isRequestedByCurrentUser && !request.isApprover && (
-            <div className="mt-2 flex flex-col space-y-2">
-              <Checkbox
-                onCheckedChange={(checked) => setBypassApproval(checked === true)}
-                isChecked={bypassApproval}
-                id="byPassApproval"
-                checkIndicatorBg="text-white"
-                className={twMerge(
-                  "mr-2",
-                  bypassApproval ? "border-red bg-red hover:bg-red-600" : ""
-                )}
-              >
-                <span className="text-xs text-red">
-                  Approve without waiting for requirements to be met (bypass policy protection)
-                </span>
-              </Checkbox>
-              {bypassApproval && (
-                <FormControl
-                  label="Reason for bypass"
-                  className="mt-2"
-                  isRequired
-                  tooltipText="Enter a reason for bypassing the secret change policy"
+          {isSoftEnforcement &&
+            request.isRequestedByCurrentUser &&
+            !request.isApprover &&
+            canBypassApprovalPermission && (
+              <div className="mt-2 flex flex-col space-y-2">
+                <Checkbox
+                  onCheckedChange={(checked) => setBypassApproval(checked === true)}
+                  isChecked={bypassApproval}
+                  id="byPassApproval"
+                  checkIndicatorBg="text-white"
+                  className={twMerge(
+                    "mr-2",
+                    bypassApproval ? "border-red bg-red hover:bg-red-600" : ""
+                  )}
                 >
-                  <Input
-                    value={bypassReason}
-                    onChange={(e) => setBypassReason(e.currentTarget.value)}
-                    placeholder="Enter reason for bypass (min 10 chars)"
-                    leftIcon={<FontAwesomeIcon icon={faTriangleExclamation} />}
-                  />
-                </FormControl>
-              )}
-            </div>
-          )}
+                  <span className="text-xs text-red">
+                    Approve without waiting for requirements to be met (bypass policy protection)
+                  </span>
+                </Checkbox>
+                {bypassApproval && (
+                  <FormControl
+                    label="Reason for bypass"
+                    className="mt-2"
+                    isRequired
+                    tooltipText="Enter a reason for bypassing the secret change policy"
+                  >
+                    <Input
+                      value={bypassReason}
+                      onChange={(e) => setBypassReason(e.currentTarget.value)}
+                      placeholder="Enter reason for bypass (min 10 chars)"
+                      leftIcon={<FontAwesomeIcon icon={faTriangleExclamation} />}
+                    />
+                  </FormControl>
+                )}
+              </div>
+            )}
         </div>
       </ModalContent>
     </Modal>

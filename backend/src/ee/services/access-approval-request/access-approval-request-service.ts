@@ -23,6 +23,7 @@ import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-poli
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service";
+import { ProjectPermissionApprovalActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "../project-user-additional-privilege/project-user-additional-privilege-types";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
@@ -340,17 +341,7 @@ export const accessApprovalRequestServiceFactory = ({
       });
     }
 
-    if (
-      !policy.allowedSelfApprovals &&
-      actorId === accessApprovalRequest.requestedByUserId &&
-      policy.enforcementLevel !== EnforcementLevel.Soft
-    ) {
-      throw new BadRequestError({
-        message: "Failed to review access approval request. Users are not authorized to review their own request."
-      });
-    }
-
-    const { membership, hasRole } = await permissionService.getProjectPermission({
+    const { membership, hasRole, permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: accessApprovalRequest.projectId,
@@ -361,6 +352,19 @@ export const accessApprovalRequestServiceFactory = ({
 
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
+    }
+
+    if (
+      !policy.allowedSelfApprovals &&
+      actorId === accessApprovalRequest.requestedByUserId &&
+      !(
+        policy.enforcementLevel === EnforcementLevel.Soft &&
+        permission.can(ProjectPermissionApprovalActions.AllowAccessBypass, ProjectPermissionSub.SecretApproval)
+      )
+    ) {
+      throw new BadRequestError({
+        message: "Failed to review access approval request. Users are not authorized to review their own request."
+      });
     }
 
     if (

@@ -29,7 +29,8 @@ export enum ProjectPermissionApprovalActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  AllowChangeBypass = "allow-change-bypass"
+  AllowChangeBypass = "allow-change-bypass",
+  AllowAccessBypass = "allow-access-bypass"
 }
 
 export enum ProjectPermissionDynamicSecretActions {

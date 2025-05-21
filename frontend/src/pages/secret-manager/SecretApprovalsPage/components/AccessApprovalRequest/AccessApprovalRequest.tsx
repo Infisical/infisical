@@ -25,6 +25,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
 import {
+  ProjectPermissionApprovalActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProjectPermission,
@@ -99,6 +100,11 @@ export const AccessApprovalRequest = ({
   const { user } = useUser();
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
+
+  const canBypassApprovalPermission = permission.can(
+    ProjectPermissionApprovalActions.AllowAccessBypass,
+    ProjectPermissionSub.SecretApproval
+  );
 
   const { data: members } = useGetWorkspaceUsers(projectId, true);
   const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
@@ -350,7 +356,11 @@ export const AccessApprovalRequest = ({
                         details.isReviewedByUser ||
                         details.isRejectedByAnyone ||
                         (!details.isApprover &&
-                          !(details.isSoftEnforcement && details.isRequestedByCurrentUser))
+                          !(
+                            details.isSoftEnforcement &&
+                            details.isRequestedByCurrentUser &&
+                            canBypassApprovalPermission
+                          ))
                       )
                         return;
 
@@ -360,9 +370,11 @@ export const AccessApprovalRequest = ({
                       ) {
                         setSelectedRequest({
                           ...request,
-                          user: details.isRequestedByCurrentUser
-                            ? user
-                            : membersGroupById?.[request.requestedByUserId].user!,
+                          user:
+                            details.isRequestedByCurrentUser ||
+                            !membersGroupById?.[request.requestedByUserId].user
+                              ? user
+                              : membersGroupById?.[request.requestedByUserId].user,
                           isRequestedByCurrentUser: details.isRequestedByCurrentUser,
                           isApprover: details.isApprover
                         });
@@ -376,7 +388,11 @@ export const AccessApprovalRequest = ({
                         details.isReviewedByUser ||
                         details.isRejectedByAnyone ||
                         (!details.isApprover &&
-                          !(details.isSoftEnforcement && details.isRequestedByCurrentUser))
+                          !(
+                            details.isSoftEnforcement &&
+                            details.isRequestedByCurrentUser &&
+                            canBypassApprovalPermission
+                          ))
                       )
                         return;
 
@@ -387,9 +403,11 @@ export const AccessApprovalRequest = ({
                         ) {
                           setSelectedRequest({
                             ...request,
-                            user: details.isRequestedByCurrentUser
-                              ? user
-                              : membersGroupById?.[request.requestedByUserId].user!,
+                            user:
+                              details.isRequestedByCurrentUser ||
+                              !membersGroupById?.[request.requestedByUserId].user
+                                ? user
+                                : membersGroupById?.[request.requestedByUserId].user,
                             isRequestedByCurrentUser: details.isRequestedByCurrentUser,
                             isApprover: details.isApprover
                           });
@@ -463,6 +481,7 @@ export const AccessApprovalRequest = ({
             setSelectedRequest(null);
             refetchRequests();
           }}
+          canBypassApprovalPermission={canBypassApprovalPermission}
         />
       )}
 
