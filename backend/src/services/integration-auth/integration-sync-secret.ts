@@ -7,17 +7,6 @@
 // Taken from old code and too much work at present thus disabling the above any rules
 // resolve it later: akhilmhdh - TODO
 
-import {
-  CreateSecretCommand,
-  DeleteSecretCommand,
-  DescribeSecretCommand,
-  GetSecretValueCommand,
-  ResourceNotFoundException,
-  SecretsManagerClient,
-  TagResourceCommand,
-  UntagResourceCommand,
-  UpdateSecretCommand
-} from "@aws-sdk/client-secrets-manager";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
@@ -26,7 +15,6 @@ import { AxiosError } from "axios";
 import { randomUUID } from "crypto";
 import https from "https";
 import sodium from "libsodium-wrappers";
-import isEqual from "lodash.isequal";
 import RE2 from "re2";
 import { z } from "zod";
 
@@ -47,14 +35,9 @@ import {
   TIntegrationsWithEnvironment,
   TOctopusDeployVariableSet
 } from "./integration-auth-types";
-import {
-  IntegrationInitialSyncBehavior,
-  IntegrationMappingBehavior,
-  IntegrationMetadataSyncMode,
-  Integrations,
-  IntegrationUrls
-} from "./integration-list";
+import { IntegrationInitialSyncBehavior, Integrations, IntegrationUrls } from "./integration-list";
 import { isAzureKeyVaultReference } from "./integration-sync-secret-fns";
+import { awsSignedRequest } from "@app/lib/aws/aws-signed-request";
 
 const getSecretKeyValuePair = (secrets: Record<string, { value: string | null; comment?: string } | null>) =>
   Object.keys(secrets).reduce<Record<string, string | null | undefined>>((prev, key) => {
@@ -342,14 +325,11 @@ const syncSecretsAzureAppConfig = async ({
 
   const azureAppConfigSecrets = (
     await getCompleteAzureAppConfigValues(integration.app, azureAppConfigValuesUrl)
-  ).reduce(
-    (accum, entry) => {
-      accum[entry.key] = entry.value;
+  ).reduce((accum, entry) => {
+    accum[entry.key] = entry.value;
 
-      return accum;
-    },
-    {} as Record<string, string>
-  );
+    return accum;
+  }, {} as Record<string, string>);
 
   const secretsToAdd: { [key: string]: string } = {};
   const secretsToUpdate: { [key: string]: string } = {};
@@ -1126,189 +1106,82 @@ const syncSecretsAWSSecretManager = async ({
     });
     const command = new AssumeRoleCommand({
       RoleArn: awsAssumeRoleArn,
-      RoleSessionName: `infisical-sm-${randomUUID()}`,
+      RoleSessionName: `infisical-secrets-manager-${randomUUID()}`,
       DurationSeconds: 900, // 15mins
       ExternalId: projectId
     });
-    const response = await client.send(command);
-    if (!response.Credentials?.AccessKeyId || !response.Credentials?.SecretAccessKey)
+    const assumeRes = await client.send(command);
+
+    if (!assumeRes.Credentials?.AccessKeyId || !assumeRes.Credentials?.SecretAccessKey) {
       throw new Error("Failed to assume role");
-    accessKeyId = response.Credentials?.AccessKeyId;
-    secretAccessKey = response.Credentials?.SecretAccessKey;
-    sessionToken = response.Credentials?.SessionToken;
+    }
+
+    accessKeyId = assumeRes.Credentials?.AccessKeyId;
+    secretAccessKey = assumeRes.Credentials?.SecretAccessKey;
+    sessionToken = assumeRes.Credentials?.SessionToken;
   } else {
     accessKeyId = accessId as string;
     secretAccessKey = accessToken;
   }
 
-  const secretsManager = new SecretsManagerClient({
-    region: integration.region as string,
-    credentials: {
-      accessKeyId,
-      secretAccessKey,
-      sessionToken
-    }
-  });
+  const awsCredentials = { accessKeyId, secretAccessKey, sessionToken };
+  const region = integration.region as string;
 
-  const processAwsSecret = async (
-    secretId: string,
-    secretValue: Record<string, string | null | undefined> | string,
-    secretMetadata?: ResourceMetadataDTO
-  ) => {
-    const secretAWSTag = metadata.secretAWSTag as { key: string; value: string }[] | undefined;
-    const shouldTag =
-      (secretAWSTag && secretAWSTag.length) ||
-      (metadata.metadataSyncMode === IntegrationMetadataSyncMode.SECRET_METADATA &&
-        metadata.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE);
-    const tagArray =
-      (metadata.metadataSyncMode === IntegrationMetadataSyncMode.SECRET_METADATA ? secretMetadata : secretAWSTag) ?? [];
-
-    const integrationTagObj = tagArray.reduce(
-      (acc, item) => {
-        acc[item.key] = item.value;
-        return acc;
-      },
-      {} as Record<string, string>
-    );
+  for (const [secretName, secretData] of Object.entries(secrets)) {
+    const secretString = secretData.value;
 
     try {
-      const awsSecretManagerSecret = await secretsManager.send(
-        new GetSecretValueCommand({
-          SecretId: secretId
-        })
-      );
-
-      let secretToCompare;
-      if (awsSecretManagerSecret?.SecretString) {
-        if (typeof secretValue === "string") {
-          secretToCompare = awsSecretManagerSecret.SecretString;
-        } else {
-          secretToCompare = JSON.parse(awsSecretManagerSecret.SecretString);
-        }
-      }
-
-      if (!isEqual(secretToCompare, secretValue)) {
-        if (secretValue) {
-          await secretsManager.send(
-            new UpdateSecretCommand({
-              SecretId: secretId,
-              SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue)
-            })
-          );
-          // delete it
-        } else {
-          await secretsManager.send(
-            new DeleteSecretCommand({
-              SecretId: secretId,
-              ForceDeleteWithoutRecovery: true
-            })
-          );
-        }
-      }
-
-      if (shouldTag) {
-        const describedSecret = await secretsManager.send(
-          // requires secretsmanager:DescribeSecret policy
-          new DescribeSecretCommand({
-            SecretId: secretId
-          })
-        );
-
-        if (!describedSecret.Tags) return;
-
-        const awsTagObj = (describedSecret.Tags || []).reduce(
-          (acc, item) => {
-            if (item.Key && item.Value) {
-              acc[item.Key] = item.Value;
-            }
-            return acc;
-          },
-          {} as Record<string, string>
-        );
-
-        const tagsToUpdate: { Key: string; Value: string }[] = [];
-        const tagsToDelete: { Key: string; Value: string }[] = [];
-
-        describedSecret.Tags?.forEach((tag) => {
-          if (tag.Key && tag.Value) {
-            if (!(tag.Key in integrationTagObj)) {
-              // delete tag from AWS secret manager
-              tagsToDelete.push({
-                Key: tag.Key,
-                Value: tag.Value
-              });
-            } else if (tag.Value !== integrationTagObj[tag.Key]) {
-              // update tag in AWS secret manager
-              tagsToUpdate.push({
-                Key: tag.Key,
-                Value: integrationTagObj[tag.Key]
-              });
-            }
-          }
-        });
-
-        tagArray.forEach((tag) => {
-          if (!(tag.key in awsTagObj)) {
-            // create tag in AWS secret manager
-            tagsToUpdate.push({
-              Key: tag.key,
-              Value: tag.value
-            });
-          }
-        });
-
-        if (tagsToUpdate.length) {
-          await secretsManager.send(
-            new TagResourceCommand({
-              SecretId: secretId,
-              Tags: tagsToUpdate
-            })
-          );
-        }
-
-        if (tagsToDelete.length) {
-          await secretsManager.send(
-            new UntagResourceCommand({
-              SecretId: secretId,
-              TagKeys: tagsToDelete.map((tag) => tag.Key)
-            })
-          );
-        }
-      }
-    } catch (err) {
-      // case 1: when AWS manager can't find the specified secret
-      if (err instanceof ResourceNotFoundException && secretsManager) {
-        if (secretValue) {
-          await secretsManager.send(
-            new CreateSecretCommand({
-              Name: secretId,
-              SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue),
-              ...(metadata.kmsKeyId && { KmsKeyId: metadata.kmsKeyId }),
-              Tags: shouldTag
-                ? tagArray.map((tag: { key: string; value: string }) => ({
-                    Key: tag.key,
-                    Value: tag.value
-                  }))
-                : []
-            })
-          );
-        }
-        // case 2: something unexpected went wrong, so we'll throw the error to reflect the error in the integration sync status
-      } else {
-        throw err;
-      }
-    }
-  };
-
-  if (metadata.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE) {
-    for await (const [key, value] of Object.entries(secrets)) {
-      await processAwsSecret(key, value.value, value.secretMetadata).catch((error) => {
-        error.secretKey = key;
-        throw error;
+      // Check if the secret exists
+      await awsSignedRequest({
+        region,
+        service: "secretsmanager",
+        method: "POST",
+        host: `secretsmanager.${region}.amazonaws.com`,
+        path: "/",
+        body: new URLSearchParams({
+          Action: "DescribeSecret",
+          Version: "2017-10-17",
+          SecretId: secretName
+        }).toString(),
+        credentials: awsCredentials
       });
+
+      // Update the secret if it exists
+      await awsSignedRequest({
+        region,
+        service: "secretsmanager",
+        method: "POST",
+        host: `secretsmanager.${region}.amazonaws.com`,
+        path: "/",
+        body: new URLSearchParams({
+          Action: "UpdateSecret",
+          Version: "2017-10-17",
+          SecretId: secretName,
+          SecretString: secretString
+        }).toString(),
+        credentials: awsCredentials
+      });
+    } catch (error: any) {
+      if (error.message?.includes("ResourceNotFoundException")) {
+        // Create the secret if it does not exist
+        await awsSignedRequest({
+          region,
+          service: "secretsmanager",
+          method: "POST",
+          host: `secretsmanager.${region}.amazonaws.com`,
+          path: "/",
+          body: new URLSearchParams({
+            Action: "CreateSecret",
+            Version: "2017-10-17",
+            Name: secretName,
+            SecretString: secretString
+          }).toString(),
+          credentials: awsCredentials
+        });
+      } else {
+        throw error;
+      }
     }
-  } else {
-    await processAwsSecret(integration.app as string, getSecretKeyValuePair(secrets));
   }
 };
 
@@ -2432,7 +2305,9 @@ const syncSecretsCircleCI = async ({
 
     // delete secrets from CircleCI
     await Promise.all(
-      (await getSecretsRes()).map(async (sec) => {
+      (
+        await getSecretsRes()
+      ).map(async (sec) => {
         if (!(sec.variable in secrets)) {
           return request.delete(
             `${IntegrationUrls.CIRCLECI_API_URL}/v2/context/${integration.appId}/environment-variable/${sec.variable}`,
@@ -2737,8 +2612,9 @@ const syncSecretsAzureDevops = async ({
 
   const getEnvGroupId = async (orgId: string, project: string, env: string) => {
     let groupId;
-    const url: string | null =
-      `${azureDevopsApiUrl}/${orgId}/${project}/_apis/distributedtask/variablegroups?api-version=7.2-preview.2`;
+    const url:
+      | string
+      | null = `${azureDevopsApiUrl}/${orgId}/${project}/_apis/distributedtask/variablegroups?api-version=7.2-preview.2`;
 
     const response = await request.get(url, { headers });
     for (const group of response.data.value) {
@@ -3577,16 +3453,13 @@ const syncSecretsTeamCity = async ({
       )
     ).data.property
       .filter((parameter) => !parameter.inherited)
-      .reduce(
-        (obj, secret) => {
-          const secretName = secret.name.startsWith(".env") ? secret.name.slice(4) : secret.name;
-          return {
-            ...obj,
-            [secretName]: secret.value
-          };
-        },
-        {} as Record<string, string>
-      );
+      .reduce((obj, secret) => {
+        const secretName = secret.name.startsWith(".env") ? secret.name.slice(4) : secret.name;
+        return {
+          ...obj,
+          [secretName]: secret.value
+        };
+      }, {} as Record<string, string>);
 
     for await (const key of Object.keys(secrets)) {
       if (!(key in res) || (key in res && secrets[key].value !== res[key])) {
@@ -3637,16 +3510,13 @@ const syncSecretsTeamCity = async ({
           }
         }
       )
-    ).data.property.reduce(
-      (obj, secret) => {
-        const secretName = secret.name.startsWith("env.") ? secret.name.slice(4) : secret.name;
-        return {
-          ...obj,
-          [secretName]: secret.value
-        };
-      },
-      {} as Record<string, string>
-    );
+    ).data.property.reduce((obj, secret) => {
+      const secretName = secret.name.startsWith("env.") ? secret.name.slice(4) : secret.name;
+      return {
+        ...obj,
+        [secretName]: secret.value
+      };
+    }, {} as Record<string, string>);
 
     for await (const key of Object.keys(secrets)) {
       if (!(key in res) || (key in res && secrets[key].value !== res[key])) {

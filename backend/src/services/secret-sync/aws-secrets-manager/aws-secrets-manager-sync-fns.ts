@@ -1,55 +1,52 @@
-import { UntagResourceCommandOutput } from "@aws-sdk/client-kms";
-import {
-  BatchGetSecretValueCommand,
-  CreateSecretCommand,
-  CreateSecretCommandInput,
-  DeleteSecretCommand,
-  DeleteSecretResponse,
-  DescribeSecretCommand,
-  DescribeSecretCommandInput,
-  ListSecretsCommand,
-  SecretsManagerClient,
-  TagResourceCommand,
-  TagResourceCommandOutput,
-  UntagResourceCommand,
-  UpdateSecretCommand,
-  UpdateSecretCommandInput
-} from "@aws-sdk/client-secrets-manager";
-import { AWSError } from "aws-sdk";
-import {
-  CreateSecretResponse,
-  DescribeSecretResponse,
-  SecretListEntry,
-  SecretValueEntry,
-  Tag
-} from "aws-sdk/clients/secretsmanager";
-
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/services/secret-sync/aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+import { AWSRegion } from "@app/services/app-connection/app-connection-enums"; // Correct import for AWSRegion type
+import { awsSignedRequest, AwsCredentials } from "@app/lib/aws/aws-signed-request";
 
 import { TAwsSecretsManagerSyncWithCredentials } from "./aws-secrets-manager-sync-types";
 
-type TAwsSecretsRecord = Record<string, SecretListEntry>;
-type TAwsSecretValuesRecord = Record<string, SecretValueEntry>;
-type TAwsSecretDescriptionsRecord = Record<string, DescribeSecretResponse>;
+// Optionally, warn if sessionToken is present but expiration is close (if expiration is available)
+const warnIfSessionTokenExpiring = (credentials: any) => {
+  if (credentials.sessionToken && credentials.expiration) {
+    const exp = new Date(credentials.expiration).getTime();
+    const now = Date.now();
+    if (exp - now < 10 * 60 * 1000) {
+      // less than 10 minutes
+      console.warn("AWS session token is expiring soon:", credentials.expiration);
+    }
+  }
+};
 
 const MAX_RETRIES = 5;
 const BATCH_SIZE = 20;
 
-const getSecretsManagerClient = async (secretSync: TAwsSecretsManagerSyncWithCredentials) => {
+const refreshAwsCredentials = async (connection: any, region: AWSRegion): Promise<AwsCredentials> => {
+  const config = await getAwsConnectionConfig(connection, region);
+  return config.credentials as AwsCredentials;
+};
+
+const getAwsSMConfig = async (
+  secretSync: TAwsSecretsManagerSyncWithCredentials
+): Promise<{ region: AWSRegion; credentials: AwsCredentials }> => {
   const { destinationConfig, connection } = secretSync;
+  let config = await getAwsConnectionConfig(connection, destinationConfig.region as AWSRegion);
 
-  const config = await getAwsConnectionConfig(connection, destinationConfig.region);
+  // Check if credentials are valid
+  if (!config.credentials || !config.credentials.accessKeyId || !config.credentials.secretAccessKey) {
+    console.warn("AWS credentials are missing or invalid. Attempting to refresh...");
+    config.credentials = await refreshAwsCredentials(connection, destinationConfig.region as AWSRegion);
+  }
 
-  const secretsManagerClient = new SecretsManagerClient({
-    region: config.region,
-    credentials: config.credentials!
-  });
+  // Optionally warn if session token is expiring soon
+  warnIfSessionTokenExpiring(config.credentials);
 
-  return secretsManagerClient;
+  return {
+    region: config.region as AWSRegion,
+    credentials: config.credentials as AwsCredentials
+  };
 };
 
 const sleep = async () =>
@@ -57,127 +54,142 @@ const sleep = async () =>
     setTimeout(resolve, 1000);
   });
 
-const getSecretsRecord = async (client: SecretsManagerClient): Promise<TAwsSecretsRecord> => {
-  const awsSecretsRecord: TAwsSecretsRecord = {};
+const getSecretsRecord = async (secretSync: TAwsSecretsManagerSyncWithCredentials): Promise<Record<string, any>> => {
+  const { region, credentials } = await getAwsSMConfig(secretSync);
+  const awsSecretsRecord: Record<string, any> = {};
   let hasNext = true;
   let nextToken: string | undefined;
   let attempt = 0;
 
   while (hasNext) {
     try {
+      const body = JSON.stringify({ NextToken: nextToken }); // Send body as JSON object
+
       // eslint-disable-next-line no-await-in-loop
-      const output = await client.send(new ListSecretsCommand({ NextToken: nextToken }));
+      const output = await awsSignedRequest({
+        region,
+        service: "secretsmanager",
+        method: "POST",
+        host: `secretsmanager.${region}.amazonaws.com`,
+        path: "/",
+        body,
+        credentials
+      });
 
       attempt = 0;
-
       if (output.SecretList) {
-        output.SecretList.forEach((secretEntry) => {
+        output.SecretList.forEach((secretEntry: any) => {
           if (secretEntry.Name) {
             awsSecretsRecord[secretEntry.Name] = secretEntry;
           }
         });
       }
-
       hasNext = Boolean(output.NextToken);
       nextToken = output.NextToken;
-    } catch (e) {
-      if ((e as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    } catch (e: any) {
+      console.error("Error in ListSecrets API:", e.message);
+      if (e.message?.includes("ThrottlingException") && attempt < MAX_RETRIES) {
         attempt += 1;
         // eslint-disable-next-line no-await-in-loop
         await sleep();
-        // eslint-disable-next-line no-continue
         continue;
       }
-
       throw e;
     }
   }
-
   return awsSecretsRecord;
 };
 
 const getSecretValuesRecord = async (
-  client: SecretsManagerClient,
-  awsSecretsRecord: TAwsSecretsRecord
-): Promise<TAwsSecretValuesRecord> => {
-  const awsSecretValuesRecord: TAwsSecretValuesRecord = {};
+  secretSync: TAwsSecretsManagerSyncWithCredentials,
+  awsSecretsRecord: Record<string, any>
+): Promise<Record<string, any>> => {
+  const { region, credentials } = await getAwsSMConfig(secretSync);
+  const awsSecretValuesRecord: Record<string, any> = {};
   let attempt = 0;
-
   const secretIdList = Object.keys(awsSecretsRecord);
-
   for (let i = 0; i < secretIdList.length; i += BATCH_SIZE) {
     const batchSecretIds = secretIdList.slice(i, i + BATCH_SIZE);
     let hasNext = true;
     let nextToken: string | undefined;
-
     while (hasNext) {
       try {
+        // Use JSON body for BatchGetSecretValue
+        const body = JSON.stringify({
+          SecretIdList: batchSecretIds,
+          ...(nextToken ? { NextToken: nextToken } : {})
+        });
         // eslint-disable-next-line no-await-in-loop
-        const output = await client.send(
-          new BatchGetSecretValueCommand({
-            SecretIdList: batchSecretIds,
-            NextToken: nextToken
-          })
-        );
-
+        const output = await awsSignedRequest({
+          region,
+          service: "secretsmanager",
+          method: "POST",
+          host: `secretsmanager.${region}.amazonaws.com`,
+          path: "/",
+          body,
+          credentials,
+          headers: { "X-Amz-Target": "secretsmanager.BatchGetSecretValue" }
+        });
         attempt = 0;
-
         if (output.SecretValues) {
-          output.SecretValues.forEach((secretValueEntry) => {
+          output.SecretValues.forEach((secretValueEntry: any) => {
             if (secretValueEntry.Name) {
               awsSecretValuesRecord[secretValueEntry.Name] = secretValueEntry;
             }
           });
         }
-
         hasNext = Boolean(output.NextToken);
         nextToken = output.NextToken;
-      } catch (e) {
-        if ((e as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+      } catch (e: any) {
+        if (e.message?.includes("ThrottlingException") && attempt < MAX_RETRIES) {
           attempt += 1;
           // eslint-disable-next-line no-await-in-loop
           await sleep();
-          // eslint-disable-next-line no-continue
           continue;
         }
-
         throw e;
       }
     }
   }
-
   return awsSecretValuesRecord;
 };
 
 const describeSecret = async (
-  client: SecretsManagerClient,
-  input: DescribeSecretCommandInput,
+  secretSync: TAwsSecretsManagerSyncWithCredentials,
+  secretId: string,
   attempt = 0
-): Promise<DescribeSecretResponse> => {
+): Promise<any> => {
+  const { region, credentials } = await getAwsSMConfig(secretSync);
   try {
-    return await client.send(new DescribeSecretCommand(input));
-  } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    // Use JSON body and correct X-Amz-Target
+    const body = JSON.stringify({ SecretId: secretId });
+    return await awsSignedRequest({
+      region,
+      service: "secretsmanager",
+      method: "POST",
+      host: `secretsmanager.${region}.amazonaws.com`,
+      path: "/",
+      body,
+      credentials,
+      headers: { "X-Amz-Target": "secretsmanager.DescribeSecret" }
+    });
+  } catch (error: any) {
+    if (error.message?.includes("ThrottlingException") && attempt < MAX_RETRIES) {
       await sleep();
-
-      // retry
-      return describeSecret(client, input, attempt + 1);
+      return describeSecret(secretSync, secretId, attempt + 1);
     }
     throw error;
   }
 };
 
 const getSecretDescriptionsRecord = async (
-  client: SecretsManagerClient,
-  awsSecretsRecord: TAwsSecretsRecord
-): Promise<TAwsSecretDescriptionsRecord> => {
-  const awsSecretDescriptionsRecord: TAwsSecretValuesRecord = {};
-
+  secretSync: TAwsSecretsManagerSyncWithCredentials,
+  awsSecretsRecord: Record<string, any>
+): Promise<Record<string, any>> => {
+  const awsSecretDescriptionsRecord: Record<string, any> = {};
   for await (const secretKey of Object.keys(awsSecretsRecord)) {
     try {
-      awsSecretDescriptionsRecord[secretKey] = await describeSecret(client, {
-        SecretId: secretKey
-      });
+      awsSecretDescriptionsRecord[secretKey] = await describeSecret(secretSync, secretKey);
     } catch (error) {
       throw new SecretSyncError({
         secretKey,
@@ -185,97 +197,163 @@ const getSecretDescriptionsRecord = async (
       });
     }
   }
-
   return awsSecretDescriptionsRecord;
 };
 
 const createSecret = async (
-  client: SecretsManagerClient,
-  input: CreateSecretCommandInput,
+  secretSync: TAwsSecretsManagerSyncWithCredentials,
+  input: { Name: string; SecretString: string; KmsKeyId?: string },
   attempt = 0
-): Promise<CreateSecretResponse> => {
+): Promise<any> => {
+  const { region, credentials } = await getAwsSMConfig(secretSync);
   try {
-    return await client.send(new CreateSecretCommand(input));
-  } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    // Use JSON body and correct X-Amz-Target
+    const body = JSON.stringify({
+      Name: input.Name,
+      SecretString: input.SecretString,
+      ...(input.KmsKeyId ? { KmsKeyId: input.KmsKeyId } : {})
+    });
+    return await awsSignedRequest({
+      region,
+      service: "secretsmanager",
+      method: "POST",
+      host: `secretsmanager.${region}.amazonaws.com`,
+      path: "/",
+      body,
+      credentials,
+      headers: { "X-Amz-Target": "secretsmanager.CreateSecret" }
+    });
+  } catch (error: any) {
+    if (error.message?.includes("ThrottlingException") && attempt < MAX_RETRIES) {
       await sleep();
-
-      // retry
-      return createSecret(client, input, attempt + 1);
+      return createSecret(secretSync, input, attempt + 1);
     }
     throw error;
   }
 };
 
 const updateSecret = async (
-  client: SecretsManagerClient,
-  input: UpdateSecretCommandInput,
+  secretSync: TAwsSecretsManagerSyncWithCredentials,
+  input: { SecretId: string; SecretString: string; KmsKeyId?: string },
   attempt = 0
-): Promise<CreateSecretResponse> => {
+): Promise<any> => {
+  const { region, credentials } = await getAwsSMConfig(secretSync);
   try {
-    return await client.send(new UpdateSecretCommand(input));
-  } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    // Use JSON body and correct X-Amz-Target
+    const body = JSON.stringify({
+      SecretId: input.SecretId,
+      SecretString: input.SecretString,
+      ...(input.KmsKeyId ? { KmsKeyId: input.KmsKeyId } : {})
+    });
+    return await awsSignedRequest({
+      region,
+      service: "secretsmanager",
+      method: "POST",
+      host: `secretsmanager.${region}.amazonaws.com`,
+      path: "/",
+      body,
+      credentials,
+      headers: { "X-Amz-Target": "secretsmanager.UpdateSecret" }
+    });
+  } catch (error: any) {
+    if (error.message?.includes("ThrottlingException") && attempt < MAX_RETRIES) {
       await sleep();
-
-      // retry
-      return updateSecret(client, input, attempt + 1);
+      return updateSecret(secretSync, input, attempt + 1);
     }
     throw error;
   }
 };
 
 const deleteSecret = async (
-  client: SecretsManagerClient,
+  secretSync: TAwsSecretsManagerSyncWithCredentials,
   secretKey: string,
   attempt = 0
-): Promise<DeleteSecretResponse> => {
+): Promise<any> => {
+  const { region, credentials } = await getAwsSMConfig(secretSync);
   try {
-    return await client.send(new DeleteSecretCommand({ SecretId: secretKey, ForceDeleteWithoutRecovery: true }));
-  } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    // Use JSON body and correct X-Amz-Target
+    const body = JSON.stringify({
+      SecretId: secretKey,
+      ForceDeleteWithoutRecovery: true
+    });
+    return await awsSignedRequest({
+      region,
+      service: "secretsmanager",
+      method: "POST",
+      host: `secretsmanager.${region}.amazonaws.com`,
+      path: "/",
+      body,
+      credentials,
+      headers: { "X-Amz-Target": "secretsmanager.DeleteSecret" }
+    });
+  } catch (error: any) {
+    if (error.message?.includes("ThrottlingException") && attempt < MAX_RETRIES) {
       await sleep();
-
-      // retry
-      return deleteSecret(client, secretKey, attempt + 1);
+      return deleteSecret(secretSync, secretKey, attempt + 1);
     }
     throw error;
   }
 };
 
 const addTags = async (
-  client: SecretsManagerClient,
+  secretSync: TAwsSecretsManagerSyncWithCredentials,
   secretKey: string,
-  tags: Tag[],
+  tags: { Key: string; Value: string }[],
   attempt = 0
-): Promise<TagResourceCommandOutput> => {
+): Promise<any> => {
+  const { region, credentials } = await getAwsSMConfig(secretSync);
   try {
-    return await client.send(new TagResourceCommand({ SecretId: secretKey, Tags: tags }));
-  } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    // Use JSON body and correct X-Amz-Target
+    const body = JSON.stringify({
+      SecretId: secretKey,
+      Tags: tags
+    });
+    return await awsSignedRequest({
+      region,
+      service: "secretsmanager",
+      method: "POST",
+      host: `secretsmanager.${region}.amazonaws.com`,
+      path: "/",
+      body,
+      credentials,
+      headers: { "X-Amz-Target": "secretsmanager.TagResource" }
+    });
+  } catch (error: any) {
+    if (error.message?.includes("ThrottlingException") && attempt < MAX_RETRIES) {
       await sleep();
-
-      // retry
-      return addTags(client, secretKey, tags, attempt + 1);
+      return addTags(secretSync, secretKey, tags, attempt + 1);
     }
     throw error;
   }
 };
 
 const removeTags = async (
-  client: SecretsManagerClient,
+  secretSync: TAwsSecretsManagerSyncWithCredentials,
   secretKey: string,
   tagKeys: string[],
   attempt = 0
-): Promise<UntagResourceCommandOutput> => {
+): Promise<any> => {
+  const { region, credentials } = await getAwsSMConfig(secretSync);
   try {
-    return await client.send(new UntagResourceCommand({ SecretId: secretKey, TagKeys: tagKeys }));
-  } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    // Use JSON body and correct X-Amz-Target
+    const body = JSON.stringify({
+      SecretId: secretKey,
+      TagKeys: tagKeys
+    });
+    return await awsSignedRequest({
+      region,
+      service: "secretsmanager",
+      method: "POST",
+      host: `secretsmanager.${region}.amazonaws.com`,
+      path: "/",
+      body,
+      credentials,
+      headers: { "X-Amz-Target": "secretsmanager.UntagResource" }
+    });
+  } catch (error: any) {
+    if (error.message?.includes("ThrottlingException") && attempt < MAX_RETRIES) {
       await sleep();
-
-      // retry
-      return removeTags(client, secretKey, tagKeys, attempt + 1);
+      return removeTags(secretSync, secretKey, tagKeys, attempt + 1);
     }
     throw error;
   }
@@ -288,209 +366,147 @@ const processTags = ({
   syncTagsRecord: Record<string, string>;
   awsTagsRecord: Record<string, string>;
 }) => {
-  const tagsToAdd: Tag[] = [];
+  const tagsToAdd: { Key: string; Value: string }[] = [];
   const tagKeysToRemove: string[] = [];
-
   for (const syncEntry of Object.entries(syncTagsRecord)) {
     const [syncKey, syncValue] = syncEntry;
-
     if (!(syncKey in awsTagsRecord) || syncValue !== awsTagsRecord[syncKey])
       tagsToAdd.push({ Key: syncKey, Value: syncValue });
   }
-
   for (const awsKey of Object.keys(awsTagsRecord)) {
     if (!(awsKey in syncTagsRecord)) tagKeysToRemove.push(awsKey);
   }
-
   return { tagsToAdd, tagKeysToRemove };
 };
 
 export const AwsSecretsManagerSyncFns = {
   syncSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, secretMap: TSecretMap) => {
     const { destinationConfig, syncOptions } = secretSync;
-
-    const client = await getSecretsManagerClient(secretSync);
-
-    const awsSecretsRecord = await getSecretsRecord(client);
-
-    const awsValuesRecord = await getSecretValuesRecord(client, awsSecretsRecord);
-
-    const awsDescriptionsRecord = await getSecretDescriptionsRecord(client, awsSecretsRecord);
-
-    const syncTagsRecord = Object.fromEntries(syncOptions.tags?.map((tag) => [tag.key, tag.value]) ?? []);
-
+    const awsSecretsRecord = await getSecretsRecord(secretSync);
+    const awsValuesRecord = await getSecretValuesRecord(secretSync, awsSecretsRecord);
+    const awsDescriptionsRecord = await getSecretDescriptionsRecord(secretSync, awsSecretsRecord);
+    const syncTagsRecord = Object.fromEntries(syncOptions.tags?.map((tag: any) => [tag.key, tag.value]) ?? []);
     const keyId = syncOptions.keyId ?? "alias/aws/secretsmanager";
-
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
       for await (const entry of Object.entries(secretMap)) {
         const [key, { value, secretMetadata }] = entry;
-
-        // skip secrets that don't have a value set
-        if (!value) {
-          // eslint-disable-next-line no-continue
-          continue;
-        }
-
+        if (!value) continue;
         if (awsSecretsRecord[key]) {
-          // skip secrets that haven't changed
           if (awsValuesRecord[key]?.SecretString !== value || keyId !== awsDescriptionsRecord[key]?.KmsKeyId) {
             try {
-              await updateSecret(client, {
+              await updateSecret(secretSync, {
                 SecretId: key,
                 SecretString: value,
                 KmsKeyId: keyId
               });
             } catch (error) {
-              throw new SecretSyncError({
-                error,
-                secretKey: key
-              });
+              throw new SecretSyncError({ error, secretKey: key });
             }
           }
         } else {
           try {
-            await createSecret(client, {
+            await createSecret(secretSync, {
               Name: key,
               SecretString: value,
               KmsKeyId: keyId
             });
           } catch (error) {
-            throw new SecretSyncError({
-              error,
-              secretKey: key
-            });
+            throw new SecretSyncError({ error, secretKey: key });
           }
         }
-
         const { tagsToAdd, tagKeysToRemove } = processTags({
           syncTagsRecord: {
-            // configured sync tags take preference over secret metadata
             ...(syncOptions.syncSecretMetadataAsTags &&
-              Object.fromEntries(secretMetadata?.map((tag) => [tag.key, tag.value]) ?? [])),
+              Object.fromEntries(secretMetadata?.map((tag: any) => [tag.key, tag.value]) ?? [])),
             ...syncTagsRecord
           },
           awsTagsRecord: Object.fromEntries(
-            awsDescriptionsRecord[key]?.Tags?.map((tag) => [tag.Key!, tag.Value!]) ?? []
+            awsDescriptionsRecord[key]?.Tags?.map((tag: any) => [tag.Key, tag.Value]) ?? []
           )
         });
-
         if (tagsToAdd.length) {
           try {
-            await addTags(client, key, tagsToAdd);
+            await addTags(secretSync, key, tagsToAdd);
           } catch (error) {
-            throw new SecretSyncError({
-              error,
-              secretKey: key
-            });
+            throw new SecretSyncError({ error, secretKey: key });
           }
         }
-
         if (tagKeysToRemove.length) {
           try {
-            await removeTags(client, key, tagKeysToRemove);
+            await removeTags(secretSync, key, tagKeysToRemove);
           } catch (error) {
-            throw new SecretSyncError({
-              error,
-              secretKey: key
-            });
+            throw new SecretSyncError({ error, secretKey: key });
           }
         }
       }
-
       if (syncOptions.disableSecretDeletion) return;
-
       for await (const secretKey of Object.keys(awsSecretsRecord)) {
-        // eslint-disable-next-line no-continue
         if (!matchesSchema(secretKey, syncOptions.keySchema)) continue;
-
         if (!(secretKey in secretMap) || !secretMap[secretKey].value) {
           try {
-            await deleteSecret(client, secretKey);
+            await deleteSecret(secretSync, secretKey);
           } catch (error) {
-            throw new SecretSyncError({
-              error,
-              secretKey
-            });
+            throw new SecretSyncError({ error, secretKey });
           }
         }
       }
     } else {
       // Many-To-One Mapping
-
       const secretValue = JSON.stringify(
         Object.fromEntries(Object.entries(secretMap).map(([key, secretData]) => [key, secretData.value]))
       );
-
       if (awsSecretsRecord[destinationConfig.secretName]) {
-        await updateSecret(client, {
+        await updateSecret(secretSync, {
           SecretId: destinationConfig.secretName,
           SecretString: secretValue,
           KmsKeyId: keyId
         });
       } else {
-        await createSecret(client, {
+        await createSecret(secretSync, {
           Name: destinationConfig.secretName,
           SecretString: secretValue,
           KmsKeyId: keyId
         });
       }
-
       const { tagsToAdd, tagKeysToRemove } = processTags({
         syncTagsRecord,
         awsTagsRecord: Object.fromEntries(
-          awsDescriptionsRecord[destinationConfig.secretName]?.Tags?.map((tag) => [tag.Key!, tag.Value!]) ?? []
+          awsDescriptionsRecord[destinationConfig.secretName]?.Tags?.map((tag: any) => [tag.Key, tag.Value]) ?? []
         )
       });
-
       if (tagsToAdd.length) {
         try {
-          await addTags(client, destinationConfig.secretName, tagsToAdd);
+          await addTags(secretSync, destinationConfig.secretName, tagsToAdd);
         } catch (error) {
-          throw new SecretSyncError({
-            error,
-            secretKey: destinationConfig.secretName
-          });
+          throw new SecretSyncError({ error, secretKey: destinationConfig.secretName });
         }
       }
-
       if (tagKeysToRemove.length) {
         try {
-          await removeTags(client, destinationConfig.secretName, tagKeysToRemove);
+          await removeTags(secretSync, destinationConfig.secretName, tagKeysToRemove);
         } catch (error) {
-          throw new SecretSyncError({
-            error,
-            secretKey: destinationConfig.secretName
-          });
+          throw new SecretSyncError({ error, secretKey: destinationConfig.secretName });
         }
       }
     }
   },
   getSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials): Promise<TSecretMap> => {
-    const client = await getSecretsManagerClient(secretSync);
-
-    const awsSecretsRecord = await getSecretsRecord(client);
-    const awsValuesRecord = await getSecretValuesRecord(client, awsSecretsRecord);
-
+    const awsSecretsRecord = await getSecretsRecord(secretSync);
+    const awsValuesRecord = await getSecretValuesRecord(secretSync, awsSecretsRecord);
     const { destinationConfig } = secretSync;
-
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
       return Object.fromEntries(
-        Object.keys(awsSecretsRecord).map((key) => [key, { value: awsValuesRecord[key].SecretString ?? "" }])
+        Object.keys(awsSecretsRecord).map((key) => [key, { value: awsValuesRecord[key]?.SecretString ?? "" }])
       );
     }
-
     // Many-To-One Mapping
-
     const secretValueEntry = awsValuesRecord[destinationConfig.secretName];
-
     if (!secretValueEntry) return {};
-
     try {
       const parsedValue = (secretValueEntry.SecretString ? JSON.parse(secretValueEntry.SecretString) : {}) as Record<
         string,
         string
       >;
-
       return Object.fromEntries(Object.entries(parsedValue).map(([key, value]) => [key, { value }]));
     } catch {
       throw new SecretSyncError({
@@ -502,26 +518,19 @@ export const AwsSecretsManagerSyncFns = {
   },
   removeSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, secretMap: TSecretMap) => {
     const { destinationConfig } = secretSync;
-
-    const client = await getSecretsManagerClient(secretSync);
-
-    const awsSecretsRecord = await getSecretsRecord(client);
-
+    const awsSecretsRecord = await getSecretsRecord(secretSync);
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
       for await (const secretKey of Object.keys(awsSecretsRecord)) {
         if (secretKey in secretMap) {
           try {
-            await deleteSecret(client, secretKey);
+            await deleteSecret(secretSync, secretKey);
           } catch (error) {
-            throw new SecretSyncError({
-              error,
-              secretKey
-            });
+            throw new SecretSyncError({ error, secretKey });
           }
         }
       }
     } else {
-      await deleteSecret(client, destinationConfig.secretName);
+      await deleteSecret(secretSync, destinationConfig.secretName);
     }
   }
 };
