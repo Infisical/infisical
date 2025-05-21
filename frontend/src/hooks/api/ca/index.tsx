@@ -12,8 +12,8 @@ export {
   useUpdateUnifiedCa
 } from "./mutations";
 export {
+  useGetCa,
   useGetCaById,
-  useGetCaByTypeAndId,
   useGetCaCert,
   useGetCaCerts,
   useGetCaCertTemplates,

@@ -1793,7 +1793,7 @@ export const PKI_SUBSCRIBERS = {
     subscriberName: "The name of the PKI subscriber to get.",
     projectId: "The ID of the project to get the PKI subscriber for."
   },
-  GET_ACTIVE_CERT_BUNDLE: {
+  GET_LATEST_CERT_BUNDLE: {
     subscriberName: "The name of the PKI subscriber to get the active certificate bundle for.",
     projectId: "The ID of the project to get the active certificate bundle for.",
     certificate: "The active certificate for the subscriber.",
@@ -2018,13 +2018,14 @@ export const CertificateAuthorities = {
   CREATE: (type: CaType) => ({
     name: `The name of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority to create. Must be slug-friendly.`,
     projectId: `The ID of the project to create the Certificate Authority in.`,
-    disableDirectIssuance: `Whether or not to disable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
+    enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
     status: `The status of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`
   }),
   UPDATE: (type: CaType) => ({
     caId: `The ID of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority to update.`,
+    projectId: `The ID of the project to update the Certificate Authority in.`,
     name: `The updated name of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority. Must be slug-friendly.`,
-    disableDirectIssuance: `Whether or not to disable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
+    enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
     status: `The updated status of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`
   }),
   CONFIGURATIONS: {

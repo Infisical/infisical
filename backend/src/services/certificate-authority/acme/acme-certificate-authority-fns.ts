@@ -77,8 +77,8 @@ export const castDbEntryToAcmeCertificateAuthority = (
   return {
     id: ca.id,
     type: CaType.ACME,
-    disableDirectIssuance: ca.disableDirectIssuance,
-    name: ca.externalCa.name,
+    enableDirectIssuance: ca.enableDirectIssuance,
+    name: ca.name,
     projectId: ca.projectId,
     credentials: ca.externalCa.credentials,
     configuration: {
@@ -90,7 +90,7 @@ export const castDbEntryToAcmeCertificateAuthority = (
       directoryUrl: dbConfigurationCol.directoryUrl,
       accountEmail: dbConfigurationCol.accountEmail
     },
-    status: ca.externalCa.status as CaStatus
+    status: ca.status as CaStatus
   };
 };
 
@@ -176,7 +176,7 @@ export const AcmeCertificateAuthorityFns = ({
     name,
     projectId,
     configuration,
-    disableDirectIssuance,
+    enableDirectIssuance,
     actor,
     status
   }: {
@@ -184,7 +184,7 @@ export const AcmeCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateAcmeCertificateAuthorityDTO["configuration"];
-    disableDirectIssuance: boolean;
+    enableDirectIssuance: boolean;
     actor: OrgServiceActor;
   }) => {
     const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig } = configuration;
@@ -208,25 +208,24 @@ export const AcmeCertificateAuthorityFns = ({
         const ca = await certificateAuthorityDAL.create(
           {
             projectId,
-            disableDirectIssuance
+            enableDirectIssuance,
+            name,
+            status
           },
           tx
         );
 
         await externalCertificateAuthorityDAL.create(
           {
-            certificateAuthorityId: ca.id,
+            caId: ca.id,
             dnsAppConnectionId,
             type: CaType.ACME,
-            name,
-            projectId,
             configuration: {
               directoryUrl,
               accountEmail,
               dnsProvider: dnsProviderConfig.provider,
               hostedZoneId: dnsProviderConfig.hostedZoneId
-            },
-            status
+            }
           },
           tx
         );
@@ -255,14 +254,14 @@ export const AcmeCertificateAuthorityFns = ({
     id,
     status,
     configuration,
-    disableDirectIssuance,
+    enableDirectIssuance,
     actor,
     name
   }: {
     id: string;
     status?: CaStatus;
     configuration: TUpdateAcmeCertificateAuthorityDTO["configuration"];
-    disableDirectIssuance?: boolean;
+    enableDirectIssuance?: boolean;
     actor: OrgServiceActor;
     name?: string;
   }) => {
@@ -290,7 +289,7 @@ export const AcmeCertificateAuthorityFns = ({
 
         await externalCertificateAuthorityDAL.update(
           {
-            certificateAuthorityId: id,
+            caId: id,
             type: CaType.ACME
           },
           {
@@ -306,23 +305,13 @@ export const AcmeCertificateAuthorityFns = ({
         );
       }
 
-      await externalCertificateAuthorityDAL.update(
-        {
-          certificateAuthorityId: id,
-          type: CaType.ACME
-        },
-        {
-          name,
-          status
-        },
-        tx
-      );
-
-      if (disableDirectIssuance !== undefined) {
+      if (name || status || enableDirectIssuance) {
         await certificateAuthorityDAL.updateById(
           id,
           {
-            disableDirectIssuance
+            name,
+            status,
+            enableDirectIssuance
           },
           tx
         );
@@ -399,7 +388,7 @@ export const AcmeCertificateAuthorityFns = ({
       });
       await externalCertificateAuthorityDAL.update(
         {
-          certificateAuthorityId: acmeCa.id
+          caId: acmeCa.id
         },
         {
           credentials: encryptedNewCredentials

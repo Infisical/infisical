@@ -44,7 +44,7 @@ export const pkiCollectionItemDALFactory = (db: TDbClient) => {
         .leftJoin(
           TableName.InternalCertificateAuthority,
           `${TableName.PkiCollectionItem}.caId`,
-          `${TableName.InternalCertificateAuthority}.certificateAuthorityId`
+          `${TableName.InternalCertificateAuthority}.caId`
         )
         .leftJoin(TableName.Certificate, `${TableName.PkiCollectionItem}.certId`, `${TableName.Certificate}.id`)
         .where((builder) => {

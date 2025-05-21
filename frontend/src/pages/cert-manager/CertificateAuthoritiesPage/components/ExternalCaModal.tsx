@@ -23,7 +23,7 @@ import {
   CaStatus,
   CaType,
   useCreateUnifiedCa,
-  useGetCaByTypeAndId,
+  useGetCa,
   useUpdateUnifiedCa
 } from "@app/hooks/api/ca";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -35,7 +35,7 @@ const schema = z
     name: slugSchema({
       field: "Name"
     }),
-    disableDirectIssuance: z.boolean(),
+    enableDirectIssuance: z.boolean(),
     status: z.nativeEnum(CaStatus),
     configuration: z.object({
       dnsAppConnection: z.object({
@@ -65,10 +65,11 @@ const caTypes = [{ label: "ACME", value: CaType.ACME }];
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
 
-  const { data: ca } = useGetCaByTypeAndId(
-    (popUp?.ca?.data as { type: CaType })?.type || "",
-    (popUp?.ca?.data as { caId: string })?.caId || ""
-  );
+  const { data: ca } = useGetCa({
+    caName: (popUp?.ca?.data as { name: string })?.name || "",
+    projectId: currentWorkspace?.id || "",
+    type: (popUp?.ca?.data as { type: CaType })?.type || ""
+  });
 
   const { mutateAsync: createMutateAsync } = useCreateUnifiedCa();
   const { mutateAsync: updateMutateAsync } = useUpdateUnifiedCa();
@@ -85,7 +86,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       type: CaType.ACME,
       name: "",
       status: CaStatus.ACTIVE,
-      disableDirectIssuance: false,
+      enableDirectIssuance: true,
       configuration: {
         dnsAppConnection: {
           id: "",
@@ -122,7 +123,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           type: ca.type,
           name: ca.name,
           status: ca.status,
-          disableDirectIssuance: ca.disableDirectIssuance,
+          enableDirectIssuance: ca.enableDirectIssuance,
           configuration: {
             dnsAppConnection: {
               id: ca.configuration.dnsAppConnectionId,
@@ -142,7 +143,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         type: CaType.ACME,
         name: "",
         status: CaStatus.ACTIVE,
-        disableDirectIssuance: false,
+        enableDirectIssuance: true,
         configuration: {
           dnsAppConnection: {
             id: "",
@@ -162,7 +163,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({
     type,
     name,
-    disableDirectIssuance,
+    enableDirectIssuance,
     status,
     configuration
   }: FormData) => {
@@ -171,12 +172,12 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
 
       if (ca && type !== CaType.INTERNAL) {
         await updateMutateAsync({
-          id: ca.id,
+          caName: ca.name,
           projectId: currentWorkspace.id,
           name,
           type,
           status,
-          disableDirectIssuance,
+          enableDirectIssuance,
           configuration: {
             ...configuration,
             dnsAppConnectionId: configuration.dnsAppConnection.id
@@ -188,7 +189,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           name,
           type,
           status,
-          disableDirectIssuance,
+          enableDirectIssuance,
           configuration: {
             ...configuration,
             dnsAppConnectionId: configuration.dnsAppConnection.id
@@ -369,7 +370,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           )}
           <Controller
             control={control}
-            name="disableDirectIssuance"
+            name="enableDirectIssuance"
             render={({ field, fieldState: { error } }) => {
               return (
                 <FormControl isError={Boolean(error)} errorText={error?.message} className="my-8">
@@ -378,7 +379,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     onCheckedChange={(value) => field.onChange(value)}
                     isChecked={field.value}
                   >
-                    <p className="w-full">Disable Direct Issuance</p>
+                    <p className="w-full">Enable Direct Issuance</p>
                   </Switch>
                 </FormControl>
               );

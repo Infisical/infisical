@@ -8,7 +8,7 @@ import { TCertificateAuthority, TUnifiedCertificateAuthority } from "./types";
 
 export const caKeys = {
   getCaById: (caId: string) => [{ caId }, "ca"],
-  getCaByTypeAndId: (type: CaType, caId: string) => [{ type, caId }, "ca"],
+  getCaByNameAndProjectId: (caName: string, projectId: string) => [{ caName, projectId }, "ca"],
   listCasByTypeAndProjectId: (type: CaType, projectId: string) => [{ type, projectId }, "cas"],
   listCasByProjectId: (projectId: string) => [{ projectId }, "cas"],
   getCaCerts: (caId: string) => [{ caId }, "ca-cert"],
@@ -20,18 +20,24 @@ export const caKeys = {
   getCaEstConfig: (caId: string) => [{ caId }, "ca-est-config"]
 };
 
-export const useGetCaByTypeAndId = (type: CaType, caId: string) => {
+export const useGetCa = ({
+  caName,
+  projectId,
+  type
+}: {
+  caName: string;
+  projectId: string;
+  type: CaType;
+}) => {
   return useQuery({
-    queryKey: caKeys.getCaByTypeAndId(type, caId),
+    queryKey: caKeys.getCaByNameAndProjectId(caName, projectId),
     queryFn: async () => {
-      const {
-        data: { certificateAuthority }
-      } = await apiRequest.get<{ certificateAuthority: TUnifiedCertificateAuthority }>(
-        `/api/v1/pki/ca/${type}/${caId}`
+      const { data } = await apiRequest.get<TUnifiedCertificateAuthority>(
+        `/api/v1/pki/ca/${type}/${caName}?projectId=${projectId}`
       );
-      return certificateAuthority;
+      return data;
     },
-    enabled: Boolean(caId)
+    enabled: Boolean(caName && projectId && type)
   });
 };
 
@@ -39,11 +45,11 @@ export const useListCasByTypeAndProjectId = (type: CaType, projectId: string) =>
   return useQuery({
     queryKey: caKeys.listCasByTypeAndProjectId(type, projectId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{
-        certificateAuthorities: TUnifiedCertificateAuthority[];
-      }>(`/api/v1/pki/ca/${type}?projectId=${projectId}`);
+      const { data } = await apiRequest.get<TUnifiedCertificateAuthority[]>(
+        `/api/v1/pki/ca/${type}?projectId=${projectId}`
+      );
 
-      return data.certificateAuthorities;
+      return data;
     }
   });
 };

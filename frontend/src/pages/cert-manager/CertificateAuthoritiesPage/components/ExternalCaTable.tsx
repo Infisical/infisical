@@ -35,7 +35,7 @@ type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["ca", "deleteCa", "caStatus", "upgradePlan"]>,
     data?: {
-      caId?: string;
+      name?: string;
       type?: CaType;
       status?: CaStatus;
       description?: string;
@@ -71,7 +71,7 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                     key={`ca-${ca.id}`}
                     onClick={() => {
                       handlePopUpOpen("ca", {
-                        caId: ca.id,
+                        name: ca.name,
                         type: ca.type
                       });
                     }}
@@ -105,7 +105,7 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("ca", {
-                                    caId: ca.id,
+                                    name: ca.name,
                                     type: ca.type
                                   });
                                 }}
@@ -130,7 +130,7 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handlePopUpOpen("caStatus", {
-                                      caId: ca.id,
+                                      name: ca.name,
                                       type: ca.type,
                                       status:
                                         ca.status === CaStatus.ACTIVE
@@ -158,7 +158,7 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("deleteCa", {
-                                    caId: ca.id,
+                                    name: ca.name,
                                     type: ca.type
                                   });
                                 }}

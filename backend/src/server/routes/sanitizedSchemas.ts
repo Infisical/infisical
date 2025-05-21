@@ -277,6 +277,7 @@ export const SanitizedTagSchema = SecretTagsSchema.pick({
 
 export const InternalCertificateAuthorityResponseSchema = CertificateAuthoritiesSchema.merge(
   InternalCertificateAuthoritiesSchema.omit({
+    caId: true,
     notAfter: true,
     notBefore: true
   })

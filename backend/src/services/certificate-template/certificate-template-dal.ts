@@ -21,7 +21,7 @@ export const certificateTemplateDALFactory = (db: TDbClient) => {
         )
         .join(
           TableName.InternalCertificateAuthority,
-          `${TableName.InternalCertificateAuthority}.certificateAuthorityId`,
+          `${TableName.InternalCertificateAuthority}.caId`,
           `${TableName.CertificateAuthority}.id`
         )
         .where(`${TableName.CertificateAuthority}.projectId`, "=", projectId)
@@ -48,7 +48,7 @@ export const certificateTemplateDALFactory = (db: TDbClient) => {
         .join(TableName.Project, `${TableName.Project}.id`, `${TableName.CertificateAuthority}.projectId`)
         .join(
           TableName.InternalCertificateAuthority,
-          `${TableName.InternalCertificateAuthority}.certificateAuthorityId`,
+          `${TableName.InternalCertificateAuthority}.caId`,
           `${TableName.CertificateAuthority}.id`
         )
         .where(`${TableName.CertificateTemplate}.id`, "=", id)

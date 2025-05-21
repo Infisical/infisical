@@ -26,15 +26,13 @@ import {
 export const useUpdateUnifiedCa = () => {
   const queryClient = useQueryClient();
   return useMutation<TUnifiedCertificateAuthority, object, TUpdateUnifiedCertificateAuthorityDTO>({
-    mutationFn: async ({ id, ...body }) => {
-      const {
-        data: { certificateAuthority }
-      } = await apiRequest.patch<{ certificateAuthority: TUnifiedCertificateAuthority }>(
-        `/api/v1/pki/ca/${body.type}/${id}`,
+    mutationFn: async ({ caName, ...body }) => {
+      const { data } = await apiRequest.patch<TUnifiedCertificateAuthority>(
+        `/api/v1/pki/ca/${body.type}/${caName}`,
         body
       );
 
-      return certificateAuthority;
+      return data;
     },
     onSuccess: ({ projectId, type }) => {
       queryClient.invalidateQueries({
@@ -65,11 +63,16 @@ export const useCreateUnifiedCa = () => {
 export const useDeleteUnifiedCa = () => {
   const queryClient = useQueryClient();
   return useMutation<TUnifiedCertificateAuthority, object, TDeleteUnifiedCertificateAuthorityDTO>({
-    mutationFn: async ({ caId, type }) => {
+    mutationFn: async ({ caName, type, projectId }) => {
       const {
         data: { certificateAuthority }
       } = await apiRequest.delete<{ certificateAuthority: TUnifiedCertificateAuthority }>(
-        `/api/v1/pki/ca/${type}/${caId}`
+        `/api/v1/pki/ca/${type}/${caName}`,
+        {
+          data: {
+            projectId
+          }
+        }
       );
       return certificateAuthority;
     },

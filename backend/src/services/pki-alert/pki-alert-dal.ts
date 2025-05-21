@@ -37,7 +37,7 @@ export const pkiAlertDALFactory = (db: TDbClient) => {
           "pci.pkiCollectionId"
         )
         .from(`${TableName.CertificateAuthority} as ${PkiItemType.CA}`)
-        .join(`${TableName.InternalCertificateAuthority} as ic`, `${PkiItemType.CA}.id`, "ic.certificateAuthorityId")
+        .join(`${TableName.InternalCertificateAuthority} as ic`, `${PkiItemType.CA}.id`, "ic.caId")
         .join(`${TableName.PkiCollectionItem} as pci`, `${PkiItemType.CA}.id`, "pci.caId")
         .unionAll((qb) => {
           void qb

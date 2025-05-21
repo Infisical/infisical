@@ -24,6 +24,7 @@ export async function up(knex: Knex): Promise<void> {
       t.dropColumn("requireTemplateForIssuance");
       t.dropColumn("createdAt");
       t.dropColumn("updatedAt");
+      t.dropColumn("status");
       t.uuid("parentCaId")
         .nullable()
         .references("id")
@@ -44,22 +45,18 @@ export async function up(knex: Knex): Promise<void> {
     await Promise.all(
       cas.map((ca) => {
         const slugifiedName = ca.friendlyName
-          ? slugify(`${ca.friendlyName}-${alphaNumericNanoId(8)}`)
+          ? slugify(`${ca.friendlyName.slice(0, 16)}-${alphaNumericNanoId(8)}`)
           : slugify(alphaNumericNanoId(12));
 
-        return (
-          knex(TableName.CertificateAuthority)
-            .where({ id: ca.id })
-            // @ts-expect-error intentional: migration
-            .update({ name: slugifiedName, enableDirectIssuance: !ca.enableDirectIssuance })
-        );
+        return knex(TableName.CertificateAuthority)
+          .where({ id: ca.id })
+          .update({ name: slugifiedName, enableDirectIssuance: !ca.enableDirectIssuance });
       })
     );
 
     await knex.schema.alterTable(TableName.CertificateAuthority, (t) => {
       t.dropColumn("parentCaId");
       t.dropColumn("type");
-      t.dropColumn("status");
       t.dropColumn("friendlyName");
       t.dropColumn("organization");
       t.dropColumn("ou");
@@ -74,6 +71,7 @@ export async function up(knex: Knex): Promise<void> {
       t.dropColumn("notBefore");
       t.dropColumn("notAfter");
       t.dropColumn("activeCaCertId");
+      t.boolean("enableDirectIssuance").notNullable().defaultTo(true).alter();
       t.string("name").notNullable().alter();
       t.unique(["name", "projectId"]);
     });
@@ -90,7 +88,6 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("caId").notNullable().references("id").inTable(TableName.CertificateAuthority).onDelete("CASCADE");
       t.binary("credentials");
       t.json("configuration");
-      t.string("status").notNullable();
     });
   }
 
@@ -114,7 +111,6 @@ export async function down(knex: Knex): Promise<void> {
     await knex.schema.alterTable(TableName.CertificateAuthority, (t) => {
       t.uuid("parentCaId").nullable().references("id").inTable(TableName.CertificateAuthority).onDelete("CASCADE");
       t.string("type").nullable();
-      t.string("status").nullable();
       t.string("friendlyName").nullable();
       t.string("organization").nullable();
       t.string("ou").nullable();
@@ -150,7 +146,6 @@ export async function down(knex: Knex): Promise<void> {
       UPDATE ${TableName.CertificateAuthority} ca
       SET
         type = ica.type,
-        status = ica.status,
         "friendlyName" = ica."friendlyName",
         organization = ica.organization,
         ou = ica.ou,
@@ -172,7 +167,6 @@ export async function down(knex: Knex): Promise<void> {
 
     await knex.schema.alterTable(TableName.CertificateAuthority, (t) => {
       t.string("type").notNullable().alter();
-      t.string("status").notNullable().alter();
       t.string("friendlyName").notNullable().alter();
       t.string("organization").notNullable().alter();
       t.string("ou").notNullable().alter();
@@ -182,6 +176,7 @@ export async function down(knex: Knex): Promise<void> {
       t.string("commonName").notNullable().alter();
       t.string("dn").notNullable().alter();
       t.string("keyAlgorithm").notNullable().alter();
+      t.boolean("requireTemplateForIssuance").notNullable().defaultTo(false).alter();
     });
 
     await knex.schema.dropTable(TableName.InternalCertificateAuthority);

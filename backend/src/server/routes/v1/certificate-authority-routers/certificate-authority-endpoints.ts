@@ -28,13 +28,14 @@ export const registerCertificateAuthorityEndpoints = <
     projectId: string;
     status: CaStatus;
     configuration: I["configuration"];
-    disableDirectIssuance: boolean;
+    enableDirectIssuance: boolean;
   }>;
   updateSchema: z.ZodType<{
+    projectId: string;
     name?: string;
     status?: CaStatus;
     configuration?: I["configuration"];
-    disableDirectIssuance?: boolean;
+    enableDirectIssuance?: boolean;
   }>;
   responseSchema: z.ZodTypeAny;
 }) => {
@@ -51,7 +52,7 @@ export const registerCertificateAuthorityEndpoints = <
         projectId: z.string().trim().min(1, "Project ID required")
       }),
       response: {
-        200: z.object({ certificateAuthorities: responseSchema.array() })
+        200: responseSchema.array()
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -76,13 +77,13 @@ export const registerCertificateAuthorityEndpoints = <
         }
       });
 
-      return { certificateAuthorities };
+      return certificateAuthorities;
     }
   });
 
   server.route({
     method: "GET",
-    url: "/:certificateAuthorityId",
+    url: "/:caName",
     config: {
       rateLimit: readLimit
     },
@@ -90,20 +91,25 @@ export const registerCertificateAuthorityEndpoints = <
       hide: false,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
-        certificateAuthorityId: z.string().uuid()
+        caName: z.string()
+      }),
+      querystring: z.object({
+        projectId: z.string().uuid()
       }),
       response: {
-        200: z.object({ certificateAuthority: responseSchema })
+        200: responseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { certificateAuthorityId } = req.params;
+      const { caName } = req.params;
+      const { projectId } = req.query;
 
-      const certificateAuthority = (await server.services.certificateAuthority.findCertificateAuthorityById(
-        { certificateAuthorityId, type: caType },
-        req.permission
-      )) as T;
+      const certificateAuthority =
+        (await server.services.certificateAuthority.findCertificateAuthorityByNameAndProjectId(
+          { caName, type: caType, projectId },
+          req.permission
+        )) as T;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -116,7 +122,7 @@ export const registerCertificateAuthorityEndpoints = <
         }
       });
 
-      return { certificateAuthority };
+      return certificateAuthority;
     }
   });
 
@@ -131,7 +137,7 @@ export const registerCertificateAuthorityEndpoints = <
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       body: createSchema,
       response: {
-        200: z.object({ certificateAuthority: responseSchema })
+        200: responseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -152,13 +158,13 @@ export const registerCertificateAuthorityEndpoints = <
         }
       });
 
-      return { certificateAuthority };
+      return certificateAuthority;
     }
   });
 
   server.route({
     method: "PATCH",
-    url: "/:certificateAuthorityId",
+    url: "/:caName",
     config: {
       rateLimit: writeLimit
     },
@@ -166,22 +172,22 @@ export const registerCertificateAuthorityEndpoints = <
       hide: false,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
-        certificateAuthorityId: z.string().uuid()
+        caName: z.string()
       }),
       body: updateSchema,
       response: {
-        200: z.object({ certificateAuthority: responseSchema })
+        200: responseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { certificateAuthorityId } = req.params;
+      const { caName } = req.params;
 
       const certificateAuthority = (await server.services.certificateAuthority.updateCertificateAuthority(
         {
           ...req.body,
-          id: certificateAuthorityId,
-          type: caType
+          type: caType,
+          caName
         },
         req.permission
       )) as T;
@@ -198,13 +204,13 @@ export const registerCertificateAuthorityEndpoints = <
         }
       });
 
-      return { certificateAuthority };
+      return certificateAuthority;
     }
   });
 
   server.route({
     method: "DELETE",
-    url: "/:certificateAuthorityId",
+    url: "/:caName",
     config: {
       rateLimit: writeLimit
     },
@@ -212,18 +218,22 @@ export const registerCertificateAuthorityEndpoints = <
       hide: false,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
-        certificateAuthorityId: z.string().uuid()
+        caName: z.string()
+      }),
+      body: z.object({
+        projectId: z.string().uuid()
       }),
       response: {
-        200: z.object({ certificateAuthority: responseSchema })
+        200: responseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { certificateAuthorityId } = req.params;
+      const { caName } = req.params;
+      const { projectId } = req.body;
 
       const certificateAuthority = (await server.services.certificateAuthority.deleteCertificateAuthority(
-        { id: certificateAuthorityId, type: caType },
+        { caName, type: caType, projectId },
         req.permission
       )) as T;
 
@@ -238,7 +248,7 @@ export const registerCertificateAuthorityEndpoints = <
         }
       });
 
-      return { certificateAuthority };
+      return certificateAuthority;
     }
   });
 };

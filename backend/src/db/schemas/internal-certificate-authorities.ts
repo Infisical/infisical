@@ -11,7 +11,6 @@ export const InternalCertificateAuthoritiesSchema = z.object({
   id: z.string().uuid(),
   parentCaId: z.string().uuid().nullable().optional(),
   type: z.string(),
-  status: z.string(),
   friendlyName: z.string(),
   organization: z.string(),
   ou: z.string(),
@@ -26,7 +25,7 @@ export const InternalCertificateAuthoritiesSchema = z.object({
   notBefore: z.date().nullable().optional(),
   notAfter: z.date().nullable().optional(),
   activeCaCertId: z.string().uuid().nullable().optional(),
-  certificateAuthorityId: z.string().uuid()
+  caId: z.string().uuid()
 });
 
 export type TInternalCertificateAuthorities = z.infer<typeof InternalCertificateAuthoritiesSchema>;

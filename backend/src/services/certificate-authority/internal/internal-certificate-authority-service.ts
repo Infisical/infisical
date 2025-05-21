@@ -1,6 +1,7 @@
 /* eslint-disable no-bitwise */
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
+import slugify from "@sindresorhus/slugify";
 import crypto, { KeyObject } from "crypto";
 import { z } from "zod";
 
@@ -21,6 +22,7 @@ import { extractX509CertFromChain } from "@app/lib/certificates/extract-certific
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isFQDN } from "@app/lib/validator/validate-url";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -200,14 +202,16 @@ export const internalCertificateAuthorityServiceFactory = ({
       const ca = await certificateAuthorityDAL.create(
         {
           projectId,
-          disableDirectIssuance: requireTemplateForIssuance
+          enableDirectIssuance: !requireTemplateForIssuance,
+          name: slugify(`${friendlyName || dn}-${alphaNumericNanoId(8)}`),
+          status: type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE
         },
         tx
       );
 
       const internalCa = await internalCertificateAuthorityDAL.create(
         {
-          certificateAuthorityId: ca.id,
+          caId: ca.id,
           type,
           organization,
           ou,
@@ -216,7 +220,6 @@ export const internalCertificateAuthorityServiceFactory = ({
           locality,
           friendlyName: friendlyName || dn,
           commonName,
-          status: type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
           dn,
           keyAlgorithm,
           ...(type === InternalCaType.ROOT && {
@@ -357,7 +360,7 @@ export const internalCertificateAuthorityServiceFactory = ({
    * Update CA with id [caId].
    * Note: Used to enable/disable CA
    */
-  const updateCaById = async ({ caId, status, requireTemplateForIssuance, ...dto }: TUpdateCaDTO) => {
+  const updateCaById = async ({ caId, status, requireTemplateForIssuance, name, ...dto }: TUpdateCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
@@ -378,18 +381,12 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
-      if (status !== undefined) {
-        await internalCertificateAuthorityDAL.update(
-          {
-            certificateAuthorityId: ca.id
-          },
-          { status },
+      if (requireTemplateForIssuance !== undefined || status !== undefined || name !== undefined) {
+        await certificateAuthorityDAL.updateById(
+          ca.id,
+          { enableDirectIssuance: !requireTemplateForIssuance, status, name },
           tx
         );
-      }
-
-      if (requireTemplateForIssuance !== undefined) {
-        await certificateAuthorityDAL.updateById(ca.id, { disableDirectIssuance: requireTemplateForIssuance }, tx);
       }
 
       return certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
@@ -509,7 +506,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    if (ca.internalCa.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
+    if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
 
     // get latest CA certificate
     const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
@@ -604,7 +601,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
           await internalCertificateAuthorityDAL.update(
             {
-              certificateAuthorityId: ca.id
+              caId: ca.id
             },
             {
               activeCaCertId: newCaCert.id,
@@ -746,7 +743,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
           await internalCertificateAuthorityDAL.update(
             {
-              certificateAuthorityId: ca.id
+              caId: ca.id
             },
             {
               activeCaCertId: newCaCert.id,
@@ -914,7 +911,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    if (ca.internalCa.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
+    if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
 
@@ -1150,12 +1147,15 @@ export const internalCertificateAuthorityServiceFactory = ({
         tx
       );
 
+      await certificateAuthorityDAL.updateById(ca.id, {
+        status: CaStatus.ACTIVE
+      });
+
       await internalCertificateAuthorityDAL.update(
         {
-          certificateAuthorityId: ca.id
+          caId: ca.id
         },
         {
-          status: CaStatus.ACTIVE,
           maxPathLength: maxPathLength === undefined ? -1 : maxPathLength,
           notBefore: new Date(certObj.notBefore),
           notAfter: new Date(certObj.notAfter),
@@ -1231,10 +1231,10 @@ export const internalCertificateAuthorityServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
-    if (ca.internalCa.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
+    if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
-    if (ca.disableDirectIssuance && !certificateTemplate) {
+    if (!ca.enableDirectIssuance && !certificateTemplate) {
       throw new BadRequestError({ message: "Certificate template or subscriber is required for issuance" });
     }
 
@@ -1589,10 +1589,10 @@ export const internalCertificateAuthorityServiceFactory = ({
       );
     }
 
-    if (ca.internalCa.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
+    if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
-    if (ca.disableDirectIssuance && !certificateTemplate) {
+    if (!ca.enableDirectIssuance && !certificateTemplate) {
       throw new BadRequestError({ message: "Certificate template or subscriber is required for issuance" });
     }
 

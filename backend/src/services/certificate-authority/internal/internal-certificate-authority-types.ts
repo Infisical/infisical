@@ -69,12 +69,14 @@ export type TUpdateCaDTO =
   | {
       isInternal: true;
       caId: string;
+      name?: string;
       status?: CaStatus;
       requireTemplateForIssuance?: boolean;
     }
   | ({
       isInternal: false;
       caId: string;
+      name?: string;
       status?: CaStatus;
       requireTemplateForIssuance?: boolean;
     } & Omit<TProjectPermission, "projectId">);

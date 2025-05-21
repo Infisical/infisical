@@ -485,30 +485,30 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
 
   server.route({
     method: "GET",
-    url: "/:subscriberName/active-certificate/bundle",
+    url: "/:subscriberName/latest-certificate-bundle",
     config: {
       rateLimit: readLimit
     },
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiSubscribers],
-      description: "Get active certificate bundle of a subscriber",
+      description: "Get latest certificate bundle of a subscriber",
       params: z.object({
-        subscriberName: z.string().describe(PKI_SUBSCRIBERS.GET_ACTIVE_CERT_BUNDLE.subscriberName)
+        subscriberName: z.string().describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.subscriberName)
       }),
       querystring: z.object({
-        projectId: z.string().trim().describe(PKI_SUBSCRIBERS.GET_ACTIVE_CERT_BUNDLE.projectId)
+        projectId: z.string().trim().describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.projectId)
       }),
       response: {
         200: z.object({
-          certificate: z.string().trim().describe(PKI_SUBSCRIBERS.GET_ACTIVE_CERT_BUNDLE.certificate),
+          certificate: z.string().trim().describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.certificate),
           certificateChain: z
             .string()
             .trim()
             .nullable()
-            .describe(PKI_SUBSCRIBERS.GET_ACTIVE_CERT_BUNDLE.certificateChain),
-          privateKey: z.string().trim().describe(PKI_SUBSCRIBERS.GET_ACTIVE_CERT_BUNDLE.privateKey),
-          serialNumber: z.string().trim().describe(PKI_SUBSCRIBERS.GET_ACTIVE_CERT_BUNDLE.serialNumber)
+            .describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.certificateChain),
+          privateKey: z.string().trim().describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.privateKey),
+          serialNumber: z.string().trim().describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.serialNumber)
         })
       }
     },

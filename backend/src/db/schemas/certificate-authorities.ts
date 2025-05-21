@@ -12,7 +12,9 @@ export const CertificateAuthoritiesSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   projectId: z.string(),
-  disableDirectIssuance: z.boolean().default(false)
+  enableDirectIssuance: z.boolean().default(true),
+  status: z.string(),
+  name: z.string()
 });
 
 export type TCertificateAuthorities = z.infer<typeof CertificateAuthoritiesSchema>;

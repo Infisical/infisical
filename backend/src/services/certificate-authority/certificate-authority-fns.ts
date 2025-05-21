@@ -329,6 +329,6 @@ export const expandInternalCa = (
   return {
     ...ca.internalCa,
     ...ca,
-    requireTemplateForIssuance: ca.disableDirectIssuance
+    requireTemplateForIssuance: !ca.enableDirectIssuance
   } as const;
 };

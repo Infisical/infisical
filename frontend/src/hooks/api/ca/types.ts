@@ -7,7 +7,7 @@ export type TAcmeCertificateAuthority = {
   type: CaType.ACME;
   status: CaStatus;
   name: string;
-  disableDirectIssuance: boolean;
+  enableDirectIssuance: boolean;
   configuration: {
     dnsAppConnectionId: string;
     dnsProviderConfig: {
@@ -25,7 +25,7 @@ export type TInternalCertificateAuthority = {
   type: CaType.INTERNAL;
   status: CaStatus;
   name: string;
-  disableDirectIssuance: boolean;
+  enableDirectIssuance: boolean;
   configuration: {
     type: InternalCaType;
     friendlyName?: string;
@@ -52,12 +52,13 @@ export type TUnifiedCertificateAuthority =
 
 export type TCreateUnifiedCertificateAuthorityDTO = Omit<TUnifiedCertificateAuthority, "id">;
 export type TUpdateUnifiedCertificateAuthorityDTO = Partial<TUnifiedCertificateAuthority> & {
-  id: string;
+  caName: string;
+  projectId: string;
   type: CaType;
 };
 
 export type TDeleteUnifiedCertificateAuthorityDTO = {
-  caId: string;
+  caName: string;
   type: CaType;
   projectId: string;
 };

@@ -12,14 +12,11 @@ import { TImmutableDBKeys } from "./models";
 export const ExternalCertificateAuthoritiesSchema = z.object({
   id: z.string().uuid(),
   type: z.string(),
-  name: z.string(),
-  projectId: z.string(),
   appConnectionId: z.string().uuid().nullable().optional(),
   dnsAppConnectionId: z.string().uuid().nullable().optional(),
-  certificateAuthorityId: z.string().uuid(),
+  caId: z.string().uuid(),
   credentials: zodBuffer.nullable().optional(),
-  configuration: z.unknown().nullable().optional(),
-  status: z.string()
+  configuration: z.unknown().nullable().optional()
 });
 
 export type TExternalCertificateAuthorities = z.infer<typeof ExternalCertificateAuthoritiesSchema>;
