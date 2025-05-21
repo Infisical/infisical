@@ -3,7 +3,7 @@ import picomatch from "picomatch";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionApprovalActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { containsGlobPatterns } from "@app/lib/picomatch";
@@ -89,7 +89,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionApprovalActions.Create,
       ProjectPermissionSub.SecretApproval
     );
 
@@ -204,7 +204,10 @@ export const secretApprovalPolicyServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionApprovalActions.Edit,
+      ProjectPermissionSub.SecretApproval
+    );
 
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.secretApproval) {
@@ -301,7 +304,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
+      ProjectPermissionApprovalActions.Delete,
       ProjectPermissionSub.SecretApproval
     );
 
@@ -340,7 +343,10 @@ export const secretApprovalPolicyServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionApprovalActions.Read,
+      ProjectPermissionSub.SecretApproval
+    );
 
     const sapPolicies = await secretApprovalPolicyDAL.find({ projectId, deletedAt: null });
     return sapPolicies;
@@ -413,7 +419,10 @@ export const secretApprovalPolicyServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionApprovalActions.Read,
+      ProjectPermissionSub.SecretApproval
+    );
 
     return sapPolicy;
   };

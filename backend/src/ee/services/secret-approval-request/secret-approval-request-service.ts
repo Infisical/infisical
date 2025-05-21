@@ -62,7 +62,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionSecretActions, ProjectPermissionSub } from "../permission/project-permission";
+import {
+  ProjectPermissionApprovalActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "../permission/project-permission";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
@@ -504,7 +508,7 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission({
+    const { hasRole, permission } = await permissionService.getProjectPermission({
       actor: ActorType.USER,
       actorId,
       projectId,
@@ -531,7 +535,13 @@ export const secretApprovalRequestServiceFactory = ({
       ).length;
     const isSoftEnforcement = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
 
-    if (!hasMinApproval && !isSoftEnforcement)
+    if (
+      !hasMinApproval &&
+      !(
+        isSoftEnforcement &&
+        permission.can(ProjectPermissionApprovalActions.AllowChangeBypass, ProjectPermissionSub.SecretApproval)
+      )
+    )
       throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
 
     const { botKey, shouldUseSecretV2Bridge, project } = await projectBotService.getBotKey(projectId);

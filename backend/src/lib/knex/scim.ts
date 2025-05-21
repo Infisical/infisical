@@ -1,6 +1,8 @@
 import { Knex } from "knex";
 import { Compare, Filter, parse } from "scim2-parse-filter";
 
+import { TableName } from "@app/db/schemas";
+
 const appendParentToGroupingOperator = (parentPath: string, filter: Filter) => {
   if (filter.op !== "[]" && filter.op !== "and" && filter.op !== "or" && filter.op !== "not") {
     return { ...filter, attrPath: `${parentPath}.${(filter as Compare).attrPath}` };
@@ -27,8 +29,12 @@ const processDynamicQuery = (
     const { scimFilterAst, query } = stack.pop()!;
     switch (scimFilterAst.op) {
       case "eq": {
+        let sanitizedValue = scimFilterAst.compValue;
         const attrPath = getAttributeField(scimFilterAst.attrPath);
-        if (attrPath) void query.where(attrPath, scimFilterAst.compValue);
+        if (attrPath === `${TableName.Users}.email` && typeof sanitizedValue === "string") {
+          sanitizedValue = sanitizedValue.toLowerCase();
+        }
+        if (attrPath) void query.where(attrPath, sanitizedValue);
         break;
       }
       case "pr": {
@@ -62,18 +68,30 @@ const processDynamicQuery = (
         break;
       }
       case "ew": {
+        let sanitizedValue = scimFilterAst.compValue;
         const attrPath = getAttributeField(scimFilterAst.attrPath);
-        if (attrPath) void query.whereILike(attrPath, `%${scimFilterAst.compValue}`);
+        if (attrPath === `${TableName.Users}.email` && typeof sanitizedValue === "string") {
+          sanitizedValue = sanitizedValue.toLowerCase();
+        }
+        if (attrPath) void query.whereILike(attrPath, `%${sanitizedValue}`);
         break;
       }
       case "co": {
+        let sanitizedValue = scimFilterAst.compValue;
         const attrPath = getAttributeField(scimFilterAst.attrPath);
-        if (attrPath) void query.whereILike(attrPath, `%${scimFilterAst.compValue}%`);
+        if (attrPath === `${TableName.Users}.email` && typeof sanitizedValue === "string") {
+          sanitizedValue = sanitizedValue.toLowerCase();
+        }
+        if (attrPath) void query.whereILike(attrPath, `%${sanitizedValue}%`);
         break;
       }
       case "ne": {
+        let sanitizedValue = scimFilterAst.compValue;
         const attrPath = getAttributeField(scimFilterAst.attrPath);
-        if (attrPath) void query.whereNot(attrPath, "=", scimFilterAst.compValue);
+        if (attrPath === `${TableName.Users}.email` && typeof sanitizedValue === "string") {
+          sanitizedValue = sanitizedValue.toLowerCase();
+        }
+        if (attrPath) void query.whereNot(attrPath, "=", sanitizedValue);
         break;
       }
       case "and": {

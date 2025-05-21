@@ -34,6 +34,14 @@ export enum ProjectPermissionSecretActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionApprovalActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  AllowChangeBypass = "allow-change-bypass"
+}
+
 export enum ProjectPermissionCmekActions {
   Read = "read",
   Create = "create",
@@ -242,7 +250,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.IpAllowList]
   | [ProjectPermissionActions, ProjectPermissionSub.Settings]
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
-  | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
+  | [ProjectPermissionApprovalActions, ProjectPermissionSub.SecretApproval]
   | [
       ProjectPermissionSecretRotationActions,
       (
@@ -439,7 +447,7 @@ const PkiSubscriberConditionSchema = z
 const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretApproval).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionApprovalActions).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -605,7 +613,7 @@ const GeneralPermissionSchema = [
   })
 ];
 
-// Do not update this schema anymore, as it's kept purely for backwards compatability. Update V2 schema only.
+// Do not update this schema anymore, as it's kept purely for backwards compatibility. Update V2 schema only.
 export const ProjectPermissionV1Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
