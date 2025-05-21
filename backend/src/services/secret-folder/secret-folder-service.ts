@@ -10,7 +10,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
-import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
@@ -134,7 +134,7 @@ export const secretFolderServiceFactory = ({
               message: "Folder created",
               folderId: parentFolderId,
               changes: folderVersions.map((fv) => ({
-                type: "add",
+                type: CommitType.ADD,
                 folderVersionId: fv.id
               }))
             },
@@ -168,7 +168,7 @@ export const secretFolderServiceFactory = ({
           folderId: parentFolderId,
           changes: [
             {
-              type: "add",
+              type: CommitType.ADD,
               folderVersionId: folderVersion.id
             }
           ]
@@ -285,7 +285,7 @@ export const secretFolderServiceFactory = ({
               folderId: parentFolder.id,
               changes: [
                 {
-                  type: "add",
+                  type: CommitType.ADD,
                   isUpdate: true,
                   folderVersionId: folderVersion.id
                 }
@@ -401,7 +401,7 @@ export const secretFolderServiceFactory = ({
           folderId: parentFolder.id,
           changes: [
             {
-              type: "add",
+              type: CommitType.ADD,
               isUpdate: true,
               folderVersionId: folderVersion.id
             }
@@ -463,7 +463,7 @@ export const secretFolderServiceFactory = ({
 
       if (!doc) throw new NotFoundError({ message: `Failed to delete folder with ID '${idOrName}', not found` });
 
-      const folderVersions = await folderVersionDAL.findLatestFolderVersions([doc.id]);
+      const folderVersions = await folderVersionDAL.findLatestFolderVersions([doc.id], tx);
 
       await folderCommitService.createCommit(
         {
@@ -477,7 +477,7 @@ export const secretFolderServiceFactory = ({
           folderId: parentFolder.id,
           changes: [
             {
-              type: "delete",
+              type: CommitType.DELETE,
               folderVersionId: folderVersions[doc.id].id
             }
           ]

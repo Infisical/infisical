@@ -3,12 +3,12 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TFolderCommits, TFolderTreeCheckpoints } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TFolderTreeCheckpointDALFactory = ReturnType<typeof folderTreeCheckpointDALFactory>;
 
 type TreeCheckpointWithCommitInfo = TFolderTreeCheckpoints & {
-  commitId: number;
+  commitId: bigint;
 };
 
 export const folderTreeCheckpointDALFactory = (db: TDbClient) => {
@@ -17,7 +17,8 @@ export const folderTreeCheckpointDALFactory = (db: TDbClient) => {
   const findByCommitId = async (folderCommitId: string, tx?: Knex): Promise<TFolderTreeCheckpoints | undefined> => {
     try {
       const doc = await (tx || db.replicaNode())<TFolderTreeCheckpoints>(TableName.FolderTreeCheckpoint)
-        .where({ folderCommitId })
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter({ folderCommitId }, TableName.FolderTreeCheckpoint))
         .select(selectAllTableCols(TableName.FolderTreeCheckpoint))
         .first();
       return doc;
@@ -27,27 +28,20 @@ export const folderTreeCheckpointDALFactory = (db: TDbClient) => {
   };
 
   const findNearestCheckpoint = async (
-    folderCommitId: string,
+    folderCommitId: bigint,
     envId: string,
     tx?: Knex
   ): Promise<TreeCheckpointWithCommitInfo | undefined> => {
     try {
-      const targetCommit = await (tx || db.replicaNode())(TableName.FolderCommit)
-        .where({ id: folderCommitId })
-        .select("id", "commitId", "folderId", "envId")
-        .first();
-
-      if (!targetCommit) {
-        return undefined;
-      }
-
       const nearestCheckpoint = await (tx || db.replicaNode())(TableName.FolderTreeCheckpoint)
-        .leftJoin<TFolderCommits>(
+        .join<TFolderCommits>(
           TableName.FolderCommit,
           `${TableName.FolderTreeCheckpoint}.folderCommitId`,
           `${TableName.FolderCommit}.id`
         )
-        .where(`${TableName.FolderCommit}.envId`, "=", targetCommit.envId)
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(`${TableName.FolderCommit}.envId`, "=", envId)
+        .where(`${TableName.FolderCommit}.commitId`, "<=", folderCommitId)
         .select(selectAllTableCols(TableName.FolderTreeCheckpoint))
         .select(db.ref("commitId").withSchema(TableName.FolderCommit))
         .orderBy(`${TableName.FolderCommit}.commitId`, "desc")
@@ -67,12 +61,12 @@ export const folderTreeCheckpointDALFactory = (db: TDbClient) => {
           `${TableName.FolderTreeCheckpoint}.folderCommitId`,
           `${TableName.FolderCommit}.id`
         )
-        .where(`${TableName.FolderCommit}.envId`, envId)
+        .where(`${TableName.FolderCommit}.envId`, "=", envId)
         .orderBy(`${TableName.FolderTreeCheckpoint}.createdAt`, "desc")
         .first();
       return doc;
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindLatestByFolderId" });
+      throw new DatabaseError({ error, name: "FindLatestByEnvId" });
     }
   };
 

@@ -213,38 +213,35 @@ export const RollbackPreviewTab = (): JSX.Element => {
             )}
           </div>
         </div>
-  
+
         {deepRollback && nestedFolderChanges.length > 0 && (
           <>
             <div className="border-b border-mineshaft-600 bg-mineshaft-800 px-4 py-2">
-              <span className="text-sm font-semibold text-white">
-                Affected Child Folders
-              </span>
+              <span className="text-sm font-semibold text-white">Affected Child Folders</span>
             </div>
-            {(nestedFolderChanges.map((folder) => (
-                <div
-                  key={folder.folderId}
-                  className={`cursor-pointer border-b border-mineshaft-600 ${
-                    selectedFolderId === folder.folderId ? "bg-mineshaft-700" : ""
-                  }`}
-                  onClick={() => setSelectedFolderId(folder.folderId)}
-                >
-                  <div className="flex items-center justify-between px-4 py-2">
-                    <div className="flex items-center">
-                      <FontAwesomeIcon icon={faFolder} className="mr-2 text-yellow-500" size="sm" />
-                      <span className="max-w-[150px] truncate text-sm font-medium text-white">
-                        {folder.folderPath || folder.folderName}
-                      </span>
-                    </div>
-                    {folder.changes.length > 0 && (
-                      <span className="rounded-full bg-mineshaft-600 px-2 py-0.5 text-xs text-gray-300">
-                        {folder.changes.length}
-                      </span>
-                    )}
+            {nestedFolderChanges.map((folder) => (
+              <div
+                key={folder.folderId}
+                className={`cursor-pointer border-b border-mineshaft-600 ${
+                  selectedFolderId === folder.folderId ? "bg-mineshaft-700" : ""
+                }`}
+                onClick={() => setSelectedFolderId(folder.folderId)}
+              >
+                <div className="flex items-center justify-between px-4 py-2">
+                  <div className="flex items-center">
+                    <FontAwesomeIcon icon={faFolder} className="mr-2 text-yellow-500" size="sm" />
+                    <span className="max-w-[150px] truncate text-sm font-medium text-white">
+                      {folder.folderPath || folder.folderName}
+                    </span>
                   </div>
+                  {folder.changes.length > 0 && (
+                    <span className="rounded-full bg-mineshaft-600 px-2 py-0.5 text-xs text-gray-300">
+                      {folder.changes.length}
+                    </span>
+                  )}
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </>
         )}
       </div>
@@ -305,10 +302,10 @@ export const RollbackPreviewTab = (): JSX.Element => {
               description="This will restore all changes to how they appeared at the point in time of this commit. Any modifications made after this commit will be undone."
             />
 
-<div className="flex w-full border border-mineshaft-600">
-                {renderSidebar()}
-                {renderMainContent()}
-              </div>
+            <div className="flex w-full border border-mineshaft-600">
+              {renderSidebar()}
+              {renderMainContent()}
+            </div>
 
             <div className="border-x border-mineshaft-600 bg-mineshaft-800 px-6 py-3">
               <div className="flex items-center justify-end">
@@ -353,7 +350,13 @@ export const RollbackPreviewTab = (): JSX.Element => {
                     }}
                     colorSchema="primary"
                     className="px-6 py-2"
-                    isDisabled={message.length === 0 || !rollbackChangesNested || !rollbackChangesNested?.some((folder) => folder.changes.length > 0)}
+                    isDisabled={
+                      message.length === 0 ||
+                      !rollbackChangesNested ||
+                      !rollbackChangesNested?.some((folder) => {
+                        return folder.changes.length > 0;
+                      })
+                    }
                   >
                     Restore
                   </Button>

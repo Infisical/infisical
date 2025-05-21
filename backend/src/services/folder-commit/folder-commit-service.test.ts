@@ -5,7 +5,12 @@ import { TSecretFolderVersions, TSecretVersionsV2 } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorType } from "../auth/auth-type";
-import { ChangeType, folderCommitServiceFactory, TFolderCommitServiceFactory } from "./folder-commit-service";
+import {
+  ChangeType,
+  CommitType,
+  folderCommitServiceFactory,
+  TFolderCommitServiceFactory
+} from "./folder-commit-service";
 
 // Mock config
 vi.mock("@app/lib/config/env", () => ({
@@ -204,7 +209,7 @@ describe("folderCommitServiceFactory", () => {
         folderId: folderData.id,
         changes: [
           {
-            type: "add",
+            type: CommitType.ADD,
             secretVersionId: "secret-version-1"
           }
         ]
@@ -264,7 +269,7 @@ describe("folderCommitServiceFactory", () => {
         folderId: folderData.id,
         changes: [
           {
-            type: "add",
+            type: CommitType.ADD,
             folderVersionId: "folder-version-1"
           }
         ]
@@ -331,7 +336,7 @@ describe("folderCommitServiceFactory", () => {
 
       const data = {
         folderCommitId: commitData.id,
-        changeType: "add",
+        changeType: CommitType.ADD,
         secretVersionId: "secret-version-1"
       };
 
@@ -348,7 +353,7 @@ describe("folderCommitServiceFactory", () => {
       // Arrange
       const data = {
         folderCommitId: "commit-id",
-        changeType: "add"
+        changeType: CommitType.ADD
       };
 
       // Act & Assert
@@ -361,7 +366,7 @@ describe("folderCommitServiceFactory", () => {
 
       const data = {
         folderCommitId: "non-existent-commit",
-        changeType: "add",
+        changeType: CommitType.ADD,
         secretVersionId: "secret-version-1"
       };
 

@@ -10,7 +10,7 @@ import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -627,7 +627,7 @@ export const importDataIntoInfisicalFn = async ({
             folderId: parentEnv.rootFolderId,
             changes: [
               {
-                type: "add",
+                type: CommitType.ADD,
                 folderVersionId: newFolderVersion.id
               }
             ]

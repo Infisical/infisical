@@ -1291,7 +1291,7 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.Tags]: enabled,
   [ProjectPermissionSub.Webhooks]: enabled,
   [ProjectPermissionSub.IpAllowList]: enabled,
-  [ProjectPermissionSub.SecretRollback]: enabled,
+  [ProjectPermissionSub.SecretRollback]: false,
   [ProjectPermissionSub.SecretRotation]: enabled,
   [ProjectPermissionSub.ServiceTokens]: enabled,
   [ProjectPermissionSub.Commits]: enabled

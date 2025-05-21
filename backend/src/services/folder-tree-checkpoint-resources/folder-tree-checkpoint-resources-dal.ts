@@ -8,7 +8,7 @@ import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 export type TFolderTreeCheckpointResourcesDALFactory = ReturnType<typeof folderTreeCheckpointResourcesDALFactory>;
 
 type TFolderTreeCheckpointResourcesWithCommitId = TFolderTreeCheckpointResources & {
-  commitId: number;
+  commitId: bigint;
 };
 
 export const folderTreeCheckpointResourcesDALFactory = (db: TDbClient) => {

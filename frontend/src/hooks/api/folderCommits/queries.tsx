@@ -53,11 +53,12 @@ const fetchFolderCommitsCount = async ({
   directory?: string;
 }) => {
   const res = await apiRequest.get<{ count: number; folderId: string }>(
-    `/api/v1/pit/commits/count/${workspaceId}`,
+    "/api/v1/pit/commits/count",
     {
       params: {
         environment,
-        path: directory
+        path: directory,
+        workspaceId
       }
     }
   );
@@ -69,10 +70,11 @@ const fetchFolderCommitHistory = async (
   environment: string,
   directory: string
 ): Promise<CommitHistoryItem[]> => {
-  const res = await apiRequest.get<CommitHistoryItem[]>(`/api/v1/pit/commits/${workspaceId}`, {
+  const res = await apiRequest.get<CommitHistoryItem[]>("/api/v1/pit/commits", {
     params: {
       environment,
-      path: directory
+      path: directory,
+      workspaceId
     }
   });
   return res.data;
@@ -80,7 +82,12 @@ const fetchFolderCommitHistory = async (
 
 export const fetchCommitDetails = async (workspaceId: string, commitId: string) => {
   const { data } = await apiRequest.get<CommitWithChanges>(
-    `/api/v1/pit/commits/${workspaceId}/${commitId}/changes`
+    `/api/v1/pit/commits/${commitId}/changes`,
+    {
+      params: {
+        workspaceId
+      }
+    }
   );
   return data;
 };
@@ -89,18 +96,19 @@ export const fetchRollbackPreview = async (
   folderId: string,
   commitId: string,
   envId: string,
-  projectId: string,
+  workspaceId: string,
   deepRollback: boolean,
   secretPath: string
 ): Promise<RollbackPreview[]> => {
   const { data } = await apiRequest.get<RollbackPreview[]>(
-    `/api/v1/pit/commits/${projectId}/${commitId}/compare`,
+    `/api/v1/pit/commits/${commitId}/compare`,
     {
       params: {
         folderId,
         envId,
         deepRollback,
-        secretPath
+        secretPath,
+        workspaceId
       }
     }
   );
@@ -110,26 +118,30 @@ export const fetchRollbackPreview = async (
 const fetchRollback = async (
   folderId: string,
   commitId: string,
-  projectId: string,
+  workspaceId: string,
   deepRollback: boolean,
   message?: string,
   envId?: string
 ) => {
   const { data } = await apiRequest.post<{ success: boolean }>(
-    `/api/v1/pit/commits/${projectId}/${commitId}/rollback`,
+    `/api/v1/pit/commits/${commitId}/rollback`,
     {
       folderId,
       deepRollback,
       message,
-      envId
+      envId,
+      workspaceId
     }
   );
   return data;
 };
 
-const fetchRevert = async (commitId: string, projectId: string) => {
+const fetchRevert = async (commitId: string, workspaceId: string) => {
   const { data } = await apiRequest.post<{ success: boolean; message: string }>(
-    `/api/v1/pit/commits/${projectId}/${commitId}/revert`
+    `/api/v1/pit/commits/${commitId}/revert`,
+    {
+      workspaceId
+    }
   );
   return data;
 };

@@ -1,14 +1,18 @@
 /* eslint-disable @typescript-eslint/no-base-to-string */
+import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { booleanSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ChangeType } from "@app/services/folder-commit/folder-commit-service";
+import { ChangeType, ResourceChange } from "@app/services/folder-commit/folder-commit-service";
+import { commitChangesResponseSchema } from "@app/services/folder-commit/folder-commit-types";
 
 const commitHistoryItemSchema = z.object({
   id: z.string(),
@@ -19,19 +23,6 @@ const commitHistoryItemSchema = z.object({
   commitId: z.string(),
   createdAt: z.string().or(z.date()),
   envId: z.string()
-});
-
-const versionSchema = z.object({
-  secretKey: z.string().optional(),
-  secretComment: z.string().optional().nullable(),
-  skipMultilineEncoding: z.boolean().optional().nullable(),
-  secretReminderRepeatDays: z.number().optional().nullable(),
-  secretReminderNote: z.string().optional().nullable(),
-  metadata: z.unknown().optional().nullable(),
-  tags: z.array(z.string()).optional().nullable(),
-  secretReminderRecipients: z.array(z.any()).optional().nullable(),
-  secretValue: z.string().optional().nullable(),
-  name: z.string().optional().nullable()
 });
 
 const folderStateSchema = z.array(
@@ -50,17 +41,15 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
   // Get commits count for a folder
   server.route({
     method: "GET",
-    url: "/commits/count/:workspaceId",
+    url: "/commits/count",
     config: {
       rateLimit: readLimit
     },
     schema: {
-      params: z.object({
-        workspaceId: z.string().trim()
-      }),
       querystring: z.object({
         environment: z.string().trim(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash)
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
+        workspaceId: z.string().trim()
       }),
       response: {
         200: z.object({
@@ -76,14 +65,14 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission?.id,
         actorOrgId: req.permission?.orgId,
         actorAuthMethod: req.permission?.authMethod,
-        projectId: req.params.workspaceId,
+        projectId: req.query.workspaceId,
         environment: req.query.environment,
         path: req.query.path
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
+        projectId: req.query.workspaceId,
         event: {
           type: EventType.GET_PROJECT_PIT_COMMIT_COUNT,
           metadata: {
@@ -101,17 +90,15 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
   // Get all commits for a folder
   server.route({
     method: "GET",
-    url: "/commits/:workspaceId",
+    url: "/commits",
     config: {
       rateLimit: readLimit
     },
     schema: {
-      params: z.object({
-        workspaceId: z.string().trim()
-      }),
       querystring: z.object({
         environment: z.string().trim(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash)
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
+        workspaceId: z.string().trim()
       }),
       response: {
         200: commitHistoryItemSchema.array()
@@ -124,14 +111,14 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission?.id,
         actorOrgId: req.permission?.orgId,
         actorAuthMethod: req.permission?.authMethod,
-        projectId: req.params.workspaceId,
+        projectId: req.query.workspaceId,
         environment: req.query.environment,
         path: req.query.path
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
+        projectId: req.query.workspaceId,
         event: {
           type: EventType.GET_PROJECT_PIT_COMMITS,
           metadata: {
@@ -149,72 +136,75 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  const getChangeVersions = async (
+    change: ResourceChange,
+    previousVersion: string,
+    actorId: string,
+    actor: string,
+    actorOrgId: string,
+    actorAuthMethod: string,
+    folderId: string
+  ) => {
+    if (change.secretVersion) {
+      const currentVersion = change.secretVersion || "1";
+      const secretId = change.secretId ? change.secretId : change.id;
+      // eslint-disable-next-line no-await-in-loop
+      const versions = await server.services.secret.getSecretVersionsV2ByIds({
+        actorId,
+        actor,
+        actorOrgId,
+        actorAuthMethod,
+        secretId,
+        // if it's update add also the previous secretversionid
+        secretVersions:
+          change.isUpdate || change.changeType === ChangeType.UPDATE
+            ? [currentVersion, previousVersion]
+            : [currentVersion],
+        folderId
+      });
+      return versions?.map((v) => ({
+        secretKey: v.secretKey,
+        secretComment: v.secretComment,
+        skipMultilineEncoding: v.skipMultilineEncoding,
+        secretReminderRepeatDays: v.secretReminderRepeatDays,
+        secretReminderNote: v.secretReminderNote,
+        metadata: v.metadata,
+        tags: v.tags?.map((t) => t.name),
+        secretReminderRecipients: v.secretReminderRecipients?.map((r) => r.toString()),
+        secretValue: v.secretValue
+      }));
+    }
+  };
+
+  const getFolderVersions = async (change: ResourceChange, fromVersion: string, folderId: string) => {
+    const currentVersion = change.folderVersion || "1";
+    // eslint-disable-next-line no-await-in-loop
+    const versions = await server.services.folder.getFolderVersionsByIds({
+      folderId,
+      folderVersions:
+        change.isUpdate || change.changeType === ChangeType.UPDATE ? [currentVersion, fromVersion] : [currentVersion]
+    });
+    return versions.map((v) => ({
+      name: v.name
+    }));
+  };
+
   // Get commit changes for a specific commit
   server.route({
     method: "GET",
-    url: "/commits/:workspaceId/:commitId/changes",
+    url: "/commits/:commitId/changes",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        workspaceId: z.string().trim(),
         commitId: z.string().trim()
       }),
+      querystring: z.object({
+        workspaceId: z.string().trim()
+      }),
       response: {
-        200: z.object({
-          changes: z.object({
-            id: z.string(),
-            commitId: z.string(),
-            actorMetadata: z
-              .union([
-                z.object({
-                  id: z.string().optional(),
-                  name: z.string().optional()
-                }),
-                z.unknown()
-              ])
-              .optional(),
-            actorType: z.string(),
-            message: z.string().optional().nullable(),
-            folderId: z.string(),
-            envId: z.string(),
-            createdAt: z.string().or(z.date()),
-            updatedAt: z.string().or(z.date()),
-            changes: z.array(
-              z.object({
-                id: z.string(),
-                folderCommitId: z.string(),
-                changeType: z.string(),
-                isUpdate: z.boolean().optional(),
-                secretVersionId: z.string().optional().nullable(),
-                folderVersionId: z.string().optional().nullable(),
-                // Fix these two fields to accept either string or Date objects
-                createdAt: z.union([z.string(), z.date()]),
-                updatedAt: z.union([z.string(), z.date()]),
-                folderName: z.string().optional().nullable(),
-                folderChangeId: z.string().optional().nullable(),
-                folderVersion: z.union([z.string(), z.number()]).optional().nullable(),
-                secretKey: z.string().optional().nullable(),
-                secretVersion: z.union([z.string(), z.number()]).optional().nullable(),
-                secretId: z.string().optional().nullable(),
-                actorMetadata: z
-                  .union([
-                    z.object({
-                      id: z.string().optional(),
-                      name: z.string().optional()
-                    }),
-                    z.unknown()
-                  ])
-                  .optional(),
-                actorType: z.string().optional(),
-                message: z.string().optional().nullable(),
-                folderId: z.string().optional().nullable(),
-                versions: z.array(versionSchema).optional()
-              })
-            )
-          })
-        })
+        200: commitChangesResponseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
@@ -224,53 +214,36 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission?.id,
         actorOrgId: req.permission?.orgId,
         actorAuthMethod: req.permission?.authMethod,
-        projectId: req.params.workspaceId,
+        projectId: req.query.workspaceId,
         commitId: req.params.commitId
       });
       for (const change of changes.changes) {
         if (change.secretVersionId) {
-          const currentVersion = change.secretVersion || "1";
-          const previousVersion = (Number.parseInt(currentVersion, 10) - 1).toString();
-          if (change.secretId) {
-            // eslint-disable-next-line no-await-in-loop
-            const versions = await server.services.secret.getSecretVersionsV2ByIds({
-              actorId: req.permission?.id,
-              actor: req.permission?.type,
-              actorOrgId: req.permission?.orgId,
-              actorAuthMethod: req.permission?.authMethod,
-              secretId: change.secretId,
-              secretVersions: change.isUpdate ? [currentVersion, previousVersion] : [currentVersion],
-              folderId: change.folderId
-            });
-            change.versions = versions?.map((v) => ({
-              secretKey: v.secretKey,
-              secretComment: v.secretComment,
-              skipMultilineEncoding: v.skipMultilineEncoding,
-              secretReminderRepeatDays: v.secretReminderRepeatDays,
-              secretReminderNote: v.secretReminderNote,
-              metadata: v.secretMetadata,
-              tags: v.tags?.map((t) => t.name),
-              secretReminderRecipients: v.secretReminderRecipients?.map((r) => r.toString()),
-              secretValue: v.secretValue
-            }));
-          }
-        } else if (change.folderVersionId && change.folderChangeId) {
-          const currentVersion = change.folderVersion || "1";
-          const previousVersion = (Number.parseInt(currentVersion, 10) - 1).toString();
+          change.objectType = "secret";
           // eslint-disable-next-line no-await-in-loop
-          const versions = await server.services.folder.getFolderVersionsByIds({
-            folderId: change.folderChangeId,
-            folderVersions: change.isUpdate ? [currentVersion, previousVersion] : [currentVersion]
-          });
-          change.versions = versions.map((v) => ({
-            name: v.name
-          }));
+          change.versions = await getChangeVersions(
+            change,
+            (Number.parseInt(change.secretVersion, 10) - 1).toString(),
+            req.permission?.id,
+            req.permission?.type,
+            req.permission?.orgId,
+            req.permission?.authMethod,
+            change.folderId
+          );
+        } else if (change.folderVersionId && change.folderChangeId) {
+          change.objectType = "folder";
+          // eslint-disable-next-line no-await-in-loop
+          change.versions = await getFolderVersions(
+            change,
+            (Number.parseInt(change.folderVersion, 10) - 1).toString(),
+            change.folderChangeId
+          );
         }
       }
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
+        projectId: req.query.workspaceId,
         event: {
           type: EventType.GET_PROJECT_PIT_COMMIT_CHANGES,
           metadata: {
@@ -292,20 +265,20 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
   // Retrieve rollback changes for a commit
   server.route({
     method: "GET",
-    url: "/commits/:workspaceId/:commitId/compare",
+    url: "/commits/:commitId/compare",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        workspaceId: z.string().trim(),
         commitId: z.string().trim()
       }),
       querystring: z.object({
         folderId: z.string().trim(),
         envId: z.string().trim(),
         deepRollback: booleanSchema.default(false),
-        secretPath: z.string().trim().default("/").transform(removeTrailingSlash)
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        workspaceId: z.string().trim()
       }),
       response: {
         200: z.array(
@@ -326,7 +299,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission?.id,
         actorOrgId: req.permission?.orgId,
         actorAuthMethod: req.permission?.authMethod,
-        projectId: req.params.workspaceId
+        projectId: req.query.workspaceId
       });
       if (!latestCommit) {
         throw new NotFoundError({ message: "Latest commit not found" });
@@ -337,9 +310,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         diffs = await server.services.folderCommit.deepCompareFolder({
           targetCommitId: req.params.commitId,
           envId: req.query.envId,
-          actorId: req.permission?.id,
-          actorType: req.permission?.type,
-          projectId: req.params.workspaceId
+          projectId: req.query.workspaceId
         });
       } else {
         const folder = await server.services.folder.getFolderById({
@@ -365,51 +336,27 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       for (const diff of diffs) {
         for (const change of diff.changes) {
           if (change.secretKey) {
-            const currentVersion = change.secretVersion || "1";
-            const previousVersion = change.fromVersion || "1";
             // eslint-disable-next-line no-await-in-loop
-            const versions = await server.services.secret.getSecretVersionsV2ByIds({
-              actorId: req.permission?.id,
-              actor: req.permission?.type,
-              actorOrgId: req.permission?.orgId,
-              actorAuthMethod: req.permission?.authMethod,
-              secretId: change.id,
-              // if it's update add also the previous secretversionid
-              secretVersions:
-                change.changeType === ChangeType.UPDATE ? [currentVersion, previousVersion] : [currentVersion],
-              folderId: req.query.folderId
-            });
-            change.versions = versions?.map((v) => ({
-              secretKey: v.secretKey,
-              secretComment: v.secretComment,
-              skipMultilineEncoding: v.skipMultilineEncoding,
-              secretReminderRepeatDays: v.secretReminderRepeatDays,
-              secretReminderNote: v.secretReminderNote,
-              metadata: v.metadata,
-              tags: v.tags?.map((t) => t.name),
-              secretReminderRecipients: v.secretReminderRecipients?.map((r) => r.toString()),
-              secretValue: v.secretValue
-            }));
+            change.versions = await getChangeVersions(
+              change,
+              change.fromVersion || "1",
+              req.permission?.id,
+              req.permission?.type,
+              req.permission?.orgId,
+              req.permission?.authMethod,
+              diff.folderId
+            );
           }
           if (change.folderVersion) {
-            const currentVersion = change.folderVersion || "1";
-            const previousVersion = change.fromVersion || "1";
             // eslint-disable-next-line no-await-in-loop
-            const versions = await server.services.folder.getFolderVersionsByIds({
-              folderId: change.id,
-              folderVersions:
-                change.changeType === ChangeType.UPDATE ? [currentVersion, previousVersion] : [currentVersion]
-            });
-            change.versions = versions.map((v) => ({
-              name: v.name
-            }));
+            change.versions = await getFolderVersions(change, change.fromVersion || "1", change.id);
           }
         }
       }
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
+        projectId: req.query.workspaceId,
         event: {
           type: EventType.PIT_COMPARE_FOLDER_STATES,
           metadata: {
@@ -428,20 +375,20 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
   // Rollback to a previous commit
   server.route({
     method: "POST",
-    url: "/commits/:workspaceId/:commitId/rollback",
+    url: "/commits/:commitId/rollback",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        workspaceId: z.string().trim(),
         commitId: z.string().trim()
       }),
       body: z.object({
         folderId: z.string().trim(),
         deepRollback: z.boolean().default(false),
         message: z.string().trim().optional(),
-        envId: z.string().trim()
+        envId: z.string().trim(),
+        workspaceId: z.string().trim()
       }),
       response: {
         200: z.object({
@@ -454,13 +401,26 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      const { permission } = await server.services.permission.getProjectPermission({
+        actor: req.permission?.type,
+        actorId: req.permission?.id,
+        projectId: req.body.workspaceId,
+        actorAuthMethod: req.permission?.authMethod,
+        actorOrgId: req.permission?.orgId,
+        actionProjectType: ActionProjectType.SecretManager
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCommitsActions.PerformRollback,
+        ProjectPermissionSub.Commits
+      );
       const latestCommit = await server.services.folderCommit.getLatestCommit({
         folderId: req.body.folderId,
         actor: req.permission?.type,
         actorId: req.permission?.id,
         actorOrgId: req.permission?.orgId,
         actorAuthMethod: req.permission?.authMethod,
-        projectId: req.params.workspaceId
+        projectId: req.body.workspaceId
       });
       if (!latestCommit) {
         throw new NotFoundError({ message: "Latest commit not found" });
@@ -472,7 +432,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
           req.body.envId,
           req.permission.id,
           req.permission.type,
-          req.params.workspaceId
+          req.body.workspaceId
         );
         return { success: true };
       }
@@ -489,13 +449,13 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
           message: req.body.message || "Rollback to previous commit"
         },
         folderId: req.body.folderId,
-        projectId: req.params.workspaceId,
+        projectId: req.body.workspaceId,
         reconstructNewFolders: req.body.deepRollback
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
+        projectId: req.body.workspaceId,
         event: {
           type: EventType.PIT_ROLLBACK_COMMIT,
           metadata: {
@@ -520,14 +480,16 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
   // Revert commit
   server.route({
     method: "POST",
-    url: "/commits/:workspaceId/:commitId/revert",
+    url: "/commits/:commitId/revert",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        workspaceId: z.string().trim(),
         commitId: z.string().trim()
+      }),
+      querystring: z.object({
+        workspaceId: z.string().trim()
       }),
       response: {
         200: z.object({
@@ -547,12 +509,12 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission?.id,
         actorAuthMethod: req.permission?.authMethod,
         actorOrgId: req.permission?.orgId,
-        projectId: req.params.workspaceId
+        projectId: req.query.workspaceId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
+        projectId: req.query.workspaceId,
         event: {
           type: EventType.PIT_REVERT_COMMIT,
           metadata: {
@@ -570,17 +532,17 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
   // Folder state at commit
   server.route({
     method: "GET",
-    url: "/commits/:workspaceId/:commitId",
+    url: "/commits/:commitId",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        workspaceId: z.string().trim(),
         commitId: z.string().trim()
       }),
       querystring: z.object({
-        folderId: z.string().trim()
+        folderId: z.string().trim(),
+        workspaceId: z.string().trim()
       }),
       response: {
         200: folderStateSchema
@@ -588,11 +550,24 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      const { permission } = await server.services.permission.getProjectPermission({
+        actor: req.permission?.type,
+        actorId: req.permission?.id,
+        projectId: req.query.workspaceId,
+        actorAuthMethod: req.permission?.authMethod,
+        actorOrgId: req.permission?.orgId,
+        actionProjectType: ActionProjectType.SecretManager
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCommitsActions.Read,
+        ProjectPermissionSub.Commits
+      );
       const response = await server.services.folderCommit.reconstructFolderState(req.params.commitId);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
+        projectId: req.query.workspaceId,
         event: {
           type: EventType.PIT_GET_FOLDER_STATE,
           metadata: {

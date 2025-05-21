@@ -5,11 +5,12 @@ import {
   TableName,
   TFolderCommitChanges,
   TFolderCommits,
+  TProjectEnvironments,
   TSecretFolderVersions,
   TSecretVersionsV2
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TFolderCommitChangesDALFactory = ReturnType<typeof folderCommitChangesDALFactory>;
 
@@ -41,10 +42,15 @@ type CommitChangeWithCommitInfo = TFolderCommitChanges & {
 export const folderCommitChangesDALFactory = (db: TDbClient) => {
   const folderCommitChangesOrm = ormify(db, TableName.FolderCommitChanges);
 
-  const findByCommitId = async (folderCommitId: string, tx?: Knex): Promise<CommitChangeWithCommitInfo[]> => {
+  const findByCommitId = async (
+    folderCommitId: string,
+    projectId: string,
+    tx?: Knex
+  ): Promise<CommitChangeWithCommitInfo[]> => {
     try {
       const docs = await (tx || db.replicaNode())<TFolderCommitChanges>(TableName.FolderCommitChanges)
-        .where({ folderCommitId })
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter({ folderCommitId }, TableName.FolderCommitChanges))
         .leftJoin<TFolderCommits>(
           TableName.FolderCommit,
           `${TableName.FolderCommitChanges}.folderCommitId`,
@@ -60,6 +66,16 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
           `${TableName.FolderCommitChanges}.folderVersionId`,
           `${TableName.SecretFolderVersion}.id`
         )
+        .leftJoin<TProjectEnvironments>(
+          TableName.Environment,
+          `${TableName.FolderCommit}.envId`,
+          `${TableName.Environment}.id`
+        )
+        .where((qb) => {
+          if (projectId) {
+            void qb.where(`${TableName.Environment}.projectId`, "=", projectId);
+          }
+        })
         .select(selectAllTableCols(TableName.FolderCommitChanges))
         .select(
           db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderName"),
@@ -90,7 +106,8 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
         TFolderCommitChanges &
           Pick<TFolderCommits, "actorMetadata" | "actorType" | "message" | "createdAt" | "folderId">
       >(TableName.FolderCommitChanges)
-        .where({ secretVersionId })
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter({ secretVersionId }, TableName.FolderCommitChanges))
         .select(selectAllTableCols(TableName.FolderCommitChanges))
         .join(TableName.FolderCommit, `${TableName.FolderCommitChanges}.folderCommitId`, `${TableName.FolderCommit}.id`)
         .select(
@@ -112,7 +129,8 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
         TFolderCommitChanges &
           Pick<TFolderCommits, "actorMetadata" | "actorType" | "message" | "createdAt" | "folderId">
       >(TableName.FolderCommitChanges)
-        .where({ folderVersionId })
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter({ folderVersionId }, TableName.FolderCommitChanges))
         .select(selectAllTableCols(TableName.FolderCommitChanges))
         .join(TableName.FolderCommit, `${TableName.FolderCommitChanges}.folderCommitId`, `${TableName.FolderCommit}.id`)
         .select(

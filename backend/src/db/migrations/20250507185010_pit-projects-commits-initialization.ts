@@ -11,12 +11,10 @@ export async function up(knex: Knex): Promise<void> {
     const keyStore = inMemoryKeyStore();
     const { folderCommitService } = await getMigrationPITServices({ db: knex, keyStore });
     const projects = await knex(TableName.Project).where({ version: 3, type: ProjectType.SecretManager }).select("id");
-    await knex.transaction(async (tx) => {
-      for (const project of projects) {
-        // eslint-disable-next-line no-await-in-loop
-        await folderCommitService.initializeProject(project.id, tx);
-      }
-    });
+    for (const project of projects) {
+      // eslint-disable-next-line no-await-in-loop
+      await folderCommitService.initializeProject(project.id);
+    }
   }
 }
 

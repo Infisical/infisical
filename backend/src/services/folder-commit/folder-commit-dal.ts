@@ -5,6 +5,7 @@ import {
   TableName,
   TFolderCommitChanges,
   TFolderCommits,
+  TProjectEnvironments,
   TSecretFolderVersions,
   TSecretVersionsV2
 } from "@app/db/schemas";
@@ -54,10 +55,20 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findLatestCommit = async (folderId: string, tx?: Knex): Promise<TFolderCommits | undefined> => {
+  const findLatestCommit = async (
+    folderId: string,
+    projectId?: string,
+    tx?: Knex
+  ): Promise<TFolderCommits | undefined> => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
         .where({ folderId })
+        .leftJoin(TableName.Environment, `${TableName.FolderCommit}.envId`, `${TableName.Environment}.id`)
+        .where((qb) => {
+          if (projectId) {
+            void qb.where(`${TableName.Environment}.projectId`, "=", projectId);
+          }
+        })
         .select(selectAllTableCols(TableName.FolderCommit))
         .orderBy("commitId", "desc")
         .first();
@@ -178,8 +189,8 @@ export const folderCommitDALFactory = (db: TDbClient) => {
 
   const findCommitsToRecreate = async (
     folderId: string,
-    targetCommitNumber: number,
-    checkpointCommitNumber: number,
+    targetCommitNumber: bigint,
+    checkpointCommitNumber: bigint,
     tx?: Knex
   ): Promise<
     (TFolderCommits & {
@@ -213,7 +224,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
 
       // Get all changes for these commits in a single query
       const allChanges = await (tx || db.replicaNode())(TableName.FolderCommitChanges)
-        .whereIn("folderCommitId", commitIds)
+        .whereIn(`${TableName.FolderCommitChanges}.folderCommitId`, commitIds)
         .leftJoin<TSecretVersionsV2>(
           TableName.SecretVersionV2,
           `${TableName.FolderCommitChanges}.secretVersionId`,
@@ -291,7 +302,6 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     endCommitId,
     tx
   }: {
-    folderId?: string;
     envId?: string;
     startCommitId?: string;
     endCommitId?: string;
@@ -323,7 +333,6 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     startCommitId,
     tx
   }: {
-    folderId?: string;
     envId?: string;
     startCommitId?: string;
     tx?: Knex;
@@ -346,7 +355,11 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findPreviousCommitTo = async (folderId: string, commitId: string, tx?: Knex): Promise<TFolderCommits | undefined> => {
+  const findPreviousCommitTo = async (
+    folderId: string,
+    commitId: string,
+    tx?: Knex
+  ): Promise<TFolderCommits | undefined> => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
         .where({ folderId })
@@ -357,6 +370,30 @@ export const folderCommitDALFactory = (db: TDbClient) => {
       return doc;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindPreviousCommitTo" });
+    }
+  };
+
+  const findById = async (id: string, tx?: Knex, projectId?: string): Promise<TFolderCommits> => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter({ id }, TableName.FolderCommit))
+        .leftJoin<TProjectEnvironments>(
+          TableName.Environment,
+          `${TableName.FolderCommit}.envId`,
+          `${TableName.Environment}.id`
+        )
+        .where((qb) => {
+          if (projectId) {
+            void qb.where(`${TableName.Environment}.projectId`, "=", projectId);
+          }
+        })
+        .select(selectAllTableCols(TableName.FolderCommit))
+        .orderBy("commitId", "desc")
+        .first();
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindById" });
     }
   };
 
@@ -373,6 +410,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     getEnvNumberOfCommitsSince,
     findLatestCommitByFolderIds,
     findAllFolderCommitsAfter,
-    findPreviousCommitTo
+    findPreviousCommitTo,
+    findById
   };
 };

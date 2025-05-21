@@ -101,12 +101,29 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  await createOnUpdateTrigger(knex, TableName.FolderCommit);
-  await createOnUpdateTrigger(knex, TableName.FolderCommitChanges);
-  await createOnUpdateTrigger(knex, TableName.FolderCheckpoint);
-  await createOnUpdateTrigger(knex, TableName.FolderCheckpointResources);
-  await createOnUpdateTrigger(knex, TableName.FolderTreeCheckpoint);
-  await createOnUpdateTrigger(knex, TableName.FolderTreeCheckpointResources);
+  if (!hasFolderCommitTable) {
+    await createOnUpdateTrigger(knex, TableName.FolderCommit);
+  }
+
+  if (!hasFolderCommitChangesTable) {
+    await createOnUpdateTrigger(knex, TableName.FolderCommitChanges);
+  }
+
+  if (!hasFolderCheckpointTable) {
+    await createOnUpdateTrigger(knex, TableName.FolderCheckpoint);
+  }
+
+  if (!hasFolderCheckpointResourcesTable) {
+    await createOnUpdateTrigger(knex, TableName.FolderCheckpointResources);
+  }
+
+  if (!hasFolderTreeCheckpointTable) {
+    await createOnUpdateTrigger(knex, TableName.FolderTreeCheckpoint);
+  }
+
+  if (!hasFolderTreeCheckpointResourcesTable) {
+    await createOnUpdateTrigger(knex, TableName.FolderTreeCheckpointResources);
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {

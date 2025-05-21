@@ -577,6 +577,7 @@ export const registerRoutes = async (
   const folderCommitQueueService = folderCommitQueueServiceFactory({
     queueService,
     folderTreeCheckpointDAL,
+    keyStore,
     folderTreeCheckpointResourcesDAL,
     folderCommitDAL,
     folderDAL

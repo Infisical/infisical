@@ -1,4 +1,4 @@
-import { SecretVersions } from "../types";
+import { CommitType, SecretVersions } from "../types";
 
 export type CommitHistoryItem = {
   id: string;
@@ -18,7 +18,7 @@ export type CommitHistoryItem = {
 export type TFolderCommitChanges = {
   id: string;
   folderCommitId: string;
-  changeType: "add" | "delete";
+  changeType: CommitType;
   isUpdate: boolean;
   secretVersionId: string | null;
   folderVersionId: string | null;

@@ -97,67 +97,78 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret folder versions completed`);
   };
 
+  // Get latest versions by folderIds
+  const getLatestFolderVersions = async (folderIds: string[], tx?: Knex): Promise<Array<TSecretFolderVersions>> => {
+    if (!folderIds.length) return [];
+
+    const knexInstance = tx || db.replicaNode();
+    return knexInstance(TableName.SecretFolderVersion)
+      .whereIn(`${TableName.SecretFolderVersion}.folderId`, folderIds)
+      .join(
+        knexInstance(TableName.SecretFolderVersion)
+          .groupBy("folderId")
+          .max("version")
+          .select("folderId")
+          .as("latestVersion"),
+        (bd) => {
+          bd.on(`${TableName.SecretFolderVersion}.folderId`, "latestVersion.folderId").andOn(
+            `${TableName.SecretFolderVersion}.version`,
+            "latestVersion.max"
+          );
+        }
+      );
+  };
+
+  // Get specific versions and update with max version
+  const getSpecificFolderVersionsWithLatest = async (
+    versionIds: string[],
+    tx?: Knex
+  ): Promise<Array<TSecretFolderVersions>> => {
+    if (!versionIds.length) return [];
+
+    const knexInstance = tx || db.replicaNode();
+
+    // Get specific versions
+    const specificVersions = await knexInstance(TableName.SecretFolderVersion).whereIn("id", versionIds);
+
+    // Get folderIds from these versions
+    const specificFolderIds = [...new Set(specificVersions.map((v) => v.folderId).filter(Boolean))];
+
+    if (!specificFolderIds.length) return specificVersions;
+
+    // Get max versions for these folderIds
+    const maxVersionsQuery = await knexInstance(TableName.SecretFolderVersion)
+      .whereIn("folderId", specificFolderIds)
+      .groupBy("folderId")
+      .select("folderId")
+      .max("version", { as: "maxVersion" });
+
+    // Create lookup map for max versions
+    const maxVersionMap = maxVersionsQuery.reduce<Record<string, number>>((acc, item) => {
+      acc[item.folderId] = item.maxVersion;
+      return acc;
+    }, {});
+
+    // Replace version with max version
+    return specificVersions.map((version) => ({
+      ...version,
+      version: maxVersionMap[version.folderId] || version.version
+    }));
+  };
+
   const findByIdsWithLatestVersion = async (folderIds: string[], versionIds?: string[], tx?: Knex) => {
     try {
       if (!folderIds.length && (!versionIds || !versionIds.length)) return {};
 
-      const knexInstance = tx || db.replicaNode();
-      let allDocs: Array<TSecretFolderVersions & { max?: number }> = [];
+      const [latestVersions, specificVersionsWithLatest] = await Promise.all([
+        folderIds.length ? getLatestFolderVersions(folderIds, tx) : [],
+        versionIds?.length ? getSpecificFolderVersionsWithLatest(versionIds, tx) : []
+      ]);
 
-      // Process latest versions for folderIds
-      if (folderIds.length) {
-        const latestVersions: Array<TSecretFolderVersions & { max: number }> = await knexInstance(
-          TableName.SecretFolderVersion
-        )
-          .whereIn(`${TableName.SecretFolderVersion}.folderId`, folderIds)
-          .join(
-            knexInstance(TableName.SecretFolderVersion)
-              .groupBy("folderId")
-              .max("version")
-              .select("folderId")
-              .as("latestVersion"),
-            (bd) => {
-              bd.on(`${TableName.SecretFolderVersion}.folderId`, "latestVersion.folderId").andOn(
-                `${TableName.SecretFolderVersion}.version`,
-                "latestVersion.max"
-              );
-            }
-          );
+      const allDocs = [...latestVersions, ...specificVersionsWithLatest];
 
-        allDocs = [...allDocs, ...latestVersions];
-      }
-
-      // Process specific versions by versionIds
-      if (versionIds && versionIds.length) {
-        // Get the specific versions
-        const specificVersions = await knexInstance(TableName.SecretFolderVersion).whereIn("id", versionIds);
-
-        // Get the folderIds from these versions
-        const specificFolderIds = [...new Set(specificVersions.map((v) => v.folderId).filter(Boolean))];
-
-        // Get max versions for these folderIds
-        const maxVersionsQuery = (await knexInstance(TableName.SecretFolderVersion)
-          .whereIn("folderId", specificFolderIds)
-          .groupBy("folderId")
-          .select("folderId")
-          .max("version as max")) as Array<{ folderId: string; max: number }>;
-
-        // Create a lookup map for max versions
-        const maxVersionMap = maxVersionsQuery.reduce<Record<string, number>>((acc, item) => {
-          acc[item.folderId] = item.max;
-          return acc;
-        }, {});
-
-        // Add max version to each specific version
-        const specificVersionsWithMax = specificVersions.map((version) => ({
-          ...version,
-          max: maxVersionMap[version.folderId]
-        }));
-
-        allDocs = [...allDocs, ...specificVersionsWithMax];
-      }
-
-      return allDocs.reduce<Record<string, TSecretFolderVersions & { max?: number }>>(
+      // Convert array to record with folderId as key
+      return allDocs.reduce<Record<string, TSecretFolderVersions>>(
         (prev, curr) => ({ ...prev, [curr.folderId || ""]: curr }),
         {}
       );

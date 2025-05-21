@@ -8,6 +8,7 @@ import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
+import { CommitType } from "../folder-commit/folder-commit-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
@@ -135,7 +136,7 @@ export const fnSecretBulkInsert = async ({
   const commitChanges = secretVersions
     .filter(({ type }) => type === SecretType.Shared)
     .map((sv) => ({
-      type: "add",
+      type: CommitType.ADD,
       secretVersionId: sv.id
     }));
 
@@ -289,7 +290,7 @@ export const fnSecretBulkUpdate = async ({
   const commitChanges = secretVersions
     .filter(({ type }) => type === SecretType.Shared)
     .map((sv) => ({
-      type: "add",
+      type: CommitType.ADD,
       isUpdate: true,
       secretVersionId: sv.id
     }));
@@ -421,7 +422,7 @@ export const fnSecretBulkDelete = async ({
   const commitChanges = deletedSecrets
     .filter(({ type }) => type === SecretType.Shared)
     .map(({ id }) => ({
-      type: "delete",
+      type: CommitType.DELETE,
       secretVersionId: secretVersions[id].id
     }));
   if (commitChanges.length > 0) {

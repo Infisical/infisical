@@ -32,6 +32,11 @@ export enum ChangeType {
   CREATE = "create"
 }
 
+export enum CommitType {
+  ADD = "add",
+  DELETE = "delete"
+}
+
 enum ResourceType {
   SECRET = "secret",
   FOLDER = "folder"
@@ -68,11 +73,12 @@ export type ResourceChange = {
   versionId: string;
   oldVersionId?: string;
   changeType: ChangeType;
-  commitId: number;
+  commitId: bigint;
   createdAt?: Date;
   parentId?: string;
   secretKey?: string;
   secretVersion?: string;
+  secretId?: string;
   folderName?: string;
   folderVersion?: string;
   fromVersion?: string;
@@ -209,7 +215,7 @@ export const folderCommitServiceFactory = ({
     const latestCheckpoint = await folderCheckpointDAL.findLatestByFolderId(folderId, tx);
 
     if (!latestCommitId) {
-      const latestCommit = await folderCommitDAL.findLatestCommit(folderId, tx);
+      const latestCommit = await folderCommitDAL.findLatestCommit(folderId, undefined, tx);
       if (!latestCommit) {
         throw new BadRequestError({ message: "Latest commit ID not found" });
       }
@@ -264,7 +270,11 @@ export const folderCommitServiceFactory = ({
       throw new NotFoundError({ message: `Commit with ID ${folderCommitId} not found` });
     }
 
-    const nearestCheckpoint = await folderCheckpointDAL.findNearestCheckpoint(folderCommitId, tx);
+    const nearestCheckpoint = await folderCheckpointDAL.findNearestCheckpoint(
+      targetCommit.commitId,
+      targetCommit.folderId,
+      tx
+    );
     if (!nearestCheckpoint) {
       throw new NotFoundError({ message: `Nearest checkpoint not found for commit ${folderCommitId}` });
     }
@@ -288,7 +298,7 @@ export const folderCommitServiceFactory = ({
     checkpointResources.forEach((resource) => {
       if (resource.secretVersionId && resource.referencedSecretId) {
         folderState[`secret-${resource.referencedSecretId}`] = {
-          type: "secret",
+          type: ResourceType.SECRET,
           id: resource.referencedSecretId,
           versionId: resource.secretVersionId,
           secretKey: resource.secretKey,
@@ -296,7 +306,7 @@ export const folderCommitServiceFactory = ({
         };
       } else if (resource.folderVersionId && resource.referencedFolderId) {
         folderState[`folder-${resource.referencedFolderId}`] = {
-          type: "folder",
+          type: ResourceType.FOLDER,
           id: resource.referencedFolderId,
           versionId: resource.folderVersionId,
           folderName: resource.folderName,
@@ -323,7 +333,7 @@ export const folderCommitServiceFactory = ({
 
           if (change.changeType.toLowerCase() === "add") {
             folderState[key] = {
-              type: "secret",
+              type: ResourceType.SECRET,
               id: change.referencedSecretId,
               versionId: change.secretVersionId,
               secretKey: change.secretKey,
@@ -337,7 +347,7 @@ export const folderCommitServiceFactory = ({
 
           if (change.changeType.toLowerCase() === "add") {
             folderState[key] = {
-              type: "folder",
+              type: ResourceType.FOLDER,
               id: change.referencedFolderId,
               versionId: change.folderVersionId,
               folderName: change.folderName,
@@ -902,12 +912,14 @@ export const folderCommitServiceFactory = ({
     const secretVersions = await secretVersionV2BridgeDAL.findByIdsWithLatestVersion(
       folderId,
       secretChanges.map((diff) => diff.id),
-      secretChanges.map((diff) => diff.versionId)
+      secretChanges.map((diff) => diff.versionId),
+      tx
     );
 
     const folderVersions = await folderVersionDAL.findByIdsWithLatestVersion(
       folderChanges.map((diff) => diff.id),
-      folderChanges.map((diff) => diff.versionId)
+      folderChanges.map((diff) => diff.versionId),
+      tx
     );
 
     // Process changes in parallel
@@ -1072,8 +1084,8 @@ export const folderCommitServiceFactory = ({
       actorOrgId,
       projectId
     });
-    const changes = await folderCommitChangesDAL.findByCommitId(commitId);
-    const commit = await folderCommitDAL.findById(commitId);
+    const changes = await folderCommitChangesDAL.findByCommitId(commitId, projectId);
+    const commit = await folderCommitDAL.findById(commitId, undefined, projectId);
     return { ...commit, changes };
   };
 
@@ -1244,8 +1256,6 @@ export const folderCommitServiceFactory = ({
   }: {
     targetCommitId: string;
     envId: string;
-    actorId: string;
-    actorType: ActorType;
     projectId: string;
     tx?: Knex;
   }) => {
@@ -1254,7 +1264,7 @@ export const folderCommitServiceFactory = ({
       throw new NotFoundError({ message: `No commit found for commit ID ${targetCommitId}` });
     }
 
-    const checkpoint = await folderTreeCheckpointDAL.findNearestCheckpoint(targetCommitId, envId, tx);
+    const checkpoint = await folderTreeCheckpointDAL.findNearestCheckpoint(targetCommit.commitId, envId, tx);
     if (!checkpoint) {
       throw new NotFoundError({ message: `No checkpoint found for commit ID ${targetCommitId}` });
     }
@@ -1267,7 +1277,7 @@ export const folderCommitServiceFactory = ({
     });
 
     // Group commits by folderId and keep only the latest
-    const folderGroups = new Map<string, { commitId: number; id: string }>();
+    const folderGroups = new Map<string, { commitId: bigint; id: string }>();
 
     if (folderCheckpointCommits && folderCheckpointCommits.length > 0) {
       for (const commit of folderCheckpointCommits) {
@@ -1358,7 +1368,7 @@ export const folderCommitServiceFactory = ({
         throw new NotFoundError({ message: `No commit found for commit ID ${targetCommitId}` });
       }
 
-      const checkpoint = await folderTreeCheckpointDAL.findNearestCheckpoint(targetCommitId, envId, tx);
+      const checkpoint = await folderTreeCheckpointDAL.findNearestCheckpoint(targetCommit.commitId, envId, tx);
       if (!checkpoint) {
         throw new NotFoundError({ message: `No checkpoint found for commit ID ${targetCommitId}` });
       }
@@ -1371,7 +1381,7 @@ export const folderCommitServiceFactory = ({
       });
 
       // Group commits by folderId and keep only the latest
-      const folderGroups = new Map<string, { commitId: number; id: string }>();
+      const folderGroups = new Map<string, { commitId: bigint; id: string }>();
 
       if (folderCheckpointCommits && folderCheckpointCommits.length > 0) {
         for (const commit of folderCheckpointCommits) {
@@ -1421,9 +1431,9 @@ export const folderCommitServiceFactory = ({
       const foldersToDelete = new Set<string>();
 
       // Process all DELETE operations to build a complete set of folders to be deleted
-      for (const [folderId, changes] of folderDiffs.entries()) {
+      for (const changes of folderDiffs.values()) {
         for (const change of changes) {
-          if (change.changeType === ChangeType.DELETE && change.type === "folder") {
+          if (change.changeType === ChangeType.DELETE && change.type === ResourceType.FOLDER) {
             foldersToDelete.add(change.id);
           }
         }
@@ -1483,7 +1493,7 @@ export const folderCommitServiceFactory = ({
       actorOrgId,
       projectId
     });
-    return folderCommitDAL.findLatestCommit(folderId);
+    return folderCommitDAL.findLatestCommit(folderId, projectId);
   };
 
   /**
@@ -1506,6 +1516,19 @@ export const folderCommitServiceFactory = ({
     projectId: string;
     message?: string;
   }) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCommitsActions.PerformRollback,
+      ProjectPermissionSub.Commits
+    );
     // Check permissions first
     await checkProjectPermission({
       actor,
@@ -1516,7 +1539,7 @@ export const folderCommitServiceFactory = ({
     });
 
     // Get the commit to revert
-    const commitToRevert = await folderCommitDAL.findById(commitId);
+    const commitToRevert = await folderCommitDAL.findById(commitId, undefined, projectId);
     if (!commitToRevert) {
       throw new NotFoundError({ message: `Commit with ID ${commitId} not found` });
     }

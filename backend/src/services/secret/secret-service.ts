@@ -2533,21 +2533,15 @@ export const secretServiceFactory = ({
     secretVersions: string[];
     folderId: string;
   }) => {
-    const secretVersionV2 = await secretV2BridgeService
-      .getSecretVersionsByIds({
-        actorId,
-        actor,
-        actorOrgId,
-        actorAuthMethod,
-        secretId,
-        folderId,
-        secretVersionNumbers: secretVersions
-      })
-      .catch((err) => {
-        if ((err as Error).message === "BadRequest: Failed to find secret") {
-          return null;
-        }
-      });
+    const secretVersionV2 = await secretV2BridgeService.getSecretVersionsByIds({
+      actorId,
+      actor,
+      actorOrgId,
+      actorAuthMethod,
+      secretId,
+      folderId,
+      secretVersionNumbers: secretVersions
+    });
     return secretVersionV2;
   };
 

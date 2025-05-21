@@ -14,7 +14,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
+import { CommitType, TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -350,7 +350,7 @@ export const secretRotationQueueFactory = ({
               message: "Changed by Secret rotation",
               folderId: secretVersions[0].folderId,
               changes: secretVersions.map((sv) => ({
-                type: "add",
+                type: CommitType.ADD,
                 isUpdate: true,
                 secretVersionId: sv.id
               }))
