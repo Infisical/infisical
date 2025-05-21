@@ -827,7 +827,11 @@ export const orgServiceFactory = ({
       const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username">[] = [];
 
       for await (const inviteeEmail of inviteeEmails) {
-        let inviteeUser = await userDAL.findUserByUsername(inviteeEmail, tx);
+        const usersByUsername = await userDAL.findUserByUsername(inviteeEmail, tx);
+        let inviteeUser =
+          usersByUsername?.length > 1
+            ? usersByUsername.find((el) => el.username === inviteeEmail)
+            : usersByUsername?.[0];
 
         // if the user doesn't exist we create the user with the email
         if (!inviteeUser) {
@@ -1239,10 +1243,13 @@ export const orgServiceFactory = ({
    * magic link and issue a temporary signup token for user to complete setting up their account
    */
   const verifyUserToOrg = async ({ orgId, email, code }: TVerifyUserToOrgDTO) => {
-    const user = await userDAL.findUserByUsername(email);
+    const usersByUsername = await userDAL.findUserByUsername(email);
+    const user =
+      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
     if (!user) {
       throw new NotFoundError({ message: "User not found" });
     }
+
     const [orgMembership] = await orgDAL.findMembership({
       [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
       status: OrgMembershipStatus.Invited,

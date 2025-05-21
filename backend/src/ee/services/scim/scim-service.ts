@@ -342,7 +342,7 @@ export const scimServiceFactory = ({
           orgMembership = await orgMembershipDAL.create(
             {
               userId: userAlias.userId,
-              inviteEmail: email,
+              inviteEmail: email.toLowerCase(),
               orgId,
               role,
               roleId,
@@ -364,7 +364,7 @@ export const scimServiceFactory = ({
         if (trustScimEmails) {
           user = await userDAL.findOne(
             {
-              email,
+              email: email.toLowerCase(),
               isEmailVerified: true
             },
             tx
@@ -379,8 +379,8 @@ export const scimServiceFactory = ({
           );
           user = await userDAL.create(
             {
-              username: trustScimEmails ? email : uniqueUsername,
-              email,
+              username: trustScimEmails ? email.toLowerCase() : uniqueUsername,
+              email: email.toLowerCase(),
               isEmailVerified: trustScimEmails,
               firstName,
               lastName,
@@ -396,7 +396,7 @@ export const scimServiceFactory = ({
             userId: user.id,
             aliasType,
             externalId,
-            emails: email ? [email] : [],
+            emails: email ? [email.toLowerCase()] : [],
             orgId
           },
           tx
@@ -418,7 +418,7 @@ export const scimServiceFactory = ({
           orgMembership = await orgMembershipDAL.create(
             {
               userId: user.id,
-              inviteEmail: email,
+              inviteEmail: email.toLowerCase(),
               orgId,
               role,
               roleId,
@@ -529,7 +529,7 @@ export const scimServiceFactory = ({
         membership.userId,
         {
           firstName: scimUser.name.givenName,
-          email: scimUser.emails[0].value,
+          email: scimUser.emails[0].value.toLowerCase(),
           lastName: scimUser.name.familyName,
           isEmailVerified: hasEmailChanged ? trustScimEmails : undefined
         },
@@ -606,7 +606,7 @@ export const scimServiceFactory = ({
         membership.userId,
         {
           firstName,
-          email,
+          email: email?.toLowerCase(),
           lastName,
           isEmailVerified:
             org.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails
