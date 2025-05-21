@@ -21,7 +21,7 @@ import {
 import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
-  name: slugSchema({ min: 1, max: 32, field: "Name" }),
+  name: slugSchema({ min: 1, max: 64, field: "Name" }),
   description: z.string().max(500).optional()
 });
 
