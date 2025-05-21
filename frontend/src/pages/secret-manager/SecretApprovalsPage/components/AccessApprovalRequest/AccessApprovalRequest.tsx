@@ -83,7 +83,7 @@ export const AccessApprovalRequest = ({
 }) => {
   const [selectedRequest, setSelectedRequest] = useState<
     | (TAccessApprovalRequest & {
-        user: TWorkspaceUser["user"] | null;
+        user: { firstName?: string; lastName?: string; email?: string } | null;
         isRequestedByCurrentUser: boolean;
         isApprover: boolean;
       })
@@ -118,7 +118,7 @@ export const AccessApprovalRequest = ({
     projectSlug
   });
 
-  const { data: requests } = useGetAccessApprovalRequests({
+  const { data: requests, refetch: refetchRequests } = useGetAccessApprovalRequests({
     projectSlug,
     authorProjectMembershipId: requestedByFilter,
     envSlug: envFilter
@@ -346,22 +346,23 @@ export const AccessApprovalRequest = ({
                     tabIndex={0}
                     onClick={() => {
                       if (
-                        ((!details.isApprover ||
-                          details.isReviewedByUser ||
-                          details.isRejectedByAnyone ||
-                          details.isAccepted) &&
-                          !(
-                            details.isSoftEnforcement &&
-                            details.isRequestedByCurrentUser &&
-                            !details.isAccepted
-                          )) ||
-                        (request.requestedByUserId === user.id && !details.isSelfApproveAllowed)
+                        details.isAccepted ||
+                        details.isReviewedByUser ||
+                        details.isRejectedByAnyone ||
+                        (!details.isApprover &&
+                          !(details.isSoftEnforcement && details.isRequestedByCurrentUser))
                       )
                         return;
-                      if (membersGroupById?.[request.requestedByUserId].user) {
+
+                      if (
+                        membersGroupById?.[request.requestedByUserId].user ||
+                        details.isRequestedByCurrentUser
+                      ) {
                         setSelectedRequest({
                           ...request,
-                          user: membersGroupById?.[request.requestedByUserId].user,
+                          user: details.isRequestedByCurrentUser
+                            ? user
+                            : membersGroupById?.[request.requestedByUserId].user!,
                           isRequestedByCurrentUser: details.isRequestedByCurrentUser,
                           isApprover: details.isApprover
                         });
@@ -371,17 +372,24 @@ export const AccessApprovalRequest = ({
                     }}
                     onKeyDown={(evt) => {
                       if (
-                        !details.isApprover ||
                         details.isAccepted ||
                         details.isReviewedByUser ||
-                        details.isRejectedByAnyone
+                        details.isRejectedByAnyone ||
+                        (!details.isApprover &&
+                          !(details.isSoftEnforcement && details.isRequestedByCurrentUser))
                       )
                         return;
+
                       if (evt.key === "Enter") {
-                        if (membersGroupById?.[request.requestedByUserId].user) {
+                        if (
+                          membersGroupById?.[request.requestedByUserId].user ||
+                          details.isRequestedByCurrentUser
+                        ) {
                           setSelectedRequest({
                             ...request,
-                            user: membersGroupById?.[request.requestedByUserId].user,
+                            user: details.isRequestedByCurrentUser
+                              ? user
+                              : membersGroupById?.[request.requestedByUserId].user!,
                             isRequestedByCurrentUser: details.isRequestedByCurrentUser,
                             isApprover: details.isApprover
                           });
@@ -453,6 +461,7 @@ export const AccessApprovalRequest = ({
           onOpenChange={() => {
             handlePopUpClose("reviewRequest");
             setSelectedRequest(null);
+            refetchRequests();
           }}
         />
       )}

@@ -6,6 +6,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { EnforcementLevel } from "@app/lib/types";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -323,7 +324,9 @@ export const accessApprovalRequestServiceFactory = ({
     status,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    envName,
+    bypassReason
   }: TReviewAccessRequestDTO) => {
     const accessApprovalRequest = await accessApprovalRequestDAL.findById(requestId);
     if (!accessApprovalRequest) {
@@ -336,7 +339,12 @@ export const accessApprovalRequestServiceFactory = ({
         message: "The policy associated with this access request has been deleted."
       });
     }
-    if (!policy.allowedSelfApprovals && actorId === accessApprovalRequest.requestedByUserId) {
+
+    if (
+      !policy.allowedSelfApprovals &&
+      actorId === accessApprovalRequest.requestedByUserId &&
+      policy.enforcementLevel !== EnforcementLevel.Soft
+    ) {
       throw new BadRequestError({
         message: "Failed to review access approval request. Users are not authorized to review their own request."
       });
@@ -363,6 +371,11 @@ export const accessApprovalRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not authorized to approve this request" });
     }
 
+    const project = await projectDAL.findById(accessApprovalRequest.projectId);
+    if (!project) {
+      throw new NotFoundError({ message: "The project associated with this access request was not found." });
+    }
+
     const existingReviews = await accessApprovalRequestReviewerDAL.find({ requestId: accessApprovalRequest.id });
     if (existingReviews.some((review) => review.status === ApprovalStatus.REJECTED)) {
       throw new BadRequestError({ message: "The request has already been rejected by another reviewer" });
@@ -376,68 +389,105 @@ export const accessApprovalRequestServiceFactory = ({
         },
         tx
       );
-      if (!review) {
-        const newReview = await accessApprovalRequestReviewerDAL.create(
-          {
-            status,
-            requestId: accessApprovalRequest.id,
-            reviewerUserId: actorId
-          },
-          tx
-        );
 
-        const allReviews = [...existingReviews, newReview];
+      if (review) {
+        throw new BadRequestError({ message: "You have already reviewed this request" });
+      }
 
-        const approvedReviews = allReviews.filter((r) => r.status === ApprovalStatus.APPROVED);
+      const newReview = await accessApprovalRequestReviewerDAL.create(
+        {
+          status,
+          requestId: accessApprovalRequest.id,
+          reviewerUserId: actorId
+        },
+        tx
+      );
 
-        // approvals is the required number of approvals. If the number of approved reviews is equal to the number of required approvals, then the request is approved.
-        if (approvedReviews.length === policy.approvals) {
-          if (accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
-            throw new BadRequestError({ message: "Temporary range is required for temporary access" });
-          }
+      const allReviews = [...existingReviews, newReview];
+      const approvedReviews = allReviews.filter((r) => r.status === ApprovalStatus.APPROVED);
 
-          let privilegeId: string | null = null;
-
-          if (!accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
-            // Permanent access
-            const privilege = await additionalPrivilegeDAL.create(
-              {
-                userId: accessApprovalRequest.requestedByUserId,
-                projectId: accessApprovalRequest.projectId,
-                slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
-                permissions: JSON.stringify(accessApprovalRequest.permissions)
-              },
-              tx
-            );
-            privilegeId = privilege.id;
-          } else {
-            // Temporary access
-            const relativeTempAllocatedTimeInMs = ms(accessApprovalRequest.temporaryRange!);
-            const startTime = new Date();
-
-            const privilege = await additionalPrivilegeDAL.create(
-              {
-                userId: accessApprovalRequest.requestedByUserId,
-                projectId: accessApprovalRequest.projectId,
-                slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
-                permissions: JSON.stringify(accessApprovalRequest.permissions),
-                isTemporary: true,
-                temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
-                temporaryRange: accessApprovalRequest.temporaryRange!,
-                temporaryAccessStartTime: startTime,
-                temporaryAccessEndTime: new Date(new Date(startTime).getTime() + relativeTempAllocatedTimeInMs)
-              },
-              tx
-            );
-            privilegeId = privilege.id;
-          }
-
-          await accessApprovalRequestDAL.updateById(accessApprovalRequest.id, { privilegeId }, tx);
+      if (status === ApprovalStatus.APPROVED && approvedReviews.length >= policy.approvals) {
+        if (accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
+          throw new BadRequestError({ message: "Temporary range is required for temporary access" });
         }
 
-        return newReview;
+        let privilegeId: string | null = null;
+
+        if (!accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
+          // Permanent access
+          const privilege = await additionalPrivilegeDAL.create(
+            {
+              userId: accessApprovalRequest.requestedByUserId,
+              projectId: accessApprovalRequest.projectId,
+              slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+              permissions: JSON.stringify(accessApprovalRequest.permissions)
+            },
+            tx
+          );
+          privilegeId = privilege.id;
+        } else {
+          // Temporary access
+          const relativeTempAllocatedTimeInMs = ms(accessApprovalRequest.temporaryRange!);
+          const startTime = new Date();
+
+          const privilege = await additionalPrivilegeDAL.create(
+            {
+              userId: accessApprovalRequest.requestedByUserId,
+              projectId: accessApprovalRequest.projectId,
+              slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+              permissions: JSON.stringify(accessApprovalRequest.permissions),
+              isTemporary: true, // Explicitly set to true for the privilege
+              temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
+              temporaryRange: accessApprovalRequest.temporaryRange!,
+              temporaryAccessStartTime: startTime,
+              temporaryAccessEndTime: new Date(startTime.getTime() + relativeTempAllocatedTimeInMs)
+            },
+            tx
+          );
+          privilegeId = privilege.id;
+        }
+        await accessApprovalRequestDAL.updateById(accessApprovalRequest.id, { privilegeId }, tx);
       }
-      throw new BadRequestError({ message: "You have already reviewed this request" });
+
+      const isSoftEnforcement = policy.enforcementLevel === EnforcementLevel.Soft;
+      const wasSelfRequestAndReview = actorId === accessApprovalRequest.requestedByUserId;
+
+      if (isSoftEnforcement && wasSelfRequestAndReview && status === ApprovalStatus.APPROVED) {
+        const cfg = getConfig();
+        const actingUser = await userDAL.findById(actorId, tx);
+
+        if (actingUser) {
+          const policyApproverUserIds = policy.approvers
+            .map((ap) => ap.userId)
+            .filter((id): id is string => typeof id === "string");
+
+          if (policyApproverUserIds.length > 0) {
+            const approverUsersForEmail = await userDAL.find({ $in: { id: policyApproverUserIds } }, { tx });
+            const recipientEmails = approverUsersForEmail
+              .map((appUser) => appUser.email)
+              .filter((email): email is string => !!email);
+
+            if (recipientEmails.length > 0) {
+              await smtpService.sendMail({
+                recipients: recipientEmails,
+                subjectLine: "Infisical Secret Access Policy Bypassed",
+                substitutions: {
+                  projectName: project.name,
+                  requesterFullName: `${actingUser.firstName} ${actingUser.lastName}`,
+                  requesterEmail: actingUser.email,
+                  bypassReason: bypassReason || "No reason provided",
+                  secretPath: policy.secretPath || "/",
+                  environment: envName || "Unknown",
+                  approvalUrl: `${cfg.SITE_URL}/secret-manager/${project.id}/approval`,
+                  requestType: "access"
+                },
+                template: SmtpTemplates.AccessSecretRequestBypassed
+              });
+            }
+          }
+        }
+      }
+      return newReview;
     });
 
     return reviewStatus;

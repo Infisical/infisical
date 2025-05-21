@@ -17,6 +17,8 @@ export type TGetAccessRequestCountDTO = {
 export type TReviewAccessRequestDTO = {
   requestId: string;
   status: ApprovalStatus;
+  envName?: string;
+  bypassReason?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateAccessApprovalRequestDTO = {

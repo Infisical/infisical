@@ -154,7 +154,9 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         requestId: z.string().trim()
       }),
       body: z.object({
-        status: z.enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED])
+        status: z.enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED]),
+        envName: z.string().optional(), // For logging
+        bypassReason: z.string().optional()
       }),
       response: {
         200: z.object({
@@ -170,7 +172,9 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         requestId: req.params.requestId,
-        status: req.body.status
+        status: req.body.status,
+        envName: req.body.envName,
+        bypassReason: req.body.bypassReason
       });
 
       return { review };
