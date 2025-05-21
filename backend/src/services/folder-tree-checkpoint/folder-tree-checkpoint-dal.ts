@@ -34,7 +34,7 @@ export const folderTreeCheckpointDALFactory = (db: TDbClient) => {
     try {
       const targetCommit = await (tx || db.replicaNode())(TableName.FolderCommit)
         .where({ id: folderCommitId })
-        .select("id", "commitId", "folderId")
+        .select("id", "commitId", "folderId", "envId")
         .first();
 
       if (!targetCommit) {
@@ -42,13 +42,12 @@ export const folderTreeCheckpointDALFactory = (db: TDbClient) => {
       }
 
       const nearestCheckpoint = await (tx || db.replicaNode())(TableName.FolderTreeCheckpoint)
-        .join<TFolderCommits>(
+        .leftJoin<TFolderCommits>(
           TableName.FolderCommit,
           `${TableName.FolderTreeCheckpoint}.folderCommitId`,
           `${TableName.FolderCommit}.id`
         )
-        .where(`${TableName.FolderCommit}.commitId`, "<=", targetCommit.commitId.toString())
-        .where(`${TableName.FolderCommit}.envId`, envId)
+        .where(`${TableName.FolderCommit}.envId`, "=", targetCommit.envId)
         .select(selectAllTableCols(TableName.FolderTreeCheckpoint))
         .select(db.ref("commitId").withSchema(TableName.FolderCommit))
         .orderBy(`${TableName.FolderCommit}.commitId`, "desc")

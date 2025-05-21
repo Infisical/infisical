@@ -116,7 +116,10 @@ type TFolderCommitServiceFactoryDep = {
   secretVersionV2BridgeDAL: TSecretVersionV2DALFactory;
   secretV2BridgeDAL: secretV2BridgeDal.TSecretV2BridgeDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  folderCommitQueueService?: Pick<TFolderCommitQueueServiceFactory, "scheduleTreeCheckpoint">;
+  folderCommitQueueService?: Pick<
+    TFolderCommitQueueServiceFactory,
+    "scheduleTreeCheckpoint" | "createFolderTreeCheckpoint"
+  >;
   permissionService?: TPermissionServiceFactory;
 };
 
@@ -226,18 +229,16 @@ export const folderCommitServiceFactory = ({
 
     const checkpointResources = await getFolderResources(folderId, tx);
 
-    if (checkpointResources.length > 0) {
-      const newCheckpoint = await folderCheckpointDAL.create(
-        {
-          folderCommitId: latestCommitId
-        },
-        tx
-      );
-      await folderCheckpointResourcesDAL.insertMany(
-        checkpointResources.map((resource) => ({ folderCheckpointId: newCheckpoint.id, ...resource })),
-        tx
-      );
-    }
+    const newCheckpoint = await folderCheckpointDAL.create(
+      {
+        folderCommitId: latestCommitId
+      },
+      tx
+    );
+    await folderCheckpointResourcesDAL.insertMany(
+      checkpointResources.map((resource) => ({ folderCheckpointId: newCheckpoint.id, ...resource })),
+      tx
+    );
     return latestCommitId;
   };
 
@@ -357,10 +358,12 @@ export const folderCommitServiceFactory = ({
   const compareFolderStates = async ({
     currentCommitId,
     targetCommitId,
+    defaultOperation = "create",
     tx
   }: {
     currentCommitId?: string;
     targetCommitId: string;
+    defaultOperation?: "create" | "update" | "delete";
     tx?: Knex;
   }) => {
     const targetCommit = await folderCommitDAL.findById(targetCommitId, tx);
@@ -376,7 +379,7 @@ export const folderCommitServiceFactory = ({
         type: resource.type,
         id: resource.id,
         versionId: resource.versionId,
-        changeType: "create",
+        changeType: defaultOperation,
         commitId: targetCommit.commitId,
         secretKey: resource.secretKey,
         secretVersion: resource.secretVersion,
@@ -531,6 +534,40 @@ export const folderCommitServiceFactory = ({
         throw new NotFoundError({ message: `Folder with ID ${data.folderId} not found` });
       }
 
+      const newFolders = data.changes.filter(
+        (change) => change.type === "add" && !change.isUpdate && change.folderVersionId
+      );
+      if (newFolders.length > 0) {
+        const folderVersions = await folderVersionDAL.find(
+          {
+            $in: {
+              id: newFolders.map((change) => change.folderVersionId).filter(Boolean) as string[]
+            }
+          },
+          { tx }
+        );
+        await Promise.all(
+          Object.values(folderVersions).map(async (folderVersion) => {
+            const subFolderCommit = await folderCommitDAL.create(
+              {
+                actorMetadata: metadata,
+                actorType: data.actor.type,
+                message: data.message,
+                folderId: folderVersion.folderId,
+                envId: folderVersion.envId
+              },
+              tx
+            );
+            await createFolderCheckpoint({
+              folderId: folderVersion.folderId,
+              folderCommitId: subFolderCommit.id,
+              force: true,
+              tx
+            });
+          })
+        );
+      }
+
       const newCommit = await folderCommitDAL.create(
         {
           actorMetadata: metadata,
@@ -553,8 +590,14 @@ export const folderCommitServiceFactory = ({
         tx
       );
 
-      await createFolderCheckpoint({ folderId: data.folderId, tx });
+      await createFolderCheckpoint({ folderId: data.folderId, folderCommitId: newCommit.id, tx });
       if (folderCommitQueueService) {
+        if (!folder.parentId) {
+          const previousTreeCommit = await folderTreeCheckpointDAL.findLatestByEnvId(folder.envId);
+          if (!previousTreeCommit) {
+            await folderCommitQueueService.createFolderTreeCheckpoint(folder.envId, newCommit.id, tx);
+          }
+        }
         await folderCommitQueueService.scheduleTreeCheckpoint(folder.envId);
       }
       return newCommit;
@@ -1219,30 +1262,31 @@ export const folderCommitServiceFactory = ({
     const folderCheckpointCommits = await folderTreeCheckpointResourcesDAL.findByTreeCheckpointId(checkpoint.id, tx);
     const folderCommits = await folderCommitDAL.findAllCommitsBetween({
       envId,
-      endCommitId: targetCommit.commitId.toString(),
       startCommitId: checkpoint.commitId.toString(),
       tx
     });
 
     // Group commits by folderId and keep only the latest
-    const folderGroups = new Map<string, { createdAt: Date; id: string }>();
+    const folderGroups = new Map<string, { commitId: number; id: string }>();
 
     if (folderCheckpointCommits && folderCheckpointCommits.length > 0) {
       for (const commit of folderCheckpointCommits) {
-        folderGroups.set(commit.folderId, {
-          createdAt: commit.createdAt,
-          id: commit.folderCommitId
-        });
+        if (commit.commitId > targetCommit.commitId) {
+          folderGroups.set(commit.folderId, {
+            commitId: commit.commitId,
+            id: commit.folderCommitId
+          });
+        }
       }
     }
 
     if (folderCommits && folderCommits.length > 0) {
       for (const commit of folderCommits) {
-        const { folderId, createdAt, id } = commit;
+        const { folderId, commitId, id } = commit;
         const existingCommit = folderGroups.get(folderId);
 
-        if (!existingCommit || createdAt.getTime() > existingCommit.createdAt.getTime()) {
-          folderGroups.set(folderId, { createdAt, id });
+        if ((!existingCommit || commitId > existingCommit.commitId) && commitId > targetCommit.commitId) {
+          folderGroups.set(folderId, { commitId, id });
         }
       }
     }
@@ -1252,16 +1296,27 @@ export const folderCommitServiceFactory = ({
     // Process each folder to determine differences
     await Promise.all(
       Array.from(folderGroups.entries()).map(async ([folderId, commit]) => {
-        const latestFolderCommit = await folderCommitDAL.findLatestCommit(folderId, tx);
-        if (latestFolderCommit && latestFolderCommit.id !== commit.id) {
-          const diff = await compareFolderStates({
-            currentCommitId: latestFolderCommit.id,
-            targetCommitId: commit.id,
+        const previousCommit = await folderCommitDAL.findPreviousCommitTo(
+          folderId,
+          targetCommit.commitId.toString(),
+          tx
+        );
+        let diff = [];
+        if (previousCommit && previousCommit.id !== commit.id) {
+          diff = await compareFolderStates({
+            currentCommitId: commit.id,
+            targetCommitId: previousCommit.id,
             tx
           });
-          if (diff?.length > 0) {
-            folderDiffs.set(folderId, diff);
-          }
+        } else {
+          diff = await compareFolderStates({
+            targetCommitId: commit.id,
+            defaultOperation: "delete",
+            tx
+          });
+        }
+        if (diff?.length > 0) {
+          folderDiffs.set(folderId, diff);
         }
       })
     );
@@ -1295,92 +1350,115 @@ export const folderCommitServiceFactory = ({
     envId: string,
     actorId: string,
     actorType: ActorType,
-    projectId: string,
-    tx?: Knex
+    projectId: string
   ) => {
-    const targetCommit = await folderCommitDAL.findById(targetCommitId, tx);
-    if (!targetCommit) {
-      throw new NotFoundError({ message: `No commit found for commit ID ${targetCommitId}` });
-    }
-
-    const checkpoint = await folderTreeCheckpointDAL.findNearestCheckpoint(targetCommitId, envId, tx);
-    if (!checkpoint) {
-      throw new NotFoundError({ message: `No checkpoint found for commit ID ${targetCommitId}` });
-    }
-
-    const folderCheckpointCommits = await folderTreeCheckpointResourcesDAL.findByTreeCheckpointId(checkpoint.id, tx);
-    const folderCommits = await folderCommitDAL.findAllCommitsBetween({
-      envId,
-      endCommitId: targetCommit.commitId.toString(),
-      startCommitId: checkpoint.commitId.toString(),
-      tx
-    });
-
-    // Group commits by folderId and keep only the latest
-    const folderGroups = new Map<string, { createdAt: Date; id: string }>();
-
-    if (folderCheckpointCommits && folderCheckpointCommits.length > 0) {
-      for (const commit of folderCheckpointCommits) {
-        folderGroups.set(commit.folderId, {
-          createdAt: commit.createdAt,
-          id: commit.folderCommitId
-        });
+    await folderCommitDAL.transaction(async (tx) => {
+      const targetCommit = await folderCommitDAL.findById(targetCommitId, tx);
+      if (!targetCommit) {
+        throw new NotFoundError({ message: `No commit found for commit ID ${targetCommitId}` });
       }
-    }
 
-    if (folderCommits && folderCommits.length > 0) {
-      for (const commit of folderCommits) {
-        const { folderId, createdAt, id } = commit;
-        const existingCommit = folderGroups.get(folderId);
-
-        if (!existingCommit || createdAt.getTime() > existingCommit.createdAt.getTime()) {
-          folderGroups.set(folderId, { createdAt, id });
-        }
+      const checkpoint = await folderTreeCheckpointDAL.findNearestCheckpoint(targetCommitId, envId, tx);
+      if (!checkpoint) {
+        throw new NotFoundError({ message: `No checkpoint found for commit ID ${targetCommitId}` });
       }
-    }
 
-    const folderDiffs = new Map<string, ResourceChange[]>();
+      const folderCheckpointCommits = await folderTreeCheckpointResourcesDAL.findByTreeCheckpointId(checkpoint.id, tx);
+      const folderCommits = await folderCommitDAL.findAllCommitsBetween({
+        envId,
+        startCommitId: checkpoint.commitId.toString(),
+        tx
+      });
 
-    // Process each folder to determine differences
-    await Promise.all(
-      Array.from(folderGroups.entries()).map(async ([folderId, commit]) => {
-        const latestFolderCommit = await folderCommitDAL.findLatestCommit(folderId, tx);
-        if (latestFolderCommit && latestFolderCommit.id !== commit.id) {
-          const diff = await compareFolderStates({
-            currentCommitId: latestFolderCommit.id,
-            targetCommitId: commit.id,
-            tx
-          });
-          if (diff?.length > 0) {
-            folderDiffs.set(folderId, diff);
+      // Group commits by folderId and keep only the latest
+      const folderGroups = new Map<string, { commitId: number; id: string }>();
+
+      if (folderCheckpointCommits && folderCheckpointCommits.length > 0) {
+        for (const commit of folderCheckpointCommits) {
+          if (commit.commitId > targetCommit.commitId) {
+            folderGroups.set(commit.folderId, {
+              commitId: commit.commitId,
+              id: commit.folderCommitId
+            });
           }
         }
-      })
-    );
-
-    // Apply changes in hierarchical order
-    const folderIds = Array.from(folderDiffs.keys());
-    const folders = await folderDAL.findFoldersByRootAndIds({ rootId: targetCommit.folderId, folderIds }, tx);
-    const sortedFolders = sortFoldersByHierarchy(folders);
-
-    for (const folder of sortedFolders) {
-      const diff = folderDiffs.get(folder.id);
-      if (diff) {
-        await applyFolderStateDifferences({
-          differences: diff,
-          actorInfo: {
-            actorType,
-            actorId,
-            message: "Deep rollback"
-          },
-          folderId: folder.id,
-          projectId,
-          reconstructNewFolders: true,
-          reconstructUpToCommit: targetCommit.commitId.toString(),
-          tx
-        });
       }
-    }
+
+      if (folderCommits && folderCommits.length > 0) {
+        for (const commit of folderCommits) {
+          const { folderId, commitId, id } = commit;
+          const existingCommit = folderGroups.get(folderId);
+
+          if ((!existingCommit || commitId > existingCommit.commitId) && commitId > targetCommit.commitId) {
+            folderGroups.set(folderId, { commitId, id });
+          }
+        }
+      }
+
+      const folderDiffs = new Map<string, ResourceChange[]>();
+
+      // Process each folder to determine differences
+      await Promise.all(
+        Array.from(folderGroups.entries()).map(async ([folderId, { id }]) => {
+          const previousCommit = await folderCommitDAL.findPreviousCommitTo(
+            folderId,
+            targetCommit.commitId.toString(),
+            tx
+          );
+          if (previousCommit && previousCommit.id !== id) {
+            const diff = await compareFolderStates({
+              currentCommitId: id,
+              targetCommitId: previousCommit.id,
+              tx
+            });
+            if (diff?.length > 0) {
+              folderDiffs.set(folderId, diff);
+            }
+          }
+        })
+      );
+
+      const foldersToDelete = new Set<string>();
+
+      // Process all DELETE operations to build a complete set of folders to be deleted
+      for (const [folderId, changes] of folderDiffs.entries()) {
+        for (const change of changes) {
+          if (change.changeType === ChangeType.DELETE && change.type === "folder") {
+            foldersToDelete.add(change.id);
+          }
+        }
+      }
+
+      // Now, remove any folder that is being deleted from the folderDiffs map
+      // before applying any changes
+      for (const folderId of foldersToDelete) {
+        folderDiffs.delete(folderId);
+      }
+
+      // Apply changes in hierarchical order
+      const folderIds = Array.from(folderDiffs.keys());
+      const folders = await folderDAL.findFoldersByRootAndIds({ rootId: targetCommit.folderId, folderIds }, tx);
+      const sortedFolders = sortFoldersByHierarchy(folders);
+
+      for (const folder of sortedFolders) {
+        const diff = folderDiffs.get(folder.id);
+        if (diff) {
+          await applyFolderStateDifferences({
+            differences: diff,
+            actorInfo: {
+              actorType,
+              actorId,
+              message: "Deep rollback"
+            },
+            folderId: folder.id,
+            projectId,
+            reconstructNewFolders: true,
+            reconstructUpToCommit: targetCommit.commitId.toString(),
+            tx
+          });
+        }
+      }
+    });
   };
 
   const getLatestCommit = async ({

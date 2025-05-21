@@ -294,18 +294,20 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     folderId?: string;
     envId?: string;
     startCommitId?: string;
-    endCommitId: string;
+    endCommitId?: string;
     tx?: Knex;
   }): Promise<TFolderCommits[]> => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.FolderCommit)
-        .where("commitId", "<=", endCommitId)
         .where((qb) => {
           if (envId) {
             void qb.where(`${TableName.FolderCommit}.envId`, "=", envId);
           }
           if (startCommitId) {
             void qb.where("commitId", ">=", startCommitId);
+          }
+          if (endCommitId) {
+            void qb.where("commitId", "<=", endCommitId);
           }
         })
         .select(selectAllTableCols(TableName.FolderCommit))
@@ -344,6 +346,20 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findPreviousCommitTo = async (folderId: string, commitId: string, tx?: Knex): Promise<TFolderCommits | undefined> => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
+        .where({ folderId })
+        .where("commitId", "<=", commitId)
+        .select(selectAllTableCols(TableName.FolderCommit))
+        .orderBy("commitId", "desc")
+        .first();
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindPreviousCommitTo" });
+    }
+  };
+
   return {
     ...restOfOrm,
     findByFolderId,
@@ -356,6 +372,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     findLatestEnvCommit,
     getEnvNumberOfCommitsSince,
     findLatestCommitByFolderIds,
-    findAllFolderCommitsAfter
+    findAllFolderCommitsAfter,
+    findPreviousCommitTo
   };
 };

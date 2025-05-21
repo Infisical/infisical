@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TSecretFolders } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
@@ -20,7 +22,7 @@ type TFolderCommitQueueServiceFactoryDep = {
   >;
   folderCommitDAL: Pick<
     TFolderCommitDALFactory,
-    "findLatestEnvCommit" | "getEnvNumberOfCommitsSince" | "findMultipleLatestCommits"
+    "findLatestEnvCommit" | "getEnvNumberOfCommitsSince" | "findMultipleLatestCommits" | "findById"
   >;
   folderDAL: Pick<TSecretFolderDALFactory, "findByEnvId">;
 };
@@ -42,7 +44,7 @@ export const folderCommitQueueServiceFactory = ({
       QueueJobs.CreateFolderTreeCheckpoint,
       { envId },
       {
-        jobId: envId,
+        jobId: `${envId}`,
         backoff: {
           type: "exponential",
           delay: 3000
@@ -119,52 +121,66 @@ export const folderCommitQueueServiceFactory = ({
     return result;
   };
 
+  const createFolderTreeCheckpoint = async (envId: string, folderCommitId?: string, tx?: Knex) => {
+    logger.info("Folder tree checkpoint creation started:", envId);
+
+    const latestTreeCheckpoint = await folderTreeCheckpointDAL.findLatestByEnvId(envId, tx);
+
+    let latestCommit;
+    if (folderCommitId) {
+      latestCommit = await folderCommitDAL.findById(folderCommitId, tx);
+    } else {
+      latestCommit = await folderCommitDAL.findLatestEnvCommit(envId, tx);
+    }
+    if (!latestCommit) {
+      logger.info(`Latest commit ID not found for envId ${envId}`);
+      return;
+    }
+    const latestCommitId = latestCommit.id;
+
+    if (latestTreeCheckpoint) {
+      const commitsSinceLastCheckpoint = await folderCommitDAL.getEnvNumberOfCommitsSince(
+        envId,
+        latestTreeCheckpoint.folderCommitId,
+        tx
+      );
+      if (commitsSinceLastCheckpoint < Number(appCfg.PIT_TREE_CHECKPOINT_WINDOW)) {
+        logger.info(
+          `Commits since last checkpoint ${commitsSinceLastCheckpoint} is less than ${appCfg.PIT_TREE_CHECKPOINT_WINDOW}`
+        );
+        return;
+      }
+    }
+
+    const folders = await folderDAL.findByEnvId(envId, tx);
+    const sortedFolders = sortFoldersByHierarchy(folders);
+    const filteredFoldersIds = sortedFolders.filter((folder) => !folder.isReserved).map((folder) => folder.id);
+
+    const folderCommits = await folderCommitDAL.findMultipleLatestCommits(filteredFoldersIds, tx);
+    const folderTreeCheckpoint = await folderTreeCheckpointDAL.create(
+      {
+        folderCommitId: latestCommitId
+      },
+      tx
+    );
+
+    await folderTreeCheckpointResourcesDAL.insertMany(
+      folderCommits.map((folderCommit) => ({
+        folderTreeCheckpointId: folderTreeCheckpoint.id,
+        folderId: folderCommit.folderId,
+        folderCommitId: folderCommit.id
+      })),
+      tx
+    );
+
+    logger.info("Folder tree checkpoint created successfully:", folderTreeCheckpoint.id);
+  };
+
   queueService.start(QueueName.FolderTreeCheckpoint, async (job) => {
     try {
       if (job.name === QueueJobs.CreateFolderTreeCheckpoint) {
         const { envId } = job.data as { envId: string };
-        logger.info("Folder tree checkpoint creation started:", envId, job.id);
-
-        const latestTreeCheckpoint = await folderTreeCheckpointDAL.findLatestByEnvId(envId);
-
-        const latestCommit = await folderCommitDAL.findLatestEnvCommit(envId);
-        if (!latestCommit) {
-          logger.info(`Latest commit ID not found for envId ${envId}`);
-          return;
-        }
-        const latestCommitId = latestCommit.id;
-
-        if (latestTreeCheckpoint) {
-          const commitsSinceLastCheckpoint = await folderCommitDAL.getEnvNumberOfCommitsSince(
-            envId,
-            latestTreeCheckpoint.folderCommitId
-          );
-          if (commitsSinceLastCheckpoint < Number(appCfg.PIT_TREE_CHECKPOINT_WINDOW)) {
-            logger.info(
-              `Commits since last checkpoint ${commitsSinceLastCheckpoint} is less than ${appCfg.PIT_TREE_CHECKPOINT_WINDOW}`
-            );
-            return;
-          }
-        }
-
-        const folders = await folderDAL.findByEnvId(envId);
-        const sortedFolders = sortFoldersByHierarchy(folders);
-        const filteredFoldersIds = sortedFolders.filter((folder) => !folder.isReserved).map((folder) => folder.id);
-
-        const folderCommits = await folderCommitDAL.findMultipleLatestCommits(filteredFoldersIds);
-        const folderTreeCheckpoint = await folderTreeCheckpointDAL.create({
-          folderCommitId: latestCommitId
-        });
-
-        await folderTreeCheckpointResourcesDAL.insertMany(
-          folderCommits.map((folderCommit) => ({
-            folderTreeCheckpointId: folderTreeCheckpoint.id,
-            folderId: folderCommit.folderId,
-            folderCommitId: folderCommit.id
-          }))
-        );
-
-        logger.info("Folder tree checkpoint created successfully:", folderTreeCheckpoint.id);
+        await createFolderTreeCheckpoint(envId);
       }
     } catch (error) {
       logger.error(error, "Error creating folder tree checkpoint:");
@@ -175,6 +191,7 @@ export const folderCommitQueueServiceFactory = ({
   return {
     scheduleTreeCheckpoint,
     schedulePeriodicTreeCheckpoint,
-    cancelScheduledTreeCheckpoint
+    cancelScheduledTreeCheckpoint,
+    createFolderTreeCheckpoint
   };
 };

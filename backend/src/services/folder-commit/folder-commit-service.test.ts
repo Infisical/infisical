@@ -131,7 +131,8 @@ describe("folderCommitServiceFactory", () => {
   };
 
   const mockFolderCommitQueueService = {
-    scheduleTreeCheckpoint: vi.fn().mockResolvedValue({})
+    scheduleTreeCheckpoint: vi.fn().mockResolvedValue({}),
+    createFolderTreeCheckpoint: vi.fn().mockResolvedValue({})
   };
 
   const mockPermissionService = {
