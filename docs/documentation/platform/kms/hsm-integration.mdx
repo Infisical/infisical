@@ -38,7 +38,7 @@ Enabling HSM encryption has a set of key benefits:
 ### Requirements
 - An Infisical instance with a version number that is equal to or greater than `v0.91.0`.
 - If you are using Docker, your instance must be using the `infisical/infisical-fips` image.
-- An HSM device from a provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), or others.
+- An HSM device from a provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), [Fortanix HSM](https://www.fortanix.com/platform/data-security-manager), or others.
 
 
 ### FIPS Compliance
@@ -53,14 +53,14 @@ For organizations that work with US government agencies, FIPS compliance is almo
 
 <Steps>
     <Step title="Setting up an HSM Device">
-        To set up HSM encryption, you need to configure an HSM provider and HSM key. The HSM provider is used to connect to the HSM device, and the HSM key is used to encrypt Infisical's KMS keys. We recommend using a Cloud HSM provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm) or [AWS CloudHSM](https://aws.amazon.com/cloudhsm/).
+        To set up HSM encryption, you need to configure an HSM provider and HSM key. The HSM provider is used to connect to the HSM device, and the HSM key is used to encrypt Infisical's KMS keys. We recommend using a Cloud HSM provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), or [Fortanix HSM](https://www.fortanix.com/platform/data-security-manager).
 
         You need to follow the instructions provided by the HSM provider to set up the HSM device. Once the HSM device is set up, the HSM device can be used within Infisical.
 
         After setting up the HSM from your provider, you will have a set of files that you can use to access the HSM. These files need to be present on the machine where Infisical is running.
         If you are using containers, you will need to mount the folder where these files are stored as a volume in the container.
 
-        The setup process for an HSM device varies depending on the provider. We have created a guide for Thales Luna Cloud HSM, which you can find below.
+        The setup process for an HSM device varies depending on the provider. We have created guides for Thales Luna Cloud HSM and Fortanix HSM, which you can find below.
         
     </Step>
     <Step title="Configure HSM on Infisical">
@@ -254,6 +254,78 @@ For organizations that work with US government agencies, FIPS compliance is almo
           </Step>
         </Steps>
         After following these steps, your Docker setup will be ready to use HSM encryption.
+      </Tab>
+      <Tab title="Fortanix HSM">
+        <Steps>
+          <Step title="Set up Fortanix HSM">
+            To use Fortanix HSM with Infisical, you need to:
+            
+            1. Create an App in Fortanix:
+               - Set Interface value to be PKCS#11
+               - Select API key as authentication method
+               - Assign app to a group
+            
+              ![Fortanix HSM Setup](/images/platform/kms/hsm/fortanix-hsm-setup.png)
+
+            2. Take note of the domain (e.g., apac.smartkey.io). You will need this to set up the configuration file for the Fortanix client.
+          </Step>
+          
+          <Step title="Install PKCS11 Library">
+            The easiest approach would be to download the `.so` file for Linux directly from the [Fortanix PKCS#11 installation page](https://fortanix.zendesk.com/hc/en-us/sections/4408769080724-PKCS-11).
+            
+            Create a configuration file named `pkcs11.conf` with the following content:
+            
+            ```
+            api_endpoint = "https://apac.smartkey.io"
+            prevent_duplicate_opaque_objects = true
+            retry_timeout_millis = 60000
+            ```
+            
+            Note: Replace `apac.smartkey.io` with your actual Fortanix domain if different. For more details about the configuration file format and additional options, refer to the [Fortanix PKCS#11 Configuration File Documentation](https://support.fortanix.com/docs/clients-pkcs11-library#511-configuration-file-format).
+          </Step>
+          
+          <Step title="Create a directory for Fortanix files">
+            Create a directory to store the Fortanix library and configuration file:
+            
+            ```bash
+            mkdir -p /etc/fortanix-hsm
+            ```
+            
+            Copy the downloaded `.so` file and the `pkcs11.conf` file to this directory:
+            
+            ```bash
+            cp /path/to/fortanix_pkcs11_4.37.2554.so /etc/fortanix-hsm/
+            cp /path/to/pkcs11.conf /etc/fortanix-hsm/
+            ```
+          </Step>
+          
+          <Step title="Run Docker">
+            Run Docker with Fortanix HSM by mounting the directory and setting the required environment variables:
+            
+            ```bash
+            docker run -p 80:8080 \
+              -v /etc/fortanix-hsm:/etc/fortanix-hsm \
+              -e HSM_LIB_PATH="/etc/fortanix-hsm/fortanix_pkcs11_4.37.2554.so" \  # Path to the PKCS#11 library
+              -e HSM_PIN="MDE3YWUxO..." \  # Your Fortanix app API key used for authentication
+              -e HSM_SLOT=0 \              # Slot value (arbitrary for Fortanix HSM)
+              -e HSM_KEY_LABEL="hsm-key-label" \  # Label to identify the encryption key in the HSM
+              -e FORTANIX_PKCS11_CONFIG_PATH="/etc/fortanix-hsm/pkcs11.conf" \  # Path to Fortanix configuration file
+              
+              # The rest are unrelated to HSM setup...
+              -e ENCRYPTION_KEY="<>" \
+              -e AUTH_SECRET="<>" \
+              -e DB_CONNECTION_URI="<>" \
+              -e REDIS_URL="<>" \
+              -e SITE_URL="<>" \
+              infisical/infisical-fips:<version> # Replace <version> with the version you want to use
+            ```
+            
+            <Warning>
+              Note: Fortanix HSM integration only works for AMD64 CPU architectures.
+            </Warning>
+          </Step>
+        </Steps>
+        After following these steps, your Docker setup will be ready to use Fortanix HSM encryption.
       </Tab>
     </Tabs>
   </Tab>
@@ -568,6 +640,173 @@ For organizations that work with US government agencies, FIPS compliance is almo
           </Step>
         </Steps>
         After following these steps, your Kubernetes setup will be ready to use HSM encryption.
+      </Tab>
+      <Tab title="Fortanix HSM">
+        <Steps>
+          <Step title="Set up Fortanix HSM">
+            First, you need to set up Fortanix HSM by:
+            
+            1. Creating an App in Fortanix:
+               - Set Interface value to be PKCS#11
+               - Select API key as authentication method
+               - Assign app to a group
+
+              ![Fortanix HSM Setup](/images/platform/kms/hsm/fortanix-hsm-setup.png)
+
+            2. Take note of the domain (e.g., apac.smartkey.io). You will need this when setting up the configuration file.
+          </Step>
+          
+          <Step title="Create configuration files">
+            Create a directory to store the Fortanix configuration files:
+            
+            ```bash
+            mkdir -p /etc/fortanix-hsm
+            ```
+            
+            Download the Fortanix PKCS#11 library for Linux from the [Fortanix PKCS#11 installation page](https://fortanix.zendesk.com/hc/en-us/sections/4408769080724-PKCS-11).
+            
+            Create a configuration file named `pkcs11.conf` with the following content:
+            
+            ```
+            api_endpoint = "https://apac.smartkey.io"
+            prevent_duplicate_opaque_objects = true
+            retry_timeout_millis = 60000
+            ```
+            
+            Note: Replace `apac.smartkey.io` with your actual Fortanix domain if different.
+          </Step>
+          
+          <Step title="Creating a Persistent Volume Claim (PVC)">
+            Create a Persistent Volume Claim to store the Fortanix files:
+            
+            ```bash
+            kubectl apply -f - <<EOF
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: fortanix-hsm-pvc
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 100Mi
+            EOF
+            ```
+            
+            Create a temporary pod to upload the files:
+            
+            ```bash
+            kubectl apply -f - <<EOF
+            apiVersion: v1
+            kind: Pod
+            metadata:
+              name: fortanix-setup-pod
+            spec:
+              containers:
+              - name: setup
+                image: busybox
+                command: ["/bin/sh", "-c", "sleep 3600"]
+                volumeMounts:
+                - name: fortanix-data
+                  mountPath: /data
+              volumes:
+              - name: fortanix-data
+                persistentVolumeClaim:
+                  claimName: fortanix-hsm-pvc
+            EOF
+            ```
+            
+            Ensure the pod is running:
+            
+            ```bash
+            kubectl wait --for=condition=Ready pod/fortanix-setup-pod --timeout=60s
+            ```
+            
+            Copy the Fortanix files to the PVC:
+            
+            ```bash
+            kubectl exec fortanix-setup-pod -- mkdir -p /data/
+            kubectl cp /etc/fortanix-hsm/fortanix_pkcs11_4.37.2554.so fortanix-setup-pod:/data/
+            kubectl cp /etc/fortanix-hsm/pkcs11.conf fortanix-setup-pod:/data/
+            kubectl exec fortanix-setup-pod -- chmod -R 755 /data/
+            ```
+            
+            Delete the temporary pod:
+            
+            ```bash
+            kubectl delete pod fortanix-setup-pod
+            ```
+          </Step>
+          
+          <Step title="Update the Kubernetes Secret">
+            Update your Kubernetes secret with the Fortanix HSM environment variables:
+            
+            ```yaml
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: infisical-secrets
+            type: Opaque
+            stringData:
+              # ... Other environment variables ...
+              HSM_LIB_PATH: "/etc/fortanix-hsm/fortanix_pkcs11_4.37.2554.so"  # Path to the PKCS#11 library in the container
+              HSM_PIN: "<your-fortanix-api-key>"  # Your Fortanix app API key used for authentication
+              HSM_SLOT: "0"            # Slot value (can be set to 0 for Fortanix HSM as it's arbitrary)
+              HSM_KEY_LABEL: "hsm-key-label"  # Label to identify the encryption key in the HSM
+              FORTANIX_PKCS11_CONFIG_PATH: "/etc/fortanix-hsm/pkcs11.conf"  # Path to Fortanix configuration file
+            ```
+            
+            Apply the updated secret:
+            
+            ```bash
+            kubectl apply -f ./secret-file-name.yaml
+            ```
+          </Step>
+          
+          <Step title="Update Helm Values">
+            Update your Helm values to use the FIPS-compliant image and mount the Fortanix HSM files:
+            
+            ```yaml
+            # ... The rest of the values.yaml file ...
+            
+            image:
+              repository: infisical/infisical-fips  # Must use "infisical/infisical-fips"
+              tag: "v0.117.1-postgres"
+              pullPolicy: IfNotPresent
+            
+            extraVolumeMounts:
+              - name: fortanix-data
+                mountPath: /etc/fortanix-hsm  # The path where Fortanix files will be available
+            
+            extraVolumes:
+              - name: fortanix-data
+                persistentVolumeClaim:
+                  claimName: fortanix-hsm-pvc
+            
+            # ... The rest of the values.yaml file ...
+            ```
+            
+            <Warning>
+              Note: Fortanix HSM integration only works for AMD64 CPU architectures.
+            </Warning>
+          </Step>
+          
+          <Step title="Upgrade and Restart">
+            Upgrade the Helm chart with the new values:
+            
+            ```bash
+            helm upgrade --install infisical infisical-helm-charts/infisical-standalone --values /path/to/values.yaml
+            ```
+            
+            Restart the deployment:
+            
+            ```bash
+            kubectl rollout restart deployment/infisical-infisical
+            ```
+          </Step>
+        </Steps>
+        After following these steps, your Kubernetes setup will be ready to use Fortanix HSM encryption.
       </Tab>
     </Tabs>
   </Tab>

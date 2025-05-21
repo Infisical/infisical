@@ -145,7 +145,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
 
           const { isUserCompleted, providerAuthToken } = await server.services.saml.samlLogin({
             externalId: profile.nameID,
-            email,
+            email: email.toLowerCase(),
             firstName,
             lastName: lastName as string,
             relayState: (req.body as { RelayState?: string }).RelayState,
