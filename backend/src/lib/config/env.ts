@@ -40,7 +40,7 @@ const envSchema = z
     REDIS_SENTINEL_MASTER_NAME: zpStr(
       z.string().optional().default("mymaster").describe("The name of the Redis master set monitored by Sentinel")
     ),
-    REDIS_SENTINEL_ENABLE_TLS: zodStrBool.optional().describe(" Whether to use TLS/SSL for Redis Sentinel connection"),
+    REDIS_SENTINEL_ENABLE_TLS: zodStrBool.optional().describe("Whether to use TLS/SSL for Redis Sentinel connection"),
     REDIS_SENTINEL_USERNAME: zpStr(z.string().optional().describe("Authentication username for Redis Sentinel")),
     REDIS_SENTINEL_PASSWORD: zpStr(z.string().optional().describe("Authentication password for Redis Sentinel")),
     HOST: zpStr(z.string().default("localhost")),
@@ -284,10 +284,12 @@ const envSchema = z
     isRotationDevelopmentMode: data.NODE_ENV === "development" && data.ROTATION_DEVELOPMENT_MODE,
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
-    REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.split(",").map((el) => {
-      const [host, port] = el.split(":");
-      return { host: host.trim(), port: Number(port.trim()) };
-    }),
+    REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()
+      ?.split(",")
+      .map((el) => {
+        const [host, port] = el.trim().split(":");
+        return { host: host.trim(), port: Number(port.trim()) };
+      }),
     isSecretScanningConfigured:
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&

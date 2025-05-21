@@ -70,7 +70,7 @@ export const bootstrapCheck = async ({ db }: BootstrapOpt) => {
   if (!redisPing) {
     console.error("Redis - Failed to connect");
   } else {
-    console.error("Redis successfully connected");
+    console.log("Redis successfully connected");
     if (appCfg.isRedisSentinelMode) {
       console.log("Redis Sentinel Mode");
     }
