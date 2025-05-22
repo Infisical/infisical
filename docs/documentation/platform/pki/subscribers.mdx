@@ -24,7 +24,7 @@ A[Issuing CA] --> C1[Certificate]
 
 The typical workflow for managing subscribers consists of the following steps:
 
-1. Creating a subscriber and defining which (issuing) CA will issue X.509 certificates for it as well as attributes to be included on the certificates including common name, subject alternative names, TLL, etc.
+1. Creating a subscriber and defining which (issuing) CA will issue X.509 certificates for it as well as attributes to be included on the certificates including common name, subject alternative names, TTL, etc. You can also optionally configure automatic certificate renewal.
 2. Requesting for a certificate against the subscriber with or without a certificate signing request (CSR).
 3. Managing certificate lifecycle events such as certificate renewal and revocation. As part of the certificate revocation flow,
    you can also query for a Certificate Revocation List [CRL](https://en.wikipedia.org/wiki/Certificate_revocation_list), a time-stamped, signed
@@ -49,23 +49,42 @@ In the following steps, we explore how to issue a X.509 certificate for a subscr
 
     ![pki create subscriber](/images/platform/pki/subscriber/subscriber-create.png)
 
+
+
+    The **PKI Subscriber** modal is organized into two tabs:
+
+    ### Configuration Tab
+
     ![pki create subscriber 2](/images/platform/pki/subscriber/subscriber-create-2.png)
 
-    Here's some guidance on each field.
+    This tab contains the core certificate attributes and settings:
 
-    - Subscriber Name: A slug-friendly name for the subscriber such as `web-service`.
-    - Issuing CA: The Certificate Authority (CA) that will issue X.509 certificates for the subscriber.
-    - Common Name (CN): The common name to be included on certificates to be issued to the subscriber.
-    - Subject Alternative Names (SANs): A comma-delimited list of Subject Alternative Names (SANs) to be included on certificates; these can be hostnames or email addresses like `app1.acme.com, app2.acme.com`.
-    - TTL: The lifetime of the certificate.
-    - Key Usage: The key usage extension of the certificate.
-    - Extended Key Usage: The extended key usage extension of the certificate.
+    - **Subscriber Name**: A slug-friendly name for the subscriber such as `web-service`.
+    - **Issuing CA**: The Certificate Authority (CA) that will issue X.509 certificates for the subscriber.
+    - **Common Name (CN)**: The common name to be included on certificates to be issued to the subscriber.
+    - **Subject Alternative Names (SANs)**: A comma-delimited list of Subject Alternative Names (SANs) to be included on certificates; these can be hostnames or email addresses like `app1.acme.com, app2.acme.com`.
+    - **TTL**: The lifetime of the certificate.
+    - **Key Usage**: The key usage extension of the certificate.
+    - **Extended Key Usage**: The extended key usage extension of the certificate.
+
+    ### Advanced Tab
+
+    ![pki create subscriber 3](/images/platform/pki/subscriber/subscriber-create-3.png)
+
+    This tab contains optional advanced features:
+
+    - **Certificate Auto Renewal**: Toggle to enable automatic certificate renewal for this subscriber.
+    - **Renewal Before Expiry**: When auto renewal is enabled, specify how many days before certificate expiry the system should automatically issue a new certificate (e.g., 7 days).
 
     <Note>
         It's possible to issue certificates for a subscriber with or without a certificate signing request (CSR).
         - If requesting without a CSR, the attributes specified on the subscriber will be used to issue a certificate for the subscriber.
         - If requesting with a CSR, the attributes on it will be validated against the attributes specified on the subscriber
         and a certificate is only issued if they comply.
+    </Note>
+
+    <Note>
+        When Certificate Auto Renewal is enabled, the system will automatically issue new certificates before the current ones expire, ensuring continuous certificate availability without manual intervention.
     </Note>
 
   </Step>
@@ -123,8 +142,13 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
 
 <AccordionGroup>
   <Accordion title="What is the workflow for renewing a certificate?">
-    To renew a certificate, you have to issue a new certificate for the same
-    subscriber. The original certificate will continue to be valid through its
-    original TTL unless explicitly revoked.
+    To renew a certificate, you have two options:
+    
+    **Manual Renewal**: Issue a new certificate for the same subscriber. The original certificate will continue to be valid through its original TTL unless explicitly revoked.
+    
+    **Automatic Renewal**: If Certificate Auto Renewal is enabled for the subscriber, the system will automatically issue new certificates before the current ones expire based on the configured renewal period.
+  </Accordion>
+  <Accordion title="How does Certificate Auto Renewal work?">
+    When Certificate Auto Renewal is enabled for a subscriber, the system monitors certificate expiration dates and automatically issues new certificates before they expire. You can configure how many days before expiry the renewal should occur (e.g., 7 days before expiration). This ensures continuous certificate availability without manual intervention.
   </Accordion>
 </AccordionGroup>
