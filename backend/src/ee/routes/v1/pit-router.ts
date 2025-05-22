@@ -10,8 +10,8 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { booleanSchema } from "@app/server/routes/sanitizedSchemas";
-import { AuthMode } from "@app/services/auth/auth-type";
-import { ChangeType, ResourceChange } from "@app/services/folder-commit/folder-commit-service";
+import { ActorAuthMethod, ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { ChangeType } from "@app/services/folder-commit/folder-commit-service";
 import { commitChangesResponseSchema } from "@app/services/folder-commit/folder-commit-types";
 
 const commitHistoryItemSchema = z.object({
@@ -98,22 +98,34 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         environment: z.string().trim(),
         path: z.string().trim().default("/").transform(removeTrailingSlash),
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim(),
+        offset: z.coerce.number().min(0).default(0),
+        limit: z.coerce.number().min(1).max(100).default(20),
+        search: z.string().trim().optional(),
+        sort: z.enum(["asc", "desc"]).default("desc")
       }),
       response: {
-        200: commitHistoryItemSchema.array()
+        200: z.object({
+          commits: commitHistoryItemSchema.array(),
+          total: z.number(),
+          hasMore: z.boolean()
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const commits = await server.services.folderCommit.getCommitsForFolder({
+      const result = await server.services.folderCommit.getCommitsForFolder({
         actor: req.permission?.type,
         actorId: req.permission?.id,
         actorOrgId: req.permission?.orgId,
         actorAuthMethod: req.permission?.authMethod,
         projectId: req.query.workspaceId,
         environment: req.query.environment,
-        path: req.query.path
+        path: req.query.path,
+        offset: req.query.offset,
+        limit: req.query.limit,
+        search: req.query.search,
+        sort: req.query.sort
       });
 
       await server.services.auditLog.createAuditLog({
@@ -124,30 +136,47 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
           metadata: {
             environment: req.query.environment,
             path: req.query.path,
-            commitCount: commits.length.toString()
+            commitCount: result.commits.length.toString(),
+            offset: req.query.offset.toString(),
+            limit: req.query.limit.toString(),
+            search: req.query.search,
+            sort: req.query.sort
           }
         }
       });
 
-      return commits.map((commit) => ({
-        ...commit,
-        commitId: commit.commitId.toString()
-      }));
+      return {
+        commits: result.commits.map((commit) => ({
+          ...commit,
+          commitId: commit.commitId.toString()
+        })),
+        total: result.total,
+        hasMore: result.hasMore
+      };
     }
   });
 
   const getChangeVersions = async (
-    change: ResourceChange,
+    change: {
+      secretVersion?: string;
+      secretId?: string;
+      id?: string;
+      isUpdate?: boolean;
+      changeType?: string;
+    },
     previousVersion: string,
     actorId: string,
-    actor: string,
+    actor: ActorType,
     actorOrgId: string,
-    actorAuthMethod: string,
+    actorAuthMethod: ActorAuthMethod,
     folderId: string
   ) => {
     if (change.secretVersion) {
       const currentVersion = change.secretVersion || "1";
       const secretId = change.secretId ? change.secretId : change.id;
+      if (!secretId) {
+        return;
+      }
       // eslint-disable-next-line no-await-in-loop
       const versions = await server.services.secret.getSecretVersionsV2ByIds({
         actorId,
@@ -176,7 +205,15 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     }
   };
 
-  const getFolderVersions = async (change: ResourceChange, fromVersion: string, folderId: string) => {
+  const getFolderVersions = async (
+    change: {
+      folderVersion?: string;
+      isUpdate?: boolean;
+      changeType?: string;
+    },
+    fromVersion: string,
+    folderId: string
+  ) => {
     const currentVersion = change.folderVersion || "1";
     // eslint-disable-next-line no-await-in-loop
     const versions = await server.services.folder.getFolderVersionsByIds({
@@ -218,20 +255,18 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         commitId: req.params.commitId
       });
       for (const change of changes.changes) {
-        if (change.secretVersionId) {
-          change.objectType = "secret";
+        if (change.secretVersionId && change.secretVersion) {
           // eslint-disable-next-line no-await-in-loop
           change.versions = await getChangeVersions(
             change,
             (Number.parseInt(change.secretVersion, 10) - 1).toString(),
-            req.permission?.id,
-            req.permission?.type,
-            req.permission?.orgId,
-            req.permission?.authMethod,
+            req.permission.id,
+            req.permission.type,
+            req.permission.orgId,
+            req.permission.authMethod,
             change.folderId
           );
-        } else if (change.folderVersionId && change.folderChangeId) {
-          change.objectType = "folder";
+        } else if (change.folderVersionId && change.folderChangeId && change.folderVersion) {
           // eslint-disable-next-line no-await-in-loop
           change.versions = await getFolderVersions(
             change,
@@ -340,10 +375,10 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
             change.versions = await getChangeVersions(
               change,
               change.fromVersion || "1",
-              req.permission?.id,
-              req.permission?.type,
-              req.permission?.orgId,
-              req.permission?.authMethod,
+              req.permission.id,
+              req.permission.type,
+              req.permission.orgId,
+              req.permission.authMethod,
               diff.folderId
             );
           }

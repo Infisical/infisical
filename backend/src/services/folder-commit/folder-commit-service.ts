@@ -76,6 +76,7 @@ export type ResourceChange = {
   commitId: bigint;
   createdAt?: Date;
   parentId?: string;
+  isUpdate?: boolean;
   secretKey?: string;
   secretVersion?: string;
   secretId?: string;
@@ -997,7 +998,11 @@ export const folderCommitServiceFactory = ({
     actorOrgId,
     projectId,
     environment,
-    path
+    path,
+    offset = 0,
+    limit = 20,
+    search,
+    sort = "desc"
   }: {
     actor: ActorType;
     actorId: string;
@@ -1006,6 +1011,10 @@ export const folderCommitServiceFactory = ({
     projectId: string;
     environment: string;
     path: string;
+    offset: number;
+    limit: number;
+    search?: string;
+    sort: "asc" | "desc";
   }) => {
     await checkProjectPermission({
       actor,
@@ -1020,7 +1029,12 @@ export const folderCommitServiceFactory = ({
         message: `Folder not found for project ID ${projectId}, environment ${environment}, path ${path}`
       });
     }
-    const folderCommits = await folderCommitDAL.findByFolderId(folder.id);
+    const folderCommits = await folderCommitDAL.findByFolderIdPaginated(folder.id, {
+      offset,
+      limit,
+      search,
+      sort
+    });
     return folderCommits;
   };
 
@@ -1516,6 +1530,9 @@ export const folderCommitServiceFactory = ({
     projectId: string;
     message?: string;
   }) => {
+    if (!permissionService) {
+      throw new Error("Permission service not initialized");
+    }
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1551,8 +1568,11 @@ export const folderCommitServiceFactory = ({
     }
 
     // Sort commits by commitId (which appears to be numeric)
-    const sortedCommits = allCommits.sort((a, b) => a.commitId - b.commitId);
-
+    const sortedCommits = allCommits.sort((a, b) => {
+      if (a.commitId < b.commitId) return -1;
+      if (a.commitId > b.commitId) return 1;
+      return 0;
+    });
     // Find the index of the commit to revert
     const commitIndex = sortedCommits.findIndex((c) => c.id === commitId);
     if (commitIndex === -1) {

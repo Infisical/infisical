@@ -107,7 +107,7 @@ describe("folderCommitServiceFactory", () => {
     deleteById: vi.fn().mockResolvedValue({}),
     create: vi.fn().mockResolvedValue({}),
     updateById: vi.fn().mockResolvedValue({}),
-    find: vi.fn().mockResolvedValue([]),
+    find: vi.fn().mockResolvedValue({}), // Changed from [] to {} to match Object.values() expectation
     findByIdsWithLatestVersion: vi.fn().mockResolvedValue({})
   };
 
@@ -259,6 +259,17 @@ describe("folderCommitServiceFactory", () => {
       mockFolderCommitDAL.findLatestCommit.mockResolvedValue({ id: "latest-commit-id" });
       mockFolderDAL.findByParentId.mockResolvedValue([]);
       mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+
+      // Mock folderVersionDAL.find to return an object with folder version data
+      mockFolderVersionDAL.find.mockResolvedValue({
+        "folder-version-1": {
+          id: "folder-version-1",
+          folderId: "sub-folder-id",
+          envId: "env-id",
+          name: "Test Folder",
+          version: 1
+        }
+      });
 
       const data = {
         actor: {
@@ -449,6 +460,12 @@ describe("folderCommitServiceFactory", () => {
       const actorType = ActorType.USER;
       const projectId = "project-id";
 
+      // Mock the transaction to properly handle the error
+      mockFolderCommitDAL.transaction.mockImplementation(async (callback) => {
+        return await callback({} as Knex);
+      });
+
+      // Mock findById to return null inside the transaction
       mockFolderCommitDAL.findById.mockResolvedValue(null);
 
       // Act & Assert
@@ -501,8 +518,8 @@ describe("folderCommitServiceFactory", () => {
       const actorType = ActorType.USER;
 
       const differences = [
-        { type: "secret", id: "secret-1", versionId: "v1", changeType: ChangeType.CREATE, commitId: 1 },
-        { type: "folder", id: "folder-1", versionId: "v2", changeType: ChangeType.UPDATE, commitId: 1 }
+        { type: "secret", id: "secret-1", versionId: "v1", changeType: ChangeType.CREATE, commitId: BigInt(1) },
+        { type: "folder", id: "folder-1", versionId: "v2", changeType: ChangeType.UPDATE, commitId: BigInt(1) }
       ];
 
       const secretVersions = {

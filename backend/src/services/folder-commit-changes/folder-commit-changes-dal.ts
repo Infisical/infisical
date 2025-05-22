@@ -14,7 +14,7 @@ import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TFolderCommitChangesDALFactory = ReturnType<typeof folderCommitChangesDALFactory>;
 
-type CommitChangeWithCommitInfo = TFolderCommitChanges & {
+export type CommitChangeWithCommitInfo = TFolderCommitChanges & {
   actorMetadata: unknown;
   actorType: string;
   message?: string | null;
@@ -25,6 +25,7 @@ type CommitChangeWithCommitInfo = TFolderCommitChanges & {
   secretVersion?: string;
   secretId?: string;
   folderChangeId?: string;
+  objectType?: string;
   versions?: {
     secretKey?: string;
     secretComment?: string;

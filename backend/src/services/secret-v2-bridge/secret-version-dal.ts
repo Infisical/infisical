@@ -324,7 +324,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
       .whereIn("secretId", specificSecretIds)
       .groupBy("secretId")
       .select("secretId")
-      .max("version as maxVersion");
+      .max("version", { as: "maxVersion" });
 
     // Create a lookup map for max versions
     const maxVersionMap = maxVersionsQuery.reduce(

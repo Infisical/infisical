@@ -22,6 +22,7 @@ import {
 import { usePopUp } from "@app/hooks";
 import { CommitWithChanges } from "@app/hooks/api/folderCommits";
 import { useCommitRevert, useGetCommitDetails } from "@app/hooks/api/folderCommits/queries";
+import { CommitType } from "@app/hooks/api/types";
 
 import { SecretVersionDiffView } from "../SecretVersionDiffView";
 import { MergedItem } from "./types";
@@ -147,9 +148,9 @@ export const CommitDetailsTab = ({
   const commitChanges = parsedCommitDetails.changes?.changes || [];
 
   // Separate changes by type
-  const addedChanges = commitChanges.filter((c) => c.changeType === "add" && !c.isUpdate);
-  const updatedChanges = commitChanges.filter((c) => c.changeType === "add" && c.isUpdate);
-  const deletedChanges = commitChanges.filter((c) => c.changeType === "delete");
+  const addedChanges = commitChanges.filter((c) => c.changeType === CommitType.ADD && !c.isUpdate);
+  const updatedChanges = commitChanges.filter((c) => c.changeType === CommitType.ADD && c.isUpdate);
+  const deletedChanges = commitChanges.filter((c) => c.changeType === CommitType.DELETE);
 
   // Create merged item list from changes only
   const changedItems: MergedItem[] = [];

@@ -101,7 +101,7 @@ export const folderCheckpointDALFactory = (db: TDbClient) => {
           `${TableName.FolderCommit}.id`
         )
         .where(`${TableName.FolderCommit}.folderId`, "=", folderId)
-        .where(`${TableName.FolderCommit}.commitId`, "<=", folderCommitId)
+        .where(`${TableName.FolderCommit}.commitId`, "<=", folderCommitId.toString())
         .select(selectAllTableCols(TableName.FolderCheckpoint))
         .select(
           db.ref("actorMetadata").withSchema(TableName.FolderCommit),

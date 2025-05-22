@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const secretVersionSchema = z.object({
-  secretKey: z.string(),
+  secretKey: z.string().optional().nullable(),
   secretComment: z.string().optional().nullable(),
   skipMultilineEncoding: z.boolean().optional().nullable(),
   secretReminderRepeatDays: z.number().optional().nullable(),
@@ -13,7 +13,7 @@ const secretVersionSchema = z.object({
 });
 
 const folderVersionSchema = z.object({
-  name: z.string()
+  name: z.string().optional().nullable()
 });
 
 const baseChangeSchema = z.object({
@@ -37,46 +37,37 @@ const baseChangeSchema = z.object({
   folderId: z.string().optional()
 });
 
-const secretChangeSchema = baseChangeSchema.extend({
-  objectType: z.literal("secret"),
-  secretVersionId: z.string(),
-  folderVersionId: z.null(),
-  folderName: z.null(),
-  folderChangeId: z.null(),
-  secretKey: z.string(),
-  secretVersion: z.union([z.string(), z.number()]),
-  secretId: z.string(),
-  versions: z.array(secretVersionSchema).optional()
+const commitChangeSchema = baseChangeSchema.extend({
+  secretVersionId: z.string().optional().nullable(),
+  folderVersionId: z.string().optional().nullable(),
+  folderName: z.string().optional().nullable(),
+  folderChangeId: z.string().optional().nullable(),
+  secretKey: z.string().optional().nullable(),
+  secretVersion: z.union([z.string(), z.number()]).optional().nullable(),
+  secretId: z.string().optional().nullable(),
+  folderVersion: z.union([z.string(), z.number()]).optional().nullable(),
+  versions: z.array(z.union([secretVersionSchema, folderVersionSchema])).optional()
 });
-
-const folderChangeSchema = baseChangeSchema.extend({
-  objectType: z.literal("folder"),
-  secretVersionId: z.null(),
-  folderVersionId: z.string(),
-  folderName: z.string(),
-  folderChangeId: z.string(),
-  folderVersion: z.union([z.string(), z.number()]),
-  secretKey: z.null(),
-  secretId: z.null(),
-  versions: z.array(folderVersionSchema).optional()
-});
-
-const commitChangeSchema = z.discriminatedUnion("objectType", [secretChangeSchema, folderChangeSchema]);
 
 const commitSchema = z.object({
   id: z.string(),
   commitId: z.string(),
-  actorMetadata: z.object({
-    id: z.string(),
-    name: z.string()
-  }),
+  actorMetadata: z
+    .union([
+      z.object({
+        id: z.string().optional(),
+        name: z.string().optional()
+      }),
+      z.unknown()
+    ])
+    .optional(),
   actorType: z.string(),
-  message: z.string().nullable(),
+  message: z.string().nullable().optional(),
   folderId: z.string(),
   envId: z.string(),
   createdAt: z.union([z.string(), z.date()]),
   updatedAt: z.union([z.string(), z.date()]),
-  changes: z.array(commitChangeSchema)
+  changes: z.array(commitChangeSchema).optional()
 });
 
 export const commitChangesResponseSchema = z.object({

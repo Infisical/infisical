@@ -41,7 +41,7 @@ export const folderTreeCheckpointDALFactory = (db: TDbClient) => {
         )
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(`${TableName.FolderCommit}.envId`, "=", envId)
-        .where(`${TableName.FolderCommit}.commitId`, "<=", folderCommitId)
+        .andWhere(`${TableName.FolderCommit}.commitId`, "<=", folderCommitId.toString())
         .select(selectAllTableCols(TableName.FolderTreeCheckpoint))
         .select(db.ref("commitId").withSchema(TableName.FolderCommit))
         .orderBy(`${TableName.FolderCommit}.commitId`, "desc")

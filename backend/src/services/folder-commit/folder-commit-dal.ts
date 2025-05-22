@@ -9,7 +9,7 @@ import {
   TSecretFolderVersions,
   TSecretVersionsV2
 } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import { DatabaseError, NotFoundError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TFolderCommitDALFactory = ReturnType<typeof folderCommitDALFactory>;
@@ -209,8 +209,8 @@ export const folderCommitDALFactory = (db: TDbClient) => {
       const commits = await (tx || db.replicaNode())(TableName.FolderCommit)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter({ folderId }, TableName.FolderCommit))
-        .andWhere(`${TableName.FolderCommit}.commitId`, ">", checkpointCommitNumber)
-        .andWhere(`${TableName.FolderCommit}.commitId`, "<=", targetCommitNumber)
+        .andWhere(`${TableName.FolderCommit}.commitId`, ">", checkpointCommitNumber.toString())
+        .andWhere(`${TableName.FolderCommit}.commitId`, "<=", targetCommitNumber.toString())
         .select(selectAllTableCols(TableName.FolderCommit))
         .orderBy(`${TableName.FolderCommit}.commitId`, "asc");
 
@@ -391,9 +391,86 @@ export const folderCommitDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.FolderCommit))
         .orderBy("commitId", "desc")
         .first();
+      if (!doc) {
+        throw new NotFoundError({
+          message: `Folder commit not found for ID ${id}`
+        });
+      }
       return doc;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindById" });
+    }
+  };
+
+  const findByFolderIdPaginated = async (
+    folderId: string,
+    options: {
+      offset?: number;
+      limit?: number;
+      search?: string;
+      sort?: "asc" | "desc";
+    } = {},
+    tx?: Knex
+  ): Promise<{
+    commits: TFolderCommits[];
+    total: number;
+    hasMore: boolean;
+  }> => {
+    try {
+      const { offset = 0, limit = 20, search, sort = "desc" } = options;
+      const trx = tx || db.replicaNode();
+
+      // Build base query
+      let baseQuery = trx(TableName.FolderCommit).where({ folderId });
+
+      // Add search functionality
+      if (search) {
+        baseQuery = baseQuery.where((qb) => {
+          void qb.whereILike("message", `%${search}%`);
+        });
+      }
+
+      // Get total count
+      const totalResult = await baseQuery.clone().count("*", { as: "count" }).first();
+      const total = Number(totalResult?.count || 0);
+
+      // Get paginated commits
+      const folderCommits = await baseQuery.select("*").orderBy("createdAt", sort).limit(limit).offset(offset);
+
+      if (folderCommits.length === 0) {
+        return { commits: [], total, hasMore: false };
+      }
+
+      // Get all commit IDs for changes
+      const commitIds = folderCommits.map((commit) => commit.id);
+
+      // Get all related changes
+      const changes = await trx(TableName.FolderCommitChanges).whereIn("folderCommitId", commitIds).select("*");
+
+      const changesMap = changes.reduce(
+        (acc, change) => {
+          const { folderCommitId } = change;
+          if (!acc[folderCommitId]) acc[folderCommitId] = [];
+          acc[folderCommitId].push(change);
+          return acc;
+        },
+        {} as Record<string, TFolderCommitChanges[]>
+      );
+
+      const commitsWithChanges = folderCommits.map((commit) => ({
+        ...commit,
+        changes: changesMap[commit.id] || []
+      }));
+
+      const hasMore = offset + limit < total;
+
+      return {
+        commits: commitsWithChanges,
+        total,
+        hasMore
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByFolderIdPaginated" });
     }
   };
 
@@ -411,6 +488,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     findLatestCommitByFolderIds,
     findAllFolderCommitsAfter,
     findPreviousCommitTo,
-    findById
+    findById,
+    findByFolderIdPaginated
   };
 };

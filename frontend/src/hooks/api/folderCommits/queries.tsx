@@ -68,13 +68,29 @@ const fetchFolderCommitsCount = async ({
 const fetchFolderCommitHistory = async (
   workspaceId: string,
   environment: string,
-  directory: string
-): Promise<CommitHistoryItem[]> => {
-  const res = await apiRequest.get<CommitHistoryItem[]>("/api/v1/pit/commits", {
+  directory: string,
+  offset: number = 0,
+  limit: number = 20,
+  search?: string,
+  sort: "asc" | "desc" = "desc"
+): Promise<{
+  commits: CommitHistoryItem[];
+  total: number;
+  hasMore: boolean;
+}> => {
+  const res = await apiRequest.get<{
+    commits: CommitHistoryItem[];
+    total: number;
+    hasMore: boolean;
+  }>("/api/v1/pit/commits", {
     params: {
       environment,
       path: directory,
-      workspaceId
+      workspaceId,
+      offset,
+      limit,
+      search,
+      sort
     }
   });
   return res.data;
@@ -225,15 +241,30 @@ export const useGetFolderCommitsCount = ({
 export const useGetFolderCommitHistory = ({
   workspaceId,
   environment,
-  directory
+  directory,
+  offset = 0,
+  limit = 20,
+  search,
+  sort = "desc"
 }: {
   workspaceId: string;
   environment: string;
   directory: string;
+  offset?: number;
+  limit?: number;
+  search?: string;
+  sort?: "asc" | "desc";
 }) => {
   return useQuery({
-    queryKey: commitKeys.history({ workspaceId, environment, directory }),
-    queryFn: () => fetchFolderCommitHistory(workspaceId, environment, directory),
+    queryKey: [
+      commitKeys.history({ workspaceId, environment, directory }),
+      offset,
+      limit,
+      search,
+      sort
+    ],
+    queryFn: () =>
+      fetchFolderCommitHistory(workspaceId, environment, directory, offset, limit, search, sort),
     enabled: Boolean(workspaceId && environment)
   });
 };

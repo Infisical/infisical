@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   faArrowDownWideShort,
   faArrowUpWideShort,
@@ -144,41 +144,68 @@ export const CommitHistoryTab = ({
   secretPath: string;
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [visibleCommits, setVisibleCommits] = useState(10);
+  const [offset, setOffset] = useState(0);
+  const [allCommits, setAllCommits] = useState<Commit[]>([]);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout>();
+  const limit = 5;
 
-  const { data: commits, isLoading } = useGetFolderCommitHistory({
+  // Debounce search term
+  useEffect(() => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    debounceTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [searchTerm]);
+
+  const {
+    data: response,
+    isLoading,
+    isFetching
+  } = useGetFolderCommitHistory({
     workspaceId: projectId,
     environment,
-    directory: secretPath
+    directory: secretPath,
+    offset,
+    limit,
+    search: debouncedSearchTerm,
+    sort: sortDirection
   });
 
-  const filteredCommits = useMemo(() => {
-    if (!commits?.length) return [];
+  const commits = response?.commits || [];
+  const hasMore = response?.hasMore || false;
 
-    return commits.filter(
-      (commit) =>
-        commit.id?.includes(searchTerm) ||
-        commit.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        commit.actorMetadata?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [commits, searchTerm]);
+  // Reset accumulated commits when search or sort changes
+  useEffect(() => {
+    setAllCommits([]);
+    setOffset(0);
+  }, [debouncedSearchTerm, sortDirection]);
 
-  const sortedCommits = useMemo(() => {
-    if (!filteredCommits?.length) return [];
+  // Accumulate commits instead of replacing them
+  useEffect(() => {
+    if (commits.length > 0) {
+      if (offset === 0) {
+        // First load or after search/sort change - replace all commits
+        setAllCommits(commits);
+      } else {
+        // Subsequent loads - append new commits
+        setAllCommits((prev) => [...prev, ...commits]);
+      }
+    }
+  }, [commits, offset]);
 
-    return [...filteredCommits].sort((a, b) => {
-      const dateA = new Date(a.createdAt).getTime();
-      const dateB = new Date(b.createdAt).getTime();
-      return sortDirection === "desc" ? dateB - dateA : dateA - dateB;
-    });
-  }, [filteredCommits, sortDirection]);
-
-  const displayedCommits = useMemo(() => {
-    return sortedCommits.slice(0, visibleCommits);
-  }, [sortedCommits, visibleCommits]);
   const groupedCommits = useMemo(() => {
-    return displayedCommits.reduce(
+    return allCommits.reduce(
       (acc, commit) => {
         const date = format(new Date(commit.createdAt), "MMM d, yyyy");
         if (!acc[date]) {
@@ -189,25 +216,21 @@ export const CommitHistoryTab = ({
       },
       {} as Record<string, Commit[]>
     );
-  }, [displayedCommits]);
+  }, [allCommits]);
 
   const handleSort = useCallback(() => {
     setSortDirection((prev) => (prev === "desc" ? "asc" : "desc"));
   }, []);
 
-  const loadMoreCommits = useCallback(() => {
-    setVisibleCommits((prev) => prev + 10);
+  const handleSearch = useCallback((value: string) => {
+    setSearchTerm(value);
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner size="lg" aria-label="Loading commits" />
-      </div>
-    );
-  }
-
-  const hasMoreCommits = sortedCommits.length > visibleCommits;
+  const loadMoreCommits = useCallback(() => {
+    if (hasMore && !isFetching) {
+      setOffset((prev) => prev + limit);
+    }
+  }, [hasMore, isFetching, limit]);
 
   return (
     <div className="w-full">
@@ -217,7 +240,8 @@ export const CommitHistoryTab = ({
             <Input
               placeholder="Search commits..."
               className="h-10 w-full rounded-md border-transparent bg-zinc-800 pl-9 pr-3 text-sm text-white placeholder-gray-400 focus:border-gray-600 focus:ring-primary-500/20"
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
+              value={searchTerm}
               aria-label="Search commits"
             />
             <div className="absolute left-3 top-1/2 -translate-y-1/2 transform text-gray-400">
@@ -239,43 +263,57 @@ export const CommitHistoryTab = ({
         </div>
       </div>
 
-      <div className="space-y-8">
-        {Object.keys(groupedCommits).length > 0 ? (
-          <>
-            {Object.entries(groupedCommits).map(([date, dateCommits]) => (
-              <DateGroup
-                key={date}
-                date={date}
-                commits={dateCommits}
-                onSelectCommit={onSelectCommit}
+      {isLoading && offset === 0 ? (
+        <div className="flex h-64 items-center justify-center">
+          <Spinner size="lg" aria-label="Loading commits" />
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {Object.keys(groupedCommits).length > 0 ? (
+            <>
+              {Object.entries(groupedCommits).map(([date, dateCommits]) => (
+                <DateGroup
+                  key={date}
+                  date={date}
+                  commits={dateCommits}
+                  onSelectCommit={onSelectCommit}
+                />
+              ))}
+            </>
+          ) : (
+            <div className="text-white-400 flex min-h-40 flex-col items-center justify-center rounded-lg bg-zinc-900 py-8 text-center">
+              <FontAwesomeIcon
+                icon={faSearch}
+                className="text-white-500 mb-3 text-3xl"
+                aria-hidden="true"
               />
-            ))}
-          </>
-        ) : (
-          <div className="text-white-400 flex min-h-40 flex-col items-center justify-center rounded-lg bg-zinc-900 py-8 text-center">
-            <FontAwesomeIcon
-              icon={faSearch}
-              className="text-white-500 mb-3 text-3xl"
-              aria-hidden="true"
-            />
-            <p>No matching commits found. Try a different search term.</p>
-          </div>
-        )}
+              <p>No matching commits found. Try a different search term.</p>
+            </div>
+          )}
 
-        {hasMoreCommits && (
-          <div className="flex justify-center pb-2">
-            <Button
-              variant="outline_bg"
-              size="md"
-              className="rounded-md bg-zinc-900 px-6 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              onClick={loadMoreCommits}
-              aria-label="Load more commits"
-            >
-              Load more commits
-            </Button>
-          </div>
-        )}
-      </div>
+          {hasMore && (
+            <div className="flex justify-center pb-2">
+              <Button
+                variant="outline_bg"
+                size="md"
+                className="rounded-md bg-zinc-900 px-6 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                onClick={loadMoreCommits}
+                disabled={isFetching}
+                aria-label="Load more commits"
+              >
+                {isFetching ? (
+                  <>
+                    <Spinner size="sm" className="mr-2" />
+                    Loading...
+                  </>
+                ) : (
+                  "Load more commits"
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

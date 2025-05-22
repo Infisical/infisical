@@ -145,7 +145,9 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
 
     // Create lookup map for max versions
     const maxVersionMap = maxVersionsQuery.reduce<Record<string, number>>((acc, item) => {
-      acc[item.folderId] = item.maxVersion;
+      if (item.maxVersion) {
+        acc[item.folderId] = item.maxVersion;
+      }
       return acc;
     }, {});
 
@@ -160,6 +162,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
     try {
       if (!folderIds.length && (!versionIds || !versionIds.length)) return {};
 
+      // Run both queries in parallel
       const [latestVersions, specificVersionsWithLatest] = await Promise.all([
         folderIds.length ? getLatestFolderVersions(folderIds, tx) : [],
         versionIds?.length ? getSpecificFolderVersionsWithLatest(versionIds, tx) : []

@@ -84,9 +84,10 @@ const getZodDefaultValue = (type: unknown, value: string | number | boolean | Ob
   }
 };
 
-const bigIntegerColumns = {
+const bigIntegerColumns: Record<string, string[]> = {
   "folder_commits": ["commitId"]
-}
+};
+
 
 const main = async () => {
   const tables = (

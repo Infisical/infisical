@@ -2927,6 +2927,10 @@ interface GetProjectPitCommitsEvent {
     commitCount: string;
     environment: string;
     path: string;
+    offset: string;
+    limit: string;
+    search?: string;
+    sort: string;
   };
 }
 
