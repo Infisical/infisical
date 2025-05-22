@@ -44,3 +44,25 @@ export const timeAgo = (inputDate: Date, currentDate: Date): string => {
     elapsedMilliseconds >= 0 ? "ago" : "from now"
   }`;
 };
+
+export enum TimeUnit {
+  DAY = "days",
+  WEEK = "weeks",
+  MONTH = "months",
+  YEAR = "years"
+}
+
+export const convertTimeUnitValueToDays = (unit: TimeUnit, value: number) => {
+  switch (unit) {
+    case TimeUnit.DAY:
+      return value;
+    case TimeUnit.WEEK:
+      return value * 7;
+    case TimeUnit.MONTH:
+      return value * 30;
+    case TimeUnit.YEAR:
+      return value * 365;
+    default:
+      throw new Error(`Unknown time unit: ${unit}`);
+  }
+};

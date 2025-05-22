@@ -37,6 +37,7 @@ import {
 } from "@app/hooks/api/certificates/constants";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { convertTimeUnitValueToDays, TimeUnit } from "@app/lib/fn/date";
 
 type Props = {
   popUp: UsePopUpState<["pkiSubscriber"]>;
@@ -75,7 +76,8 @@ const schema = z
       [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
     }),
     enableAutoRenewal: z.boolean().optional().default(false),
-    autoRenewalPeriodInDays: z.number().min(1).optional()
+    renewalBefore: z.number().min(1).optional(),
+    renewalUnit: z.nativeEnum(TimeUnit).optional()
   })
   .required();
 
@@ -118,7 +120,8 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
       },
       extendedKeyUsages: {},
       enableAutoRenewal: false,
-      autoRenewalPeriodInDays: 7
+      renewalBefore: 7,
+      renewalUnit: TimeUnit.DAY
     }
   });
 
@@ -139,7 +142,8 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
           (pkiSubscriber.extendedKeyUsages || []).map((name) => [name, true])
         ),
         enableAutoRenewal: pkiSubscriber.enableAutoRenewal || false,
-        autoRenewalPeriodInDays: pkiSubscriber.autoRenewalPeriodInDays || 7
+        renewalBefore: pkiSubscriber.autoRenewalPeriodInDays || 7,
+        renewalUnit: TimeUnit.DAY
       });
     } else {
       reset({
@@ -154,7 +158,8 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
         },
         extendedKeyUsages: {},
         enableAutoRenewal: false,
-        autoRenewalPeriodInDays: 7
+        renewalBefore: 7,
+        renewalUnit: TimeUnit.DAY
       });
     }
   }, [pkiSubscriber, reset]);
@@ -174,7 +179,8 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
     keyUsages,
     extendedKeyUsages,
     enableAutoRenewal,
-    autoRenewalPeriodInDays
+    renewalBefore,
+    renewalUnit
   }: FormData) => {
     try {
       if (!projectId) return;
@@ -211,6 +217,10 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
         .split(",")
         .map((san) => san.trim())
         .filter(Boolean);
+
+      const autoRenewalPeriodInDays = enableAutoRenewal
+        ? convertTimeUnitValueToDays(renewalUnit, renewalBefore)
+        : undefined;
 
       if (pkiSubscriber) {
         await updateMutateAsync({
@@ -473,35 +483,61 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                       onCheckedChange={onChange}
                       className="data-[state=checked]:bg-primary"
                     >
-                      Enable Auto Renewal
+                      Enable Certificate Auto Renewal
                     </Checkbox>
                   </FormControl>
                 )}
               />
               {selectedAutoRenewalState && (
-                <Controller
-                  control={control}
-                  name="autoRenewalPeriodInDays"
-                  render={({ field: { onChange, value }, fieldState: { error } }) => {
-                    return (
+                <div className="flex items-center">
+                  <Controller
+                    control={control}
+                    defaultValue={7}
+                    name="renewalBefore"
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                       <FormControl
-                        label="Renew X days before expiry"
+                        label="Renewal Before"
                         isError={Boolean(error)}
                         errorText={error?.message}
-                        tooltipText="A new certificate will be issued this many days before the current certificate expires."
+                        className="w-full"
+                        isRequired
                       >
                         <Input
-                          value={value}
-                          onChange={(e) => onChange(Number(e.target.value))}
+                          {...field}
+                          placeholder="5"
                           type="number"
-                          min="1"
-                          step="1"
-                          placeholder="7"
+                          min={1}
+                          onChange={(e) => onChange(Number(e.target.value))}
                         />
                       </FormControl>
-                    );
-                  }}
-                />
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="renewalUnit"
+                    defaultValue={TimeUnit.DAY}
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                      <FormControl
+                        className="ml-4"
+                        label="Unit"
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                      >
+                        <Select
+                          defaultValue={field.value}
+                          {...field}
+                          onValueChange={(e) => onChange(e)}
+                          className="w-48"
+                        >
+                          <SelectItem value={TimeUnit.DAY}>Days</SelectItem>
+                          <SelectItem value={TimeUnit.WEEK}>Weeks</SelectItem>
+                          <SelectItem value={TimeUnit.MONTH}>Months</SelectItem>
+                          <SelectItem value={TimeUnit.YEAR}>Years</SelectItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </div>
               )}
             </TabPanel>
           </Tabs>
