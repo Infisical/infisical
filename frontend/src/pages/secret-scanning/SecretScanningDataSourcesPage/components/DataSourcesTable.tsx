@@ -37,6 +37,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   SecretScanningDataSource,
   TSecretScanningDataSource,
+  TSecretScanningDataSourceWithDetails,
   useTriggerSecretScanningDataSource,
   useUpdateSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
@@ -71,7 +72,7 @@ type DataSourceFilters = {
 // };
 
 type Props = {
-  dataSources: TSecretScanningDataSource[];
+  dataSources: TSecretScanningDataSourceWithDetails[];
 };
 
 // const STATUS_ICON_MAP = {
@@ -340,7 +341,7 @@ export const DataSourcesTable = ({ dataSources }: Props) => {
           <THead>
             <Tr>
               <Th className="w-40">Platform</Th>
-              <Th className="w-1/4">
+              <Th className="w-1/5">
                 <div className="flex items-center">
                   Name
                   <IconButton
@@ -353,7 +354,7 @@ export const DataSourcesTable = ({ dataSources }: Props) => {
                   </IconButton>
                 </div>
               </Th>
-              <Th className="w-1/3">
+              <Th className="w-1/5">
                 <div className="flex items-center">
                   Findings
                   <IconButton
@@ -366,9 +367,22 @@ export const DataSourcesTable = ({ dataSources }: Props) => {
                   </IconButton>
                 </div>
               </Th>
-              <Th className="w-1/3">
+              <Th className="w-60">
                 <div className="flex items-center">
-                  Last Scan
+                  Last Scanned
+                  <IconButton
+                    variant="plain"
+                    className={getClassName(DataSourcesOrderBy.Type)}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(DataSourcesOrderBy.Type)}
+                  >
+                    <FontAwesomeIcon icon={getColSortIcon(DataSourcesOrderBy.Type)} />
+                  </IconButton>
+                </div>
+              </Th>
+              <Th className="w-1/4">
+                <div className="flex items-center">
+                  Scan Status
                   <IconButton
                     variant="plain"
                     className={getClassName(DataSourcesOrderBy.Type)}

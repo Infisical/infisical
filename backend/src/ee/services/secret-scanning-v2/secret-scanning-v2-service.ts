@@ -21,6 +21,7 @@ import {
   TListSecretScanningDataSourcesByProjectId,
   TSecretScanningDataSource,
   TSecretScanningDataSourceWithConnection,
+  TSecretScanningDataSourceWithDetails,
   TTriggerSecretScanningDataSourceDTO,
   TUpdateSecretScanningDataSourceDTO
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
@@ -65,8 +66,8 @@ export const secretScanningV2ServiceFactory = ({
   secretScanningV2Queue,
   kmsService
 }: TSecretScanningV2ServiceFactoryDep) => {
-  const listSecretScanningDataSourcesByProjectId = async (
-    { projectId, type }: TListSecretScanningDataSourcesByProjectId,
+  const $checkListSecretScanningDataSourcesByProjectIdPermissions = async (
+    projectId: string,
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -90,6 +91,13 @@ export const secretScanningV2ServiceFactory = ({
       ProjectPermissionSecretScanningDataSourceActions.Read,
       ProjectPermissionSub.SecretScanningDataSources
     );
+  };
+
+  const listSecretScanningDataSourcesByProjectId = async (
+    { projectId, type }: TListSecretScanningDataSourcesByProjectId,
+    actor: OrgServiceActor
+  ) => {
+    await $checkListSecretScanningDataSourcesByProjectIdPermissions(projectId, actor);
 
     const dataSources = await secretScanningV2DAL.dataSources.find({
       ...(type && { type }),
@@ -97,6 +105,20 @@ export const secretScanningV2ServiceFactory = ({
     });
 
     return dataSources as TSecretScanningDataSource[];
+  };
+
+  const listSecretScanningDataSourcesWithDetailsByProjectId = async (
+    { projectId, type }: TListSecretScanningDataSourcesByProjectId,
+    actor: OrgServiceActor
+  ) => {
+    await $checkListSecretScanningDataSourcesByProjectIdPermissions(projectId, actor);
+
+    const dataSources = await secretScanningV2DAL.dataSources.findWithDetails({
+      ...(type && { type }),
+      projectId
+    });
+
+    return dataSources as TSecretScanningDataSourceWithDetails[];
   };
 
   const findSecretScanningDataSourceById = async (
@@ -389,6 +411,7 @@ export const secretScanningV2ServiceFactory = ({
   return {
     listSecretScanningDataSourceOptions,
     listSecretScanningDataSourcesByProjectId,
+    listSecretScanningDataSourcesWithDetailsByProjectId,
     findSecretScanningDataSourceById,
     findSecretScanningDataSourceByName,
     createSecretScanningDataSource,

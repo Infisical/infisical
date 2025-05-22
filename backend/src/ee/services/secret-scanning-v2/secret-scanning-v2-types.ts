@@ -11,9 +11,19 @@ import {
   TGitLabDataSourceListItem,
   TGitLabDataSourceWithConnection
 } from "@app/ee/services/secret-scanning-v2/gitlab";
-import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  SecretScanningDataSource,
+  SecretScanningScanStatus
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 
 export type TSecretScanningDataSource = TGitHubDataSource | TGitLabDataSource;
+
+export type TSecretScanningDataSourceWithDetails = TSecretScanningDataSource & {
+  lastScannedAt?: Date | null;
+  lastScanStatus?: SecretScanningScanStatus | null;
+  lastScanStatusMessage?: string | null;
+  unresolvedFindings: number;
+};
 
 export type TSecretScanningDataSourceWithConnection = TGitHubDataSourceWithConnection | TGitLabDataSourceWithConnection;
 

@@ -6,7 +6,13 @@ export enum SecretScanningDataSource {
 export enum SecretScanningScanStatus {
   Completed = "completed",
   Failed = "failed",
-  Queued = "queued"
+  Queued = "queued",
+  Scanning = "scanning"
+}
+
+export enum SecretScanningScanType {
+  FullScan = "full-scan",
+  DiffScan = "diff-scan"
 }
 
 export enum SecretScanningFindingStatus {
@@ -17,4 +23,10 @@ export enum SecretScanningFindingStatus {
 // TODO: should this be source type specific?
 export enum SecretScanningResource {
   Repository = "repository"
+}
+
+export enum SecretScanningFindingSeverity {
+  High = "high",
+  Medium = "medium",
+  Low = "low"
 }

@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import {
   faBan,
   faCheck,
@@ -7,15 +8,17 @@ import {
   faRotate,
   faToggleOff,
   faToggleOn,
-  faTrash
+  faTrash,
+  faWarning
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback } from "react";
+import { formatDistance } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { SecretScanningScanStatusBadge } from "@app/components/secret-scanning";
 import {
   Badge,
   DropdownMenu,
@@ -30,19 +33,21 @@ import {
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
-import { useToggle } from "@app/hooks";
-import { TSecretScanningDataSource } from "@app/hooks/api/secretScanningv2";
-
 import {
   AUTO_SYNC_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
+import { useToggle } from "@app/hooks";
+import {
+  SecretScanningScanStatus,
+  TSecretScanningDataSourceWithDetails
+} from "@app/hooks/api/secretScanningV2";
 
 type Props = {
-  dataSource: TSecretScanningDataSource;
-  onDelete: (dataSource: TSecretScanningDataSource) => void;
-  onTriggerScan: (dataSource: TSecretScanningDataSource) => void;
-  onToggleEnableAutoScan: (dataSource: TSecretScanningDataSource) => void;
+  dataSource: TSecretScanningDataSourceWithDetails;
+  onDelete: (dataSource: TSecretScanningDataSourceWithDetails) => void;
+  onTriggerScan: (dataSource: TSecretScanningDataSourceWithDetails) => void;
+  onToggleEnableAutoScan: (dataSource: TSecretScanningDataSourceWithDetails) => void;
 };
 
 export const DataSourceRow = ({
@@ -52,7 +57,18 @@ export const DataSourceRow = ({
   onToggleEnableAutoScan
 }: Props) => {
   const navigate = useNavigate();
-  const { id, name, description, isAutoScanEnabled, projectId, type } = dataSource;
+  const {
+    id,
+    name,
+    description,
+    isAutoScanEnabled,
+    projectId,
+    type,
+    unresolvedFindings,
+    lastScannedAt,
+    lastScanStatus,
+    lastScanStatusMessage
+  } = dataSource;
 
   const sourceDetails = SECRET_SCANNING_DATA_SOURCE_MAP[type];
 
@@ -102,8 +118,9 @@ export const DataSourceRow = ({
         })
       }
       className={twMerge(
-        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-        // syncStatus === SecretSyncStatus.Failed && "bg-red/5 hover:bg-red/10" // TODO
+        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700",
+        unresolvedFindings && "bg-yellow/5 hover:bg-yellow/10",
+        lastScanStatus === SecretScanningScanStatus.Failed && "bg-red/5 hover:bg-red/10"
       )}
       key={`data-source-${id}`}
     >
@@ -127,53 +144,49 @@ export const DataSourceRow = ({
           )}
         </div>
       </Td>
-      <Td></Td>
-      {/* <SecretSyncDestinationCol dataSource={dataSource} /> */}
+      <Td>
+        {/* eslint-disable-next-line no-nested-ternary */}
+        {lastScannedAt && lastScanStatus?.match(/complete|failed/) ? (
+          unresolvedFindings ? (
+            <Badge
+              variant="primary"
+              className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
+            >
+              <FontAwesomeIcon icon={faWarning} />
+              <span>
+                {unresolvedFindings} Secret{unresolvedFindings > 1 ? "s" : ""} Detected
+              </span>
+            </Badge>
+          ) : (
+            <Badge
+              variant="success"
+              className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
+            >
+              <FontAwesomeIcon icon={faCheck} />
+              No Secrets Detected
+            </Badge>
+          )
+        ) : (
+          "-"
+        )}
+      </Td>
+      <Td>
+        <span>
+          {lastScannedAt
+            ? formatDistance(new Date(lastScannedAt), new Date(), { addSuffix: true })
+            : "-"}
+        </span>
+      </Td>
       <Td>
         <div className="flex w-full items-center gap-1">
-          {/* {syncStatus && (
-            <Tooltip
-              position="left"
-              className="max-w-sm"
-              content={
-                [SecretSyncStatus.Succeeded, SecretSyncStatus.Failed].includes(syncStatus) ? (
-                  <div className="flex flex-col gap-2 whitespace-normal py-1">
-                    {lastSyncedAt && (
-                      <div>
-                        <div
-                          className={`mb-2 flex self-start ${syncStatus === SecretSyncStatus.Failed ? "text-yellow" : "text-green"}`}
-                        >
-                          <FontAwesomeIcon
-                            icon={faCalendarCheck}
-                            className="ml-1 pr-1.5 pt-0.5 text-sm"
-                          />
-                          <div className="text-xs">Last Synced</div>
-                        </div>
-                        <div className="rounded bg-mineshaft-600 p-2 text-xs">
-                          {format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}
-                        </div>
-                      </div>
-                    )}
-                    {failureMessage && (
-                      <div>
-                        <div className="mb-2 flex self-start text-red">
-                          <FontAwesomeIcon icon={faXmark} className="ml-1 pr-1.5 pt-0.5 text-sm" />
-                          <div className="text-xs">Failure Reason</div>
-                        </div>
-                        <div className="break-words rounded bg-mineshaft-600 p-2 text-xs">
-                          {failureMessage}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : undefined
-              }
-            >
-              <div>
-                <SecretSyncStatusBadge status={syncStatus} />
-              </div>
-            </Tooltip>
-          )} */}
+          {lastScanStatus ? (
+            <SecretScanningScanStatusBadge
+              status={lastScanStatus}
+              statusMessage={lastScanStatusMessage}
+            />
+          ) : (
+            "-"
+          )}
           {!isAutoScanEnabled && (
             <Tooltip
               className="text-xs"
@@ -182,8 +195,7 @@ export const DataSourceRow = ({
               <div className="ml-auto">
                 <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
                   <FontAwesomeIcon icon={faBan} />
-                  {true && "Auto-Scan Disabled"}
-                  {/* TODO: base on status */}
+                  <span>Auto-Scan Disabled</span>
                 </Badge>
               </div>
             </Tooltip>
