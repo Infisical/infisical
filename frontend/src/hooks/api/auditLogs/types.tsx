@@ -505,7 +505,8 @@ interface CreateCa {
   type: EventType.CREATE_CA;
   metadata: {
     caId: string;
-    dn: string;
+    name: string;
+    dn?: string;
   };
 }
 
@@ -514,12 +515,14 @@ interface GetCa {
   metadata: {
     caId: string;
     dn: string;
+    name: string;
   };
 }
 
 interface UpdateCa {
   type: EventType.UPDATE_CA;
   metadata: {
+    name: string;
     caId: string;
     dn: string;
     status: CaStatus;
@@ -530,6 +533,7 @@ interface DeleteCa {
   type: EventType.DELETE_CA;
   metadata: {
     caId: string;
+    name: string;
     dn: string;
   };
 }

@@ -535,7 +535,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
           type: EventType.GET_SUBSCRIBER_ACTIVE_CERT_BUNDLE,
           metadata: {
             subscriberId: subscriber.id,
-            subscriberName: subscriber.name,
+            name: subscriber.name,
             certId: cert.id,
             serialNumber: cert.serialNumber
           }

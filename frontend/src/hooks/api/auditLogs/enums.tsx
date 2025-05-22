@@ -184,5 +184,14 @@ export enum EventType {
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS = "microsoft-teams-workflow-integration-check-installation-status",
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS = "microsoft-teams-workflow-integration-get-teams",
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET = "microsoft-teams-workflow-integration-get",
-  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list"
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list",
+
+  CREATE_PKI_SUBSCRIBER = "create-pki-subscriber",
+  UPDATE_PKI_SUBSCRIBER = "update-pki-subscriber",
+  DELETE_PKI_SUBSCRIBER = "delete-pki-subscriber",
+  GET_PKI_SUBSCRIBER = "get-pki-subscriber",
+  ISSUE_PKI_SUBSCRIBER_CERT = "issue-pki-subscriber-cert",
+  SIGN_PKI_SUBSCRIBER_CERT = "sign-pki-subscriber-cert",
+  AUTOMATED_RENEW_SUBSCRIBER_CERT = "automated-renew-subscriber-cert",
+  LIST_PKI_SUBSCRIBER_CERTS = "list-pki-subscriber-certs"
 }

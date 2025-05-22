@@ -117,7 +117,8 @@ export const registerCertificateAuthorityEndpoints = <
         event: {
           type: EventType.GET_CA,
           metadata: {
-            caId: certificateAuthority.id
+            caId: certificateAuthority.id,
+            name: certificateAuthority.name
           }
         }
       });
@@ -153,6 +154,7 @@ export const registerCertificateAuthorityEndpoints = <
         event: {
           type: EventType.CREATE_CA,
           metadata: {
+            name: certificateAuthority.name,
             caId: certificateAuthority.id
           }
         }
@@ -198,6 +200,7 @@ export const registerCertificateAuthorityEndpoints = <
         event: {
           type: EventType.UPDATE_CA,
           metadata: {
+            name: certificateAuthority.name,
             caId: certificateAuthority.id,
             status: certificateAuthority.status
           }
@@ -243,6 +246,7 @@ export const registerCertificateAuthorityEndpoints = <
         event: {
           type: EventType.DELETE_CA,
           metadata: {
+            name: certificateAuthority.name,
             caId: certificateAuthority.id
           }
         }

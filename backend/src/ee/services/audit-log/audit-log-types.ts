@@ -1776,6 +1776,7 @@ interface CreateCa {
   type: EventType.CREATE_CA;
   metadata: {
     caId: string;
+    name: string;
     dn?: string;
   };
 }
@@ -1784,6 +1785,7 @@ interface GetCa {
   type: EventType.GET_CA;
   metadata: {
     caId: string;
+    name: string;
     dn?: string;
   };
 }
@@ -1799,6 +1801,7 @@ interface UpdateCa {
   type: EventType.UPDATE_CA;
   metadata: {
     caId: string;
+    name: string;
     dn?: string;
     status: CaStatus;
   };
@@ -1808,6 +1811,7 @@ interface DeleteCa {
   type: EventType.DELETE_CA;
   metadata: {
     caId: string;
+    name: string;
     dn?: string;
   };
 }
@@ -2130,7 +2134,7 @@ interface GetSubscriberActiveCertBundle {
   type: EventType.GET_SUBSCRIBER_ACTIVE_CERT_BUNDLE;
   metadata: {
     subscriberId: string;
-    subscriberName: string;
+    name: string;
     certId: string;
     serialNumber: string;
   };

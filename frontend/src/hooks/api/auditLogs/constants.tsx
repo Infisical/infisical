@@ -190,7 +190,16 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.ADD_IDENTITY_LDAP_AUTH]: "Attached LDAP Auth to identity",
   [EventType.UPDATE_IDENTITY_LDAP_AUTH]: "Updated LDAP Auth for identity",
   [EventType.GET_IDENTITY_LDAP_AUTH]: "Retrieved LDAP Auth for identity",
-  [EventType.REVOKE_IDENTITY_LDAP_AUTH]: "Revoked LDAP Auth for identity"
+  [EventType.REVOKE_IDENTITY_LDAP_AUTH]: "Revoked LDAP Auth for identity",
+
+  [EventType.CREATE_PKI_SUBSCRIBER]: "Create PKI subscriber",
+  [EventType.UPDATE_PKI_SUBSCRIBER]: "Update PKI subscriber",
+  [EventType.DELETE_PKI_SUBSCRIBER]: "Delete PKI subscriber",
+  [EventType.GET_PKI_SUBSCRIBER]: "Get PKI subscriber",
+  [EventType.ISSUE_PKI_SUBSCRIBER_CERT]: "Issue PKI subscriber certificate",
+  [EventType.SIGN_PKI_SUBSCRIBER_CERT]: "Sign PKI subscriber certificate",
+  [EventType.AUTOMATED_RENEW_SUBSCRIBER_CERT]: "Automated renew PKI subscriber certificate",
+  [EventType.LIST_PKI_SUBSCRIBER_CERTS]: "List PKI subscriber certificates"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

@@ -95,6 +95,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.CREATE_CA,
           metadata: {
+            name: ca.name,
             caId: ca.id,
             dn: ca.dn
           }
@@ -143,6 +144,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           type: EventType.GET_CA,
           metadata: {
             caId: ca.id,
+            name: ca.name,
             dn: ca.dn
           }
         }
@@ -230,6 +232,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           metadata: {
             caId: ca.id,
             dn: ca.dn,
+            name: ca.name,
             status: ca.status as CaStatus
           }
         }
@@ -276,6 +279,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.DELETE_CA,
           metadata: {
+            name: ca.name,
             caId: ca.id,
             dn: ca.dn
           }
