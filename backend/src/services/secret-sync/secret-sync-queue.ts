@@ -362,7 +362,7 @@ export const secretSyncQueueFactory = ({
 
       if (Object.hasOwn(secretMap, key)) {
         // Only update secrets if the source value is not empty
-        if (value) {
+        if (value && value !== secretMap[key].value) {
           secretsToUpdate.push(secret);
           if (importBehavior === SecretSyncImportBehavior.PrioritizeDestination) importedSecretMap[key] = secretData;
         }
