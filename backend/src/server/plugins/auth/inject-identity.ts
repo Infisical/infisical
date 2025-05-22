@@ -123,6 +123,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
     switch (authMode) {
       case AuthMode.JWT: {
         const { user, tokenVersionId, orgId } = await server.services.authToken.fnValidateJwtIdentity(token);
+        requestContext.set("orgId", orgId);
         req.auth = {
           authMode: AuthMode.JWT,
           user,
@@ -138,6 +139,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
       case AuthMode.IDENTITY_ACCESS_TOKEN: {
         const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
         const serverCfg = await getServerCfg();
+        requestContext.set("orgId", identity.orgId);
         req.auth = {
           authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
           actor,
