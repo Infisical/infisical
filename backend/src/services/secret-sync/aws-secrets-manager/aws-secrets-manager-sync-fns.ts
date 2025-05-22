@@ -1,4 +1,5 @@
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
+import { TAwsConnectionConfig } from "@app/services/app-connection/aws";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/services/secret-sync/aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -12,7 +13,7 @@ import { TAwsSecretsManagerSyncWithCredentials } from "./aws-secrets-manager-syn
 const MAX_RETRIES = 5;
 const BATCH_SIZE = 20;
 
-const refreshAwsCredentials = async (connection: any, region: AWSRegion): Promise<AwsCredentials> => {
+const refreshAwsCredentials = async (connection: TAwsConnectionConfig, region: AWSRegion): Promise<AwsCredentials> => {
   const config = await getAwsConnectionConfig(connection, region);
   return config.credentials as AwsCredentials;
 };

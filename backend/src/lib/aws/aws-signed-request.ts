@@ -86,9 +86,10 @@ export async function awsSignedRequest<T = any>(options: AwsRequestOptions): Pro
         headers: requestHeaders
       },
       (res) => {
-        let data = "";
-        res.on("data", (chunk) => (data += chunk));
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
         res.on("end", () => {
+          const data = Buffer.concat(chunks).toString("utf8");
           if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
             try {
               resolve(JSON.parse(data));
