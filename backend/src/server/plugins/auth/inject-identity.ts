@@ -159,6 +159,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
       }
       case AuthMode.SERVICE_TOKEN: {
         const serviceToken = await server.services.serviceToken.fnValidateServiceToken(token);
+        requestContext.set("orgId", serviceToken.orgId);
         req.auth = {
           orgId: serviceToken.orgId,
           authMode: AuthMode.SERVICE_TOKEN as const,
@@ -183,6 +184,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
       }
       case AuthMode.SCIM_TOKEN: {
         const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
+        requestContext.set("orgId", orgId);
         req.auth = { authMode: AuthMode.SCIM_TOKEN, actor, scimTokenId, orgId, authMethod: null };
         break;
       }
