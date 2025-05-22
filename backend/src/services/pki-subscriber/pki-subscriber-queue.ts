@@ -164,15 +164,16 @@ export const pkiSubscriberQueueServiceFactory = ({
     await queueService.stopRepeatableJob(
       QueueName.PkiSubscriber,
       QueueJobs.PkiSubscriberDailyAutoRenewal,
-      //  { pattern: "0 0 * * *", utc: true },
-      { pattern: "*/30 * * * * *", utc: true },
+      { pattern: "0 0 * * *", utc: true },
+      // { pattern: "*/30 * * * * *", utc: true } // for testing
       QueueName.PkiSubscriber // just a job id
     );
 
     await queueService.queue(QueueName.PkiSubscriber, QueueJobs.PkiSubscriberDailyAutoRenewal, undefined, {
       delay: 5000,
       jobId: QueueName.PkiSubscriber,
-      repeat: { pattern: "*/30 * * * * *", utc: true }
+      // { pattern: "*/30 * * * * *", utc: true } // for testing
+      repeat: { pattern: "0 0 * * *", utc: true }
     });
   };
 
