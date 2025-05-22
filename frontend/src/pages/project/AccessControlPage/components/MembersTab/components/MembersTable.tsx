@@ -51,7 +51,11 @@ import {
   useWorkspace
 } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetProjectRoles, useGetWorkspaceUsers } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -102,12 +106,12 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
     setOrderDirection,
     toggleOrderDirection
   } = usePagination<MembersOrderBy>(MembersOrderBy.Name, {
-    initPerPage: getUserTablePreference("projectMembersTable", "perPage", 20)
+    initPerPage: getUserTablePreference("projectMembersTable", PreferenceKey.PerPage, 20)
   });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
-    setUserTablePreference("projectMembersTable", "perPage", newPerPage);
+    setUserTablePreference("projectMembersTable", PreferenceKey.PerPage, newPerPage);
   };
 
   const { data: members = [], isPending: isMembersLoading } = useGetWorkspaceUsers(

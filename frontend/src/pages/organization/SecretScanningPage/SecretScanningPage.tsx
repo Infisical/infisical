@@ -13,7 +13,11 @@ import {
   useOrganization,
   useServerConfig
 } from "@app/context";
-import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { withPermission } from "@app/hoc";
 import { usePagination, usePopUp } from "@app/hooks";
 import {
@@ -48,12 +52,12 @@ export const SecretScanningPage = withPermission(
 
     const { offset, limit, orderBy, setPage, perPage, page, setPerPage } = usePagination(
       SecretScanningOrderBy.CreatedAt,
-      { initPerPage: getUserTablePreference("secretScanningTable", "perPage", 20) }
+      { initPerPage: getUserTablePreference("secretScanningTable", PreferenceKey.PerPage, 20) }
     );
 
     const handlePerPageChange = (newPerPage: number) => {
       setPerPage(newPerPage);
-      setUserTablePreference("secretScanningTable", "perPage", newPerPage);
+      setUserTablePreference("secretScanningTable", PreferenceKey.PerPage, newPerPage);
     };
 
     const repositoryNames = watch("repositoryNames");
@@ -184,7 +188,7 @@ export const SecretScanningPage = withPermission(
                 </div>
               )}
             </div>
-            <div className="mt-8 space-y-3">
+            <div className="mt-8 space-y-2">
               {integrationEnabled && (
                 <div className="flex w-full items-center justify-end">
                   <SecretScanningFilter
@@ -195,7 +199,7 @@ export const SecretScanningPage = withPermission(
                 </div>
               )}
               <SecretScanningLogsTable gitRisks={risksData?.risks} isPending={isPending} />
-              {!isPending && risksData?.totalCount !== undefined && (
+              {!isPending && risksData?.totalCount !== undefined && risksData.totalCount >= 10 && (
                 <Pagination
                   className="rounded-md"
                   count={risksData.totalCount}

@@ -53,7 +53,11 @@ import {
   useWorkspace
 } from "@app/context";
 import { kmsKeyUsageOptions } from "@app/helpers/kms";
-import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper, useTimedReset } from "@app/hooks";
 import { useGetCmeksByProjectId, useUpdateCmek } from "@app/hooks/api/cmeks";
 import { CmekOrderBy, KmsKeyUsage, TCmek } from "@app/hooks/api/cmeks/types";
@@ -102,12 +106,12 @@ export const CmekTable = () => {
     page,
     setPerPage
   } = usePagination(CmekOrderBy.Name, {
-    initPerPage: getUserTablePreference("cmekClientTable", "perPage", 20)
+    initPerPage: getUserTablePreference("cmekClientTable", PreferenceKey.PerPage, 20)
   });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
-    setUserTablePreference("cmekClientTable", "perPage", newPerPage);
+    setUserTablePreference("cmekClientTable", PreferenceKey.PerPage, newPerPage);
   };
 
   const { data, isPending, isFetching } = useGetCmeksByProjectId({

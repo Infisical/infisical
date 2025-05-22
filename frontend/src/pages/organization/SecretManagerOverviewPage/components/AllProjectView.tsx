@@ -28,7 +28,11 @@ import {
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
-import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useRequestProjectAccess, useSearchProjects } from "@app/hooks/api";
 import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
@@ -106,12 +110,12 @@ export const AllProjectView = ({
     toggleOrderDirection,
     orderDirection
   } = usePagination("name", {
-    initPerPage: getUserTablePreference("allProjectsTable", "perPage", 50)
+    initPerPage: getUserTablePreference("allProjectsTable", PreferenceKey.PerPage, 50)
   });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
-    setUserTablePreference("allProjectsTable", "perPage", newPerPage);
+    setUserTablePreference("allProjectsTable", PreferenceKey.PerPage, newPerPage);
   };
 
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([

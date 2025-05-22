@@ -30,7 +30,11 @@ import {
   Tr
 } from "@app/components/v2";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
-import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { TAppConnection, useListAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -78,12 +82,12 @@ export const AppConnectionsTable = () => {
     setOrderDirection,
     setOrderBy
   } = usePagination<AppConnectionsOrderBy>(AppConnectionsOrderBy.App, {
-    initPerPage: getUserTablePreference("appConnectionsTable", "perPage", 20)
+    initPerPage: getUserTablePreference("appConnectionsTable", PreferenceKey.PerPage, 20)
   });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
-    setUserTablePreference("appConnectionsTable", "perPage", newPerPage);
+    setUserTablePreference("appConnectionsTable", PreferenceKey.PerPage, newPerPage);
   };
 
   const filteredAppConnections = useMemo(

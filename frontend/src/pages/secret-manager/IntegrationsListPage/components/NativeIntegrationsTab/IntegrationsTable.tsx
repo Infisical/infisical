@@ -32,7 +32,11 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useSyncIntegration } from "@app/hooks/api/integrations/queries";
@@ -112,12 +116,12 @@ export const IntegrationsTable = ({
     setOrderDirection,
     setOrderBy
   } = usePagination<IntegrationsOrderBy>(IntegrationsOrderBy.App, {
-    initPerPage: getUserTablePreference("integrationsTable", "perPage", 20)
+    initPerPage: getUserTablePreference("integrationsTable", PreferenceKey.PerPage, 20)
   });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
-    setUserTablePreference("integrationsTable", "perPage", newPerPage);
+    setUserTablePreference("integrationsTable", PreferenceKey.PerPage, newPerPage);
   };
 
   useEffect(() => {

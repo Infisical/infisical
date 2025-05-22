@@ -29,7 +29,11 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
-import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   useGetImportedSecretsSingleEnv,
@@ -100,12 +104,12 @@ const Page = () => {
     setPerPage,
     orderBy
   } = usePagination<DashboardSecretsOrderBy>(DashboardSecretsOrderBy.Name, {
-    initPerPage: getUserTablePreference("secretDashboardTable", "perPage", 100)
+    initPerPage: getUserTablePreference("secretDashboardTable", PreferenceKey.PerPage, 100)
   });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
-    setUserTablePreference("secretDashboardTable", "perPage", newPerPage);
+    setUserTablePreference("secretDashboardTable", PreferenceKey.PerPage, newPerPage);
   };
 
   const [snapshotId, setSnapshotId] = useState<string | null>(null);

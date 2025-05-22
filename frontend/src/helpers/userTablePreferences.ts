@@ -1,5 +1,9 @@
 const TABLE_PREFERENCES_KEY = "userTablePreferences";
 
+export enum PreferenceKey {
+  PerPage = "perPage"
+}
+
 interface TableSpecificPreferences {
   [preferenceKey: string]: any;
 }
@@ -33,7 +37,7 @@ const saveAllTablePreferences = (preferences: UserTablePreferences): void => {
 // Retrieves a specific preference for a given table
 export const getUserTablePreference = <T>(
   tableName: string,
-  preferenceKey: string,
+  preferenceKey: PreferenceKey,
   defaultValue: T
 ): T => {
   const preferences = getAllTablePreferences();
@@ -55,7 +59,7 @@ export const getUserTablePreference = <T>(
 // Sets a specific preference for a given table and saves it to localStorage
 export const setUserTablePreference = (
   tableName: string,
-  preferenceKey: string,
+  preferenceKey: PreferenceKey,
   value: any
 ): void => {
   const preferences = getAllTablePreferences();

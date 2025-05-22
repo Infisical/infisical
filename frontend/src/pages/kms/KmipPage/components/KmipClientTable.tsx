@@ -43,7 +43,11 @@ import {
   useSubscription,
   useWorkspace
 } from "@app/context";
-import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useGetKmipClientsByProjectId } from "@app/hooks/api/kmip";
@@ -73,12 +77,12 @@ export const KmipClientTable = () => {
     page,
     setPerPage
   } = usePagination(KmipClientOrderBy.Name, {
-    initPerPage: getUserTablePreference("kmipClientTable", "perPage", 20)
+    initPerPage: getUserTablePreference("kmipClientTable", PreferenceKey.PerPage, 20)
   });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
-    setUserTablePreference("kmipClientTable", "perPage", newPerPage);
+    setUserTablePreference("kmipClientTable", PreferenceKey.PerPage, newPerPage);
   };
 
   const { data, isPending, isFetching } = useGetKmipClientsByProjectId({

@@ -42,7 +42,11 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { withProjectPermission } from "@app/hoc";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useDeleteIdentityFromWorkspace, useGetWorkspaceIdentityMemberships } from "@app/hooks/api";
@@ -74,12 +78,12 @@ export const IdentityTab = withProjectPermission(
       page,
       setPerPage
     } = usePagination(ProjectIdentityOrderBy.Name, {
-      initPerPage: getUserTablePreference("projectIdentityTable", "perPage", 20)
+      initPerPage: getUserTablePreference("projectIdentityTable", PreferenceKey.PerPage, 20)
     });
 
     const handlePerPageChange = (newPerPage: number) => {
       setPerPage(newPerPage);
-      setUserTablePreference("projectIdentityTable", "perPage", newPerPage);
+      setUserTablePreference("projectIdentityTable", PreferenceKey.PerPage, newPerPage);
     };
 
     const workspaceId = currentWorkspace?.id ?? "";

@@ -21,7 +21,11 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetIdentityProjectMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -55,12 +59,12 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
     orderDirection,
     toggleOrderDirection
   } = usePagination(IdentityProjectsOrderBy.Name, {
-    initPerPage: getUserTablePreference("identityProjectsTable", "perPage", 20)
+    initPerPage: getUserTablePreference("identityProjectsTable", PreferenceKey.PerPage, 20)
   });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
-    setUserTablePreference("identityProjectsTable", "perPage", newPerPage);
+    setUserTablePreference("identityProjectsTable", PreferenceKey.PerPage, newPerPage);
   };
 
   const filteredProjectMemberships = useMemo(

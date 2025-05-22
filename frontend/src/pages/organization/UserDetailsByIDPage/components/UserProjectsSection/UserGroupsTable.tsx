@@ -20,7 +20,11 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { getUserTablePreference, setUserTablePreference } from "@app/helpers/userTablePreferences";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { OrgUser } from "@app/hooks/api/types";
@@ -54,12 +58,12 @@ export const UserGroupsTable = ({ handlePopUpOpen, orgMembership }: Props) => {
     orderDirection,
     toggleOrderDirection
   } = usePagination(UserGroupsOrderBy.Name, {
-    initPerPage: getUserTablePreference("userGroupsTable", "perPage", 20)
+    initPerPage: getUserTablePreference("userGroupsTable", PreferenceKey.PerPage, 10)
   });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
-    setUserTablePreference("userGroupsTable", "perPage", newPerPage);
+    setUserTablePreference("userGroupsTable", PreferenceKey.PerPage, newPerPage);
   };
 
   const filteredGroupMemberships = useMemo(
