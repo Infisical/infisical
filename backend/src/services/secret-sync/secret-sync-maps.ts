@@ -16,7 +16,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Windmill]: "Windmill",
   [SecretSync.HCVault]: "Hashicorp Vault",
   [SecretSync.TeamCity]: "TeamCity",
-  [SecretSync.OCIVault]: "OCI Vault"
+  [SecretSync.OCIVault]: "OCI Vault",
+  [SecretSync.OnePass]: "1Password"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -34,5 +35,6 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Windmill]: AppConnection.Windmill,
   [SecretSync.HCVault]: AppConnection.HCVault,
   [SecretSync.TeamCity]: AppConnection.TeamCity,
-  [SecretSync.OCIVault]: AppConnection.OCI
+  [SecretSync.OCIVault]: AppConnection.OCI,
+  [SecretSync.OnePass]: AppConnection.OnePass
 };

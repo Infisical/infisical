@@ -88,6 +88,10 @@ export type TOCIConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OCI;
 };
 
+export type TOnePassConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.OnePass;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -106,7 +110,8 @@ export type TAppConnectionOption =
   | TAuth0ConnectionOption
   | THCVaultConnectionOption
   | TTeamCityConnectionOption
-  | TOCIConnectionOption;
+  | TOCIConnectionOption
+  | TOnePassConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -128,4 +133,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.LDAP]: TLdapConnectionOption;
   [AppConnection.TeamCity]: TTeamCityConnectionOption;
   [AppConnection.OCI]: TOCIConnectionOption;
+  [AppConnection.OnePass]: TOnePassConnectionOption;
 };

@@ -1,5 +1,6 @@
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 
+import { OnePassSyncDestinationCol } from "./1PasswordSyncDestinationCol";
 import { AwsParameterStoreSyncDestinationCol } from "./AwsParameterStoreSyncDestinationCol";
 import { AwsSecretsManagerSyncDestinationCol } from "./AwsSecretsManagerSyncDestinationCol";
 import { AzureAppConfigurationDestinationSyncCol } from "./AzureAppConfigurationDestinationSyncCol";
@@ -52,6 +53,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <TeamCitySyncDestinationCol secretSync={secretSync} />;
     case SecretSync.OCIVault:
       return <OCIVaultSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.OnePass:
+      return <OnePassSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

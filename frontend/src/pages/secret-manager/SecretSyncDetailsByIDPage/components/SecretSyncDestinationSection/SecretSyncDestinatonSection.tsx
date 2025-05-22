@@ -10,6 +10,7 @@ import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissi
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 
+import { OnePassSyncDestinationSection } from "./1PasswordSyncDestinationSection";
 import { AwsParameterStoreSyncDestinationSection } from "./AwsParameterStoreSyncDestinationSection";
 import { AwsSecretsManagerSyncDestinationSection } from "./AwsSecretsManagerSyncDestinationSection";
 import { AzureAppConfigurationSyncDestinationSection } from "./AzureAppConfigurationSyncDestinationSection";
@@ -84,6 +85,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.OCIVault:
       DestinationComponents = <OCIVaultSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.OnePass:
+      DestinationComponents = <OnePassSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

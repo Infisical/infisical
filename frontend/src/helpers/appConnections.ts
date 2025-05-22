@@ -23,10 +23,10 @@ import {
   HumanitecConnectionMethod,
   LdapConnectionMethod,
   MsSqlConnectionMethod,
+  OnePassConnectionMethod,
   PostgresConnectionMethod,
   TAppConnection,
   TeamCityConnectionMethod,
-  OnePassConnectionMethod,
   TerraformCloudConnectionMethod,
   VercelConnectionMethod,
   WindmillConnectionMethod

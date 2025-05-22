@@ -9,6 +9,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DiscriminativePick } from "@app/types";
 
 import { AppConnectionHeader } from "../AppConnectionHeader";
+import { OnePassConnectionForm } from "./1PasswordConnectionForm";
 import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConnectionForm";
@@ -25,7 +26,6 @@ import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
-import { OnePassConnectionForm } from "./1PasswordConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";

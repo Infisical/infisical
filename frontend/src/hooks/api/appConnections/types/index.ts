@@ -1,6 +1,6 @@
 import { AppConnection } from "../enums";
-import { TAppConnectionOption } from "./app-options";
 import { TOnePassConnection } from "./1password-connection";
+import { TAppConnectionOption } from "./app-options";
 import { TAuth0Connection } from "./auth0-connection";
 import { TAwsConnection } from "./aws-connection";
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";

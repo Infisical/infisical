@@ -13,7 +13,8 @@ export enum SecretSync {
   Windmill = "windmill",
   HCVault = "hashicorp-vault",
   TeamCity = "teamcity",
-  OCIVault = "oci-vault"
+  OCIVault = "oci-vault",
+  OnePass = "1password"
 }
 
 export enum SecretSyncStatus {

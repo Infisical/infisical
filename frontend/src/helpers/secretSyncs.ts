@@ -51,6 +51,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.OCIVault]: {
     name: "OCI Vault",
     image: "Oracle.png"
+  },
+  [SecretSync.OnePass]: {
+    name: "1Password",
+    image: "1Password.png"
   }
 };
 
@@ -69,7 +73,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Windmill]: AppConnection.Windmill,
   [SecretSync.HCVault]: AppConnection.HCVault,
   [SecretSync.TeamCity]: AppConnection.TeamCity,
-  [SecretSync.OCIVault]: AppConnection.OCI
+  [SecretSync.OCIVault]: AppConnection.OCI,
+  [SecretSync.OnePass]: AppConnection.OnePass
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<
