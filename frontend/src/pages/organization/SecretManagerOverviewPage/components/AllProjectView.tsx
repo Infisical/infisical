@@ -28,6 +28,11 @@ import {
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useRequestProjectAccess, useSearchProjects } from "@app/hooks/api";
 import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
@@ -104,7 +109,15 @@ export const AllProjectView = ({
     limit,
     toggleOrderDirection,
     orderDirection
-  } = usePagination("name", { initPerPage: 50 });
+  } = usePagination("name", {
+    initPerPage: getUserTablePreference("allProjectsTable", PreferenceKey.PerPage, 50)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("allProjectsTable", PreferenceKey.PerPage, newPerPage);
+  };
+
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
     "requestAccessConfirmation"
   ] as const);
@@ -274,7 +287,7 @@ export const AllProjectView = ({
           count={searchedProjects?.totalCount || 0}
           page={page}
           onChangePage={setPage}
-          onChangePerPage={setPerPage}
+          onChangePerPage={handlePerPageChange}
         />
       )}
       {!isProjectLoading && !searchedProjects?.totalCount && (

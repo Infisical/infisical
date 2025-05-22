@@ -34,6 +34,11 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetOrganizationGroups, useGetOrgRoles, useUpdateGroup } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -103,7 +108,14 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
     setOrderBy,
     setOrderDirection,
     toggleOrderDirection
-  } = usePagination<GroupsOrderBy>(GroupsOrderBy.Name, { initPerPage: 20 });
+  } = usePagination<GroupsOrderBy>(GroupsOrderBy.Name, {
+    initPerPage: getUserTablePreference("orgGroupsTable", PreferenceKey.PerPage, 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("orgGroupsTable", PreferenceKey.PerPage, newPerPage);
+  };
 
   const filteredGroups = useMemo(() => {
     const filtered = search
@@ -376,7 +388,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
             page={page}
             perPage={perPage}
             onChangePage={setPage}
-            onChangePerPage={setPerPage}
+            onChangePerPage={handlePerPageChange}
           />
         )}
         {!isPending && !filteredGroups?.length && (
