@@ -19,5 +19,6 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.HCVault]: "Hashicorp Vault",
   [AppConnection.LDAP]: "LDAP",
   [AppConnection.TeamCity]: "TeamCity",
-  [AppConnection.OCI]: "OCI"
+  [AppConnection.OCI]: "OCI",
+  [AppConnection.OnePass]: "1Password"
 };

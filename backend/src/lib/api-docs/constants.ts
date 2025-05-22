@@ -2084,6 +2084,10 @@ export const AppConnections = {
       region: "The region identifier in Oracle Cloud Infrastructure where the vault is located.",
       fingerprint: "The fingerprint of the public key uploaded to the user's API keys.",
       privateKey: "The private key content in PEM format used to sign API requests."
+    },
+    ONEPASS: {
+      instanceUrl: "The URL of the 1Password Connect Server instance to authenticate with.",
+      apiToken: "The API token used to access the 1Password Connect Server."
     }
   }
 };
@@ -2237,6 +2241,9 @@ export const SecretSyncs = {
       compartmentOcid: "The OCID (Oracle Cloud Identifier) of the compartment where the vault is located.",
       vaultOcid: "The OCID (Oracle Cloud Identifier) of the vault to sync secrets to.",
       keyOcid: "The OCID (Oracle Cloud Identifier) of the encryption key to use when creating secrets in the vault."
+    },
+    ONEPASS: {
+      vaultId: "The ID of the 1Password vault to sync secrets to."
     }
   }
 };
