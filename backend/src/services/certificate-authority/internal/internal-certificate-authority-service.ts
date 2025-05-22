@@ -270,7 +270,11 @@ export const internalCertificateAuthorityServiceFactory = ({
           signingAlgorithm: alg,
           keys,
           extensions: [
-            new x509.BasicConstraintsExtension(true, maxPathLength === -1 ? undefined : maxPathLength, true),
+            new x509.BasicConstraintsExtension(
+              true,
+              maxPathLength === -1 || maxPathLength === null ? undefined : maxPathLength,
+              true
+            ),
             // eslint-disable-next-line no-bitwise
             new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true),
             await x509.SubjectKeyIdentifierExtension.create(keys.publicKey)
