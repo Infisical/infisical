@@ -19,6 +19,11 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, IconButton, Input, Pagination, Skeleton, Tooltip } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetUserWorkspaces } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -63,7 +68,15 @@ export const MyProjectView = ({
     limit,
     toggleOrderDirection,
     orderDirection
-  } = usePagination(ProjectOrderBy.Name, { initPerPage: 24 });
+  } = usePagination(ProjectOrderBy.Name, {
+    initPerPage: getUserTablePreference("myProjectsTable", PreferenceKey.PerPage, 24)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("myProjectsTable", PreferenceKey.PerPage, newPerPage);
+  };
+
   const { data: projectFavorites, isPending: isProjectFavoritesLoading } =
     useGetUserProjectFavorites(currentOrg?.id);
 
@@ -415,7 +428,7 @@ export const MyProjectView = ({
           count={filteredWorkspaces.length}
           page={page}
           onChangePage={setPage}
-          onChangePerPage={setPerPage}
+          onChangePerPage={handlePerPageChange}
         />
       )}
       {isWorkspaceEmpty && (
