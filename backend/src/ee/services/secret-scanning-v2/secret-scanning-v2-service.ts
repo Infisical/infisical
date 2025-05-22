@@ -408,6 +408,51 @@ export const secretScanningV2ServiceFactory = ({
     return dataSource as TSecretScanningDataSource;
   };
 
+  const listSecretScanningResourcesByDataSourceId = async (
+    { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
+    actor: OrgServiceActor
+  ) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.secretScanning)
+      throw new BadRequestError({
+        message:
+          "Failed to access Secret Scanning Resources due to plan restriction. Upgrade plan to enable Secret Scanning."
+      });
+
+    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
+
+    if (!dataSource)
+      throw new NotFoundError({
+        message: `Could not find ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Rotation with ID "${dataSourceId}"`
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretScanning,
+      projectId: dataSource.projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretScanningDataSourceActions.ReadResources,
+      ProjectPermissionSub.SecretScanningDataSources
+    );
+
+    if (type !== dataSource.type)
+      throw new BadRequestError({
+        message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]}`
+      });
+
+    const resources = await secretScanningV2DAL.resources.find({
+      dataSourceId
+    });
+
+    return { resources, projectId: dataSource.projectId };
+  };
+
   return {
     listSecretScanningDataSourceOptions,
     listSecretScanningDataSourcesByProjectId,
@@ -417,6 +462,7 @@ export const secretScanningV2ServiceFactory = ({
     createSecretScanningDataSource,
     updateSecretScanningDataSource,
     deleteSecretScanningResource,
-    triggerSecretScanningDataSourceScan
+    triggerSecretScanningDataSourceScan,
+    listSecretScanningResourcesByDataSourceId
   };
 };

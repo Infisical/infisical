@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { SecretScanningResourcesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_DATA_SOURCE_NAME_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
@@ -354,6 +355,50 @@ export const registerSecretScanningEndpoints = <
       });
 
       return { dataSource };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:dataSourceId/resources",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretScanning],
+      description: `Get the resources associated with the specified ${sourceType} Data Source by ID.`,
+      params: z.object({
+        dataSourceId: z.string().uuid().describe(SecretScanningDataSources.LIST_RESOURCES(type).dataSourceId)
+      }),
+      response: {
+        200: z.object({ resources: SecretScanningResourcesSchema.array() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { dataSourceId } = req.params;
+
+      const { resources, projectId } = await server.services.secretScanningV2.listSecretScanningResourcesByDataSourceId(
+        { dataSourceId, type },
+        req.permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.SECRET_SCANNING_RESOURCE_LIST,
+          metadata: {
+            dataSourceId,
+            type,
+            resourceIds: resources.map((resource) => resource.id),
+            count: resources.length
+          }
+        }
+      });
+
+      return { resources };
     }
   });
 };

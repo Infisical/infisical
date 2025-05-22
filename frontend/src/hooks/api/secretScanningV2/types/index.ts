@@ -1,6 +1,10 @@
 import { DiscriminativePick } from "@app/types";
 
-import { SecretScanningDataSource, SecretScanningScanStatus } from "../enums";
+import {
+  SecretScanningDataSource,
+  SecretScanningResource,
+  SecretScanningScanStatus
+} from "../enums";
 import { TGitHubDataSource, TGitHubDataSourceOption } from "./github-data-source";
 import { TGitLabDataSource, TGitLabDataSourceOption } from "./gitlab-data-source";
 
@@ -57,4 +61,18 @@ export type TTriggerSecretScanningDataSourceDTO = {
 export type TGetSecretScanningDataSource = {
   dataSourceId: string;
   type: SecretScanningDataSource;
+};
+
+export type TSecretScanningResource = {
+  id: string;
+  dataSourceId: string;
+  type: SecretScanningResource;
+  externalId: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TListSecretScanningResourcesResponse = {
+  resources: TSecretScanningResource[];
 };

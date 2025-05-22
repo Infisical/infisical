@@ -14,6 +14,7 @@ import {
   useGetSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
 import { SecretScanningDataSourceSection } from "@app/pages/secret-scanning/SecretScanningDataSourceByIdPage/components";
+import { SecretScanningResourceSection } from "@app/pages/secret-scanning/SecretScanningDataSourceByIdPage/components/SecretScanningResourceSection";
 
 const PageContent = () => {
   const navigate = useNavigate();
@@ -60,57 +61,45 @@ const PageContent = () => {
   // const handleEditDestination = () => handlePopUpOpen("editSync", SecretSyncEditFields.Destination);
   //
   return (
-    <>
-      <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-white">
-        <div className="mx-auto mb-6 w-full max-w-7xl">
-          <Button
-            variant="link"
-            type="submit"
-            leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-            onClick={() => {
-              navigate({
-                to: "/secret-scanning/$projectId/data-sources",
-                params: {
-                  projectId
-                }
-              });
-            }}
-          >
-            Data Sources
-          </Button>
-          <div className="mb-6 flex w-full items-center gap-3">
-            <img
-              alt={`${details.name} data source`}
-              src={`/images/integrations/${details.image}`}
-              className="ml-1 mt-3 w-14"
-            />
-            <div>
-              <p className="text-3xl font-semibold text-white">{dataSource.name}</p>
-              <p className="leading-3 text-bunker-300">{details.name} Data Source</p>
-            </div>
-            {/* <SecretSyncActionTriggers dataSource={dataSource} /> */}
+    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-white">
+      <div className="mx-auto mb-6 w-full max-w-7xl">
+        <Button
+          variant="link"
+          type="submit"
+          leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
+          onClick={() => {
+            navigate({
+              to: "/secret-scanning/$projectId/data-sources",
+              params: {
+                projectId
+              }
+            });
+          }}
+        >
+          Data Sources
+        </Button>
+        <div className="mb-6 flex w-full items-center gap-3">
+          <img
+            alt={`${details.name} data source`}
+            src={`/images/integrations/${details.image}`}
+            className="ml-1 mt-3 w-14"
+          />
+          <div>
+            <p className="text-3xl font-semibold text-white">{dataSource.name}</p>
+            <p className="leading-3 text-bunker-300">{details.name} Data Source</p>
           </div>
-          <div className="flex justify-center">
-            <div className="mr-4 flex w-72 flex-col gap-4">
-              <SecretScanningDataSourceSection dataSource={dataSource} />
-            </div>
-            <div className="flex flex-1 flex-col gap-4">
-              {/* <SecretSyncDestinationSection
-                dataSource={dataSource}
-                onEditDestination={handleEditDestination}
-              />
-              <SecretSyncAuditLogsSection dataSource={dataSource} /> */}
-            </div>
+          {/* <SecretSyncActionTriggers dataSource={dataSource} /> */}
+        </div>
+        <div className="flex justify-center">
+          <div className="mr-4 flex w-72 flex-col gap-4">
+            <SecretScanningDataSourceSection dataSource={dataSource} />
+          </div>
+          <div className="flex flex-1 flex-col gap-4">
+            <SecretScanningResourceSection dataSource={dataSource} />
           </div>
         </div>
       </div>
-      {/* <EditSecretSyncModal */}
-      {/*  isOpen={popUp.editSync.isOpen} */}
-      {/*  onOpenChange={(isOpen) => handlePopUpToggle("editSync", isOpen)} */}
-      {/*  fields={popUp.editSync.data} */}
-      {/*  secretSync={secretSync} */}
-      {/* /> */}
-    </>
+    </div>
   );
 };
 

@@ -6,10 +6,12 @@ import {
   TGetSecretScanningDataSource,
   TListSecretScanningDataSourceOptions,
   TListSecretScanningDataSources,
+  TListSecretScanningResourcesResponse,
   TSecretScanningDataSource,
   TSecretScanningDataSourceOption,
   TSecretScanningDataSourceResponse,
-  TSecretScanningDataSourceWithDetails
+  TSecretScanningDataSourceWithDetails,
+  TSecretScanningResource
 } from "./types";
 
 export const secretScanningV2Keys = {
@@ -21,7 +23,12 @@ export const secretScanningV2Keys = {
     "byId",
     dataSourceId
   ],
-  listDataSources: (projectId: string) => [...secretScanningV2Keys.dataSource(), "list", projectId]
+  listDataSources: (projectId: string) => [...secretScanningV2Keys.dataSource(), "list", projectId],
+  listResources: (dataSourceId: string) => [
+    ...secretScanningV2Keys.dataSource(),
+    "resources",
+    dataSourceId
+  ]
 };
 
 export const useSecretScanningDataSourceOptions = (
@@ -94,6 +101,31 @@ export const useGetSecretScanningDataSource = (
       );
 
       return data.dataSource;
+    },
+    ...options
+  });
+};
+
+export const useListSecretScanningResources = (
+  { dataSourceId, type }: TGetSecretScanningDataSource,
+  options?: Omit<
+    UseQueryOptions<
+      TSecretScanningResource[],
+      unknown,
+      TSecretScanningResource[],
+      ReturnType<typeof secretScanningV2Keys.listResources>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretScanningV2Keys.listResources(dataSourceId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TListSecretScanningResourcesResponse>(
+        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}/resources`
+      );
+
+      return data.resources;
     },
     ...options
   });

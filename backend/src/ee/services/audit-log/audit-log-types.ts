@@ -384,12 +384,13 @@ export enum EventType {
   PROJECT_ASSUME_PRIVILEGE_SESSION_START = "project-assume-privileges-session-start",
   PROJECT_ASSUME_PRIVILEGE_SESSION_END = "project-assume-privileges-session-end",
 
-  SECRET_SCANNING_DATA_SOURCE_LIST = "secret-scanning-data-sources-list",
-  SECRET_SCANNING_DATA_SOURCE_CREATE = "secret-scanning-data-sources-create",
-  SECRET_SCANNING_DATA_SOURCE_UPDATE = "secret-scanning-data-sources-update",
-  SECRET_SCANNING_DATA_SOURCE_DELETE = "secret-scanning-data-sources-delete",
-  SECRET_SCANNING_DATA_SOURCE_GET = "secret-scanning-data-sources-get",
-  SECRET_SCANNING_DATA_SOURCE_SCAN = "secret-scanning-data-sources-scan"
+  SECRET_SCANNING_DATA_SOURCE_LIST = "secret-scanning-data-source-list",
+  SECRET_SCANNING_DATA_SOURCE_CREATE = "secret-scanning-data-source-create",
+  SECRET_SCANNING_DATA_SOURCE_UPDATE = "secret-scanning-data-source-update",
+  SECRET_SCANNING_DATA_SOURCE_DELETE = "secret-scanning-data-source-delete",
+  SECRET_SCANNING_DATA_SOURCE_GET = "secret-scanning-data-source-get",
+  SECRET_SCANNING_DATA_SOURCE_SCAN = "secret-scanning-data-source-scan",
+  SECRET_SCANNING_RESOURCE_LIST = "secret-scanning-resource-list"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -2964,6 +2965,16 @@ interface SecretScanningDataSourceScanEvent {
   metadata: TTriggerSecretScanningDataSourceDTO;
 }
 
+interface SecretScanningResourceListEvent {
+  type: EventType.SECRET_SCANNING_RESOURCE_LIST;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+    resourceIds: string[];
+    count: number;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -3236,4 +3247,5 @@ export type Event =
   | SecretScanningDataSourceCreateEvent
   | SecretScanningDataSourceUpdateEvent
   | SecretScanningDataSourceDeleteEvent
-  | SecretScanningDataSourceScanEvent;
+  | SecretScanningDataSourceScanEvent
+  | SecretScanningResourceListEvent;
