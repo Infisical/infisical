@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
-import { Redis } from "ioredis";
 import { Knex } from "knex";
 import { createTransport } from "nodemailer";
 
 import { formatSmtpConfig, getConfig } from "@app/lib/config/env";
+import { buildRedisFromConfig } from "@app/lib/config/redis";
 import { logger } from "@app/lib/logger";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
@@ -65,12 +65,15 @@ export const bootstrapCheck = async ({ db }: BootstrapOpt) => {
     });
 
   console.log("Testing redis connection");
-  const redis = new Redis(appCfg.REDIS_URL);
+  const redis = buildRedisFromConfig(appCfg);
   const redisPing = await redis?.ping();
   if (!redisPing) {
     console.error("Redis - Failed to connect");
   } else {
-    console.error("Redis successfully connected");
+    console.log("Redis successfully connected");
+    if (appCfg.isRedisSentinelMode) {
+      console.log("Redis Sentinel Mode");
+    }
     redis.disconnect();
   }
 

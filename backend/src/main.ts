@@ -1,7 +1,6 @@
 import "./lib/telemetry/instrumentation";
 
 import dotenv from "dotenv";
-import { Redis } from "ioredis";
 
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 
@@ -9,6 +8,7 @@ import { runMigrations } from "./auto-start-migrations";
 import { initAuditLogDbConnection, initDbConnection } from "./db";
 import { keyStoreFactory } from "./keystore/keystore";
 import { formatSmtpConfig, initEnvConfig } from "./lib/config/env";
+import { buildRedisFromConfig } from "./lib/config/redis";
 import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
 import { queueServiceFactory } from "./queue";
@@ -44,15 +44,15 @@ const run = async () => {
 
   const smtp = smtpServiceFactory(formatSmtpConfig());
 
-  const queue = queueServiceFactory(envConfig.REDIS_URL, {
+  const queue = queueServiceFactory(envConfig, {
     dbConnectionUrl: envConfig.DB_CONNECTION_URI,
     dbRootCert: envConfig.DB_ROOT_CERT
   });
 
   await queue.initialize();
 
-  const keyStore = keyStoreFactory(envConfig.REDIS_URL);
-  const redis = new Redis(envConfig.REDIS_URL);
+  const keyStore = keyStoreFactory(envConfig);
+  const redis = buildRedisFromConfig(envConfig);
 
   const hsmModule = initializeHsmModule(envConfig);
   hsmModule.initialize();
