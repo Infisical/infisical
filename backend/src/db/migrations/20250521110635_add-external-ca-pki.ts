@@ -94,6 +94,11 @@ export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.PkiSubscriber)) {
     await knex.schema.alterTable(TableName.PkiSubscriber, (t) => {
       t.string("ttl").nullable().alter();
+
+      t.boolean("enableAutoRenewal").notNullable().defaultTo(false);
+      t.integer("autoRenewalPeriodInDays");
+      t.datetime("lastAutoRenewAt");
+
       t.string("lastOperationStatus");
       t.text("lastOperationMessage");
       t.dateTime("lastOperationAt");
@@ -188,6 +193,10 @@ export async function down(knex: Knex): Promise<void> {
 
   if (await knex.schema.hasTable(TableName.PkiSubscriber)) {
     await knex.schema.alterTable(TableName.PkiSubscriber, (t) => {
+      t.dropColumn("enableAutoRenewal");
+      t.dropColumn("autoRenewalPeriodInDays");
+      t.dropColumn("lastAutoRenewAt");
+
       t.dropColumn("lastOperationStatus");
       t.dropColumn("lastOperationMessage");
       t.dropColumn("lastOperationAt");

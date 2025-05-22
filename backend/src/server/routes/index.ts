@@ -134,6 +134,7 @@ import { certificateAuthoritySecretDALFactory } from "@app/services/certificate-
 import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { externalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
 import { internalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-dal";
+import { InternalCertificateAuthorityFns } from "@app/services/certificate-authority/internal/internal-certificate-authority-fns";
 import { internalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
@@ -202,6 +203,7 @@ import { pkiCollectionDALFactory } from "@app/services/pki-collection/pki-collec
 import { pkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { pkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
 import { pkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
+import { pkiSubscriberQueueServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-queue";
 import { pkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
@@ -1700,6 +1702,28 @@ export const registerRoutes = async (
     pkiSubscriberDAL
   });
 
+  const internalCaFns = InternalCertificateAuthorityFns({
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCrlDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    projectDAL,
+    kmsService
+  });
+
+  const pkiSubscriberQueue = pkiSubscriberQueueServiceFactory({
+    queueService,
+    pkiSubscriberDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityQueue,
+    certificateDAL,
+    auditLogService,
+    internalCaFns
+  });
+
   const pkiSubscriberService = pkiSubscriberServiceFactory({
     pkiSubscriberDAL,
     certificateAuthorityDAL,
@@ -1712,7 +1736,8 @@ export const registerRoutes = async (
     projectDAL,
     kmsService,
     permissionService,
-    certificateAuthorityQueue
+    certificateAuthorityQueue,
+    internalCaFns
   });
 
   await secretRotationV2QueueServiceFactory({
@@ -1735,6 +1760,7 @@ export const registerRoutes = async (
   await telemetryQueue.startTelemetryCheck();
   await dailyResourceCleanUp.startCleanUp();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
+  await pkiSubscriberQueue.startDailyAutoRenewalJob();
   await kmsService.startService();
   await microsoftTeamsService.start();
 

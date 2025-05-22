@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,7 +16,11 @@ import {
   Modal,
   ModalContent,
   Select,
-  SelectItem
+  SelectItem,
+  Tab,
+  TabList,
+  TabPanel,
+  Tabs
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import {
@@ -38,6 +42,11 @@ type Props = {
   popUp: UsePopUpState<["pkiSubscriber"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["pkiSubscriber"]>, state?: boolean) => void;
 };
+
+enum FormTab {
+  Configuration = "configuration",
+  Advanced = "advanced"
+}
 
 const schema = z
   .object({
@@ -64,7 +73,9 @@ const schema = z
       [CertExtendedKeyUsage.OCSP_SIGNING]: z.boolean().optional(),
       [CertExtendedKeyUsage.SERVER_AUTH]: z.boolean().optional(),
       [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
-    })
+    }),
+    enableAutoRenewal: z.boolean().optional().default(false),
+    autoRenewalPeriodInDays: z.number().min(1).optional()
   })
   .required();
 
@@ -75,6 +86,7 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const projectId = currentWorkspace.id;
   const { data: subscribers } = useListWorkspacePkiSubscribers(projectId);
   const { data: cas } = useListCasByProjectId(projectId);
+  const [tabValue, setTabValue] = useState<FormTab>(FormTab.Configuration);
 
   const { data: pkiSubscriber } = useGetPkiSubscriber({
     subscriberName:
@@ -104,12 +116,15 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
         [CertKeyUsage.DIGITAL_SIGNATURE]: true,
         [CertKeyUsage.KEY_ENCIPHERMENT]: true
       },
-      extendedKeyUsages: {}
+      extendedKeyUsages: {},
+      enableAutoRenewal: false,
+      autoRenewalPeriodInDays: 7
     }
   });
 
   const selectedCaId = watch("caId");
   const selectedCa = cas?.find((ca) => ca.id === selectedCaId);
+  const selectedAutoRenewalState = watch("enableAutoRenewal");
 
   useEffect(() => {
     if (pkiSubscriber) {
@@ -122,7 +137,9 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
         keyUsages: Object.fromEntries((pkiSubscriber.keyUsages || []).map((name) => [name, true])),
         extendedKeyUsages: Object.fromEntries(
           (pkiSubscriber.extendedKeyUsages || []).map((name) => [name, true])
-        )
+        ),
+        enableAutoRenewal: pkiSubscriber.enableAutoRenewal || false,
+        autoRenewalPeriodInDays: pkiSubscriber.autoRenewalPeriodInDays || 7
       });
     } else {
       reset({
@@ -135,7 +152,9 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
           [CertKeyUsage.DIGITAL_SIGNATURE]: true,
           [CertKeyUsage.KEY_ENCIPHERMENT]: true
         },
-        extendedKeyUsages: {}
+        extendedKeyUsages: {},
+        enableAutoRenewal: false,
+        autoRenewalPeriodInDays: 7
       });
     }
   }, [pkiSubscriber, reset]);
@@ -153,7 +172,9 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
     subjectAlternativeNames,
     ttl,
     keyUsages,
-    extendedKeyUsages
+    extendedKeyUsages,
+    enableAutoRenewal,
+    autoRenewalPeriodInDays
   }: FormData) => {
     try {
       if (!projectId) return;
@@ -201,7 +222,9 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
           subjectAlternativeNames: subjectAlternativeNamesList,
           ttl,
           keyUsages: keyUsagesList,
-          extendedKeyUsages: extendedKeyUsagesList
+          extendedKeyUsages: extendedKeyUsagesList,
+          enableAutoRenewal,
+          autoRenewalPeriodInDays
         });
       } else {
         await createMutateAsync({
@@ -212,7 +235,9 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
           subjectAlternativeNames: subjectAlternativeNamesList,
           ttl,
           keyUsages: keyUsagesList,
-          extendedKeyUsages: extendedKeyUsagesList
+          extendedKeyUsages: extendedKeyUsagesList,
+          enableAutoRenewal,
+          autoRenewalPeriodInDays
         });
       }
 
@@ -241,178 +266,245 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
       }}
     >
       <ModalContent title={`${pkiSubscriber ? "Update" : "Add"} PKI Subscriber`}>
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          {pkiSubscriber && (
-            <FormControl label="Subscriber ID">
-              <Input value={pkiSubscriber.id} isDisabled className="bg-white/[0.07]" />
-            </FormControl>
-          )}
-          <Controller
-            control={control}
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Subscriber Name"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                isRequired
-              >
-                <Input {...field} placeholder="web-service" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="caId"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Issuing CA"
-                errorText={error?.message}
-                isError={Boolean(error)}
-                isRequired
-              >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full"
-                >
-                  {(cas || []).map(({ id, name, type, configuration }) => {
-                    const displayName =
-                      type === CaType.INTERNAL ? `${name} (${configuration.dn})` : name;
-
-                    return (
-                      <SelectItem value={id} key={`ca-${id}`}>
-                        {displayName}
-                      </SelectItem>
-                    );
-                  })}
-                </Select>
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="commonName"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Common Name"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                isRequired
-              >
-                <Input {...field} placeholder="web.example.com" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="subjectAlternativeNames"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Subject Alternative Names (SANs)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="app1.example.com, app2.example.com, ..." />
-              </FormControl>
-            )}
-          />
-          {selectedCa?.type !== CaType.ACME && (
-            <Controller
-              control={control}
-              name="ttl"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="TTL"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  isRequired
-                >
-                  <Input {...field} placeholder="2 days, 1d, 2h, 1y, ..." />
+        <form
+          onSubmit={handleSubmit(onFormSubmit, (fields) => {
+            setTabValue(
+              ["name", "caId", "commonName", "subjectAlternativeNames", "ttl"].includes(
+                Object.keys(fields)[0]
+              )
+                ? FormTab.Configuration
+                : FormTab.Advanced
+            );
+          })}
+        >
+          <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as FormTab)}>
+            <TabList>
+              <Tab value={FormTab.Configuration}>Configuration</Tab>
+              <Tab value={FormTab.Advanced}>Advanced</Tab>
+            </TabList>
+            <TabPanel value={FormTab.Configuration}>
+              {pkiSubscriber && (
+                <FormControl label="Subscriber ID">
+                  <Input value={pkiSubscriber.id} isDisabled className="bg-white/[0.07]" />
                 </FormControl>
               )}
-            />
-          )}
-          {selectedCa?.type !== CaType.ACME && (
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="key-usages" className="data-[state=open]:border-none">
-                <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-                  <div className="order-1 ml-3">Key Usage</div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <Controller
-                    control={control}
-                    name="keyUsages"
-                    render={({ field: { onChange, value }, fieldState: { error } }) => {
-                      return (
-                        <FormControl
-                          label="Key Usage"
-                          errorText={error?.message}
-                          isError={Boolean(error)}
-                        >
-                          <div className="mb-7 mt-2 grid grid-cols-2 gap-2">
-                            {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
-                              return (
-                                <Checkbox
-                                  id={optionValue}
-                                  key={optionValue}
-                                  className="data-[state=checked]:bg-primary"
-                                  isChecked={value[optionValue]}
-                                  onCheckedChange={(state) => {
-                                    onChange({
-                                      ...value,
-                                      [optionValue]: state
-                                    });
-                                  }}
-                                >
-                                  {label}
-                                </Checkbox>
-                              );
-                            })}
-                          </div>
-                        </FormControl>
-                      );
-                    }}
-                  />
-                  <Controller
-                    control={control}
-                    name="extendedKeyUsages"
-                    render={({ field: { onChange, value }, fieldState: { error } }) => {
-                      return (
-                        <FormControl
-                          label="Extended Key Usage"
-                          errorText={error?.message}
-                          isError={Boolean(error)}
-                        >
-                          <div className="mb-7 mt-2 grid grid-cols-2 gap-2">
-                            {EXTENDED_KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
-                              return (
-                                <Checkbox
-                                  id={optionValue}
-                                  key={optionValue}
-                                  className="data-[state=checked]:bg-primary"
-                                  isChecked={value[optionValue]}
-                                  onCheckedChange={(state) => {
-                                    onChange({
-                                      ...value,
-                                      [optionValue]: state
-                                    });
-                                  }}
-                                >
-                                  {label}
-                                </Checkbox>
-                              );
-                            })}
-                          </div>
-                        </FormControl>
-                      );
-                    }}
-                  />
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          )}
+              <Controller
+                control={control}
+                name="name"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Subscriber Name"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isRequired
+                  >
+                    <Input {...field} placeholder="web-service" />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="caId"
+                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Issuing CA"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                    isRequired
+                  >
+                    <Select
+                      defaultValue={field.value}
+                      {...field}
+                      onValueChange={(e) => onChange(e)}
+                      className="w-full"
+                    >
+                      {(cas || []).map(({ id, name, type, configuration }) => {
+                        const displayName =
+                          type === CaType.INTERNAL ? `${name} (${configuration.dn})` : name;
+
+                        return (
+                          <SelectItem value={id} key={`ca-${id}`}>
+                            {displayName}
+                          </SelectItem>
+                        );
+                      })}
+                    </Select>
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="commonName"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Common Name"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isRequired
+                  >
+                    <Input {...field} placeholder="web.example.com" />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="subjectAlternativeNames"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Subject Alternative Names (SANs)"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <Input {...field} placeholder="app1.example.com, app2.example.com, ..." />
+                  </FormControl>
+                )}
+              />
+              {selectedCa?.type !== CaType.ACME && (
+                <Controller
+                  control={control}
+                  name="ttl"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="TTL"
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                      isRequired
+                    >
+                      <Input {...field} placeholder="2 days, 1d, 2h, 1y, ..." />
+                    </FormControl>
+                  )}
+                />
+              )}
+              {selectedCa?.type !== CaType.ACME && (
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="key-usages" className="data-[state=open]:border-none">
+                    <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
+                      <div className="order-1 ml-3">Key Usage</div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <Controller
+                        control={control}
+                        name="keyUsages"
+                        render={({ field: { onChange, value }, fieldState: { error } }) => {
+                          return (
+                            <FormControl
+                              label="Key Usage"
+                              errorText={error?.message}
+                              isError={Boolean(error)}
+                            >
+                              <div className="mb-7 mt-2 grid grid-cols-2 gap-2">
+                                {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
+                                  return (
+                                    <Checkbox
+                                      id={optionValue}
+                                      key={optionValue}
+                                      className="data-[state=checked]:bg-primary"
+                                      isChecked={value[optionValue]}
+                                      onCheckedChange={(state) => {
+                                        onChange({
+                                          ...value,
+                                          [optionValue]: state
+                                        });
+                                      }}
+                                    >
+                                      {label}
+                                    </Checkbox>
+                                  );
+                                })}
+                              </div>
+                            </FormControl>
+                          );
+                        }}
+                      />
+                      <Controller
+                        control={control}
+                        name="extendedKeyUsages"
+                        render={({ field: { onChange, value }, fieldState: { error } }) => {
+                          return (
+                            <FormControl
+                              label="Extended Key Usage"
+                              errorText={error?.message}
+                              isError={Boolean(error)}
+                            >
+                              <div className="mb-7 mt-2 grid grid-cols-2 gap-2">
+                                {EXTENDED_KEY_USAGES_OPTIONS.map(
+                                  ({ label, value: optionValue }) => {
+                                    return (
+                                      <Checkbox
+                                        id={optionValue}
+                                        key={optionValue}
+                                        className="data-[state=checked]:bg-primary"
+                                        isChecked={value[optionValue]}
+                                        onCheckedChange={(state) => {
+                                          onChange({
+                                            ...value,
+                                            [optionValue]: state
+                                          });
+                                        }}
+                                      >
+                                        {label}
+                                      </Checkbox>
+                                    );
+                                  }
+                                )}
+                              </div>
+                            </FormControl>
+                          );
+                        }}
+                      />
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              )}
+            </TabPanel>
+            <TabPanel value={FormTab.Advanced}>
+              <Controller
+                control={control}
+                name="enableAutoRenewal"
+                render={({ field: { onChange, value }, fieldState: { error } }) => (
+                  <FormControl
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    tooltipText="If enabled, a new certificate will be issued automatically X days before the current certificate expires."
+                  >
+                    <Checkbox
+                      id="enableAutoRenewal"
+                      isChecked={value}
+                      onCheckedChange={onChange}
+                      className="data-[state=checked]:bg-primary"
+                    >
+                      Enable Auto Renewal
+                    </Checkbox>
+                  </FormControl>
+                )}
+              />
+              {selectedAutoRenewalState && (
+                <Controller
+                  control={control}
+                  name="autoRenewalPeriodInDays"
+                  render={({ field: { onChange, value }, fieldState: { error } }) => {
+                    return (
+                      <FormControl
+                        label="Renew X days before expiry"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                        tooltipText="A new certificate will be issued this many days before the current certificate expires."
+                      >
+                        <Input
+                          value={value}
+                          onChange={(e) => onChange(Number(e.target.value))}
+                          type="number"
+                          min="1"
+                          step="1"
+                          placeholder="7"
+                        />
+                      </FormControl>
+                    );
+                  }}
+                />
+              )}
+            </TabPanel>
+          </Tabs>
           <div className="mt-4 flex items-center">
             <Button
               className="mr-4"

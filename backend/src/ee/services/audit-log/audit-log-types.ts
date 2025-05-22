@@ -268,6 +268,7 @@ export enum EventType {
   GET_PKI_SUBSCRIBER = "get-pki-subscriber",
   ISSUE_PKI_SUBSCRIBER_CERT = "issue-pki-subscriber-cert",
   SIGN_PKI_SUBSCRIBER_CERT = "sign-pki-subscriber-cert",
+  AUTOMATED_RENEW_SUBSCRIBER_CERT = "automated-renew-subscriber-cert",
   LIST_PKI_SUBSCRIBER_CERTS = "list-pki-subscriber-certs",
   GET_SUBSCRIBER_ACTIVE_CERT_BUNDLE = "get-subscriber-active-cert-bundle",
   CREATE_KMS = "create-kms",
@@ -2099,6 +2100,14 @@ interface IssuePkiSubscriberCert {
   };
 }
 
+interface AutomatedRenewPkiSubscriberCert {
+  type: EventType.AUTOMATED_RENEW_SUBSCRIBER_CERT;
+  metadata: {
+    subscriberId: string;
+    name: string;
+  };
+}
+
 interface SignPkiSubscriberCert {
   type: EventType.SIGN_PKI_SUBSCRIBER_CERT;
   metadata: {
@@ -3103,6 +3112,7 @@ export type Event =
   | GetPkiSubscriber
   | IssuePkiSubscriberCert
   | SignPkiSubscriberCert
+  | AutomatedRenewPkiSubscriberCert
   | ListPkiSubscriberCerts
   | GetSubscriberActiveCertBundle
   | CreateKmsEvent

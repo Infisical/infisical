@@ -110,7 +110,9 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
           .array()
           .default([])
           .transform((arr) => Array.from(new Set(arr)))
-          .describe(PKI_SUBSCRIBERS.CREATE.extendedKeyUsages)
+          .describe(PKI_SUBSCRIBERS.CREATE.extendedKeyUsages),
+        enableAutoRenewal: z.boolean().optional().describe(PKI_SUBSCRIBERS.CREATE.enableAutoRenewal),
+        autoRenewalPeriodInDays: z.number().min(1).optional().describe(PKI_SUBSCRIBERS.CREATE.autoRenewalPeriodInDays)
       }),
       response: {
         200: sanitizedPkiSubscriber
@@ -195,7 +197,9 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
           .array()
           .transform((arr) => Array.from(new Set(arr)))
           .optional()
-          .describe(PKI_SUBSCRIBERS.UPDATE.extendedKeyUsages)
+          .describe(PKI_SUBSCRIBERS.UPDATE.extendedKeyUsages),
+        enableAutoRenewal: z.boolean().optional().describe(PKI_SUBSCRIBERS.UPDATE.enableAutoRenewal),
+        autoRenewalPeriodInDays: z.number().min(1).optional().describe(PKI_SUBSCRIBERS.UPDATE.autoRenewalPeriodInDays)
       }),
       response: {
         200: sanitizedPkiSubscriber

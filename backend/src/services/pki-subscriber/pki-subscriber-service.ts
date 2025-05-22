@@ -78,6 +78,7 @@ type TPkiSubscriberServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById" | "find">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey" | "encryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  internalCaFns: ReturnType<typeof InternalCertificateAuthorityFns>;
 };
 
 export type TPkiSubscriberServiceFactory = ReturnType<typeof pkiSubscriberServiceFactory>;
@@ -94,20 +95,9 @@ export const pkiSubscriberServiceFactory = ({
   projectDAL,
   kmsService,
   permissionService,
-  certificateAuthorityQueue
+  certificateAuthorityQueue,
+  internalCaFns
 }: TPkiSubscriberServiceFactoryDep) => {
-  const internalCaFns = InternalCertificateAuthorityFns({
-    certificateAuthorityDAL,
-    certificateAuthorityCertDAL,
-    certificateAuthoritySecretDAL,
-    certificateAuthorityCrlDAL,
-    certificateDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    projectDAL,
-    kmsService
-  });
-
   const createSubscriber = async ({
     name,
     commonName,
@@ -117,6 +107,8 @@ export const pkiSubscriberServiceFactory = ({
     subjectAlternativeNames,
     keyUsages,
     extendedKeyUsages,
+    enableAutoRenewal,
+    autoRenewalPeriodInDays,
     projectId,
     actorId,
     actorAuthMethod,
@@ -139,6 +131,12 @@ export const pkiSubscriberServiceFactory = ({
       })
     );
 
+    if (enableAutoRenewal) {
+      if (!autoRenewalPeriodInDays) {
+        throw new BadRequestError({ message: "autoRenewalPeriodInDays is required when enableAutoRenewal is true" });
+      }
+    }
+
     const newSubscriber = await pkiSubscriberDAL.create({
       caId,
       projectId,
@@ -148,7 +146,9 @@ export const pkiSubscriberServiceFactory = ({
       ttl,
       subjectAlternativeNames,
       keyUsages,
-      extendedKeyUsages
+      extendedKeyUsages,
+      enableAutoRenewal,
+      autoRenewalPeriodInDays
     });
 
     return newSubscriber;
@@ -210,6 +210,8 @@ export const pkiSubscriberServiceFactory = ({
     subjectAlternativeNames,
     keyUsages,
     extendedKeyUsages,
+    enableAutoRenewal,
+    autoRenewalPeriodInDays,
     actorId,
     actorAuthMethod,
     actor,
@@ -237,6 +239,12 @@ export const pkiSubscriberServiceFactory = ({
       })
     );
 
+    if (enableAutoRenewal) {
+      if (!autoRenewalPeriodInDays && !subscriber.autoRenewalPeriodInDays) {
+        throw new BadRequestError({ message: "autoRenewalPeriodInDays is required when enableAutoRenewal is true" });
+      }
+    }
+
     const updatedSubscriber = await pkiSubscriberDAL.updateById(subscriber.id, {
       caId,
       name,
@@ -245,7 +253,9 @@ export const pkiSubscriberServiceFactory = ({
       ttl,
       subjectAlternativeNames,
       keyUsages,
-      extendedKeyUsages
+      extendedKeyUsages,
+      enableAutoRenewal,
+      autoRenewalPeriodInDays
     });
 
     return updatedSubscriber;

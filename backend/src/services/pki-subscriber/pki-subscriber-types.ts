@@ -16,6 +16,8 @@ export type TCreatePkiSubscriberDTO = {
   subjectAlternativeNames: string[];
   keyUsages: CertKeyUsage[];
   extendedKeyUsages: CertExtendedKeyUsage[];
+  enableAutoRenewal?: boolean;
+  autoRenewalPeriodInDays?: number;
 } & TProjectPermission;
 
 export type TGetPkiSubscriberDTO = {
@@ -32,6 +34,8 @@ export type TUpdatePkiSubscriberDTO = {
   subjectAlternativeNames?: string[];
   keyUsages?: CertKeyUsage[];
   extendedKeyUsages?: CertExtendedKeyUsage[];
+  enableAutoRenewal?: boolean;
+  autoRenewalPeriodInDays?: number;
 } & TProjectPermission;
 
 export type TDeletePkiSubscriberDTO = {

@@ -1811,7 +1811,9 @@ export const PKI_SUBSCRIBERS = {
     subjectAlternativeNames:
       "A list of Subject Alternative Names (SANs) to be used on certificates issued for this subscriber; these can be host names or email addresses.",
     keyUsages: "The key usage extension to be used on certificates issued for this subscriber.",
-    extendedKeyUsages: "The extended key usage extension to be used on certificates issued for this subscriber."
+    extendedKeyUsages: "The extended key usage extension to be used on certificates issued for this subscriber.",
+    enableAutoRenewal: "Whether or not to enable auto renewal for the PKI subscriber.",
+    autoRenewalPeriodInDays: "The period in days to auto renew the PKI subscriber's certificates."
   },
   UPDATE: {
     projectId: "The ID of the project to update the PKI subscriber in.",
@@ -1825,7 +1827,9 @@ export const PKI_SUBSCRIBERS = {
       "A comma-delimited list of Subject Alternative Names (SANs) to be used on certificates issued for this subscriber; these can be host names or email addresses.",
     keyUsages: "The key usage extension to be used on certificates issued for this subscriber to update to.",
     extendedKeyUsages:
-      "The extended key usage extension to be used on certificates issued for this subscriber to update to."
+      "The extended key usage extension to be used on certificates issued for this subscriber to update to.",
+    enableAutoRenewal: "Whether or not to enable auto renewal for the PKI subscriber.",
+    autoRenewalPeriodInDays: "The period in days to auto renew the PKI subscriber's certificates."
   },
   DELETE: {
     subscriberName: "The name of the PKI subscriber to delete.",

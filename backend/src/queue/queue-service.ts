@@ -37,6 +37,7 @@ export enum QueueName {
   AuditLogPrune = "audit-log-prune",
   DailyResourceCleanUp = "daily-resource-cleanup",
   DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
+  PkiSubscriber = "pki-subscriber",
   TelemetryInstanceStats = "telemtry-self-hosted-stats",
   IntegrationSync = "sync-integrations",
   SecretWebhook = "secret-webhook",
@@ -87,7 +88,8 @@ export enum QueueJobs {
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
   InvalidateCache = "invalidate-cache",
-  CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber"
+  CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
+  PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal"
 }
 
 export type TQueueJobTypes = {
@@ -254,6 +256,10 @@ export type TQueueJobTypes = {
       subscriberId: string;
       caType: CaType;
     };
+  };
+  [QueueName.PkiSubscriber]: {
+    name: QueueJobs.PkiSubscriberDailyAutoRenewal;
+    payload: undefined;
   };
 };
 
