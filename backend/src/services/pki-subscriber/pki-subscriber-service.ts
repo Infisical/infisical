@@ -326,7 +326,7 @@ export const pkiSubscriberServiceFactory = ({
       throw new BadRequestError({ message: "CA does not support ordering of certificates" });
     }
 
-    if (ca.externalCa?.status !== CaStatus.ACTIVE) {
+    if (ca.status !== CaStatus.ACTIVE) {
       throw new BadRequestError({ message: "CA is disabled" });
     }
 
@@ -423,7 +423,7 @@ export const pkiSubscriberServiceFactory = ({
 
     if (subscriber.status !== PkiSubscriberStatus.ACTIVE)
       throw new BadRequestError({ message: "Subscriber is not active" });
-    if (ca.internalCa?.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
+    if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa?.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
 

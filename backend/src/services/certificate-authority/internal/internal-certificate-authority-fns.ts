@@ -59,7 +59,7 @@ export const InternalCertificateAuthorityFns = ({
     subscriber: TPkiSubscribers,
     ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>
   ) => {
-    if (ca.internalCa?.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
+    if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa?.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
 
