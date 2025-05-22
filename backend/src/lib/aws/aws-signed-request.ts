@@ -15,6 +15,7 @@ export interface AwsRequestOptions {
   path: string;
   body?: string;
   headers?: Record<string, string>;
+  target: string;
   credentials: AwsCredentials;
 }
 
@@ -69,7 +70,7 @@ export async function awsSignedRequest<T = any>(options: AwsRequestOptions): Pro
     Host: host,
     "X-Amz-Date": amzDate,
     Authorization: authorizationHeader,
-    "X-Amz-Target": "secretsmanager.ListSecrets",
+    "X-Amz-Target": options.target,
     "Content-Type": "application/x-amz-json-1.1"
   };
   if (credentials.sessionToken) {

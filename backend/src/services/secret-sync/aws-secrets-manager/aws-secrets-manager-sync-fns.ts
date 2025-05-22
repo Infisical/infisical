@@ -5,6 +5,7 @@ import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums"; // Correct import for AWSRegion type
 import { awsSignedRequest, AwsCredentials } from "@app/lib/aws/aws-signed-request";
+import { randomUUID } from "crypto";
 
 import { TAwsSecretsManagerSyncWithCredentials } from "./aws-secrets-manager-sync-types";
 
@@ -58,7 +59,8 @@ const getSecretsRecord = async (secretSync: TAwsSecretsManagerSyncWithCredential
         host: `secretsmanager.${region}.amazonaws.com`,
         path: "/",
         body,
-        credentials
+        credentials,
+        target: "secretsmanager.ListSecrets"
       });
 
       attempt = 0;
@@ -113,7 +115,8 @@ const getSecretValuesRecord = async (
           path: "/",
           body,
           credentials,
-          headers: { "X-Amz-Target": "secretsmanager.BatchGetSecretValue" }
+          headers: { "X-Amz-Target": "secretsmanager.BatchGetSecretValue" },
+          target: "secretsmanager.BatchGetSecretValue"
         });
         attempt = 0;
         if (output.SecretValues) {
@@ -156,7 +159,8 @@ const describeSecret = async (
       path: "/",
       body,
       credentials,
-      headers: { "X-Amz-Target": "secretsmanager.DescribeSecret" }
+      headers: { "X-Amz-Target": "secretsmanager.DescribeSecret" },
+      target: "secretsmanager.DescribeSecret"
     });
   } catch (error: any) {
     if (error.message?.includes("ThrottlingException") && attempt < MAX_RETRIES) {
@@ -196,7 +200,8 @@ const createSecret = async (
     const body = JSON.stringify({
       Name: input.Name,
       SecretString: input.SecretString,
-      ...(input.KmsKeyId ? { KmsKeyId: input.KmsKeyId } : {})
+      ...(input.KmsKeyId ? { KmsKeyId: input.KmsKeyId } : {}),
+      ClientRequestToken: randomUUID()
     });
     return await awsSignedRequest({
       region,
@@ -206,7 +211,8 @@ const createSecret = async (
       path: "/",
       body,
       credentials,
-      headers: { "X-Amz-Target": "secretsmanager.CreateSecret" }
+      headers: { "X-Amz-Target": "secretsmanager.CreateSecret" },
+      target: "secretsmanager.CreateSecret"
     });
   } catch (error: any) {
     if (error.message?.includes("ThrottlingException") && attempt < MAX_RETRIES) {
@@ -228,7 +234,8 @@ const updateSecret = async (
     const body = JSON.stringify({
       SecretId: input.SecretId,
       SecretString: input.SecretString,
-      ...(input.KmsKeyId ? { KmsKeyId: input.KmsKeyId } : {})
+      ...(input.KmsKeyId ? { KmsKeyId: input.KmsKeyId } : {}),
+      ClientRequestToken: randomUUID()
     });
     return await awsSignedRequest({
       region,
@@ -238,7 +245,8 @@ const updateSecret = async (
       path: "/",
       body,
       credentials,
-      headers: { "X-Amz-Target": "secretsmanager.UpdateSecret" }
+      headers: { "X-Amz-Target": "secretsmanager.UpdateSecret" },
+      target: "secretsmanager.UpdateSecret"
     });
   } catch (error: any) {
     if (error.message?.includes("ThrottlingException") && attempt < MAX_RETRIES) {
@@ -269,7 +277,8 @@ const deleteSecret = async (
       path: "/",
       body,
       credentials,
-      headers: { "X-Amz-Target": "secretsmanager.DeleteSecret" }
+      headers: { "X-Amz-Target": "secretsmanager.DeleteSecret" },
+      target: "secretsmanager.DeleteSecret"
     });
   } catch (error: any) {
     if (error.message?.includes("ThrottlingException") && attempt < MAX_RETRIES) {
@@ -301,7 +310,8 @@ const addTags = async (
       path: "/",
       body,
       credentials,
-      headers: { "X-Amz-Target": "secretsmanager.TagResource" }
+      headers: { "X-Amz-Target": "secretsmanager.TagResource" },
+      target: "secretsmanager.TagResource"
     });
   } catch (error: any) {
     if (error.message?.includes("ThrottlingException") && attempt < MAX_RETRIES) {
@@ -333,7 +343,8 @@ const removeTags = async (
       path: "/",
       body,
       credentials,
-      headers: { "X-Amz-Target": "secretsmanager.UntagResource" }
+      headers: { "X-Amz-Target": "secretsmanager.UntagResource" },
+      target: "secretsmanager.UntagResource"
     });
   } catch (error: any) {
     if (error.message?.includes("ThrottlingException") && attempt < MAX_RETRIES) {

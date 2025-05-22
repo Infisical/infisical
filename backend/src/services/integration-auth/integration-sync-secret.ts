@@ -1138,12 +1138,11 @@ const syncSecretsAWSSecretManager = async ({
         method: "POST",
         host: `secretsmanager.${region}.amazonaws.com`,
         path: "/",
-        body: new URLSearchParams({
-          Action: "DescribeSecret",
-          Version: "2017-10-17",
+        body: JSON.stringify({
           SecretId: secretName
-        }).toString(),
-        credentials: awsCredentials
+        }),
+        credentials: awsCredentials,
+        target: "secretsmanager.describeSecret"
       });
 
       // Update the secret if it exists
@@ -1153,13 +1152,13 @@ const syncSecretsAWSSecretManager = async ({
         method: "POST",
         host: `secretsmanager.${region}.amazonaws.com`,
         path: "/",
-        body: new URLSearchParams({
-          Action: "UpdateSecret",
-          Version: "2017-10-17",
+        body: JSON.stringify({
           SecretId: secretName,
-          SecretString: secretString
-        }).toString(),
-        credentials: awsCredentials
+          SecretString: secretString,
+          ClientRequestToken: randomUUID()
+        }),
+        credentials: awsCredentials,
+        target: "secretsmanager.updateSecret"
       });
     } catch (error: any) {
       if (error.message?.includes("ResourceNotFoundException")) {
@@ -1170,13 +1169,13 @@ const syncSecretsAWSSecretManager = async ({
           method: "POST",
           host: `secretsmanager.${region}.amazonaws.com`,
           path: "/",
-          body: new URLSearchParams({
-            Action: "CreateSecret",
-            Version: "2017-10-17",
+          body: JSON.stringify({
             Name: secretName,
-            SecretString: secretString
-          }).toString(),
-          credentials: awsCredentials
+            SecretString: secretString,
+            ClientRequestToken: randomUUID()
+          }),
+          credentials: awsCredentials,
+          target: "secretsmanager.createSecret"
         });
       } else {
         throw error;
