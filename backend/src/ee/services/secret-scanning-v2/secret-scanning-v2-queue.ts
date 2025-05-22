@@ -8,7 +8,7 @@ import {
   parseScanErrorMessage,
   scanRepositoryAndGetFindings
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
-import { InternalServerError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -47,7 +47,10 @@ export const secretScanningV2QueueServiceFactory = async ({
   smtpService,
   kmsService
 }: TSecretRotationV2QueueServiceFactoryDep) => {
-  const queueDataSourceFullScan = async (dataSource: TSecretScanningDataSourceWithConnection) => {
+  const queueDataSourceFullScan = async (
+    dataSource: TSecretScanningDataSourceWithConnection,
+    resourceExternalId?: string
+  ) => {
     try {
       const { type } = dataSource;
 
@@ -55,9 +58,21 @@ export const secretScanningV2QueueServiceFactory = async ({
 
       const rawResources = await factory.listRawResources(dataSource);
 
+      let filteredRawResources = rawResources;
+
+      if (resourceExternalId) {
+        filteredRawResources = rawResources.filter((resource) => resource.externalId === resourceExternalId);
+      }
+
+      if (!filteredRawResources.length) {
+        throw new BadRequestError({
+          message: `${resourceExternalId ? `Resource with "ID" ${resourceExternalId} could not be found.` : "Data source has no resources to scan"}. Ensure your data source config is correct and not filtering out scanning resources.`
+        });
+      }
+
       await secretScanningV2DAL.resources.transaction(async (tx) => {
         const resources = await secretScanningV2DAL.resources.upsert(
-          rawResources.map((rawResource) => ({
+          filteredRawResources.map((rawResource) => ({
             ...rawResource,
             dataSourceId: dataSource.id
           })),
@@ -84,7 +99,10 @@ export const secretScanningV2QueueServiceFactory = async ({
       });
     } catch (error) {
       logger.error(error, `Failed to queue full-scan for data source with ID "${dataSource.id}"`);
-      throw new InternalServerError({ message: "Failed to queue full-scan." });
+
+      if (error instanceof BadRequestError) throw error;
+
+      throw new InternalServerError({ message: `Failed to queue scan: ${(error as Error).message}` });
     }
   };
 

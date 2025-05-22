@@ -42,11 +42,11 @@ export const GitLabSecretScanningFactory: TSecretScanningFactory<TGitLabDataSour
     if (!includeProjects || includeProjects.includes("*")) {
       filteredProjects.push(...projects);
     } else {
-      filteredProjects.push(...projects.filter((project) => includeProjects.includes(project.name)));
+      filteredProjects.push(...projects.filter((project) => includeProjects.includes(project.path)));
     }
 
-    return filteredProjects.map(({ name, id, namespace }) => ({
-      name: `${namespace.fullPath}/${name}`,
+    return filteredProjects.map(({ id, pathWithNamespace }) => ({
+      name: pathWithNamespace,
       externalId: id.toString(),
       type: SecretScanningResource.Repository
     }));

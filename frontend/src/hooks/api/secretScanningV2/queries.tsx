@@ -11,7 +11,7 @@ import {
   TSecretScanningDataSourceOption,
   TSecretScanningDataSourceResponse,
   TSecretScanningDataSourceWithDetails,
-  TSecretScanningResource
+  TSecretScanningResourceWithDetails
 } from "./types";
 
 export const secretScanningV2Keys = {
@@ -110,9 +110,9 @@ export const useListSecretScanningResources = (
   { dataSourceId, type }: TGetSecretScanningDataSource,
   options?: Omit<
     UseQueryOptions<
-      TSecretScanningResource[],
+      TSecretScanningResourceWithDetails[],
       unknown,
-      TSecretScanningResource[],
+      TSecretScanningResourceWithDetails[],
       ReturnType<typeof secretScanningV2Keys.listResources>
     >,
     "queryKey" | "queryFn"
@@ -122,7 +122,7 @@ export const useListSecretScanningResources = (
     queryKey: secretScanningV2Keys.listResources(dataSourceId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TListSecretScanningResourcesResponse>(
-        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}/resources`
+        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}/details`
       );
 
       return data.resources;

@@ -1,5 +1,5 @@
 export type TGitLabConnectionProject = {
-  name: string;
+  pathWithNamespace: string;
   id: number;
 };
 

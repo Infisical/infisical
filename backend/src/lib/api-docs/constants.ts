@@ -2403,6 +2403,10 @@ export const SecretScanningDataSources = {
   DELETE: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to be deleted.`
   }),
+  SCAN: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to trigger a scan for.`,
+    resourceId: `The ID of the individual Data Source resource to trigger a scan for.`
+  }),
   LIST_RESOURCES: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list resources from.`
   })

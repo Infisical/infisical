@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import {
   faArrowDown,
   faArrowUp,
+  faBan,
   faMagnifyingGlass,
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
@@ -15,11 +16,14 @@ import {
   Pagination,
   Table,
   TableContainer,
+  TableSkeleton,
   TBody,
   Th,
   THead,
   Tr
 } from "@app/components/v2";
+import { ProjectPermissionSub, useProjectPermission } from "@app/context";
+import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
@@ -33,19 +37,28 @@ import { SecretScanningResourceRow } from "./SecretScanningResourceRow";
 
 enum ResourcesOrderBy {
   Name = "name",
-  Findings = "status",
+  Findings = "findings",
   LastScanned = "last-scanned"
 }
 
 type Props = {
   dataSource: TSecretScanningDataSource;
+  label: string;
 };
 
-export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
-  const { data: resources = [], isPending: isDataSourcesPending } = useListSecretScanningResources(
+export const SecretScanningResourcesTable = ({ dataSource, label }: Props) => {
+  const { permission } = useProjectPermission();
+
+  const canReadResources = permission.can(
+    ProjectPermissionSecretScanningDataSourceActions.ReadResources,
+    ProjectPermissionSub.SecretScanningDataSources
+  );
+
+  const { data: resources = [], isPending: isResourcesPending } = useListSecretScanningResources(
     { dataSourceId: dataSource.id, type: dataSource.type },
     {
-      refetchInterval: 30000
+      refetchInterval: 30000,
+      enabled: canReadResources
     }
   );
 
@@ -79,21 +92,13 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
             orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
 
           switch (orderBy) {
-            // case DataSourcesOrderBy.Type:
-            //   return getSecretSyncDestinationColValues(dataSourceOne)
-            //     .primaryText.toLowerCase()
-            //     .localeCompare(
-            //       getSecretSyncDestinationColValues(dataSourceTwo).primaryText.toLowerCase()
-            //     );
-            // case DataSourcesOrderBy.Status:
-            //   if (!syncOne.syncStatus && syncTwo.syncStatus) return 1;
-            //   if (syncOne.syncStatus && !syncTwo.syncStatus) return -1;
-            //   if (!syncOne.syncStatus && !syncTwo.syncStatus) return 0;
-
-            //   return (
-            //     getSyncStatusOrderValue(syncOne.syncStatus) -
-            //     getSyncStatusOrderValue(syncTwo.syncStatus)
-            //   );
+            case ResourcesOrderBy.Findings:
+              return resourceOne.unresolvedFindings - resourceTwo.unresolvedFindings;
+            case ResourcesOrderBy.LastScanned:
+              return (
+                (resourceOne.lastScannedAt ? new Date(resourceOne.lastScannedAt).getTime() : 0) -
+                (resourceTwo.lastScannedAt ? new Date(resourceTwo.lastScannedAt).getTime() : 0)
+              );
             case ResourcesOrderBy.Name:
             default:
               return resourceOne.name.toLowerCase().localeCompare(resourceTwo.name.toLowerCase());
@@ -130,14 +135,14 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search data sources..."
+        placeholder={`Search ${label.toLowerCase()}...`}
         className="flex-1"
       />
       <TableContainer className="mt-4">
         <Table>
           <THead>
             <Tr>
-              <Th className="w-1/3">
+              <Th className="w-full">
                 <div className="flex items-center">
                   Name
                   <IconButton
@@ -150,7 +155,7 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
                   </IconButton>
                 </div>
               </Th>
-              <Th className="w-1/3">
+              <Th className="w-1/5">
                 <div className="flex items-center">
                   Findings
                   <IconButton
@@ -163,9 +168,9 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
                   </IconButton>
                 </div>
               </Th>
-              <Th className="w-1/3">
+              <Th className="w-1/5 whitespace-nowrap">
                 <div className="flex items-center">
-                  Last Scanned
+                  Last Scan
                   <IconButton
                     variant="plain"
                     className={getClassName(ResourcesOrderBy.LastScanned)}
@@ -177,18 +182,28 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
                 </div>
               </Th>
               <Th className="w-5" />
+              <Th className="w-5" />
             </Tr>
           </THead>
           <TBody>
+            {canReadResources && isResourcesPending && (
+              <TableSkeleton columns={5} innerKey="resource" />
+            )}
             {filteredResources.slice(offset, perPage * page).map((resource) => (
               <SecretScanningResourceRow
                 key={dataSource.id}
                 resource={resource}
-                onTriggerScan={() => {}} // TODO
+                dataSource={dataSource}
               />
             ))}
           </TBody>
         </Table>
+        {!canReadResources && (
+          <EmptyState
+            icon={faBan}
+            title={`You do not have permission to view data source ${label.toLowerCase()}`}
+          />
+        )}
         {Boolean(filteredResources.length) && (
           <Pagination
             count={filteredResources.length}
@@ -198,12 +213,12 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
             onChangePerPage={setPerPage}
           />
         )}
-        {!filteredResources?.length && (
+        {!isResourcesPending && !filteredResources?.length && (
           <EmptyState
             title={
               resources.length
                 ? "No resources match search..."
-                : "This data source has no resources associated with it."
+                : `This data source has no ${label.toLowerCase()} associated with it.`
             }
             icon={resources.length ? faSearch : undefined}
           />

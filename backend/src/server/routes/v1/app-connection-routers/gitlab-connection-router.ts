@@ -37,7 +37,7 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
           projects: z
             .object({
               id: z.number(),
-              name: z.string()
+              pathWithNamespace: z.string()
             })
             .array()
         })

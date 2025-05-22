@@ -1,4 +1,4 @@
-import { TSecretScanningFindingsInsert, TSecretScanningResources } from "@app/db/schemas";
+import { TSecretScanningFindingsInsert, TSecretScanningResources, TSecretScanningScans } from "@app/db/schemas";
 import {
   TGitHubDataSource,
   TGitHubDataSourceInput,
@@ -19,6 +19,14 @@ import {
 export type TSecretScanningDataSource = TGitHubDataSource | TGitLabDataSource;
 
 export type TSecretScanningDataSourceWithDetails = TSecretScanningDataSource & {
+  lastScannedAt?: Date | null;
+  lastScanStatus?: SecretScanningScanStatus | null;
+  lastScanStatusMessage?: string | null;
+  unresolvedFindings: number;
+};
+
+export type TSecretScanningResourceWithDetails = TSecretScanningResources & {
+  scans: Pick<TSecretScanningScans, "status" | "type" | "statusMessage" | "createdAt" | "id">[];
   lastScannedAt?: Date | null;
   lastScanStatus?: SecretScanningScanStatus | null;
   lastScanStatusMessage?: string | null;

@@ -67,7 +67,7 @@ export const SecretScanningResourceSection = ({ dataSource }: Props) => {
           </p>
         </div>
         <ProjectPermissionCan
-          I={ProjectPermissionSecretScanningDataSourceActions.Create}
+          I={ProjectPermissionSecretScanningDataSourceActions.TriggerScans}
           a={ProjectPermissionSub.SecretScanningDataSources}
         >
           {(isAllowed) => (
@@ -75,14 +75,15 @@ export const SecretScanningResourceSection = ({ dataSource }: Props) => {
               colorSchema="secondary"
               leftIcon={<FontAwesomeIcon icon={faExpand} />}
               onClick={handleTriggerScan}
-              isDisabled={!isAllowed}
+              isDisabled={!isAllowed || triggerDataSourceScan.isPending}
+              isLoading={triggerDataSourceScan.isPending}
             >
-              Scan
+              Scan {label}
             </Button>
           )}
         </ProjectPermissionCan>
       </div>
-      <SecretScanningResourcesTable dataSource={dataSource} />
+      <SecretScanningResourcesTable dataSource={dataSource} label={label} />
     </div>
   );
 };

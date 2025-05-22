@@ -1,6 +1,8 @@
+import { useEffect } from "react";
+import { Controller, useFormContext } from "react-hook-form";
+import { MultiValue } from "react-select";
 import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Controller, useFormContext } from "react-hook-form";
 
 import { FilterableSelect, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
 import {
@@ -8,8 +10,7 @@ import {
   useGitLabConnectListProjects
 } from "@app/hooks/api/appConnections/gitlab";
 import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
-import { useEffect } from "react";
-import { MultiValue } from "react-select";
+
 import { TSecretScanningDataSourceForm } from "../schemas";
 
 enum ScanMethod {
@@ -92,18 +93,20 @@ export const GitLabDataSourceConfigFields = () => {
                 isLoading={isProjectsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 isMulti
-                value={projects?.find((project) => value.includes(project.name))}
+                value={projects?.find((project) => value.includes(project.pathWithNamespace))}
                 onChange={(newValue) => {
                   onChange(
                     newValue
-                      ? (newValue as MultiValue<TGitLabConnectionProject>).map((p) => p.name)
+                      ? (newValue as MultiValue<TGitLabConnectionProject>).map(
+                          (p) => p.pathWithNamespace
+                        )
                       : null
                   );
                 }}
                 options={projects}
                 placeholder="Select projects..."
-                getOptionLabel={(option) => option.name}
-                getOptionValue={(option) => option.name}
+                getOptionLabel={(option) => option.pathWithNamespace}
+                getOptionValue={(option) => option.pathWithNamespace}
               />
             </FormControl>
           )}

@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TSecretScanningDataSources } from "@app/db/schemas";
+import { SecretScanningResourcesSchema, TableName, TSecretScanningDataSources } from "@app/db/schemas";
 import { SecretScanningFindingStatus } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { DatabaseError } from "@app/lib/errors";
 import {
@@ -12,7 +12,6 @@ import {
   sqlNestRelationships,
   TFindOpt
 } from "@app/lib/knex";
-import { logger } from "@app/lib/logger";
 
 export type TSecretScanningV2DALFactory = ReturnType<typeof secretScanningV2DALFactory>;
 
@@ -216,8 +215,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SecretScanningFinding).as("findingId")
         );
 
-      logger.warn(dataSources, "dataSources");
-
       if (!dataSources.length) return [];
 
       const results = sqlNestRelationships({
@@ -262,7 +259,92 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         };
       });
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find with Details - Secret Scanning V2" });
+      throw new DatabaseError({ error, name: "Find Data Source with Details - Secret Scanning V2" });
+    }
+  };
+
+  const findResourcesWithDetails = async (filter: Parameters<(typeof resourceOrm)["find"]>[0], tx?: Knex) => {
+    try {
+      // TODO (scott): this query will probably need to be optimized
+
+      const resources = await (tx || db.replicaNode())(TableName.SecretScanningResource)
+        .where((qb) => {
+          if (filter)
+            void qb.where(buildFindFilter(prependTableNameToFindFilter(TableName.SecretScanningResource, filter)));
+        })
+        .leftJoin(
+          TableName.SecretScanningScan,
+          `${TableName.SecretScanningScan}.resourceId`,
+          `${TableName.SecretScanningResource}.id`
+        )
+        .leftJoin(
+          TableName.SecretScanningFinding,
+          `${TableName.SecretScanningFinding}.scanId`,
+          `${TableName.SecretScanningScan}.id`
+        )
+        .where((qb) => {
+          void qb
+            .where(`${TableName.SecretScanningFinding}.status`, SecretScanningFindingStatus.Unresolved)
+            .orWhereNull(`${TableName.SecretScanningFinding}.status`);
+        })
+        .select(selectAllTableCols(TableName.SecretScanningResource))
+        .select(
+          db.ref("id").withSchema(TableName.SecretScanningScan).as("scanId"),
+          db.ref("status").withSchema(TableName.SecretScanningScan).as("scanStatus"),
+          db.ref("type").withSchema(TableName.SecretScanningScan).as("scanType"),
+          db.ref("statusMessage").withSchema(TableName.SecretScanningScan).as("scanStatusMessage"),
+          db.ref("createdAt").withSchema(TableName.SecretScanningScan).as("scanCreatedAt"),
+          db.ref("status").withSchema(TableName.SecretScanningFinding).as("findingStatus"),
+          db.ref("id").withSchema(TableName.SecretScanningFinding).as("findingId")
+        );
+
+      if (!resources.length) return null;
+
+      const results = sqlNestRelationships({
+        data: resources,
+        key: "id",
+        parentMapper: (resource) => SecretScanningResourcesSchema.parse(resource),
+        childrenMapper: [
+          {
+            key: "scanId",
+            label: "scans" as const,
+            mapper: ({ scanId, scanCreatedAt, scanStatus, scanStatusMessage, scanType }) => ({
+              id: scanId,
+              type: scanType,
+              createdAt: scanCreatedAt,
+              status: scanStatus,
+              statusMessage: scanStatusMessage
+            })
+          },
+          {
+            key: "findingId",
+            label: "findings" as const,
+            mapper: ({ findingId }) => ({
+              id: findingId
+            })
+          }
+        ]
+      });
+
+      return results.map(({ scans, findings, ...resource }) => {
+        const lastScan =
+          scans && scans.length
+            ? scans.reduce((latest, current) => {
+                return new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest;
+              })
+            : null;
+
+        return {
+          ...resource,
+          scans,
+          lastScanStatus: lastScan?.status ?? null,
+          lastScanStatusMessage: lastScan?.statusMessage ?? null,
+          lastScannedAt: lastScan?.createdAt ?? null,
+          unresolvedFindings: findings?.length ?? null
+        };
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find Resource with Details - Secret Scanning V2" });
     }
   };
 
@@ -277,7 +359,10 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       deleteById: deleteDataSourceById,
       findWithDetails: findDataSourceWithDetails
     },
-    resources: resourceOrm,
+    resources: {
+      ...resourceOrm,
+      findWithDetails: findResourcesWithDetails
+    },
     scans: scanOrm,
     findings: findingOrm
   };

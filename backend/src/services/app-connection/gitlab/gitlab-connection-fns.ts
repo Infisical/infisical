@@ -72,5 +72,6 @@ export const listGitLabConnectionProjects = async (appConnection: TGitLabConnect
     includeHidden: false,
     imported: false
   });
+
   return projects;
 };

@@ -25,7 +25,6 @@ export const useCreateSecretScanningDataSource = () => {
     onSuccess: (_, { projectId }) =>
       queryClient.invalidateQueries({
         queryKey: secretScanningV2Keys.listDataSources(projectId)
-        // TODO: single view
       })
   });
 };
@@ -41,11 +40,17 @@ export const useUpdateSecretScanningDataSource = () => {
 
       return data.dataSource;
     },
-    onSuccess: (_, { projectId }) =>
+    onSuccess: (_, { projectId, dataSourceId }) => {
       queryClient.invalidateQueries({
         queryKey: secretScanningV2Keys.listDataSources(projectId)
-        // TODO: single view
-      })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.dataSourceById(dataSourceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.listResources(dataSourceId)
+      });
+    }
   });
 };
 
@@ -59,28 +64,40 @@ export const useDeleteSecretScanningDataSource = () => {
 
       return data.dataSource;
     },
-    onSuccess: (_, { projectId }) =>
+    onSuccess: (_, { projectId, dataSourceId }) => {
       queryClient.invalidateQueries({
         queryKey: secretScanningV2Keys.listDataSources(projectId)
-        // TODO: single view
-      })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.dataSourceById(dataSourceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.listResources(dataSourceId)
+      });
+    }
   });
 };
 
 export const useTriggerSecretScanningDataSource = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ type, dataSourceId }: TTriggerSecretScanningDataSourceDTO) => {
+    mutationFn: async ({ type, dataSourceId, resourceId }: TTriggerSecretScanningDataSourceDTO) => {
       const { data } = await apiRequest.post<TSecretScanningDataSourceResponse>(
-        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}/scan`
+        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}${resourceId ? `/resources/${resourceId}` : ""}/scan`
       );
 
       return data.dataSource;
     },
-    onSuccess: (_, { projectId }) =>
+    onSuccess: (_, { projectId, dataSourceId }) => {
       queryClient.invalidateQueries({
         queryKey: secretScanningV2Keys.listDataSources(projectId)
-        // TODO: single view
-      })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.dataSourceById(dataSourceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.listResources(dataSourceId)
+      });
+    }
   });
 };
