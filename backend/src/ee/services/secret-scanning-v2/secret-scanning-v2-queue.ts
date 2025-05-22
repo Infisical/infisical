@@ -1,6 +1,9 @@
 import { join } from "path";
 
-import { createTempFolder } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
+import {
+  createTempFolder,
+  deleteTempFolder
+} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import {
   parseScanErrorMessage,
   scanRepositoryAndGetFindings
@@ -177,7 +180,7 @@ export const secretScanningV2QueueServiceFactory = async ({
         logger.error(error, `secretScanningV2Queue: Scan Failed ${logDetails}`);
         throw error;
       } finally {
-        // await deleteTempFolder(tempFolder);
+        await deleteTempFolder(tempFolder);
       }
     },
     {

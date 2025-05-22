@@ -1,18 +1,12 @@
-import { Tab } from "@headlessui/react";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
+import { Tab } from "@headlessui/react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-
-import {
-  useCreateSecretScanningDataSource,
-  useUpdateSecretScanningDataSource
-} from "@app/hooks/api/secretScanningV2/mutations";
-
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP,
@@ -22,6 +16,11 @@ import {
   SecretScanningDataSource,
   TSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
+import {
+  useCreateSecretScanningDataSource,
+  useUpdateSecretScanningDataSource
+} from "@app/hooks/api/secretScanningV2/mutations";
+
 import { SecretScanningDataSourceSchema, TSecretScanningDataSourceForm } from "./schemas";
 import { SecretScanningDataSourceConfigFields } from "./SecretScanningDataSourceConfigFields";
 import { SecretScanningDataSourceConnectionField } from "./SecretScanningDataSourceConnectionField";
@@ -64,8 +63,6 @@ export const SecretScanningDataSourceForm = ({ type, onComplete, onCancel, dataS
     },
     reValidateMode: "onChange"
   });
-
-  console.log("formMethods", formMethods.formState.errors);
 
   const onSubmit = async ({ connection, ...formData }: TSecretScanningDataSourceForm) => {
     const mutation = dataSource
@@ -170,7 +167,7 @@ export const SecretScanningDataSourceForm = ({ type, onComplete, onCancel, dataS
                 {APP_CONNECTION_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]].name}{" "}
                 Connection for this Data Source.
               </p>
-              <SecretScanningDataSourceConnectionField />
+              <SecretScanningDataSourceConnectionField isUpdate={Boolean(dataSource)} />
             </Tab.Panel>
             <Tab.Panel>
               <SecretScanningDataSourceConfigFields />

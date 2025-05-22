@@ -3,6 +3,7 @@ import {
   faBan,
   faCheck,
   faCopy,
+  faEdit,
   faEllipsisV,
   faInfoCircle,
   faRotate,
@@ -48,11 +49,13 @@ type Props = {
   onDelete: (dataSource: TSecretScanningDataSourceWithDetails) => void;
   onTriggerScan: (dataSource: TSecretScanningDataSourceWithDetails) => void;
   onToggleEnableAutoScan: (dataSource: TSecretScanningDataSourceWithDetails) => void;
+  onEdit: (dataSource: TSecretScanningDataSourceWithDetails) => void;
 };
 
 export const DataSourceRow = ({
   dataSource,
   onDelete,
+  onEdit,
   onTriggerScan,
   onToggleEnableAutoScan
 }: Props) => {
@@ -91,27 +94,13 @@ export const DataSourceRow = ({
 
   const autoScanDescription = AUTO_SYNC_DESCRIPTION_HELPER[type];
 
-  // const failureMessage = useMemo(() => {
-  //   if (syncStatus === SecretSyncStatus.Failed) {
-  //     if (lastSyncMessage)
-  //       try {
-  //         return JSON.stringify(JSON.parse(lastSyncMessage), null, 2);
-  //       } catch {
-  //         return lastSyncMessage;
-  //       }
-
-  //     return "An Unknown Error Occurred.";
-  //   }
-  //   return null;
-  // }, [syncStatus, lastSyncMessage]);
-
   return (
     <Tr
       onClick={() =>
         navigate({
-          to: ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.path,
+          to: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.path,
           params: {
-            syncId: id,
+            dataSourceId: id,
             type,
             projectId
           }
@@ -269,6 +258,23 @@ export const DataSourceRow = ({
                     }}
                   >
                     {isAutoScanEnabled ? "Disable" : "Enable"} Auto-Scan
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
+              <ProjectPermissionCan
+                I={ProjectPermissionSecretScanningDataSourceActions.Edit}
+                a={ProjectPermissionSub.SecretScanningDataSources}
+              >
+                {(isAllowed: boolean) => (
+                  <DropdownMenuItem
+                    isDisabled={!isAllowed}
+                    icon={<FontAwesomeIcon icon={faEdit} />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(dataSource);
+                    }}
+                  >
+                    Edit Data Source
                   </DropdownMenuItem>
                 )}
               </ProjectPermissionCan>

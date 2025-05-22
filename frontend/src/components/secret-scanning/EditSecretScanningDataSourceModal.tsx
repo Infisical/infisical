@@ -10,7 +10,11 @@ type Props = {
   dataSource?: TSecretScanningDataSource;
 };
 
-export const EditSecretRotationV2Modal = ({ dataSource, onOpenChange, ...props }: Props) => {
+export const EditSecretScanningDataSourceModal = ({
+  dataSource,
+  onOpenChange,
+  ...props
+}: Props) => {
   if (!dataSource) return null;
 
   return (

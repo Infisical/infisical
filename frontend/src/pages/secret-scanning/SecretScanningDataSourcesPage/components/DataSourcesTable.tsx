@@ -12,8 +12,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { EditSecretScanningDataSourceModal } from "@app/components/secret-scanning";
 import { DeleteSecretScanningDataSourceModal } from "@app/components/secret-scanning/DeleteSecretScanningDataSourceModal";
-import { EditSecretRotationV2Modal } from "@app/components/secret-scanning/EditSecretScanningDataSourceModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -193,6 +193,9 @@ export const DataSourcesTable = ({ dataSources }: Props) => {
 
   const handleDelete = (dataSource: TSecretScanningDataSource) =>
     handlePopUpOpen("deleteDataSource", dataSource);
+
+  const handleEdit = (dataSource: TSecretScanningDataSource) =>
+    handlePopUpOpen("editDataSource", dataSource);
 
   const handleToggleEnableAutoScan = async (dataSource: TSecretScanningDataSource) => {
     const destinationName = SECRET_SCANNING_DATA_SOURCE_MAP[dataSource.type].name;
@@ -402,6 +405,7 @@ export const DataSourcesTable = ({ dataSources }: Props) => {
                 key={dataSource.id}
                 dataSource={dataSource}
                 onDelete={handleDelete}
+                onEdit={handleEdit}
                 onTriggerScan={handleTriggerScan}
                 onToggleEnableAutoScan={handleToggleEnableAutoScan}
               />
@@ -433,7 +437,7 @@ export const DataSourcesTable = ({ dataSources }: Props) => {
         isOpen={popUp.deleteDataSource.isOpen}
         dataSource={popUp.deleteDataSource.data}
       />
-      <EditSecretRotationV2Modal
+      <EditSecretScanningDataSourceModal
         onOpenChange={(isOpen) => handlePopUpToggle("editDataSource", isOpen)}
         isOpen={popUp.editDataSource.isOpen}
         dataSource={popUp.editDataSource.data}

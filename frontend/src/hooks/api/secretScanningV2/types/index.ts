@@ -9,6 +9,7 @@ export type TSecretScanningDataSource = TGitLabDataSource | TGitHubDataSource;
 export type TSecretScanningDataSourceWithDetails = TSecretScanningDataSource & {
   lastScannedAt?: string | null;
   lastScanStatus?: SecretScanningScanStatus | null;
+  lastScanStatusMessage?: string | null;
   unresolvedFindings: number;
 };
 
@@ -53,7 +54,7 @@ export type TTriggerSecretScanningDataSourceDTO = {
   projectId: string;
 };
 
-export type TSecretRotationOptionMap = {
-  [SecretScanningDataSource.GitHub]: TGitHubDataSourceOption;
-  [SecretScanningDataSource.GitLab]: TGitLabDataSourceOption;
+export type TGetSecretScanningDataSource = {
+  dataSourceId: string;
+  type: SecretScanningDataSource;
 };

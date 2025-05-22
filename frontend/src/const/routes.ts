@@ -322,6 +322,12 @@ export const ROUTE_PATHS = Object.freeze({
       "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/ssh-host-groups/$sshHostGroupId"
     )
   },
+  SecretScanning: {
+    DataSourceByIdPage: setRoute(
+      "/secret-scanning/$projectId/data-sources/$type/$dataSourceId",
+      "/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/data-sources/$type/$dataSourceId"
+    )
+  },
   Public: {
     ViewSharedSecretByIDPage: setRoute("/shared/secret/$secretId", "/shared/secret/$secretId"),
     ViewSecretRequestByIDPage: setRoute(

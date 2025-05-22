@@ -337,7 +337,10 @@ const sshRoutes = route("/ssh/$projectId", [
 
 const secretScanningRoutes = route("/secret-scanning/$projectId", [
   layout("secret-scanning-layout", "secret-scanning/layout.tsx", [
-    route("/data-sources", "secret-scanning/SecretScanningDataSourcesPage/route.tsx"),
+    route("/data-sources", [
+      index("secret-scanning/SecretScanningDataSourcesPage/route.tsx"),
+      route("/$type/$dataSourceId", "secret-scanning/SecretScanningDataSourceByIdPage/route.tsx")
+    ]),
     route("/settings", "secret-scanning/SettingsPage/route.tsx"),
     route("/access-management", "project/AccessControlPage/route-secret-scanning.tsx")
   ])

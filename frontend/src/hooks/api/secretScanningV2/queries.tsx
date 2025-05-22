@@ -3,9 +3,12 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import {
+  TGetSecretScanningDataSource,
   TListSecretScanningDataSourceOptions,
   TListSecretScanningDataSources,
+  TSecretScanningDataSource,
   TSecretScanningDataSourceOption,
+  TSecretScanningDataSourceResponse,
   TSecretScanningDataSourceWithDetails
 } from "./types";
 
@@ -13,6 +16,11 @@ export const secretScanningV2Keys = {
   all: ["secret-scanning-v2"] as const,
   dataSource: () => [...secretScanningV2Keys.all, "data-source"] as const,
   dataSourceOptions: () => [...secretScanningV2Keys.dataSource(), "options"] as const,
+  dataSourceById: (dataSourceId: string) => [
+    ...secretScanningV2Keys.dataSource(),
+    "byId",
+    dataSourceId
+  ],
   listDataSources: (projectId: string) => [...secretScanningV2Keys.dataSource(), "list", projectId]
 };
 
@@ -44,9 +52,9 @@ export const useListSecretScanningDataSources = (
   projectId: string,
   options?: Omit<
     UseQueryOptions<
-      TSecretScanningDataSourceWithDetails,
+      TSecretScanningDataSourceWithDetails[],
       unknown,
-      TSecretScanningDataSourceWithDetails,
+      TSecretScanningDataSourceWithDetails[],
       ReturnType<typeof secretScanningV2Keys.listDataSources>
     >,
     "queryKey" | "queryFn"
@@ -61,6 +69,31 @@ export const useListSecretScanningDataSources = (
       );
 
       return data.dataSources;
+    },
+    ...options
+  });
+};
+
+export const useGetSecretScanningDataSource = (
+  { dataSourceId, type }: TGetSecretScanningDataSource,
+  options?: Omit<
+    UseQueryOptions<
+      TSecretScanningDataSource,
+      unknown,
+      TSecretScanningDataSource,
+      ReturnType<typeof secretScanningV2Keys.dataSourceById>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretScanningV2Keys.dataSourceById(dataSourceId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TSecretScanningDataSourceResponse>(
+        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}`
+      );
+
+      return data.dataSource;
     },
     ...options
   });
