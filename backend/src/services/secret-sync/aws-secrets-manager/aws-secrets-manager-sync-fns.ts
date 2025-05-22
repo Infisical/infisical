@@ -8,18 +8,6 @@ import { awsSignedRequest, AwsCredentials } from "@app/lib/aws/aws-signed-reques
 
 import { TAwsSecretsManagerSyncWithCredentials } from "./aws-secrets-manager-sync-types";
 
-// Optionally, warn if sessionToken is present but expiration is close (if expiration is available)
-const warnIfSessionTokenExpiring = (credentials: any) => {
-  if (credentials.sessionToken && credentials.expiration) {
-    const exp = new Date(credentials.expiration).getTime();
-    const now = Date.now();
-    if (exp - now < 10 * 60 * 1000) {
-      // less than 10 minutes
-      console.warn("AWS session token is expiring soon:", credentials.expiration);
-    }
-  }
-};
-
 const MAX_RETRIES = 5;
 const BATCH_SIZE = 20;
 
@@ -39,9 +27,6 @@ const getAwsSMConfig = async (
     console.warn("AWS credentials are missing or invalid. Attempting to refresh...");
     config.credentials = await refreshAwsCredentials(connection, destinationConfig.region as AWSRegion);
   }
-
-  // Optionally warn if session token is expiring soon
-  warnIfSessionTokenExpiring(config.credentials);
 
   return {
     region: config.region as AWSRegion,
