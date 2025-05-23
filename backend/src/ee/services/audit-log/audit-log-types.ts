@@ -390,7 +390,8 @@ export enum EventType {
   SECRET_SCANNING_DATA_SOURCE_DELETE = "secret-scanning-data-source-delete",
   SECRET_SCANNING_DATA_SOURCE_GET = "secret-scanning-data-source-get",
   SECRET_SCANNING_DATA_SOURCE_SCAN = "secret-scanning-data-source-scan",
-  SECRET_SCANNING_RESOURCE_LIST = "secret-scanning-resource-list"
+  SECRET_SCANNING_RESOURCE_LIST = "secret-scanning-resource-list",
+  SECRET_SCANNING_SCAN_LIST = "secret-scanning-scan-list"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -2975,6 +2976,15 @@ interface SecretScanningResourceListEvent {
   };
 }
 
+interface SecretScanningScanListEvent {
+  type: EventType.SECRET_SCANNING_SCAN_LIST;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+    count: number;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -3248,4 +3258,5 @@ export type Event =
   | SecretScanningDataSourceUpdateEvent
   | SecretScanningDataSourceDeleteEvent
   | SecretScanningDataSourceScanEvent
-  | SecretScanningResourceListEvent;
+  | SecretScanningResourceListEvent
+  | SecretScanningScanListEvent;

@@ -26,11 +26,16 @@ export type TSecretScanningDataSourceWithDetails = TSecretScanningDataSource & {
 };
 
 export type TSecretScanningResourceWithDetails = TSecretScanningResources & {
-  scans: Pick<TSecretScanningScans, "status" | "type" | "statusMessage" | "createdAt" | "id">[];
   lastScannedAt?: Date | null;
   lastScanStatus?: SecretScanningScanStatus | null;
   lastScanStatusMessage?: string | null;
   unresolvedFindings: number;
+};
+
+export type TSecretScanningScanWithDetails = TSecretScanningScans & {
+  unresolvedFindings: number;
+  resolvedFindings: number;
+  resourceName: string;
 };
 
 export type TSecretScanningDataSourceWithConnection = TGitHubDataSourceWithConnection | TGitLabDataSourceWithConnection;

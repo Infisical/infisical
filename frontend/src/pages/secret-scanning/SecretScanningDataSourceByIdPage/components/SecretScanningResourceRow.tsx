@@ -1,5 +1,11 @@
 import { useCallback } from "react";
-import { faCheck, faCopy, faEllipsisV, faWarning } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheck,
+  faCopy,
+  faEllipsisV,
+  faSearch,
+  faWarning
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDistance } from "date-fns";
 import { twMerge } from "tailwind-merge";
@@ -37,6 +43,7 @@ type Props = {
 
 export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
   const { id, name, lastScannedAt, lastScanStatus, unresolvedFindings } = resource;
+  console.log("lastScanStatus", lastScanStatus);
 
   const triggerDataSourceScan = useTriggerSecretScanningDataSource();
 
@@ -93,7 +100,16 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
       </Td>
       <Td>
         {/* eslint-disable-next-line no-nested-ternary */}
-        {lastScannedAt ? (
+        {lastScanStatus?.match(/queued|scanning/) ? (
+          <Badge
+            variant="primary"
+            className="flex h-5 w-min animate-pulse items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300"
+          >
+            <FontAwesomeIcon icon={faSearch} />
+            <span>Scanning For Leaks</span>
+          </Badge>
+        ) : // eslint-disable-next-line no-nested-ternary
+        lastScannedAt ? (
           unresolvedFindings ? (
             <Badge
               variant="primary"

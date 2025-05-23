@@ -452,30 +452,22 @@ export const registerSecretScanningEndpoints = <
   // not exposed, for UI only
   server.route({
     method: "GET",
-    url: "/:dataSourceId/details",
+    url: "/:dataSourceId/resources-dashboard",
     config: {
       rateLimit: readLimit
     },
     schema: {
       tags: [ApiDocsTags.SecretScanning],
-      description: `Get the resources associated with the specified ${sourceType} Data Source by ID.`,
       params: z.object({
         dataSourceId: z.string().uuid()
       }),
       response: {
         200: z.object({
           resources: SecretScanningResourcesSchema.extend({
-            scans: SecretScanningScansSchema.pick({
-              createdAt: true,
-              status: true,
-              type: true,
-              statusMessage: true,
-              id: true
-            }).array(),
             lastScannedAt: z.date().nullish(),
             lastScanStatus: z.nativeEnum(SecretScanningScanStatus).nullish(),
             lastScanStatusMessage: z.string().nullish(),
-            unresolvedFindings: z.number().nullish()
+            unresolvedFindings: z.number()
           }).array()
         })
       }
@@ -505,6 +497,54 @@ export const registerSecretScanningEndpoints = <
       });
 
       return { resources };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:dataSourceId/scans-dashboard",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      tags: [ApiDocsTags.SecretScanning],
+      params: z.object({
+        dataSourceId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          scans: SecretScanningScansSchema.extend({
+            unresolvedFindings: z.number(),
+            resolvedFindings: z.number(),
+            resourceName: z.string()
+          }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { dataSourceId } = req.params;
+
+      const { scans, projectId } =
+        await server.services.secretScanningV2.listSecretScanningScansWithDetailsByDataSourceId(
+          { dataSourceId, type },
+          req.permission
+        );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.SECRET_SCANNING_SCAN_LIST,
+          metadata: {
+            dataSourceId,
+            type,
+            count: scans.length
+          }
+        }
+      });
+
+      return { scans };
     }
   });
 };

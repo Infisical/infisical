@@ -44,7 +44,7 @@ export const SecretScanningScanStatusBadge = ({ status, statusMessage, className
             className={twMerge("flex h-5 w-min items-center gap-1.5 whitespace-nowrap", className)}
           >
             <FontAwesomeIcon icon={faXmark} />
-            Failed
+            Scan Error
           </Badge>
         </div>
       </Tooltip>

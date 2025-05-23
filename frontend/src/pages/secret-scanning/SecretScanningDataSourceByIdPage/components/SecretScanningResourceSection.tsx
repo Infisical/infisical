@@ -15,8 +15,6 @@ import {
 
 import { SecretScanningResourcesTable } from "./SecretScanningResourceTable";
 
-// TODO: put behind permission guard
-
 type Props = {
   dataSource: TSecretScanningDataSource;
 };

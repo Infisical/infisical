@@ -8,9 +8,10 @@ import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListSecretScanningDataSources } from "@app/hooks/api/secretScanningV2";
-import { DataSourcesTable } from "./DataSourcesTable";
 
-export const DataSourcesSection = () => {
+import { SecretScanningDataSourcesTable } from "./SecretScanningDataSourcesTable";
+
+export const SecretScanningDataSourcesSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["addDataSource"] as const);
 
   const { currentWorkspace } = useWorkspace();
@@ -70,7 +71,7 @@ export const DataSourcesSection = () => {
             )}
           </ProjectPermissionCan>
         </div>
-        <DataSourcesTable dataSources={dataSources} />
+        <SecretScanningDataSourcesTable dataSources={dataSources} />
       </div>
       <CreateSecretScanningDataSourceModal
         isOpen={popUp.addDataSource.isOpen}

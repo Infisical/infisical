@@ -3,6 +3,7 @@ import {
   faArrowDown,
   faArrowUp,
   faBan,
+  faExpand,
   faMagnifyingGlass,
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
@@ -28,37 +29,35 @@ import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   TSecretScanningDataSource,
-  useListSecretScanningResources
+  useListSecretScanningScans
 } from "@app/hooks/api/secretScanningV2";
 
-import { SecretScanningResourceRow } from "./SecretScanningResourceRow";
+import { SecretScanningScanRow } from "./SecretScanningScanRow";
 
-// import { getSecretSyncDestinationColValues } from "./helpers";
-
-enum ResourcesOrderBy {
-  Name = "name",
+enum ScansOrderBy {
+  ResourceName = "resource-name",
   Findings = "findings",
-  LastScanned = "last-scanned"
+  Timestamp = "timestamp",
+  Status = "status"
 }
 
 type Props = {
   dataSource: TSecretScanningDataSource;
-  label: string;
 };
 
-export const SecretScanningResourcesTable = ({ dataSource, label }: Props) => {
+export const SecretScanningScanTable = ({ dataSource }: Props) => {
   const { permission } = useProjectPermission();
 
-  const canReadResources = permission.can(
-    ProjectPermissionSecretScanningDataSourceActions.ReadResources,
+  const canReadScans = permission.can(
+    ProjectPermissionSecretScanningDataSourceActions.ReadScans,
     ProjectPermissionSub.SecretScanningDataSources
   );
 
-  const { data: resources = [], isPending: isResourcesPending } = useListSecretScanningResources(
+  const { data: scans = [], isPending: isScansPending } = useListSecretScanningScans(
     { dataSourceId: dataSource.id, type: dataSource.type },
     {
       refetchInterval: 30000,
-      enabled: canReadResources
+      enabled: canReadScans
     }
   );
 
@@ -75,36 +74,34 @@ export const SecretScanningResourcesTable = ({ dataSource, label }: Props) => {
     orderBy,
     setOrderDirection,
     setOrderBy
-  } = usePagination<ResourcesOrderBy>(ResourcesOrderBy.Name, { initPerPage: 10 });
+  } = usePagination<ScansOrderBy>(ScansOrderBy.Timestamp, { initPerPage: 10 });
 
   const filteredResources = useMemo(
     () =>
-      resources
-        .filter((resource) => {
-          const { name } = resource;
+      scans
+        .filter((scan) => {
+          const { resourceName } = scan;
 
           const searchValue = search.trim().toLowerCase();
 
-          return name.toLowerCase().includes(searchValue);
+          return resourceName.toLowerCase().includes(searchValue);
         })
         .sort((a, b) => {
-          const [resourceOne, resourceTwo] =
-            orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
+          const [scanOne, scanTwo] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
 
           switch (orderBy) {
-            case ResourcesOrderBy.Findings:
-              return resourceOne.unresolvedFindings - resourceTwo.unresolvedFindings;
-            case ResourcesOrderBy.LastScanned:
-              return (
-                (resourceOne.lastScannedAt ? new Date(resourceOne.lastScannedAt).getTime() : 0) -
-                (resourceTwo.lastScannedAt ? new Date(resourceTwo.lastScannedAt).getTime() : 0)
-              );
-            case ResourcesOrderBy.Name:
+            case ScansOrderBy.Findings:
+              return scanOne.unresolvedFindings - scanTwo.unresolvedFindings;
+            case ScansOrderBy.Timestamp:
+              return new Date(scanTwo.createdAt).getTime() - new Date(scanOne.createdAt).getTime();
+            case ScansOrderBy.ResourceName:
             default:
-              return resourceOne.name.toLowerCase().localeCompare(resourceTwo.name.toLowerCase());
+              return scanOne.resourceName
+                .toLowerCase()
+                .localeCompare(scanTwo.resourceName.toLowerCase());
           }
         }),
-    [resources, orderDirection, search, orderBy]
+    [scans, orderDirection, search, orderBy]
   );
 
   useResetPageHelper({
@@ -113,7 +110,7 @@ export const SecretScanningResourcesTable = ({ dataSource, label }: Props) => {
     setPage
   });
 
-  const handleSort = (column: ResourcesOrderBy) => {
+  const handleSort = (column: ScansOrderBy) => {
     if (column === orderBy) {
       toggleOrderDirection();
       return;
@@ -123,10 +120,9 @@ export const SecretScanningResourcesTable = ({ dataSource, label }: Props) => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
-  const getClassName = (col: ResourcesOrderBy) =>
-    twMerge("ml-2", orderBy === col ? "" : "opacity-30");
+  const getClassName = (col: ScansOrderBy) => twMerge("ml-2", orderBy === col ? "" : "opacity-30");
 
-  const getColSortIcon = (col: ResourcesOrderBy) =>
+  const getColSortIcon = (col: ScansOrderBy) =>
     orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
 
   return (
@@ -135,74 +131,78 @@ export const SecretScanningResourcesTable = ({ dataSource, label }: Props) => {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder={`Search ${label.toLowerCase()}...`}
+        placeholder="Search scans..."
         className="flex-1"
       />
       <TableContainer className="mt-4">
         <Table>
           <THead>
             <Tr>
+              <Th className="w-4" />
+              <Th className="w-min whitespace-nowrap">
+                <div className="flex items-center">
+                  Timestamp
+                  <IconButton
+                    variant="plain"
+                    className={getClassName(ScansOrderBy.Timestamp)}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(ScansOrderBy.Timestamp)}
+                  >
+                    <FontAwesomeIcon icon={getColSortIcon(ScansOrderBy.Timestamp)} />
+                  </IconButton>
+                </div>
+              </Th>
               <Th className="w-full">
                 <div className="flex items-center">
                   Name
                   <IconButton
                     variant="plain"
-                    className={getClassName(ResourcesOrderBy.Name)}
+                    className={getClassName(ScansOrderBy.ResourceName)}
                     ariaLabel="sort"
-                    onClick={() => handleSort(ResourcesOrderBy.Name)}
+                    onClick={() => handleSort(ScansOrderBy.ResourceName)}
                   >
-                    <FontAwesomeIcon icon={getColSortIcon(ResourcesOrderBy.Name)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/5">
-                <div className="flex items-center">
-                  Findings
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(ResourcesOrderBy.Findings)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(ResourcesOrderBy.Findings)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(ResourcesOrderBy.Findings)} />
+                    <FontAwesomeIcon icon={getColSortIcon(ScansOrderBy.ResourceName)} />
                   </IconButton>
                 </div>
               </Th>
               <Th className="w-1/5 whitespace-nowrap">
                 <div className="flex items-center">
-                  Last Scan
+                  Findings
                   <IconButton
                     variant="plain"
-                    className={getClassName(ResourcesOrderBy.LastScanned)}
+                    className={getClassName(ScansOrderBy.Findings)}
                     ariaLabel="sort"
-                    onClick={() => handleSort(ResourcesOrderBy.LastScanned)}
+                    onClick={() => handleSort(ScansOrderBy.Findings)}
                   >
-                    <FontAwesomeIcon icon={getColSortIcon(ResourcesOrderBy.LastScanned)} />
+                    <FontAwesomeIcon icon={getColSortIcon(ScansOrderBy.Findings)} />
+                  </IconButton>
+                </div>
+              </Th>
+              <Th>
+                <div className="flex items-center">
+                  Status
+                  <IconButton
+                    variant="plain"
+                    className={getClassName(ScansOrderBy.Findings)}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(ScansOrderBy.Findings)}
+                  >
+                    <FontAwesomeIcon icon={getColSortIcon(ScansOrderBy.Findings)} />
                   </IconButton>
                 </div>
               </Th>
               <Th className="w-5" />
-              <Th className="w-5" />
             </Tr>
           </THead>
           <TBody>
-            {canReadResources && isResourcesPending && (
-              <TableSkeleton columns={5} innerKey="resource" />
-            )}
-            {filteredResources.slice(offset, perPage * page).map((resource) => (
-              <SecretScanningResourceRow
-                key={resource.id}
-                resource={resource}
-                dataSource={dataSource}
-              />
+            {canReadScans && isScansPending && <TableSkeleton columns={5} innerKey="resource" />}
+            {filteredResources.slice(offset, perPage * page).map((scan) => (
+              <SecretScanningScanRow key={scan.id} scan={scan} />
             ))}
           </TBody>
         </Table>
-        {!canReadResources && (
-          <EmptyState
-            icon={faBan}
-            title={`You do not have permission to view data source ${label.toLowerCase()}`}
-          />
+        {!canReadScans && (
+          <EmptyState icon={faBan} title="You do not have permission to view data source scans" />
         )}
         {Boolean(filteredResources.length) && (
           <Pagination
@@ -213,14 +213,14 @@ export const SecretScanningResourcesTable = ({ dataSource, label }: Props) => {
             onChangePerPage={setPerPage}
           />
         )}
-        {!isResourcesPending && !filteredResources?.length && (
+        {!isScansPending && !filteredResources?.length && (
           <EmptyState
             title={
-              resources.length
-                ? "No resources match search..."
-                : `This data source has no ${label.toLowerCase()} associated with it.`
+              scans.length
+                ? "No scans match search..."
+                : "This data source has no scans associated with it."
             }
-            icon={resources.length ? faSearch : undefined}
+            icon={scans.length ? faSearch : faExpand}
           />
         )}
       </TableContainer>

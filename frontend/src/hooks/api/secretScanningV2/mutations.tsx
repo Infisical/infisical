@@ -50,6 +50,9 @@ export const useUpdateSecretScanningDataSource = () => {
       queryClient.invalidateQueries({
         queryKey: secretScanningV2Keys.listResources(dataSourceId)
       });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.listScans(dataSourceId)
+      });
     }
   });
 };
@@ -74,6 +77,9 @@ export const useDeleteSecretScanningDataSource = () => {
       queryClient.invalidateQueries({
         queryKey: secretScanningV2Keys.listResources(dataSourceId)
       });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.listScans(dataSourceId)
+      });
     }
   });
 };
@@ -97,6 +103,9 @@ export const useTriggerSecretScanningDataSource = () => {
       });
       queryClient.invalidateQueries({
         queryKey: secretScanningV2Keys.listResources(dataSourceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.listScans(dataSourceId)
       });
     }
   });

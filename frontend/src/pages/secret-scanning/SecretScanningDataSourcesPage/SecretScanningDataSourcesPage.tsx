@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { PageHeader } from "@app/components/v2";
 
-import { DataSourcesSection, SshHostGroupsSection, SshHostsSection } from "./components";
+import { SecretScanningDataSourcesSection } from "./components";
 
 export const SecretScanningDataSourcesPage = () => {
   const { t } = useTranslation();
@@ -19,7 +19,7 @@ export const SecretScanningDataSourcesPage = () => {
               title="Data Sources"
               description="Manage your Secret Scanning data sources."
             />
-            <DataSourcesSection />
+            <SecretScanningDataSourcesSection />
           </div>
         </div>
       </div>

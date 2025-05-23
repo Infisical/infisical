@@ -5,7 +5,7 @@ import {
   faCheckCircle,
   faFilter,
   faMagnifyingGlass,
-  faRotate,
+  faPuzzlePiece,
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -42,7 +42,7 @@ import {
   useUpdateSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
 
-import { DataSourceRow } from "./DataSourceRow";
+import { SecretScanningDataSourceRow } from "./SecretScanningDataSourceRow";
 
 // import { getSecretSyncDestinationColValues } from "./helpers";
 
@@ -82,7 +82,7 @@ type Props = {
 //   [SecretSyncStatus.Running]: { icon: faRotate, className: "text-yellow", name: "Syncing" }
 // };
 
-export const DataSourcesTable = ({ dataSources }: Props) => {
+export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "deleteDataSource",
     "editDataSource",
@@ -401,7 +401,7 @@ export const DataSourcesTable = ({ dataSources }: Props) => {
           </THead>
           <TBody>
             {filteredDataSources.slice(offset, perPage * page).map((dataSource) => (
-              <DataSourceRow
+              <SecretScanningDataSourceRow
                 key={dataSource.id}
                 dataSource={dataSource}
                 onDelete={handleDelete}
@@ -428,7 +428,7 @@ export const DataSourcesTable = ({ dataSources }: Props) => {
                 ? "No data sources match search..."
                 : "This project has no data sources configured"
             }
-            icon={dataSources.length ? faSearch : faRotate}
+            icon={dataSources.length ? faSearch : faPuzzlePiece}
           />
         )}
       </TableContainer>

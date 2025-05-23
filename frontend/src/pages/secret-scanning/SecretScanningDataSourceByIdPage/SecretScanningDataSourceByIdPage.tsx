@@ -13,8 +13,12 @@ import {
   SecretScanningDataSource,
   useGetSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
-import { SecretScanningDataSourceSection } from "@app/pages/secret-scanning/SecretScanningDataSourceByIdPage/components";
-import { SecretScanningResourceSection } from "@app/pages/secret-scanning/SecretScanningDataSourceByIdPage/components/SecretScanningResourceSection";
+
+import {
+  SecretScanningDataSourceSection,
+  SecretScanningResourceSection,
+  SecretScanningScanSection
+} from "./components";
 
 const PageContent = () => {
   const navigate = useNavigate();
@@ -96,6 +100,7 @@ const PageContent = () => {
           </div>
           <div className="flex flex-1 flex-col gap-4">
             <SecretScanningResourceSection dataSource={dataSource} />
+            <SecretScanningScanSection dataSource={dataSource} />
           </div>
         </div>
       </div>

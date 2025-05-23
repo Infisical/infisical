@@ -23,6 +23,7 @@ import {
   TSecretScanningDataSourceWithConnection,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningResourceWithDetails,
+  TSecretScanningScanWithDetails,
   TTriggerSecretScanningDataSourceDTO,
   TUpdateSecretScanningDataSourceDTO
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
@@ -512,6 +513,49 @@ export const secretScanningV2ServiceFactory = ({
     return { resources: resources as TSecretScanningResourceWithDetails[], projectId: dataSource.projectId };
   };
 
+  const listSecretScanningScansWithDetailsByDataSourceId = async (
+    { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
+    actor: OrgServiceActor
+  ) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.secretScanning)
+      throw new BadRequestError({
+        message:
+          "Failed to access Secret Scanning Scans due to plan restriction. Upgrade plan to enable Secret Scanning."
+      });
+
+    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
+
+    if (!dataSource)
+      throw new NotFoundError({
+        message: `Could not find ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source with ID "${dataSourceId}"`
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretScanning,
+      projectId: dataSource.projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretScanningDataSourceActions.ReadScans,
+      ProjectPermissionSub.SecretScanningDataSources
+    );
+
+    if (type !== dataSource.type)
+      throw new BadRequestError({
+        message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]}`
+      });
+
+    const scans = await secretScanningV2DAL.scans.findWithDetailsByDataSourceId(dataSourceId);
+
+    return { scans: scans as TSecretScanningScanWithDetails[], projectId: dataSource.projectId };
+  };
+
   return {
     listSecretScanningDataSourceOptions,
     listSecretScanningDataSourcesByProjectId,
@@ -523,6 +567,7 @@ export const secretScanningV2ServiceFactory = ({
     deleteSecretScanningResource,
     triggerSecretScanningDataSourceScan,
     listSecretScanningResourcesByDataSourceId,
-    listSecretScanningResourcesWithDetailsByDataSourceId
+    listSecretScanningResourcesWithDetailsByDataSourceId,
+    listSecretScanningScansWithDetailsByDataSourceId
   };
 };

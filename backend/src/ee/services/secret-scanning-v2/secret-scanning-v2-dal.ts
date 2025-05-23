@@ -1,7 +1,12 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { SecretScanningResourcesSchema, TableName, TSecretScanningDataSources } from "@app/db/schemas";
+import {
+  SecretScanningResourcesSchema,
+  SecretScanningScansSchema,
+  TableName,
+  TSecretScanningDataSources
+} from "@app/db/schemas";
 import { SecretScanningFindingStatus } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { DatabaseError } from "@app/lib/errors";
 import {
@@ -255,7 +260,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           lastScanStatus: lastScan?.status ?? null,
           lastScanStatusMessage: lastScan?.statusMessage ?? null,
           lastScannedAt: lastScan?.createdAt ?? null,
-          unresolvedFindings: findings?.length ?? null
+          unresolvedFindings: findings?.length ?? 0
         };
       });
     } catch (error) {
@@ -298,7 +303,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SecretScanningFinding).as("findingId")
         );
 
-      if (!resources.length) return null;
+      if (!resources.length) return [];
 
       const results = sqlNestRelationships({
         data: resources,
@@ -336,15 +341,77 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
 
         return {
           ...resource,
-          scans,
           lastScanStatus: lastScan?.status ?? null,
           lastScanStatusMessage: lastScan?.statusMessage ?? null,
           lastScannedAt: lastScan?.createdAt ?? null,
-          unresolvedFindings: findings?.length ?? null
+          unresolvedFindings: findings?.length ?? 0
         };
       });
     } catch (error) {
       throw new DatabaseError({ error, name: "Find Resource with Details - Secret Scanning V2" });
+    }
+  };
+
+  const findScansWithDetailsByDataSourceId = async (dataSourceId: string, tx?: Knex) => {
+    try {
+      // TODO (scott): this query will probably need to be optimized
+
+      const scans = await (tx || db.replicaNode())(TableName.SecretScanningScan)
+        .leftJoin(
+          TableName.SecretScanningResource,
+          `${TableName.SecretScanningResource}.id`,
+          `${TableName.SecretScanningScan}.resourceId`
+        )
+        .where(`${TableName.SecretScanningResource}.dataSourceId`, dataSourceId)
+        .leftJoin(
+          TableName.SecretScanningFinding,
+          `${TableName.SecretScanningFinding}.scanId`,
+          `${TableName.SecretScanningScan}.id`
+        )
+        .select(selectAllTableCols(TableName.SecretScanningScan))
+        .select(
+          db.ref("status").withSchema(TableName.SecretScanningFinding).as("findingStatus"),
+          db.ref("id").withSchema(TableName.SecretScanningFinding).as("findingId"),
+          db.ref("name").withSchema(TableName.SecretScanningResource).as("resourceName")
+        );
+
+      if (!scans.length) return [];
+
+      const results = sqlNestRelationships({
+        data: scans,
+        key: "id",
+        parentMapper: (scan) => SecretScanningScansSchema.parse(scan),
+        childrenMapper: [
+          {
+            key: "findingId",
+            label: "findings" as const,
+            mapper: ({ findingId, findingStatus }) => ({
+              id: findingId,
+              status: findingStatus
+            })
+          },
+          {
+            key: "resourceId",
+            label: "resources" as const,
+            mapper: ({ resourceName }) => ({
+              name: resourceName
+            })
+          }
+        ]
+      });
+
+      return results.map(({ findings, resources, ...scan }) => {
+        return {
+          ...scan,
+          unresolvedFindings:
+            findings?.filter((finding) => finding.status === SecretScanningFindingStatus.Unresolved).length ?? 0,
+          resolvedFindings:
+            findings?.filter((finding) => finding.status === SecretScanningFindingStatus.Resolved).length ?? 0,
+          resourceName: resources[0].name
+        };
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find Scan with Details - Secret Scanning V2" });
     }
   };
 
@@ -363,7 +430,10 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       ...resourceOrm,
       findWithDetails: findResourcesWithDetails
     },
-    scans: scanOrm,
+    scans: {
+      ...scanOrm,
+      findWithDetailsByDataSourceId: findScansWithDetailsByDataSourceId
+    },
     findings: findingOrm
   };
 };

@@ -52,7 +52,7 @@ type Props = {
   onEdit: (dataSource: TSecretScanningDataSourceWithDetails) => void;
 };
 
-export const DataSourceRow = ({
+export const SecretScanningDataSourceRow = ({
   dataSource,
   onDelete,
   onEdit,

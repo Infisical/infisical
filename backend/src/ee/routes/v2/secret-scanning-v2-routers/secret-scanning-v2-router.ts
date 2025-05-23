@@ -87,7 +87,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
   // this is not exposed and for UI only
   server.route({
     method: "GET",
-    url: "/data-sources/details",
+    url: "/data-sources-dashboard",
     config: {
       rateLimit: readLimit
     },
@@ -104,7 +104,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
                 lastScannedAt: z.date().nullish(),
                 lastScanStatus: z.nativeEnum(SecretScanningScanStatus).nullish(),
                 lastScanStatusMessage: z.string().nullish(),
-                unresolvedFindings: z.number().nullish()
+                unresolvedFindings: z.number()
               })
             )
             .array()

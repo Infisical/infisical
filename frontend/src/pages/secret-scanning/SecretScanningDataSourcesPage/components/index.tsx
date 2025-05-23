@@ -1,1 +1,1 @@
-export { DataSourcesSection } from "./DataSourcesSection";
+export { SecretScanningDataSourcesSection } from "./SecretScanningDataSourcesSection";

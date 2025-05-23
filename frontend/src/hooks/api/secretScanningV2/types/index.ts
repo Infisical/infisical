@@ -3,7 +3,8 @@ import { DiscriminativePick } from "@app/types";
 import {
   SecretScanningDataSource,
   SecretScanningResource,
-  SecretScanningScanStatus
+  SecretScanningScanStatus,
+  SecretScanningScanType
 } from "../enums";
 import { TGitHubDataSource, TGitHubDataSourceOption } from "./github-data-source";
 import { TGitLabDataSource, TGitLabDataSourceOption } from "./gitlab-data-source";
@@ -77,4 +78,20 @@ export type TSecretScanningResourceWithDetails = {
 
 export type TListSecretScanningResourcesResponse = {
   resources: TSecretScanningResourceWithDetails[];
+};
+
+export type TSecretScanningScanWithDetails = {
+  id: string;
+  createdAt: string;
+  resourceId: string;
+  type: SecretScanningScanType;
+  status: SecretScanningScanStatus;
+  statusMessage?: string | null;
+  unresolvedFindings: number;
+  resolvedFindings: number;
+  resourceName: string;
+};
+
+export type TListSecretScanningScansResponse = {
+  scans: TSecretScanningScanWithDetails[];
 };
