@@ -8,9 +8,5 @@ export const OnePassSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.OnePass }>();
   const vaultId = watch("destinationConfig.vaultId");
 
-  return (
-    <>
-      <GenericFieldLabel label="Vault ID">{vaultId}</GenericFieldLabel>
-    </>
-  );
+  return <GenericFieldLabel label="Vault ID">{vaultId}</GenericFieldLabel>;
 };
