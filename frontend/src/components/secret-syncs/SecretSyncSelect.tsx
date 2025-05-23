@@ -49,12 +49,11 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
               }
               className={twMerge(
                 "group relative flex h-28 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600",
-                enterprise && !subscription.enterpriseSecretSyncs ? "border-0 bg-opacity-0" : ""
+                enterprise && !subscription.enterpriseSecretSyncs
+                  ? "border-0 bg-opacity-0 opacity-40"
+                  : ""
               )}
             >
-              {enterprise && !subscription.enterpriseSecretSyncs && (
-                <div className="absolute h-full w-full backdrop-blur-[1px]" />
-              )}
               <img
                 src={`/images/integrations/${image}`}
                 height={40}
