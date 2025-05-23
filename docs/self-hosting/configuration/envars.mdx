@@ -416,12 +416,16 @@ If your SMTP server uses a certificate signed by a custom Certificate Authority,
 
 ```
 SMTP_PORT=465 # Or your SMTPS/STARTTLS port
-SMTP_CUSTOM_CA_CERT='[CERTIFICATE PEM]'
+SMTP_CUSTOM_CA_CERT='[BASE64 ENCODED CERTIFICATE PEM]'
 
 # Always keep these as true for custom CA
 SMTP_REQUIRE_TLS=true
 SMTP_TLS_REJECT_UNAUTHORIZED=true
 ```
+
+<Note>
+    The `SMTP_CUSTOM_CA_CERT` environment variable **must be encoded in base64 format**
+</Note>
 
 ## Authentication
 

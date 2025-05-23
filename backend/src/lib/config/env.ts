@@ -309,7 +309,7 @@ export const formatSmtpConfig = () => {
   };
 
   if (envCfg.SMTP_CUSTOM_CA_CERT) {
-    tlsOptions.ca = envCfg.SMTP_CUSTOM_CA_CERT;
+    tlsOptions.ca = Buffer.from(envCfg.SMTP_CUSTOM_CA_CERT, "base64").toString("utf-8");
   }
 
   return {
