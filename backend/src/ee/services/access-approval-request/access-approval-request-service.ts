@@ -326,7 +326,6 @@ export const accessApprovalRequestServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    envName,
     bypassReason
   }: TReviewAccessRequestDTO) => {
     const accessApprovalRequest = await accessApprovalRequestDAL.findById(requestId);
@@ -334,7 +333,7 @@ export const accessApprovalRequestServiceFactory = ({
       throw new NotFoundError({ message: `Secret approval request with ID '${requestId}' not found` });
     }
 
-    const { policy } = accessApprovalRequest;
+    const { policy, environment } = accessApprovalRequest;
     if (policy.deletedAt) {
       throw new BadRequestError({
         message: "The policy associated with this access request has been deleted."
@@ -354,14 +353,15 @@ export const accessApprovalRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
     }
 
-    if (
-      !policy.allowedSelfApprovals &&
-      actorId === accessApprovalRequest.requestedByUserId &&
-      !(
-        policy.enforcementLevel === EnforcementLevel.Soft &&
-        permission.can(ProjectPermissionApprovalActions.AllowAccessBypass, ProjectPermissionSub.SecretApproval)
-      )
-    ) {
+    const isSelfApproval = actorId === accessApprovalRequest.requestedByUserId;
+    const isSoftEnforcement = policy.enforcementLevel === EnforcementLevel.Soft;
+    const canBypassApproval = permission.can(
+      ProjectPermissionApprovalActions.AllowAccessBypass,
+      ProjectPermissionSub.SecretApproval
+    );
+    const cannotBypassUnderSoftEnforcement = !(isSoftEnforcement && canBypassApproval);
+
+    if (!policy.allowedSelfApprovals && isSelfApproval && cannotBypassUnderSoftEnforcement) {
       throw new BadRequestError({
         message: "Failed to review access approval request. Users are not authorized to review their own request."
       });
@@ -508,7 +508,7 @@ export const accessApprovalRequestServiceFactory = ({
                   requesterEmail: actingUser.email,
                   bypassReason: bypassReason || "No reason provided",
                   secretPath: policy.secretPath || "/",
-                  environment: envName || "Unknown",
+                  environment,
                   approvalUrl: `${cfg.SITE_URL}/secret-manager/${project.id}/approval`,
                   requestType: "access"
                 },

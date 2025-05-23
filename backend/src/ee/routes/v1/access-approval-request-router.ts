@@ -155,7 +155,6 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       }),
       body: z.object({
         status: z.enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED]),
-        envName: z.string().optional(), // For logging
         bypassReason: z.string().min(10).max(1000).optional()
       }),
       response: {
@@ -173,7 +172,6 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         actorAuthMethod: req.permission.authMethod,
         requestId: req.params.requestId,
         status: req.body.status,
-        envName: req.body.envName,
         bypassReason: req.body.bypassReason
       });
 

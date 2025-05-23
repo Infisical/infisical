@@ -23,13 +23,8 @@ export const accessApprovalKeys = {
     projectSlug: string,
     envSlug?: string,
     requestedBy?: string,
-    envName?: string,
     bypassReason?: string
-  ) =>
-    [
-      { projectSlug, envSlug, requestedBy, envName, bypassReason },
-      "access-approvals-requests"
-    ] as const,
+  ) => [{ projectSlug, envSlug, requestedBy, bypassReason }, "access-approvals-requests"] as const,
   getAccessApprovalRequestCount: (projectSlug: string) =>
     [{ projectSlug }, "access-approval-request-count"] as const
 };

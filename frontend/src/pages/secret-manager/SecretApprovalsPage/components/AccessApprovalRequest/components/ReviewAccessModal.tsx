@@ -104,7 +104,6 @@ export const ReviewAccessRequestModal = ({
           requestId: request.id,
           status,
           projectSlug,
-          envName: accessDetails.env,
           envSlug: selectedEnvSlug,
           requestedBy: selectedRequester,
           bypassReason: bypassApproval ? bypassReason : undefined
@@ -129,7 +128,6 @@ export const ReviewAccessRequestModal = ({
       bypassReason,
       reviewAccessRequest,
       request,
-      accessDetails.env,
       selectedEnvSlug,
       selectedRequester,
       onOpenChange
