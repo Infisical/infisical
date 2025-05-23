@@ -13,7 +13,7 @@ export async function up(knex: Knex): Promise<void> {
     const projects = await knex(TableName.Project).where({ version: 3, type: ProjectType.SecretManager }).select("id");
     for (const project of projects) {
       // eslint-disable-next-line no-await-in-loop
-      await folderCommitService.initializeProject(project.id);
+      await folderCommitService.initializeProject(project.id, knex);
     }
   }
 }
