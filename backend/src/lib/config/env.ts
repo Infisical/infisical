@@ -69,6 +69,9 @@ const envSchema = z
     SMTP_PASSWORD: zpStr(z.string().optional()),
     SMTP_FROM_ADDRESS: zpStr(z.string().optional()),
     SMTP_FROM_NAME: zpStr(z.string().optional().default("Infisical")),
+    SMTP_CUSTOM_CA_CERT: zpStr(
+      z.string().optional().describe("Base64 encoded custom CA certificate PEM(s) for the SMTP server")
+    ),
     COOKIE_SECRET_SIGN_KEY: z
       .string()
       .min(32)
@@ -298,6 +301,17 @@ export const initEnvConfig = (logger?: CustomLogger) => {
 };
 
 export const formatSmtpConfig = () => {
+  const tlsOptions: {
+    rejectUnauthorized: boolean;
+    ca?: string | string[];
+  } = {
+    rejectUnauthorized: envCfg.SMTP_TLS_REJECT_UNAUTHORIZED
+  };
+
+  if (envCfg.SMTP_CUSTOM_CA_CERT) {
+    tlsOptions.ca = Buffer.from(envCfg.SMTP_CUSTOM_CA_CERT, "base64").toString("utf-8");
+  }
+
   return {
     host: envCfg.SMTP_HOST,
     port: envCfg.SMTP_PORT,
@@ -309,8 +323,6 @@ export const formatSmtpConfig = () => {
     from: `"${envCfg.SMTP_FROM_NAME}" <${envCfg.SMTP_FROM_ADDRESS}>`,
     ignoreTLS: envCfg.SMTP_IGNORE_TLS,
     requireTLS: envCfg.SMTP_REQUIRE_TLS,
-    tls: {
-      rejectUnauthorized: envCfg.SMTP_TLS_REJECT_UNAUTHORIZED
-    }
+    tls: tlsOptions
   };
 };
