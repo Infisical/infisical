@@ -212,7 +212,16 @@ export const OrgOIDCSection = (): JSX.Element => {
                       level.
                     </span>
                     <p className="mt-4">
-                      In case of a lockout, admins can use the admin login portal at{" "}
+                      In case of a lockout, admins can use the{" "}
+                      <a
+                        target="_blank"
+                        className="underline underline-offset-2 hover:text-mineshaft-300"
+                        href="https://infisical.com/docs/documentation/platform/sso/overview#admin-login-portal"
+                        rel="noreferrer"
+                      >
+                        Admin Login Portal
+                      </a>{" "}
+                      at{" "}
                       <a
                         target="_blank"
                         rel="noopener noreferrer"
