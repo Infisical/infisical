@@ -1,3 +1,4 @@
+import { ProjectType } from "@app/db/schemas";
 import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
@@ -315,7 +316,6 @@ export enum EventType {
   CREATE_PROJECT_TEMPLATE = "create-project-template",
   UPDATE_PROJECT_TEMPLATE = "update-project-template",
   DELETE_PROJECT_TEMPLATE = "delete-project-template",
-  APPLY_PROJECT_TEMPLATE = "apply-project-template",
   GET_APP_CONNECTIONS = "get-app-connections",
   GET_AVAILABLE_APP_CONNECTIONS_DETAILS = "get-available-app-connections-details",
   GET_APP_CONNECTION = "get-app-connection",
@@ -375,7 +375,13 @@ export enum EventType {
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list",
 
   PROJECT_ASSUME_PRIVILEGE_SESSION_START = "project-assume-privileges-session-start",
-  PROJECT_ASSUME_PRIVILEGE_SESSION_END = "project-assume-privileges-session-end"
+  PROJECT_ASSUME_PRIVILEGE_SESSION_END = "project-assume-privileges-session-end",
+
+  UPDATE_ORG = "update-org",
+
+  CREATE_PROJECT = "create-project",
+  UPDATE_PROJECT = "update-project",
+  DELETE_PROJECT = "delete-project"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -2451,14 +2457,6 @@ interface DeleteProjectTemplateEvent {
   };
 }
 
-interface ApplyProjectTemplateEvent {
-  type: EventType.APPLY_PROJECT_TEMPLATE;
-  metadata: {
-    template: string;
-    projectId: string;
-  };
-}
-
 interface GetAppConnectionsEvent {
   type: EventType.GET_APP_CONNECTIONS;
   metadata: {
@@ -2913,6 +2911,59 @@ interface MicrosoftTeamsWorkflowIntegrationUpdateEvent {
   };
 }
 
+interface OrgUpdateEvent {
+  type: EventType.UPDATE_ORG;
+  metadata: {
+    name?: string;
+    slug?: string;
+    authEnforced?: boolean;
+    scimEnabled?: boolean;
+    defaultMembershipRoleSlug?: string;
+    enforceMfa?: boolean;
+    selectedMfaMethod?: string;
+    allowSecretSharingOutsideOrganization?: boolean;
+    bypassOrgAuthEnabled?: boolean;
+    userTokenExpiration?: string;
+    secretsProductEnabled?: boolean;
+    pkiProductEnabled?: boolean;
+    kmsProductEnabled?: boolean;
+    sshProductEnabled?: boolean;
+    scannerProductEnabled?: boolean;
+    shareSecretsProductEnabled?: boolean;
+  };
+}
+
+interface ProjectCreateEvent {
+  type: EventType.CREATE_PROJECT;
+  metadata: {
+    name: string;
+    slug?: string;
+    type: ProjectType;
+  };
+}
+
+interface ProjectUpdateEvent {
+  type: EventType.UPDATE_PROJECT;
+  metadata: {
+    name?: string;
+    description?: string;
+    autoCapitalization?: boolean;
+    hasDeleteProtection?: boolean;
+    slug?: string;
+    secretSharing?: boolean;
+    pitVersionLimit?: number;
+    auditLogsRetentionDays?: number;
+  };
+}
+
+interface ProjectDeleteEvent {
+  type: EventType.DELETE_PROJECT;
+  metadata: {
+    id: string;
+    name: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -3117,7 +3168,6 @@ export type Event =
   | CreateProjectTemplateEvent
   | UpdateProjectTemplateEvent
   | DeleteProjectTemplateEvent
-  | ApplyProjectTemplateEvent
   | GetAppConnectionsEvent
   | GetAvailableAppConnectionsDetailsEvent
   | GetAppConnectionEvent
@@ -3179,4 +3229,8 @@ export type Event =
   | MicrosoftTeamsWorkflowIntegrationGetTeamsEvent
   | MicrosoftTeamsWorkflowIntegrationGetEvent
   | MicrosoftTeamsWorkflowIntegrationListEvent
-  | MicrosoftTeamsWorkflowIntegrationUpdateEvent;
+  | MicrosoftTeamsWorkflowIntegrationUpdateEvent
+  | OrgUpdateEvent
+  | ProjectCreateEvent
+  | ProjectUpdateEvent
+  | ProjectDeleteEvent;
