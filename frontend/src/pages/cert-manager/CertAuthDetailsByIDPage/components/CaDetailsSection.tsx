@@ -4,22 +4,24 @@ import { format } from "date-fns";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, IconButton, Tooltip } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useTimedReset } from "@app/hooks";
-import { CaStatus, CaType, useGetCaById } from "@app/hooks/api";
+import { CaStatus, CaType, InternalCaType, useGetCa } from "@app/hooks/api";
 import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants";
+import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
-  caId: string;
+  caName: string;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["ca", "renewCa", "installCaCert"]>,
     data?: object
   ) => void;
 };
 
-export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
+export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
+  const { currentWorkspace } = useWorkspace();
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
@@ -27,7 +29,13 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
     initialState: "Copy ID to clipboard"
   });
 
-  const { data: ca } = useGetCaById(caId);
+  const { data } = useGetCa({
+    caName,
+    projectId: currentWorkspace.id,
+    type: CaType.INTERNAL
+  });
+
+  const ca = data as TInternalCertificateAuthority;
 
   return ca ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -45,7 +53,7 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
                   onClick={(e) => {
                     e.stopPropagation();
                     handlePopUpOpen("ca", {
-                      caId: ca.id
+                      name: ca.name
                     });
                   }}
                 >
@@ -59,7 +67,7 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
       <div className="pt-4">
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">CA Type</p>
-          <p className="text-sm text-mineshaft-300">{caTypeToNameMap[ca.type]}</p>
+          <p className="text-sm text-mineshaft-300">{caTypeToNameMap[ca.configuration.type]}</p>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">CA ID</p>
@@ -82,36 +90,39 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
             </div>
           </div>
         </div>
-        {ca.type === CaType.INTERMEDIATE && ca.status !== CaStatus.PENDING_CERTIFICATE && (
-          <div className="mb-4">
-            <p className="text-sm font-semibold text-mineshaft-300">Parent CA ID</p>
-            <div className="group flex align-top">
-              <p className="text-sm text-mineshaft-300">
-                {ca.parentCaId ? ca.parentCaId : "N/A - External Parent CA"}
-              </p>
-              {ca.parentCaId && (
-                <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                  <Tooltip content={copyTextParentId}>
-                    <IconButton
-                      ariaLabel="copy icon"
-                      variant="plain"
-                      className="group relative ml-2"
-                      onClick={() => {
-                        navigator.clipboard.writeText(ca.parentCaId as string);
-                        setCopyTextParentId("Copied");
-                      }}
-                    >
-                      <FontAwesomeIcon icon={isCopyingParentId ? faCheck : faCopy} />
-                    </IconButton>
-                  </Tooltip>
-                </div>
-              )}
+        {ca.configuration.type === InternalCaType.INTERMEDIATE &&
+          ca.status !== CaStatus.PENDING_CERTIFICATE && (
+            <div className="mb-4">
+              <p className="text-sm font-semibold text-mineshaft-300">Parent CA ID</p>
+              <div className="group flex align-top">
+                <p className="text-sm text-mineshaft-300">
+                  {ca.configuration.parentCaId
+                    ? ca.configuration.parentCaId
+                    : "N/A - External Parent CA"}
+                </p>
+                {ca.configuration.parentCaId && (
+                  <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                    <Tooltip content={copyTextParentId}>
+                      <IconButton
+                        ariaLabel="copy icon"
+                        variant="plain"
+                        className="group relative ml-2"
+                        onClick={() => {
+                          navigator.clipboard.writeText(ca.configuration.parentCaId as string);
+                          setCopyTextParentId("Copied");
+                        }}
+                      >
+                        <FontAwesomeIcon icon={isCopyingParentId ? faCheck : faCopy} />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Friendly Name</p>
-          <p className="text-sm text-mineshaft-300">{ca.friendlyName}</p>
+          <p className="text-sm font-semibold text-mineshaft-300">Name</p>
+          <p className="text-sm text-mineshaft-300">{ca.name}</p>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Status</p>
@@ -119,29 +130,33 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Key Algorithm</p>
-          <p className="text-sm text-mineshaft-300">{certKeyAlgorithmToNameMap[ca.keyAlgorithm]}</p>
+          <p className="text-sm text-mineshaft-300">
+            {certKeyAlgorithmToNameMap[ca.configuration.keyAlgorithm]}
+          </p>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Max Path Length</p>
-          <p className="text-sm text-mineshaft-300">{ca.maxPathLength ?? "-"}</p>
+          <p className="text-sm text-mineshaft-300">{ca.configuration.maxPathLength ?? "-"}</p>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Not Before</p>
           <p className="text-sm text-mineshaft-300">
-            {ca.notBefore ? format(new Date(ca.notBefore), "yyyy-MM-dd") : "-"}
+            {ca.configuration.notBefore
+              ? format(new Date(ca.configuration.notBefore), "yyyy-MM-dd")
+              : "-"}
           </p>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Not After</p>
           <p className="text-sm text-mineshaft-300">
-            {ca.notAfter ? format(new Date(ca.notAfter), "yyyy-MM-dd") : "-"}
+            {ca.configuration.notAfter
+              ? format(new Date(ca.configuration.notAfter), "yyyy-MM-dd")
+              : "-"}
           </p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Template Issuance Required</p>
-          <p className="text-sm text-mineshaft-300">
-            {ca.requireTemplateForIssuance ? "True" : "False"}
-          </p>
+          <p className="text-sm font-semibold text-mineshaft-300">Enable Direct Issuance</p>
+          <p className="text-sm text-mineshaft-300">{ca.enableDirectIssuance ? "True" : "False"}</p>
         </div>
         {ca.status === CaStatus.ACTIVE && (
           <ProjectPermissionCan
@@ -156,17 +171,20 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
                   colorSchema="primary"
                   type="submit"
                   onClick={() => {
-                    if (ca.type === CaType.INTERMEDIATE && !ca.parentCaId) {
+                    if (
+                      ca.configuration.type === InternalCaType.INTERMEDIATE &&
+                      !ca.configuration.parentCaId
+                    ) {
                       // intermediate CA with external parent CA
                       handlePopUpOpen("installCaCert", {
-                        caId,
+                        caId: ca.id,
                         isParentCaExternal: true
                       });
                       return;
                     }
 
                     handlePopUpOpen("renewCa", {
-                      caId
+                      caId: ca.id
                     });
                   }}
                 >
@@ -190,7 +208,7 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
                   type="submit"
                   onClick={() => {
                     handlePopUpOpen("installCaCert", {
-                      caId
+                      caId: ca.id
                     });
                   }}
                 >

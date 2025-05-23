@@ -39,7 +39,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { cert, ca } = await server.services.certificate.getCert({
+      const { cert } = await server.services.certificate.getCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -49,7 +49,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: ca.projectId,
+        projectId: cert.projectId,
         event: {
           type: EventType.GET_CERT,
           metadata: {
@@ -86,7 +86,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, reply) => {
-      const { ca, cert, certPrivateKey } = await server.services.certificate.getCertPrivateKey({
+      const { cert, certPrivateKey } = await server.services.certificate.getCertPrivateKey({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -96,7 +96,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: ca.projectId,
+        projectId: cert.projectId,
         event: {
           type: EventType.GET_CERT_PRIVATE_KEY,
           metadata: {
@@ -138,7 +138,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, reply) => {
-      const { certificate, certificateChain, serialNumber, cert, ca, privateKey } =
+      const { certificate, certificateChain, serialNumber, cert, privateKey } =
         await server.services.certificate.getCertBundle({
           serialNumber: req.params.serialNumber,
           actor: req.permission.type,
@@ -149,7 +149,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: ca.projectId,
+        projectId: cert.projectId,
         event: {
           type: EventType.GET_CERT_BUNDLE,
           metadata: {
@@ -242,7 +242,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber, ca } =
-        await server.services.certificateAuthority.issueCertFromCa({
+        await server.services.internalCertificateAuthority.issueCertFromCa({
           actor: req.permission.type,
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
@@ -278,6 +278,68 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         certificate,
         certificateChain,
         issuingCaCertificate,
+        privateKey,
+        serialNumber
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/import-certificate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Import certificate",
+      body: z.object({
+        projectSlug: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.projectSlug),
+
+        certificatePem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.certificatePem),
+        privateKeyPem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.privateKeyPem),
+        chainPem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.chainPem),
+
+        friendlyName: z.string().trim().optional().describe(CERTIFICATES.IMPORT.friendlyName),
+        pkiCollectionId: z.string().trim().optional().describe(CERTIFICATES.IMPORT.pkiCollectionId)
+      }),
+      response: {
+        200: z.object({
+          certificate: z.string().trim().describe(CERTIFICATES.IMPORT.certificate),
+          certificateChain: z.string().trim().describe(CERTIFICATES.IMPORT.certificateChain),
+          privateKey: z.string().trim().describe(CERTIFICATES.IMPORT.privateKey),
+          serialNumber: z.string().trim().describe(CERTIFICATES.IMPORT.serialNumber)
+        })
+      }
+    },
+    handler: async (req) => {
+      const { certificate, certificateChain, privateKey, serialNumber, cert } =
+        await server.services.certificate.importCert({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.body
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: cert.projectId,
+        event: {
+          type: EventType.IMPORT_CERT,
+          metadata: {
+            certId: cert.id,
+            cn: cert.commonName,
+            serialNumber
+          }
+        }
+      });
+
+      return {
+        certificate,
+        certificateChain,
         privateKey,
         serialNumber
       };
@@ -355,7 +417,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { certificate, certificateChain, issuingCaCertificate, serialNumber, ca, commonName } =
-        await server.services.certificateAuthority.signCertFromCa({
+        await server.services.internalCertificateAuthority.signCertFromCa({
           isInternal: false,
           actor: req.permission.type,
           actorId: req.permission.id,
@@ -474,7 +536,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { deletedCert, ca } = await server.services.certificate.deleteCert({
+      const { deletedCert } = await server.services.certificate.deleteCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -484,7 +546,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: ca.projectId,
+        projectId: deletedCert.projectId,
         event: {
           type: EventType.DELETE_CERT,
           metadata: {
@@ -524,7 +586,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, serialNumber, cert, ca } = await server.services.certificate.getCertBody({
+      const { certificate, certificateChain, serialNumber, cert } = await server.services.certificate.getCertBody({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -534,7 +596,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: ca.projectId,
+        projectId: cert.projectId,
         event: {
           type: EventType.GET_CERT_BODY,
           metadata: {

@@ -1,11 +1,73 @@
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "../certificates/enums";
-import { CaRenewalType, CaStatus, CaType } from "./enums";
+import { AcmeDnsProvider, CaRenewalType, CaStatus, CaType, InternalCaType } from "./enums";
+
+export type TAcmeCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.ACME;
+  status: CaStatus;
+  name: string;
+  enableDirectIssuance: boolean;
+  configuration: {
+    dnsAppConnectionId: string;
+    dnsProviderConfig: {
+      provider: AcmeDnsProvider.ROUTE53;
+      hostedZoneId: string;
+    };
+    directoryUrl: string;
+    accountEmail: string;
+  };
+};
+
+export type TInternalCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.INTERNAL;
+  status: CaStatus;
+  name: string;
+  enableDirectIssuance: boolean;
+  configuration: {
+    type: InternalCaType;
+    friendlyName?: string;
+    commonName: string;
+    organization: string;
+    ou: string;
+    country: string;
+    province: string;
+    locality: string;
+    maxPathLength: number;
+    keyAlgorithm: CertKeyAlgorithm;
+    notAfter?: string;
+    notBefore?: string;
+    dn?: string;
+    parentCaId?: string;
+    serialNumber?: string;
+    activeCaCertId?: string;
+  };
+};
+
+export type TUnifiedCertificateAuthority =
+  | TAcmeCertificateAuthority
+  | TInternalCertificateAuthority;
+
+export type TCreateCertificateAuthorityDTO = Omit<TUnifiedCertificateAuthority, "id">;
+export type TUpdateCertificateAuthorityDTO = Partial<TUnifiedCertificateAuthority> & {
+  caName: string;
+  projectId: string;
+  type: CaType;
+};
+
+export type TDeleteCertificateAuthorityDTO = {
+  caName: string;
+  type: CaType;
+  projectId: string;
+};
 
 export type TCertificateAuthority = {
   id: string;
   parentCaId?: string;
   projectId: string;
-  type: CaType;
+  type: InternalCaType;
   status: CaStatus;
   friendlyName: string;
   organization: string;
@@ -23,22 +85,6 @@ export type TCertificateAuthority = {
   activeCaCertId?: string;
   createdAt: string;
   updatedAt: string;
-};
-
-export type TCreateCaDTO = {
-  projectSlug: string;
-  type: string;
-  friendlyName?: string;
-  organization: string;
-  ou: string;
-  country: string;
-  province: string;
-  locality: string;
-  commonName: string;
-  notAfter?: string;
-  maxPathLength: number;
-  keyAlgorithm: CertKeyAlgorithm;
-  requireTemplateForIssuance: boolean;
 };
 
 export type TUpdateCaDTO = {

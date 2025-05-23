@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { TReactQueryOptions } from "@app/types/reactQuery";
 
 import { TCertificate } from "../certificates/types";
 import { TPkiSubscriber } from "./types";
@@ -38,13 +39,16 @@ export const pkiSubscriberKeys = {
     ] as const
 };
 
-export const useGetPkiSubscriber = ({
-  subscriberName,
-  projectId
-}: {
-  subscriberName: string;
-  projectId: string;
-}) => {
+export const useGetPkiSubscriber = (
+  {
+    subscriberName,
+    projectId
+  }: {
+    subscriberName: string;
+    projectId: string;
+  },
+  options?: TReactQueryOptions["options"]
+) => {
   return useQuery({
     queryKey: pkiSubscriberKeys.getPkiSubscriber({ subscriberName, projectId }),
     queryFn: async () => {
@@ -58,21 +62,25 @@ export const useGetPkiSubscriber = ({
       );
       return pkiSubscriber;
     },
-    enabled: Boolean(subscriberName) && Boolean(projectId)
+    enabled: Boolean(subscriberName) && Boolean(projectId),
+    ...options
   });
 };
 
-export const useGetPkiSubscriberCertificates = ({
-  subscriberName,
-  projectId,
-  offset,
-  limit
-}: {
-  subscriberName: string;
-  projectId: string;
-  offset: number;
-  limit: number;
-}) => {
+export const useGetPkiSubscriberCertificates = (
+  {
+    subscriberName,
+    projectId,
+    offset,
+    limit
+  }: {
+    subscriberName: string;
+    projectId: string;
+    offset: number;
+    limit: number;
+  },
+  options?: TReactQueryOptions["options"]
+) => {
   return useQuery({
     queryKey: pkiSubscriberKeys.specificPkiSubscriberCertificates({
       subscriberName,
@@ -97,6 +105,7 @@ export const useGetPkiSubscriberCertificates = ({
       );
       return { certificates, totalCount };
     },
-    enabled: Boolean(subscriberName) && Boolean(projectId)
+    enabled: Boolean(subscriberName) && Boolean(projectId),
+    ...options
   });
 };

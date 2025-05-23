@@ -15,7 +15,7 @@ export const validateAltNameField = z
   .trim()
   .refine(
     (name) => {
-      return isFQDN(name) || z.string().email().safeParse(name).success || isValidIp(name);
+      return isFQDN(name, { allow_wildcard: true }) || z.string().email().safeParse(name).success || isValidIp(name);
     },
     {
       message: "SAN must be a valid hostname, email address, or IP address"

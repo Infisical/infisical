@@ -78,6 +78,17 @@ export type TGetCertBodyDTO = {
   serialNumber: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TImportCertDTO = {
+  projectSlug: string;
+
+  friendlyName?: string;
+  pkiCollectionId?: string;
+
+  certificatePem: string;
+  privateKeyPem: string;
+  chainPem: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TGetCertPrivateKeyDTO = {
   serialNumber: string;
 } & Omit<TProjectPermission, "projectId">;
@@ -92,12 +103,4 @@ export type TGetCertificateCredentialsDTO = {
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
-};
-
-export type TBuildCertificateChainDTO = {
-  caCert?: string;
-  caCertChain?: string;
-  encryptedCertificateChain?: Buffer;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey">;
-  kmsId: string;
 };

@@ -1,9 +1,10 @@
 import * as x509 from "@peculiar/x509";
 import crypto from "crypto";
 
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -13,21 +14,43 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
+import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
+import { SubscriberOperationStatus } from "../pki-subscriber/pki-subscriber-types";
+import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
+import { CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
-import { TRotateCaCrlTriggerDTO } from "./certificate-authority-types";
+import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
+import {
+  TOrderCertificateForSubscriberDTO,
+  TRotateCaCrlTriggerDTO
+} from "./internal/internal-certificate-authority-types";
 
 type TCertificateAuthorityQueueFactoryDep = {
-  // TODO: Pick
   certificateAuthorityDAL: TCertificateAuthorityDALFactory;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   certificateAuthorityCrlDAL: TCertificateAuthorityCrlDALFactory;
   certificateAuthoritySecretDAL: TCertificateAuthoritySecretDALFactory;
   certificateDAL: TCertificateDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "createCipherPairWithDataKey"
+  >;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   queueService: TQueueServiceFactory;
+  pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById" | "updateById">;
 };
+
 export type TCertificateAuthorityQueueFactory = ReturnType<typeof certificateAuthorityQueueFactory>;
 
 export const certificateAuthorityQueueFactory = ({
@@ -37,8 +60,28 @@ export const certificateAuthorityQueueFactory = ({
   certificateDAL,
   projectDAL,
   kmsService,
-  queueService
+  queueService,
+  keyStore,
+  appConnectionDAL,
+  appConnectionService,
+  externalCertificateAuthorityDAL,
+  certificateBodyDAL,
+  certificateSecretDAL,
+  pkiSubscriberDAL
 }: TCertificateAuthorityQueueFactoryDep) => {
+  const acmeFns = AcmeCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    pkiSubscriberDAL,
+    projectDAL
+  });
+
   // TODO 1: auto-periodic rotation
   // TODO 2: manual rotation
 
@@ -71,16 +114,76 @@ export const certificateAuthorityQueueFactory = ({
     );
   };
 
+  const orderCertificateForSubscriber = async ({ subscriberId, caType }: TOrderCertificateForSubscriberDTO) => {
+    const entry = await keyStore.getItem(KeyStorePrefixes.CaOrderCertificateForSubscriberLock(subscriberId));
+    if (entry) {
+      throw new BadRequestError({ message: `Certificate order already in progress for subscriber ${subscriberId}` });
+    }
+
+    await queueService.queue(
+      QueueName.CaLifecycle,
+      QueueJobs.CaOrderCertificateForSubscriber,
+      {
+        subscriberId,
+        caType
+      },
+      {
+        attempts: 1,
+        removeOnComplete: true,
+        removeOnFail: true
+      }
+    );
+  };
+
+  queueService.start(QueueName.CaLifecycle, async (job) => {
+    if (job.name === QueueJobs.CaOrderCertificateForSubscriber) {
+      const { subscriberId, caType } = job.data;
+      let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
+
+      try {
+        lock = await keyStore.acquireLock(
+          [KeyStorePrefixes.CaOrderCertificateForSubscriberLock(subscriberId)],
+          5 * 60 * 1000
+        );
+      } catch (e) {
+        logger.info(`CaOrderCertificate Failed to acquire lock [subscriberId=${subscriberId}] [job=${job.name}]`);
+        return;
+      }
+
+      try {
+        if (caType === CaType.ACME) {
+          await acmeFns.orderSubscriberCertificate(subscriberId);
+          await pkiSubscriberDAL.updateById(subscriberId, {
+            lastOperationStatus: SubscriberOperationStatus.SUCCESS,
+            lastOperationMessage: "Certificate ordered successfully",
+            lastOperationAt: new Date()
+          });
+        }
+      } catch (e: unknown) {
+        if (e instanceof Error) {
+          await pkiSubscriberDAL.updateById(subscriberId, {
+            lastOperationStatus: SubscriberOperationStatus.FAILED,
+            lastOperationMessage: e.message,
+            lastOperationAt: new Date()
+          });
+        }
+        logger.error(e, `CaOrderCertificate Failed [subscriberId=${subscriberId}] [job=${job.name}]`);
+      } finally {
+        await lock.release();
+      }
+    }
+  });
+
   queueService.start(QueueName.CaCrlRotation, async (job) => {
     const { caId } = job.data;
     logger.info(`secretReminderQueue.process: [secretDocument=${caId}]`);
 
-    const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 
-    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+    const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
 
     const keyId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -106,7 +209,7 @@ export const certificateAuthorityQueueFactory = ({
     });
 
     const crl = await x509.X509CrlGenerator.create({
-      issuer: ca.dn,
+      issuer: ca.internalCa.dn,
       thisUpdate: new Date(),
       nextUpdate: new Date("2025/12/12"), // TODO: depends on configured rebuild interval
       entries: revokedCerts.map((revokedCert) => {
@@ -115,7 +218,7 @@ export const certificateAuthorityQueueFactory = ({
           revocationDate: new Date(revokedCert.revokedAt as Date),
           reason: revokedCert.revocationReason as number,
           invalidity: new Date("2022/01/01"),
-          issuer: ca.dn
+          issuer: ca.internalCa?.dn
         };
       }),
       signingAlgorithm: alg,
@@ -144,6 +247,7 @@ export const certificateAuthorityQueueFactory = ({
   });
 
   return {
-    setCaCrlRotationInterval
+    setCaCrlRotationInterval,
+    orderCertificateForSubscriber
   };
 };

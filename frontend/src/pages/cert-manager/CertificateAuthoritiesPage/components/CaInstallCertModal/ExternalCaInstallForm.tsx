@@ -41,7 +41,7 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   });
 
   const { data: csr } = useGetCaCsr(caId);
-  const { mutateAsync: importCaCertificate } = useImportCaCertificate();
+  const { mutateAsync: importCaCertificate } = useImportCaCertificate(currentWorkspace.id);
 
   useEffect(() => {
     reset();

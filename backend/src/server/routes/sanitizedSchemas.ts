@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 import {
+  CertificateAuthoritiesSchema,
   DynamicSecretsSchema,
   IdentityProjectAdditionalPrivilegeSchema,
   IntegrationAuthsSchema,
+  InternalCertificateAuthoritiesSchema,
   ProjectRolesSchema,
   ProjectsSchema,
   SecretApprovalPoliciesSchema,
@@ -271,4 +273,16 @@ export const SanitizedTagSchema = SecretTagsSchema.pick({
   color: true
 }).extend({
   name: z.string()
+});
+
+export const InternalCertificateAuthorityResponseSchema = CertificateAuthoritiesSchema.merge(
+  InternalCertificateAuthoritiesSchema.omit({
+    caId: true,
+    notAfter: true,
+    notBefore: true
+  })
+).extend({
+  requireTemplateForIssuance: z.boolean().optional(),
+  notAfter: z.string().optional(),
+  notBefore: z.string().optional()
 });

@@ -5,13 +5,14 @@ import { NotFoundError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
+import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
   TDNParts,
   TGetCaCertChainDTO,
   TGetCaCertChainsDTO,
   TGetCaCredentialsDTO,
   TRebuildCaCrlDTO
-} from "./certificate-authority-types";
+} from "./internal/internal-certificate-authority-types";
 
 /* eslint-disable no-bitwise */
 export const createSerialNumber = () => {
@@ -112,8 +113,8 @@ export const getCaCredentials = async ({
   projectDAL,
   kmsService
 }: TGetCaCredentialsDTO) => {
-  const ca = await certificateAuthorityDAL.findById(caId);
-  if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+  if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
 
   const caSecret = await certificateAuthoritySecretDAL.findOne({ caId });
   if (!caSecret) throw new NotFoundError({ message: `CA secret for CA with ID '${caId}' not found` });
@@ -131,7 +132,7 @@ export const getCaCredentials = async ({
     cipherTextBlob: caSecret.encryptedPrivateKey
   });
 
-  const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+  const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
   const skObj = crypto.createPrivateKey({ key: decryptedPrivateKey, format: "der", type: "pkcs8" });
   const caPrivateKey = await crypto.subtle.importKey(
     "pkcs8",
@@ -255,12 +256,12 @@ export const rebuildCaCrl = async ({
   certificateDAL,
   kmsService
 }: TRebuildCaCrlDTO) => {
-  const ca = await certificateAuthorityDAL.findById(caId);
-  if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+  if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
 
   const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 
-  const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+  const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
 
   const keyId = await getProjectKmsCertificateKeyId({
     projectId: ca.projectId,
@@ -287,7 +288,7 @@ export const rebuildCaCrl = async ({
   });
 
   const crl = await x509.X509CrlGenerator.create({
-    issuer: ca.dn,
+    issuer: ca.internalCa.dn,
     thisUpdate: new Date(),
     nextUpdate: new Date("2025/12/12"),
     entries: revokedCerts.map((revokedCert) => {
@@ -317,4 +318,17 @@ export const rebuildCaCrl = async ({
       encryptedCrl
     }
   );
+};
+
+export const expandInternalCa = (
+  ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>
+) => {
+  if (!ca.internalCa) {
+    throw new Error("Internal CA must be defined");
+  }
+  return {
+    ...ca.internalCa,
+    ...ca,
+    requireTemplateForIssuance: !ca.enableDirectIssuance
+  } as const;
 };

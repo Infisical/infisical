@@ -23,12 +23,13 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { CaStatus, useListWorkspaceCas } from "@app/hooks/api";
+import { CaStatus, CaType, useListCasByTypeAndProjectId } from "@app/hooks/api";
 import {
   caStatusToNameMap,
   caTypeToNameMap,
   getCaStatusBadgeVariant
 } from "@app/hooks/api/ca/constants";
+import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -39,6 +40,7 @@ type Props = {
     >,
     data?: {
       caId?: string;
+      caName?: string;
       dn?: string;
       status?: CaStatus;
       description?: string;
@@ -49,9 +51,8 @@ type Props = {
 export const CaTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
   const { currentWorkspace } = useWorkspace();
-  const { data, isPending } = useListWorkspaceCas({
-    projectSlug: currentWorkspace?.slug ?? ""
-  });
+  const { data, isPending } = useListCasByTypeAndProjectId(CaType.INTERNAL, currentWorkspace.id);
+  const cas = data as TInternalCertificateAuthority[];
 
   return (
     <div>
@@ -59,7 +60,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
         <Table>
           <THead>
             <Tr>
-              <Th>Friendly Name</Th>
+              <Th>Name</Th>
               <Th>Status</Th>
               <Th>Type</Th>
               <Th>Valid Until</Th>
@@ -69,33 +70,37 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
           <TBody>
             {isPending && <TableSkeleton columns={3} innerKey="project-cas" />}
             {!isPending &&
-              data &&
-              data.length > 0 &&
-              data.map((ca) => {
+              cas &&
+              cas.length > 0 &&
+              cas.map((ca) => {
                 return (
                   <Tr
                     className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                     key={`ca-${ca.id}`}
                     onClick={() =>
                       navigate({
-                        to: `/${ProjectType.CertificateManager}/$projectId/ca/$caId` as const,
+                        to: `/${ProjectType.CertificateManager}/$projectId/ca/$caName` as const,
                         params: {
                           projectId: currentWorkspace.id,
-                          caId: ca.id
+                          caName: ca.name
                         }
                       })
                     }
                   >
-                    <Td>{ca.friendlyName}</Td>
+                    <Td>{ca.name}</Td>
                     <Td>
                       <Badge variant={getCaStatusBadgeVariant(ca.status)}>
                         {caStatusToNameMap[ca.status]}
                       </Badge>
                     </Td>
-                    <Td>{caTypeToNameMap[ca.type]}</Td>
+                    <Td>{caTypeToNameMap[ca.configuration.type]}</Td>
                     <Td>
                       <div className="flex items-center">
-                        <p>{ca.notAfter ? format(new Date(ca.notAfter), "yyyy-MM-dd") : "-"}</p>
+                        <p>
+                          {ca.configuration.notAfter
+                            ? format(new Date(ca.configuration.notAfter), "yyyy-MM-dd")
+                            : "-"}
+                        </p>
                       </div>
                     </Td>
                     <Td className="flex justify-end">
@@ -172,7 +177,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handlePopUpOpen("caStatus", {
-                                      caId: ca.id,
+                                      caName: ca.name,
                                       status:
                                         ca.status === CaStatus.ACTIVE
                                           ? CaStatus.DISABLED
@@ -199,8 +204,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("deleteCa", {
-                                    caId: ca.id,
-                                    dn: ca.dn
+                                    caName: ca.name
                                   });
                                 }}
                                 disabled={!isAllowed}

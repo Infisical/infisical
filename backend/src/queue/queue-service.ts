@@ -14,6 +14,7 @@ import {
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
   TFailedIntegrationSyncEmailsPayload,
   TIntegrationSyncPayload,
@@ -36,6 +37,7 @@ export enum QueueName {
   AuditLogPrune = "audit-log-prune",
   DailyResourceCleanUp = "daily-resource-cleanup",
   DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
+  PkiSubscriber = "pki-subscriber",
   TelemetryInstanceStats = "telemtry-self-hosted-stats",
   IntegrationSync = "sync-integrations",
   SecretWebhook = "secret-webhook",
@@ -44,6 +46,7 @@ export enum QueueName {
   UpgradeProjectToGhost = "upgrade-project-to-ghost",
   DynamicSecretRevocation = "dynamic-secret-revocation",
   CaCrlRotation = "ca-crl-rotation",
+  CaLifecycle = "ca-lifecycle", // parent queue to ca-order-certificate-for-subscriber
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
   ProjectV3Migration = "project-v3-migration",
@@ -84,7 +87,9 @@ export enum QueueJobs {
   SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
-  InvalidateCache = "invalidate-cache"
+  InvalidateCache = "invalidate-cache",
+  CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
+  PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal"
 }
 
 export type TQueueJobTypes = {
@@ -244,6 +249,17 @@ export type TQueueJobTypes = {
         type: CacheType;
       };
     };
+  };
+  [QueueName.CaLifecycle]: {
+    name: QueueJobs.CaOrderCertificateForSubscriber;
+    payload: {
+      subscriberId: string;
+      caType: CaType;
+    };
+  };
+  [QueueName.PkiSubscriber]: {
+    name: QueueJobs.PkiSubscriberDailyAutoRenewal;
+    payload: undefined;
   };
 };
 

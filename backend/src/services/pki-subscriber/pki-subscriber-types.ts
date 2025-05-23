@@ -12,10 +12,12 @@ export type TCreatePkiSubscriberDTO = {
   name: string;
   commonName: string;
   status: PkiSubscriberStatus;
-  ttl: string;
+  ttl?: string;
   subjectAlternativeNames: string[];
   keyUsages: CertKeyUsage[];
   extendedKeyUsages: CertExtendedKeyUsage[];
+  enableAutoRenewal?: boolean;
+  autoRenewalPeriodInDays?: number;
 } & TProjectPermission;
 
 export type TGetPkiSubscriberDTO = {
@@ -32,6 +34,8 @@ export type TUpdatePkiSubscriberDTO = {
   subjectAlternativeNames?: string[];
   keyUsages?: CertKeyUsage[];
   extendedKeyUsages?: CertExtendedKeyUsage[];
+  enableAutoRenewal?: boolean;
+  autoRenewalPeriodInDays?: number;
 } & TProjectPermission;
 
 export type TDeletePkiSubscriberDTO = {
@@ -39,6 +43,10 @@ export type TDeletePkiSubscriberDTO = {
 } & TProjectPermission;
 
 export type TIssuePkiSubscriberCertDTO = {
+  subscriberName: string;
+} & TProjectPermission;
+
+export type TOrderPkiSubscriberCertDTO = {
   subscriberName: string;
 } & TProjectPermission;
 
@@ -52,3 +60,12 @@ export type TListPkiSubscriberCertsDTO = {
   offset: number;
   limit: number;
 } & TProjectPermission;
+
+export type TGetSubscriberActiveCertBundleDTO = {
+  subscriberName: string;
+} & TProjectPermission;
+
+export enum SubscriberOperationStatus {
+  SUCCESS = "success",
+  FAILED = "failed"
+}

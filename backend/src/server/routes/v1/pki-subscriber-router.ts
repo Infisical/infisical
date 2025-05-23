@@ -5,6 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PKI_SUBSCRIBERS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -90,7 +91,8 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         ttl: z
           .string()
           .trim()
-          .refine((val) => ms(val) > 0, "TTL must be a positive number")
+          .refine((val) => !val || ms(val) > 0, "TTL must be a positive number")
+          .optional()
           .describe(PKI_SUBSCRIBERS.CREATE.ttl),
         subjectAlternativeNames: validateAltNameField
           .array()
@@ -108,7 +110,9 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
           .array()
           .default([])
           .transform((arr) => Array.from(new Set(arr)))
-          .describe(PKI_SUBSCRIBERS.CREATE.extendedKeyUsages)
+          .describe(PKI_SUBSCRIBERS.CREATE.extendedKeyUsages),
+        enableAutoRenewal: z.boolean().optional().describe(PKI_SUBSCRIBERS.CREATE.enableAutoRenewal),
+        autoRenewalPeriodInDays: z.number().min(1).optional().describe(PKI_SUBSCRIBERS.CREATE.autoRenewalPeriodInDays)
       }),
       response: {
         200: sanitizedPkiSubscriber
@@ -134,7 +138,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
             caId: subscriber.caId ?? undefined,
             name: subscriber.name,
             commonName: subscriber.commonName,
-            ttl: subscriber.ttl,
+            ttl: subscriber.ttl ?? undefined,
             subjectAlternativeNames: subscriber.subjectAlternativeNames,
             keyUsages: subscriber.keyUsages as CertKeyUsage[],
             extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[]
@@ -179,7 +183,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         ttl: z
           .string()
           .trim()
-          .refine((val) => ms(val) > 0, "TTL must be a positive number")
+          .refine((val) => !val || ms(val) > 0, "TTL must be a positive number")
           .optional()
           .describe(PKI_SUBSCRIBERS.UPDATE.ttl),
         keyUsages: z
@@ -193,7 +197,9 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
           .array()
           .transform((arr) => Array.from(new Set(arr)))
           .optional()
-          .describe(PKI_SUBSCRIBERS.UPDATE.extendedKeyUsages)
+          .describe(PKI_SUBSCRIBERS.UPDATE.extendedKeyUsages),
+        enableAutoRenewal: z.boolean().optional().describe(PKI_SUBSCRIBERS.UPDATE.enableAutoRenewal),
+        autoRenewalPeriodInDays: z.number().min(1).optional().describe(PKI_SUBSCRIBERS.UPDATE.autoRenewalPeriodInDays)
       }),
       response: {
         200: sanitizedPkiSubscriber
@@ -219,7 +225,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
             caId: subscriber.caId ?? undefined,
             name: subscriber.name,
             commonName: subscriber.commonName,
-            ttl: subscriber.ttl,
+            ttl: subscriber.ttl ?? undefined,
             subjectAlternativeNames: subscriber.subjectAlternativeNames,
             keyUsages: subscriber.keyUsages as CertKeyUsage[],
             extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[]
@@ -275,6 +281,67 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       });
 
       return subscriber;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:subscriberName/order-certificate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiSubscribers],
+      description: "Order certificate",
+      params: z.object({
+        subscriberName: z.string().describe(PKI_SUBSCRIBERS.ISSUE_CERT.subscriberName)
+      }),
+      body: z.object({
+        projectId: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.projectId)
+      }),
+      response: {
+        200: z.object({
+          message: z.string().trim()
+        })
+      }
+    },
+    handler: async (req) => {
+      const subscriber = await server.services.pkiSubscriber.orderSubscriberCert({
+        subscriberName: req.params.subscriberName,
+        projectId: req.body.projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: subscriber.projectId,
+        event: {
+          type: EventType.ISSUE_PKI_SUBSCRIBER_CERT,
+          metadata: {
+            subscriberId: subscriber.id,
+            name: subscriber.name
+          }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.IssueCert,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          subscriberId: subscriber.id,
+          commonName: subscriber.commonName,
+          ...req.auditLogInfo
+        }
+      });
+
+      return {
+        message: "Successfully placed order for certificate"
+      };
     }
   });
 
@@ -416,6 +483,72 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         certificateChain,
         issuingCaCertificate,
         serialNumber
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:subscriberName/latest-certificate-bundle",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiSubscribers],
+      description: "Get latest certificate bundle of a subscriber",
+      params: z.object({
+        subscriberName: z.string().describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.subscriberName)
+      }),
+      querystring: z.object({
+        projectId: z.string().trim().describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.projectId)
+      }),
+      response: {
+        200: z.object({
+          certificate: z.string().trim().describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.certificate),
+          certificateChain: z
+            .string()
+            .trim()
+            .nullable()
+            .describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.certificateChain),
+          privateKey: z.string().trim().describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.privateKey),
+          serialNumber: z.string().trim().describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.serialNumber)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req, reply) => {
+      const { certificate, certificateChain, serialNumber, cert, privateKey, subscriber } =
+        await server.services.pkiSubscriber.getSubscriberActiveCertBundle({
+          subscriberName: req.params.subscriberName,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.query
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: cert.projectId,
+        event: {
+          type: EventType.GET_SUBSCRIBER_ACTIVE_CERT_BUNDLE,
+          metadata: {
+            subscriberId: subscriber.id,
+            name: subscriber.name,
+            certId: cert.id,
+            serialNumber: cert.serialNumber
+          }
+        }
+      });
+
+      addNoCacheHeaders(reply);
+
+      return {
+        certificate,
+        certificateChain,
+        serialNumber,
+        privateKey
       };
     }
   });

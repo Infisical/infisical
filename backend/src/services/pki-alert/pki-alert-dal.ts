@@ -31,12 +31,13 @@ export const pkiAlertDALFactory = (db: TDbClient) => {
         .select(
           db.raw("? as type", [PkiItemType.CA]),
           `${PkiItemType.CA}.id`,
-          `${PkiItemType.CA}.notAfter as expiryDate`,
-          `${PkiItemType.CA}.serialNumber`,
-          `${PkiItemType.CA}.friendlyName`,
+          "ic.notAfter as expiryDate",
+          "ic.serialNumber",
+          "ic.friendlyName",
           "pci.pkiCollectionId"
         )
         .from(`${TableName.CertificateAuthority} as ${PkiItemType.CA}`)
+        .join(`${TableName.InternalCertificateAuthority} as ic`, `${PkiItemType.CA}.id`, "ic.caId")
         .join(`${TableName.PkiCollectionItem} as pci`, `${PkiItemType.CA}.id`, "pci.caId")
         .unionAll((qb) => {
           void qb
