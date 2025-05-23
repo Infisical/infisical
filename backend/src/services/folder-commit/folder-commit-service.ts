@@ -7,6 +7,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -590,15 +591,22 @@ export const folderCommitServiceFactory = ({
         tx
       );
 
-      await folderCommitChangesDAL.insertMany(
-        data.changes.map((change) => ({
-          folderCommitId: newCommit.id,
-          changeType: change.type,
-          secretVersionId: change.secretVersionId,
-          folderVersionId: change.folderVersionId,
-          isUpdate: change.isUpdate || false
-        })),
-        tx
+      const batchSize = 500;
+      const chunks = chunkArray(data.changes, batchSize);
+
+      await Promise.all(
+        chunks.map(async (chunk) => {
+          await folderCommitChangesDAL.insertMany(
+            chunk.map((change) => ({
+              folderCommitId: newCommit.id,
+              changeType: change.type,
+              secretVersionId: change.secretVersionId,
+              folderVersionId: change.folderVersionId,
+              isUpdate: change.isUpdate || false
+            })),
+            tx
+          );
+        })
       );
 
       await createFolderCheckpoint({ folderId: data.folderId, folderCommitId: newCommit.id, tx });
