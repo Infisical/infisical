@@ -52,12 +52,11 @@ export const AppConnectionsSelect = ({ onSelect }: Props) => {
               }
               className={twMerge(
                 "group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600",
-                enterprise && !subscription.enterpriseAppConnections ? "border-0 bg-opacity-0" : ""
+                enterprise && !subscription.enterpriseAppConnections
+                  ? "border-0 bg-opacity-0 opacity-40"
+                  : ""
               )}
             >
-              {enterprise && !subscription.enterpriseAppConnections && (
-                <div className="absolute h-full w-full backdrop-blur-[1px]" />
-              )}
               <img
                 src={`/images/integrations/${image}`}
                 style={{
