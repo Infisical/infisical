@@ -212,7 +212,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: project.id,
         event: {
           type: EventType.CREATE_PROJECT,
-          metadata: req.body
+          metadata: {
+            ...req.body,
+            name: req.body.projectName
+          }
         }
       });
 
@@ -264,10 +267,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: project.id,
         event: {
           type: EventType.DELETE_PROJECT,
-          metadata: {
-            projectId: project.id,
-            projectName: project.name
-          }
+          metadata: project
         }
       });
 

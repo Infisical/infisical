@@ -270,10 +270,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         event: {
           type: EventType.DELETE_PROJECT,
-          metadata: {
-            projectId: workspace.id,
-            projectName: workspace.name
-          }
+          metadata: workspace
         }
       });
 

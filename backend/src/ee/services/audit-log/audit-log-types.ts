@@ -2936,7 +2936,7 @@ interface OrgUpdateEvent {
 interface ProjectCreateEvent {
   type: EventType.CREATE_PROJECT;
   metadata: {
-    projectName: string;
+    name: string;
     slug?: string;
     type: ProjectType;
   };
@@ -2959,8 +2959,8 @@ interface ProjectUpdateEvent {
 interface ProjectDeleteEvent {
   type: EventType.DELETE_PROJECT;
   metadata: {
-    projectId: string;
-    projectName: string;
+    id: string;
+    name: string;
   };
 }
 
