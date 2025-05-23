@@ -124,13 +124,18 @@ export enum ProjectPermissionKmipActions {
 }
 
 export enum ProjectPermissionSecretScanningDataSourceActions {
-  Read = "read-data-source",
-  Create = "create-data-source",
-  Edit = "edit-data-source",
-  Delete = "delete-data-source",
+  Read = "read-data-sources",
+  Create = "create-data-sources",
+  Edit = "edit-data-sources",
+  Delete = "delete-data-sources",
   TriggerScans = "trigger-data-source-scans",
   ReadScans = "read-data-source-scans",
   ReadResources = "read-data-source-resources"
+}
+
+export enum ProjectPermissionSecretScanningFindingActions {
+  Read = "read-findings",
+  Resolve = "resolve-findings"
 }
 
 export enum ProjectPermissionSub {
@@ -169,7 +174,8 @@ export enum ProjectPermissionSub {
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
   Kmip = "kmip",
-  SecretScanningDataSources = "secret-scanning-data-sources"
+  SecretScanningDataSources = "secret-scanning-data-sources",
+  SecretScanningFindings = "secret-scanning-findings"
 }
 
 export type SecretSubjectFields = {
@@ -293,7 +299,8 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
-  | [ProjectPermissionSecretScanningDataSourceActions, ProjectPermissionSub.SecretScanningDataSources];
+  | [ProjectPermissionSecretScanningDataSourceActions, ProjectPermissionSub.SecretScanningDataSources]
+  | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
@@ -620,6 +627,12 @@ const GeneralPermissionSchema = [
       .literal(ProjectPermissionSub.SecretScanningDataSources)
       .describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretScanningDataSourceActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretScanningFindings).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretScanningFindingActions).describe(
       "Describe what action an entity can take."
     )
   })

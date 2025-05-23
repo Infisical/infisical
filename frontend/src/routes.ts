@@ -341,6 +341,7 @@ const secretScanningRoutes = route("/secret-scanning/$projectId", [
       index("secret-scanning/SecretScanningDataSourcesPage/route.tsx"),
       route("/$type/$dataSourceId", "secret-scanning/SecretScanningDataSourceByIdPage/route.tsx")
     ]),
+    route("/findings", "secret-scanning/SecretScanningFindingsPage/route.tsx"),
     route("/settings", "secret-scanning/SettingsPage/route.tsx"),
     route("/access-management", "project/AccessControlPage/route-secret-scanning.tsx")
   ])

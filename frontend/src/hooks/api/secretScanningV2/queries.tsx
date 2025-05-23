@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import {
   TGetSecretScanningDataSource,
+  TGetSecretScanningUnresolvedFindingsResponse,
   TListSecretScanningDataSourceOptions,
   TListSecretScanningDataSources,
   TListSecretScanningResourcesResponse,
@@ -31,7 +32,13 @@ export const secretScanningV2Keys = {
     "resources",
     dataSourceId
   ],
-  listScans: (dataSourceId: string) => [...secretScanningV2Keys.dataSource(), "scans", dataSourceId]
+  listScans: (dataSourceId: string) => [
+    ...secretScanningV2Keys.dataSource(),
+    "scans",
+    dataSourceId
+  ],
+  finding: () => [...secretScanningV2Keys.all, "finding"] as const,
+  findingCount: (projectId: string) => ["count", projectId] as const
 };
 
 export const useSecretScanningDataSourceOptions = (
@@ -154,6 +161,26 @@ export const useListSecretScanningScans = (
       );
 
       return data.scans;
+    },
+    ...options
+  });
+};
+
+export const useGetSecretScanningUnresolvedFindingCount = (
+  projectId: string,
+  options?: Omit<
+    UseQueryOptions<number, unknown, number, ReturnType<typeof secretScanningV2Keys.findingCount>>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretScanningV2Keys.findingCount(projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetSecretScanningUnresolvedFindingsResponse>(
+        "/api/v2/secret-scanning/unresolved-findings-count"
+      );
+
+      return data.unresolvedFindings;
     },
     ...options
   });

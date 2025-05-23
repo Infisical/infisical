@@ -95,3 +95,7 @@ export type TSecretScanningScanWithDetails = {
 export type TListSecretScanningScansResponse = {
   scans: TSecretScanningScanWithDetails[];
 };
+
+export type TGetSecretScanningUnresolvedFindingsResponse = {
+  unresolvedFindings: number;
+};

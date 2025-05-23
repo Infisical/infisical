@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   BreadcrumbContainer,
   Menu,
   MenuGroup,
@@ -24,6 +25,7 @@ import {
   useGetSecretApprovalRequestCount,
   useGetSecretRotations
 } from "@app/hooks/api";
+import { useGetSecretScanningUnresolvedFindingCount } from "@app/hooks/api/secretScanningV2";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { AssumePrivilegeModeBanner } from "./components/AssumePrivilegeModeBanner";
@@ -35,6 +37,8 @@ export const ProjectLayout = () => {
   const { currentWorkspace } = useWorkspace();
   const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
   const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
+
+  const { permission } = useProjectPermission();
 
   const { t } = useTranslation();
   const { assumedPrivilegeDetails } = useProjectPermission();
@@ -68,6 +72,18 @@ export const ProjectLayout = () => {
 
   const pendingRequestsCount =
     (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
+
+  const { data: unresolvedFindings } = useGetSecretScanningUnresolvedFindingCount(workspaceId, {
+    // enabled:
+    //   isSecretScanning &&
+    //   permission.can(
+    //     ProjectPermissionSecretScanningFindingActions.Read,
+    //     ProjectPermissionSub.SecretScanningFindings
+    //   ),
+    refetchInterval: 30000
+  });
+
+  console.log("unresolvedFindings", unresolvedFindings);
 
   return (
     <>
@@ -251,6 +267,23 @@ export const ProjectLayout = () => {
                           {({ isActive }) => (
                             <MenuItem isSelected={isActive} icon="jigsaw-puzzle">
                               Data Sources
+                            </MenuItem>
+                          )}
+                        </Link>
+                      )}
+                      {isSecretScanning && (
+                        <Link
+                          to={`/${ProjectType.SecretScanning}/$projectId/findings` as const}
+                          params={{
+                            projectId: currentWorkspace.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive} icon="search">
+                              Findings{" "}
+                              {unresolvedFindings && (
+                                <Badge variant="primary">{unresolvedFindings}</Badge>
+                              )}
                             </MenuItem>
                           )}
                         </Link>

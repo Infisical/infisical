@@ -6,8 +6,10 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionSecretScanningDataSourceActions,
+  ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { SecretScanningFindingStatus } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { listSecretScanningDataSourceOptions } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
   SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP,
@@ -556,6 +558,70 @@ export const secretScanningV2ServiceFactory = ({
     return { scans: scans as TSecretScanningScanWithDetails[], projectId: dataSource.projectId };
   };
 
+  const getSecretScanningUnresolvedFindingsCountByProjectId = async (projectId: string, actor: OrgServiceActor) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.secretScanning)
+      throw new BadRequestError({
+        message:
+          "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretScanning,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretScanningFindingActions.Read,
+      ProjectPermissionSub.SecretScanningFindings
+    );
+
+    const [finding] = await secretScanningV2DAL.findings.find(
+      {
+        projectId,
+        status: SecretScanningFindingStatus.Unresolved
+      },
+      { count: true }
+    );
+
+    return Number(finding?.count ?? 0);
+  };
+
+  const listSecretScanningFindingsByProjectId = async (projectId: string, actor: OrgServiceActor) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.secretScanning)
+      throw new BadRequestError({
+        message:
+          "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretScanning,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretScanningFindingActions.Read,
+      ProjectPermissionSub.SecretScanningFindings
+    );
+
+    const findings = await secretScanningV2DAL.findings.find({
+      projectId
+    });
+
+    return findings;
+  };
+
   return {
     listSecretScanningDataSourceOptions,
     listSecretScanningDataSourcesByProjectId,
@@ -568,6 +634,8 @@ export const secretScanningV2ServiceFactory = ({
     triggerSecretScanningDataSourceScan,
     listSecretScanningResourcesByDataSourceId,
     listSecretScanningResourcesWithDetailsByDataSourceId,
-    listSecretScanningScansWithDetailsByDataSourceId
+    listSecretScanningScansWithDetailsByDataSourceId,
+    getSecretScanningUnresolvedFindingsCountByProjectId,
+    listSecretScanningFindingsByProjectId
   };
 };

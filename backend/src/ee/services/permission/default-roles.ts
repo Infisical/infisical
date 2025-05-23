@@ -13,6 +13,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretScanningDataSourceActions,
+  ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSet,
   ProjectPermissionSshHostActions,
@@ -212,6 +213,11 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SecretScanningDataSources
   );
 
+  can(
+    [ProjectPermissionSecretScanningFindingActions.Read, ProjectPermissionSecretScanningFindingActions.Resolve],
+    ProjectPermissionSub.SecretScanningFindings
+  );
+
   return rules;
 };
 
@@ -405,6 +411,11 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.SecretScanningDataSources
   );
 
+  can(
+    [ProjectPermissionSecretScanningFindingActions.Read, ProjectPermissionSecretScanningFindingActions.Resolve],
+    ProjectPermissionSub.SecretScanningFindings
+  );
+
   return rules;
 };
 
@@ -448,6 +459,8 @@ const buildViewerPermissionRules = () => {
     ],
     ProjectPermissionSub.SecretScanningDataSources
   );
+
+  can([ProjectPermissionSecretScanningFindingActions.Read], ProjectPermissionSub.SecretScanningFindings);
 
   return rules;
 };

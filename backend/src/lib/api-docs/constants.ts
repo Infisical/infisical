@@ -2411,3 +2411,9 @@ export const SecretScanningDataSources = {
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list resources from.`
   })
 };
+
+export const SecretScanningFindings = {
+  LIST: {
+    projectId: `The ID of the project to list Secret Scanning Findings from.`
+  }
+};

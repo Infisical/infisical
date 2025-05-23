@@ -114,13 +114,18 @@ export enum ProjectPermissionSecretRotationActions {
 }
 
 export enum ProjectPermissionSecretScanningDataSourceActions {
-  Read = "read-data-source",
-  Create = "create-data-source",
-  Edit = "edit-data-source",
-  Delete = "delete-data-source",
+  Read = "read-data-sources",
+  Create = "create-data-sources",
+  Edit = "edit-data-sources",
+  Delete = "delete-data-sources",
   TriggerScans = "trigger-data-source-scans",
   ReadScans = "read-data-source-scans",
   ReadResources = "read-data-source-resources"
+}
+
+export enum ProjectPermissionSecretScanningFindingActions {
+  Read = "read-findings",
+  Resolve = "resolve-findings"
 }
 
 export enum PermissionConditionOperators {
@@ -210,7 +215,8 @@ export enum ProjectPermissionSub {
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
   Kmip = "kmip",
-  SecretScanningDataSources = "secret-scanning-data-sources"
+  SecretScanningDataSources = "secret-scanning-data-sources",
+  SecretScanningFindings = "secret-scanning-findings"
 }
 
 export type SecretSubjectFields = {
@@ -338,6 +344,7 @@ export type ProjectPermissionSet =
   | [
       ProjectPermissionSecretScanningDataSourceActions,
       ProjectPermissionSub.SecretScanningDataSources
-    ];
+    ]
+  | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

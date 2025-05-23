@@ -472,7 +472,7 @@ export const registerSecretScanningEndpoints = <
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { dataSourceId } = req.params;
 
@@ -521,7 +521,7 @@ export const registerSecretScanningEndpoints = <
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { dataSourceId } = req.params;
 

@@ -31,7 +31,7 @@ export const Route = createFileRoute(
         {
           label: project.name,
           link: linkOptions({
-            to: "/secret-scanning/$projectId/overview",
+            to: "/secret-scanning/$projectId/data-sources",
             params: { projectId: project.id }
           })
         }

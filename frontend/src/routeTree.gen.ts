@@ -91,6 +91,7 @@ import { Route as sshSshHostsPageRouteImport } from './pages/ssh/SshHostsPage/ro
 import { Route as sshSshCertsPageRouteImport } from './pages/ssh/SshCertsPage/route'
 import { Route as sshSshCasPageRouteImport } from './pages/ssh/SshCasPage/route'
 import { Route as secretScanningSettingsPageRouteImport } from './pages/secret-scanning/SettingsPage/route'
+import { Route as secretScanningSecretScanningFindingsPageRouteImport } from './pages/secret-scanning/SecretScanningFindingsPage/route'
 import { Route as secretManagerSettingsPageRouteImport } from './pages/secret-manager/SettingsPage/route'
 import { Route as secretManagerSecretRotationPageRouteImport } from './pages/secret-manager/SecretRotationPage/route'
 import { Route as secretManagerOverviewPageRouteImport } from './pages/secret-manager/OverviewPage/route'
@@ -956,6 +957,13 @@ const secretScanningSettingsPageRouteRoute =
   secretScanningSettingsPageRouteImport.update({
     id: '/settings',
     path: '/settings',
+    getParentRoute: () => secretScanningLayoutRoute,
+  } as any)
+
+const secretScanningSecretScanningFindingsPageRouteRoute =
+  secretScanningSecretScanningFindingsPageRouteImport.update({
+    id: '/findings',
+    path: '/findings',
     getParentRoute: () => secretScanningLayoutRoute,
   } as any)
 
@@ -2451,6 +2459,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof secretManagerSettingsPageRouteImport
       parentRoute: typeof secretManagerLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/findings': {
+      id: '/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/findings'
+      path: '/findings'
+      fullPath: '/secret-scanning/$projectId/findings'
+      preLoaderRoute: typeof secretScanningSecretScanningFindingsPageRouteImport
+      parentRoute: typeof secretScanningLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/settings': {
       id: '/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/settings'
       path: '/settings'
@@ -3924,12 +3939,15 @@ const AuthenticateInjectOrgDetailsOrgLayoutSecretScanningProjectIdSecretScanning
   )
 
 interface secretScanningLayoutRouteChildren {
+  secretScanningSecretScanningFindingsPageRouteRoute: typeof secretScanningSecretScanningFindingsPageRouteRoute
   secretScanningSettingsPageRouteRoute: typeof secretScanningSettingsPageRouteRoute
   projectAccessControlPageRouteSecretScanningRoute: typeof projectAccessControlPageRouteSecretScanningRoute
   AuthenticateInjectOrgDetailsOrgLayoutSecretScanningProjectIdSecretScanningLayoutDataSourcesRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutSecretScanningProjectIdSecretScanningLayoutDataSourcesRouteWithChildren
 }
 
 const secretScanningLayoutRouteChildren: secretScanningLayoutRouteChildren = {
+  secretScanningSecretScanningFindingsPageRouteRoute:
+    secretScanningSecretScanningFindingsPageRouteRoute,
   secretScanningSettingsPageRouteRoute: secretScanningSettingsPageRouteRoute,
   projectAccessControlPageRouteSecretScanningRoute:
     projectAccessControlPageRouteSecretScanningRoute,
@@ -4271,6 +4289,7 @@ export interface FileRoutesByFullPath {
   '/secret-manager/$projectId/overview': typeof secretManagerOverviewPageRouteRoute
   '/secret-manager/$projectId/secret-rotation': typeof secretManagerSecretRotationPageRouteRoute
   '/secret-manager/$projectId/settings': typeof secretManagerSettingsPageRouteRoute
+  '/secret-scanning/$projectId/findings': typeof secretScanningSecretScanningFindingsPageRouteRoute
   '/secret-scanning/$projectId/settings': typeof secretScanningSettingsPageRouteRoute
   '/ssh/$projectId/cas': typeof sshSshCasPageRouteRoute
   '/ssh/$projectId/certificates': typeof sshSshCertsPageRouteRoute
@@ -4465,6 +4484,7 @@ export interface FileRoutesByTo {
   '/secret-manager/$projectId/overview': typeof secretManagerOverviewPageRouteRoute
   '/secret-manager/$projectId/secret-rotation': typeof secretManagerSecretRotationPageRouteRoute
   '/secret-manager/$projectId/settings': typeof secretManagerSettingsPageRouteRoute
+  '/secret-scanning/$projectId/findings': typeof secretScanningSecretScanningFindingsPageRouteRoute
   '/secret-scanning/$projectId/settings': typeof secretScanningSettingsPageRouteRoute
   '/ssh/$projectId/cas': typeof sshSshCasPageRouteRoute
   '/ssh/$projectId/certificates': typeof sshSshCertsPageRouteRoute
@@ -4675,6 +4695,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/overview': typeof secretManagerOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/secret-rotation': typeof secretManagerSecretRotationPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/settings': typeof secretManagerSettingsPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/findings': typeof secretScanningSecretScanningFindingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/settings': typeof secretScanningSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/cas': typeof sshSshCasPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/certificates': typeof sshSshCertsPageRouteRoute
@@ -4879,6 +4900,7 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/overview'
     | '/secret-manager/$projectId/secret-rotation'
     | '/secret-manager/$projectId/settings'
+    | '/secret-scanning/$projectId/findings'
     | '/secret-scanning/$projectId/settings'
     | '/ssh/$projectId/cas'
     | '/ssh/$projectId/certificates'
@@ -5072,6 +5094,7 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/overview'
     | '/secret-manager/$projectId/secret-rotation'
     | '/secret-manager/$projectId/settings'
+    | '/secret-scanning/$projectId/findings'
     | '/secret-scanning/$projectId/settings'
     | '/ssh/$projectId/cas'
     | '/ssh/$projectId/certificates'
@@ -5280,6 +5303,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/secret-rotation'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/settings'
+    | '/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/findings'
     | '/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/cas'
     | '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/certificates'
@@ -5887,6 +5911,7 @@ export const routeTree = rootRoute
       "filePath": "secret-scanning/layout.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId",
       "children": [
+        "/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/findings",
         "/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/settings",
         "/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/access-management",
         "/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/data-sources"
@@ -5959,6 +5984,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/settings": {
       "filePath": "secret-manager/SettingsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/findings": {
+      "filePath": "secret-scanning/SecretScanningFindingsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/settings": {
       "filePath": "secret-scanning/SettingsPage/route.tsx",

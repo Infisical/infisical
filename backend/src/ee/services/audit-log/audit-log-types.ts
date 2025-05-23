@@ -391,7 +391,9 @@ export enum EventType {
   SECRET_SCANNING_DATA_SOURCE_GET = "secret-scanning-data-source-get",
   SECRET_SCANNING_DATA_SOURCE_SCAN = "secret-scanning-data-source-scan",
   SECRET_SCANNING_RESOURCE_LIST = "secret-scanning-resource-list",
-  SECRET_SCANNING_SCAN_LIST = "secret-scanning-scan-list"
+  SECRET_SCANNING_SCAN_LIST = "secret-scanning-scan-list",
+  SECRET_SCANNING_FINDING_LIST = "secret-scanning-finding-list",
+  SECRET_SCANNING_FINDING_UPDATE = "secret-scanning-finding-update"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -2985,6 +2987,21 @@ interface SecretScanningScanListEvent {
   };
 }
 
+interface SecretScanningFindingListEvent {
+  type: EventType.SECRET_SCANNING_FINDING_LIST;
+  metadata: {
+    findingIds: string[];
+    count: number;
+  };
+}
+
+interface SecretScanningFindingUpdateEvent {
+  type: EventType.SECRET_SCANNING_FINDING_UPDATE;
+  metadata: {
+    // TODO
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -3259,4 +3276,6 @@ export type Event =
   | SecretScanningDataSourceDeleteEvent
   | SecretScanningDataSourceScanEvent
   | SecretScanningResourceListEvent
-  | SecretScanningScanListEvent;
+  | SecretScanningScanListEvent
+  | SecretScanningFindingListEvent
+  | SecretScanningFindingUpdateEvent;

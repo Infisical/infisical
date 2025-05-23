@@ -1,11 +1,12 @@
 import { z } from "zod";
 
+import { SecretScanningFindingsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { GitHubDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/github";
 import { GitLabDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/gitlab";
 import { SecretScanningScanStatus } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SecretScanningDataSourceSchema } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-union-schema";
-import { ApiDocsTags, SecretScanningDataSources } from "@app/lib/api-docs";
+import { ApiDocsTags, SecretScanningDataSources, SecretScanningFindings } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -74,13 +75,58 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         event: {
           type: EventType.SECRET_SCANNING_DATA_SOURCE_LIST,
           metadata: {
-            dataSourceIds: dataSources.map((sync) => sync.id),
+            dataSourceIds: dataSources.map((dataSource) => dataSource.id),
             count: dataSources.length
           }
         }
       });
 
       return { dataSources };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/findings",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretScanning],
+      description: "List all the Secret Scanning Findings for the specified project.",
+      querystring: z.object({
+        projectId: z.string().trim().min(1, "Project ID required").describe(SecretScanningFindings.LIST.projectId)
+      }),
+      response: {
+        200: z.object({ findings: SecretScanningFindingsSchema.array() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        query: { projectId },
+        permission
+      } = req;
+
+      const findings = await server.services.secretScanningV2.listSecretScanningFindingsByProjectId(
+        projectId,
+        permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.SECRET_SCANNING_FINDING_LIST,
+          metadata: {
+            findingIds: findings.map((sync) => sync.id),
+            count: findings.length
+          }
+        }
+      });
+
+      return { findings };
     }
   });
 
@@ -111,7 +157,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const {
         query: { projectId },
@@ -129,13 +175,45 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         event: {
           type: EventType.SECRET_SCANNING_DATA_SOURCE_LIST,
           metadata: {
-            dataSourceIds: dataSources.map((sync) => sync.id),
+            dataSourceIds: dataSources.map((dataSource) => dataSource.id),
             count: dataSources.length
           }
         }
       });
 
       return { dataSources };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/unresolved-findings-count",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      tags: [ApiDocsTags.SecretScanning],
+      querystring: z.object({
+        projectId: z.string().trim().min(1, "Project ID required").describe(SecretScanningFindings.LIST.projectId)
+      }),
+      response: {
+        200: z.object({ unresolvedFindings: z.number() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const {
+        query: { projectId },
+        permission
+      } = req;
+
+      const unresolvedFindings =
+        await server.services.secretScanningV2.getSecretScanningUnresolvedFindingsCountByProjectId(
+          projectId,
+          permission
+        );
+
+      return { unresolvedFindings };
     }
   });
 };
