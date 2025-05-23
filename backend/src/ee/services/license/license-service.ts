@@ -348,8 +348,8 @@ export const licenseServiceFactory = ({
       } = await licenseServerCloudApi.request.post(
         `/api/license-server/v1/customers/${organization.customerId}/billing-details/payment-methods`,
         {
-          success_url: `${appCfg.SITE_URL}/dashboard`,
-          cancel_url: `${appCfg.SITE_URL}/dashboard`
+          success_url: `${appCfg.SITE_URL}/organization/billing`,
+          cancel_url: `${appCfg.SITE_URL}/organization/billing`
         }
       );
 
@@ -362,7 +362,7 @@ export const licenseServiceFactory = ({
     } = await licenseServerCloudApi.request.post(
       `/api/license-server/v1/customers/${organization.customerId}/billing-details/billing-portal`,
       {
-        return_url: `${appCfg.SITE_URL}/dashboard`
+        return_url: `${appCfg.SITE_URL}/organization/billing`
       }
     );
 
@@ -379,7 +379,7 @@ export const licenseServiceFactory = ({
         message: `Organization with ID '${orgId}' not found`
       });
     }
-    if (instanceType !== InstanceType.OnPrem && instanceType !== InstanceType.EnterpriseOnPremOffline) {
+    if (instanceType === InstanceType.Cloud) {
       const { data } = await licenseServerCloudApi.request.get(
         `/api/license-server/v1/customers/${organization.customerId}/cloud-plan/billing`
       );
@@ -407,11 +407,38 @@ export const licenseServiceFactory = ({
         message: `Organization with ID '${orgId}' not found`
       });
     }
-    if (instanceType !== InstanceType.OnPrem && instanceType !== InstanceType.EnterpriseOnPremOffline) {
-      const { data } = await licenseServerCloudApi.request.get(
-        `/api/license-server/v1/customers/${organization.customerId}/cloud-plan/table`
-      );
-      return data;
+
+    const orgMembersUsed = await orgDAL.countAllOrgMembers(orgId);
+    const identityUsed = await identityOrgMembershipDAL.countAllOrgIdentities({ orgId });
+    const projects = await projectDAL.find({ orgId });
+    const projectCount = projects.length;
+
+    if (instanceType === InstanceType.Cloud) {
+      const { data } = await licenseServerCloudApi.request.get<{
+        head: { name: string }[];
+        rows: { name: string; allowed: boolean }[];
+      }>(`/api/license-server/v1/customers/${organization.customerId}/cloud-plan/table`);
+
+      const formattedData = {
+        head: data.head,
+        rows: data.rows.map((el) => {
+          let used = "-";
+
+          if (el.name === BillingPlanRows.MemberLimit.name) {
+            used = orgMembersUsed.toString();
+          } else if (el.name === BillingPlanRows.WorkspaceLimit.name) {
+            used = projectCount.toString();
+          } else if (el.name === BillingPlanRows.IdentityLimit.name) {
+            used = (identityUsed + orgMembersUsed).toString();
+          }
+
+          return {
+            ...el,
+            used
+          };
+        })
+      };
+      return formattedData;
     }
 
     const mappedRows = await Promise.all(
@@ -420,14 +447,11 @@ export const licenseServiceFactory = ({
         let used = "-";
 
         if (field === BillingPlanRows.MemberLimit.field) {
-          const orgMemberships = await orgDAL.countAllOrgMembers(orgId);
-          used = orgMemberships.toString();
+          used = orgMembersUsed.toString();
         } else if (field === BillingPlanRows.WorkspaceLimit.field) {
-          const projects = await projectDAL.find({ orgId });
-          used = projects.length.toString();
+          used = projectCount.toString();
         } else if (field === BillingPlanRows.IdentityLimit.field) {
-          const identities = await identityOrgMembershipDAL.countAllOrgIdentities({ orgId });
-          used = identities.toString();
+          used = identityUsed.toString();
         }
 
         return {

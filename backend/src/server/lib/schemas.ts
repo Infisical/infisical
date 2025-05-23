@@ -9,7 +9,7 @@ interface SlugSchemaInputs {
   field?: string;
 }
 
-export const slugSchema = ({ min = 1, max = 32, field = "Slug" }: SlugSchemaInputs = {}) => {
+export const slugSchema = ({ min = 1, max = 64, field = "Slug" }: SlugSchemaInputs = {}) => {
   return z
     .string()
     .trim()

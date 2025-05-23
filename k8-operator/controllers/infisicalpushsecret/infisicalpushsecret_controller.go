@@ -30,9 +30,9 @@ import (
 // InfisicalSecretReconciler reconciles a InfisicalSecret object
 type InfisicalPushSecretReconciler struct {
 	client.Client
-
-	BaseLogger logr.Logger
-	Scheme     *runtime.Scheme
+	IsNamespaceScoped bool
+	BaseLogger        logr.Logger
+	Scheme            *runtime.Scheme
 }
 
 var infisicalPushSecretResourceVariablesMap map[string]util.ResourceVariables = make(map[string]util.ResourceVariables)
@@ -51,7 +51,7 @@ func (r *InfisicalPushSecretReconciler) GetLogger(req ctrl.Request) logr.Logger 
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list
 //+kubebuilder:rbac:groups="authentication.k8s.io",resources=tokenreviews,verbs=create
 //+kubebuilder:rbac:groups="",resources=serviceaccounts/token,verbs=create
-// +kubebuilder:rbac:groups=secrets.infisical.com,resources=clustergenerators,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=secrets.infisical.com,resources=clustergenerators,verbs=get;list;watch;create;update;patch;delete
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // For more details, check Reconcile and its Result here:
@@ -249,19 +249,26 @@ func (r *InfisicalPushSecretReconciler) SetupWithManager(mgr ctrl.Manager) error
 		},
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
+	controllerManager := ctrl.NewControllerManagedBy(mgr).
 		For(&secretsv1alpha1.InfisicalPushSecret{}, builder.WithPredicates(
 			specChangeOrDelete,
 		)).
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
 			handler.EnqueueRequestsFromMapFunc(r.findPushSecretsForSecret),
-		).
-		Watches(
+		)
+
+	if !r.IsNamespaceScoped {
+		r.BaseLogger.Info("Watching ClusterGenerators for non-namespace scoped operator")
+		controllerManager.Watches(
 			&source.Kind{Type: &secretsv1alpha1.ClusterGenerator{}},
 			handler.EnqueueRequestsFromMapFunc(r.findPushSecretsForClusterGenerator),
-		).
-		Complete(r)
+		)
+	} else {
+		r.BaseLogger.Info("Not watching ClusterGenerators for namespace scoped operator")
+	}
+
+	return controllerManager.Complete(r)
 }
 
 func (r *InfisicalPushSecretReconciler) findPushSecretsForClusterGenerator(o client.Object) []reconcile.Request {
@@ -277,6 +284,7 @@ func (r *InfisicalPushSecretReconciler) findPushSecretsForClusterGenerator(o cli
 	}
 
 	requests := []reconcile.Request{}
+
 	for _, pushSecret := range pushSecrets.Items {
 		if pushSecret.Spec.Push.Generators != nil {
 			for _, generator := range pushSecret.Spec.Push.Generators {

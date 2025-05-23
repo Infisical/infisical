@@ -73,18 +73,27 @@ export const authSignupServiceFactory = ({
 }: TAuthSignupDep) => {
   // first step of signup. create user and send email
   const beginEmailSignupProcess = async (email: string) => {
-    const isEmailInvalid = await isDisposableEmail(email);
+    const sanitizedEmail = email.trim().toLowerCase();
+    const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
     if (isEmailInvalid) {
       throw new Error("Provided a disposable email");
     }
 
-    let user = await userDAL.findUserByUsername(email);
+    // akhilmhdh: case sensitive email resolution
+    const usersByUsername = await userDAL.findUserByUsername(sanitizedEmail);
+    let user =
+      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === sanitizedEmail) : usersByUsername?.[0];
     if (user && user.isAccepted) {
       // TODO(akhilmhdh-pg): copy as old one. this needs to be changed due to security issues
-      throw new Error("Failed to send verification code for complete account");
+      throw new BadRequestError({ message: "Failed to send verification code for complete account" });
     }
     if (!user) {
-      user = await userDAL.create({ authMethods: [AuthMethod.EMAIL], username: email, email, isGhost: false });
+      user = await userDAL.create({
+        authMethods: [AuthMethod.EMAIL],
+        username: sanitizedEmail,
+        email: sanitizedEmail,
+        isGhost: false
+      });
     }
     if (!user) throw new Error("Failed to create user");
 
@@ -96,7 +105,7 @@ export const authSignupServiceFactory = ({
     await smtpService.sendMail({
       template: SmtpTemplates.SignupEmailVerification,
       subjectLine: "Infisical confirmation code",
-      recipients: [user.email as string],
+      recipients: [sanitizedEmail],
       substitutions: {
         code: token
       }
@@ -104,11 +113,15 @@ export const authSignupServiceFactory = ({
   };
 
   const verifyEmailSignup = async (email: string, code: string) => {
-    const user = await userDAL.findUserByUsername(email);
+    const sanitizedEmail = email.trim().toLowerCase();
+    const usersByUsername = await userDAL.findUserByUsername(sanitizedEmail);
+    const user =
+      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === sanitizedEmail) : usersByUsername?.[0];
     if (!user || (user && user.isAccepted)) {
       // TODO(akhilmhdh): copy as old one. this needs to be changed due to security issues
       throw new Error("Failed to send verification code for complete account");
     }
+
     const appCfg = getConfig();
     await tokenService.validateTokenForUser({
       type: TokenType.TOKEN_EMAIL_CONFIRMATION,
@@ -153,12 +166,15 @@ export const authSignupServiceFactory = ({
     authorization,
     useDefaultOrg
   }: TCompleteAccountSignupDTO) => {
+    const sanitizedEmail = email.trim().toLowerCase();
     const appCfg = getConfig();
     const serverCfg = await getServerCfg();
 
-    const user = await userDAL.findOne({ username: email });
+    const usersByUsername = await userDAL.findUserByUsername(sanitizedEmail);
+    const user =
+      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === sanitizedEmail) : usersByUsername?.[0];
     if (!user || (user && user.isAccepted)) {
-      throw new Error("Failed to complete account for complete user");
+      throw new BadRequestError({ message: "Failed to complete account for complete user" });
     }
 
     let organizationId: string | null = null;
@@ -315,7 +331,7 @@ export const authSignupServiceFactory = ({
     }
 
     const updatedMembersips = await orgDAL.updateMembership(
-      { inviteEmail: email, status: OrgMembershipStatus.Invited },
+      { inviteEmail: sanitizedEmail, status: OrgMembershipStatus.Invited },
       { userId: user.id, status: OrgMembershipStatus.Accepted }
     );
     const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
@@ -382,9 +398,9 @@ export const authSignupServiceFactory = ({
    * User signup flow when they are invited to join the org
    * */
   const completeAccountInvite = async ({
+    email,
     ip,
     salt,
-    email,
     password,
     verifier,
     firstName,
@@ -399,7 +415,10 @@ export const authSignupServiceFactory = ({
     encryptedPrivateKeyTag,
     authorization
   }: TCompleteAccountInviteDTO) => {
-    const user = await userDAL.findUserByUsername(email);
+    const sanitizedEmail = email.trim().toLowerCase();
+    const usersByUsername = await userDAL.findUserByUsername(sanitizedEmail);
+    const user =
+      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === sanitizedEmail) : usersByUsername?.[0];
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
     }
@@ -407,7 +426,7 @@ export const authSignupServiceFactory = ({
     validateSignUpAuthorization(authorization, user.id);
 
     const [orgMembership] = await orgDAL.findMembership({
-      inviteEmail: email,
+      inviteEmail: sanitizedEmail,
       status: OrgMembershipStatus.Invited
     });
     if (!orgMembership)
@@ -454,7 +473,7 @@ export const authSignupServiceFactory = ({
         const serverGeneratedPrivateKey = await getUserPrivateKey(serverGeneratedPassword, {
           ...systemGeneratedUserEncryptionKey
         });
-        const encKeys = await generateUserSrpKeys(email, password, {
+        const encKeys = await generateUserSrpKeys(sanitizedEmail, password, {
           publicKey: systemGeneratedUserEncryptionKey.publicKey,
           privateKey: serverGeneratedPrivateKey
         });
@@ -505,7 +524,7 @@ export const authSignupServiceFactory = ({
       }
 
       const updatedMembersips = await orgDAL.updateMembership(
-        { inviteEmail: email, status: OrgMembershipStatus.Invited },
+        { inviteEmail: sanitizedEmail, status: OrgMembershipStatus.Invited },
         { userId: us.id, status: OrgMembershipStatus.Accepted },
         tx
       );

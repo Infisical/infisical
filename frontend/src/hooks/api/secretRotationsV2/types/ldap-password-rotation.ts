@@ -1,3 +1,4 @@
+import { TPasswordRequirements } from "@app/components/secret-rotations-v2/forms/schemas/shared";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import {
@@ -5,10 +6,17 @@ import {
   TSecretRotationV2GeneratedCredentialsResponseBase
 } from "@app/hooks/api/secretRotationsV2/types/shared";
 
+export enum LdapPasswordRotationMethod {
+  ConnectionPrincipal = "connection-principal",
+  TargetPrincipal = "target-principal"
+}
+
 export type TLdapPasswordRotation = TSecretRotationV2Base & {
   type: SecretRotation.LdapPassword;
   parameters: {
     dn: string;
+    rotationMethod?: LdapPasswordRotationMethod;
+    passwordRequirements?: TPasswordRequirements;
   };
   secretsMapping: {
     dn: string;

@@ -5,7 +5,7 @@ import { FormControl, Input, TextArea } from "@app/components/v2";
 import { slugSchema } from "@app/lib/schemas";
 
 export const genericAppConnectionFieldsSchema = z.object({
-  name: slugSchema({ min: 1, max: 32, field: "Name" }),
+  name: slugSchema({ min: 1, max: 64, field: "Name" }),
   description: z.string().trim().max(256, "Description cannot exceed 256 characters").nullish()
 });
 

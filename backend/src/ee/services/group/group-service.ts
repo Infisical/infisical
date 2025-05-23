@@ -30,7 +30,7 @@ import {
 import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 
 type TGroupServiceFactoryDep = {
-  userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction" | "findOne">;
+  userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction" | "findUserByUsername">;
   groupDAL: Pick<
     TGroupDALFactory,
     "create" | "findOne" | "update" | "delete" | "findAllGroupPossibleMembers" | "findById" | "transaction"
@@ -380,7 +380,10 @@ export const groupServiceFactory = ({
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
-    const user = await userDAL.findOne({ username });
+    const usersWithUsername = await userDAL.findUserByUsername(username);
+    // akhilmhdh: case sensitive email resolution
+    const user =
+      usersWithUsername?.length > 1 ? usersWithUsername.find((el) => el.username === username) : usersWithUsername?.[0];
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
 
     const users = await addUsersToGroupByUserIds({
@@ -461,7 +464,10 @@ export const groupServiceFactory = ({
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
-    const user = await userDAL.findOne({ username });
+    const usersWithUsername = await userDAL.findUserByUsername(username);
+    // akhilmhdh: case sensitive email resolution
+    const user =
+      usersWithUsername?.length > 1 ? usersWithUsername.find((el) => el.username === username) : usersWithUsername?.[0];
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
 
     const users = await removeUsersFromGroupByUserIds({
