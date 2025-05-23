@@ -89,7 +89,7 @@ export const userServiceFactory = ({
         username: user.username,
         isEmailVerified: user.isEmailVerified
       })),
-      `Verify email users: ${username}`
+      `Verify email users: [username=${username}]`
     );
 
     const user =
