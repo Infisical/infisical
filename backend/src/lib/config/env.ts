@@ -70,7 +70,7 @@ const envSchema = z
     SMTP_FROM_ADDRESS: zpStr(z.string().optional()),
     SMTP_FROM_NAME: zpStr(z.string().optional().default("Infisical")),
     SMTP_CUSTOM_CA_CERT: zpStr(
-      z.string().optional().describe("PEM-encoded custom CA certificate(s) for the SMTP server")
+      z.string().optional().describe("Base64 encoded custom CA certificate PEM(s) for the SMTP server")
     ),
     COOKIE_SECRET_SIGN_KEY: z
       .string()
