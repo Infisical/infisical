@@ -18,9 +18,7 @@ export const ViewLdapPasswordRotationGeneratedCredentials = ({
     <ViewRotationGeneratedCredentialsDisplay
       activeCredentials={
         <>
-          <CredentialDisplay label="Distinguished Name (DN)">
-            {activeCredentials?.dn}
-          </CredentialDisplay>
+          <CredentialDisplay label="DN/UPN">{activeCredentials?.dn}</CredentialDisplay>
           <CredentialDisplay isSensitive label="Password">
             {activeCredentials?.password}
           </CredentialDisplay>
@@ -28,9 +26,7 @@ export const ViewLdapPasswordRotationGeneratedCredentials = ({
       }
       inactiveCredentials={
         <>
-          <CredentialDisplay label="Distinguished Name (DN)">
-            {inactiveCredentials?.dn}
-          </CredentialDisplay>
+          <CredentialDisplay label="DN/UPN">{inactiveCredentials?.dn}</CredentialDisplay>
           <CredentialDisplay isSensitive label="Password">
             {inactiveCredentials?.password}
           </CredentialDisplay>

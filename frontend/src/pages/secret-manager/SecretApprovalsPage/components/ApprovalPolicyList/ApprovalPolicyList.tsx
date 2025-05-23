@@ -29,13 +29,13 @@ import {
   Tr
 } from "@app/components/v2";
 import {
-  ProjectPermissionActions,
   ProjectPermissionSub,
   TProjectPermission,
   useProjectPermission,
   useSubscription,
   useWorkspace
 } from "@app/context";
+import { ProjectPermissionApprovalActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteAccessApprovalPolicy,
@@ -61,8 +61,10 @@ const useApprovalPolicies = (permission: TProjectPermission, currentWorkspace?: 
       projectSlug: currentWorkspace?.slug as string,
       options: {
         enabled:
-          permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
-          !!currentWorkspace?.slug
+          permission.can(
+            ProjectPermissionApprovalActions.Read,
+            ProjectPermissionSub.SecretApproval
+          ) && !!currentWorkspace?.slug
       }
     }
   );
@@ -71,8 +73,10 @@ const useApprovalPolicies = (permission: TProjectPermission, currentWorkspace?: 
       workspaceId: currentWorkspace?.id as string,
       options: {
         enabled:
-          permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
-          !!currentWorkspace?.id
+          permission.can(
+            ProjectPermissionApprovalActions.Read,
+            ProjectPermissionSub.SecretApproval
+          ) && !!currentWorkspace?.id
       }
     }
   );
@@ -160,7 +164,7 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
         </div>
         <div>
           <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
+            I={ProjectPermissionApprovalActions.Create}
             a={ProjectPermissionSub.SecretApproval}
           >
             {(isAllowed) => (

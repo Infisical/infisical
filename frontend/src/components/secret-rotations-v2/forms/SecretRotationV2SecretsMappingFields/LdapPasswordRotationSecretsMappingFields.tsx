@@ -17,7 +17,7 @@ export const LdapPasswordRotationSecretsMappingFields = () => {
 
   const items = [
     {
-      name: "DN",
+      name: "DN/UPN",
       input: (
         <Controller
           render={({ field: { value, onChange }, fieldState: { error } }) => (

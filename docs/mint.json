@@ -441,6 +441,7 @@
                 "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
               ]
             },
+            "integrations/platforms/kubernetes-injector",
             "integrations/platforms/kubernetes-csi",
             "integrations/platforms/docker-swarm-with-agent",
             "integrations/platforms/ecs-with-agent"

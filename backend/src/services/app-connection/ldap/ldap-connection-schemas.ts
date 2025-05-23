@@ -1,8 +1,7 @@
-import RE2 from "re2";
 import { z } from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
-import { DistinguishedNameRegex } from "@app/lib/regex";
+import { DistinguishedNameRegex, LdapUrlRegex, UserPrincipalNameRegex } from "@app/lib/regex";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   BaseAppConnectionSchema,
@@ -14,17 +13,14 @@ import { LdapConnectionMethod, LdapProvider } from "./ldap-connection-enums";
 
 export const LdapConnectionSimpleBindCredentialsSchema = z.object({
   provider: z.nativeEnum(LdapProvider).describe(AppConnections.CREDENTIALS.LDAP.provider),
-  url: z
-    .string()
-    .trim()
-    .min(1, "URL required")
-    .regex(new RE2(/^ldaps?:\/\//))
-    .describe(AppConnections.CREDENTIALS.LDAP.url),
+  url: z.string().trim().min(1, "URL required").regex(LdapUrlRegex).describe(AppConnections.CREDENTIALS.LDAP.url),
   dn: z
     .string()
     .trim()
-    .regex(new RE2(DistinguishedNameRegex), "Invalid DN format, ie; CN=user,OU=users,DC=example,DC=com")
-    .min(1, "Distinguished Name (DN) required")
+    .min(1, "DN/UPN required")
+    .refine((value) => DistinguishedNameRegex.test(value) || UserPrincipalNameRegex.test(value), {
+      message: "Invalid DN/UPN format"
+    })
     .describe(AppConnections.CREDENTIALS.LDAP.dn),
   password: z.string().trim().min(1, "Password required").describe(AppConnections.CREDENTIALS.LDAP.password),
   sslRejectUnauthorized: z.boolean().optional().describe(AppConnections.CREDENTIALS.LDAP.sslRejectUnauthorized),

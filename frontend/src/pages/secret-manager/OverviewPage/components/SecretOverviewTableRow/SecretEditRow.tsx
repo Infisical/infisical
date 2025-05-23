@@ -232,6 +232,7 @@ export const SecretEditRow = ({
               environment={environment}
               isImport={isImportedSecret}
               defaultValue={secretValueHidden ? "" : undefined}
+              canEditButNotView={secretValueHidden && !isOverride}
             />
           )}
         />

@@ -95,8 +95,17 @@ const extractReqId = () => {
   try {
     return requestContext.get("reqId") || UNKNOWN_REQUEST_ID;
   } catch (err) {
+    // eslint-disable-next-line no-console
     console.log("failed to get request context", err);
     return UNKNOWN_REQUEST_ID;
+  }
+};
+
+const extractOrgId = () => {
+  try {
+    return requestContext.get("orgId");
+  } catch {
+    return "";
   }
 };
 
@@ -135,22 +144,22 @@ export const initLogger = () => {
   const wrapLogger = (originalLogger: Logger): CustomLogger => {
     // eslint-disable-next-line no-param-reassign, @typescript-eslint/no-explicit-any
     originalLogger.info = (obj: unknown, msg?: string, ...args: any[]) => {
-      return originalLogger.child({ reqId: extractReqId() }).info(obj, msg, ...args);
+      return originalLogger.child({ reqId: extractReqId(), orgId: extractOrgId() }).info(obj, msg, ...args);
     };
 
     // eslint-disable-next-line no-param-reassign, @typescript-eslint/no-explicit-any
     originalLogger.error = (obj: unknown, msg?: string, ...args: any[]) => {
-      return originalLogger.child({ reqId: extractReqId() }).error(obj, msg, ...args);
+      return originalLogger.child({ reqId: extractReqId(), orgId: extractOrgId() }).error(obj, msg, ...args);
     };
 
     // eslint-disable-next-line no-param-reassign, @typescript-eslint/no-explicit-any
     originalLogger.warn = (obj: unknown, msg?: string, ...args: any[]) => {
-      return originalLogger.child({ reqId: extractReqId() }).warn(obj, msg, ...args);
+      return originalLogger.child({ reqId: extractReqId(), orgId: extractOrgId() }).warn(obj, msg, ...args);
     };
 
     // eslint-disable-next-line no-param-reassign, @typescript-eslint/no-explicit-any
     originalLogger.debug = (obj: unknown, msg?: string, ...args: any[]) => {
-      return originalLogger.child({ reqId: extractReqId() }).debug(obj, msg, ...args);
+      return originalLogger.child({ reqId: extractReqId(), orgId: extractOrgId() }).debug(obj, msg, ...args);
     };
 
     return originalLogger;
