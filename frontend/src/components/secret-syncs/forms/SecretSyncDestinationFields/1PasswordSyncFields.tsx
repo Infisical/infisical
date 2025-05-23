@@ -69,10 +69,6 @@ export const OnePassSyncFields = () => {
           </FormControl>
         )}
       />
-
-      <span className="text-sm text-bunker-300">
-        Not selecting a Build Configuration will sync your secrets to the entire project.
-      </span>
     </>
   );
 };
