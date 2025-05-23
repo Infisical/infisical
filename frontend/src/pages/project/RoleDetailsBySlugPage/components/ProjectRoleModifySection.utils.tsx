@@ -234,6 +234,7 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.Commits]: CommitPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Member]: MemberPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Groups]: GroupPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Role]: GeneralPolicyActionSchema.array().default([]),
@@ -280,8 +281,7 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Kms]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Cmek]: CmekPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretSyncs]: SecretSyncPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.Kmip]: KmipPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.Commits]: CommitPolicyActionSchema.array().default([])
+      [ProjectPermissionSub.Kmip]: KmipPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -416,8 +416,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.SshCertificateTemplates,
         ProjectPermissionSub.SshCertificateAuthorities,
         ProjectPermissionSub.SshCertificates,
-        ProjectPermissionSub.SshHostGroups,
-        ProjectPermissionSub.Commits
+        ProjectPermissionSub.SshHostGroups
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -742,6 +741,17 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       });
     }
 
+    if (subject === ProjectPermissionSub.Commits) {
+      const canRead = action.includes(ProjectPermissionCommitsActions.Read);
+      const canPerformRollback = action.includes(ProjectPermissionCommitsActions.PerformRollback);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+      if (canRead) formVal[subject]![0][ProjectPermissionCommitsActions.Read] = true;
+      if (canPerformRollback)
+        formVal[subject]![0][ProjectPermissionCommitsActions.PerformRollback] = true;
+      return;
+    }
+
     if (subject === ProjectPermissionSub.PkiSubscribers) {
       if (!formVal[subject]) formVal[subject] = [];
 
@@ -860,6 +870,8 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   });
   return permissions;
 };
+
+export const EXCLUDED_PERMISSION_SUBS = [ProjectPermissionSub.SecretRollback];
 
 export type TProjectPermissionObject = {
   [K in ProjectPermissionSub]: {
@@ -1291,7 +1303,7 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.Tags]: enabled,
   [ProjectPermissionSub.Webhooks]: enabled,
   [ProjectPermissionSub.IpAllowList]: enabled,
-  [ProjectPermissionSub.SecretRollback]: false,
+  [ProjectPermissionSub.SecretRollback]: enabled,
   [ProjectPermissionSub.SecretRotation]: enabled,
   [ProjectPermissionSub.ServiceTokens]: enabled,
   [ProjectPermissionSub.Commits]: enabled

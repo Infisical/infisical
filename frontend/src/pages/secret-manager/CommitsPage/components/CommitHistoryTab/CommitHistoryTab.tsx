@@ -57,7 +57,7 @@ const CommitItem = ({
               </Button>
             </div>
             <p className="text-white-400 mt-2 flex flex-wrap items-center gap-4 text-sm">
-              <span className="flex items-center">
+              <span className="flex items-center text-mineshaft-300">
                 {commit.actorMetadata?.email || commit.actorMetadata?.name || commit.actorType}
                 <p className="ml-1 mr-1">committed</p>
                 <time dateTime={commit.createdAt}>{formatTimeAgo(commit.createdAt)}</time>

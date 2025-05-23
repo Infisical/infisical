@@ -24,6 +24,7 @@ import { IdentityManagementPermissionConditions } from "./IdentityManagementPerm
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import { PkiSubscriberPermissionConditions } from "./PkiSubscriberPermissionConditions";
 import {
+  EXCLUDED_PERMISSION_SUBS,
   formRolePermission2API,
   isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
@@ -171,6 +172,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
           <div className="py-4">
             {!isPending && <PermissionEmptyState />}
             {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
+              .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
               .filter((subject) => ProjectTypePermissionSubjects[currentWorkspace.type][subject])
               .map((subject) => (
                 <GeneralPermissionPolicies

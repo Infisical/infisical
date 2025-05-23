@@ -453,7 +453,7 @@ export const SecretVersionDiffView: React.FC<SecretVersionDiffViewProps> = ({
   const differences = getVersionDifferences(item.versions);
 
   if (differences.length === 0) {
-    return <div className="px-6 py-3 text-gray-400">No details available</div>;
+    return null;
   }
 
   const changedFields = new Set<string>();

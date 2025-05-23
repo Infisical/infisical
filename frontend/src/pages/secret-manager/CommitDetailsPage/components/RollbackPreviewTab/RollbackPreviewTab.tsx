@@ -328,39 +328,28 @@ export const RollbackPreviewTab = (): JSX.Element => {
 
             <div className="border-t border-mineshaft-600 py-4">
               <div className="flex w-full items-center justify-between gap-2">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Restore Message"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    className="w-full border-mineshaft-500 bg-mineshaft-700 text-sm"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => {
-                      if (!message) {
-                        createNotification({
-                          type: "error",
-                          text: "Please enter a restore message"
-                        });
-                        return;
-                      }
-                      handlePopUpOpen("rollbackConfirm");
-                    }}
-                    colorSchema="primary"
-                    className="px-6 py-2"
-                    isDisabled={
-                      message.length === 0 ||
-                      !rollbackChangesNested ||
-                      !rollbackChangesNested?.some((folder) => {
-                        return folder.changes.length > 0;
-                      })
-                    }
-                  >
-                    Restore
-                  </Button>
-                </div>
+                <Input
+                  placeholder="Restore Message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  className="w-full border-mineshaft-500 bg-mineshaft-700 py-2 text-sm"
+                />
+                <Button
+                  onClick={() => {
+                    handlePopUpOpen("rollbackConfirm");
+                  }}
+                  colorSchema="primary"
+                  className="px-6 py-2"
+                  isDisabled={
+                    message.length === 0 ||
+                    !rollbackChangesNested ||
+                    !rollbackChangesNested?.some((folder) => {
+                      return folder.changes.length > 0;
+                    })
+                  }
+                >
+                  Restore
+                </Button>
               </div>
             </div>
           </div>

@@ -1172,6 +1172,7 @@ export const registerRoutes = async (
     snapshotDAL,
     snapshotFolderDAL,
     snapshotSecretDAL,
+    folderCommitService,
     secretVersionDAL,
     folderVersionDAL,
     secretTagDAL,
