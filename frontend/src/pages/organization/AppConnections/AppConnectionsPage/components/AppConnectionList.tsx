@@ -1,6 +1,5 @@
 import { faWrench } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { Spinner, Tooltip } from "@app/components/v2";
@@ -35,41 +34,27 @@ export const AppConnectionsSelect = ({ onSelect }: Props) => {
         const { image, name, size = 50, enterprise = false } = APP_CONNECTION_MAP[option.app];
 
         return (
-          <Tooltip
-            key={option.app}
-            content={
+          <button
+            type="button"
+            onClick={() =>
               enterprise && !subscription.enterpriseAppConnections
-                ? "Enterprise Plan Only"
-                : undefined
+                ? handlePopUpOpen("upgradePlan")
+                : onSelect(option.app)
             }
+            className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
           >
-            <button
-              type="button"
-              onClick={() =>
-                enterprise && !subscription.enterpriseAppConnections
-                  ? handlePopUpOpen("upgradePlan")
-                  : onSelect(option.app)
-              }
-              className={twMerge(
-                "group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600",
-                enterprise && !subscription.enterpriseAppConnections
-                  ? "border-0 bg-opacity-0 opacity-40"
-                  : ""
-              )}
-            >
-              <img
-                src={`/images/integrations/${image}`}
-                style={{
-                  width: `${size}px`
-                }}
-                className="mt-auto"
-                alt={`${name} logo`}
-              />
-              <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
-                {name}
-              </div>
-            </button>
-          </Tooltip>
+            <img
+              src={`/images/integrations/${image}`}
+              style={{
+                width: `${size}px`
+              }}
+              className="mt-auto"
+              alt={`${name} logo`}
+            />
+            <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
+              {name}
+            </div>
+          </button>
         );
       })}
       <UpgradePlanModal
