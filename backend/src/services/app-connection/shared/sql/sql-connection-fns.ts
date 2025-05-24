@@ -15,7 +15,8 @@ const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
 const SQL_CONNECTION_CLIENT_MAP = {
   [AppConnection.Postgres]: "pg",
-  [AppConnection.MsSql]: "mssql"
+  [AppConnection.MsSql]: "mssql",
+  [AppConnection.MySql]: "mysql2"
 };
 
 const getConnectionConfig = ({
@@ -43,6 +44,17 @@ const getConnectionConfig = ({
               cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {}
             }
           : { encrypt: false }
+      };
+    }
+    case AppConnection.MySql: {
+      return {
+        ssl: sslEnabled
+          ? {
+              rejectUnauthorized: sslRejectUnauthorized,
+              ca: sslCertificate,
+              servername: host
+            }
+          : false
       };
     }
     default:
@@ -101,7 +113,8 @@ export const SQL_CONNECTION_ALTER_LOGIN_STATEMENT: Record<
   (credentials: TSqlCredentialsRotationGeneratedCredentials[number]) => [string, Knex.RawBinding]
 > = {
   [AppConnection.Postgres]: ({ username, password }) => [`ALTER USER ?? WITH PASSWORD '${password}';`, [username]],
-  [AppConnection.MsSql]: ({ username, password }) => [`ALTER LOGIN ?? WITH PASSWORD = '${password}';`, [username]]
+  [AppConnection.MsSql]: ({ username, password }) => [`ALTER LOGIN ?? WITH PASSWORD = '${password}';`, [username]],
+  [AppConnection.MySql]: ({ username, password }) => [`ALTER USER ??@'%' IDENTIFIED BY '${password}';`, [username]]
 };
 
 export const transferSqlConnectionCredentialsToPlatform = async (

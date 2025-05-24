@@ -9,6 +9,7 @@ import { AWS_IAM_USER_SECRET_ROTATION_LIST_OPTION } from "./aws-iam-user-secret"
 import { AZURE_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./azure-client-secret";
 import { LDAP_PASSWORD_ROTATION_LIST_OPTION, TLdapPasswordRotation } from "./ldap-password";
 import { MSSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mssql-credentials";
+import { MYSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mysql-credentials";
 import { POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-credentials";
 import { SecretRotation, SecretRotationStatus } from "./secret-rotation-v2-enums";
 import { TSecretRotationV2ServiceFactoryDep } from "./secret-rotation-v2-service";
@@ -23,6 +24,7 @@ import {
 const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2ListItem> = {
   [SecretRotation.PostgresCredentials]: POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION,
   [SecretRotation.MsSqlCredentials]: MSSQL_CREDENTIALS_ROTATION_LIST_OPTION,
+  [SecretRotation.MySqlCredentials]: MYSQL_CREDENTIALS_ROTATION_LIST_OPTION,
   [SecretRotation.Auth0ClientSecret]: AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION,
   [SecretRotation.AzureClientSecret]: AZURE_CLIENT_SECRET_ROTATION_LIST_OPTION,
   [SecretRotation.AwsIamUserSecret]: AWS_IAM_USER_SECRET_ROTATION_LIST_OPTION,

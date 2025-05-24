@@ -13,6 +13,7 @@ import { THCVaultConnection } from "./hc-vault-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
+import { TMySqlConnection } from "./mysql-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
@@ -33,6 +34,7 @@ export * from "./hc-vault-connection";
 export * from "./humanitec-connection";
 export * from "./ldap-connection";
 export * from "./mssql-connection";
+export * from "./mysql-connection";
 export * from "./oci-connection";
 export * from "./postgres-connection";
 export * from "./teamcity-connection";
@@ -53,6 +55,7 @@ export type TAppConnection =
   | TVercelConnection
   | TPostgresConnection
   | TMsSqlConnection
+  | TMySqlConnection
   | TCamundaConnection
   | TWindmillConnection
   | TAuth0Connection
@@ -99,6 +102,7 @@ export type TAppConnectionMap = {
   [AppConnection.Vercel]: TVercelConnection;
   [AppConnection.Postgres]: TPostgresConnection;
   [AppConnection.MsSql]: TMsSqlConnection;
+  [AppConnection.MySql]: TMySqlConnection;
   [AppConnection.Camunda]: TCamundaConnection;
   [AppConnection.Windmill]: TWindmillConnection;
   [AppConnection.Auth0]: TAuth0Connection;

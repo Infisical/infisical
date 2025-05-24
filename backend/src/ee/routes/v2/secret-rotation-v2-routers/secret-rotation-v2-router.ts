@@ -6,6 +6,7 @@ import { AwsIamUserSecretRotationListItemSchema } from "@app/ee/services/secret-
 import { AzureClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/azure-client-secret";
 import { LdapPasswordRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
 import { MsSqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
+import { MySqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mysql-credentials";
 import { PostgresCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
 import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";
@@ -16,6 +17,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   PostgresCredentialsRotationListItemSchema,
   MsSqlCredentialsRotationListItemSchema,
+  MySqlCredentialsRotationListItemSchema,
   Auth0ClientSecretRotationListItemSchema,
   AzureClientSecretRotationListItemSchema,
   AwsIamUserSecretRotationListItemSchema,

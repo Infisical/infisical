@@ -60,6 +60,10 @@ export type TMsSqlConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.MsSql;
 };
 
+export type TMySqlConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.MySql;
+};
+
 export type TCamundaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Camunda;
 };
@@ -101,6 +105,7 @@ export type TAppConnectionOption =
   | TVercelConnectionOption
   | TPostgresConnectionOption
   | TMsSqlConnectionOption
+  | TMySqlConnectionOption
   | TCamundaConnectionOption
   | TWindmillConnectionOption
   | TAuth0ConnectionOption
@@ -121,6 +126,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Vercel]: TVercelConnectionOption;
   [AppConnection.Postgres]: TPostgresConnectionOption;
   [AppConnection.MsSql]: TMsSqlConnectionOption;
+  [AppConnection.MySql]: TMySqlConnectionOption;
   [AppConnection.Camunda]: TCamundaConnectionOption;
   [AppConnection.Windmill]: TWindmillConnectionOption;
   [AppConnection.Auth0]: TAuth0ConnectionOption;

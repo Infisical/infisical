@@ -53,6 +53,8 @@ import {
 } from "./humanitec";
 import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnectionCredentials } from "./ldap";
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
+import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
+import { getMySqlConnectionListItem } from "./mysql/mysql-connection-fns";
 import { getOCIConnectionListItem, OCIConnectionMethod, validateOCIConnectionCredentials } from "./oci";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import {
@@ -86,6 +88,7 @@ export const listAppConnectionOptions = () => {
     getVercelConnectionListItem(),
     getPostgresConnectionListItem(),
     getMsSqlConnectionListItem(),
+    getMySqlConnectionListItem(),
     getCamundaConnectionListItem(),
     getAzureClientSecretsConnectionListItem(),
     getWindmillConnectionListItem(),
@@ -155,6 +158,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.MySql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Camunda]: validateCamundaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Vercel]: validateVercelConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TerraformCloud]: validateTerraformCloudConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -195,6 +199,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
+    case MySqlConnectionMethod.UsernameAndPassword:
       return "Username & Password";
     case WindmillConnectionMethod.AccessToken:
     case HCVaultConnectionMethod.AccessToken:
@@ -246,6 +251,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Humanitec]: platformManagedCredentialsNotSupported,
   [AppConnection.Postgres]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
+  [AppConnection.MySql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.TerraformCloud]: platformManagedCredentialsNotSupported,
   [AppConnection.Camunda]: platformManagedCredentialsNotSupported,
   [AppConnection.Vercel]: platformManagedCredentialsNotSupported,

@@ -1,6 +1,7 @@
 export enum SecretRotation {
   PostgresCredentials = "postgres-credentials",
   MsSqlCredentials = "mssql-credentials",
+  MySqlCredentials = "mysql-credentials",
   Auth0ClientSecret = "auth0-client-secret",
   AzureClientSecret = "azure-client-secret",
   LdapPassword = "ldap-password",

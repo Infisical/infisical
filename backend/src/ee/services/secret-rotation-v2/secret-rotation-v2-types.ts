@@ -40,6 +40,12 @@ import {
   TMsSqlCredentialsRotationWithConnection
 } from "./mssql-credentials";
 import {
+  TMySqlCredentialsRotation,
+  TMySqlCredentialsRotationInput,
+  TMySqlCredentialsRotationListItem,
+  TMySqlCredentialsRotationWithConnection
+} from "./mysql-credentials";
+import {
   TPostgresCredentialsRotation,
   TPostgresCredentialsRotationInput,
   TPostgresCredentialsRotationListItem,
@@ -51,6 +57,7 @@ import { SecretRotation } from "./secret-rotation-v2-enums";
 export type TSecretRotationV2 =
   | TPostgresCredentialsRotation
   | TMsSqlCredentialsRotation
+  | TMySqlCredentialsRotation
   | TAuth0ClientSecretRotation
   | TAzureClientSecretRotation
   | TLdapPasswordRotation
@@ -59,6 +66,7 @@ export type TSecretRotationV2 =
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
   | TMsSqlCredentialsRotationWithConnection
+  | TMySqlCredentialsRotationWithConnection
   | TAuth0ClientSecretRotationWithConnection
   | TAzureClientSecretRotationWithConnection
   | TLdapPasswordRotationWithConnection
@@ -74,6 +82,7 @@ export type TSecretRotationV2GeneratedCredentials =
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
   | TMsSqlCredentialsRotationInput
+  | TMySqlCredentialsRotationInput
   | TAuth0ClientSecretRotationInput
   | TAzureClientSecretRotationInput
   | TLdapPasswordRotationInput
@@ -82,6 +91,7 @@ export type TSecretRotationV2Input =
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
   | TMsSqlCredentialsRotationListItem
+  | TMySqlCredentialsRotationListItem
   | TAuth0ClientSecretRotationListItem
   | TAzureClientSecretRotationListItem
   | TLdapPasswordRotationListItem

@@ -76,6 +76,7 @@ import {
   TValidateLdapConnectionCredentialsSchema
 } from "./ldap";
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
+import { TMySqlConnection, TMySqlConnectionInput, TValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import {
   TOCIConnection,
   TOCIConnectionConfig,
@@ -124,6 +125,7 @@ export type TAppConnection = { id: string } & (
   | TVercelConnection
   | TPostgresConnection
   | TMsSqlConnection
+  | TMySqlConnection
   | TCamundaConnection
   | TAzureClientSecretsConnection
   | TWindmillConnection
@@ -136,7 +138,7 @@ export type TAppConnection = { id: string } & (
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
 
-export type TSqlConnection = TPostgresConnection | TMsSqlConnection;
+export type TSqlConnection = TPostgresConnection | TMsSqlConnection | TMySqlConnection;
 
 export type TAppConnectionInput = { id: string } & (
   | TAwsConnectionInput
@@ -150,6 +152,7 @@ export type TAppConnectionInput = { id: string } & (
   | TVercelConnectionInput
   | TPostgresConnectionInput
   | TMsSqlConnectionInput
+  | TMySqlConnectionInput
   | TCamundaConnectionInput
   | TAzureClientSecretsConnectionInput
   | TWindmillConnectionInput
@@ -160,7 +163,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOCIConnectionInput
 );
 
-export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput;
+export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput | TMySqlConnectionInput;
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnectionInput,
@@ -202,6 +205,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateHumanitecConnectionCredentialsSchema
   | TValidatePostgresConnectionCredentialsSchema
   | TValidateMsSqlConnectionCredentialsSchema
+  | TValidateMySqlConnectionCredentialsSchema
   | TValidateCamundaConnectionCredentialsSchema
   | TValidateVercelConnectionCredentialsSchema
   | TValidateTerraformCloudConnectionCredentialsSchema
