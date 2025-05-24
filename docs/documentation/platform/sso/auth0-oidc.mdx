@@ -14,7 +14,7 @@ description: "Learn how to configure Auth0 OIDC for Infisical SSO."
    <Step title="Setup application in Auth0">
       1.1. From the Application's Page, navigate to the settings tab of the Auth0 application you want to integrate with Infisical.
       ![OIDC auth0 list of applications](../../../images/sso/auth0-oidc/application-settings.png)
-      
+
       1.2. In the Application URIs section, set the **Application Login URI** and **Allowed Web Origins** fields to `https://app.infisical.com` and the **Allowed Callback URL** field to `https://app.infisical.com/api/v1/sso/oidc/callback`.
       ![OIDC auth0 create application uris](../../../images/sso/auth0-oidc/application-uris.png)
       ![OIDC auth0 create application origin](../../../images/sso/auth0-oidc/application-origin.png)
@@ -70,7 +70,7 @@ description: "Learn how to configure Auth0 OIDC for Infisical SSO."
          prior to enforcing OIDC SSO to prevent any unintended issues.
       </Warning>
       <Info>
-         In case of a lockout, an organization admin can use the admin login portal in the `/login/admin` path e.g. https://app.infisical.com/login/admin.
+         In case of a lockout, an organization admin can use the [Admin Login Portal](https://infisical.com/docs/documentation/platform/sso/overview#admin-login-portal) in the `/login/admin` path e.g. https://app.infisical.com/login/admin.
       </Info>
    </Step>
 </Steps>

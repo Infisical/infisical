@@ -39,18 +39,30 @@ If your required identity provider is not shown in the list above, please reach 
   For enhanced security, Infisical enforces PKCE (Proof Key for Code Exchange) with the OAuth 2.0-based SSO providers and OIDC. This provides additional protection against authorization code interception attacks and strengthens your authentication flow security.
 </Info>
 
+## SSO Break Glass
+
+In the event your SSO provider experiences downtime, and you need to access Infisical, Organization Admins can utilize the Admin Login Portal to bypass SSO enforcement.
+
+This portal is accessible at `/login/admin` (e.g., https://app.infisical.com/login/admin).
+
+<Note>
+    To bypass SSO for an organization, you must be an **Organization Admin** for that specific organization. This **Organization Admin** role is independent of **Server Admin** status. Being a **Server Admin** alone does not grant permission to use this bypass feature.
+</Note>
+
 ## FAQ
 
 <AccordionGroup>
-  <Accordion title="Why does Infisical require additional email verification for users connected via SAML?">
-    By default, Infisical Cloud is configured to not trust emails from external
-    identity providers to prevent any malicious account takeover attempts via
-    email spoofing. Accordingly, Infisical creates a new user for anyone provisioned
-    through an external identity provider and requires an additional email
-    verification step upon their first login.
+    <Accordion title="Why does Infisical require additional email verification for users connected via SAML?">
+        By default, Infisical Cloud is configured to not trust emails from external
+        identity providers to prevent any malicious account takeover attempts via
+        email spoofing. Accordingly, Infisical creates a new user for anyone provisioned
+        through an external identity provider and requires an additional email
+        verification step upon their first login.
 
-    If you're running a self-hosted instance of Infisical and would like it to trust emails from external identity providers,
-    you can configure this behavior in the Server Admin Console.
-
-  </Accordion>
+        If you're running a self-hosted instance of Infisical and would like it to trust emails from external identity providers,
+        you can configure this behavior in the Server Admin Console.
+    </Accordion>
+    <Accordion title="Why do I get redirected to SSO when trying to use the Admin Login Portal?">
+        You are likely being redirected because you do not have email authentication mode enabled, or you're not an **Organization Admin**. This portal requires **Organization Admin** status and direct credential login (email and password). **Server Admin** status alone is insufficient.
+    </Accordion>
 </AccordionGroup>
