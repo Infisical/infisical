@@ -39,14 +39,14 @@ If your required identity provider is not shown in the list above, please reach 
   For enhanced security, Infisical enforces PKCE (Proof Key for Code Exchange) with the OAuth 2.0-based SSO providers and OIDC. This provides additional protection against authorization code interception attacks and strengthens your authentication flow security.
 </Info>
 
-## Admin Login Portal
+## SSO Break Glass
 
-Organization Admins can utilize the Admin Login Portal to bypass SSO enforcement in case of an emergency.
+In the event your SSO provider experiences downtime, and you need to access Infisical, Organization Admins can utilize the Admin Login Portal to bypass SSO enforcement.
 
 This portal is accessible at `/login/admin` (e.g., https://app.infisical.com/login/admin).
 
 <Note>
-    This bypass functionality is exclusively available to **Organization Admins**. **Server Admins** are not permitted to use this feature.
+    To bypass SSO for an organization, you must be an **Organization Admin** for that specific organization. This **Organization Admin** role is independent of **Server Admin** status. Being a **Server Admin** alone does not grant permission to use this bypass feature.
 </Note>
 
 ## FAQ
@@ -63,6 +63,6 @@ This portal is accessible at `/login/admin` (e.g., https://app.infisical.com/log
         you can configure this behavior in the Server Admin Console.
     </Accordion>
     <Accordion title="Why do I get redirected to SSO when trying to use the Admin Login Portal?">
-        You are likely being redirected because you're not using your username and password, or you're not an **Organization Admin**. This portal requires **Organization Admin** status and direct credential login (username and password). **Server Admin** status alone is insufficient.
+        You are likely being redirected because you're not using your email and password, or you're not an **Organization Admin**. This portal requires **Organization Admin** status and direct credential login (email and password). **Server Admin** status alone is insufficient.
     </Accordion>
 </AccordionGroup>
