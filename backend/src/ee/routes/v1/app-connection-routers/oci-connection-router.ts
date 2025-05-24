@@ -1,16 +1,16 @@
 import z from "zod";
 
-import { readLimit } from "@app/server/config/rateLimiter";
-import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   CreateOCIConnectionSchema,
   SanitizedOCIConnectionSchema,
   UpdateOCIConnectionSchema
-} from "@app/services/app-connection/oci";
+} from "@app/ee/services/app-connections/oci";
+import { readLimit } from "@app/server/config/rateLimiter";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
+import { registerAppConnectionEndpoints } from "../../../../server/routes/v1/app-connection-routers/app-connection-endpoints";
 
 export const registerOCIConnectionRouter = async (server: FastifyZodProvider) => {
   registerAppConnectionEndpoints({

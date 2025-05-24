@@ -1,14 +1,20 @@
 import { TAppConnections } from "@app/db/schemas/app-connections";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { generateHash } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
-import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
+import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
 import {
   transferSqlConnectionCredentialsToPlatform,
   validateSqlConnectionCredentials
 } from "@app/services/app-connection/shared/sql";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { AppConnection } from "./app-connection-enums";
+import {
+  getOCIConnectionListItem,
+  OCIConnectionMethod,
+  validateOCIConnectionCredentials
+} from "../../ee/services/app-connections/oci";
+import { AppConnection, AppConnectionPlanType } from "./app-connection-enums";
 import { TAppConnectionServiceFactoryDep } from "./app-connection-service";
 import {
   TAppConnection,
@@ -53,7 +59,6 @@ import {
 } from "./humanitec";
 import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnectionCredentials } from "./ldap";
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
-import { getOCIConnectionListItem, OCIConnectionMethod, validateOCIConnectionCredentials } from "./oci";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import {
   getTeamCityConnectionListItem,
@@ -256,4 +261,19 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.LDAP]: platformManagedCredentialsNotSupported, // we could support this in the future
   [AppConnection.TeamCity]: platformManagedCredentialsNotSupported,
   [AppConnection.OCI]: platformManagedCredentialsNotSupported
+};
+
+export const enterpriseAppCheck = async (
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  appConnection: AppConnection,
+  orgId: string,
+  errorMessage: string
+) => {
+  if (APP_CONNECTION_PLAN_MAP[appConnection] === AppConnectionPlanType.Enterprise) {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.enterpriseAppConnections)
+      throw new BadRequestError({
+        message: errorMessage
+      });
+  }
 };

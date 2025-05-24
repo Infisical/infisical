@@ -21,6 +21,7 @@ export type TSecretSyncOption = {
   name: string;
   destination: SecretSync;
   canImportSecrets: boolean;
+  enterprise?: boolean;
 };
 
 export type TSecretSync =
