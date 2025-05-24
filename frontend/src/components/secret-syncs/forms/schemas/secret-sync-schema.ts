@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { OnePassSyncDestinationSchema } from "./1password-sync-destination-schema";
 import { AwsParameterStoreSyncDestinationSchema } from "./aws-parameter-store-sync-destination-schema";
 import { AwsSecretsManagerSyncDestinationSchema } from "./aws-secrets-manager-sync-destination-schema";
 import { AzureAppConfigurationSyncDestinationSchema } from "./azure-app-configuration-sync-destination-schema";
@@ -31,7 +32,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   WindmillSyncDestinationSchema,
   HCVaultSyncDestinationSchema,
   TeamCitySyncDestinationSchema,
-  OCIVaultSyncDestinationSchema
+  OCIVaultSyncDestinationSchema,
+  OnePassSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

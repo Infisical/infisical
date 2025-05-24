@@ -3,6 +3,7 @@ import { useFormContext } from "react-hook-form";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
+import { OnePassSyncFields } from "./1PasswordSyncFields";
 import { AwsParameterStoreSyncFields } from "./AwsParameterStoreSyncFields";
 import { AwsSecretsManagerSyncFields } from "./AwsSecretsManagerSyncFields";
 import { AzureAppConfigurationSyncFields } from "./AzureAppConfigurationSyncFields";
@@ -55,6 +56,8 @@ export const SecretSyncDestinationFields = () => {
       return <TeamCitySyncFields />;
     case SecretSync.OCIVault:
       return <OCIVaultSyncFields />;
+    case SecretSync.OnePass:
+      return <OnePassSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

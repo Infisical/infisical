@@ -1,5 +1,6 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
+import { registerOnePassConnectionRouter } from "./1password-connection-router";
 import { registerAuth0ConnectionRouter } from "./auth0-connection-router";
 import { registerAwsConnectionRouter } from "./aws-connection-router";
 import { registerAzureAppConfigurationConnectionRouter } from "./azure-app-configuration-connection-router";
@@ -42,5 +43,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.HCVault]: registerHCVaultConnectionRouter,
     [AppConnection.LDAP]: registerLdapConnectionRouter,
     [AppConnection.TeamCity]: registerTeamCityConnectionRouter,
-    [AppConnection.OCI]: registerOCIConnectionRouter
+    [AppConnection.OCI]: registerOCIConnectionRouter,
+    [AppConnection.OnePass]: registerOnePassConnectionRouter
   };

@@ -106,6 +106,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.compartmentOcid;
       secondaryText = destinationConfig.vaultOcid;
       break;
+    case SecretSync.OnePass:
+      primaryText = destinationConfig.vaultId;
+      secondaryText = "Vault ID";
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

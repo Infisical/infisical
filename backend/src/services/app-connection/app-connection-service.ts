@@ -17,6 +17,8 @@ import {
 import { auth0ConnectionService } from "@app/services/app-connection/auth0/auth0-connection-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { ValidateOnePassConnectionCredentialsSchema } from "./1password";
+import { onePassConnectionService } from "./1password/1password-connection-service";
 import { TAppConnectionDALFactory } from "./app-connection-dal";
 import { AppConnection } from "./app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "./app-connection-maps";
@@ -88,7 +90,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.HCVault]: ValidateHCVaultConnectionCredentialsSchema,
   [AppConnection.LDAP]: ValidateLdapConnectionCredentialsSchema,
   [AppConnection.TeamCity]: ValidateTeamCityConnectionCredentialsSchema,
-  [AppConnection.OCI]: ValidateOCIConnectionCredentialsSchema
+  [AppConnection.OCI]: ValidateOCIConnectionCredentialsSchema,
+  [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -468,6 +471,7 @@ export const appConnectionServiceFactory = ({
     hcvault: hcVaultConnectionService(connectAppConnectionById),
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
-    oci: ociConnectionService(connectAppConnectionById)
+    oci: ociConnectionService(connectAppConnectionById),
+    onepass: onePassConnectionService(connectAppConnectionById)
   };
 };

@@ -470,6 +470,7 @@
         {
           "group": "Connections",
           "pages": [
+            "integrations/app-connections/1password",
             "integrations/app-connections/auth0",
             "integrations/app-connections/aws",
             "integrations/app-connections/azure-app-configuration",
@@ -500,6 +501,7 @@
         {
           "group": "Syncs",
           "pages": [
+            "integrations/secret-syncs/1password",
             "integrations/secret-syncs/aws-parameter-store",
             "integrations/secret-syncs/aws-secrets-manager",
             "integrations/secret-syncs/azure-app-configuration",
@@ -1042,6 +1044,18 @@
             "api-reference/endpoints/app-connections/list",
             "api-reference/endpoints/app-connections/options",
             {
+              "group": "1Password",
+              "pages": [
+                "api-reference/endpoints/app-connections/1password/list",
+                "api-reference/endpoints/app-connections/1password/available",
+                "api-reference/endpoints/app-connections/1password/get-by-id",
+                "api-reference/endpoints/app-connections/1password/get-by-name",
+                "api-reference/endpoints/app-connections/1password/create",
+                "api-reference/endpoints/app-connections/1password/update",
+                "api-reference/endpoints/app-connections/1password/delete"
+              ]
+            },
+            {
               "group": "Auth0",
               "pages": [
                 "api-reference/endpoints/app-connections/auth0/list",
@@ -1276,6 +1290,20 @@
           "pages": [
             "api-reference/endpoints/secret-syncs/list",
             "api-reference/endpoints/secret-syncs/options",
+            {
+              "group": "1Password",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/1password/list",
+                "api-reference/endpoints/secret-syncs/1password/get-by-id",
+                "api-reference/endpoints/secret-syncs/1password/get-by-name",
+                "api-reference/endpoints/secret-syncs/1password/create",
+                "api-reference/endpoints/secret-syncs/1password/update",
+                "api-reference/endpoints/secret-syncs/1password/delete",
+                "api-reference/endpoints/secret-syncs/1password/sync-secrets",
+                "api-reference/endpoints/secret-syncs/1password/import-secrets",
+                "api-reference/endpoints/secret-syncs/1password/remove-secrets"
+              ]
+            },
             {
               "group": "AWS Parameter Store",
               "pages": [

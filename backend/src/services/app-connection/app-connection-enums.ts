@@ -17,7 +17,8 @@ export enum AppConnection {
   HCVault = "hashicorp-vault",
   LDAP = "ldap",
   TeamCity = "teamcity",
-  OCI = "oci"
+  OCI = "oci",
+  OnePass = "1password"
 }
 
 export enum AWSRegion {
