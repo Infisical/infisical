@@ -31,7 +31,8 @@ export enum DynamicSecretProviders {
   SapHana = "sap-hana",
   Snowflake = "snowflake",
   Totp = "totp",
-  SapAse = "sap-ase"
+  SapAse = "sap-ase",
+  GcpIam = "gcp-iam"
 }
 
 export enum SqlProviders {
@@ -261,6 +262,12 @@ export type TDynamicSecretProvider =
             algorithm?: string;
             digits?: number;
           };
+    }
+  | {
+      type: DynamicSecretProviders.GcpIam;
+      inputs: {
+        serviceAccountEmail: string;
+      };
     };
 
 export type TCreateDynamicSecretDTO = {
