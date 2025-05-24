@@ -54,6 +54,16 @@ A helm chart to deploy Infisical
 | postgresql.enabled | bool | `true` | Enables an in-cluster PostgreSQL deployment. To achieve HA for Postgres, we recommend deploying https://github.com/zalando/postgres-operator instead. |
 | postgresql.fullnameOverride | string | `"postgresql"` | Full name override for PostgreSQL resources |
 | postgresql.name | string | `"postgresql"` | PostgreSQL resource name |
+| postgresql.customURIParameters.enabled | bool | `false` | Set to true if using custom URI parameters for PostgreSQL connection |
+| postgresql.customURIParameters.username | string | `""` | Username for PostgreSQL connection |
+| postgresql.customURIParameters.passwordSecret.key | string | `""` | Key name in the Kubernetes secret that holds the PostgreSQL password |
+| postgresql.customURIParameters.passwordSecret.name | string | `""` | Kubernetes secret name containing the PostgreSQL password |
+| postgresql.customURIParameters.host | string | `""` | Hostname for PostgreSQL connection |
+| postgresql.customURIParameters.port | string | `"5432"` | Port for PostgreSQL connection. Default is 5432 |
+| postgresql.customURIParameters.database | string | `""` | Database name for PostgreSQL connection |
+| postgresql.customURIParameters.ssl.enabled | bool | `false` | Set to true if using SSL for PostgreSQL connection |
+| postgresql.customURIParameters.ssl.mode | string | `"verify-ca"` | SSL mode for PostgreSQL connection. Default is "verify-ca" |
+| postgresql.customURIParameters.ssl.rootCertPath | string | `""` | Path to the Root CA certificate file for SSL connection |
 | postgresql.useExistingPostgresSecret.enabled | bool | `false` | Set to true if using an existing Kubernetes secret that contains PostgreSQL connection string |
 | postgresql.useExistingPostgresSecret.existingConnectionStringSecret.key | string | `""` | Key name in the Kubernetes secret that holds the connection string |
 | postgresql.useExistingPostgresSecret.existingConnectionStringSecret.name | string | `""` | Kubernetes secret name containing the PostgreSQL connection string |
@@ -64,3 +74,9 @@ A helm chart to deploy Infisical
 | redis.fullnameOverride | string | `"redis"` | Full name override for Redis resources |
 | redis.name | string | `"redis"` | Redis resource name |
 | redis.usePassword | bool | `true` | Requires a password for Redis authentication |
+| redis.customURIParameters.enabled | bool | `false` | Set to true if using custom URI parameters for Redis connection |
+| redis.customURIParameters.passwordSecret.key | string | `""` | Key name in the Kubernetes secret that holds the Redis password |
+| redis.customURIParameters.passwordSecret.name | string | `""` | Kubernetes secret name containing the Redis password |
+| redis.customURIParameters.host | string | `""` | Redis host |
+| redis.customURIParameters.port | number | `6379` | Port for Redis connection. Default is 6379 |
+| redis.useExistingRedisSecret.enabled | bool | `false` | Set to true if using a custom Redis connection |
