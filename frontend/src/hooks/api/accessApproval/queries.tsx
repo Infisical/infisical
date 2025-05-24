@@ -19,8 +19,12 @@ export const accessApprovalKeys = {
   getAccessApprovalPolicyOfABoard: (workspaceId: string, environment: string) =>
     [{ workspaceId, environment }, "access-approval-policy"] as const,
 
-  getAccessApprovalRequests: (projectSlug: string, envSlug?: string, requestedBy?: string) =>
-    [{ projectSlug, envSlug, requestedBy }, "access-approvals-requests"] as const,
+  getAccessApprovalRequests: (
+    projectSlug: string,
+    envSlug?: string,
+    requestedBy?: string,
+    bypassReason?: string
+  ) => [{ projectSlug, envSlug, requestedBy, bypassReason }, "access-approvals-requests"] as const,
   getAccessApprovalRequestCount: (projectSlug: string) =>
     [{ projectSlug }, "access-approval-request-count"] as const
 };

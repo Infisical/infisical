@@ -12,6 +12,7 @@ interface SecretApprovalRequestBypassedTemplateProps
   environment: string;
   bypassReason: string;
   approvalUrl: string;
+  requestType: "change" | "access";
 }
 
 export const SecretApprovalRequestBypassedTemplate = ({
@@ -22,7 +23,8 @@ export const SecretApprovalRequestBypassedTemplate = ({
   secretPath,
   environment,
   bypassReason,
-  approvalUrl
+  approvalUrl,
+  requestType = "change"
 }: SecretApprovalRequestBypassedTemplateProps) => {
   return (
     <BaseEmailWrapper
@@ -39,8 +41,9 @@ export const SecretApprovalRequestBypassedTemplate = ({
           <Link href={`mailto:${requesterEmail}`} className="text-slate-700 no-underline">
             {requesterEmail}
           </Link>
-          ) has merged a secret to <strong>{secretPath}</strong> in the <strong>{environment}</strong> environment
-          without obtaining the required approval.
+          ) has {requestType === "change" ? "merged" : "accessed"} a secret {requestType === "change" ? "to" : "in"}{" "}
+          <strong>{secretPath}</strong> in the <strong>{environment}</strong> environment without obtaining the required
+          approval.
         </Text>
         <Text className="text-[14px] text-slate-700 leading-[24px]">
           <strong className="text-black">The following reason was provided for bypassing the policy:</strong> "
