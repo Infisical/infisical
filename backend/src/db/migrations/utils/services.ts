@@ -64,7 +64,15 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
   return { kmsService };
 };
 
-export const getMigrationPITServices = async ({ db, keyStore }: { db: Knex; keyStore: TKeyStoreFactory }) => {
+export const getMigrationPITServices = async ({
+  db,
+  keyStore,
+  envConfig
+}: {
+  db: Knex;
+  keyStore: TKeyStoreFactory;
+  envConfig: TMigrationEnvConfig;
+}) => {
   const projectDAL = projectDALFactory(db);
   const folderCommitDAL = folderCommitDALFactory(db);
   const folderCommitChangesDAL = folderCommitChangesDALFactory(db);
@@ -79,6 +87,33 @@ export const getMigrationPITServices = async ({ db, keyStore }: { db: Knex; keyS
   const secretV2BridgeDAL = secretV2BridgeDALFactory({ db, keyStore });
   const folderTreeCheckpointResourcesDAL = folderTreeCheckpointResourcesDALFactory(db);
 
+  const orgDAL = orgDALFactory(db);
+  const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
+  const kmsDAL = kmskeyDALFactory(db);
+  const internalKmsDAL = internalKmsDALFactory(db);
+
+  const hsmModule = initializeHsmModule(envConfig);
+  hsmModule.initialize();
+
+  const hsmService = hsmServiceFactory({
+    hsmModule: hsmModule.getModule(),
+    envConfig
+  });
+
+  const kmsService = kmsServiceFactory({
+    kmsRootConfigDAL,
+    keyStore,
+    kmsDAL,
+    internalKmsDAL,
+    orgDAL,
+    projectDAL,
+    hsmService,
+    envConfig
+  });
+
+  await hsmService.startService();
+  await kmsService.startService();
+
   const folderCommitService = folderCommitServiceFactory({
     folderCommitDAL,
     folderCommitChangesDAL,
@@ -92,7 +127,8 @@ export const getMigrationPITServices = async ({ db, keyStore }: { db: Knex; keyS
     projectDAL,
     folderCheckpointResourcesDAL,
     secretV2BridgeDAL,
-    folderTreeCheckpointResourcesDAL
+    folderTreeCheckpointResourcesDAL,
+    kmsService
   });
 
   return { folderCommitService };

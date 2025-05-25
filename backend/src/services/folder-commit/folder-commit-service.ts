@@ -17,6 +17,8 @@ import { TFolderCommitChangesDALFactory } from "../folder-commit-changes/folder-
 import { TFolderTreeCheckpointDALFactory } from "../folder-tree-checkpoint/folder-tree-checkpoint-dal";
 import { TFolderTreeCheckpointResourcesDALFactory } from "../folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
@@ -80,7 +82,7 @@ type BaseChange = {
   fromVersion?: string;
 };
 
-type SecretChange = {
+type SecretChange = BaseChange & {
   type: ResourceType.SECRET;
   secretKey?: string;
   secretVersion?: string;
@@ -98,7 +100,7 @@ type SecretChange = {
   }[];
 };
 
-type FolderChange = {
+type FolderChange = BaseChange & {
   type: ResourceType.FOLDER;
   folderName?: string;
   folderVersion?: string;
@@ -107,7 +109,7 @@ type FolderChange = {
   }[];
 };
 
-export type ResourceChange = BaseChange & (SecretChange | FolderChange);
+export type ResourceChange = SecretChange | FolderChange;
 
 type ActorInfo = {
   actorType: string;
@@ -134,12 +136,13 @@ type TFolderCommitServiceFactoryDep = {
   folderVersionDAL: TSecretFolderVersionDALFactory;
   secretVersionV2BridgeDAL: TSecretVersionV2DALFactory;
   secretV2BridgeDAL: secretV2BridgeDal.TSecretV2BridgeDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectByEnvId">;
   folderCommitQueueService?: Pick<
     TFolderCommitQueueServiceFactory,
     "scheduleTreeCheckpoint" | "createFolderTreeCheckpoint"
   >;
   permissionService?: TPermissionServiceFactory;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export const folderCommitServiceFactory = ({
@@ -157,7 +160,8 @@ export const folderCommitServiceFactory = ({
   secretV2BridgeDAL,
   folderTreeCheckpointResourcesDAL,
   folderCommitQueueService,
-  permissionService
+  permissionService,
+  kmsService
 }: TFolderCommitServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -394,6 +398,12 @@ export const folderCommitServiceFactory = ({
       throw new NotFoundError({ message: `Commit with ID ${targetCommitId} not found` });
     }
 
+    const project = await projectDAL.findProjectByEnvId(targetCommit.envId, tx);
+
+    if (!project) {
+      throw new NotFoundError({ message: `No project found for envId ${targetCommit.envId}` });
+    }
+
     // If currentCommitId is not provided, mark all resources in target as creates
     if (!currentCommitId) {
       const targetState = await reconstructFolderState(targetCommitId, tx);
@@ -565,7 +575,63 @@ export const folderCommitServiceFactory = ({
       }
     });
 
-    return differences;
+    const removeNoChangeUpdate: string[] = [];
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: project.id
+    });
+
+    await Promise.all(
+      differences.map(async (change) => {
+        if (change.changeType === ChangeType.UPDATE) {
+          if (change.type === ResourceType.FOLDER && change.folderVersion && change.fromVersion) {
+            const versions = await folderVersionDAL.find({
+              folderId: change.id,
+              $in: {
+                version: [Number(change.folderVersion), Number(change.fromVersion)]
+              }
+            });
+            const versionsShaped = [...new Set(versions.map((version) => version.name))];
+            if (versionsShaped.length === 1) {
+              removeNoChangeUpdate.push(change.id);
+            }
+          } else if (change.type === ResourceType.SECRET && change.secretVersion && change.fromVersion) {
+            const versions = await secretVersionV2BridgeDAL.findVersionsBySecretIdWithActors({
+              secretId: change.id,
+              projectId: project.id,
+              secretVersions: [change.secretVersion, change.fromVersion]
+            });
+            const versionsShaped = versions.map((el) => ({
+              secretKey: el.key,
+              secretComment: el.encryptedComment
+                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
+                : "",
+              skipMultilineEncoding: el.skipMultilineEncoding,
+              secretReminderRepeatDays: el.reminderRepeatDays,
+              tags: el.tags,
+              metadata: el.metadata,
+              secretReminderNote: el.reminderNote,
+              secretValue: el.encryptedValue
+                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+                : ""
+            }));
+            const uniqueVersions = versionsShaped.filter(
+              (item, index, arr) =>
+                arr.findIndex((other) =>
+                  Object.entries(item).every(
+                    ([key, value]) => JSON.stringify(value) === JSON.stringify(other[key as keyof typeof other])
+                  )
+                ) === index
+            );
+            if (uniqueVersions.length === 1) {
+              removeNoChangeUpdate.push(change.id);
+            }
+          }
+        }
+      })
+    );
+    return differences.filter((change) => !removeNoChangeUpdate.includes(change.id));
   };
 
   /**
@@ -1375,6 +1441,63 @@ export const folderCommitServiceFactory = ({
     );
   };
 
+  const addNestedFolderChanges = async ({
+    changes,
+    beforeCommit,
+    folderId,
+    folderName,
+    folderPath,
+    step = 1,
+    tx
+  }: {
+    changes: {
+      folderId: string;
+      folderName: string;
+      changes: ResourceChange[];
+      folderPath?: string;
+    }[];
+    beforeCommit: bigint;
+    folderId: string;
+    folderName?: string;
+    folderPath?: string;
+    step?: number;
+    tx?: Knex;
+  }) => {
+    if (step > 20) {
+      return;
+    }
+    const latestFolderCommit = await folderCommitDAL.findCommitBefore(folderId, beforeCommit, tx);
+    if (!latestFolderCommit) {
+      return;
+    }
+    const diff = await compareFolderStates({
+      targetCommitId: latestFolderCommit.id,
+      tx
+    });
+    changes.push({
+      folderId,
+      folderName: folderName || "",
+      changes: diff,
+      folderPath: folderPath || ""
+    });
+
+    await Promise.all(
+      diff.map(async (change) => {
+        if (change.type === ResourceType.FOLDER && change.changeType === ChangeType.CREATE) {
+          await addNestedFolderChanges({
+            changes,
+            beforeCommit,
+            folderId: change.id,
+            folderName: change.folderName,
+            folderPath: `${folderPath}/${change.folderName}`,
+            step: step + 1,
+            tx
+          });
+        }
+      })
+    );
+  };
+
   const deepCompareFolder = async ({
     targetCommitId,
     envId,
@@ -1463,7 +1586,12 @@ export const folderCommitServiceFactory = ({
     const folders = await folderDAL.findFoldersByRootAndIds({ rootId: targetCommit.folderId, folderIds }, tx);
     const sortedFolders = sortFoldersByHierarchy(folders);
 
-    const response = [];
+    const response: {
+      folderId: string;
+      folderName: string;
+      changes: ResourceChange[];
+      folderPath?: string;
+    }[] = [];
     for (const folder of sortedFolders) {
       const diff = folderDiffs.get(folder.id);
       if (diff) {
@@ -1474,6 +1602,29 @@ export const folderCommitServiceFactory = ({
           changes: diff,
           folderPath: folderPath?.[0]?.path
         });
+        const recreatedFolders = diff
+          .filter(
+            (change): change is FolderChange =>
+              change.type === ResourceType.FOLDER && change.changeType === ChangeType.CREATE
+          )
+          .map((change) => ({
+            id: change.id,
+            folderName: change.folderName,
+            folderPath: folderPath?.[0]?.path
+          }));
+        await Promise.all(
+          recreatedFolders.map(async (change) => {
+            const nestedFolderPath = folderPath?.[0]?.path;
+            await addNestedFolderChanges({
+              changes: response,
+              beforeCommit: targetCommit.commitId,
+              folderId: change.id,
+              folderName: change.folderName,
+              folderPath: `${nestedFolderPath !== "/" ? nestedFolderPath : ""}/${change.folderName}`,
+              tx
+            });
+          })
+        );
       }
     }
     return response;

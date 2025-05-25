@@ -52,6 +52,7 @@ export type FolderCommitChange = BaseCommitChangeInfo & {
   folderVersion: string;
   folderChangeId: string;
   versions?: {
+    version: string;
     name?: string;
   }[];
 };

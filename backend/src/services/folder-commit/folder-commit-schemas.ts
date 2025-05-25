@@ -36,6 +36,7 @@ const secretVersionSchema = z.object({
 
 // Folder-specific versions schema
 const folderVersionSchema = z.object({
+  version: z.string().optional(),
   name: z.string().optional()
 });
 

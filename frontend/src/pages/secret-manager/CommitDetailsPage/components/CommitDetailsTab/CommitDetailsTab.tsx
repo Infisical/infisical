@@ -243,10 +243,10 @@ export const CommitDetailsTab = ({
     <div className="w-full">
       <div>
         <div className="flex justify-between pb-2">
-          <div>
+          <div className="w-5/6">
             <div>
               <div className="flex items-center">
-                <h1 className="mr-4 text-3xl font-semibold text-white">
+                <h1 className="mr-4 truncate text-3xl font-semibold text-white">
                   {parsedCommitDetails.changes?.message || "No message"}
                 </h1>
               </div>
@@ -266,7 +266,7 @@ export const CommitDetailsTab = ({
           </div>
           <div className="flex items-center justify-start">
             <ProjectPermissionCan
-              I={ProjectPermissionCommitsActions.Read}
+              I={ProjectPermissionCommitsActions.PerformRollback}
               a={ProjectPermissionSub.Commits}
             >
               {(isAllowed) => (

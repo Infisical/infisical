@@ -2875,24 +2875,21 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     secretId,
     secretVersionNumbers,
-    folderId
+    secretPath,
+    envId,
+    projectId
   }: TGetSecretVersionsDTO & {
     secretVersionNumbers: string[];
-    folderId: string;
+    secretPath: string;
+    envId: string;
+    projectId: string;
   }) => {
-    const folder = await folderDAL.findById(folderId);
-    if (!folder) throw new NotFoundError({ message: `Folder with ID '${folderId}' not found` });
-
-    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
-
-    if (!folderWithPath) {
-      throw new NotFoundError({ message: `Folder with ID '${folder.id}' not found` });
-    }
+    const environment = await projectEnvDAL.findOne({ id: envId });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId: folder.projectId,
+      projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
@@ -2906,11 +2903,11 @@ export const secretV2BridgeServiceFactory = ({
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
-      projectId: folder.projectId
+      projectId
     });
     const secretVersions = await secretVersionDAL.findVersionsBySecretIdWithActors({
       secretId,
-      projectId: folder.projectId,
+      projectId,
       secretVersions: secretVersionNumbers
     });
     return secretVersions.map((el) => {
@@ -2918,8 +2915,8 @@ export const secretV2BridgeServiceFactory = ({
         permission,
         ProjectPermissionSecretActions.ReadValue,
         {
-          environment: folder.environment.envSlug,
-          secretPath: folderWithPath.path,
+          environment: environment.slug,
+          secretPath,
           secretName: el.key,
           ...(el.tags?.length && {
             secretTags: el.tags.map((tag) => tag.slug)
@@ -2928,9 +2925,9 @@ export const secretV2BridgeServiceFactory = ({
       );
 
       return reshapeBridgeSecret(
-        folder.projectId,
-        folder.environment.envSlug,
-        folderWithPath.path,
+        projectId,
+        environment.slug,
+        secretPath,
         {
           ...el,
           value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",

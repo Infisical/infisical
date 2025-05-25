@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -17,6 +18,10 @@ import {
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useWorkspace } from "@app/context";
+import {
+  ProjectPermissionCommitsActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useCommitRollback, useGetRollbackPreview } from "@app/hooks/api/folderCommits/queries";
 import { ProjectType } from "@app/hooks/api/workspace/types";
@@ -294,71 +299,77 @@ export const RollbackPreviewTab = (): JSX.Element => {
 
   return (
     <div className="mx-auto flex w-full max-w-7xl justify-center bg-bunker-800 pb-4 pt-2 text-white">
-      <div className="w-full max-w-[75vw]">
-        <div className="h-full w-full">
-          <div>
-            <PageHeader
-              title={`Restore folder at commit ${selectedCommitId.substring(0, 8)}`}
-              description="This will restore all changes to how they appeared at the point in time of this commit. Any modifications made after this commit will be undone."
-            />
+      <ProjectPermissionCan
+        renderGuardBanner
+        I={ProjectPermissionCommitsActions.PerformRollback}
+        a={ProjectPermissionSub.Commits}
+      >
+        <div className="w-full max-w-[75vw]">
+          <div className="h-full w-full">
+            <div>
+              <PageHeader
+                title={`Restore folder at commit ${selectedCommitId.substring(0, 8)}`}
+                description="This will restore all changes to how they appeared at the point in time of this commit. Any modifications made after this commit will be undone."
+              />
 
-            <div className="flex w-full border border-mineshaft-600">
-              {renderSidebar()}
-              {renderMainContent()}
-            </div>
+              <div className="flex w-full border border-mineshaft-600">
+                {renderSidebar()}
+                {renderMainContent()}
+              </div>
 
-            <div className="border-x border-mineshaft-600 bg-mineshaft-800 px-6 py-3">
-              <div className="flex items-center justify-end">
-                <div className="flex items-center">
-                  <Tooltip content="Enable/Disable deep rollback to restore all nested folders to their previous state">
-                    <FontAwesomeIcon icon={faInfoCircle} className="mr-2 text-mineshaft-400" />
-                  </Tooltip>
-                  <Switch
-                    className="ml-2 bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/50"
-                    thumbClassName="bg-mineshaft-800"
-                    isChecked={deepRollback}
-                    onCheckedChange={setDeepRollback}
-                    id="deep-rollback"
+              <div className="border-x border-mineshaft-600 bg-mineshaft-800 px-6 py-3">
+                <div className="flex items-center justify-end">
+                  <div className="flex items-center">
+                    <Tooltip content="Enable/Disable deep rollback to restore all nested folders to their previous state">
+                      <FontAwesomeIcon icon={faInfoCircle} className="mr-2 text-mineshaft-400" />
+                    </Tooltip>
+                    <Switch
+                      className="ml-2 bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/50"
+                      thumbClassName="bg-mineshaft-800"
+                      isChecked={deepRollback}
+                      onCheckedChange={setDeepRollback}
+                      id="deep-rollback"
+                    >
+                      Recursively Restore Child Folders
+                    </Switch>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-mineshaft-600 py-4">
+                <div className="flex w-full items-center justify-between gap-2">
+                  <Input
+                    placeholder="Restore Message"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="w-full border-mineshaft-500 bg-mineshaft-700 py-2 text-sm"
+                    maxLength={256}
+                  />
+                  <Button
+                    onClick={() => {
+                      handlePopUpOpen("rollbackConfirm");
+                    }}
+                    colorSchema="primary"
+                    className="px-6 py-2"
+                    isDisabled={
+                      message.length === 0 ||
+                      !rollbackChangesNested ||
+                      !rollbackChangesNested?.some((folder) => {
+                        return folder.changes.length > 0;
+                      })
+                    }
                   >
-                    Recursively Restore Child Folders
-                  </Switch>
+                    Restore
+                  </Button>
                 </div>
               </div>
             </div>
 
-            <div className="border-t border-mineshaft-600 py-4">
-              <div className="flex w-full items-center justify-between gap-2">
-                <Input
-                  placeholder="Restore Message"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  className="w-full border-mineshaft-500 bg-mineshaft-700 py-2 text-sm"
-                />
-                <Button
-                  onClick={() => {
-                    handlePopUpOpen("rollbackConfirm");
-                  }}
-                  colorSchema="primary"
-                  className="px-6 py-2"
-                  isDisabled={
-                    message.length === 0 ||
-                    !rollbackChangesNested ||
-                    !rollbackChangesNested?.some((folder) => {
-                      return folder.changes.length > 0;
-                    })
-                  }
-                >
-                  Restore
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <DeleteActionModal
-            isOpen={popUp.rollbackConfirm.isOpen}
-            deleteKey="restore"
-            title={`Are you sure you want to restore to commit ${selectedCommitId?.substring(0, 8)}?`}
-            subTitle={`
+            <DeleteActionModal
+              isOpen={popUp.rollbackConfirm.isOpen}
+              deleteKey="restore"
+              title={`Are you sure you want to restore to commit ${selectedCommitId?.substring(0, 8)}?`}
+              subTitle={`
               ${
                 deepRollback
                   ? "This will revert this folder and all child folders to how they appeared at the point in time of this commit."
@@ -366,12 +377,13 @@ export const RollbackPreviewTab = (): JSX.Element => {
               }
                 Any changes made after this commit will be permanently removed.
             `}
-            onChange={(isOpen) => handlePopUpToggle("rollbackConfirm", isOpen)}
-            onDeleteApproved={handleRollback}
-            buttonText="Restore"
-          />
+              onChange={(isOpen) => handlePopUpToggle("rollbackConfirm", isOpen)}
+              onDeleteApproved={handleRollback}
+              buttonText="Restore"
+            />
+          </div>{" "}
         </div>{" "}
-      </div>{" "}
+      </ProjectPermissionCan>
     </div>
   );
 };

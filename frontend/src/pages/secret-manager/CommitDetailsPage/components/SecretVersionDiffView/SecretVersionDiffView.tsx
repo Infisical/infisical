@@ -505,7 +505,6 @@ export const SecretVersionDiffView = ({
   }
 
   const sortedVersions = [...item.versions].sort((a, b) => b.version - a.version);
-
   let oldVersion = null;
   let newVersion = null;
   let oldVersionContent = null;
@@ -562,13 +561,11 @@ export const SecretVersionDiffView = ({
   } else if (item.isAdded) {
     [newVersion] = sortedVersions;
     const cleanNewVersion = cleanVersionForComparison(newVersion);
-    oldVersionContent = <div className="italic text-gray-400">No previous version</div>;
     newVersionContent = formatAddedJson(cleanNewVersion);
   } else if (item.isDeleted) {
     [oldVersion] = sortedVersions;
     const cleanOldVersion = cleanVersionForComparison(oldVersion);
     oldVersionContent = formatDeletedJson(cleanOldVersion);
-    newVersionContent = <div className="italic text-gray-400">Version deleted</div>;
   } else {
     return null;
   }

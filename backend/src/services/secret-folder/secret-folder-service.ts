@@ -800,6 +800,7 @@ export const secretFolderServiceFactory = ({
         change.isUpdate || change.changeType === ChangeType.UPDATE ? [currentVersion, fromVersion] : [currentVersion]
     });
     return versions.map((v) => ({
+      version: v.version?.toString() || "1",
       name: v.name
     }));
   };

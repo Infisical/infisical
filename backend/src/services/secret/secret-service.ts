@@ -2529,10 +2529,14 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     secretId,
     secretVersions,
-    folderId
+    secretPath,
+    envId,
+    projectId
   }: TGetSecretVersionsDTO & {
     secretVersions: string[];
-    folderId: string;
+    secretPath: string;
+    envId: string;
+    projectId: string;
   }) => {
     const secretVersionV2 = await secretV2BridgeService.getSecretVersionsByIds({
       actorId,
@@ -2540,8 +2544,10 @@ export const secretServiceFactory = ({
       actorOrgId,
       actorAuthMethod,
       secretId,
-      folderId,
-      secretVersionNumbers: secretVersions
+      secretVersionNumbers: secretVersions,
+      secretPath,
+      envId,
+      projectId
     });
     return secretVersionV2;
   };
@@ -3317,7 +3323,9 @@ export const secretServiceFactory = ({
     actor: ActorType,
     actorOrgId: string,
     actorAuthMethod: ActorAuthMethod,
-    folderId: string
+    envId: string,
+    projectId: string,
+    secretPath: string
   ) => {
     const currentVersion = change.secretVersion;
     const secretId = change.secretId ? change.secretId : change.id;
@@ -3335,7 +3343,9 @@ export const secretServiceFactory = ({
         change.isUpdate || change.changeType === ChangeType.UPDATE
           ? [currentVersion, previousVersion]
           : [currentVersion],
-      folderId
+      secretPath,
+      envId,
+      projectId
     });
     return versions?.map((v) => ({
       secretKey: v.secretKey,

@@ -4,7 +4,7 @@
 import { Knex } from "knex";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TSecretFolderVersions, TSecretVersionsV2 } from "@app/db/schemas";
+import { ProjectType, TSecretFolderVersions, TSecretVersionsV2 } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorType } from "../auth/auth-type";
@@ -51,6 +51,10 @@ describe("folderCommitServiceFactory", () => {
     findAllCommitsBetween: vi.fn().mockResolvedValue([]),
     findLatestEnvCommit: vi.fn().mockResolvedValue({}),
     findLatestCommitByFolderIds: vi.fn().mockResolvedValue({})
+  };
+
+  const mockKmsService = {
+    createCipherPairWithDataKey: vi.fn().mockResolvedValue({})
   };
 
   const mockFolderCommitChangesDAL = {
@@ -136,7 +140,8 @@ describe("folderCommitServiceFactory", () => {
   };
 
   const mockProjectDAL = {
-    findById: vi.fn().mockResolvedValue({})
+    findById: vi.fn().mockResolvedValue({}),
+    findProjectByEnvId: vi.fn().mockResolvedValue({})
   };
 
   const mockFolderCommitQueueService = {
@@ -181,7 +186,8 @@ describe("folderCommitServiceFactory", () => {
       secretV2BridgeDAL: mockSecretV2BridgeDAL,
       folderCommitQueueService: mockFolderCommitQueueService,
       // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
-      permissionService: mockPermissionService
+      permissionService: mockPermissionService,
+      kmsService: mockKmsService
     });
   });
 
@@ -408,6 +414,11 @@ describe("folderCommitServiceFactory", () => {
         { folderVersionId: "folder-version-1", referencedFolderId: "folder-1" }
       ]);
       mockFolderCommitDAL.findCommitsToRecreate.mockResolvedValue([]);
+      mockProjectDAL.findProjectByEnvId.mockResolvedValue({
+        id: "project-id",
+        name: "test-project",
+        type: ProjectType.SecretManager
+      });
 
       // Act
       const result = await folderCommitService.compareFolderStates({

@@ -12,6 +12,7 @@ import {
   isSecretCommitChange
 } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
@@ -21,6 +22,7 @@ type TPitServiceFactoryDep = {
   secretService: Pick<TSecretServiceFactory, "getSecretVersionsV2ByIds" | "getChangeVersions">;
   folderService: Pick<TSecretFolderServiceFactory, "getFolderById" | "getFolderVersions">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
 };
 
 export type TPitServiceFactory = ReturnType<typeof pitServiceFactory>;
@@ -29,7 +31,8 @@ export const pitServiceFactory = ({
   folderCommitService,
   secretService,
   folderService,
-  permissionService
+  permissionService,
+  folderDAL
 }: TPitServiceFactoryDep) => {
   const getCommitsCount = async ({
     actor,
@@ -134,6 +137,8 @@ export const pitServiceFactory = ({
       commitId
     });
 
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [changes.folderId]);
+
     for (const change of changes.changes) {
       if (isSecretCommitChange(change)) {
         change.versions = await secretService.getChangeVersions(
@@ -149,7 +154,9 @@ export const pitServiceFactory = ({
           actor,
           actorOrgId,
           actorAuthMethod,
-          change.folderId
+          changes.envId,
+          projectId,
+          folderWithPath?.path || ""
         );
       } else if (isFolderCommitChange(change)) {
         change.versions = await folderService.getFolderVersions(
@@ -261,7 +268,9 @@ export const pitServiceFactory = ({
               actor,
               actorOrgId,
               actorAuthMethod,
-              diff.folderId
+              envId,
+              projectId,
+              diff.folderPath || ""
             );
           }
         } else if (change.type === ResourceType.FOLDER) {

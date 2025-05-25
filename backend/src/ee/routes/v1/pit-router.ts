@@ -267,7 +267,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         folderId: z.string().trim(),
         deepRollback: z.boolean().default(false),
-        message: z.string().trim().optional(),
+        message: z.string().max(256).trim().optional(),
         envId: z.string().trim(),
         projectId: z.string().trim()
       }),
