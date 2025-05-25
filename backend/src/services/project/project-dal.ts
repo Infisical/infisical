@@ -425,6 +425,21 @@ export const projectDALFactory = (db: TDbClient) => {
     return { docs, totalCount: Number(docs?.[0]?.count ?? 0) };
   };
 
+  const countOfOrgProjects = async (orgId: string | null, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.Project)
+        .andWhere((bd) => {
+          if (orgId) {
+            void bd.where({ orgId });
+          }
+        })
+        .count();
+      return Number(doc?.[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count of Org Projects" });
+    }
+  };
+
   return {
     ...projectOrm,
     findUserProjects,
@@ -437,6 +452,7 @@ export const projectDALFactory = (db: TDbClient) => {
     findProjectWithOrg,
     checkProjectUpgradeStatus,
     getProjectFromSplitId,
-    searchProjects
+    searchProjects,
+    countOfOrgProjects
   };
 };
