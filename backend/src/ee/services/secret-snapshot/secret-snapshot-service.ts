@@ -8,7 +8,7 @@ import { InternalServerError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
+import { CommitType, TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -584,7 +584,7 @@ export const secretSnapshotServiceFactory = ({
             // Secret was deleted and re-added - this is an update only if versions are different
             if (deletedInfo.versionId !== addedSecret.id) {
               commitChanges.push({
-                type: "add", // In the commit system, updates are tracked as "add" with isUpdate=true
+                type: CommitType.ADD, // In the commit system, updates are tracked as "add" with isUpdate=true
                 secretVersionId: addedSecret.id,
                 isUpdate: true
               });
@@ -594,7 +594,7 @@ export const secretSnapshotServiceFactory = ({
           } else if (deletedInfo.versionId) {
             // Secret was only deleted
             commitChanges.push({
-              type: "delete",
+              type: CommitType.DELETE,
               secretVersionId: deletedInfo.versionId
             });
           }
@@ -602,7 +602,7 @@ export const secretSnapshotServiceFactory = ({
         // Add remaining new secrets (not updates)
         addedSecretsChanges.forEach((addedSecret) => {
           commitChanges.push({
-            type: "add",
+            type: CommitType.ADD,
             secretVersionId: addedSecret.id
           });
         });
@@ -614,7 +614,7 @@ export const secretSnapshotServiceFactory = ({
             // Folder was deleted and re-added - this is an update only if versions are different
             if (deletedInfo.versionId !== addedFolder.id) {
               commitChanges.push({
-                type: "add",
+                type: CommitType.ADD,
                 folderVersionId: addedFolder.id,
                 isUpdate: true
               });
@@ -624,7 +624,7 @@ export const secretSnapshotServiceFactory = ({
           } else if (deletedInfo.versionId) {
             // Folder was only deleted
             commitChanges.push({
-              type: "delete",
+              type: CommitType.DELETE,
               folderVersionId: deletedInfo.versionId
             });
           }
@@ -633,7 +633,7 @@ export const secretSnapshotServiceFactory = ({
         // Add remaining new folders (not updates)
         addedFoldersChanges.forEach((addedFolder) => {
           commitChanges.push({
-            type: "add",
+            type: CommitType.ADD,
             folderVersionId: addedFolder.id
           });
         });

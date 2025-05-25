@@ -58,7 +58,7 @@ const fetchFolderCommitsCount = async ({
       params: {
         environment,
         path: directory,
-        workspaceId
+        projectId: workspaceId
       }
     }
   );
@@ -86,7 +86,7 @@ const fetchFolderCommitHistory = async (
     params: {
       environment,
       path: directory,
-      workspaceId,
+      projectId: workspaceId,
       offset,
       limit,
       search,
@@ -101,7 +101,7 @@ export const fetchCommitDetails = async (workspaceId: string, commitId: string) 
     `/api/v1/pit/commits/${commitId}/changes`,
     {
       params: {
-        workspaceId
+        projectId: workspaceId
       }
     }
   );
@@ -124,7 +124,7 @@ export const fetchRollbackPreview = async (
         envId,
         deepRollback,
         secretPath,
-        workspaceId
+        projectId: workspaceId
       }
     }
   );
@@ -146,7 +146,7 @@ const fetchRollback = async (
       deepRollback,
       message,
       envId,
-      workspaceId
+      projectId: workspaceId
     }
   );
   return data;
@@ -156,7 +156,7 @@ const fetchRevert = async (commitId: string, workspaceId: string) => {
   const { data } = await apiRequest.post<{ success: boolean; message: string }>(
     `/api/v1/pit/commits/${commitId}/revert`,
     {
-      workspaceId
+      projectId: workspaceId
     }
   );
   return data;

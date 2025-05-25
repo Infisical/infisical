@@ -361,8 +361,8 @@ export const RollbackPreviewTab = (): JSX.Element => {
             subTitle={`
               ${
                 deepRollback
-                  ? "This will revert all changes to how they appeared at the point in time of this commit."
-                  : "This will revert this folder and all child folders to how they appeared at the point in time of this commit."
+                  ? "This will revert this folder and all child folders to how they appeared at the point in time of this commit."
+                  : "This will revert all changes to how they appeared at the point in time of this commit."
               }
                 Any changes made after this commit will be permanently removed.
             `}

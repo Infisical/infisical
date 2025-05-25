@@ -43,11 +43,12 @@ const CommitItem = ({
     <div className="border-b border-zinc-800 last:border-b-0">
       <div className="px-4 py-4 transition-colors duration-200 hover:bg-zinc-800">
         <div className="flex flex-col sm:flex-row sm:justify-between">
-          <div className="flex-1">
+          <div className="w-5/6 flex-1">
             <div className="flex items-center">
               <Button
                 variant="link"
-                className="text-white hover:underline"
+                className="truncate text-left text-white hover:underline"
+                isFullWidth
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectCommit(commit.id, "tab-commit-details");
@@ -64,7 +65,7 @@ const CommitItem = ({
               </span>
             </p>
           </div>
-          <div className="mt-2 flex items-center sm:mt-0">
+          <div className="mt-2 flex w-1/6 items-center justify-end sm:mt-0">
             <div className="flex items-center space-x-1">
               <Button
                 variant="link"

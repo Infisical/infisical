@@ -199,13 +199,13 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.SecretVersionV2}.identityActorId`)
         .leftJoin(TableName.SecretV2, `${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)
         .leftJoin(
-          TableName.SecretV2JnTag,
-          `${TableName.SecretV2}.id`,
-          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+          TableName.SecretVersionV2Tag,
+          `${TableName.SecretVersionV2}.id`,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretVersionV2}Id`
         )
         .leftJoin(
           TableName.SecretTag,
-          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
         .where((qb) => {

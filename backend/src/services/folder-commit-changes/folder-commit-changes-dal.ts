@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
@@ -14,31 +15,56 @@ import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TFolderCommitChangesDALFactory = ReturnType<typeof folderCommitChangesDALFactory>;
 
-export type CommitChangeWithCommitInfo = TFolderCommitChanges & {
+// Base type with common fields
+type BaseCommitChangeInfo = TFolderCommitChanges & {
   actorMetadata: unknown;
   actorType: string;
   message?: string | null;
   folderId: string;
-  folderName?: string;
-  folderVersion?: string;
-  secretKey?: string;
-  secretVersion?: string;
-  secretId?: string;
-  folderChangeId?: string;
-  objectType?: string;
+  createdAt: Date;
+};
+
+// Secret-specific change
+export type SecretCommitChange = BaseCommitChangeInfo & {
+  resourceType: "secret";
+  secretKey: string;
+  changeType: string;
+  secretVersionId?: string | null;
+  secretVersion: string;
+  secretId: string;
   versions?: {
-    secretKey?: string;
-    secretComment?: string;
+    secretKey: string;
+    secretComment: string;
     skipMultilineEncoding?: boolean | null;
     secretReminderRepeatDays?: number | null;
     secretReminderNote?: string | null;
     metadata?: unknown;
     tags?: string[] | null;
     secretReminderRecipients?: string[] | null;
-    secretValue?: string;
+    secretValue: string;
+  }[];
+};
+
+// Folder-specific change
+export type FolderCommitChange = BaseCommitChangeInfo & {
+  resourceType: "folder";
+  folderName: string;
+  folderVersion: string;
+  folderChangeId: string;
+  versions?: {
     name?: string;
   }[];
 };
+
+// Discriminated union
+export type CommitChangeWithCommitInfo = SecretCommitChange | FolderCommitChange;
+
+// Type guards
+export const isSecretCommitChange = (change: CommitChangeWithCommitInfo): change is SecretCommitChange =>
+  change.resourceType === "secret";
+
+export const isFolderCommitChange = (change: CommitChangeWithCommitInfo): change is FolderCommitChange =>
+  change.resourceType === "folder";
 
 export const folderCommitChangesDALFactory = (db: TDbClient) => {
   const folderCommitChangesOrm = ormify(db, TableName.FolderCommitChanges);
@@ -50,7 +76,6 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
   ): Promise<CommitChangeWithCommitInfo[]> => {
     try {
       const docs = await (tx || db.replicaNode())<TFolderCommitChanges>(TableName.FolderCommitChanges)
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter({ folderCommitId }, TableName.FolderCommitChanges))
         .leftJoin<TFolderCommits>(
           TableName.FolderCommit,
@@ -91,57 +116,108 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
           db.ref("createdAt").withSchema(TableName.FolderCommit),
           db.ref("folderId").withSchema(TableName.FolderCommit)
         );
-      return docs.map((doc) => ({
-        ...doc,
-        folderVersion: doc.folderVersion?.toString(),
-        secretVersion: doc.secretVersion?.toString()
-      }));
+
+      return docs.map((doc) => {
+        // Determine if this is a secret or folder change based on populated fields
+        if (doc.secretKey && doc.secretVersion && doc.secretId) {
+          return {
+            ...doc,
+            resourceType: "secret",
+            secretKey: doc.secretKey,
+            secretVersion: doc.secretVersion.toString(),
+            secretId: doc.secretId
+          } as SecretCommitChange;
+        }
+        return {
+          ...doc,
+          resourceType: "folder",
+          folderName: doc.folderName,
+          folderVersion: doc.folderVersion.toString(),
+          folderChangeId: doc.folderChangeId
+        } as FolderCommitChange;
+      });
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByCommitId" });
     }
   };
 
-  const findBySecretVersionId = async (secretVersionId: string, tx?: Knex): Promise<CommitChangeWithCommitInfo[]> => {
+  const findBySecretVersionId = async (secretVersionId: string, tx?: Knex): Promise<SecretCommitChange[]> => {
     try {
       const docs = await (tx || db.replicaNode())<
         TFolderCommitChanges &
           Pick<TFolderCommits, "actorMetadata" | "actorType" | "message" | "createdAt" | "folderId">
       >(TableName.FolderCommitChanges)
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter({ secretVersionId }, TableName.FolderCommitChanges))
         .select(selectAllTableCols(TableName.FolderCommitChanges))
         .join(TableName.FolderCommit, `${TableName.FolderCommitChanges}.folderCommitId`, `${TableName.FolderCommit}.id`)
+        .leftJoin<TSecretVersionsV2>(
+          TableName.SecretVersionV2,
+          `${TableName.FolderCommitChanges}.secretVersionId`,
+          `${TableName.SecretVersionV2}.id`
+        )
         .select(
           db.ref("actorMetadata").withSchema(TableName.FolderCommit),
           db.ref("actorType").withSchema(TableName.FolderCommit),
           db.ref("message").withSchema(TableName.FolderCommit),
           db.ref("createdAt").withSchema(TableName.FolderCommit),
-          db.ref("folderId").withSchema(TableName.FolderCommit)
+          db.ref("folderId").withSchema(TableName.FolderCommit),
+          db.ref("key").withSchema(TableName.SecretVersionV2).as("secretKey"),
+          db.ref("version").withSchema(TableName.SecretVersionV2).as("secretVersion"),
+          db.ref("secretId").withSchema(TableName.SecretVersionV2)
         );
-      return docs;
+
+      return docs
+        .filter((doc) => doc.secretKey && doc.secretVersion && doc.secretId)
+        .map(
+          (doc): SecretCommitChange => ({
+            ...doc,
+            resourceType: "secret",
+            secretKey: doc.secretKey,
+            secretVersion: doc.secretVersion.toString(),
+            secretId: doc.secretId
+          })
+        );
     } catch (error) {
       throw new DatabaseError({ error, name: "FindBySecretVersionId" });
     }
   };
 
-  const findByFolderVersionId = async (folderVersionId: string, tx?: Knex): Promise<CommitChangeWithCommitInfo[]> => {
+  const findByFolderVersionId = async (folderVersionId: string, tx?: Knex): Promise<FolderCommitChange[]> => {
     try {
       const docs = await (tx || db.replicaNode())<
         TFolderCommitChanges &
           Pick<TFolderCommits, "actorMetadata" | "actorType" | "message" | "createdAt" | "folderId">
       >(TableName.FolderCommitChanges)
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter({ folderVersionId }, TableName.FolderCommitChanges))
         .select(selectAllTableCols(TableName.FolderCommitChanges))
         .join(TableName.FolderCommit, `${TableName.FolderCommitChanges}.folderCommitId`, `${TableName.FolderCommit}.id`)
+        .leftJoin<TSecretFolderVersions>(
+          TableName.SecretFolderVersion,
+          `${TableName.FolderCommitChanges}.folderVersionId`,
+          `${TableName.SecretFolderVersion}.id`
+        )
         .select(
           db.ref("actorMetadata").withSchema(TableName.FolderCommit),
           db.ref("actorType").withSchema(TableName.FolderCommit),
           db.ref("message").withSchema(TableName.FolderCommit),
           db.ref("createdAt").withSchema(TableName.FolderCommit),
-          db.ref("folderId").withSchema(TableName.FolderCommit)
+          db.ref("folderId").withSchema(TableName.FolderCommit),
+          db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderName"),
+          db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("folderChangeId"),
+          db.ref("version").withSchema(TableName.SecretFolderVersion).as("folderVersion")
         );
-      return docs;
+
+      return docs
+        .filter((doc) => doc.folderName && doc.folderVersion && doc.folderChangeId)
+        .map(
+          (doc): FolderCommitChange => ({
+            ...doc,
+            resourceType: "folder",
+            folderName: doc.folderName,
+            folderVersion: doc.folderVersion!.toString(),
+            folderChangeId: doc.folderChangeId
+          })
+        );
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByFolderVersionId" });
     }

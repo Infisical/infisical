@@ -57,6 +57,7 @@ import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
 import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { projectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
@@ -1520,6 +1521,13 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const pitService = pitServiceFactory({
+    folderCommitService,
+    secretService,
+    folderService,
+    permissionService
+  });
+
   const identityOidcAuthService = identityOidcAuthServiceFactory({
     identityOidcAuthDAL,
     identityOrgMembershipDAL,
@@ -1824,6 +1832,7 @@ export const registerRoutes = async (
     certificateTemplate: certificateTemplateService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
     certificateEst: certificateEstService,
+    pit: pitService,
     pkiAlert: pkiAlertService,
     pkiCollection: pkiCollectionService,
     pkiSubscriber: pkiSubscriberService,

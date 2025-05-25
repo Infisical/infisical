@@ -474,6 +474,24 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findCommitBefore = async (
+    folderId: string,
+    commitId: bigint,
+    tx?: Knex
+  ): Promise<TFolderCommits | undefined> => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
+        .where({ folderId })
+        .where("commitId", "<", commitId.toString())
+        .select(selectAllTableCols(TableName.FolderCommit))
+        .orderBy("commitId", "desc")
+        .first();
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindCommitBefore" });
+    }
+  };
+
   return {
     ...restOfOrm,
     findByFolderId,
@@ -489,6 +507,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     findAllFolderCommitsAfter,
     findPreviousCommitTo,
     findById,
-    findByFolderIdPaginated
+    findByFolderIdPaginated,
+    findCommitBefore
   };
 };

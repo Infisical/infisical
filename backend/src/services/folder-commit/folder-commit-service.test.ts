@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/return-await */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Knex } from "knex";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,6 +12,7 @@ import {
   ChangeType,
   CommitType,
   folderCommitServiceFactory,
+  ResourceType,
   TFolderCommitServiceFactory
 } from "./folder-commit-service";
 
@@ -518,8 +522,20 @@ describe("folderCommitServiceFactory", () => {
       const actorType = ActorType.USER;
 
       const differences = [
-        { type: "secret", id: "secret-1", versionId: "v1", changeType: ChangeType.CREATE, commitId: BigInt(1) },
-        { type: "folder", id: "folder-1", versionId: "v2", changeType: ChangeType.UPDATE, commitId: BigInt(1) }
+        {
+          type: ResourceType.SECRET,
+          id: "secret-1",
+          versionId: "v1",
+          changeType: ChangeType.CREATE,
+          commitId: BigInt(1)
+        },
+        {
+          type: ResourceType.FOLDER,
+          id: "folder-1",
+          versionId: "v2",
+          changeType: ChangeType.UPDATE,
+          commitId: BigInt(1)
+        }
       ];
 
       const secretVersions = {

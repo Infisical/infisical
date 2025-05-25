@@ -16,6 +16,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
+  ProjectPermissionActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
@@ -528,6 +529,7 @@ export const secretV2BridgeServiceFactory = ({
               skipMultilineEncoding: inputSecret.skipMultilineEncoding,
               key: inputSecret.newSecretName || secretName,
               tags: inputSecret.tagIds,
+              metadata: JSON.stringify(secretMetadata),
               secretMetadata,
               ...encryptedValue
             }
@@ -2173,7 +2175,13 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
+
+    const canRead =
+      permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback) ||
+      permission.can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
+
+    if (!canRead) throw new ForbiddenRequestError({ message: "You do not have permission to read secret versions" });
+
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: folder.projectId
@@ -2889,7 +2897,13 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
+
+    const canRead =
+      permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback) ||
+      permission.can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
+
+    if (!canRead) throw new ForbiddenRequestError({ message: "You do not have permission to read secret versions" });
+
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: folder.projectId

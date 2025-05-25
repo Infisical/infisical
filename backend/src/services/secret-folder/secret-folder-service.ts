@@ -10,7 +10,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
-import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { ChangeType, CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
@@ -783,6 +783,27 @@ export const secretFolderServiceFactory = ({
     return versions;
   };
 
+  const getFolderVersions = async (
+    change: {
+      folderVersion?: string;
+      isUpdate?: boolean;
+      changeType?: string;
+    },
+    fromVersion: string,
+    folderId: string
+  ) => {
+    const currentVersion = change.folderVersion || "1";
+    // eslint-disable-next-line no-await-in-loop
+    const versions = await getFolderVersionsByIds({
+      folderId,
+      folderVersions:
+        change.isUpdate || change.changeType === ChangeType.UPDATE ? [currentVersion, fromVersion] : [currentVersion]
+    });
+    return versions.map((v) => ({
+      name: v.name
+    }));
+  };
+
   return {
     createFolder,
     updateFolder,
@@ -794,6 +815,7 @@ export const secretFolderServiceFactory = ({
     getFoldersMultiEnv,
     getFoldersDeepByEnvs,
     getProjectEnvironmentsFolders,
-    getFolderVersionsByIds
+    getFolderVersionsByIds,
+    getFolderVersions
   };
 };
