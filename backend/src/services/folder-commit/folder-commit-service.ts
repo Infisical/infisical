@@ -679,40 +679,6 @@ export const folderCommitServiceFactory = ({
         throw new NotFoundError({ message: `Folder with ID ${data.folderId} not found` });
       }
 
-      const newFolders = data.changes.filter(
-        (change) => change.type === "add" && !change.isUpdate && change.folderVersionId
-      );
-      if (newFolders.length > 0) {
-        const folderVersions = await folderVersionDAL.find(
-          {
-            $in: {
-              id: newFolders.map((change) => change.folderVersionId).filter(Boolean) as string[]
-            }
-          },
-          { tx }
-        );
-        await Promise.all(
-          Object.values(folderVersions).map(async (folderVersion) => {
-            const subFolderCommit = await folderCommitDAL.create(
-              {
-                actorMetadata: metadata,
-                actorType: data.actor.type,
-                message: data.message,
-                folderId: folderVersion.folderId,
-                envId: folderVersion.envId
-              },
-              tx
-            );
-            await createFolderCheckpoint({
-              folderId: folderVersion.folderId,
-              folderCommitId: subFolderCommit.id,
-              force: true,
-              tx
-            });
-          })
-        );
-      }
-
       const newCommit = await folderCommitDAL.create(
         {
           actorMetadata: metadata,

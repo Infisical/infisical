@@ -261,6 +261,9 @@ export const CommitDetailsTab = ({
                     parsedCommitDetails.changes?.createdAt || new Date().toISOString()
                   )}
                 </b>
+                {parsedCommitDetails.changes?.isLatest && (
+                  <span className="ml-1 italic text-gray-400">(Current)</span>
+                )}
               </p>
             </div>
           </div>
