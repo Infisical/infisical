@@ -291,14 +291,16 @@ export const CommitDetailsTab = ({
                     className="animate-in fade-in-50 zoom-in-95 min-w-[200px] p-1"
                     style={{ marginTop: "0" }}
                   >
-                    <DropdownMenuItem
-                      className="h-10 w-full cursor-pointer px-3 py-2 text-sm transition-colors hover:bg-mineshaft-700"
-                      onClick={() => goToRollbackPreview()}
-                    >
-                      <div className="flex w-full items-center justify-start">
-                        <span>Restore entire folder</span>
-                      </div>
-                    </DropdownMenuItem>
+                    {!parsedCommitDetails.changes.isLatest && (
+                      <DropdownMenuItem
+                        className="h-10 w-full cursor-pointer px-3 py-2 text-sm transition-colors hover:bg-mineshaft-700"
+                        onClick={() => goToRollbackPreview()}
+                      >
+                        <div className="flex w-full items-center justify-start">
+                          <span>Restore entire folder</span>
+                        </div>
+                      </DropdownMenuItem>
+                    )}
 
                     <DropdownMenuItem
                       className="h-10 w-full cursor-pointer px-3 py-2 text-sm transition-colors hover:bg-mineshaft-700"

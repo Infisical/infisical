@@ -85,6 +85,7 @@ const commitSchema = z.object({
   envId: z.string(),
   createdAt: z.union([z.string(), z.date()]),
   updatedAt: z.union([z.string(), z.date()]),
+  isLatest: z.boolean().default(false),
   changes: z.array(commitChangeSchema).optional()
 });
 

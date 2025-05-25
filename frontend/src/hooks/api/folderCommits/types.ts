@@ -13,6 +13,7 @@ export type CommitHistoryItem = {
   envId: string;
   createdAt: string;
   updatedAt: string;
+  isLatest: boolean;
 };
 
 export type TFolderCommitChanges = {

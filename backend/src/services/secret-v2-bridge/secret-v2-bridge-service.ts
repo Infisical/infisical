@@ -325,6 +325,7 @@ export const secretV2BridgeServiceFactory = ({
             userId: inputSecret.type === SecretType.Personal ? actorId : null,
             tagIds: inputSecret.tagIds,
             references: nestedReferences,
+            metadata: secretMetadata ? JSON.stringify(secretMetadata) : [],
             secretMetadata
           }
         ],
@@ -529,7 +530,7 @@ export const secretV2BridgeServiceFactory = ({
               skipMultilineEncoding: inputSecret.skipMultilineEncoding,
               key: inputSecret.newSecretName || secretName,
               tags: inputSecret.tagIds,
-              metadata: JSON.stringify(secretMetadata),
+              metadata: secretMetadata ? JSON.stringify(secretMetadata) : [],
               secretMetadata,
               ...encryptedValue
             }

@@ -1279,7 +1279,8 @@ export const folderCommitServiceFactory = ({
     });
     const changes = await folderCommitChangesDAL.findByCommitId(commitId, projectId);
     const commit = await folderCommitDAL.findById(commitId, undefined, projectId);
-    return { ...commit, changes };
+    const latestCommit = await folderCommitDAL.findLatestCommit(commit.folderId, projectId);
+    return { ...commit, changes, isLatest: commit.id === latestCommit?.id };
   };
 
   /**
