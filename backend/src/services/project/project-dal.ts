@@ -434,7 +434,7 @@ export const projectDALFactory = (db: TDbClient) => {
           }
         })
         .count();
-      return Number(doc?.[0].count);
+      return Number(doc?.[0]?.count ?? 0);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count of Org Projects" });
     }
