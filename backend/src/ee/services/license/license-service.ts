@@ -192,6 +192,11 @@ export const licenseServiceFactory = ({
         const workspacesUsed = await projectDAL.countOfOrgProjects(orgId);
         currentPlan.workspacesUsed = workspacesUsed;
 
+        const membersUsed = await licenseDAL.countOfOrgMembers(orgId);
+        currentPlan.membersUsed = membersUsed;
+        const identityUsed = await licenseDAL.countOrgUsersAndIdentities(orgId);
+        currentPlan.identitiesUsed = identityUsed;
+
         await keyStore.setItemWithExpiry(
           FEATURE_CACHE_KEY(org.id),
           LICENSE_SERVER_CLOUD_PLAN_TTL,
