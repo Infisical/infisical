@@ -1,5 +1,4 @@
 import { Job, JobsOptions, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
-import Redis from "ioredis";
 import PgBoss, { WorkOptions } from "pg-boss";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
@@ -13,6 +12,7 @@ import {
   TScanPushEventPayload
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { getConfig } from "@app/lib/config/env";
+import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
 import { logger } from "@app/lib/logger";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
@@ -265,10 +265,10 @@ export type TQueueJobTypes = {
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
 export const queueServiceFactory = (
-  redisUrl: string,
+  redisCfg: TRedisConfigKeys,
   { dbConnectionUrl, dbRootCert }: { dbConnectionUrl: string; dbRootCert?: string }
 ) => {
-  const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+  const connection = buildRedisFromConfig(redisCfg);
   const queueContainer = {} as Record<
     QueueName,
     Queue<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>

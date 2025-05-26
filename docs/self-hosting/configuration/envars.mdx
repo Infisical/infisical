@@ -1,5 +1,5 @@
 ---
-title: "Configurations"
+title: "Environment Variables"
 description: "Read how to configure environment variables for self-hosted Infisical."
 ---
 
@@ -34,12 +34,14 @@ Used to configure platform-specific security and operational settings
 
   By default, Infisical binds to `localhost`, which restricts access to connections from the same machine.
 
-  To make the application accessible externally (e.g., for self-hosted deployments), set this to `0.0.0.0`, which tells the server to listen on all network interfaces.
+To make the application accessible externally (e.g., for self-hosted deployments), set this to `0.0.0.0`, which tells the server to listen on all network interfaces.
 
-  Example values:
-  - `localhost` (default, same as `127.0.0.1`)
-  - `0.0.0.0` (all interfaces, accessible externally)
-  - `192.168.1.100` (specific interface IP)
+Example values:
+
+- `localhost` (default, same as `127.0.0.1`)
+- `0.0.0.0` (all interfaces, accessible externally)
+- `192.168.1.100` (specific interface IP)
+
 </ParamField>
 
 <ParamField query="TELEMETRY_ENABLED" type="string" default="true" optional>
@@ -86,8 +88,9 @@ The platform utilizes Postgres to persist all of its data and Redis for caching 
 ### PostgreSQL
 
 <Info>
-  Please note that the database user you create must be granted all privileges on the Infisical database.
-  This includes the ability to create new schemas, create, update, delete, modify tables and indexes, etc.
+  Please note that the database user you create must be granted all privileges
+  on the Infisical database. This includes the ability to create new schemas,
+  create, update, delete, modify tables and indexes, etc.
 </Info>
 
 <ParamField query="DB_CONNECTION_URI" type="string" default="" required>
@@ -119,10 +122,42 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
 </ParamField>
 
 ### Redis
+Redis is used for caching and background tasks. You can use either a standalone Redis instance or a Redis Sentinel setup.
 
-<ParamField query="REDIS_URL" type="string" default="none" required>
-  Redis connection string.
-</ParamField>
+<Tabs>
+  <Tab title="Redis standalone">
+    <ParamField query="REDIS_URL" type="string" default="none" required>
+      Redis connection string.
+    </ParamField>
+  </Tab>
+  <Tab title="Redis Sentinel">
+    <ParamField
+      query="REDIS_SENTINEL_HOSTS"
+      type="string"
+      default="none"
+      required
+    >
+      Comma-separated list of Sentinel host:port pairs. ```
+      192.168.65.254:26379,192.168.65.254:26380 ```
+    </ParamField>
+    <ParamField
+      query="REDIS_SENTINEL_MASTER_NAME"
+      type="string"
+      default="mymaster"
+    >
+      The name of the Redis master set monitored by Sentinel
+    </ParamField>
+    <ParamField query="REDIS_SENTINEL_ENABLE_TLS" type="bool" default="false">
+      Whether to use TLS/SSL for Redis Sentinel connection
+    </ParamField>
+    <ParamField query="REDIS_SENTINEL_USERNAME" type="string" default="none">
+      Authentication username for Redis Sentinel
+    </ParamField>
+    <ParamField query="REDIS_SENTINEL_PASSWORD" type="string" default="none">
+      Authentication password for Redis Sentinel
+    </ParamField>
+  </Tab>
+</Tabs>
 
 ## Email Service
 
@@ -640,13 +675,27 @@ To help you sync secrets from Infisical to services such as Github and Gitlab, I
     The App ID of your GitHub App.
   </ParamField>
 
-  <ParamField query="SECRET_SCANNING_GIT_APP_SLUG" type="string" default="none" optional>
-    The slug of your GitHub App.
-  </ParamField>
+{" "}
 
-  <ParamField query="SECRET_SCANNING_PRIVATE_KEY" type="string" default="none" optional>
-    A private key for your GitHub App.
-  </ParamField>
+<ParamField
+  query="SECRET_SCANNING_GIT_APP_SLUG"
+  type="string"
+  default="none"
+  optional
+>
+  The slug of your GitHub App.
+</ParamField>
+
+{" "}
+
+<ParamField
+  query="SECRET_SCANNING_PRIVATE_KEY"
+  type="string"
+  default="none"
+  optional
+>
+  A private key for your GitHub App.
+</ParamField>
 
   <ParamField query="SECRET_SCANNING_WEBHOOK_SECRET" type="string" default="none" optional>
     The webhook secret of your GitHub App.

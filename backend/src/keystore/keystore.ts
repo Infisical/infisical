@@ -1,5 +1,4 @@
-import { Redis } from "ioredis";
-
+import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
 import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
 import { applyJitter } from "@app/lib/dates";
 import { delay as delayMs } from "@app/lib/delay";
@@ -68,8 +67,8 @@ type TWaitTillReady = {
   jitter?: number;
 };
 
-export const keyStoreFactory = (redisUrl: string) => {
-  const redis = new Redis(redisUrl);
+export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys) => {
+  const redis = buildRedisFromConfig(redisConfigKeys);
   const redisLock = new Redlock([redis], { retryCount: 2, retryDelay: 200 });
 
   const setItem = async (key: string, value: string | number | Buffer, prefix?: string) =>
