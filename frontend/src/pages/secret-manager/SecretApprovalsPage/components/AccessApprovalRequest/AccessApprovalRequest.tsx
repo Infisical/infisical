@@ -1,6 +1,6 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/jsx-no-useless-fragment */
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   faCheck,
   faCheckCircle,
@@ -25,6 +25,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
 import {
+  ProjectPermissionApprovalActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProjectPermission,
@@ -83,8 +84,9 @@ export const AccessApprovalRequest = ({
 }) => {
   const [selectedRequest, setSelectedRequest] = useState<
     | (TAccessApprovalRequest & {
-        user: TWorkspaceUser["user"] | null;
+        user: { firstName?: string; lastName?: string; email?: string } | null;
         isRequestedByCurrentUser: boolean;
+        isSelfApproveAllowed: boolean;
         isApprover: boolean;
       })
     | null
@@ -99,6 +101,11 @@ export const AccessApprovalRequest = ({
   const { user } = useUser();
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
+
+  const canBypassApprovalPermission = permission.can(
+    ProjectPermissionApprovalActions.AllowAccessBypass,
+    ProjectPermissionSub.SecretApproval
+  );
 
   const { data: members } = useGetWorkspaceUsers(projectId, true);
   const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
@@ -118,7 +125,7 @@ export const AccessApprovalRequest = ({
     projectSlug
   });
 
-  const { data: requests } = useGetAccessApprovalRequests({
+  const { data: requests, refetch: refetchRequests } = useGetAccessApprovalRequests({
     projectSlug,
     authorProjectMembershipId: requestedByFilter,
     envSlug: envFilter
@@ -143,56 +150,105 @@ export const AccessApprovalRequest = ({
     return requests;
   }, [requests, statusFilter, requestedByFilter, envFilter]);
 
-  const generateRequestDetails = (request: TAccessApprovalRequest) => {
-    const isReviewedByUser = request.reviewers.findIndex(({ member }) => member === user.id) !== -1;
-    const isRejectedByAnyone = request.reviewers.some(
-      ({ status }) => status === ApprovalStatus.REJECTED
-    );
-    const isApprover = request.policy.approvers.indexOf(user.id || "") !== -1;
-    const isAccepted = request.isApproved;
-    const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
-    const isRequestedByCurrentUser = request.requestedByUserId === user.id;
-    const isSelfApproveAllowed = request.policy.allowedSelfApprovals;
-    const userReviewStatus = request.reviewers.find(({ member }) => member === user.id)?.status;
+  const generateRequestDetails = useCallback(
+    (request: TAccessApprovalRequest) => {
+      const isReviewedByUser =
+        request.reviewers.findIndex(({ member }) => member === user.id) !== -1;
+      const isRejectedByAnyone = request.reviewers.some(
+        ({ status }) => status === ApprovalStatus.REJECTED
+      );
+      const isApprover = request.policy.approvers.indexOf(user.id || "") !== -1;
+      const isAccepted = request.isApproved;
+      const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
+      const isRequestedByCurrentUser = request.requestedByUserId === user.id;
+      const isSelfApproveAllowed = request.policy.allowedSelfApprovals;
+      const userReviewStatus = request.reviewers.find(({ member }) => member === user.id)?.status;
 
-    let displayData: { label: string; type: "primary" | "danger" | "success" } = {
-      label: "",
-      type: "primary"
-    };
-
-    const isExpired =
-      request.privilege &&
-      request.isApproved &&
-      new Date() > new Date(request.privilege.temporaryAccessEndTime || ("" as string));
-
-    if (isExpired) displayData = { label: "Access Expired", type: "danger" };
-    else if (isAccepted) displayData = { label: "Access Granted", type: "success" };
-    else if (isRejectedByAnyone) displayData = { label: "Rejected", type: "danger" };
-    else if (userReviewStatus === ApprovalStatus.APPROVED) {
-      displayData = {
-        label: `Pending ${request.policy.approvals - request.reviewers.length} review${
-          request.policy.approvals - request.reviewers.length > 1 ? "s" : ""
-        }`,
-        type: "primary"
-      };
-    } else if (!isReviewedByUser)
-      displayData = {
-        label: "Review Required",
+      let displayData: { label: string; type: "primary" | "danger" | "success" } = {
+        label: "",
         type: "primary"
       };
 
-    return {
-      displayData,
-      isReviewedByUser,
-      isRejectedByAnyone,
-      isApprover,
-      userReviewStatus,
-      isAccepted,
-      isSoftEnforcement,
-      isRequestedByCurrentUser,
-      isSelfApproveAllowed
-    };
-  };
+      const isExpired =
+        request.privilege &&
+        request.isApproved &&
+        new Date() > new Date(request.privilege.temporaryAccessEndTime || ("" as string));
+
+      if (isExpired) displayData = { label: "Access Expired", type: "danger" };
+      else if (isAccepted) displayData = { label: "Access Granted", type: "success" };
+      else if (isRejectedByAnyone) displayData = { label: "Rejected", type: "danger" };
+      else if (userReviewStatus === ApprovalStatus.APPROVED) {
+        displayData = {
+          label: `Pending ${request.policy.approvals - request.reviewers.length} review${
+            request.policy.approvals - request.reviewers.length > 1 ? "s" : ""
+          }`,
+          type: "primary"
+        };
+      } else if (!isReviewedByUser)
+        displayData = {
+          label: "Review Required",
+          type: "primary"
+        };
+
+      return {
+        displayData,
+        isReviewedByUser,
+        isRejectedByAnyone,
+        isApprover,
+        userReviewStatus,
+        isAccepted,
+        isSoftEnforcement,
+        isRequestedByCurrentUser,
+        isSelfApproveAllowed
+      };
+    },
+    [user]
+  );
+
+  const handleSelectRequest = useCallback(
+    (request: TAccessApprovalRequest) => {
+      const details = generateRequestDetails(request);
+
+      // Whether the request has already been approved / rejected / reviewed
+      const isInactive =
+        details.isAccepted || details.isReviewedByUser || details.isRejectedByAnyone;
+
+      // Whether the current user can bypass policy
+      const canBypass =
+        details.isSoftEnforcement &&
+        details.isRequestedByCurrentUser &&
+        canBypassApprovalPermission;
+
+      // Whether the current user can approve
+      const canApprove =
+        details.isApprover && (!details.isRequestedByCurrentUser || details.isSelfApproveAllowed);
+
+      if (isInactive || (!canApprove && !canBypass)) return;
+
+      if (membersGroupById?.[request.requestedByUserId].user || details.isRequestedByCurrentUser) {
+        setSelectedRequest({
+          ...request,
+          user:
+            details.isRequestedByCurrentUser || !membersGroupById?.[request.requestedByUserId].user
+              ? user
+              : membersGroupById?.[request.requestedByUserId].user,
+          isRequestedByCurrentUser: details.isRequestedByCurrentUser,
+          isSelfApproveAllowed: details.isSelfApproveAllowed,
+          isApprover: details.isApprover
+        });
+      }
+
+      handlePopUpOpen("reviewRequest");
+    },
+    [
+      generateRequestDetails,
+      canBypassApprovalPermission,
+      membersGroupById,
+      user,
+      setSelectedRequest,
+      handlePopUpOpen
+    ]
+  );
 
   return (
     <div>
@@ -344,50 +400,10 @@ export const AccessApprovalRequest = ({
                     className="flex w-full cursor-pointer px-8 py-4 hover:bg-mineshaft-700 aria-disabled:opacity-80"
                     role="button"
                     tabIndex={0}
-                    onClick={() => {
-                      if (
-                        ((!details.isApprover ||
-                          details.isReviewedByUser ||
-                          details.isRejectedByAnyone ||
-                          details.isAccepted) &&
-                          !(
-                            details.isSoftEnforcement &&
-                            details.isRequestedByCurrentUser &&
-                            !details.isAccepted
-                          )) ||
-                        (request.requestedByUserId === user.id && !details.isSelfApproveAllowed)
-                      )
-                        return;
-                      if (membersGroupById?.[request.requestedByUserId].user) {
-                        setSelectedRequest({
-                          ...request,
-                          user: membersGroupById?.[request.requestedByUserId].user,
-                          isRequestedByCurrentUser: details.isRequestedByCurrentUser,
-                          isApprover: details.isApprover
-                        });
-                      }
-
-                      handlePopUpOpen("reviewRequest");
-                    }}
+                    onClick={() => handleSelectRequest(request)}
                     onKeyDown={(evt) => {
-                      if (
-                        !details.isApprover ||
-                        details.isAccepted ||
-                        details.isReviewedByUser ||
-                        details.isRejectedByAnyone
-                      )
-                        return;
                       if (evt.key === "Enter") {
-                        if (membersGroupById?.[request.requestedByUserId].user) {
-                          setSelectedRequest({
-                            ...request,
-                            user: membersGroupById?.[request.requestedByUserId].user,
-                            isRequestedByCurrentUser: details.isRequestedByCurrentUser,
-                            isApprover: details.isApprover
-                          });
-                        }
-
-                        handlePopUpOpen("reviewRequest");
+                        handleSelectRequest(request);
                       }
                     }}
                   >
@@ -453,7 +469,9 @@ export const AccessApprovalRequest = ({
           onOpenChange={() => {
             handlePopUpClose("reviewRequest");
             setSelectedRequest(null);
+            refetchRequests();
           }}
+          canBypassApprovalPermission={canBypassApprovalPermission}
         />
       )}
 
