@@ -6,7 +6,7 @@ import { isCertChainValid } from "@app/services/certificate/certificate-fns";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { getCaCertChain, getCaCertChains } from "@app/services/certificate-authority/certificate-authority-fns";
-import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -16,10 +16,10 @@ import { TLicenseServiceFactory } from "../license/license-service";
 import { convertRawCertsToPkcs7 } from "./certificate-est-fns";
 
 type TCertificateEstServiceFactoryDep = {
-  certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "signCertFromCa">;
+  internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
   certificateTemplateService: Pick<TCertificateTemplateServiceFactory, "getEstConfiguration">;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "findById">;
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
@@ -29,7 +29,7 @@ type TCertificateEstServiceFactoryDep = {
 export type TCertificateEstServiceFactory = ReturnType<typeof certificateEstServiceFactory>;
 
 export const certificateEstServiceFactory = ({
-  certificateAuthorityService,
+  internalCertificateAuthorityService,
   certificateTemplateService,
   certificateTemplateDAL,
   certificateAuthorityCertDAL,
@@ -127,7 +127,7 @@ export const certificateEstServiceFactory = ({
       });
     }
 
-    const { certificate } = await certificateAuthorityService.signCertFromCa({
+    const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
       isInternal: true,
       certificateTemplateId,
       csr
@@ -188,7 +188,7 @@ export const certificateEstServiceFactory = ({
       }
     }
 
-    const { certificate } = await certificateAuthorityService.signCertFromCa({
+    const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
       isInternal: true,
       certificateTemplateId,
       csr
@@ -227,15 +227,15 @@ export const certificateEstServiceFactory = ({
       });
     }
 
-    const ca = await certificateAuthorityDAL.findById(certTemplate.caId);
-    if (!ca) {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certTemplate.caId);
+    if (!ca?.internalCa?.id) {
       throw new NotFoundError({
-        message: `Certificate Authority with ID '${certTemplate.caId}' not found`
+        message: `Internal Certificate Authority with ID '${certTemplate.caId}' not found`
       });
     }
 
     const { caCert, caCertChain } = await getCaCertChain({
-      caCertId: ca.activeCaCertId as string,
+      caCertId: ca.internalCa.activeCaCertId as string,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,

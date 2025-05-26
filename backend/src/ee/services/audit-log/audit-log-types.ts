@@ -21,7 +21,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
-import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
@@ -232,6 +232,7 @@ export enum EventType {
   REMOVE_HOST_FROM_SSH_HOST_GROUP = "remove-host-from-ssh-host-group",
   CREATE_CA = "create-certificate-authority",
   GET_CA = "get-certificate-authority",
+  GET_CAS = "get-certificate-authorities",
   UPDATE_CA = "update-certificate-authority",
   DELETE_CA = "delete-certificate-authority",
   RENEW_CA = "renew-certificate-authority",
@@ -242,6 +243,7 @@ export enum EventType {
   IMPORT_CA_CERT = "import-certificate-authority-cert",
   GET_CA_CRLS = "get-certificate-authority-crls",
   ISSUE_CERT = "issue-cert",
+  IMPORT_CERT = "import-cert",
   SIGN_CERT = "sign-cert",
   GET_CA_CERTIFICATE_TEMPLATES = "get-ca-certificate-templates",
   GET_CERT = "get-cert",
@@ -267,7 +269,9 @@ export enum EventType {
   GET_PKI_SUBSCRIBER = "get-pki-subscriber",
   ISSUE_PKI_SUBSCRIBER_CERT = "issue-pki-subscriber-cert",
   SIGN_PKI_SUBSCRIBER_CERT = "sign-pki-subscriber-cert",
+  AUTOMATED_RENEW_SUBSCRIBER_CERT = "automated-renew-subscriber-cert",
   LIST_PKI_SUBSCRIBER_CERTS = "list-pki-subscriber-certs",
+  GET_SUBSCRIBER_ACTIVE_CERT_BUNDLE = "get-subscriber-active-cert-bundle",
   CREATE_KMS = "create-kms",
   UPDATE_KMS = "update-kms",
   DELETE_KMS = "delete-kms",
@@ -1786,7 +1790,8 @@ interface CreateCa {
   type: EventType.CREATE_CA;
   metadata: {
     caId: string;
-    dn: string;
+    name: string;
+    dn?: string;
   };
 }
 
@@ -1794,7 +1799,15 @@ interface GetCa {
   type: EventType.GET_CA;
   metadata: {
     caId: string;
-    dn: string;
+    name: string;
+    dn?: string;
+  };
+}
+
+interface GetCAs {
+  type: EventType.GET_CAS;
+  metadata: {
+    caIds: string[];
   };
 }
 
@@ -1802,7 +1815,8 @@ interface UpdateCa {
   type: EventType.UPDATE_CA;
   metadata: {
     caId: string;
-    dn: string;
+    name: string;
+    dn?: string;
     status: CaStatus;
   };
 }
@@ -1811,7 +1825,8 @@ interface DeleteCa {
   type: EventType.DELETE_CA;
   metadata: {
     caId: string;
-    dn: string;
+    name: string;
+    dn?: string;
   };
 }
 
@@ -1877,6 +1892,15 @@ interface IssueCert {
   metadata: {
     caId: string;
     dn: string;
+    serialNumber: string;
+  };
+}
+
+interface ImportCert {
+  type: EventType.IMPORT_CERT;
+  metadata: {
+    certId: string;
+    cn: string;
     serialNumber: string;
   };
 }
@@ -2048,7 +2072,7 @@ interface CreatePkiSubscriber {
     caId?: string;
     name: string;
     commonName: string;
-    ttl: string;
+    ttl?: string;
     subjectAlternativeNames: string[];
     keyUsages: CertKeyUsage[];
     extendedKeyUsages: CertExtendedKeyUsage[];
@@ -2090,7 +2114,15 @@ interface IssuePkiSubscriberCert {
   metadata: {
     subscriberId: string;
     name: string;
-    serialNumber: string;
+    serialNumber?: string;
+  };
+}
+
+interface AutomatedRenewPkiSubscriberCert {
+  type: EventType.AUTOMATED_RENEW_SUBSCRIBER_CERT;
+  metadata: {
+    subscriberId: string;
+    name: string;
   };
 }
 
@@ -2109,6 +2141,16 @@ interface ListPkiSubscriberCerts {
     subscriberId: string;
     name: string;
     projectId: string;
+  };
+}
+
+interface GetSubscriberActiveCertBundle {
+  type: EventType.GET_SUBSCRIBER_ACTIVE_CERT_BUNDLE;
+  metadata: {
+    subscriberId: string;
+    name: string;
+    certId: string;
+    serialNumber: string;
   };
 }
 
@@ -3168,6 +3210,7 @@ export type Event =
   | IssueSshHostHostCert
   | CreateCa
   | GetCa
+  | GetCAs
   | UpdateCa
   | DeleteCa
   | RenewCa
@@ -3178,6 +3221,7 @@ export type Event =
   | ImportCaCert
   | GetCaCrls
   | IssueCert
+  | ImportCert
   | SignCert
   | GetCaCertificateTemplates
   | GetCert
@@ -3203,7 +3247,9 @@ export type Event =
   | GetPkiSubscriber
   | IssuePkiSubscriberCert
   | SignPkiSubscriberCert
+  | AutomatedRenewPkiSubscriberCert
   | ListPkiSubscriberCerts
+  | GetSubscriberActiveCertBundle
   | CreateKmsEvent
   | UpdateKmsEvent
   | DeleteKmsEvent

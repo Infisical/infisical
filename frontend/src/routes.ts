@@ -306,7 +306,7 @@ const certManagerRoutes = route("/cert-manager/$projectId", [
     route("/certificates", "cert-manager/CertificatesPage/route.tsx"),
     route("/certificate-authorities", "cert-manager/CertificateAuthoritiesPage/route.tsx"),
     route("/alerting", "cert-manager/AlertingPage/route.tsx"),
-    route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
+    route("/ca/$caName", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
     route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
     route("/settings", "cert-manager/SettingsPage/route.tsx"),
     route("/access-management", "project/AccessControlPage/route-cert-manager.tsx"),

@@ -6,6 +6,7 @@ import {
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
+  TableName,
   TProjectEnvironments
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -41,6 +42,7 @@ import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subsc
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
+import { expandInternalCa } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
@@ -149,7 +151,7 @@ type TProjectServiceFactoryDep = {
   >;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "find">;
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find" | "findWithAssociatedCa">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
@@ -914,17 +916,20 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    const cas = await certificateAuthorityDAL.find(
+    const cas = await certificateAuthorityDAL.findWithAssociatedCa(
       {
-        projectId,
-        ...(status && { status }),
-        ...(friendlyName && { friendlyName }),
-        ...(commonName && { commonName })
+        [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
+        $notNull: [`${TableName.InternalCertificateAuthority}.id` as "id"],
+        ...(status && { [`${TableName.CertificateAuthority}.status` as "status"]: status }),
+        ...(friendlyName && {
+          [`${TableName.InternalCertificateAuthority}.friendlyName` as "friendlyName"]: friendlyName
+        }),
+        ...(commonName && { [`${TableName.InternalCertificateAuthority}.commonName` as "commonName"]: commonName })
       },
       { offset, limit, sort: [["updatedAt", "desc"]] }
     );
 
-    return cas;
+    return cas.map((ca) => expandInternalCa(ca));
   };
 
   /**
@@ -965,13 +970,9 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
-    const cas = await certificateAuthorityDAL.find({ projectId });
-
     const certificates = await certificateDAL.find(
       {
-        $in: {
-          caId: cas.map((ca) => ca.id)
-        },
+        projectId,
         ...(friendlyName && { friendlyName }),
         ...(commonName && { commonName })
       },

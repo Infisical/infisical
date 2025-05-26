@@ -112,8 +112,10 @@
           "pages": [
             "documentation/platform/pki/overview",
             "documentation/platform/pki/private-ca",
+            "documentation/platform/pki/external-ca",
             "documentation/platform/pki/subscribers",
             "documentation/platform/pki/certificates",
+            "documentation/platform/pki/acme-ca",
             "documentation/platform/pki/pki-issuer",
             "documentation/platform/pki/est",
             "documentation/platform/pki/alerting"
@@ -1547,12 +1549,34 @@
             "api-reference/endpoints/pki/subscribers/update",
             "api-reference/endpoints/pki/subscribers/delete",
             "api-reference/endpoints/pki/subscribers/issue-cert",
-            "api-reference/endpoints/pki/subscribers/sign-cert"
+            "api-reference/endpoints/pki/subscribers/sign-cert",
+            "api-reference/endpoints/pki/subscribers/order-cert",
+            "api-reference/endpoints/pki/subscribers/get-latest-cert-bundle"
           ]
         },
         {
           "group": "Certificate Authorities",
           "pages": [
+            {
+              "group": "ACME",
+              "pages": [
+                "api-reference/endpoints/certificate-authorities/acme/list",
+                "api-reference/endpoints/certificate-authorities/acme/create",
+                "api-reference/endpoints/certificate-authorities/acme/read",
+                "api-reference/endpoints/certificate-authorities/acme/update",
+                "api-reference/endpoints/certificate-authorities/acme/delete"
+              ]
+            },
+            {
+              "group": "Internal",
+              "pages": [
+                "api-reference/endpoints/certificate-authorities/internal/list",
+                "api-reference/endpoints/certificate-authorities/internal/create",
+                "api-reference/endpoints/certificate-authorities/internal/read",
+                "api-reference/endpoints/certificate-authorities/internal/update",
+                "api-reference/endpoints/certificate-authorities/internal/delete"
+              ]
+            },
             "api-reference/endpoints/certificate-authorities/list",
             "api-reference/endpoints/certificate-authorities/create",
             "api-reference/endpoints/certificate-authorities/read",
