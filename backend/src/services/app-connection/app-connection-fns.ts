@@ -19,7 +19,7 @@ import {
   OnePassConnectionMethod,
   validateOnePassConnectionCredentials
 } from "./1password";
-// import { AppConnection, AppConnectionPlanType } from "./app-connection-enums";
+import { AppConnection, AppConnectionPlanType } from "./app-connection-enums";
 import { TAppConnectionServiceFactoryDep } from "./app-connection-service";
 import {
   TAppConnection,
