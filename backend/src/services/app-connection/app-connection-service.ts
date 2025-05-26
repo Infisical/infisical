@@ -1,5 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
+import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
+import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-connection-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -19,8 +21,8 @@ import {
 import { auth0ConnectionService } from "@app/services/app-connection/auth0/auth0-connection-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { ValidateOCIConnectionCredentialsSchema } from "../../ee/services/app-connections/oci";
-import { ociConnectionService } from "../../ee/services/app-connections/oci/oci-connection-service";
+import { ValidateOnePassConnectionCredentialsSchema } from "./1password";
+import { onePassConnectionService } from "./1password/1password-connection-service";
 import { TAppConnectionDALFactory } from "./app-connection-dal";
 import { AppConnection } from "./app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "./app-connection-maps";
@@ -91,7 +93,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.HCVault]: ValidateHCVaultConnectionCredentialsSchema,
   [AppConnection.LDAP]: ValidateLdapConnectionCredentialsSchema,
   [AppConnection.TeamCity]: ValidateTeamCityConnectionCredentialsSchema,
-  [AppConnection.OCI]: ValidateOCIConnectionCredentialsSchema
+  [AppConnection.OCI]: ValidateOCIConnectionCredentialsSchema,
+  [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -493,6 +496,7 @@ export const appConnectionServiceFactory = ({
     hcvault: hcVaultConnectionService(connectAppConnectionById),
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
-    oci: ociConnectionService(connectAppConnectionById, licenseService)
+    oci: ociConnectionService(connectAppConnectionById, licenseService),
+    onepass: onePassConnectionService(connectAppConnectionById)
   };
 };

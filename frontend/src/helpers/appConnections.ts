@@ -23,6 +23,7 @@ import {
   HumanitecConnectionMethod,
   LdapConnectionMethod,
   MsSqlConnectionMethod,
+  OnePassConnectionMethod,
   PostgresConnectionMethod,
   TAppConnection,
   TeamCityConnectionMethod,
@@ -63,7 +64,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.HCVault]: { name: "Hashicorp Vault", image: "Vault.png", size: 65 },
   [AppConnection.LDAP]: { name: "LDAP", image: "LDAP.png", size: 65 },
   [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" },
-  [AppConnection.OCI]: { name: "OCI", image: "Oracle.png", enterprise: true }
+  [AppConnection.OCI]: { name: "OCI", image: "Oracle.png", enterprise: true },
+  [AppConnection.OnePass]: { name: "1Password", image: "1Password.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -89,6 +91,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case HumanitecConnectionMethod.ApiToken:
     case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
+    case OnePassConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:

@@ -43,6 +43,12 @@ import {
 } from "@app/services/secret-sync/windmill";
 
 import {
+  TOnePassSync,
+  TOnePassSyncInput,
+  TOnePassSyncListItem,
+  TOnePassSyncWithCredentials
+} from "./1password/1password-sync-types";
+import {
   TAwsParameterStoreSync,
   TAwsParameterStoreSyncInput,
   TAwsParameterStoreSyncListItem,
@@ -102,7 +108,8 @@ export type TSecretSync =
   | TWindmillSync
   | THCVaultSync
   | TTeamCitySync
-  | TOCIVaultSync;
+  | TOCIVaultSync
+  | TOnePassSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -119,7 +126,8 @@ export type TSecretSyncWithCredentials =
   | TWindmillSyncWithCredentials
   | THCVaultSyncWithCredentials
   | TTeamCitySyncWithCredentials
-  | TOCIVaultSyncWithCredentials;
+  | TOCIVaultSyncWithCredentials
+  | TOnePassSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -136,7 +144,8 @@ export type TSecretSyncInput =
   | TWindmillSyncInput
   | THCVaultSyncInput
   | TTeamCitySyncInput
-  | TOCIVaultSyncInput;
+  | TOCIVaultSyncInput
+  | TOnePassSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -153,7 +162,8 @@ export type TSecretSyncListItem =
   | TWindmillSyncListItem
   | THCVaultSyncListItem
   | TTeamCitySyncListItem
-  | TOCIVaultSyncListItem;
+  | TOCIVaultSyncListItem
+  | TOnePassSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
