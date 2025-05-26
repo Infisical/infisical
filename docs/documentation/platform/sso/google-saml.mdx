@@ -24,21 +24,21 @@ description: "Learn how to configure Google SAML for Infisical SSO."
    <Step title="Create a SAML application in Google">
         2.1. In your [Google Admin console](https://support.google.com/a/answer/182076), head to Menu > Apps > Web and mobile apps and
         create a **custom SAML app**.
-        
+
         ![Google SAML app creation](../../../images/sso/google-saml/create-custom-saml-app.png)
-        
+
         2.2. In the **App details** tab, give the application a unique name like Infisical.
-        
+
         ![Google SAML app naming](../../../images/sso/google-saml/name-custom-saml-app.png)
-        
+
         2.3. In the **Google Identity Provider details** tab, copy the **SSO URL**, **Entity ID** and **Certificate**.
-        
+
         ![Google SAML custom app details](../../../images/sso/google-saml/custom-saml-app-config.png)
-        
+
         2.4. Back in Infisical, set **SSO URL** and **Certificate** to the corresponding items from step 2.3.
-        
+
         ![Google SAML Infisical config](../../../images/sso/google-saml/infisical-config.png)
-        
+
         2.5. Back in the Google Admin console, in the **Service provider details** tab, set the **ACS URL** and **Entity ID** to the corresponding items from step 1.
 
         Also, check the **Signed response** checkbox.
@@ -84,7 +84,7 @@ description: "Learn how to configure Google SAML for Infisical SSO."
             prior to enforcing SAML SSO to prevent any unintended issues.
         </Warning>
         <Info>
-            In case of a lockout, an organization admin can use the admin login portal in the `/login/admin` path e.g. https://app.infisical.com/login/admin.
+            In case of a lockout, an organization admin can use the [Admin Login Portal](https://infisical.com/docs/documentation/platform/sso/overview#admin-login-portal) in the `/login/admin` path e.g. https://app.infisical.com/login/admin.
         </Info>
     </Step>
 

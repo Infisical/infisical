@@ -205,19 +205,18 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      if (req.body.template) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          orgId: req.permission.orgId,
-          event: {
-            type: EventType.APPLY_PROJECT_TEMPLATE,
-            metadata: {
-              template: req.body.template,
-              projectId: project.id
-            }
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.CREATE_PROJECT,
+          metadata: {
+            ...req.body,
+            name: req.body.projectName
           }
-        });
-      }
+        }
+      });
 
       return { project };
     }
@@ -259,6 +258,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.DELETE_PROJECT,
+          metadata: project
+        }
       });
 
       return project;
@@ -338,6 +347,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.UPDATE_PROJECT,
+          metadata: req.body
+        }
       });
 
       return project;

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { OCIConnectionListItemSchema, SanitizedOCIConnectionSchema } from "@app/ee/services/app-connections/oci";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
@@ -38,7 +39,6 @@ import {
 } from "@app/services/app-connection/humanitec";
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
-import { OCIConnectionListItemSchema, SanitizedOCIConnectionSchema } from "@app/services/app-connection/oci";
 import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema

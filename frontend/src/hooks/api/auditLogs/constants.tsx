@@ -124,7 +124,6 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_PROJECT_TEMPLATE]: "Create project template",
   [EventType.UPDATE_PROJECT_TEMPLATE]: "Update project template",
   [EventType.DELETE_PROJECT_TEMPLATE]: "Delete project template",
-  [EventType.APPLY_PROJECT_TEMPLATE]: "Apply project template",
   [EventType.GET_APP_CONNECTIONS]: "List App Connections",
   [EventType.GET_AVAILABLE_APP_CONNECTIONS_DETAILS]: "List App Connections Details",
   [EventType.GET_APP_CONNECTION]: "Get App Connection",
@@ -199,7 +198,12 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.ISSUE_PKI_SUBSCRIBER_CERT]: "Issue PKI subscriber certificate",
   [EventType.SIGN_PKI_SUBSCRIBER_CERT]: "Sign PKI subscriber certificate",
   [EventType.AUTOMATED_RENEW_SUBSCRIBER_CERT]: "Automated renew PKI subscriber certificate",
-  [EventType.LIST_PKI_SUBSCRIBER_CERTS]: "List PKI subscriber certificates"
+  [EventType.LIST_PKI_SUBSCRIBER_CERTS]: "List PKI subscriber certificates",
+
+  [EventType.UPDATE_ORG]: "Update Organization",
+  [EventType.CREATE_PROJECT]: "Create Project",
+  [EventType.UPDATE_PROJECT]: "Update Project",
+  [EventType.DELETE_PROJECT]: "Delete Project"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

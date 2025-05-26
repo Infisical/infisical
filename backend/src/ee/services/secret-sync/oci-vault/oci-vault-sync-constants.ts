@@ -6,5 +6,6 @@ export const OCI_VAULT_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "OCI Vault",
   destination: SecretSync.OCIVault,
   connection: AppConnection.OCI,
-  canImportSecrets: true
+  canImportSecrets: true,
+  enterprise: true
 };
