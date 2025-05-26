@@ -236,7 +236,7 @@
     "scim2-parse-filter": "^0.2.10",
     "sjcl": "^1.0.8",
     "smee-client": "^2.0.0",
-    "snowflake-sdk": "^1.14.0",
+    "snowflake-sdk": "^2.0.4",
     "tedious": "^18.2.1",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
