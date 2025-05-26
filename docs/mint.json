@@ -191,6 +191,7 @@
             "documentation/platform/secret-rotation/azure-client-secret",
             "documentation/platform/secret-rotation/ldap-password",
             "documentation/platform/secret-rotation/mssql-credentials",
+            "documentation/platform/secret-rotation/mysql-credentials",
             "documentation/platform/secret-rotation/postgres-credentials"
           ]
         },
@@ -484,6 +485,7 @@
             "integrations/app-connections/humanitec",
             "integrations/app-connections/ldap",
             "integrations/app-connections/mssql",
+            "integrations/app-connections/mysql",
             "integrations/app-connections/oci",
             "integrations/app-connections/postgres",
             "integrations/app-connections/teamcity",
@@ -997,6 +999,19 @@
               ]
             },
             {
+              "group": "MySQL Credentials",
+              "pages": [
+                "api-reference/endpoints/secret-rotations/mysql-credentials/create",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/delete",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/get-by-id",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/get-by-name",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/get-generated-credentials-by-id",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/list",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/rotate-secrets",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/update"
+              ]
+            },
+            {
               "group": "PostgreSQL Credentials",
               "pages": [
                 "api-reference/endpoints/secret-rotations/postgres-credentials/create",
@@ -1209,6 +1224,18 @@
                 "api-reference/endpoints/app-connections/mssql/create",
                 "api-reference/endpoints/app-connections/mssql/update",
                 "api-reference/endpoints/app-connections/mssql/delete"
+              ]
+            },
+            {
+              "group": "MySQL",
+              "pages": [
+                "api-reference/endpoints/app-connections/mysql/list",
+                "api-reference/endpoints/app-connections/mysql/available",
+                "api-reference/endpoints/app-connections/mysql/get-by-id",
+                "api-reference/endpoints/app-connections/mysql/get-by-name",
+                "api-reference/endpoints/app-connections/mysql/create",
+                "api-reference/endpoints/app-connections/mysql/update",
+                "api-reference/endpoints/app-connections/mysql/delete"
               ]
             },
             {

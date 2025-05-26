@@ -10,7 +10,7 @@ export const MYSQL_CREDENTIALS_ROTATION_LIST_OPTION: TSecretRotationV2ListItem =
     createUserStatement: `-- create user
 CREATE USER 'infisical_user'@'%' IDENTIFIED BY 'temporary_password';
 
--- grant all privilages
+-- grant all privileges
 GRANT ALL PRIVILEGES ON my_database.* TO 'infisical_user'@'%';
 
 -- apply the privilege changes
