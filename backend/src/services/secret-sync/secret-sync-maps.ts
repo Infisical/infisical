@@ -1,5 +1,5 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 
 export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.AWSParameterStore]: "AWS Parameter Store",
@@ -16,7 +16,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Windmill]: "Windmill",
   [SecretSync.HCVault]: "Hashicorp Vault",
   [SecretSync.TeamCity]: "TeamCity",
-  [SecretSync.OCIVault]: "OCI Vault"
+  [SecretSync.OCIVault]: "OCI Vault",
+  [SecretSync.OnePass]: "1Password"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -34,5 +35,25 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Windmill]: AppConnection.Windmill,
   [SecretSync.HCVault]: AppConnection.HCVault,
   [SecretSync.TeamCity]: AppConnection.TeamCity,
-  [SecretSync.OCIVault]: AppConnection.OCI
+  [SecretSync.OCIVault]: AppConnection.OCI,
+  [SecretSync.OnePass]: AppConnection.OnePass
+};
+
+export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
+  [SecretSync.AWSParameterStore]: SecretSyncPlanType.Regular,
+  [SecretSync.AWSSecretsManager]: SecretSyncPlanType.Regular,
+  [SecretSync.GitHub]: SecretSyncPlanType.Regular,
+  [SecretSync.GCPSecretManager]: SecretSyncPlanType.Regular,
+  [SecretSync.AzureKeyVault]: SecretSyncPlanType.Regular,
+  [SecretSync.AzureAppConfiguration]: SecretSyncPlanType.Regular,
+  [SecretSync.Databricks]: SecretSyncPlanType.Regular,
+  [SecretSync.Humanitec]: SecretSyncPlanType.Regular,
+  [SecretSync.TerraformCloud]: SecretSyncPlanType.Regular,
+  [SecretSync.Camunda]: SecretSyncPlanType.Regular,
+  [SecretSync.Vercel]: SecretSyncPlanType.Regular,
+  [SecretSync.Windmill]: SecretSyncPlanType.Regular,
+  [SecretSync.HCVault]: SecretSyncPlanType.Regular,
+  [SecretSync.TeamCity]: SecretSyncPlanType.Regular,
+  [SecretSync.OCIVault]: SecretSyncPlanType.Enterprise,
+  [SecretSync.OnePass]: SecretSyncPlanType.Regular
 };

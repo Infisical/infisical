@@ -24,6 +24,15 @@ export enum ProjectPermissionSecretActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionApprovalActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  AllowChangeBypass = "allow-change-bypass",
+  AllowAccessBypass = "allow-access-bypass"
+}
+
 export enum ProjectPermissionDynamicSecretActions {
   ReadRootCredential = "read-root-credential",
   CreateRootCredential = "create-root-credential",
@@ -291,7 +300,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.IpAllowList]
   | [ProjectPermissionActions, ProjectPermissionSub.Settings]
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
-  | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
+  | [ProjectPermissionApprovalActions, ProjectPermissionSub.SecretApproval]
   | [
       ProjectPermissionIdentityActions,
       (

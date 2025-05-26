@@ -49,6 +49,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.Windmill:
     case SecretSync.HCVault:
     case SecretSync.TeamCity:
+    case SecretSync.OnePass:
     case SecretSync.OCIVault:
       AdditionalSyncOptionsFieldsComponent = null;
       break;

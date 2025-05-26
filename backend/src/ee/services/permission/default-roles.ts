@@ -2,6 +2,7 @@ import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability"
 
 import {
   ProjectPermissionActions,
+  ProjectPermissionApprovalActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCmekActions,
   ProjectPermissionCommitsActions,
@@ -26,7 +27,6 @@ const buildAdminPermissionRules = () => {
   [
     ProjectPermissionSub.SecretFolders,
     ProjectPermissionSub.SecretImports,
-    ProjectPermissionSub.SecretApproval,
     ProjectPermissionSub.Role,
     ProjectPermissionSub.Integrations,
     ProjectPermissionSub.Webhooks,
@@ -55,6 +55,18 @@ const buildAdminPermissionRules = () => {
       el
     );
   });
+
+  can(
+    [
+      ProjectPermissionApprovalActions.Read,
+      ProjectPermissionApprovalActions.Edit,
+      ProjectPermissionApprovalActions.Create,
+      ProjectPermissionApprovalActions.Delete,
+      ProjectPermissionApprovalActions.AllowChangeBypass,
+      ProjectPermissionApprovalActions.AllowAccessBypass
+    ],
+    ProjectPermissionSub.SecretApproval
+  );
 
   can(
     [
@@ -254,7 +266,7 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.Commits
   );
 
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.SecretApproval);
+  can([ProjectPermissionApprovalActions.Read], ProjectPermissionSub.SecretApproval);
   can([ProjectPermissionSecretRotationActions.Read], ProjectPermissionSub.SecretRotation);
 
   can([ProjectPermissionActions.Read, ProjectPermissionActions.Create], ProjectPermissionSub.SecretRollback);
@@ -402,7 +414,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
   can(ProjectPermissionDynamicSecretActions.ReadRootCredential, ProjectPermissionSub.DynamicSecrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+  can(ProjectPermissionApprovalActions.Read, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionSecretRotationActions.Read, ProjectPermissionSub.SecretRotation);
   can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);

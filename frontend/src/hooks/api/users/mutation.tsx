@@ -184,3 +184,12 @@ export const useRevokeMySessionById = () => {
     }
   });
 };
+
+export const useRemoveMyDuplicateAccounts = () => {
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiRequest.post("/api/v1/user/remove-duplicate-accounts");
+      return data;
+    }
+  });
+};

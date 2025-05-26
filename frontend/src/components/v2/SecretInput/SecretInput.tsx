@@ -3,6 +3,7 @@ import { forwardRef, TextareaHTMLAttributes } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { useToggle } from "@app/hooks";
+import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 const REGEX = /(\${([a-zA-Z0-9-_.]+)})/g;
 const replaceContentWithDot = (str: string) => {
@@ -51,6 +52,7 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   isReadOnly?: boolean;
   isDisabled?: boolean;
   containerClassName?: string;
+  canEditButNotView?: boolean;
 };
 
 const commonClassName = "font-mono text-sm caret-white border-none outline-none w-full break-all";
@@ -66,6 +68,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       isDisabled,
       isReadOnly,
       onFocus,
+      canEditButNotView,
       ...props
     },
     ref
@@ -93,7 +96,15 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             onFocus={(evt) => {
               onFocus?.(evt);
               setIsSecretFocused.on();
-              evt.currentTarget.select();
+              if (canEditButNotView && value === HIDDEN_SECRET_VALUE) {
+                evt.currentTarget.select();
+              }
+            }}
+            onMouseDown={(e) => {
+              if (canEditButNotView && value === HIDDEN_SECRET_VALUE) {
+                e.preventDefault();
+                e.currentTarget.select();
+              }
             }}
             disabled={isDisabled}
             spellCheck={false}

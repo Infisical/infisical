@@ -1,4 +1,5 @@
 import { AppConnection } from "../enums";
+import { TOnePassConnection } from "./1password-connection";
 import { TAppConnectionOption } from "./app-options";
 import { TAuth0Connection } from "./auth0-connection";
 import { TAwsConnection } from "./aws-connection";
@@ -20,6 +21,7 @@ import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVercelConnection } from "./vercel-connection";
 import { TWindmillConnection } from "./windmill-connection";
 
+export * from "./1password-connection";
 export * from "./auth0-connection";
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
@@ -59,7 +61,8 @@ export type TAppConnection =
   | THCVaultConnection
   | TLdapConnection
   | TTeamCityConnection
-  | TOCIConnection;
+  | TOCIConnection
+  | TOnePassConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -106,4 +109,5 @@ export type TAppConnectionMap = {
   [AppConnection.LDAP]: TLdapConnection;
   [AppConnection.TeamCity]: TTeamCityConnection;
   [AppConnection.OCI]: TOCIConnection;
+  [AppConnection.OnePass]: TOnePassConnection;
 };

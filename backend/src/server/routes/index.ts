@@ -669,7 +669,6 @@ export const registerRoutes = async (
 
   const userService = userServiceFactory({
     userDAL,
-    userAliasDAL,
     orgMembershipDAL,
     tokenService,
     permissionService,
@@ -1060,7 +1059,8 @@ export const registerRoutes = async (
     secretVersionV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
-    appConnectionDAL
+    appConnectionDAL,
+    licenseService
   });
 
   const secretQueueService = secretQueueFactory({
@@ -1695,7 +1695,8 @@ export const registerRoutes = async (
   const appConnectionService = appConnectionServiceFactory({
     appConnectionDAL,
     permissionService,
-    kmsService
+    kmsService,
+    licenseService
   });
 
   const secretSyncService = secretSyncServiceFactory({
@@ -1706,7 +1707,8 @@ export const registerRoutes = async (
     folderDAL,
     secretSyncQueue,
     projectBotService,
-    keyStore
+    keyStore,
+    licenseService
   });
 
   const kmipService = kmipServiceFactory({

@@ -126,8 +126,6 @@ export const AccessPolicyForm = ({
 
   const policyName = policyDetails[watch("policyType")]?.name || "Policy";
 
-  const approversRequired = watch("approvals") || 1;
-
   const handleCreatePolicy = async ({
     environment,
     groupApprovers,
@@ -305,73 +303,6 @@ export const AccessPolicyForm = ({
               />
               <Controller
                 control={control}
-                name="enforcementLevel"
-                defaultValue={EnforcementLevel.Hard}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Enforcement Level"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    tooltipText={
-                      <>
-                        <p>
-                          Determines the level of enforcement for required approvers of a request:
-                        </p>
-                        <p className="mt-2">
-                          <span className="font-bold">Hard</span> enforcement requires at least{" "}
-                          <span className="font-bold"> {approversRequired}</span> approver(s) to
-                          approve the request.`
-                        </p>
-                        <p className="mt-2">
-                          <span className="font-bold">Soft</span> enforcement At least{" "}
-                          <span className="font-bold">{approversRequired}</span> approver(s) must
-                          approve the request; however, the requester can bypass approval
-                          requirements in emergencies.
-                        </p>
-                      </>
-                    }
-                  >
-                    <Select
-                      value={field.value}
-                      onValueChange={(val) => field.onChange(val as EnforcementLevel)}
-                      className="w-full border border-mineshaft-500"
-                    >
-                      {Object.values(EnforcementLevel).map((level) => {
-                        return (
-                          <SelectItem value={level} key={`enforcement-level-${level}`}>
-                            <span className="capitalize">{level}</span>
-                          </SelectItem>
-                        );
-                      })}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-
-              <Controller
-                control={control}
-                name="environment"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Environment"
-                    isRequired
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <FilterableSelect
-                      isDisabled={isEditMode}
-                      value={value}
-                      onChange={onChange}
-                      placeholder="Select environment..."
-                      options={environments}
-                      getOptionValue={(option) => option.slug}
-                      getOptionLabel={(option) => option.name}
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
                 name="secretPath"
                 defaultValue="/"
                 render={({ field, fieldState: { error } }) => (
@@ -386,6 +317,28 @@ export const AccessPolicyForm = ({
                 )}
               />
             </div>
+            <Controller
+              control={control}
+              name="environment"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  label="Environment"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <FilterableSelect
+                    isDisabled={isEditMode}
+                    value={value}
+                    onChange={onChange}
+                    placeholder="Select environment..."
+                    options={environments}
+                    getOptionValue={(option) => option.slug}
+                    getOptionLabel={(option) => option.name}
+                  />
+                </FormControl>
+              )}
+            />
             <div className="mb-2">
               <p>Approvers</p>
               <p className="font-inter text-xs text-mineshaft-300 opacity-90">
@@ -461,6 +414,29 @@ export const AccessPolicyForm = ({
                     onCheckedChange={onChange}
                   >
                     Allow approvers to review their own requests
+                  </Switch>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="enforcementLevel"
+              defaultValue={EnforcementLevel.Hard}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  label="Bypass Approvals"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Switch
+                    id="bypass-approvals"
+                    thumbClassName="bg-mineshaft-800"
+                    isChecked={value === EnforcementLevel.Soft}
+                    onCheckedChange={(v) =>
+                      onChange(v ? EnforcementLevel.Soft : EnforcementLevel.Hard)
+                    }
+                  >
+                    Allow request creators to bypass policy in break-glass situations
                   </Switch>
                 </FormControl>
               )}

@@ -257,8 +257,8 @@ export const superAdminServiceFactory = ({
   const adminSignUp = async ({
     lastName,
     firstName,
-    salt,
     email,
+    salt,
     password,
     verifier,
     publicKey,
@@ -272,7 +272,8 @@ export const superAdminServiceFactory = ({
     userAgent
   }: TAdminSignUpDTO) => {
     const appCfg = getConfig();
-    const existingUser = await userDAL.findOne({ email });
+    const sanitizedEmail = email.trim().toLowerCase();
+    const existingUser = await userDAL.findOne({ username: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exists" });
 
     const privateKey = await getUserPrivateKey(password, {
@@ -292,8 +293,8 @@ export const superAdminServiceFactory = ({
         {
           firstName,
           lastName,
-          username: email,
-          email,
+          username: sanitizedEmail,
+          email: sanitizedEmail,
           superAdmin: true,
           isGhost: false,
           isAccepted: true,
@@ -348,12 +349,13 @@ export const superAdminServiceFactory = ({
 
   const bootstrapInstance = async ({ email, password, organizationName }: TAdminBootstrapInstanceDTO) => {
     const appCfg = getConfig();
+    const sanitizedEmail = email.trim().toLowerCase();
     const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
     if (serverCfg?.initialized) {
       throw new BadRequestError({ message: "Instance has already been set up" });
     }
 
-    const existingUser = await userDAL.findOne({ email });
+    const existingUser = await userDAL.findOne({ email: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Instance initialization", message: "User already exists" });
 
     const userInfo = await userDAL.transaction(async (tx) => {
@@ -361,8 +363,8 @@ export const superAdminServiceFactory = ({
         {
           firstName: "Admin",
           lastName: "User",
-          username: email,
-          email,
+          username: sanitizedEmail,
+          email: sanitizedEmail,
           superAdmin: true,
           isGhost: false,
           isAccepted: true,
@@ -372,7 +374,7 @@ export const superAdminServiceFactory = ({
         tx
       );
       const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(password);
-      const encKeys = await generateUserSrpKeys(email, password);
+      const encKeys = await generateUserSrpKeys(sanitizedEmail, password);
 
       const userEnc = await userDAL.createUserEncryption(
         {

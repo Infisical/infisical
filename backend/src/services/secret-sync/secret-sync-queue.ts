@@ -5,6 +5,7 @@ import { Job } from "bullmq";
 import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
@@ -32,7 +33,7 @@ import {
   SecretSyncInitialSyncBehavior
 } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
+import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import {
   SecretSyncAction,
@@ -95,6 +96,7 @@ type TSecretSyncQueueFactoryDep = {
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 type SecretSyncActionJob = Job<
@@ -136,7 +138,8 @@ export const secretSyncQueueFactory = ({
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
   resourceMetadataDAL,
-  folderCommitService
+  folderCommitService,
+  licenseService
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -328,7 +331,20 @@ export const secretSyncQueueFactory = ({
     secretSync: TSecretSyncWithCredentials,
     importBehavior: SecretSyncImportBehavior
   ): Promise<TSecretMap> => {
-    const { projectId, environment, folder } = secretSync;
+    const {
+      projectId,
+      environment,
+      folder,
+      destination,
+      connection: { orgId }
+    } = secretSync;
+
+    await enterpriseSyncCheck(
+      licenseService,
+      destination,
+      orgId,
+      "Failed to import secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."
+    );
 
     if (!environment || !folder)
       throw new Error(
@@ -404,6 +420,13 @@ export const secretSyncQueueFactory = ({
     const secretSync = await secretSyncDAL.findById(syncId);
 
     if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
+
+    await enterpriseSyncCheck(
+      licenseService,
+      secretSync.destination as SecretSync,
+      secretSync.connection.orgId,
+      "Failed to sync secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."
+    );
 
     await secretSyncDAL.updateById(syncId, {
       syncStatus: SecretSyncStatus.Running
@@ -663,6 +686,13 @@ export const secretSyncQueueFactory = ({
     const secretSync = await secretSyncDAL.findById(syncId);
 
     if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
+
+    await enterpriseSyncCheck(
+      licenseService,
+      secretSync.destination as SecretSync,
+      secretSync.connection.orgId,
+      "Failed to remove secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."
+    );
 
     await secretSyncDAL.updateById(syncId, {
       removeStatus: SecretSyncStatus.Running

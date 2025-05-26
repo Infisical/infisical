@@ -1,3 +1,4 @@
+import { ProjectType } from "@app/db/schemas";
 import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
@@ -315,7 +316,6 @@ export enum EventType {
   CREATE_PROJECT_TEMPLATE = "create-project-template",
   UPDATE_PROJECT_TEMPLATE = "update-project-template",
   DELETE_PROJECT_TEMPLATE = "delete-project-template",
-  APPLY_PROJECT_TEMPLATE = "apply-project-template",
   GET_APP_CONNECTIONS = "get-app-connections",
   GET_AVAILABLE_APP_CONNECTIONS_DETAILS = "get-available-app-connections-details",
   GET_APP_CONNECTION = "get-app-connection",
@@ -383,7 +383,13 @@ export enum EventType {
   PIT_ROLLBACK_COMMIT = "pit-rollback-commit",
   PIT_REVERT_COMMIT = "pit-revert-commit",
   PIT_GET_FOLDER_STATE = "pit-get-folder-state",
-  PIT_COMPARE_FOLDER_STATES = "pit-compare-folder-states"
+  PIT_COMPARE_FOLDER_STATES = "pit-compare-folder-states",
+
+  UPDATE_ORG = "update-org",
+
+  CREATE_PROJECT = "create-project",
+  UPDATE_PROJECT = "update-project",
+  DELETE_PROJECT = "delete-project"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -2459,14 +2465,6 @@ interface DeleteProjectTemplateEvent {
   };
 }
 
-interface ApplyProjectTemplateEvent {
-  type: EventType.APPLY_PROJECT_TEMPLATE;
-  metadata: {
-    template: string;
-    projectId: string;
-  };
-}
-
 interface GetAppConnectionsEvent {
   type: EventType.GET_APP_CONNECTIONS;
   metadata: {
@@ -2990,6 +2988,59 @@ interface PitCompareFolderStatesEvent {
     diffsCount: string;
     environment: string;
     folderPath: string;
+  }
+}
+
+interface OrgUpdateEvent {
+  type: EventType.UPDATE_ORG;
+  metadata: {
+    name?: string;
+    slug?: string;
+    authEnforced?: boolean;
+    scimEnabled?: boolean;
+    defaultMembershipRoleSlug?: string;
+    enforceMfa?: boolean;
+    selectedMfaMethod?: string;
+    allowSecretSharingOutsideOrganization?: boolean;
+    bypassOrgAuthEnabled?: boolean;
+    userTokenExpiration?: string;
+    secretsProductEnabled?: boolean;
+    pkiProductEnabled?: boolean;
+    kmsProductEnabled?: boolean;
+    sshProductEnabled?: boolean;
+    scannerProductEnabled?: boolean;
+    shareSecretsProductEnabled?: boolean;
+  };
+}
+
+interface ProjectCreateEvent {
+  type: EventType.CREATE_PROJECT;
+  metadata: {
+    name: string;
+    slug?: string;
+    type: ProjectType;
+  };
+}
+
+interface ProjectUpdateEvent {
+  type: EventType.UPDATE_PROJECT;
+  metadata: {
+    name?: string;
+    description?: string;
+    autoCapitalization?: boolean;
+    hasDeleteProtection?: boolean;
+    slug?: string;
+    secretSharing?: boolean;
+    pitVersionLimit?: number;
+    auditLogsRetentionDays?: number;
+  };
+}
+
+interface ProjectDeleteEvent {
+  type: EventType.DELETE_PROJECT;
+  metadata: {
+    id: string;
+    name: string;
   };
 }
 
@@ -3197,7 +3248,6 @@ export type Event =
   | CreateProjectTemplateEvent
   | UpdateProjectTemplateEvent
   | DeleteProjectTemplateEvent
-  | ApplyProjectTemplateEvent
   | GetAppConnectionsEvent
   | GetAvailableAppConnectionsDetailsEvent
   | GetAppConnectionEvent
@@ -3266,4 +3316,8 @@ export type Event =
   | GetProjectPitCommitCountEvent
   | PitRevertCommitEvent
   | PitCompareFolderStatesEvent
-  | PitGetFolderStateEvent;
+  | PitGetFolderStateEvent
+  | OrgUpdateEvent
+  | ProjectCreateEvent
+  | ProjectUpdateEvent
+  | ProjectDeleteEvent;

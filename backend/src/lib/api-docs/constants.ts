@@ -2063,7 +2063,7 @@ export const AppConnections = {
     LDAP: {
       provider: "The type of LDAP provider. Determines provider-specific behaviors.",
       url: "The LDAP/LDAPS URL to connect to (e.g., 'ldap://domain-or-ip:389' or 'ldaps://domain-or-ip:636').",
-      dn: "The Distinguished Name (DN) of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com').",
+      dn: "The Distinguished Name (DN) or User Principal Name (UPN) of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com').",
       password: "The password to bind with for authentication.",
       sslRejectUnauthorized:
         "Whether or not to reject unauthorized SSL certificates (true/false) when using ldaps://. Set to false only in test environments.",
@@ -2084,6 +2084,10 @@ export const AppConnections = {
       region: "The region identifier in Oracle Cloud Infrastructure where the vault is located.",
       fingerprint: "The fingerprint of the public key uploaded to the user's API keys.",
       privateKey: "The private key content in PEM format used to sign API requests."
+    },
+    ONEPASS: {
+      instanceUrl: "The URL of the 1Password Connect Server instance to authenticate with.",
+      apiToken: "The API token used to access the 1Password Connect Server."
     }
   }
 };
@@ -2237,6 +2241,9 @@ export const SecretSyncs = {
       compartmentOcid: "The OCID (Oracle Cloud Identifier) of the compartment where the vault is located.",
       vaultOcid: "The OCID (Oracle Cloud Identifier) of the vault to sync secrets to.",
       keyOcid: "The OCID (Oracle Cloud Identifier) of the encryption key to use when creating secrets in the vault."
+    },
+    ONEPASS: {
+      vaultId: "The ID of the 1Password vault to sync secrets to."
     }
   }
 };
@@ -2308,7 +2315,10 @@ export const SecretRotations = {
       clientId: "The client ID of the Azure Application to rotate the client secret for."
     },
     LDAP_PASSWORD: {
-      dn: "The Distinguished Name (DN) of the principal to rotate the password for."
+      dn: "The Distinguished Name (DN) or User Principal Name (UPN) of the principal to rotate the password for.",
+      rotationMethod:
+        'Whether the rotation should be performed by the LDAP "connection-principal" or the "target-principal" (defaults to \'connection-principal\').',
+      password: 'The password of the provided principal if "parameters.rotationMethod" is set to "target-principal".'
     },
     GENERAL: {
       PASSWORD_REQUIREMENTS: {
@@ -2342,7 +2352,7 @@ export const SecretRotations = {
       clientSecret: "The name of the secret that the rotated client secret will be mapped to."
     },
     LDAP_PASSWORD: {
-      dn: "The name of the secret that the Distinguished Name (DN) of the principal will be mapped to.",
+      dn: "The name of the secret that the Distinguished Name (DN) or User Principal Name (UPN) of the principal will be mapped to.",
       password: "The name of the secret that the rotated password will be mapped to."
     },
     AWS_IAM_USER_SECRET: {

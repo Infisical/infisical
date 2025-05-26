@@ -14,7 +14,8 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionApprovalActions } from "@app/context/ProjectPermissionContext/types";
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
 import { Approver } from "@app/hooks/api/accessApproval/types";
@@ -117,7 +118,7 @@ export const ApprovalPolicyRow = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="min-w-[100%] p-1">
             <ProjectPermissionCan
-              I={ProjectPermissionActions.Edit}
+              I={ProjectPermissionApprovalActions.Edit}
               a={ProjectPermissionSub.SecretApproval}
             >
               {(isAllowed) => (
@@ -136,7 +137,7 @@ export const ApprovalPolicyRow = ({
               )}
             </ProjectPermissionCan>
             <ProjectPermissionCan
-              I={ProjectPermissionActions.Delete}
+              I={ProjectPermissionApprovalActions.Delete}
               a={ProjectPermissionSub.SecretApproval}
             >
               {(isAllowed) => (

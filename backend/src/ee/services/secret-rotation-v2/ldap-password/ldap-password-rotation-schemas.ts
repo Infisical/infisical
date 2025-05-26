@@ -1,6 +1,6 @@
-import RE2 from "re2";
 import { z } from "zod";
 
+import { LdapPasswordRotationMethod } from "@app/ee/services/secret-rotation-v2/ldap-password/ldap-password-rotation-types";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   BaseCreateSecretRotationSchema,
@@ -9,7 +9,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-schemas";
 import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general";
 import { SecretRotations } from "@app/lib/api-docs";
-import { DistinguishedNameRegex } from "@app/lib/regex";
+import { DistinguishedNameRegex, UserPrincipalNameRegex } from "@app/lib/regex";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -26,10 +26,16 @@ const LdapPasswordRotationParametersSchema = z.object({
   dn: z
     .string()
     .trim()
-    .regex(new RE2(DistinguishedNameRegex), "Invalid DN format, ie; CN=user,OU=users,DC=example,DC=com")
-    .min(1, "Distinguished Name (DN) Required")
+    .min(1, "DN/UPN required")
+    .refine((value) => DistinguishedNameRegex.test(value) || UserPrincipalNameRegex.test(value), {
+      message: "Invalid DN/UPN format"
+    })
     .describe(SecretRotations.PARAMETERS.LDAP_PASSWORD.dn),
-  passwordRequirements: PasswordRequirementsSchema.optional()
+  passwordRequirements: PasswordRequirementsSchema.optional(),
+  rotationMethod: z
+    .nativeEnum(LdapPasswordRotationMethod)
+    .optional()
+    .describe(SecretRotations.PARAMETERS.LDAP_PASSWORD.rotationMethod)
 });
 
 const LdapPasswordRotationSecretsMappingSchema = z.object({
@@ -50,10 +56,28 @@ export const LdapPasswordRotationSchema = BaseSecretRotationSchema(SecretRotatio
   secretsMapping: LdapPasswordRotationSecretsMappingSchema
 });
 
-export const CreateLdapPasswordRotationSchema = BaseCreateSecretRotationSchema(SecretRotation.LdapPassword).extend({
-  parameters: LdapPasswordRotationParametersSchema,
-  secretsMapping: LdapPasswordRotationSecretsMappingSchema
-});
+export const CreateLdapPasswordRotationSchema = BaseCreateSecretRotationSchema(SecretRotation.LdapPassword)
+  .extend({
+    parameters: LdapPasswordRotationParametersSchema,
+    secretsMapping: LdapPasswordRotationSecretsMappingSchema,
+    temporaryParameters: z
+      .object({
+        password: z.string().min(1, "Password required").describe(SecretRotations.PARAMETERS.LDAP_PASSWORD.password)
+      })
+      .optional()
+  })
+  .superRefine((val, ctx) => {
+    if (
+      val.parameters.rotationMethod === LdapPasswordRotationMethod.TargetPrincipal &&
+      !val.temporaryParameters?.password
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Password required",
+        path: ["temporaryParameters", "password"]
+      });
+    }
+  });
 
 export const UpdateLdapPasswordRotationSchema = BaseUpdateSecretRotationSchema(SecretRotation.LdapPassword).extend({
   parameters: LdapPasswordRotationParametersSchema.optional(),
