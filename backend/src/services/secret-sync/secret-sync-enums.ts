@@ -26,3 +26,8 @@ export enum SecretSyncImportBehavior {
   PrioritizeSource = "prioritize-source",
   PrioritizeDestination = "prioritize-destination"
 }
+
+export enum SecretSyncPlanType {
+  Enterprise = "enterprise",
+  Regular = "regular"
+}

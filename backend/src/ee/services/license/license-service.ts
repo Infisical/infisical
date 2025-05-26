@@ -92,6 +92,10 @@ export const licenseServiceFactory = ({
       const {
         data: { currentPlan }
       } = await licenseServerOnPremApi.request.get<{ currentPlan: TFeatureSet }>("/api/license/v1/plan");
+
+      const workspacesUsed = await projectDAL.countOfOrgProjects(null);
+      currentPlan.workspacesUsed = workspacesUsed;
+
       onPremFeatures = currentPlan;
       logger.info("Successfully synchronized license key features");
     } catch (error) {
@@ -185,6 +189,9 @@ export const licenseServiceFactory = ({
         } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
           `/api/license-server/v1/customers/${org.customerId}/cloud-plan`
         );
+        const workspacesUsed = await projectDAL.countOfOrgProjects(orgId);
+        currentPlan.workspacesUsed = workspacesUsed;
+
         await keyStore.setItemWithExpiry(
           FEATURE_CACHE_KEY(org.id),
           LICENSE_SERVER_CLOUD_PLAN_TTL,

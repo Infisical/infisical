@@ -2,6 +2,12 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 
+import {
+  TOCIConnection,
+  TOCIConnectionConfig,
+  TOCIConnectionInput,
+  TValidateOCIConnectionCredentialsSchema
+} from "../../ee/services/app-connections/oci";
 import { AWSRegion } from "./app-connection-enums";
 import {
   TAuth0Connection,
@@ -77,12 +83,6 @@ import {
 } from "./ldap";
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { TMySqlConnection, TMySqlConnectionInput, TValidateMySqlConnectionCredentialsSchema } from "./mysql";
-import {
-  TOCIConnection,
-  TOCIConnectionConfig,
-  TOCIConnectionInput,
-  TValidateOCIConnectionCredentialsSchema
-} from "./oci";
 import {
   TPostgresConnection,
   TPostgresConnectionInput,

@@ -1,4 +1,4 @@
-import { AppConnection } from "./app-connection-enums";
+import { AppConnection, AppConnectionPlanType } from "./app-connection-enums";
 
 export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.AWS]: "AWS",
@@ -21,4 +21,27 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.LDAP]: "LDAP",
   [AppConnection.TeamCity]: "TeamCity",
   [AppConnection.OCI]: "OCI"
+};
+
+export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
+  [AppConnection.AWS]: AppConnectionPlanType.Regular,
+  [AppConnection.GitHub]: AppConnectionPlanType.Regular,
+  [AppConnection.GCP]: AppConnectionPlanType.Regular,
+  [AppConnection.AzureKeyVault]: AppConnectionPlanType.Regular,
+  [AppConnection.AzureAppConfiguration]: AppConnectionPlanType.Regular,
+  [AppConnection.AzureClientSecrets]: AppConnectionPlanType.Regular,
+  [AppConnection.Databricks]: AppConnectionPlanType.Regular,
+  [AppConnection.Humanitec]: AppConnectionPlanType.Regular,
+  [AppConnection.TerraformCloud]: AppConnectionPlanType.Regular,
+  [AppConnection.Vercel]: AppConnectionPlanType.Regular,
+  [AppConnection.Postgres]: AppConnectionPlanType.Regular,
+  [AppConnection.MsSql]: AppConnectionPlanType.Regular,
+  [AppConnection.Camunda]: AppConnectionPlanType.Regular,
+  [AppConnection.Windmill]: AppConnectionPlanType.Regular,
+  [AppConnection.Auth0]: AppConnectionPlanType.Regular,
+  [AppConnection.HCVault]: AppConnectionPlanType.Regular,
+  [AppConnection.LDAP]: AppConnectionPlanType.Regular,
+  [AppConnection.TeamCity]: AppConnectionPlanType.Regular,
+  [AppConnection.OCI]: AppConnectionPlanType.Enterprise,
+  [AppConnection.MySql]: AppConnectionPlanType.Regular
 };
