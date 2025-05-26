@@ -1,5 +1,5 @@
 ---
-title: "Configurations"
+title: "Environment Variables"
 description: "Read how to configure environment variables for self-hosted Infisical."
 ---
 
@@ -123,11 +123,10 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
 </ParamField>
 
 ### Redis
-
-<Info>Redis is required for smooth operation of Infisical.</Info>
+Redis is used for caching and background tasks. You can use either a standalone Redis instance or a Redis Sentinel setup.
 
 <Tabs>
-  <Tab title="Standalone Node">
+  <Tab title="Redis standalone">
     <ParamField query="REDIS_URL" type="string" default="none" required>
       Redis connection string.
     </ParamField>
