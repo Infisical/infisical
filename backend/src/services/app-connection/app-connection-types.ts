@@ -1,13 +1,19 @@
-import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
-import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
-
 import {
   TOCIConnection,
   TOCIConnectionConfig,
   TOCIConnectionInput,
   TValidateOCIConnectionCredentialsSchema
-} from "../../ee/services/app-connections/oci";
+} from "@app/ee/services/app-connections/oci";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
+import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+
+import {
+  TOnePassConnection,
+  TOnePassConnectionConfig,
+  TOnePassConnectionInput,
+  TValidateOnePassConnectionCredentialsSchema
+} from "./1password";
 import { AWSRegion } from "./app-connection-enums";
 import {
   TAuth0Connection,
@@ -134,6 +140,7 @@ export type TAppConnection = { id: string } & (
   | TLdapConnection
   | TTeamCityConnection
   | TOCIConnection
+  | TOnePassConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -161,6 +168,7 @@ export type TAppConnectionInput = { id: string } & (
   | TLdapConnectionInput
   | TTeamCityConnectionInput
   | TOCIConnectionInput
+  | TOnePassConnectionInput
 );
 
 export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput | TMySqlConnectionInput;
@@ -192,7 +200,8 @@ export type TAppConnectionConfig =
   | THCVaultConnectionConfig
   | TLdapConnectionConfig
   | TTeamCityConnectionConfig
-  | TOCIConnectionConfig;
+  | TOCIConnectionConfig
+  | TOnePassConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -214,7 +223,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateHCVaultConnectionCredentialsSchema
   | TValidateLdapConnectionCredentialsSchema
   | TValidateTeamCityConnectionCredentialsSchema
-  | TValidateOCIConnectionCredentialsSchema;
+  | TValidateOCIConnectionCredentialsSchema
+  | TValidateOnePassConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

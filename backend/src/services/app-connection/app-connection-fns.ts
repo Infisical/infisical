@@ -14,6 +14,11 @@ import {
 } from "@app/services/app-connection/shared/sql";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import {
+  getOnePassConnectionListItem,
+  OnePassConnectionMethod,
+  validateOnePassConnectionCredentials
+} from "./1password";
 import { AppConnection, AppConnectionPlanType } from "./app-connection-enums";
 import { TAppConnectionServiceFactoryDep } from "./app-connection-service";
 import {
@@ -101,7 +106,8 @@ export const listAppConnectionOptions = () => {
     getHCVaultConnectionListItem(),
     getLdapConnectionListItem(),
     getTeamCityConnectionListItem(),
-    getOCIConnectionListItem()
+    getOCIConnectionListItem(),
+    getOnePassConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -172,7 +178,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.HCVault]: validateHCVaultConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LDAP]: validateLdapConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TeamCity]: validateTeamCityConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -201,6 +208,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case HumanitecConnectionMethod.ApiToken:
     case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
+    case OnePassConnectionMethod.ApiToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -266,7 +274,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.HCVault]: platformManagedCredentialsNotSupported,
   [AppConnection.LDAP]: platformManagedCredentialsNotSupported, // we could support this in the future
   [AppConnection.TeamCity]: platformManagedCredentialsNotSupported,
-  [AppConnection.OCI]: platformManagedCredentialsNotSupported
+  [AppConnection.OCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.OnePass]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

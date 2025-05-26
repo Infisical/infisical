@@ -5,6 +5,10 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import {
+  OnePassConnectionListItemSchema,
+  SanitizedOnePassConnectionSchema
+} from "@app/services/app-connection/1password";
 import { Auth0ConnectionListItemSchema, SanitizedAuth0ConnectionSchema } from "@app/services/app-connection/auth0";
 import { AwsConnectionListItemSchema, SanitizedAwsConnectionSchema } from "@app/services/app-connection/aws";
 import {
@@ -80,7 +84,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedWindmillConnectionSchema.options,
   ...SanitizedLdapConnectionSchema.options,
   ...SanitizedTeamCityConnectionSchema.options,
-  ...SanitizedOCIConnectionSchema.options
+  ...SanitizedOCIConnectionSchema.options,
+  ...SanitizedOnePassConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -103,7 +108,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   WindmillConnectionListItemSchema,
   LdapConnectionListItemSchema,
   TeamCityConnectionListItemSchema,
-  OCIConnectionListItemSchema
+  OCIConnectionListItemSchema,
+  OnePassConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {
