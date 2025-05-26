@@ -16,10 +16,16 @@ export const PkiSubscribersSchema = z.object({
   name: z.string(),
   commonName: z.string(),
   subjectAlternativeNames: z.string().array(),
-  ttl: z.string(),
+  ttl: z.string().nullable().optional(),
   keyUsages: z.string().array(),
   extendedKeyUsages: z.string().array(),
-  status: z.string()
+  status: z.string(),
+  enableAutoRenewal: z.boolean().default(false),
+  autoRenewalPeriodInDays: z.number().nullable().optional(),
+  lastAutoRenewAt: z.date().nullable().optional(),
+  lastOperationStatus: z.string().nullable().optional(),
+  lastOperationMessage: z.string().nullable().optional(),
+  lastOperationAt: z.date().nullable().optional()
 });
 
 export type TPkiSubscribers = z.infer<typeof PkiSubscribersSchema>;

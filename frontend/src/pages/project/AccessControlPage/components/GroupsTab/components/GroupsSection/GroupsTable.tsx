@@ -27,6 +27,11 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useListWorkspaceGroups } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -62,7 +67,14 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
     orderDirection,
     orderBy,
     toggleOrderDirection
-  } = usePagination(GroupsOrderBy.Name, { initPerPage: 20 });
+  } = usePagination(GroupsOrderBy.Name, {
+    initPerPage: getUserTablePreference("projectGroupsTable", PreferenceKey.PerPage, 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("projectGroupsTable", PreferenceKey.PerPage, newPerPage);
+  };
 
   const { data: groupMemberships = [], isPending } = useListWorkspaceGroups(
     currentWorkspace?.id || ""
@@ -183,7 +195,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
             page={page}
             perPage={perPage}
             onChangePage={setPage}
-            onChangePerPage={setPerPage}
+            onChangePerPage={handlePerPageChange}
           />
         )}
         {!isPending && !filteredGroupMemberships?.length && (

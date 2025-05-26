@@ -5,6 +5,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 
+import { ExternalCaSection } from "./components/ExternalCaSection";
 import { CaSection } from "./components";
 
 export const CertificateAuthoritiesPage = () => {
@@ -17,7 +18,7 @@ export const CertificateAuthoritiesPage = () => {
       <div className="mx-auto mb-6 w-full max-w-7xl">
         <PageHeader
           title="Certificate Authorities"
-          description="Manage internal private certificate authorities for issuing and signing certificates, including root and intermediate CAs."
+          description="Manage certificate authorities for issuing and signing certificates"
         />
         <ProjectPermissionCan
           renderGuardBanner
@@ -25,6 +26,7 @@ export const CertificateAuthoritiesPage = () => {
           a={ProjectPermissionSub.CertificateAuthorities}
         >
           <CaSection />
+          <ExternalCaSection />
         </ProjectPermissionCan>
       </div>
     </div>

@@ -48,12 +48,17 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
-  const { data, isPending } = useGetPkiSubscriberCertificates({
-    subscriberName,
-    projectId,
-    offset: (page - 1) * perPage,
-    limit: perPage
-  });
+  const { data, isPending } = useGetPkiSubscriberCertificates(
+    {
+      subscriberName,
+      projectId,
+      offset: (page - 1) * perPage,
+      limit: perPage
+    },
+    {
+      refetchInterval: 5000
+    }
+  );
 
   const getCertStatusBadge = (status: string, notAfter: string) => {
     if (status === CertStatus.REVOKED) {

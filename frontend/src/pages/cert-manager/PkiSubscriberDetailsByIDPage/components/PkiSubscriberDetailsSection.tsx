@@ -5,7 +5,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, IconButton, Modal, ModalContent, Tooltip } from "@app/components/v2";
+import {
+  Button,
+  GenericFieldLabel,
+  IconButton,
+  Modal,
+  ModalContent,
+  Tooltip
+} from "@app/components/v2";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
@@ -13,8 +20,13 @@ import {
   useWorkspace
 } from "@app/context";
 import { useTimedReset } from "@app/hooks";
-import { useGetPkiSubscriber, useIssuePkiSubscriberCert } from "@app/hooks/api";
+import {
+  useGetPkiSubscriber,
+  useIssuePkiSubscriberCert,
+  useOrderPkiSubscriberCert
+} from "@app/hooks/api";
 import { pkiSubscriberStatusToNameMap } from "@app/hooks/api/pkiSubscriber/constants";
+import { SubscriberOperationStatus } from "@app/hooks/api/pkiSubscriber/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CertificateContent } from "../../CertificatesPage/components/CertificateContent";
@@ -41,31 +53,48 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
     initialState: "Copy ID to clipboard"
   });
 
-  const { data: pkiSubscriber } = useGetPkiSubscriber({
-    subscriberName,
-    projectId
-  });
+  const { data: pkiSubscriber } = useGetPkiSubscriber(
+    {
+      subscriberName,
+      projectId
+    },
+    {
+      refetchInterval: 5000
+    }
+  );
 
   const { mutateAsync: issuePkiSubscriberCert, isPending: isIssuingCert } =
     useIssuePkiSubscriberCert();
 
+  const { mutateAsync: orderPkiSubscriberCert, isPending: isOrderingCert } =
+    useOrderPkiSubscriberCert();
+
   const onIssuePkiSubscriberCert = async () => {
     try {
-      const response = await issuePkiSubscriberCert({ subscriberName, projectId });
+      if (pkiSubscriber?.supportsImmediateCertIssuance) {
+        const response = await issuePkiSubscriberCert({ subscriberName, projectId });
 
-      setCertificateDetails({
-        serialNumber: response.serialNumber,
-        certificate: response.certificate,
-        certificateChain: response.certificateChain,
-        privateKey: response.privateKey
-      });
+        setCertificateDetails({
+          serialNumber: response.serialNumber,
+          certificate: response.certificate,
+          certificateChain: response.certificateChain,
+          privateKey: response.privateKey
+        });
 
-      setIsModalOpen(true);
+        setIsModalOpen(true);
 
-      createNotification({
-        text: "Successfully issued certificate",
-        type: "success"
-      });
+        createNotification({
+          text: "Successfully issued certificate",
+          type: "success"
+        });
+      } else {
+        await orderPkiSubscriberCert({ subscriberName, projectId });
+
+        createNotification({
+          text: "Successfully ordered certificate. It will be issued after CA processing which could take a few minutes.",
+          type: "info"
+        });
+      }
     } catch (err) {
       console.error(err);
       createNotification({
@@ -148,17 +177,36 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
           <p className="text-sm font-semibold text-mineshaft-300">Common Name</p>
           <p className="text-sm text-mineshaft-300">{pkiSubscriber.commonName}</p>
         </div>
+        {pkiSubscriber.lastOperationAt && (
+          <div className="mb-4">
+            <p className="text-sm font-semibold text-mineshaft-300">Last Operation (Local Time)</p>
+            <p className="text-sm text-mineshaft-300">
+              {new Date(pkiSubscriber.lastOperationAt).toLocaleString()}
+            </p>
+          </div>
+        )}
+        {pkiSubscriber.lastOperationStatus === SubscriberOperationStatus.FAILED && (
+          <div className="mb-4">
+            <GenericFieldLabel labelClassName="text-red" label="Last Operation Status">
+              <p className="break-words rounded bg-mineshaft-600 p-2 text-xs">
+                {pkiSubscriber.lastOperationMessage}
+              </p>
+            </GenericFieldLabel>
+          </div>
+        )}
         {canIssuePkiSubscriberCert && (
           <Button
-            className="mt-4 w-full"
+            className="mt-2 w-full"
             colorSchema="primary"
             type="button"
-            isLoading={isIssuingCert}
+            isLoading={isIssuingCert || isOrderingCert}
             onClick={() => {
               onIssuePkiSubscriberCert();
             }}
           >
-            Issue Certificate
+            {pkiSubscriber?.supportsImmediateCertIssuance
+              ? "Issue Certificate"
+              : "Order Certificate"}
           </Button>
         )}
       </div>

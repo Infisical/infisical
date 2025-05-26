@@ -5,6 +5,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/pe
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -80,6 +81,17 @@ export const userServiceFactory = ({
   const verifyEmailVerificationCode = async (username: string, code: string) => {
     // akhilmhdh: case sensitive email resolution
     const usersByusername = await userDAL.findUserByUsername(username);
+
+    logger.info(
+      usersByusername.map((user) => ({
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        isEmailVerified: user.isEmailVerified
+      })),
+      `Verify email users: [username=${username}]`
+    );
+
     const user =
       usersByusername?.length > 1 ? usersByusername.find((el) => el.username === username) : usersByusername?.[0];
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });

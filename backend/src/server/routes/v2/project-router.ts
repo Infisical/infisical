@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import {
-  CertificateAuthoritiesSchema,
   CertificatesSchema,
   PkiAlertsSchema,
   PkiCollectionsSchema,
@@ -22,13 +21,13 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { SanitizedProjectSchema } from "../sanitizedSchemas";
+import { InternalCertificateAuthorityResponseSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
 
 const projectWithEnv = SanitizedProjectSchema.extend({
   _id: z.string(),
@@ -206,19 +205,18 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      if (req.body.template) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          orgId: req.permission.orgId,
-          event: {
-            type: EventType.APPLY_PROJECT_TEMPLATE,
-            metadata: {
-              template: req.body.template,
-              projectId: project.id
-            }
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.CREATE_PROJECT,
+          metadata: {
+            ...req.body,
+            name: req.body.projectName
           }
-        });
-      }
+        }
+      });
 
       return { project };
     }
@@ -260,6 +258,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.DELETE_PROJECT,
+          metadata: project
+        }
       });
 
       return project;
@@ -341,6 +349,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.UPDATE_PROJECT,
+          metadata: req.body
+        }
+      });
+
       return project;
     }
   });
@@ -366,7 +384,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          cas: z.array(CertificateAuthoritiesSchema)
+          cas: z.array(InternalCertificateAuthorityResponseSchema)
         })
       }
     },

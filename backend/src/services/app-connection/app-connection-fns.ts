@@ -1,14 +1,25 @@
 import { TAppConnections } from "@app/db/schemas/app-connections";
+import {
+  getOCIConnectionListItem,
+  OCIConnectionMethod,
+  validateOCIConnectionCredentials
+} from "@app/ee/services/app-connections/oci";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { generateHash } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
-import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
+import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
 import {
   transferSqlConnectionCredentialsToPlatform,
   validateSqlConnectionCredentials
 } from "@app/services/app-connection/shared/sql";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { AppConnection } from "./app-connection-enums";
+import {
+  getOnePassConnectionListItem,
+  OnePassConnectionMethod,
+  validateOnePassConnectionCredentials
+} from "./1password";
+import { AppConnection, AppConnectionPlanType } from "./app-connection-enums";
 import { TAppConnectionServiceFactoryDep } from "./app-connection-service";
 import {
   TAppConnection,
@@ -53,7 +64,6 @@ import {
 } from "./humanitec";
 import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnectionCredentials } from "./ldap";
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
-import { getOCIConnectionListItem, OCIConnectionMethod, validateOCIConnectionCredentials } from "./oci";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import {
   getTeamCityConnectionListItem,
@@ -93,7 +103,8 @@ export const listAppConnectionOptions = () => {
     getHCVaultConnectionListItem(),
     getLdapConnectionListItem(),
     getTeamCityConnectionListItem(),
-    getOCIConnectionListItem()
+    getOCIConnectionListItem(),
+    getOnePassConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -163,7 +174,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.HCVault]: validateHCVaultConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LDAP]: validateLdapConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TeamCity]: validateTeamCityConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -192,6 +204,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case HumanitecConnectionMethod.ApiToken:
     case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
+    case OnePassConnectionMethod.ApiToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -255,5 +268,21 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.HCVault]: platformManagedCredentialsNotSupported,
   [AppConnection.LDAP]: platformManagedCredentialsNotSupported, // we could support this in the future
   [AppConnection.TeamCity]: platformManagedCredentialsNotSupported,
-  [AppConnection.OCI]: platformManagedCredentialsNotSupported
+  [AppConnection.OCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.OnePass]: platformManagedCredentialsNotSupported
+};
+
+export const enterpriseAppCheck = async (
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  appConnection: AppConnection,
+  orgId: string,
+  errorMessage: string
+) => {
+  if (APP_CONNECTION_PLAN_MAP[appConnection] === AppConnectionPlanType.Enterprise) {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.enterpriseAppConnections)
+      throw new BadRequestError({
+        message: errorMessage
+      });
+  }
 };

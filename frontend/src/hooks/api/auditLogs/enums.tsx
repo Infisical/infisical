@@ -81,6 +81,7 @@ export enum EventType {
   IMPORT_CA_CERT = "import-certificate-authority-cert",
   GET_CA_CRL = "get-certificate-authority-crl",
   ISSUE_CERT = "issue-cert",
+  IMPORT_CERT = "import-cert",
   GET_CERT = "get-cert",
   DELETE_CERT = "delete-cert",
   REVOKE_CERT = "revoke-cert",
@@ -131,7 +132,6 @@ export enum EventType {
   CREATE_PROJECT_TEMPLATE = "create-project-template",
   UPDATE_PROJECT_TEMPLATE = "update-project-template",
   DELETE_PROJECT_TEMPLATE = "delete-project-template",
-  APPLY_PROJECT_TEMPLATE = "apply-project-template",
   GET_APP_CONNECTIONS = "get-app-connections",
   GET_AVAILABLE_APP_CONNECTIONS_DETAILS = "get-available-app-connections-details",
   GET_APP_CONNECTION = "get-app-connection",
@@ -183,5 +183,19 @@ export enum EventType {
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS = "microsoft-teams-workflow-integration-check-installation-status",
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS = "microsoft-teams-workflow-integration-get-teams",
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET = "microsoft-teams-workflow-integration-get",
-  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list"
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list",
+
+  CREATE_PKI_SUBSCRIBER = "create-pki-subscriber",
+  UPDATE_PKI_SUBSCRIBER = "update-pki-subscriber",
+  DELETE_PKI_SUBSCRIBER = "delete-pki-subscriber",
+  GET_PKI_SUBSCRIBER = "get-pki-subscriber",
+  ISSUE_PKI_SUBSCRIBER_CERT = "issue-pki-subscriber-cert",
+  SIGN_PKI_SUBSCRIBER_CERT = "sign-pki-subscriber-cert",
+  AUTOMATED_RENEW_SUBSCRIBER_CERT = "automated-renew-subscriber-cert",
+  LIST_PKI_SUBSCRIBER_CERTS = "list-pki-subscriber-certs",
+  UPDATE_ORG = "update-org",
+
+  CREATE_PROJECT = "create-project",
+  UPDATE_PROJECT = "update-project",
+  DELETE_PROJECT = "delete-project"
 }

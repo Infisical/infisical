@@ -70,10 +70,25 @@ export const SelectOrganizationSection = () => {
 
   const handleSelectOrganization = useCallback(
     async (organization: Organization) => {
-      const canBypassOrgAuth =
-        organization.bypassOrgAuthEnabled &&
-        organization.userRole === OrgMembershipRole.Admin &&
-        isAdminLogin;
+      const isUserOrgAdmin = organization.userRole === OrgMembershipRole.Admin;
+      const canBypassOrgAuth = organization.bypassOrgAuthEnabled && isUserOrgAdmin && isAdminLogin;
+
+      if (isAdminLogin) {
+        if (!organization.bypassOrgAuthEnabled) {
+          createNotification({
+            text: "This organization does not have bypass org auth enabled",
+            type: "error"
+          });
+          return;
+        }
+        if (!isUserOrgAdmin) {
+          createNotification({
+            text: "Only organization admins can bypass org auth",
+            type: "error"
+          });
+          return;
+        }
+      }
 
       if (organization.authEnforced && !canBypassOrgAuth) {
         // org has an org-level auth method enabled (e.g. SAML)

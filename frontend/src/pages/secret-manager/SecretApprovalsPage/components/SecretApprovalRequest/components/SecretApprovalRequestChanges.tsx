@@ -13,6 +13,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { RadioGroup, RadioGroupIndicator, RadioGroupItem } from "@radix-ui/react-radio-group";
+import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 import z from "zod";
 
@@ -51,7 +52,7 @@ export const generateCommitText = (commits: { op: CommitType }[] = []) => {
     text.push(
       <span key="created-commit">
         {score[CommitType.CREATE]} secret{score[CommitType.CREATE] !== 1 && "s"}
-        <span style={{ color: "#16a34a" }}> created</span>
+        <span style={{ color: "#60DD00" }}> created</span>
       </span>
     );
   if (score[CommitType.UPDATE])
@@ -59,7 +60,7 @@ export const generateCommitText = (commits: { op: CommitType }[] = []) => {
       <span key="updated-commit">
         {Boolean(text.length) && ","}
         {score[CommitType.UPDATE]} secret{score[CommitType.UPDATE] !== 1 && "s"}
-        <span style={{ color: "#ea580c" }} className="text-orange-600">
+        <span style={{ color: "#F8EB30" }} className="text-orange-600">
           {" "}
           updated
         </span>
@@ -70,7 +71,7 @@ export const generateCommitText = (commits: { op: CommitType }[] = []) => {
       <span className="deleted-commit">
         {Boolean(text.length) && "and"}
         {score[CommitType.DELETE]} secret{score[CommitType.UPDATE] !== 1 && "s"}
-        <span style={{ color: "#b91c1c" }}> deleted</span>
+        <span style={{ color: "#F83030" }}> deleted</span>
       </span>
     );
 
@@ -221,29 +222,32 @@ export const SecretApprovalRequestChanges = ({
             </span>
           </div>
           <div className="flex flex-grow flex-col">
-            <div className="mb-1 text-lg">
+            <div className="text-lg">
               {generateCommitText(secretApprovalRequestDetails.commits)}
               {secretApprovalRequestDetails.isReplicated && (
                 <span className="text-sm text-bunker-300"> (replication)</span>
               )}
             </div>
-            <div className="flex items-center text-sm text-bunker-300">
-              {secretApprovalRequestDetails?.committerUser?.firstName || ""}
-              {secretApprovalRequestDetails?.committerUser?.lastName || ""} (
-              {secretApprovalRequestDetails?.committerUser?.email}) wants to change{" "}
-              {secretApprovalRequestDetails.commits.length} secret values in
-              <span className="mx-1 rounded bg-primary-600/60 px-1 text-primary-300">
+            <div className="text-sm text-bunker-300">
+              <p className="inline">
+                {secretApprovalRequestDetails?.committerUser?.firstName || ""}
+                {secretApprovalRequestDetails?.committerUser?.lastName || ""} (
+                {secretApprovalRequestDetails?.committerUser?.email}) wants to change{" "}
+                {secretApprovalRequestDetails.commits.length} secret values in
+              </p>
+              <p className="mx-1 inline rounded bg-primary-600/40 px-1 py-1 text-primary-300">
                 {secretApprovalRequestDetails.environment}
-              </span>
-              <div className="flex w-min items-center rounded border border-mineshaft-500 pl-1 pr-2">
-                <div className="border-r border-mineshaft-500 pr-1">
+              </p>
+              <div className="inline-flex w-min items-center rounded border border-mineshaft-500 pl-1 pr-2">
+                <p className="cursor-default border-r border-mineshaft-500 pr-1">
                   <FontAwesomeIcon icon={faFolder} className="text-primary" size="sm" />
-                </div>
-                <Tooltip content={formatReservedPaths(secretApprovalRequestDetails.secretPath)}>
-                  <div className="truncate pb-0.5 pl-2 text-sm" style={{ maxWidth: "10rem" }}>
-                    {formatReservedPaths(secretApprovalRequestDetails.secretPath)}
-                  </div>
-                </Tooltip>
+                </p>
+                <p
+                  className="cursor-default truncate pb-0.5 pl-2 text-sm"
+                  style={{ maxWidth: "10rem" }}
+                >
+                  {formatReservedPaths(secretApprovalRequestDetails.secretPath)}
+                </p>
               </div>
             </div>
           </div>
@@ -255,17 +259,14 @@ export const SecretApprovalRequestChanges = ({
                 onOpenChange={(isOpen) => handlePopUpToggle("reviewChanges", isOpen)}
               >
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline_bg"
-                    rightIcon={<FontAwesomeIcon className="ml-2" icon={faAngleDown} />}
-                  >
+                  <Button rightIcon={<FontAwesomeIcon className="ml-2" icon={faAngleDown} />}>
                     Review
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" asChild className="mt-3">
                   <form onSubmit={handleSubmit(handleSubmitReview)}>
-                    <div className="flex w-[400px] flex-col space-y-2 p-5">
-                      <div className="text-lg font-medium">Finish your review</div>
+                    <div className="flex w-[500px] flex-col space-y-2 p-5">
+                      <div className="text-md font-medium">Finish your review</div>
                       <Controller
                         control={control}
                         name="comment"
@@ -275,7 +276,7 @@ export const SecretApprovalRequestChanges = ({
                               {...field}
                               placeholder="Leave a comment..."
                               reSize="none"
-                              className="text-md mt-2 h-48 border border-mineshaft-600 bg-bunker-800"
+                              className="text-md mt-2 h-40 border border-mineshaft-600 bg-bunker-800"
                             />
                           </FormControl>
                         )}
@@ -320,7 +321,7 @@ export const SecretApprovalRequestChanges = ({
                               <div className="flex items-center gap-2">
                                 <RadioGroupItem
                                   id="reject"
-                                  className="h-4 w-4 rounded-full border border-gray-300 text-primary focus:ring-2 focus:ring-mineshaft-500"
+                                  className="h-4 w-4 rounded-full border border-gray-300 text-red focus:ring-2 focus:ring-mineshaft-500"
                                   value={ApprovalStatus.REJECTED}
                                   aria-labelledby="reject-label"
                                 >
@@ -376,14 +377,14 @@ export const SecretApprovalRequestChanges = ({
             )
           )}
         </div>
-        <div className="mt-4 flex flex-col items-center rounded-lg">
+        <div className="my-4 flex flex-col items-center rounded-lg border border-mineshaft-600">
           {secretApprovalRequestDetails?.policy?.approvers
             .filter((requiredApprover) => reviewedUsers?.[requiredApprover.userId])
             .map((requiredApprover) => {
               const reviewer = reviewedUsers?.[requiredApprover.userId];
               return (
                 <div
-                  className="mb-4 flex w-full flex-col rounded-md bg-mineshaft-800 p-6"
+                  className="flex w-full flex-col rounded-md bg-mineshaft-800 p-4"
                   key={`required-approver-${requiredApprover.userId}`}
                 >
                   <div>
@@ -396,10 +397,11 @@ export const SecretApprovalRequestChanges = ({
                     >
                       {reviewer?.status === ApprovalStatus.APPROVED ? "approved" : "rejected"}
                     </span>{" "}
-                    the request.
+                    the request on{" "}
+                    {format(new Date(secretApprovalRequestDetails.createdAt), "PPpp zzz")}.
                   </div>
                   {reviewer?.comment && (
-                    <FormControl label="Comment" className="mb-0 mt-2">
+                    <FormControl label="Comment" className="mb-0 mt-4">
                       <TextArea value={reviewer.comment} isDisabled reSize="none">
                         {reviewer?.comment && reviewer.comment}
                       </TextArea>
@@ -409,7 +411,7 @@ export const SecretApprovalRequestChanges = ({
               );
             })}
         </div>
-        <div className="flex items-center space-x-6 rounded-lg bg-mineshaft-800 px-5 py-6">
+        <div className="mt-2 flex items-center space-x-6 rounded-lg border border-mineshaft-600 bg-mineshaft-800">
           <SecretApprovalRequestAction
             canApprove={canApprove}
             approvalRequestId={secretApprovalRequestDetails.id}
@@ -423,7 +425,7 @@ export const SecretApprovalRequestChanges = ({
           />
         </div>
       </div>
-      <div className="sticky top-0 w-1/5 pt-4" style={{ minWidth: "240px" }}>
+      <div className="sticky top-0 w-1/5 cursor-default pt-4" style={{ minWidth: "240px" }}>
         <div className="text-sm text-bunker-300">Reviewers</div>
         <div className="mt-2 flex flex-col space-y-2 text-sm">
           {secretApprovalRequestDetails?.policy?.approvers
@@ -435,10 +437,10 @@ export const SecretApprovalRequestChanges = ({
               const reviewer = reviewedUsers?.[requiredApprover.userId];
               return (
                 <div
-                  className="flex flex-nowrap items-center space-x-2 rounded bg-mineshaft-800 px-2 py-1"
+                  className="flex flex-nowrap items-center justify-between space-x-2 rounded border border-mineshaft-600 bg-mineshaft-800 px-2 py-1"
                   key={`required-approver-${requiredApprover.userId}`}
                 >
-                  <div className="flex-grow text-sm">
+                  <div className="flex text-sm">
                     <Tooltip
                       content={`${requiredApprover.firstName || ""} ${
                         requiredApprover.lastName || ""
@@ -458,7 +460,7 @@ export const SecretApprovalRequestChanges = ({
                         />
                       </Tooltip>
                     )}
-                    <Tooltip content={reviewer?.status || ApprovalStatus.PENDING}>
+                    <Tooltip content={`Status: ${reviewer?.status || ApprovalStatus.PENDING}`}>
                       {getReviewedStatusSymbol(reviewer?.status)}
                     </Tooltip>
                   </div>

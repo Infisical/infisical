@@ -21,6 +21,11 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetIdentityProjectMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -53,7 +58,14 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
     offset,
     orderDirection,
     toggleOrderDirection
-  } = usePagination(IdentityProjectsOrderBy.Name, { initPerPage: 10 });
+  } = usePagination(IdentityProjectsOrderBy.Name, {
+    initPerPage: getUserTablePreference("identityProjectsTable", PreferenceKey.PerPage, 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("identityProjectsTable", PreferenceKey.PerPage, newPerPage);
+  };
 
   const filteredProjectMemberships = useMemo(
     () =>
@@ -132,7 +144,7 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
             page={page}
             perPage={perPage}
             onChangePage={setPage}
-            onChangePerPage={setPerPage}
+            onChangePerPage={handlePerPageChange}
           />
         )}
         {!isPending && !filteredProjectMemberships?.length && (
