@@ -1,12 +1,19 @@
-import { faCircleXmark, faExclamationTriangle, faEye, faEyeSlash, faInfo, faKey } from "@fortawesome/free-solid-svg-icons";
+/* eslint-disable jsx-a11y/no-static-element-interactions */
+/* eslint-disable jsx-a11y/click-events-have-key-events */
+/* eslint-disable no-nested-ternary */
+import { useState } from "react";
+import {
+  faCircleXmark,
+  faExclamationTriangle,
+  faEye,
+  faEyeSlash,
+  faInfo,
+  faKey
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import {
-  Tag,
-  Tooltip
-} from "@app/components/v2";
+import { Tag, Tooltip } from "@app/components/v2";
 import { CommitType, SecretV3Raw, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
-import { useState } from "react";
 
 export type Props = {
   op: CommitType;
@@ -27,7 +34,7 @@ const generateItemTitle = (op: CommitType) => {
   else text = { label: "deletion", color: "#F83030" };
 
   return (
-    <div className="text-md font-medium pb-2">
+    <div className="text-md pb-2 font-medium">
       Request for <span style={{ color: text.color }}>secret {text.label}</span>
     </div>
   );
@@ -56,7 +63,7 @@ export const SecretApprovalRequestChangeItem = ({
   const [isNewSecretValueVisible, setIsNewSecretValueVisible] = useState(false);
 
   return (
-    <div className="rounded-lg bg-mineshaft-900 px-4 pb-4 pt-2 border border-mineshaft-600">
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 pb-4 pt-2">
       <div className="flex items-center px-1 py-1">
         <div className="flex-grow">{generateItemTitle(op)}</div>
         {!hasMerged && isStale && (
@@ -75,57 +82,84 @@ export const SecretApprovalRequestChangeItem = ({
         )}
       </div>
       <div>
-        <div className="flex flex-col xl:flex-row space-y-4 xl:space-y-0 space-x-0 xl:space-x-4">
+        <div className="flex flex-col space-x-0 space-y-4 xl:flex-row xl:space-x-4 xl:space-y-0">
           {op === CommitType.UPDATE || op === CommitType.DELETE ? (
-            <div className="flex flex-col border border-red-600/60 bg-red-600/10 p-4 w-full xl:w-1/2 rounded-md cursor-default">
-              <div className="flex flex-row justify-between mb-4">
+            <div className="flex w-full cursor-default flex-col rounded-md border border-red-600/60 bg-red-600/10 p-4 xl:w-1/2">
+              <div className="mb-4 flex flex-row justify-between">
                 <span className="text-md font-medium">Legacy Secret</span>
-                <div className="pt-[0.2rem] pb-[0.14rem] px-2 bg-red text-xs rounded-full font-medium">
-                  <FontAwesomeIcon icon={faCircleXmark} className="text-white pr-1" />
+                <div className="rounded-full bg-red px-2 pb-[0.14rem] pt-[0.2rem] text-xs font-medium">
+                  <FontAwesomeIcon icon={faCircleXmark} className="pr-1 text-white" />
                   Deprecated
                 </div>
               </div>
-              <div className="mb-2"> 
-                <div className="text-sm text-mineshaft-300 font-medium">Key</div>
+              <div className="mb-2">
+                <div className="text-sm font-medium text-mineshaft-300">Key</div>
                 <div className="text-sm">{secretVersion?.secretKey} </div>
               </div>
-              <div className="mb-2"> 
-                <div className="text-sm text-mineshaft-300 font-medium">Value</div>
-                <div className="text-sm">{newVersion?.isRotatedSecret ? (
-                      <span className="text-mineshaft-400">
-                        Rotated Secret value will not be affected
-                      </span>
-                    ) : (
-                      <div onClick={() => setIsOldSecretValueVisible(!isOldSecretValueVisible)} className="pl-2 border border-mineshaft-500 bg-mineshaft-900 rounded-md flex flex-row justify-between items-center">
-                        <div className={`flex font-mono ${isOldSecretValueVisible || !secretVersion?.secretValue ? "text-md py-[0.55rem]" : "text-lg"}`}>{isOldSecretValueVisible ? (secretVersion?.secretValue || "EMPTY") : (secretVersion?.secretValue ? secretVersion?.secretValue?.split('').map((_, index) => "•") : "EMPTY")} </div>
-                        {secretVersion?.secretValue && <div className="flex items-center w-10 h-10 justify-center"><FontAwesomeIcon icon={isOldSecretValueVisible ? faEyeSlash : faEye} className="text-mineshaft-300 p-1.5 border border-mineshaft-500 rounded-md bg-mineshaft-800 hover:bg-mineshaft-700 cursor-pointer" /></div>}
-                      </div>
-                    )} 
-                </div>
-              </div>
-              <div className="mb-2"> 
-                <div className="text-sm text-mineshaft-300 font-medium">Comment</div>
-                <div className="text-sm">{secretVersion?.secretComment || <span className="text-sm text-mineshaft-300">-</span>} </div>
-              </div>  
-              <div className="mb-2"> 
-                <div className="text-sm text-mineshaft-300 font-medium">Tags</div>
-                <div className="flex flex-wrap gap-2">
-                  {secretVersion?.tags?.length ?? 0 ? secretVersion?.tags?.map(({ slug, id: tagId, color }) => (
-                    <Tag
-                      className="flex w-min items-center space-x-2"
-                      key={`${secretVersion.id}-${tagId}`}
+              <div className="mb-2">
+                <div className="text-sm font-medium text-mineshaft-300">Value</div>
+                <div className="text-sm">
+                  {newVersion?.isRotatedSecret ? (
+                    <span className="text-mineshaft-400">
+                      Rotated Secret value will not be affected
+                    </span>
+                  ) : (
+                    <div
+                      onClick={() => setIsOldSecretValueVisible(!isOldSecretValueVisible)}
+                      className="flex flex-row items-center justify-between rounded-md border border-mineshaft-500 bg-mineshaft-900 pl-2"
                     >
                       <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: color || "#bec2c8" }}
-                      />
-                      <div className="text-sm">{slug}</div>
-                    </Tag>
-                  )) : <span className="text-sm text-mineshaft-300">-</span>}
+                        className={`flex font-mono ${isOldSecretValueVisible || !secretVersion?.secretValue ? "text-md py-[0.55rem]" : "text-lg"}`}
+                      >
+                        {isOldSecretValueVisible
+                          ? secretVersion?.secretValue || "EMPTY"
+                          : secretVersion?.secretValue
+                            ? secretVersion?.secretValue?.split("").map(() => "•")
+                            : "EMPTY"}{" "}
+                      </div>
+                      {secretVersion?.secretValue && (
+                        <div className="flex h-10 w-10 items-center justify-center">
+                          <FontAwesomeIcon
+                            icon={isOldSecretValueVisible ? faEyeSlash : faEye}
+                            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="mb-2"> 
-                <div className="text-sm text-mineshaft-300 font-medium">Metadata</div>
+              <div className="mb-2">
+                <div className="text-sm font-medium text-mineshaft-300">Comment</div>
+                <div className="text-sm">
+                  {secretVersion?.secretComment || (
+                    <span className="text-sm text-mineshaft-300">-</span>
+                  )}{" "}
+                </div>
+              </div>
+              <div className="mb-2">
+                <div className="text-sm font-medium text-mineshaft-300">Tags</div>
+                <div className="flex flex-wrap gap-2">
+                  {(secretVersion?.tags?.length ?? 0) ? (
+                    secretVersion?.tags?.map(({ slug, id: tagId, color }) => (
+                      <Tag
+                        className="flex w-min items-center space-x-2"
+                        key={`${secretVersion.id}-${tagId}`}
+                      >
+                        <div
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: color || "#bec2c8" }}
+                        />
+                        <div className="text-sm">{slug}</div>
+                      </Tag>
+                    ))
+                  ) : (
+                    <span className="text-sm text-mineshaft-300">-</span>
+                  )}
+                </div>
+              </div>
+              <div className="mb-2">
+                <div className="text-sm font-medium text-mineshaft-300">Metadata</div>
                 <div>
                   {secretVersion?.secretMetadata?.length ? (
                     <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
@@ -153,59 +187,91 @@ export const SecretApprovalRequestChangeItem = ({
                     <p className="text-sm text-mineshaft-300">-</p>
                   )}
                 </div>
-              </div>  
-            </div>)
-            : <div className="w-full xl:w-1/2 bg-mineshaft-800 border border-mineshaft-600 rounded-md flex items-center justify-center text-md text-mineshaft-300"> Secret not existent in the previous version.</div>}
-            {op === CommitType.UPDATE || op === CommitType.CREATE ? (
-            <div className="flex flex-col border border-green-600/60 bg-green-600/10 p-4 w-full xl:w-1/2 rounded-md cursor-default">
-              <div className="flex flex-row justify-between mb-4">
+              </div>
+            </div>
+          ) : (
+            <div className="text-md flex w-full items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 text-mineshaft-300 xl:w-1/2">
+              {" "}
+              Secret not existent in the previous version.
+            </div>
+          )}
+          {op === CommitType.UPDATE || op === CommitType.CREATE ? (
+            <div className="flex w-full cursor-default flex-col rounded-md border border-green-600/60 bg-green-600/10 p-4 xl:w-1/2">
+              <div className="mb-4 flex flex-row justify-between">
                 <span className="text-md font-medium">New Secret</span>
-                <div className="pt-[0.2rem] pb-[0.14rem] px-2 bg-green-600 text-xs rounded-full font-medium">
-                  <FontAwesomeIcon icon={faCircleXmark} className="text-white pr-1" />
+                <div className="rounded-full bg-green-600 px-2 pb-[0.14rem] pt-[0.2rem] text-xs font-medium">
+                  <FontAwesomeIcon icon={faCircleXmark} className="pr-1 text-white" />
                   Current
                 </div>
               </div>
-              <div className="mb-2"> 
-                <div className="text-sm text-mineshaft-300 font-medium">Key</div>
+              <div className="mb-2">
+                <div className="text-sm font-medium text-mineshaft-300">Key</div>
                 <div className="text-sm">{newVersion?.secretKey} </div>
               </div>
-              <div className="mb-2"> 
-                <div className="text-sm text-mineshaft-300 font-medium">Value</div>
-                <div className="text-sm">{newVersion?.isRotatedSecret ? (
-                      <span className="text-mineshaft-400">
-                        Rotated Secret value will not be affected
-                      </span>
-                    ) : (
-                      <div onClick={() => setIsNewSecretValueVisible(!isNewSecretValueVisible)} className="pl-2 border border-mineshaft-500 bg-mineshaft-900 rounded-md flex flex-row justify-between items-center">
-                        <div className={`flex font-mono ${isNewSecretValueVisible || !newVersion?.secretValue ? "text-md py-[0.55rem]" : "text-lg"}`}>{isNewSecretValueVisible ? (newVersion?.secretValue || "EMPTY") : (newVersion?.secretValue ? newVersion?.secretValue?.split('').map((_, index) => "•") : "EMPTY")} </div>
-                        {newVersion?.secretValue && <div className="flex items-center w-10 h-10 justify-center"><FontAwesomeIcon icon={isNewSecretValueVisible ? faEyeSlash : faEye} className="text-mineshaft-300 p-1.5 border border-mineshaft-500 rounded-md bg-mineshaft-800 hover:bg-mineshaft-700 cursor-pointer" /></div>}
-                      </div>
-                    )} 
-                </div>
-              </div>
-              <div className="mb-2"> 
-                <div className="text-sm text-mineshaft-300 font-medium">Comment</div>
-                <div className="text-sm">{newVersion?.secretComment || <span className="text-sm text-mineshaft-300">-</span>} </div>
-              </div> 
-              <div className="mb-2"> 
-                <div className="text-sm text-mineshaft-300 font-medium">Tags</div>
-                <div className="flex flex-wrap gap-2">
-                  {newVersion?.tags?.length ?? 0 ? newVersion?.tags?.map(({ slug, id: tagId, color }) => (
-                    <Tag
-                      className="flex w-min items-center space-x-2"
-                      key={`${newVersion.id}-${tagId}`}
+              <div className="mb-2">
+                <div className="text-sm font-medium text-mineshaft-300">Value</div>
+                <div className="text-sm">
+                  {newVersion?.isRotatedSecret ? (
+                    <span className="text-mineshaft-400">
+                      Rotated Secret value will not be affected
+                    </span>
+                  ) : (
+                    <div
+                      onClick={() => setIsNewSecretValueVisible(!isNewSecretValueVisible)}
+                      className="flex flex-row items-center justify-between rounded-md border border-mineshaft-500 bg-mineshaft-900 pl-2"
                     >
                       <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: color || "#bec2c8" }}
-                      />
-                      <div className="text-sm">{slug}</div>
-                    </Tag>
-                  )) : <span className="text-sm text-mineshaft-300">-</span>}
+                        className={`flex font-mono ${isNewSecretValueVisible || !newVersion?.secretValue ? "text-md py-[0.55rem]" : "text-lg"}`}
+                      >
+                        {isNewSecretValueVisible
+                          ? newVersion?.secretValue || "EMPTY"
+                          : newVersion?.secretValue
+                            ? newVersion?.secretValue?.split("").map(() => "•")
+                            : "EMPTY"}{" "}
+                      </div>
+                      {newVersion?.secretValue && (
+                        <div className="flex h-10 w-10 items-center justify-center">
+                          <FontAwesomeIcon
+                            icon={isNewSecretValueVisible ? faEyeSlash : faEye}
+                            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="mb-2"> 
-                <div className="text-sm text-mineshaft-300 font-medium">Metadata</div>
+              <div className="mb-2">
+                <div className="text-sm font-medium text-mineshaft-300">Comment</div>
+                <div className="text-sm">
+                  {newVersion?.secretComment || (
+                    <span className="text-sm text-mineshaft-300">-</span>
+                  )}{" "}
+                </div>
+              </div>
+              <div className="mb-2">
+                <div className="text-sm font-medium text-mineshaft-300">Tags</div>
+                <div className="flex flex-wrap gap-2">
+                  {(newVersion?.tags?.length ?? 0) ? (
+                    newVersion?.tags?.map(({ slug, id: tagId, color }) => (
+                      <Tag
+                        className="flex w-min items-center space-x-2"
+                        key={`${newVersion.id}-${tagId}`}
+                      >
+                        <div
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: color || "#bec2c8" }}
+                        />
+                        <div className="text-sm">{slug}</div>
+                      </Tag>
+                    ))
+                  ) : (
+                    <span className="text-sm text-mineshaft-300">-</span>
+                  )}
+                </div>
+              </div>
+              <div className="mb-2">
+                <div className="text-sm font-medium text-mineshaft-300">Metadata</div>
                 {newVersion?.secretMetadata?.length ? (
                   <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
                     {newVersion.secretMetadata?.map((el) => (
@@ -232,9 +298,14 @@ export const SecretApprovalRequestChangeItem = ({
                   <p className="text-sm text-mineshaft-300">-</p>
                 )}
               </div>
-            </div>) 
-            : <div className="w-full xl:w-1/2 bg-mineshaft-800 border border-mineshaft-600 rounded-md flex items-center justify-center text-md text-mineshaft-300"> Secret not existent in the new version.</div>}
-          </div>
+            </div>
+          ) : (
+            <div className="text-md flex w-full items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 text-mineshaft-300 xl:w-1/2">
+              {" "}
+              Secret not existent in the new version.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

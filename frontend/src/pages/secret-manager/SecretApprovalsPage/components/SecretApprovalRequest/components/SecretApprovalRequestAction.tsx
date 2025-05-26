@@ -1,13 +1,9 @@
 import { useState } from "react";
 import {
   faCheck,
-  faCircleCheck,
-  faCircleXmark,
   faClose,
   faLandMineOn,
   faLockOpen,
-  faSquareCheck,
-  faSquareXmark,
   faTriangleExclamation,
   faUserLock,
   faXmark
@@ -115,25 +111,34 @@ export const SecretApprovalRequestAction = ({
 
   if (!hasMerged && status === "open") {
     return (
-      <div className="flex flex-col w-full items-start justify-between transition-all py-4">
+      <div className="flex w-full flex-col items-start justify-between py-4 transition-all">
         <div className="flex items-center space-x-4 px-4">
-          <div className={`flex items-center justify-center rounded-full ${isMergable ? "bg-green w-10 h-10" : "bg-red-600 w-11 h-11"}`}>
+          <div
+            className={`flex items-center justify-center rounded-full ${isMergable ? "h-10 w-10 bg-green" : "h-11 w-11 bg-red-600"}`}
+          >
             <FontAwesomeIcon
               icon={isMergable ? faCheck : faXmark}
-              className={isMergable ? "text-black text-lg" : "text-white text-2xl"}
+              className={isMergable ? "text-lg text-black" : "text-2xl text-white"}
             />
           </div>
           <span className="flex flex-col">
-            <p className={`text-md font-medium ${isMergable && "text-lg"}`}>{isMergable ? "Good to merge" : "Merging is blocked"}</p>
-            {!isMergable && <span className="inline-block text-xs text-bunker-200">
-              At least {approvals} approving review{`${approvals > 1 ? "s" : ""}`} required by eligible reviewers.
-              {Boolean(statusChangeByEmail) && `. Reopened by ${statusChangeByEmail}`}
-            </span>}
+            <p className={`text-md font-medium ${isMergable && "text-lg"}`}>
+              {isMergable ? "Good to merge" : "Merging is blocked"}
+            </p>
+            {!isMergable && (
+              <span className="inline-block text-xs text-bunker-200">
+                At least {approvals} approving review{`${approvals > 1 ? "s" : ""}`} required by
+                eligible reviewers.
+                {Boolean(statusChangeByEmail) && `. Reopened by ${statusChangeByEmail}`}
+              </span>
+            )}
           </span>
         </div>
-        <div className={`w-full px-5 border-mineshaft-600 mt-4 ${isMergable ? "border-t pb-2" : "border-y pb-4"}`}>
+        <div
+          className={`mt-4 w-full border-mineshaft-600 px-5 ${isMergable ? "border-t pb-2" : "border-y pb-4"}`}
+        >
           {isSoftEnforcement && !isMergable && canBypassApprovalPermission && (
-            <div className="mt-2 pt-2 flex flex-col space-y-2">
+            <div className="mt-2 flex flex-col space-y-2 pt-2">
               <Checkbox
                 onCheckedChange={(checked) => setByPassApproval(checked === true)}
                 isChecked={byPassApproval}
@@ -166,7 +171,7 @@ export const SecretApprovalRequestAction = ({
             </div>
           )}
         </div>
-        <div className="flex items-center justify-end w-full space-x-2 px-4 mt-2">
+        <div className="mt-2 flex w-full items-center justify-end space-x-2 px-4">
           {canApprove || isSoftEnforcement ? (
             <div className="flex items-center space-x-4">
               <Button
@@ -175,7 +180,7 @@ export const SecretApprovalRequestAction = ({
                 variant="outline_bg"
                 colorSchema="primary"
                 leftIcon={<FontAwesomeIcon icon={faClose} />}
-                className="hover:bg-red/10 hover:border-red/60"
+                className="hover:border-red/60 hover:bg-red/10"
               >
                 Close request
               </Button>
@@ -205,7 +210,7 @@ export const SecretApprovalRequestAction = ({
 
   if (hasMerged && status === "close")
     return (
-      <div className="flex w-full items-center justify-between bg-primary/10 border border-primary/60 rounded-md">
+      <div className="flex w-full items-center justify-between rounded-md border border-primary/60 bg-primary/10">
         <div className="flex items-start space-x-4 p-4">
           <FontAwesomeIcon icon={faCheck} className="pt-1 text-2xl text-primary" />
           <span className="flex flex-col">

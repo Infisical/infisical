@@ -13,6 +13,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { RadioGroup, RadioGroupIndicator, RadioGroupItem } from "@radix-ui/react-radio-group";
+import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 import z from "zod";
 
@@ -40,7 +41,6 @@ import { formatReservedPaths } from "@app/lib/fn/string";
 
 import { SecretApprovalRequestAction } from "./SecretApprovalRequestAction";
 import { SecretApprovalRequestChangeItem } from "./SecretApprovalRequestChangeItem";
-import { format } from "date-fns";
 
 export const generateCommitText = (commits: { op: CommitType }[] = []) => {
   const score: Record<string, number> = {};
@@ -235,14 +235,17 @@ export const SecretApprovalRequestChanges = ({
                 {secretApprovalRequestDetails?.committerUser?.email}) wants to change{" "}
                 {secretApprovalRequestDetails.commits.length} secret values in
               </p>
-              <p className="inline rounded bg-primary-600/40 mx-1 px-1 py-1 text-primary-300">
+              <p className="mx-1 inline rounded bg-primary-600/40 px-1 py-1 text-primary-300">
                 {secretApprovalRequestDetails.environment}
               </p>
               <div className="inline-flex w-min items-center rounded border border-mineshaft-500 pl-1 pr-2">
-                <p className="border-r border-mineshaft-500 pr-1 cursor-default">
+                <p className="cursor-default border-r border-mineshaft-500 pr-1">
                   <FontAwesomeIcon icon={faFolder} className="text-primary" size="sm" />
                 </p>
-                <p className="truncate pb-0.5 pl-2 text-sm cursor-default" style={{ maxWidth: "10rem" }}>
+                <p
+                  className="cursor-default truncate pb-0.5 pl-2 text-sm"
+                  style={{ maxWidth: "10rem" }}
+                >
                   {formatReservedPaths(secretApprovalRequestDetails.secretPath)}
                 </p>
               </div>
@@ -256,10 +259,7 @@ export const SecretApprovalRequestChanges = ({
                 onOpenChange={(isOpen) => handlePopUpToggle("reviewChanges", isOpen)}
               >
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="primary"
-                    rightIcon={<FontAwesomeIcon className="ml-2" icon={faAngleDown} />}
-                  >
+                  <Button rightIcon={<FontAwesomeIcon className="ml-2" icon={faAngleDown} />}>
                     Review
                   </Button>
                 </DropdownMenuTrigger>
@@ -397,7 +397,8 @@ export const SecretApprovalRequestChanges = ({
                     >
                       {reviewer?.status === ApprovalStatus.APPROVED ? "approved" : "rejected"}
                     </span>{" "}
-                    the request on {format(new Date(secretApprovalRequestDetails.createdAt), "PPpp zzz")}.
+                    the request on{" "}
+                    {format(new Date(secretApprovalRequestDetails.createdAt), "PPpp zzz")}.
                   </div>
                   {reviewer?.comment && (
                     <FormControl label="Comment" className="mb-0 mt-4">
@@ -410,7 +411,7 @@ export const SecretApprovalRequestChanges = ({
               );
             })}
         </div>
-        <div className="flex items-center space-x-6 mt-2 rounded-lg bg-mineshaft-800 border border-mineshaft-600">
+        <div className="mt-2 flex items-center space-x-6 rounded-lg border border-mineshaft-600 bg-mineshaft-800">
           <SecretApprovalRequestAction
             canApprove={canApprove}
             approvalRequestId={secretApprovalRequestDetails.id}
@@ -424,7 +425,7 @@ export const SecretApprovalRequestChanges = ({
           />
         </div>
       </div>
-      <div className="sticky top-0 w-1/5 pt-4 cursor-default" style={{ minWidth: "240px" }}>
+      <div className="sticky top-0 w-1/5 cursor-default pt-4" style={{ minWidth: "240px" }}>
         <div className="text-sm text-bunker-300">Reviewers</div>
         <div className="mt-2 flex flex-col space-y-2 text-sm">
           {secretApprovalRequestDetails?.policy?.approvers
@@ -436,7 +437,7 @@ export const SecretApprovalRequestChanges = ({
               const reviewer = reviewedUsers?.[requiredApprover.userId];
               return (
                 <div
-                  className="flex justify-between flex-nowrap items-center space-x-2 rounded bg-mineshaft-800 border border-mineshaft-600 px-2 py-1"
+                  className="flex flex-nowrap items-center justify-between space-x-2 rounded border border-mineshaft-600 bg-mineshaft-800 px-2 py-1"
                   key={`required-approver-${requiredApprover.userId}`}
                 >
                   <div className="flex text-sm">
