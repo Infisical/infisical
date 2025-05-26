@@ -2959,7 +2959,7 @@ interface PitRollbackCommitEvent {
     deepRollback: boolean;
     message: string;
     totalChanges: string;
-    envId: string;
+    environment: string;
   };
 }
 
@@ -2988,7 +2988,7 @@ interface PitCompareFolderStatesEvent {
     folderId: string;
     deepRollback: boolean;
     diffsCount: string;
-    env: string;
+    environment: string;
     folderPath: string;
   };
 }

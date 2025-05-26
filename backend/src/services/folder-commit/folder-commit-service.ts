@@ -2,7 +2,13 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, TSecretFolders, TSecretFolderVersions, TSecretVersionsV2 } from "@app/db/schemas";
+import {
+  ActionProjectType,
+  TSecretFolders,
+  TSecretFolderVersions,
+  TSecretV2TagJunctionInsert,
+  TSecretVersionsV2
+} from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -20,8 +26,10 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
+import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import * as secretV2BridgeDal from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -143,6 +151,15 @@ type TFolderCommitServiceFactoryDep = {
   >;
   permissionService?: TPermissionServiceFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  secretTagDAL: Pick<
+    TSecretTagDALFactory,
+    | "findSecretTagsByVersionId"
+    | "saveTagsToSecretV2"
+    | "findSecretTagsBySecretId"
+    | "deleteTagsToSecretV2"
+    | "saveTagsToSecretVersionV2"
+  >;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany" | "delete">;
 };
 
 export const folderCommitServiceFactory = ({
@@ -161,7 +178,9 @@ export const folderCommitServiceFactory = ({
   folderTreeCheckpointResourcesDAL,
   folderCommitQueueService,
   permissionService,
-  kmsService
+  kmsService,
+  secretTagDAL,
+  resourceMetadataDAL
 }: TFolderCommitServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -738,6 +757,11 @@ export const folderCommitServiceFactory = ({
     tx?: Knex
   ) => {
     const commitChanges = [];
+    const folder = await folderDAL.findById(folderId, tx);
+    if (!folder) {
+      return [];
+    }
+    const project = await projectDAL.findById(folder.projectId, tx);
 
     // Filter only secret changes using discriminated union
     const secretChanges = changes.filter(
@@ -774,11 +798,24 @@ export const folderCommitServiceFactory = ({
                 encryptedValue: secretVersion.encryptedValue,
                 encryptedComment: secretVersion.encryptedComment,
                 userId: secretVersion.userId,
-                metadata: secretVersion.metadata,
                 folderId
               }
             ];
             await secretV2BridgeDAL.insertMany(newSecret, tx);
+
+            const metadata: { key: string; value: string }[] =
+              (secretVersion.metadata as { key: string; value: string }[]) || [];
+            if (metadata.length > 0) {
+              await resourceMetadataDAL.insertMany(
+                metadata.map(({ key, value }) => ({
+                  key,
+                  value,
+                  secretId: change.id,
+                  orgId: project.orgId
+                })),
+                tx
+              );
+            }
 
             const newVersion = await secretVersionV2BridgeDAL.create(
               {
@@ -792,12 +829,26 @@ export const folderCommitServiceFactory = ({
                 reminderNote: secretVersion.reminderNote,
                 reminderRepeatDays: secretVersion.reminderRepeatDays,
                 userId: secretVersion.userId,
-                metadata: secretVersion.metadata,
                 actorType: actorInfo.actorType,
                 envId: secretVersion.envId,
+                metadata: JSON.stringify(metadata),
                 ...(actorInfo.actorType === ActorType.IDENTITY && { identityActorId: actorInfo.actorId }),
                 ...(actorInfo.actorType === ActorType.USER && { userActorId: actorInfo.actorId })
               },
+              tx
+            );
+
+            const secretTagsToBeInsert: TSecretV2TagJunctionInsert[] = [];
+            const secretTags = await secretTagDAL.findSecretTagsByVersionId(secretVersion.id, tx);
+            secretTags.forEach((tag) => {
+              secretTagsToBeInsert.push({ secrets_v2Id: change.id, secret_tagsId: tag.secret_tagsId });
+            });
+            await secretTagDAL.saveTagsToSecretV2(secretTagsToBeInsert, tx);
+            await secretTagDAL.saveTagsToSecretVersionV2(
+              secretTagsToBeInsert.map((tag) => ({
+                secret_tagsId: tag.secret_tagsId,
+                secret_versions_v2Id: newVersion.id
+              })),
               tx
             );
 
@@ -821,11 +872,25 @@ export const folderCommitServiceFactory = ({
                 reminderRepeatDays: secretVersion?.reminderRepeatDays,
                 encryptedValue: secretVersion?.encryptedValue,
                 encryptedComment: secretVersion?.encryptedComment,
-                userId: secretVersion?.userId,
-                metadata: secretVersion?.metadata
+                userId: secretVersion?.userId
               },
               tx
             );
+
+            const metadata: { key: string; value: string }[] =
+              (secretVersion.metadata as { key: string; value: string }[]) || [];
+            await resourceMetadataDAL.delete({ secretId: change.id }, tx);
+            if (metadata.length > 0) {
+              await resourceMetadataDAL.insertMany(
+                metadata.map(({ key, value }) => ({
+                  key,
+                  value,
+                  secretId: change.id,
+                  orgId: project.orgId
+                })),
+                tx
+              );
+            }
 
             const newVersion = await secretVersionV2BridgeDAL.create(
               {
@@ -837,7 +902,7 @@ export const folderCommitServiceFactory = ({
                 reminderNote: secretVersion.reminderNote,
                 reminderRepeatDays: secretVersion.reminderRepeatDays,
                 userId: secretVersion.userId,
-                metadata: secretVersion.metadata,
+                metadata: JSON.stringify(metadata),
                 actorType: actorInfo.actorType,
                 envId: secretVersion.envId,
                 folderId,
@@ -845,6 +910,32 @@ export const folderCommitServiceFactory = ({
                 ...(actorInfo.actorType === ActorType.IDENTITY && { identityActorId: actorInfo.actorId }),
                 ...(actorInfo.actorType === ActorType.USER && { userActorId: actorInfo.actorId })
               },
+              tx
+            );
+
+            let secretTagsToBeInsert: TSecretV2TagJunctionInsert[] = [];
+            const secretTagsToBeDelete: string[] = [];
+            const secretTags = await secretTagDAL.findSecretTagsByVersionId(secretVersion.id, tx);
+            secretTags.forEach((tag) => {
+              secretTagsToBeInsert.push({ secrets_v2Id: change.id, secret_tagsId: tag.secret_tagsId });
+            });
+            const currentTags = await secretTagDAL.findSecretTagsBySecretId(change.id, tx);
+            currentTags.forEach((tag) => {
+              if (!secretTagsToBeInsert.find((t) => t.secret_tagsId === tag.secret_tagsId)) {
+                secretTagsToBeDelete.push(tag.secret_tagsId);
+                secretTagsToBeInsert = secretTagsToBeInsert.filter((t) => t.secret_tagsId !== tag.secret_tagsId);
+              }
+            });
+            await secretTagDAL.saveTagsToSecretV2(secretTagsToBeInsert, tx);
+            await secretTagDAL.saveTagsToSecretVersionV2(
+              secretTagsToBeInsert.map((tag) => ({
+                secret_tagsId: tag.secret_tagsId,
+                secret_versions_v2Id: newVersion.id
+              })),
+              tx
+            );
+            await secretTagDAL.deleteTagsToSecretV2(
+              { $in: { secret_tagsId: secretTagsToBeDelete }, secrets_v2Id: change.id },
               tx
             );
 
@@ -1126,7 +1217,7 @@ export const folderCommitServiceFactory = ({
       actorOrgId,
       projectId
     });
-    return folderCommitDAL.findById(commitId, tx);
+    return folderCommitDAL.findById(commitId, tx, projectId);
   };
 
   /**

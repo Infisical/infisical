@@ -17,8 +17,10 @@ import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
+import { resourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
+import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
@@ -86,11 +88,13 @@ export const getMigrationPITServices = async ({
   const folderCheckpointResourcesDAL = folderCheckpointResourcesDALFactory(db);
   const secretV2BridgeDAL = secretV2BridgeDALFactory({ db, keyStore });
   const folderTreeCheckpointResourcesDAL = folderTreeCheckpointResourcesDALFactory(db);
+  const secretTagDAL = secretTagDALFactory(db);
 
   const orgDAL = orgDALFactory(db);
   const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
+  const resourceMetadataDAL = resourceMetadataDALFactory(db);
 
   const hsmModule = initializeHsmModule(envConfig);
   hsmModule.initialize();
@@ -128,7 +132,9 @@ export const getMigrationPITServices = async ({
     folderCheckpointResourcesDAL,
     secretV2BridgeDAL,
     folderTreeCheckpointResourcesDAL,
-    kmsService
+    kmsService,
+    secretTagDAL,
+    resourceMetadataDAL
   });
 
   return { folderCommitService };

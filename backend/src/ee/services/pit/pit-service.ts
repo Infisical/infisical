@@ -11,6 +11,7 @@ import {
   isFolderCommitChange,
   isSecretCommitChange
 } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
+import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
@@ -23,6 +24,7 @@ type TPitServiceFactoryDep = {
   folderService: Pick<TSecretFolderServiceFactory, "getFolderById" | "getFolderVersions">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
 };
 
 export type TPitServiceFactory = ReturnType<typeof pitServiceFactory>;
@@ -32,7 +34,8 @@ export const pitServiceFactory = ({
   secretService,
   folderService,
   permissionService,
-  folderDAL
+  folderDAL,
+  projectEnvDAL
 }: TPitServiceFactoryDep) => {
   const getCommitsCount = async ({
     actor,
@@ -183,7 +186,7 @@ export const pitServiceFactory = ({
     projectId,
     commitId,
     folderId,
-    envId,
+    environment,
     deepRollback,
     secretPath
   }: {
@@ -194,7 +197,7 @@ export const pitServiceFactory = ({
     projectId: string;
     commitId: string;
     folderId: string;
-    envId: string;
+    environment: string;
     deepRollback: boolean;
     secretPath: string;
   }) => {
@@ -216,6 +219,11 @@ export const pitServiceFactory = ({
       projectId
     });
 
+    const env = await projectEnvDAL.findOne({
+      projectId,
+      slug: environment
+    });
+
     if (!latestCommit) {
       throw new NotFoundError({ message: "Latest commit not found" });
     }
@@ -224,7 +232,7 @@ export const pitServiceFactory = ({
     if (deepRollback) {
       diffs = await folderCommitService.deepCompareFolder({
         targetCommitId: targetCommit.id,
-        envId,
+        envId: env.id,
         projectId
       });
     } else {
@@ -268,7 +276,7 @@ export const pitServiceFactory = ({
               actor,
               actorOrgId,
               actorAuthMethod,
-              envId,
+              env.id,
               projectId,
               diff.folderPath || ""
             );
@@ -295,7 +303,7 @@ export const pitServiceFactory = ({
     folderId,
     deepRollback,
     message,
-    envId
+    environment
   }: {
     actor: ActorType;
     actorId: string;
@@ -306,7 +314,7 @@ export const pitServiceFactory = ({
     folderId: string;
     deepRollback: boolean;
     message?: string;
-    envId: string;
+    environment: string;
   }) => {
     const { permission: userPermission } = await permissionService.getProjectPermission({
       actor,
@@ -346,16 +354,21 @@ export const pitServiceFactory = ({
       projectId
     });
 
-    if (!targetCommit || targetCommit.folderId !== folderId || targetCommit.envId !== envId) {
+    const env = await projectEnvDAL.findOne({
+      projectId,
+      slug: environment
+    });
+
+    if (!targetCommit || targetCommit.folderId !== folderId || targetCommit.envId !== env.id) {
       throw new NotFoundError({ message: "Target commit not found" });
     }
 
-    if (!latestCommit || latestCommit.envId !== envId) {
+    if (!latestCommit || latestCommit.envId !== env.id) {
       throw new NotFoundError({ message: "Latest commit not found" });
     }
 
     if (deepRollback) {
-      await folderCommitService.deepRollbackFolder(commitId, envId, actorId, actor, projectId, message);
+      await folderCommitService.deepRollbackFolder(commitId, env.id, actorId, actor, projectId, message);
       return { success: true };
     }
 
@@ -426,20 +439,6 @@ export const pitServiceFactory = ({
     projectId: string;
     commitId: string;
   }) => {
-    const { permission: userPermission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-
-    ForbiddenError.from(userPermission).throwUnlessCan(
-      ProjectPermissionCommitsActions.Read,
-      ProjectPermissionSub.Commits
-    );
-
     const commit = await folderCommitService.getCommitById({
       commitId,
       actor,

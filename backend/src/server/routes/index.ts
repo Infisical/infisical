@@ -599,7 +599,9 @@ export const registerRoutes = async (
     folderTreeCheckpointResourcesDAL,
     folderCommitQueueService,
     permissionService,
-    kmsService
+    kmsService,
+    secretTagDAL,
+    resourceMetadataDAL
   });
   const scimService = scimServiceFactory({
     licenseService,
@@ -1527,7 +1529,8 @@ export const registerRoutes = async (
     secretService,
     folderService,
     permissionService,
-    folderDAL
+    folderDAL,
+    projectEnvDAL
   });
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({

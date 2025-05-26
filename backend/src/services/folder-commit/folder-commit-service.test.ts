@@ -153,6 +153,20 @@ describe("folderCommitServiceFactory", () => {
     getProjectPermission: vi.fn().mockResolvedValue({})
   };
 
+  const mockSecretTagDAL = {
+    findSecretTagsByVersionId: vi.fn().mockResolvedValue([]),
+    saveTagsToSecretV2: vi.fn().mockResolvedValue([]),
+    findSecretTagsBySecretId: vi.fn().mockResolvedValue([]),
+    deleteTagsToSecretV2: vi.fn().mockResolvedValue([]),
+    saveTagsToSecretVersionV2: vi.fn().mockResolvedValue([])
+  };
+
+  const mockResourceMetadataDAL = {
+    find: vi.fn().mockResolvedValue([]),
+    insertMany: vi.fn().mockResolvedValue([]),
+    delete: vi.fn().mockResolvedValue([])
+  };
+
   let folderCommitService: TFolderCommitServiceFactory;
 
   beforeEach(() => {
@@ -187,7 +201,9 @@ describe("folderCommitServiceFactory", () => {
       folderCommitQueueService: mockFolderCommitQueueService,
       // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       permissionService: mockPermissionService,
-      kmsService: mockKmsService
+      kmsService: mockKmsService,
+      secretTagDAL: mockSecretTagDAL,
+      resourceMetadataDAL: mockResourceMetadataDAL
     });
   });
 

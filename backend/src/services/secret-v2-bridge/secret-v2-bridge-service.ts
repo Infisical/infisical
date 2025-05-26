@@ -2885,7 +2885,7 @@ export const secretV2BridgeServiceFactory = ({
     envId: string;
     projectId: string;
   }) => {
-    const environment = await projectEnvDAL.findOne({ id: envId });
+    const environment = await projectEnvDAL.findOne({ id: envId, projectId });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,

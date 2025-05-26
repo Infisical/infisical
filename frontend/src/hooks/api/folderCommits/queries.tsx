@@ -31,16 +31,16 @@ export const commitKeys = {
   rollbackPreview: ({
     folderId,
     commitId,
-    envId,
+    envSlug,
     projectId,
     deepRollback
   }: {
     folderId: string;
     commitId: string;
-    envId: string;
+    envSlug: string;
     projectId: string;
     deepRollback: boolean;
-  }) => [{ folderId, commitId, envId, projectId, deepRollback }, "rollback-preview"] as const
+  }) => [{ folderId, commitId, envSlug, projectId, deepRollback }, "rollback-preview"] as const
 };
 
 const fetchFolderCommitsCount = async ({
@@ -111,7 +111,7 @@ export const fetchCommitDetails = async (workspaceId: string, commitId: string) 
 export const fetchRollbackPreview = async (
   folderId: string,
   commitId: string,
-  envId: string,
+  envSlug: string,
   workspaceId: string,
   deepRollback: boolean,
   secretPath: string
@@ -121,7 +121,7 @@ export const fetchRollbackPreview = async (
     {
       params: {
         folderId,
-        envId,
+        environment: envSlug,
         deepRollback,
         secretPath,
         projectId: workspaceId
@@ -137,7 +137,7 @@ const fetchRollback = async (
   workspaceId: string,
   deepRollback: boolean,
   message?: string,
-  envId?: string
+  envSlug?: string
 ) => {
   const { data } = await apiRequest.post<{ success: boolean }>(
     `/api/v1/pit/commits/${commitId}/rollback`,
@@ -145,7 +145,7 @@ const fetchRollback = async (
       folderId,
       deepRollback,
       message,
-      envId,
+      environment: envSlug,
       projectId: workspaceId
     }
   );
@@ -195,7 +195,7 @@ export const useCommitRollback = ({
   deepRollback,
   environment,
   directory,
-  envId
+  envSlug
 }: {
   workspaceId: string;
   commitId: string;
@@ -203,12 +203,12 @@ export const useCommitRollback = ({
   deepRollback: boolean;
   environment: string;
   directory: string;
-  envId: string;
+  envSlug: string;
 }) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (message: string) =>
-      fetchRollback(folderId, commitId, workspaceId, deepRollback, message, envId),
+      fetchRollback(folderId, commitId, workspaceId, deepRollback, message, envSlug),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [
@@ -280,15 +280,15 @@ export const useGetCommitDetails = (workspaceId: string, commitId: string) => {
 export const useGetRollbackPreview = (
   folderId: string,
   commitId: string,
-  envId: string,
+  envSlug: string,
   projectId: string,
   deepRollback: boolean,
   secretPath: string
 ) => {
   return useQuery({
-    queryKey: commitKeys.rollbackPreview({ folderId, commitId, envId, projectId, deepRollback }),
+    queryKey: commitKeys.rollbackPreview({ folderId, commitId, envSlug, projectId, deepRollback }),
     queryFn: () =>
-      fetchRollbackPreview(folderId, commitId, envId, projectId, deepRollback, secretPath),
+      fetchRollbackPreview(folderId, commitId, envSlug, projectId, deepRollback, secretPath),
     enabled: Boolean(folderId) && Boolean(commitId)
   });
 };

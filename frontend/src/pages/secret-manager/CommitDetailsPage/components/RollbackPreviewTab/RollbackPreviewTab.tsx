@@ -127,13 +127,13 @@ export const RollbackPreviewTab = (): JSX.Element => {
     deepRollback,
     environment: envSlug,
     directory: secretPath,
-    envId: currentWorkspace.environments.find((e) => e.slug === envSlug)?.id || ""
+    envSlug
   });
 
   const { data: rollbackChangesNested, isLoading } = useGetRollbackPreview(
     folderId,
     selectedCommitId,
-    currentWorkspace.environments.find((e) => e.slug === envSlug)?.id || "",
+    envSlug,
     currentWorkspace.id,
     deepRollback,
     secretPath

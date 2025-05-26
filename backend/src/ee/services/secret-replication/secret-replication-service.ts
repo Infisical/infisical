@@ -422,7 +422,7 @@ export const secretReplicationServiceFactory = ({
                     return {
                       op: operation,
                       requestId: approvalRequestDoc.id,
-                      metadata: doc.metadata,
+                      metadata: doc.metadata ? JSON.stringify(doc.metadata) : [],
                       secretMetadata: JSON.stringify(doc.secretMetadata),
                       key: doc.key,
                       encryptedValue: doc.encryptedValue,
@@ -454,7 +454,7 @@ export const secretReplicationServiceFactory = ({
                     inputSecrets: locallyCreatedSecrets.map((doc) => {
                       return {
                         type: doc.type,
-                        metadata: doc.metadata,
+                        metadata: doc.metadata ? JSON.stringify(doc.metadata) : [],
                         key: doc.key,
                         encryptedValue: doc.encryptedValue,
                         encryptedComment: doc.encryptedComment,
@@ -484,7 +484,7 @@ export const secretReplicationServiceFactory = ({
                         },
                         data: {
                           type: doc.type,
-                          metadata: doc.metadata,
+                          metadata: doc.metadata ? JSON.stringify(doc.metadata) : [],
                           key: doc.key,
                           encryptedValue: doc.encryptedValue as Buffer,
                           encryptedComment: doc.encryptedComment,

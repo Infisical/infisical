@@ -128,7 +128,7 @@ export const fnSecretBulkInsert = async ({
       userActorId,
       identityActorId,
       actorType,
-      metadata: el.metadata ? JSON.stringify(el.metadata) : null,
+      metadata: el.metadata ? JSON.stringify(el.metadata) : [],
       secretId: newSecretGroupedByKeyName[el.key][0].id
     })),
     tx
@@ -274,7 +274,7 @@ export const fnSecretBulkUpdate = async ({
         userId,
         encryptedComment,
         version,
-        metadata: metadata ? JSON.stringify(metadata) : null,
+        metadata: metadata ? JSON.stringify(metadata) : [],
         reminderNote,
         encryptedValue,
         reminderRepeatDays,

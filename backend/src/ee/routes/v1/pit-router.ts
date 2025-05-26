@@ -202,7 +202,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       }),
       querystring: z.object({
         folderId: z.string().trim(),
-        envId: z.string().trim(),
+        environment: z.string().trim(),
         deepRollback: booleanSchema.default(false),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         projectId: z.string().trim()
@@ -228,7 +228,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         projectId: req.query.projectId,
         commitId: req.params.commitId,
         folderId: req.query.folderId,
-        envId: req.query.envId,
+        environment: req.query.environment,
         deepRollback: req.query.deepRollback,
         secretPath: req.query.secretPath
       });
@@ -243,7 +243,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
             folderId: req.query.folderId,
             deepRollback: req.query.deepRollback,
             diffsCount: result.length.toString(),
-            env: req.query.envId,
+            environment: req.query.environment,
             folderPath: req.query.secretPath
           }
         }
@@ -268,7 +268,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         folderId: z.string().trim(),
         deepRollback: z.boolean().default(false),
         message: z.string().max(256).trim().optional(),
-        envId: z.string().trim(),
+        environment: z.string().trim(),
         projectId: z.string().trim()
       }),
       response: {
@@ -292,7 +292,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         folderId: req.body.folderId,
         deepRollback: req.body.deepRollback,
         message: req.body.message,
-        envId: req.body.envId
+        environment: req.body.environment
       });
 
       await server.services.auditLog.createAuditLog({
@@ -302,7 +302,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
           type: EventType.PIT_ROLLBACK_COMMIT,
           metadata: {
             targetCommitId: req.params.commitId,
-            envId: req.body.envId,
+            environment: req.body.environment,
             folderId: req.body.folderId,
             deepRollback: req.body.deepRollback,
             message: req.body.message || "Rollback to previous commit",
