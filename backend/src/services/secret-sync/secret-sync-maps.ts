@@ -54,5 +54,6 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Windmill]: SecretSyncPlanType.Regular,
   [SecretSync.HCVault]: SecretSyncPlanType.Regular,
   [SecretSync.TeamCity]: SecretSyncPlanType.Regular,
-  [SecretSync.OCIVault]: SecretSyncPlanType.Enterprise
+  [SecretSync.OCIVault]: SecretSyncPlanType.Enterprise,
+  [SecretSync.OnePass]: SecretSyncPlanType.Regular
 };

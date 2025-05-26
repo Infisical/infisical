@@ -42,5 +42,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.HCVault]: AppConnectionPlanType.Regular,
   [AppConnection.LDAP]: AppConnectionPlanType.Regular,
   [AppConnection.TeamCity]: AppConnectionPlanType.Regular,
-  [AppConnection.OCI]: AppConnectionPlanType.Enterprise
+  [AppConnection.OCI]: AppConnectionPlanType.Enterprise,
+  [AppConnection.OnePass]: AppConnectionPlanType.Regular
 };
