@@ -3,10 +3,27 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
+import { CertStatus } from "./certificate-types";
+
 export type TCertificateDALFactory = ReturnType<typeof certificateDALFactory>;
 
 export const certificateDALFactory = (db: TDbClient) => {
   const certificateOrm = ormify(db, TableName.Certificate);
+
+  const findLatestActiveCertForSubscriber = async ({ subscriberId }: { subscriberId: string }) => {
+    try {
+      const cert = await db
+        .replicaNode()(TableName.Certificate)
+        .where({ pkiSubscriberId: subscriberId, status: CertStatus.ACTIVE })
+        .where("notAfter", ">", new Date())
+        .orderBy("notBefore", "desc")
+        .first();
+
+      return cert;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find latest active certificate for subscriber" });
+    }
+  };
 
   const countCertificatesInProject = async ({
     projectId,
@@ -65,6 +82,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   return {
     ...certificateOrm,
     countCertificatesInProject,
-    countCertificatesForPkiSubscriber
+    countCertificatesForPkiSubscriber,
+    findLatestActiveCertForSubscriber
   };
 };

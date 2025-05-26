@@ -1,11 +1,12 @@
 import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
+import RE2 from "re2";
 
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
-import { CrlReason, TBuildCertificateChainDTO, TGetCertificateCredentialsDTO } from "./certificate-types";
+import { CrlReason, TGetCertificateCredentialsDTO } from "./certificate-types";
 
 export const revocationReasonToCrlCode = (crlReason: CrlReason) => {
   switch (crlReason) {
@@ -52,6 +53,12 @@ export const constructPemChainFromCerts = (certificates: x509.X509Certificate[])
     .join("\n")
     .trim();
 
+export const splitPemChain = (pemText: string) => {
+  const re2Pattern = new RE2("-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----", "g");
+
+  return re2Pattern.match(pemText) || [];
+};
+
 /**
  * Return the public and private key of certificate
  * Note: credentials are returned as PEM strings
@@ -94,30 +101,4 @@ export const getCertificateCredentials = async ({
   } catch (error) {
     throw new BadRequestError({ message: `Failed to process private key for certificate with ID '${certId}'` });
   }
-};
-
-// If the certificate was generated after ~05/01/25 it will have a encryptedCertificateChain attached to it's body
-// Otherwise we'll fallback to manually building the chain
-export const buildCertificateChain = async ({
-  caCert,
-  caCertChain,
-  encryptedCertificateChain,
-  kmsService,
-  kmsId
-}: TBuildCertificateChainDTO) => {
-  if (!encryptedCertificateChain && !caCert) {
-    return null;
-  }
-
-  let certificateChain = `${caCert}\n${caCertChain}`.trim();
-
-  if (encryptedCertificateChain) {
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId });
-    const decryptedCertChain = await kmsDecryptor({
-      cipherTextBlob: encryptedCertificateChain
-    });
-    certificateChain = decryptedCertChain.toString();
-  }
-
-  return certificateChain;
 };

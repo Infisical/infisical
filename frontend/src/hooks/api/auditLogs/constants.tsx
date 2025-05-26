@@ -68,6 +68,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.IMPORT_CA_CERT]: "Import CA certificate",
   [EventType.GET_CA_CRL]: "Get CA CRL",
   [EventType.ISSUE_CERT]: "Issue certificate",
+  [EventType.IMPORT_CERT]: "Import certificate",
   [EventType.GET_CERT]: "Get certificate",
   [EventType.DELETE_CERT]: "Delete certificate",
   [EventType.REVOKE_CERT]: "Revoke certificate",
@@ -190,8 +191,16 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_IDENTITY_LDAP_AUTH]: "Retrieved LDAP Auth for identity",
   [EventType.REVOKE_IDENTITY_LDAP_AUTH]: "Revoked LDAP Auth for identity",
 
-  [EventType.UPDATE_ORG]: "Update Organization",
+  [EventType.CREATE_PKI_SUBSCRIBER]: "Create PKI subscriber",
+  [EventType.UPDATE_PKI_SUBSCRIBER]: "Update PKI subscriber",
+  [EventType.DELETE_PKI_SUBSCRIBER]: "Delete PKI subscriber",
+  [EventType.GET_PKI_SUBSCRIBER]: "Get PKI subscriber",
+  [EventType.ISSUE_PKI_SUBSCRIBER_CERT]: "Issue PKI subscriber certificate",
+  [EventType.SIGN_PKI_SUBSCRIBER_CERT]: "Sign PKI subscriber certificate",
+  [EventType.AUTOMATED_RENEW_SUBSCRIBER_CERT]: "Automated renew PKI subscriber certificate",
+  [EventType.LIST_PKI_SUBSCRIBER_CERTS]: "List PKI subscriber certificates",
 
+  [EventType.UPDATE_ORG]: "Update Organization",
   [EventType.CREATE_PROJECT]: "Create Project",
   [EventType.UPDATE_PROJECT]: "Update Project",
   [EventType.DELETE_PROJECT]: "Delete Project"
