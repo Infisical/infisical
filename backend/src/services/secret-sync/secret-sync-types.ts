@@ -1,6 +1,12 @@
 import { Job } from "bullmq";
 
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
+import {
+  TOCIVaultSync,
+  TOCIVaultSyncInput,
+  TOCIVaultSyncListItem,
+  TOCIVaultSyncWithCredentials
+} from "@app/ee/services/secret-sync/oci-vault";
 import { QueueJobs } from "@app/queue";
 import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import {
@@ -73,7 +79,6 @@ import {
   THumanitecSyncListItem,
   THumanitecSyncWithCredentials
 } from "./humanitec";
-import { TOCIVaultSync, TOCIVaultSyncInput, TOCIVaultSyncListItem, TOCIVaultSyncWithCredentials } from "./oci-vault";
 import {
   TTeamCitySync,
   TTeamCitySyncInput,

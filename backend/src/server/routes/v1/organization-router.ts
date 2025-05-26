@@ -312,8 +312,17 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         data: req.body
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.UPDATE_ORG,
+          metadata: req.body
+        }
+      });
+
       return {
-        message: "Successfully changed organization name",
+        message: "Successfully updated organization",
         organization
       };
     }

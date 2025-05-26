@@ -67,3 +67,8 @@ export enum AWSRegion {
   // South America
   SA_EAST_1 = "sa-east-1" // Sao Paulo
 }
+
+export enum AppConnectionPlanType {
+  Enterprise = "enterprise",
+  Regular = "regular"
+}

@@ -66,5 +66,6 @@ export const OCIVaultSyncListItemSchema = z.object({
   name: z.literal("OCI Vault"),
   connection: z.literal(AppConnection.OCI),
   destination: z.literal(SecretSync.OCIVault),
-  canImportSecrets: z.literal(true)
+  canImportSecrets: z.literal(true),
+  enterprise: z.boolean()
 });

@@ -2,7 +2,7 @@ import z from "zod";
 
 import { DiscriminativePick } from "@app/lib/types";
 
-import { AppConnection } from "../app-connection-enums";
+import { AppConnection } from "../../../../services/app-connection/app-connection-enums";
 import {
   CreateOCIConnectionSchema,
   OCIConnectionSchema,

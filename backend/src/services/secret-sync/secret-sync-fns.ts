@@ -1,6 +1,9 @@
 import { AxiosError } from "axios";
 import RE2 from "re2";
 
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
+import { BadRequestError } from "@app/lib/errors";
 import {
   AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
   AwsParameterStoreSyncFns
@@ -11,7 +14,7 @@ import {
 } from "@app/services/secret-sync/aws-secrets-manager";
 import { DATABRICKS_SYNC_LIST_OPTION, databricksSyncFactory } from "@app/services/secret-sync/databricks";
 import { GITHUB_SYNC_LIST_OPTION, GithubSyncFns } from "@app/services/secret-sync/github";
-import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
   TSecretMap,
@@ -30,7 +33,7 @@ import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
-import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "./oci-vault";
+import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
@@ -335,4 +338,19 @@ export const parseSyncErrorMessage = (err: unknown): string => {
   return errorMessage.length <= MAX_MESSAGE_LENGTH
     ? errorMessage
     : `${errorMessage.substring(0, MAX_MESSAGE_LENGTH - 3)}...`;
+};
+
+export const enterpriseSyncCheck = async (
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  secretSync: SecretSync,
+  orgId: string,
+  errorMessage: string
+) => {
+  if (SECRET_SYNC_PLAN_MAP[secretSync] === SecretSyncPlanType.Enterprise) {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.enterpriseSecretSyncs)
+      throw new BadRequestError({
+        message: errorMessage
+      });
+  }
 };

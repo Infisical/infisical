@@ -1,3 +1,4 @@
+import { registerOCIVaultSyncRouter } from "@app/ee/routes/v1/secret-sync-routers/oci-vault-sync-router";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 
 import { registerOnePassSyncRouter } from "./1password-sync-router";
@@ -11,7 +12,6 @@ import { registerGcpSyncRouter } from "./gcp-sync-router";
 import { registerGitHubSyncRouter } from "./github-sync-router";
 import { registerHCVaultSyncRouter } from "./hc-vault-sync-router";
 import { registerHumanitecSyncRouter } from "./humanitec-sync-router";
-import { registerOCIVaultSyncRouter } from "./oci-vault-sync-router";
 import { registerTeamCitySyncRouter } from "./teamcity-sync-router";
 import { registerTerraformCloudSyncRouter } from "./terraform-cloud-sync-router";
 import { registerVercelSyncRouter } from "./vercel-sync-router";

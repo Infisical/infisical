@@ -1,3 +1,9 @@
+import {
+  TOCIConnection,
+  TOCIConnectionConfig,
+  TOCIConnectionInput,
+  TValidateOCIConnectionCredentialsSchema
+} from "@app/ee/services/app-connections/oci";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
@@ -82,12 +88,6 @@ import {
   TValidateLdapConnectionCredentialsSchema
 } from "./ldap";
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
-import {
-  TOCIConnection,
-  TOCIConnectionConfig,
-  TOCIConnectionInput,
-  TValidateOCIConnectionCredentialsSchema
-} from "./oci";
 import {
   TPostgresConnection,
   TPostgresConnectionInput,

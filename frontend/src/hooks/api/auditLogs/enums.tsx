@@ -131,7 +131,6 @@ export enum EventType {
   CREATE_PROJECT_TEMPLATE = "create-project-template",
   UPDATE_PROJECT_TEMPLATE = "update-project-template",
   DELETE_PROJECT_TEMPLATE = "delete-project-template",
-  APPLY_PROJECT_TEMPLATE = "apply-project-template",
   GET_APP_CONNECTIONS = "get-app-connections",
   GET_AVAILABLE_APP_CONNECTIONS_DETAILS = "get-available-app-connections-details",
   GET_APP_CONNECTION = "get-app-connection",
@@ -183,5 +182,11 @@ export enum EventType {
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS = "microsoft-teams-workflow-integration-check-installation-status",
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS = "microsoft-teams-workflow-integration-get-teams",
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET = "microsoft-teams-workflow-integration-get",
-  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list"
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list",
+
+  UPDATE_ORG = "update-org",
+
+  CREATE_PROJECT = "create-project",
+  UPDATE_PROJECT = "update-project",
+  DELETE_PROJECT = "delete-project"
 }
