@@ -2988,7 +2988,7 @@ interface PitCompareFolderStatesEvent {
     diffsCount: string;
     environment: string;
     folderPath: string;
-  }
+  };
 }
 
 interface OrgUpdateEvent {

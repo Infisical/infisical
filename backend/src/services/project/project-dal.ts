@@ -433,8 +433,8 @@ export const projectDALFactory = (db: TDbClient) => {
       .select(selectAllTableCols(TableName.Project))
       .first();
     return project;
-  }
-  
+  };
+
   const countOfOrgProjects = async (orgId: string | null, tx?: Knex) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.Project)
