@@ -537,6 +537,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     try {
       const folders = await (tx || db.replicaNode())(TableName.SecretFolder)
         .where({ parentId })
+        .andWhere({ isReserved: false })
         .select(selectAllTableCols(TableName.SecretFolder));
       return folders;
     } catch (error) {

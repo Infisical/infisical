@@ -415,6 +415,7 @@ export const secretSnapshotServiceFactory = ({
           secretVersionId?: string;
           folderVersionId?: string;
           isUpdate?: boolean;
+          folderId?: string;
         }[] = [];
 
         // this will remove all secrets in current folder except rotated secrets which we ignore
@@ -625,7 +626,8 @@ export const secretSnapshotServiceFactory = ({
             // Folder was only deleted
             commitChanges.push({
               type: CommitType.DELETE,
-              folderVersionId: deletedInfo.versionId
+              folderVersionId: deletedInfo.versionId,
+              folderId: deletedInfo.id
             });
           }
         });

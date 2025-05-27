@@ -478,7 +478,8 @@ export const secretFolderServiceFactory = ({
           changes: [
             {
               type: CommitType.DELETE,
-              folderVersionId: folderVersions[doc.id].id
+              folderVersionId: folderVersions[doc.id].id,
+              folderId: doc.id
             }
           ]
         },

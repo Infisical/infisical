@@ -180,11 +180,24 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findLatestVersion = async (folderId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.SecretFolderVersion)
+        .where(`${TableName.SecretFolderVersion}.folderId`, folderId)
+        .select(selectAllTableCols(TableName.SecretFolderVersion))
+        .first();
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findLatestVersion" });
+    }
+  };
+
   return {
     ...secretFolderVerOrm,
     findLatestFolderVersions,
     findLatestVersionByFolderId,
     pruneExcessVersions,
-    findByIdsWithLatestVersion
+    findByIdsWithLatestVersion,
+    findLatestVersion
   };
 };

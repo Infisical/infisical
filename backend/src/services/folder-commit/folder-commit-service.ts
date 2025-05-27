@@ -30,7 +30,7 @@ import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metad
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
-import * as secretV2BridgeDal from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TFolderCommitDALFactory } from "./folder-commit-dal";
@@ -68,6 +68,7 @@ type TCreateCommitDTO = {
     secretVersionId?: string;
     folderVersionId?: string;
     isUpdate?: boolean;
+    folderId?: string;
   }[];
 };
 
@@ -143,7 +144,7 @@ type TFolderCommitServiceFactoryDep = {
   folderDAL: TSecretFolderDALFactory;
   folderVersionDAL: TSecretFolderVersionDALFactory;
   secretVersionV2BridgeDAL: TSecretVersionV2DALFactory;
-  secretV2BridgeDAL: secretV2BridgeDal.TSecretV2BridgeDALFactory;
+  secretV2BridgeDAL: TSecretV2BridgeDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectByEnvId">;
   folderCommitQueueService?: Pick<
     TFolderCommitQueueServiceFactory,
@@ -676,6 +677,95 @@ export const folderCommitServiceFactory = ({
     }
   };
 
+  const createDeleteCommitForNestedFolders = async ({
+    folderId,
+    actorMetadata,
+    actorType,
+    envId,
+    parentFolderName,
+    step = 1,
+    tx
+  }: {
+    folderId: string;
+    actorMetadata: Record<string, string>;
+    actorType: string;
+    envId: string;
+    parentFolderName: string;
+    step?: number;
+    tx?: Knex;
+  }) => {
+    if (step > 20) {
+      logger.info(`createDeleteCommitForNestedFolders - Max step reached for folder ${folderId}`);
+      return;
+    }
+    logger.info(`Creating delete commit for nested folders ${folderId}`);
+    const folderVersion = await folderVersionDAL.findLatestVersion(folderId, tx);
+    if (!folderVersion) {
+      logger.info(`No folder version found for ${folderId}`);
+      return;
+    }
+    const lastFolderCommit = await folderCommitDAL.findLatestCommit(folderId, undefined, tx);
+    if (!lastFolderCommit) {
+      logger.info(`No commit found for folder ${folderId}`);
+      return;
+    }
+    const folderState = await reconstructFolderState(lastFolderCommit.id, tx);
+    const changes = folderState.map((resource) => ({
+      type: ChangeType.DELETE,
+      folderId: resource.id,
+      folderName: resource.folderName,
+      secretVersionId: resource.type === ResourceType.SECRET ? resource.versionId : undefined,
+      folderVersionId: resource.type === ResourceType.FOLDER ? resource.versionId : undefined,
+      secretKey: resource.secretKey
+    }));
+    logger.info(`Found ${changes.length} changes for ${folderId}`);
+
+    await Promise.all(
+      changes
+        .filter((change) => change.type === ChangeType.DELETE && change.folderVersionId)
+        .map(async (change) => {
+          await createDeleteCommitForNestedFolders({
+            folderId: change.folderId,
+            actorMetadata,
+            actorType,
+            envId,
+            parentFolderName: folderVersion.name,
+            step: step + 1,
+            tx
+          });
+        })
+    );
+
+    const newCommit = await folderCommitDAL.create(
+      {
+        actorMetadata,
+        actorType,
+        message: `Parent folder ${parentFolderName} deleted`,
+        folderId,
+        envId
+      },
+      tx
+    );
+
+    const batchSize = 500;
+    const chunks = chunkArray(changes, batchSize);
+
+    await Promise.all(
+      chunks.map(async (chunk) => {
+        await folderCommitChangesDAL.insertMany(
+          chunk.map((change) => ({
+            folderCommitId: newCommit.id,
+            changeType: CommitType.DELETE,
+            secretVersionId: change.secretVersionId,
+            folderVersionId: change.folderVersionId,
+            isUpdate: false
+          })),
+          tx
+        );
+      })
+    );
+  };
+
   /**
    * Creates a new commit with the provided changes
    */
@@ -697,6 +787,21 @@ export const folderCommitServiceFactory = ({
       if (!folder) {
         throw new NotFoundError({ message: `Folder with ID ${data.folderId} not found` });
       }
+
+      await Promise.all(
+        data.changes.map(async (change) => {
+          if (change.type === ChangeType.DELETE && change.folderId) {
+            await createDeleteCommitForNestedFolders({
+              folderId: change.folderId,
+              actorMetadata: metadata,
+              actorType: data.actor.type,
+              envId: folder.envId,
+              parentFolderName: folder.name,
+              tx
+            });
+          }
+        })
+      );
 
       const newCommit = await folderCommitDAL.create(
         {
@@ -1102,7 +1207,8 @@ export const folderCommitServiceFactory = ({
 
             commitChanges.push({
               type: ChangeType.DELETE,
-              folderVersionId: change.versionId
+              folderVersionId: change.versionId,
+              folderId: change.id
             });
             break;
 

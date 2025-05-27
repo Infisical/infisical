@@ -12,8 +12,8 @@ import {
 } from "@app/context";
 import {
   PermissionConditionOperators,
-  ProjectPermissionCommitsActions,
   ProjectPermissionApprovalActions,
+  ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
