@@ -712,22 +712,6 @@ export const folderCommitServiceFactory = ({
     }));
     logger.info(`Found ${changes.length} changes for ${folderId}`);
 
-    await Promise.all(
-      changes
-        .filter((change) => change.type === ChangeType.DELETE && change.folderVersionId)
-        .map(async (change) => {
-          await createDeleteCommitForNestedFolders({
-            folderId: change.folderId,
-            actorMetadata,
-            actorType,
-            envId,
-            parentFolderName: folderVersion.name,
-            step: step + 1,
-            tx
-          });
-        })
-    );
-
     const newCommit = await folderCommitDAL.create(
       {
         actorMetadata,
@@ -756,6 +740,22 @@ export const folderCommitServiceFactory = ({
         );
       })
     );
+
+    await Promise.all(
+      changes
+        .filter((change) => change.type === ChangeType.DELETE && change.folderVersionId)
+        .map(async (change) => {
+          await createDeleteCommitForNestedFolders({
+            folderId: change.folderId,
+            actorMetadata,
+            actorType,
+            envId,
+            parentFolderName: folderVersion.name,
+            step: step + 1,
+            tx
+          });
+        })
+    );
   };
 
   /**
@@ -779,21 +779,6 @@ export const folderCommitServiceFactory = ({
       if (!folder) {
         throw new NotFoundError({ message: `Folder with ID ${data.folderId} not found` });
       }
-
-      await Promise.all(
-        data.changes.map(async (change) => {
-          if (change.type === ChangeType.DELETE && change.folderId) {
-            await createDeleteCommitForNestedFolders({
-              folderId: change.folderId,
-              actorMetadata: metadata,
-              actorType: data.actor.type,
-              envId: folder.envId,
-              parentFolderName: folder.name,
-              tx
-            });
-          }
-        })
-      );
 
       const newCommit = await folderCommitDAL.create(
         {
@@ -821,6 +806,21 @@ export const folderCommitServiceFactory = ({
             })),
             tx
           );
+        })
+      );
+
+      await Promise.all(
+        data.changes.map(async (change) => {
+          if (change.type === ChangeType.DELETE && change.folderId) {
+            await createDeleteCommitForNestedFolders({
+              folderId: change.folderId,
+              actorMetadata: metadata,
+              actorType: data.actor.type,
+              envId: folder.envId,
+              parentFolderName: folder.name,
+              tx
+            });
+          }
         })
       );
 
@@ -1640,7 +1640,6 @@ export const folderCommitServiceFactory = ({
       changes: diff,
       folderPath: folderPath || ""
     });
-
     await Promise.all(
       diff.map(async (change) => {
         if (change.type === ResourceType.FOLDER && change.changeType === ChangeType.CREATE) {
