@@ -265,7 +265,7 @@ const envSchema = z
     ),
 
     /* INTERNAL ----------------------------------------------------------------------------- */
-    INTERNAL_REGION: zpStr(z.string().optional())
+    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
   })
   // To ensure that basic encryption is always possible.
   .refine(
