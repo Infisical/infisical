@@ -1586,7 +1586,12 @@ export const folderCommitServiceFactory = ({
     const folders = await folderDAL.findByProjectId(projectId, tx);
     const sortedFolders = sortFoldersByHierarchy(folders);
 
-    await Promise.all(sortedFolders.map((folder) => initializeFolder(folder.id, tx)));
+    const batchSize = 5;
+    const chunks = chunkArray(sortedFolders, batchSize);
+
+    for (const chunk of chunks) {
+      await Promise.all(chunk.map((folder) => initializeFolder(folder.id, tx)));
+    }
 
     const envIds = [...new Set(folders.map((folder) => folder.envId))];
     await Promise.all(
