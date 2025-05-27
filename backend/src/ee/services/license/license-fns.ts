@@ -60,12 +60,19 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   enterpriseAppConnections: false
 });
 
-export const setupLicenseRequestWithStore = (baseURL: string, refreshUrl: string, licenseKey: string) => {
+export const setupLicenseRequestWithStore = (
+  baseURL: string,
+  refreshUrl: string,
+  licenseKey: string,
+  region?: string
+) => {
   let token: string;
   const licenseReq = axios.create({
     baseURL,
-    timeout: 35 * 1000
-    // signal: AbortSignal.timeout(60 * 1000)
+    timeout: 35 * 1000,
+    headers: {
+      "x-region": region
+    }
   });
 
   const refreshLicense = async () => {

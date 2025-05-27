@@ -245,7 +245,6 @@ const envSchema = z
     DATADOG_HOSTNAME: zpStr(z.string().optional()),
 
     /* CORS ----------------------------------------------------------------------------- */
-
     CORS_ALLOWED_ORIGINS: zpStr(
       z
         .string()
@@ -255,7 +254,6 @@ const envSchema = z
           return JSON.parse(val) as string[];
         })
     ),
-
     CORS_ALLOWED_HEADERS: zpStr(
       z
         .string()
@@ -264,7 +262,10 @@ const envSchema = z
           if (!val) return undefined;
           return JSON.parse(val) as string[];
         })
-    )
+    ),
+
+    /* INTERNAL ----------------------------------------------------------------------------- */
+    INTERNAL_REGION: zpStr(z.string().optional())
   })
   // To ensure that basic encryption is always possible.
   .refine(
