@@ -263,6 +263,14 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
               </div>
             </div>
 
+            {!isAdmin && (
+              <div className="mb-2 text-sm text-red-500">
+                You cannot perform this upgrade because you are not an organization admin.
+                <br />
+                (Your current role:{" "}
+                <span className="font-semibold">{membership?.role ?? "Unknown"}</span>)
+              </div>
+            )}
             <form onSubmit={handleSubmit(handlePrivilegeSystemUpgrade)}>
               <div className="mt-6 flex items-center justify-end gap-4">
                 <button
