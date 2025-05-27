@@ -1166,12 +1166,12 @@ export const folderCommitServiceFactory = ({
           case "update":
             if (change.versionId) {
               const latestVersionDetails = await folderVersionDAL.findByIdsWithLatestVersion(
+                [change.id],
                 [change.versionId],
-                undefined,
                 tx
               );
               if (latestVersionDetails && Object.keys(latestVersionDetails).length > 0) {
-                const versionDetails = latestVersionDetails[0];
+                const versionDetails = Object.values(latestVersionDetails)[0];
                 await folderDAL.updateById(
                   change.id,
                   {
@@ -1216,7 +1216,6 @@ export const folderCommitServiceFactory = ({
             throw new BadRequestError({ message: `Unknown change type: ${change.changeType}` });
         }
       }
-
       return commitChanges;
     };
 
