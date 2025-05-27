@@ -110,9 +110,9 @@ const baseResourceChangeSchema = z.object({
 // Secret resource change schema
 const secretResourceChangeSchema = baseResourceChangeSchema.extend({
   type: z.literal("secret"),
-  secretKey: z.string().optional(),
-  secretVersion: z.union([z.string(), z.number()]).optional(),
-  secretId: z.string().optional(),
+  secretKey: z.string(),
+  secretVersion: z.union([z.string(), z.number()]),
+  secretId: z.string(),
   versions: z
     .array(
       z.object({
@@ -132,8 +132,8 @@ const secretResourceChangeSchema = baseResourceChangeSchema.extend({
 // Folder resource change schema
 const folderResourceChangeSchema = baseResourceChangeSchema.extend({
   type: z.literal("folder"),
-  folderName: z.string().optional(),
-  folderVersion: z.union([z.string(), z.number()]).optional(),
+  folderName: z.string(),
+  folderVersion: z.union([z.string(), z.number()]),
   versions: z.array(folderVersionSchema).optional()
 });
 

@@ -454,11 +454,23 @@ export const pitServiceFactory = ({
 
     const response = await folderCommitService.reconstructFolderState(commitId);
 
-    return response.map((item) => ({
-      ...item,
-      secretVersion: item.secretVersion ? Number(item.secretVersion) : undefined,
-      folderVersion: item.folderVersion ? Number(item.folderVersion) : undefined
-    }));
+    return response.map((item) => {
+      if (item.type === ResourceType.SECRET) {
+        return {
+          ...item,
+          secretVersion: Number(item.secretVersion)
+        };
+      }
+
+      if (item.type === ResourceType.FOLDER) {
+        return {
+          ...item,
+          folderVersion: Number(item.folderVersion)
+        };
+      }
+
+      return item;
+    });
   };
 
   return {

@@ -93,9 +93,9 @@ type BaseChange = {
 
 type SecretChange = BaseChange & {
   type: ResourceType.SECRET;
-  secretKey?: string;
-  secretVersion?: string;
-  secretId?: string;
+  secretKey: string;
+  secretVersion: string;
+  secretId: string;
   versions?: {
     secretKey?: string;
     secretComment?: string;
@@ -111,11 +111,29 @@ type SecretChange = BaseChange & {
 
 type FolderChange = BaseChange & {
   type: ResourceType.FOLDER;
-  folderName?: string;
-  folderVersion?: string;
+  folderName: string;
+  folderVersion: string;
   versions?: {
     name: string;
   }[];
+};
+
+type SecretTargetChange = {
+  type: ResourceType.SECRET;
+  id: string;
+  versionId: string;
+  secretKey: string;
+  secretVersion: string;
+  fromVersion?: string;
+};
+
+type FolderTargetChange = {
+  type: ResourceType.FOLDER;
+  id: string;
+  versionId: string;
+  folderName: string;
+  folderVersion: string;
+  fromVersion?: string;
 };
 
 export type ResourceChange = SecretChange | FolderChange;
@@ -291,17 +309,7 @@ export const folderCommitServiceFactory = ({
   const reconstructFolderState = async (
     folderCommitId: string,
     tx?: Knex
-  ): Promise<
-    {
-      type: string;
-      id: string;
-      versionId: string;
-      secretKey?: string;
-      secretVersion?: string;
-      folderName?: string;
-      folderVersion?: string;
-    }[]
-  > => {
+  ): Promise<(SecretTargetChange | FolderTargetChange)[]> => {
     const targetCommit = await folderCommitDAL.findById(folderCommitId, tx);
     if (!targetCommit) {
       throw new NotFoundError({ message: `Commit with ID ${folderCommitId} not found` });
@@ -318,18 +326,7 @@ export const folderCommitServiceFactory = ({
 
     const checkpointResources = await folderCheckpointResourcesDAL.findByCheckpointId(nearestCheckpoint.id, tx);
 
-    const folderState: Record<
-      string,
-      {
-        type: string;
-        id: string;
-        versionId: string;
-        secretKey?: string;
-        secretVersion?: string;
-        folderName?: string;
-        folderVersion?: string;
-      }
-    > = {};
+    const folderState: Record<string, SecretTargetChange | FolderTargetChange> = {};
 
     // Add all checkpoint resources to initial state
     checkpointResources.forEach((resource) => {
@@ -340,7 +337,7 @@ export const folderCommitServiceFactory = ({
           versionId: resource.secretVersionId,
           secretKey: resource.secretKey,
           secretVersion: resource.secretVersion
-        };
+        } as SecretTargetChange;
       } else if (resource.folderVersionId && resource.referencedFolderId) {
         folderState[`folder-${resource.referencedFolderId}`] = {
           type: ResourceType.FOLDER,
@@ -348,7 +345,7 @@ export const folderCommitServiceFactory = ({
           versionId: resource.folderVersionId,
           folderName: resource.folderName,
           folderVersion: resource.folderVersion
-        };
+        } as FolderTargetChange;
       }
     });
 
@@ -375,7 +372,7 @@ export const folderCommitServiceFactory = ({
               versionId: change.secretVersionId,
               secretKey: change.secretKey,
               secretVersion: change.secretVersion
-            };
+            } as SecretTargetChange;
           } else if (change.changeType.toLowerCase() === "delete") {
             delete folderState[key];
           }
@@ -389,7 +386,7 @@ export const folderCommitServiceFactory = ({
               versionId: change.folderVersionId,
               folderName: change.folderName,
               folderVersion: change.folderVersion
-            };
+            } as FolderTargetChange;
           } else if (change.changeType.toLowerCase() === "delete") {
             delete folderState[key];
           }
@@ -463,19 +460,7 @@ export const folderCommitServiceFactory = ({
     const targetState = await reconstructFolderState(targetCommitId, tx);
 
     // Create lookup maps for easier comparison
-    const currentMap: Record<
-      string,
-      {
-        type: string;
-        id: string;
-        versionId: string;
-        secretKey?: string;
-        secretVersion?: string;
-        folderName?: string;
-        folderVersion?: string;
-        fromVersion?: string;
-      }
-    > = {};
+    const currentMap: Record<string, SecretTargetChange | FolderTargetChange> = {};
     const targetMap: Record<
       string,
       {
@@ -538,27 +523,32 @@ export const folderCommitServiceFactory = ({
       } else if (currentResource.versionId !== targetResource.versionId) {
         // Resource was updated
         if (targetResource.type === ResourceType.SECRET) {
+          const secretCurrentResource = currentResource as SecretTargetChange;
+          const secretTargetResource = targetResource as SecretTargetChange;
           differences.push({
             type: ResourceType.SECRET,
-            id: targetResource.id,
-            versionId: targetResource.versionId,
+            id: secretTargetResource.id,
+            versionId: secretTargetResource.versionId,
             changeType: ChangeType.UPDATE,
             commitId: targetCommit.commitId,
-            secretKey: targetResource.secretKey,
-            secretVersion: targetResource.secretVersion,
-            secretId: targetResource.id,
-            fromVersion: currentResource.secretVersion
+            secretKey: secretTargetResource.secretKey,
+            secretVersion: secretTargetResource.secretVersion,
+            secretId: secretTargetResource.id,
+            fromVersion: secretCurrentResource.secretVersion
           });
         } else if (targetResource.type === ResourceType.FOLDER) {
+          const folderCurrentResource = currentResource as FolderTargetChange;
+          const folderTargetResource = targetResource as FolderTargetChange;
+
           differences.push({
             type: ResourceType.FOLDER,
-            id: targetResource.id,
-            versionId: targetResource.versionId,
+            id: folderTargetResource.id,
+            versionId: folderTargetResource.versionId,
             changeType: ChangeType.UPDATE,
             commitId: targetCommit.commitId,
-            folderName: targetResource.folderName,
-            folderVersion: targetResource.folderVersion,
-            fromVersion: currentResource.folderVersion
+            folderName: folderTargetResource.folderName,
+            folderVersion: folderTargetResource.folderVersion,
+            fromVersion: folderCurrentResource.folderVersion
           });
         }
       }
@@ -569,27 +559,29 @@ export const folderCommitServiceFactory = ({
       if (!currentMap[key]) {
         const targetResource = targetMap[key];
         if (targetResource.type === ResourceType.SECRET) {
+          const secretTargetResource = targetResource as SecretTargetChange;
           differences.push({
             type: ResourceType.SECRET,
-            id: targetResource.id,
-            versionId: targetResource.versionId,
+            id: secretTargetResource.id,
+            versionId: secretTargetResource.versionId,
             changeType: ChangeType.CREATE,
             commitId: targetCommit.commitId,
             createdAt: targetCommit.createdAt,
-            secretKey: targetResource.secretKey,
-            secretVersion: targetResource.secretVersion,
-            secretId: targetResource.id
+            secretKey: secretTargetResource.secretKey,
+            secretVersion: secretTargetResource.secretVersion,
+            secretId: secretTargetResource.id
           });
         } else if (targetResource.type === ResourceType.FOLDER) {
+          const folderTargetResource = targetResource as FolderTargetChange;
           differences.push({
             type: ResourceType.FOLDER,
-            id: targetResource.id,
-            versionId: targetResource.versionId,
+            id: folderTargetResource.id,
+            versionId: folderTargetResource.versionId,
             changeType: ChangeType.CREATE,
             commitId: targetCommit.commitId,
             createdAt: targetCommit.createdAt,
-            folderName: targetResource.folderName,
-            folderVersion: targetResource.folderVersion
+            folderName: folderTargetResource.folderName,
+            folderVersion: folderTargetResource.folderVersion
           });
         }
       }
@@ -713,10 +705,10 @@ export const folderCommitServiceFactory = ({
     const changes = folderState.map((resource) => ({
       type: ChangeType.DELETE,
       folderId: resource.id,
-      folderName: resource.folderName,
+      folderName: resource.type === ResourceType.FOLDER ? resource.folderName : undefined,
       secretVersionId: resource.type === ResourceType.SECRET ? resource.versionId : undefined,
       folderVersionId: resource.type === ResourceType.FOLDER ? resource.versionId : undefined,
-      secretKey: resource.secretKey
+      secretKey: resource.type === ResourceType.SECRET ? resource.secretKey : undefined
     }));
     logger.info(`Found ${changes.length} changes for ${folderId}`);
 

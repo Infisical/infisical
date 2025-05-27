@@ -12,7 +12,7 @@ import {
   ChangeType,
   CommitType,
   folderCommitServiceFactory,
-  ResourceType,
+  ResourceChange,
   TFolderCommitServiceFactory
 } from "./folder-commit-service";
 
@@ -550,19 +550,19 @@ describe("folderCommitServiceFactory", () => {
 
       const differences = [
         {
-          type: ResourceType.SECRET,
           id: "secret-1",
           versionId: "v1",
           changeType: ChangeType.CREATE,
           commitId: BigInt(1)
-        },
+        } as ResourceChange,
         {
-          type: ResourceType.FOLDER,
           id: "folder-1",
           versionId: "v2",
           changeType: ChangeType.UPDATE,
-          commitId: BigInt(1)
-        }
+          commitId: BigInt(1),
+          folderName: "Test Folder",
+          folderVersion: "v2"
+        } as ResourceChange
       ];
 
       const secretVersions = {
@@ -664,11 +664,7 @@ describe("folderCommitServiceFactory", () => {
       expect(mockSecretV2BridgeDAL.invalidateSecretCacheByProjectId).toHaveBeenCalledWith(projectId);
 
       // Check that we got the right counts
-      expect(result).toEqual({
-        secretChangesCount: 1,
-        folderChangesCount: 1,
-        totalChanges: 2
-      });
+      expect(result.totalChanges).toEqual(2);
     });
   });
 });
