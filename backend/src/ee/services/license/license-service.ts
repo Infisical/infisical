@@ -77,13 +77,15 @@ export const licenseServiceFactory = ({
   const licenseServerCloudApi = setupLicenseRequestWithStore(
     appCfg.LICENSE_SERVER_URL || "",
     LICENSE_SERVER_CLOUD_LOGIN,
-    appCfg.LICENSE_SERVER_KEY || ""
+    appCfg.LICENSE_SERVER_KEY || "",
+    appCfg.INTERNAL_REGION
   );
 
   const licenseServerOnPremApi = setupLicenseRequestWithStore(
     appCfg.LICENSE_SERVER_URL || "",
     LICENSE_SERVER_ON_PREM_LOGIN,
-    appCfg.LICENSE_KEY || ""
+    appCfg.LICENSE_KEY || "",
+    appCfg.INTERNAL_REGION
   );
 
   const syncLicenseKeyOnPremFeatures = async (shouldThrow: boolean = false) => {
