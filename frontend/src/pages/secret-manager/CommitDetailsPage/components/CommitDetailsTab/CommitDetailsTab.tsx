@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { faAngleDown } from "@fortawesome/free-solid-svg-icons";
+import { faAngleDown, faCodeBranch, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { DropdownMenuItem } from "@radix-ui/react-dropdown-menu";
 import { useSearch } from "@tanstack/react-router";
@@ -262,7 +262,7 @@ export const CommitDetailsTab = ({
                   )}
                 </b>
                 {parsedCommitDetails.changes?.isLatest && (
-                  <span className="ml-1 italic text-gray-400">(Current)</span>
+                  <span className="ml-1 italic text-gray-400">(Latest)</span>
                 )}
               </p>
             </div>
@@ -291,26 +291,48 @@ export const CommitDetailsTab = ({
                   <DropdownMenuContent
                     align="end"
                     sideOffset={2}
-                    className="animate-in fade-in-50 zoom-in-95 min-w-[200px] p-1"
+                    className="animate-in fade-in-50 zoom-in-95 min-w-[240px] rounded-md bg-mineshaft-800 p-1 shadow-lg"
                     style={{ marginTop: "0" }}
                   >
                     {!parsedCommitDetails.changes.isLatest && (
                       <DropdownMenuItem
-                        className="h-10 w-full cursor-pointer px-3 py-2 text-sm transition-colors hover:bg-mineshaft-700"
+                        className="group cursor-pointer rounded-md px-3 py-3 transition-colors hover:bg-mineshaft-700"
                         onClick={() => goToRollbackPreview()}
                       >
-                        <div className="flex w-full items-center justify-start">
-                          <span>Restore entire folder</span>
+                        <div className="flex items-center space-x-3">
+                          <FontAwesomeIcon
+                            icon={faCodeBranch}
+                            className="mt-1 text-gray-300 group-hover:text-white"
+                          />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-white">
+                              Restore to this commit
+                            </span>
+                            <span className="max-w-[180px] whitespace-normal break-words text-xs leading-snug text-gray-400">
+                              Restore the folder as it was at this time
+                            </span>
+                          </div>
                         </div>
                       </DropdownMenuItem>
                     )}
 
                     <DropdownMenuItem
-                      className="h-10 w-full cursor-pointer px-3 py-2 text-sm transition-colors hover:bg-mineshaft-700"
+                      className="group cursor-pointer rounded-md px-3 py-3 transition-colors hover:bg-mineshaft-700"
                       onClick={() => handlePopUpOpen("revertChanges")}
                     >
-                      <div className="flex w-full items-center justify-start">
-                        <span>Revert commit changes</span>
+                      <div className="flex items-center space-x-3">
+                        <FontAwesomeIcon
+                          icon={faRotateLeft}
+                          className="mt-1 text-gray-300 group-hover:text-white"
+                        />
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-white">
+                            Revert commit changes
+                          </span>
+                          <span className="max-w-[180px] whitespace-normal break-words text-xs leading-snug text-gray-400">
+                            Create a new commit that undoes the changes in this commit
+                          </span>
+                        </div>
                       </div>
                     </DropdownMenuItem>
                   </DropdownMenuContent>

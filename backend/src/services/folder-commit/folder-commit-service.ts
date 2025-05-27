@@ -2029,7 +2029,8 @@ export const folderCommitServiceFactory = ({
       },
       folderId: commitToRevert.folderId,
       projectId,
-      reconstructNewFolders: false
+      reconstructNewFolders: true,
+      reconstructUpToCommit: commitToRevert.commitId.toString()
     });
 
     return {
