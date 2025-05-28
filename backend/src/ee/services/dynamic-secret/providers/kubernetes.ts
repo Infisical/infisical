@@ -62,31 +62,21 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
     const serviceAccountGetCallback = async (host: string, port: number) => {
       const baseUrl = port ? `${host}:${port}` : host;
 
-      try {
-        await axios.get(
-          `${baseUrl}/api/v1/namespaces/${providerInputs.namespace}/serviceaccounts/${providerInputs.serviceAccountName}`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${providerInputs.clusterToken}`
-            },
-            signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-            timeout: EXTERNAL_REQUEST_TIMEOUT,
-            httpsAgent: new https.Agent({
-              ca: providerInputs.ca,
-              rejectUnauthorized: providerInputs.sslEnabled
-            })
-          }
-        );
-        return true;
-      } catch (err) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        if (axios.isAxiosError(err) && err.response?.data.message) {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          throw new Error(`Failed to validate connection: ${err.response.data.message}`);
+      await axios.get(
+        `${baseUrl}/api/v1/namespaces/${providerInputs.namespace}/serviceaccounts/${providerInputs.serviceAccountName}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${providerInputs.clusterToken}`
+          },
+          signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
+          timeout: EXTERNAL_REQUEST_TIMEOUT,
+          httpsAgent: new https.Agent({
+            ca: providerInputs.ca,
+            rejectUnauthorized: providerInputs.sslEnabled
+          })
         }
-        throw err;
-      }
+      );
     };
 
     const url = new URL(providerInputs.url);
