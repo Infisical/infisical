@@ -198,15 +198,17 @@ export const orgAdminServiceFactory = ({
       )
       .map((el) => el.user.email!);
 
-    await smtpService.sendMail({
-      template: SmtpTemplates.OrgAdminProjectDirectAccess,
-      recipients: filteredProjectMembers,
-      subjectLine: "Organization Admin Project Direct Access Issued",
-      substitutions: {
-        projectName: project.name,
-        email: projectMembers.find((el) => el.userId === actorId)?.user?.username
-      }
-    });
+    if (filteredProjectMembers.length) {
+      await smtpService.sendMail({
+        template: SmtpTemplates.OrgAdminProjectDirectAccess,
+        recipients: filteredProjectMembers,
+        subjectLine: "Organization Admin Project Direct Access Issued",
+        substitutions: {
+          projectName: project.name,
+          email: projectMembers.find((el) => el.userId === actorId)?.user?.username
+        }
+      });
+    }
     return { isExistingMember: false, membership: updatedMembership };
   };
 
