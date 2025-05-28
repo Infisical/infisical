@@ -359,6 +359,7 @@ export const accessApprovalRequestServiceFactory = ({
 
     const isApprover = policy.approvers.find((approver) => approver.userId === actorId);
 
+    // If user is (not an approver OR cant self approve) AND can't bypass policy
     if ((!isApprover || (!policy.allowedSelfApprovals && isSelfApproval)) && cannotBypassUnderSoftEnforcement) {
       throw new BadRequestError({
         message: "Failed to review access approval request. Users are not authorized to review their own request."

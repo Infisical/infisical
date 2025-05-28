@@ -33,13 +33,15 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             z.object({ type: z.literal(ApproverType.User), id: z.string().optional(), name: z.string().optional() })
           ])
           .array()
-          .min(1, { message: "At least one approver should be provided" }),
+          .min(1, { message: "At least one approver should be provided" })
+          .max(100, "Cannot have more than 100 approvers"),
         bypassers: z
           .discriminatedUnion("type", [
             z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
             z.object({ type: z.literal(BypasserType.User), id: z.string().optional(), name: z.string().optional() })
           ])
           .array()
+          .max(100, "Cannot have more than 100 bypassers")
           .optional(),
         approvals: z.number().min(1).default(1),
         enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
@@ -85,13 +87,15 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             z.object({ type: z.literal(ApproverType.User), id: z.string().optional(), name: z.string().optional() })
           ])
           .array()
-          .min(1, { message: "At least one approver should be provided" }),
+          .min(1, { message: "At least one approver should be provided" })
+          .max(100, "Cannot have more than 100 approvers"),
         bypassers: z
           .discriminatedUnion("type", [
             z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
             z.object({ type: z.literal(BypasserType.User), id: z.string().optional(), name: z.string().optional() })
           ])
           .array()
+          .max(100, "Cannot have more than 100 bypassers")
           .optional(),
         approvals: z.number().min(1).default(1),
         secretPath: z
