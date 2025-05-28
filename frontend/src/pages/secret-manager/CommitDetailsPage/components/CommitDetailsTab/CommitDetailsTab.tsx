@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { faAngleDown, faCodeBranch, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
+import { faAngleDown } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { DropdownMenuItem } from "@radix-ui/react-dropdown-menu";
 import { useSearch } from "@tanstack/react-router";
@@ -305,7 +305,8 @@ export const CommitDetailsTab = ({
                               Roll back to this commit
                             </span>
                             <span className="max-w-[180px] whitespace-normal break-words text-xs leading-snug text-gray-400">
-                              Return this folder to its exact state at the time of this commit, discarding all other changes made after it
+                              Return this folder to its exact state at the time of this commit,
+                              discarding all other changes made after it
                             </span>
                           </div>
                         </div>
