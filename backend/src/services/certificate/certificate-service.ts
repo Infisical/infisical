@@ -8,6 +8,7 @@ import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { NotFoundError } from "@app/lib/errors";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -29,7 +30,6 @@ import {
   TGetCertPrivateKeyDTO,
   TRevokeCertDTO
 } from "./certificate-types";
-import { NotFoundError } from "@app/lib/errors";
 
 type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find">;

@@ -1,6 +1,6 @@
 {
   "name": "Infisical",
-  "openapi": "https://app.infisical.com/api/docs/json",
+  "openapi": "http://localhost:8080/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
@@ -478,6 +478,7 @@
             "integrations/app-connections/databricks",
             "integrations/app-connections/gcp",
             "integrations/app-connections/github",
+            "integrations/app-connections/github-radar",
             "integrations/app-connections/hashicorp-vault",
             "integrations/app-connections/humanitec",
             "integrations/app-connections/ldap",
@@ -1009,6 +1010,13 @@
           ]
         },
         {
+          "group": "Secret Scanning",
+          "pages": [
+            "api-reference/endpoints/secret-scanning/data-sources/list",
+            "api-reference/endpoints/secret-scanning/data-sources/options"
+          ]
+        },
+        {
           "group": "Identity Specific Privilege",
           "pages": [
             {
@@ -1146,6 +1154,18 @@
                 "api-reference/endpoints/app-connections/github/create",
                 "api-reference/endpoints/app-connections/github/update",
                 "api-reference/endpoints/app-connections/github/delete"
+              ]
+            },
+            {
+              "group": "GitHub Radar",
+              "pages": [
+                "api-reference/endpoints/app-connections/github-radar/list",
+                "api-reference/endpoints/app-connections/github-radar/available",
+                "api-reference/endpoints/app-connections/github-radar/get-by-id",
+                "api-reference/endpoints/app-connections/github-radar/get-by-name",
+                "api-reference/endpoints/app-connections/github-radar/create",
+                "api-reference/endpoints/app-connections/github-radar/update",
+                "api-reference/endpoints/app-connections/github-radar/delete"
               ]
             },
             {

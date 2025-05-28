@@ -86,6 +86,10 @@ import { gitAppInstallSessionDALFactory } from "@app/ee/services/secret-scanning
 import { secretScanningDALFactory } from "@app/ee/services/secret-scanning/secret-scanning-dal";
 import { secretScanningQueueFactory } from "@app/ee/services/secret-scanning/secret-scanning-queue";
 import { secretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
+import { SECRET_SCANNING_WEBHOOK_PATH } from "@app/ee/services/secret-scanning-v2/github";
+import { secretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
+import { secretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
+import { secretScanningV2ServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-service";
 import { secretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { snapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
 import { snapshotFolderDALFactory } from "@app/ee/services/secret-snapshot/snapshot-folder-dal";
@@ -112,6 +116,7 @@ import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
+import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
@@ -299,6 +304,9 @@ export const registerRoutes = async (
 ) => {
   const appCfg = getConfig();
   await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
+  await server.register(registerSecretScanningV2Webhooks, {
+    prefix: SECRET_SCANNING_WEBHOOK_PATH
+  });
 
   // db layers
   const userDAL = userDALFactory(db);
@@ -444,6 +452,7 @@ export const registerRoutes = async (
   const secretRotationV2DAL = secretRotationV2DALFactory(db, folderDAL);
   const microsoftTeamsIntegrationDAL = microsoftTeamsIntegrationDALFactory(db);
   const projectMicrosoftTeamsConfigDAL = projectMicrosoftTeamsConfigDALFactory(db);
+  const secretScanningV2DAL = secretScanningV2DALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -1694,6 +1703,28 @@ export const registerRoutes = async (
     smtpService
   });
 
+  const secretScanningV2Queue = await secretScanningV2QueueServiceFactory({
+    secretScanningV2DAL,
+    queueService,
+    projectDAL,
+    projectMembershipDAL,
+    smtpService,
+    kmsService
+  });
+
+  const secretScanningV2Service = secretScanningV2ServiceFactory({
+    appConnectionDAL,
+    permissionService,
+    appConnectionService,
+    licenseService,
+    auditLogService,
+    keyStore,
+    queueService,
+    secretScanningV2DAL,
+    secretScanningV2Queue,
+    kmsService
+  });
+
   await superAdminService.initServerCfg();
 
   // setup the communication with license key server
@@ -1805,7 +1836,8 @@ export const registerRoutes = async (
     secretRotationV2: secretRotationV2Service,
     microsoftTeams: microsoftTeamsService,
     assumePrivileges: assumePrivilegeService,
-    githubOrgSync: githubOrgSyncConfigService
+    githubOrgSync: githubOrgSyncConfigService,
+    secretScanningV2: secretScanningV2Service
   });
 
   const cronJobs: CronJob[] = [];

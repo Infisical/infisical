@@ -1,5 +1,6 @@
 export enum AppConnection {
   GitHub = "github",
+  GitHubRadar = "github-radar",
   AWS = "aws",
   Databricks = "databricks",
   GCP = "gcp",

@@ -29,6 +29,10 @@ import {
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import {
+  GitHubRadarConnectionListItemSchema,
+  SanitizedGitHubRadarConnectionSchema
+} from "@app/services/app-connection/github-radar";
+import {
   HCVaultConnectionListItemSchema,
   SanitizedHCVaultConnectionSchema
 } from "@app/services/app-connection/hc-vault";
@@ -62,6 +66,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAwsConnectionSchema.options,
   ...SanitizedGitHubConnectionSchema.options,
+  ...SanitizedGitHubRadarConnectionSchema.options,
   ...SanitizedGcpConnectionSchema.options,
   ...SanitizedAzureKeyVaultConnectionSchema.options,
   ...SanitizedAzureAppConfigurationConnectionSchema.options,
@@ -84,6 +89,7 @@ const SanitizedAppConnectionSchema = z.union([
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AwsConnectionListItemSchema,
   GitHubConnectionListItemSchema,
+  GitHubRadarConnectionListItemSchema,
   GcpConnectionListItemSchema,
   AzureKeyVaultConnectionListItemSchema,
   AzureAppConfigurationConnectionListItemSchema,

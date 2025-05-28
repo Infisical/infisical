@@ -20,6 +20,8 @@ import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
+  ProjectPermissionSecretScanningDataSourceActions,
+  ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSshHostActions,
   TPermissionCondition,
@@ -88,6 +90,21 @@ const SecretRotationPolicyActionSchema = z.object({
   [ProjectPermissionSecretRotationActions.Edit]: z.boolean().optional(),
   [ProjectPermissionSecretRotationActions.Delete]: z.boolean().optional(),
   [ProjectPermissionSecretRotationActions.RotateSecrets]: z.boolean().optional()
+});
+
+const SecretScanningDataSourcePolicyActionSchema = z.object({
+  [ProjectPermissionSecretScanningDataSourceActions.Read]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningDataSourceActions.Create]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningDataSourceActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningDataSourceActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningDataSourceActions.ReadScans]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningDataSourceActions.ReadResources]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningDataSourceActions.TriggerScans]: z.boolean().optional()
+});
+
+const SecretScanningFindingPolicyActionSchema = z.object({
+  [ProjectPermissionSecretScanningFindingActions.Read]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningFindingActions.Resolve]: z.boolean().optional()
 });
 
 const KmipPolicyActionSchema = z.object({
@@ -274,7 +291,11 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Kms]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Cmek]: CmekPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretSyncs]: SecretSyncPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.Kmip]: KmipPolicyActionSchema.array().default([])
+      [ProjectPermissionSub.Kmip]: KmipPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SecretScanningDataSources]:
+        SecretScanningDataSourcePolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SecretScanningFindings]:
+        SecretScanningFindingPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -1250,6 +1271,52 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         value: ProjectPermissionKmipActions.GenerateClientCertificates
       }
     ]
+  },
+  [ProjectPermissionSub.SecretScanningDataSources]: {
+    title: "Secret Scanning Data Sources",
+    actions: [
+      {
+        label: "Read Data Sources",
+        value: ProjectPermissionSecretScanningDataSourceActions.Read
+      },
+      {
+        label: "Create Data Sources",
+        value: ProjectPermissionSecretScanningDataSourceActions.Create
+      },
+      {
+        label: "Modify Data Sources",
+        value: ProjectPermissionSecretScanningDataSourceActions.Edit
+      },
+      {
+        label: "Delete Data Sources",
+        value: ProjectPermissionSecretScanningDataSourceActions.Delete
+      },
+      {
+        label: "Read Resources",
+        value: ProjectPermissionSecretScanningDataSourceActions.ReadResources
+      },
+      {
+        label: "Read Scans",
+        value: ProjectPermissionSecretScanningDataSourceActions.ReadScans
+      },
+      {
+        label: "Trigger Scans",
+        value: ProjectPermissionSecretScanningDataSourceActions.TriggerScans
+      }
+    ]
+  },
+  [ProjectPermissionSub.SecretScanningFindings]: {
+    title: "Secret Scanning Findings",
+    actions: [
+      {
+        label: "Read Findings",
+        value: ProjectPermissionSecretScanningFindingActions.Read
+      },
+      {
+        label: "Resolve Finding Status",
+        value: ProjectPermissionSecretScanningFindingActions.Resolve
+      }
+    ]
   }
 };
 
@@ -1303,6 +1370,11 @@ const SshPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SshHostGroups]: enabled
 });
 
+const SecretScanningSubject = (enabled = false) => ({
+  [ProjectPermissionSub.SecretScanningDataSources]: enabled,
+  [ProjectPermissionSub.SecretScanningFindings]: enabled
+});
+
 // scott: this structure ensures we don't forget to add project permissions to their relevant project type
 export const ProjectTypePermissionSubjects: Record<
   ProjectType,
@@ -1313,25 +1385,37 @@ export const ProjectTypePermissionSubjects: Record<
     ...SecretsManagerPermissionSubjects(true),
     ...KmsPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
-    ...SshPermissionSubjects()
+    ...SshPermissionSubjects(),
+    ...SecretScanningSubject()
   },
   [ProjectType.KMS]: {
     ...SharedPermissionSubjects,
     ...KmsPermissionSubjects(true),
     ...SecretsManagerPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
-    ...SshPermissionSubjects()
+    ...SshPermissionSubjects(),
+    ...SecretScanningSubject()
   },
   [ProjectType.CertificateManager]: {
     ...SharedPermissionSubjects,
     ...CertificateManagerPermissionSubjects(true),
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
-    ...SshPermissionSubjects()
+    ...SshPermissionSubjects(),
+    ...SecretScanningSubject()
   },
   [ProjectType.SSH]: {
     ...SharedPermissionSubjects,
     ...SshPermissionSubjects(true),
+    ...CertificateManagerPermissionSubjects(),
+    ...KmsPermissionSubjects(),
+    ...SecretsManagerPermissionSubjects(),
+    ...SecretScanningSubject()
+  },
+  [ProjectType.SecretScanning]: {
+    ...SharedPermissionSubjects,
+    ...SecretScanningSubject(true),
+    ...SshPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects()
@@ -1541,6 +1625,43 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.Certificates,
           actions: Object.values(ProjectPermissionCertificateActions)
+        }
+      ]
+    },
+    projectManagerTemplate()
+  ],
+  [ProjectType.SecretScanning]: [
+    {
+      id: "scanning-viewer",
+      name: "Secret Scanning Viewing Policies",
+      description: "Grants read access to data sources and findings",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.SecretScanningDataSources,
+          actions: [
+            ProjectPermissionSecretScanningDataSourceActions.Read,
+            ProjectPermissionSecretScanningDataSourceActions.ReadResources,
+            ProjectPermissionSecretScanningDataSourceActions.ReadScans
+          ]
+        },
+        {
+          subject: ProjectPermissionSub.SecretScanningFindings,
+          actions: [ProjectPermissionSecretScanningFindingActions.Read]
+        }
+      ]
+    },
+    {
+      id: "scanning-editor",
+      name: "Secret Scanning Editing Policies",
+      description: "Grants read and edit access to data sources and findings",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.SecretScanningDataSources,
+          actions: Object.values(ProjectPermissionSecretScanningDataSourceActions)
+        },
+        {
+          subject: ProjectPermissionSub.SecretScanningFindings,
+          actions: Object.values(ProjectPermissionSecretScanningFindingActions)
         }
       ]
     },

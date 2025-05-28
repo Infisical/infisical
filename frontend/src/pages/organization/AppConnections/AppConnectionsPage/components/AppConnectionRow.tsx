@@ -65,6 +65,8 @@ export const AppConnectionRow = ({
 
   const methodDetails = getAppConnectionMethodDetails(method);
 
+  const connectionDetails = APP_CONNECTION_MAP[app];
+
   return (
     <Tr
       className={twMerge("group h-12 transition-colors duration-100 hover:bg-mineshaft-700")}
@@ -72,12 +74,21 @@ export const AppConnectionRow = ({
     >
       <Td>
         <div className="flex items-center gap-2">
-          <img
-            alt={`${APP_CONNECTION_MAP[app].name} integration`}
-            src={`/images/integrations/${APP_CONNECTION_MAP[app].image}`}
-            className="mr-0.5 w-5"
-          />
-          <span className="hidden lg:inline">{APP_CONNECTION_MAP[app].name}</span>
+          <div className="relative">
+            <img
+              alt={`${connectionDetails.name} integration`}
+              src={`/images/integrations/${connectionDetails.image}`}
+              className="mr-0.5 w-5"
+            />
+            {connectionDetails.icon && (
+              <FontAwesomeIcon
+                icon={connectionDetails.icon}
+                size="xs"
+                className="absolute -bottom-0.5 -right-0.5 text-primary-700"
+              />
+            )}
+          </div>
+          <span className="hidden lg:inline">{connectionDetails.name}</span>
         </div>
       </Td>
       <Td className="!min-w-[8rem] max-w-0">

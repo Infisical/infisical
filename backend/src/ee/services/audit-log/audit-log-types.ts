@@ -9,6 +9,14 @@ import {
   TSecretRotationV2Raw,
   TUpdateSecretRotationV2DTO
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  TCreateSecretScanningDataSourceDTO,
+  TDeleteSecretScanningDataSourceDTO,
+  TTriggerSecretScanningDataSourceDTO,
+  TUpdateSecretScanningDataSourceDTO,
+  TUpdateSecretScanningFinding
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
@@ -375,7 +383,18 @@ export enum EventType {
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list",
 
   PROJECT_ASSUME_PRIVILEGE_SESSION_START = "project-assume-privileges-session-start",
-  PROJECT_ASSUME_PRIVILEGE_SESSION_END = "project-assume-privileges-session-end"
+  PROJECT_ASSUME_PRIVILEGE_SESSION_END = "project-assume-privileges-session-end",
+
+  SECRET_SCANNING_DATA_SOURCE_LIST = "secret-scanning-data-source-list",
+  SECRET_SCANNING_DATA_SOURCE_CREATE = "secret-scanning-data-source-create",
+  SECRET_SCANNING_DATA_SOURCE_UPDATE = "secret-scanning-data-source-update",
+  SECRET_SCANNING_DATA_SOURCE_DELETE = "secret-scanning-data-source-delete",
+  SECRET_SCANNING_DATA_SOURCE_GET = "secret-scanning-data-source-get",
+  SECRET_SCANNING_DATA_SOURCE_SCAN = "secret-scanning-data-source-scan",
+  SECRET_SCANNING_RESOURCE_LIST = "secret-scanning-resource-list",
+  SECRET_SCANNING_SCAN_LIST = "secret-scanning-scan-list",
+  SECRET_SCANNING_FINDING_LIST = "secret-scanning-finding-list",
+  SECRET_SCANNING_FINDING_UPDATE = "secret-scanning-finding-update"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -2913,6 +2932,75 @@ interface MicrosoftTeamsWorkflowIntegrationUpdateEvent {
   };
 }
 
+interface SecretScanningDataSourceListEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_LIST;
+  metadata: {
+    type?: SecretScanningDataSource;
+    count: number;
+    dataSourceIds: string[];
+  };
+}
+
+interface SecretScanningDataSourceGetEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_GET;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+  };
+}
+
+interface SecretScanningDataSourceCreateEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_CREATE;
+  metadata: Omit<TCreateSecretScanningDataSourceDTO, "projectId"> & { dataSourceId: string };
+}
+
+interface SecretScanningDataSourceUpdateEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_UPDATE;
+  metadata: TUpdateSecretScanningDataSourceDTO;
+}
+
+interface SecretScanningDataSourceDeleteEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_DELETE;
+  metadata: TDeleteSecretScanningDataSourceDTO;
+}
+
+interface SecretScanningDataSourceScanEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN;
+  metadata: TTriggerSecretScanningDataSourceDTO;
+}
+
+interface SecretScanningResourceListEvent {
+  type: EventType.SECRET_SCANNING_RESOURCE_LIST;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+    resourceIds: string[];
+    count: number;
+  };
+}
+
+interface SecretScanningScanListEvent {
+  type: EventType.SECRET_SCANNING_SCAN_LIST;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+    count: number;
+  };
+}
+
+interface SecretScanningFindingListEvent {
+  type: EventType.SECRET_SCANNING_FINDING_LIST;
+  metadata: {
+    findingIds: string[];
+    count: number;
+  };
+}
+
+interface SecretScanningFindingUpdateEvent {
+  type: EventType.SECRET_SCANNING_FINDING_UPDATE;
+  metadata: TUpdateSecretScanningFinding;
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -3179,4 +3267,14 @@ export type Event =
   | MicrosoftTeamsWorkflowIntegrationGetTeamsEvent
   | MicrosoftTeamsWorkflowIntegrationGetEvent
   | MicrosoftTeamsWorkflowIntegrationListEvent
-  | MicrosoftTeamsWorkflowIntegrationUpdateEvent;
+  | MicrosoftTeamsWorkflowIntegrationUpdateEvent
+  | SecretScanningDataSourceListEvent
+  | SecretScanningDataSourceGetEvent
+  | SecretScanningDataSourceCreateEvent
+  | SecretScanningDataSourceUpdateEvent
+  | SecretScanningDataSourceDeleteEvent
+  | SecretScanningDataSourceScanEvent
+  | SecretScanningResourceListEvent
+  | SecretScanningScanListEvent
+  | SecretScanningFindingListEvent
+  | SecretScanningFindingUpdateEvent;
