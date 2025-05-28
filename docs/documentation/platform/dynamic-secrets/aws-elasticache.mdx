@@ -60,7 +60,7 @@ The Infisical AWS ElastiCache dynamic secret allows you to generate AWS ElastiCa
   <Step title="Click on the 'Add Dynamic Secret' button">
 	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
   </Step>
-  <Step title="Select 'AWS ElastiCache'">
+  <Step title="Select AWS ElastiCache">
 	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-aws-elasti-cache.png)
   </Step>
   <Step title="Provide the inputs for dynamic secret parameters">
@@ -94,21 +94,29 @@ The Infisical AWS ElastiCache dynamic secret allows you to generate AWS ElastiCa
 
   </Step>
   <Step title="(Optional) Modify ElastiCache Statements">
-  	If you want to provide specific privileges for the generated dynamic credentials, you can modify the ElastiCache statement to your needs. This is useful if you want to only give access to a specific table(s).
+  ![Modify ElastiCache Statements Modal](/images/platform/dynamic-secrets/modify-elasticache-statement.png)
+   <ParamField path="Username Template" type="string" default="{{randomUsername}}">
+       Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
 
-	![Modify ElastiCache Statements Modal](/images/platform/dynamic-secrets/modify-elasticache-statement.png)
+       Allowed template variables are
+       - `{{randomUsername}}`: Random username string
+       - `{{unixTimestamp}}`: Current Unix timestamp
+	</ParamField>
+	<ParamField path="Customize ElastiCache Statement" type="string">
+  	If you want to provide specific privileges for the generated dynamic credentials, you can modify the ElastiCache statement to your needs. This is useful if you want to only give access to a specific table(s).
+	</ParamField>
   </Step>
   <Step title="Click `Submit`">
-  	After submitting the form, you will see a dynamic secret created in the dashboard. 
+  	After submitting the form, you will see a dynamic secret created in the dashboard.
 
 	<Note>
-		If this step fails, you may have to add the CA certificate. 
+		If this step fails, you may have to add the CA certificate.
 	</Note>
 
   </Step>
   <Step title="Generate dynamic secrets">
-	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials. 
-	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item. 
+	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
+	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
 	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
 	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate-redis.png)
@@ -123,14 +131,14 @@ The Infisical AWS ElastiCache dynamic secret allows you to generate AWS ElastiCa
 	</Tip>
 
 
-	Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you. 
+	Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you.
 
 	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
   </Step>
 </Steps>
 
 ## Audit or Revoke Leases
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard. 
+Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
 This will allow you to see the expiration time of the lease or delete a lease before it's set time to live.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)

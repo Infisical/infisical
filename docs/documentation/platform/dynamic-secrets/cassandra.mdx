@@ -7,7 +7,7 @@ The Infisical Cassandra dynamic secret allows you to generate Cassandra database
 
 ## Prerequisite
 
-Infisical requires a Cassandra user in your instance with the necessary permissions. This user will facilitate the creation of new accounts as needed. 
+Infisical requires a Cassandra user in your instance with the necessary permissions. This user will facilitate the creation of new accounts as needed.
 Ensure the user possesses privileges for creating, dropping, and granting permissions to roles for it to be able to create dynamic secrets.
 
 <Tip>
@@ -19,7 +19,7 @@ authorizer: CassandraAuthorizer
 ```
 </Tip>
 
-The above configuration allows user creation and granting permissions. 
+The above configuration allows user creation and granting permissions.
 
 ## Set up Dynamic Secrets with Cassandra
 
@@ -69,31 +69,39 @@ The above configuration allows user creation and granting permissions.
 	<ParamField path="Keyspace" type="string">
 		 Keyspace name where you want to create dynamic secrets. This ensures that the user is limited to that keyspace.
 	</ParamField>
- 
+
 	<ParamField path="CA(SSL)" type="string">
-		A CA may be required if your cassandra requires it for incoming connections. 	
+		A CA may be required if your cassandra requires it for incoming connections.
   </ParamField>
 
 	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-cassandra.png)
 
   </Step>
   <Step title="(Optional) Modify CQL Statements">
-  	If you want to provide specific privileges for the generated dynamic credentials, you can modify the CQL statement to your needs. This is useful if you want to only give access to a specific key-space(s).
+  ![Modify CQL Statements Modal](../../../images/platform/dynamic-secrets/modify-cql-statements.png)
+  <ParamField path="Username Template" type="string" default="{{randomUsername}}">
+       Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
 
-	![Modify CQL Statements Modal](../../../images/platform/dynamic-secrets/modify-cql-statements.png)
+       Allowed template variables are
+       - `{{randomUsername}}`: Random username string
+       - `{{unixTimestamp}}`: Current Unix timestamp
+	</ParamField>
+	<ParamField path="Customize CQL Statement" type="string">
+  	If you want to provide specific privileges for the generated dynamic credentials, you can modify the CQL statement to your needs. This is useful if you want to only give access to a specific key-space(s).
+	</ParamField>
   </Step>
   <Step title="Click 'Submit'">
-  	After submitting the form, you will see a dynamic secret created in the dashboard. 
+  	After submitting the form, you will see a dynamic secret created in the dashboard.
 
 	<Note>
-		If this step fails, you may have to add the CA certficate. 
+		If this step fails, you may have to add the CA certficate.
 	</Note>
 
 	![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret.png)
   </Step>
   <Step title="Generate dynamic secrets">
-	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials. 
-	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item. 
+	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
+	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
 	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
 	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
@@ -108,14 +116,14 @@ The above configuration allows user creation and granting permissions.
 	</Tip>
 
 
-	Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you. 
+	Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you.
 
 	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
   </Step>
 </Steps>
 
 ## Audit or Revoke Leases
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard. 
+Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
 This will allow you to see the lease details and delete the lease ahead of its expiration time.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)

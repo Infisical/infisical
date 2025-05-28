@@ -8,22 +8,27 @@ Infisical's Snowflake dynamic secrets allow you to generate Snowflake user crede
 ## Snowflake Prerequisites
 
 <Note>
-    Infisical requires a Snowflake user in your account with the USERADMIN role. This user will act as a service account for Infisical and facilitate the creation of new users as needed.
+  Infisical requires a Snowflake user in your account with the USERADMIN role.
+  This user will act as a service account for Infisical and facilitate the
+  creation of new users as needed.
 </Note>
 
 <Steps>
-    <Step title="Navigate to Snowflake's User Dashboard and press the '+ User' button">
-        ![Snowflake User Dashboard](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-users-page.png)
-    </Step>
-    <Step title="Create a Snowflake user with the USERADMIN role for Infisical">
-        <Warning>
-                Be sure to uncheck "Force user to change password on first time login"
-        </Warning>
-        ![Snowflake Create Service User](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-create-service-user.png)
-    </Step>
-    <Step title="Click on the Account Menu in the bottom left and take note of your Account and Organization identifiers">
-        ![Snowflake Account And Organization Identifiers](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-identifiers.png)
-    </Step>
+  <Step title="Navigate to Snowflake's User Dashboard and press the '+ User' button">
+    ![Snowflake User
+    Dashboard](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-users-page.png)
+  </Step>
+  <Step title="Create a Snowflake user with the USERADMIN role for Infisical">
+    <Warning>
+      Be sure to uncheck "Force user to change password on first time login"
+    </Warning>
+    ![Snowflake Create Service
+    User](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-create-service-user.png)
+  </Step>
+  <Step title="Click on the Account Menu in the bottom left and take note of your Account and Organization identifiers">
+    ![Snowflake Account And Organization
+    Identifiers](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-identifiers.png)
+  </Step>
 </Steps>
 
 ## Set up Dynamic Secrets with Snowflake
@@ -71,10 +76,23 @@ Infisical's Snowflake dynamic secrets allow you to generate Snowflake user crede
 
     </Step>
     <Step title="(Optional) Modify SQL Statements">
-        If you want to provide specific privileges for the generated dynamic credentials, you can modify the SQL
-        statement to your needs.
         ![Modify SQL Statements Modal](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-sql-statements.png)
-    </Step>
+    <ParamField path="Username Template" type="string" default="{{randomUsername}}">
+        Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
+
+        Allowed template variables are
+        - `{{randomUsername}}`: Random username string
+        - `{{unixTimestamp}}`: Current Unix timestamp
+    </ParamField>
+    <ParamField path="Customize Statement" type="string">
+
+    If you want to provide specific privileges for the generated dynamic credentials, you can modify the SQL
+        statement to your needs.
+
+</ParamField>
+
+  </Step>
+
     <Step title="Click 'Submit'">
         After submitting the form, you will see a dynamic secret created in the dashboard.
     </Step>
@@ -104,6 +122,7 @@ Infisical's Snowflake dynamic secrets allow you to generate Snowflake user crede
         ![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
 
     </Step>
+
 </Steps>
 
 ## Audit or Revoke Leases
@@ -119,6 +138,6 @@ To extend the life of the generated dynamic secret lease past its initial time t
 ![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
-    Lease renewals cannot exceed the maximum TTL set when configuring the dynamic
-    secret.
+  Lease renewals cannot exceed the maximum TTL set when configuring the dynamic
+  secret.
 </Warning>

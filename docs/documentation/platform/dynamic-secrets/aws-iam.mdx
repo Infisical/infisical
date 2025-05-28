@@ -40,7 +40,7 @@ Infisical needs an initial AWS IAM user with the required permissions to create 
 }
 ```
 
-To minimize managing user access you can attach a resource in format 
+To minimize managing user access you can attach a resource in format
 
 > arn:aws:iam::\<account-id\>:user/\<aws-scope-path\>
 
@@ -94,28 +94,36 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
 	</ParamField>
 
 	<ParamField path="AWS IAM Groups" type="string">
-	The AWS IAM groups that should be assigned to the created users. Multiple values can be provided by separating them with commas	
+	The AWS IAM groups that should be assigned to the created users. Multiple values can be provided by separating them with commas
 </ParamField>
- 
+
 	<ParamField path="AWS Policy ARNs" type="string">
-	The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas	
+	The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas
 </ParamField>
 
 <ParamField path="AWS IAM Policy Document" type="string">
-	The AWS IAM inline policy that should be attached to the created users. Multiple values can be provided by separating them with commas	
+	The AWS IAM inline policy that should be attached to the created users. Multiple values can be provided by separating them with commas
+</ParamField>
+
+<ParamField path="Username Template" type="string" default="{{randomUsername}}">
+Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
+
+Allowed template variables are
+- `{{randomUsername}}`: Random username string
+- `{{unixTimestamp}}`: Current Unix timestamp
 </ParamField>
 
 	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-aws-iam.png)
 
   </Step>
   <Step title="Click 'Submit'">
-  	After submitting the form, you will see a dynamic secret created in the dashboard. 
+  	After submitting the form, you will see a dynamic secret created in the dashboard.
 
 	![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret.png)
   </Step>
   <Step title="Generate dynamic secrets">
-	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials. 
-	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item. 
+	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
+	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
 	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
 	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
@@ -130,14 +138,14 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
 	</Tip>
 
 
-	Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you. 
+	Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you.
 
 	![Provision Lease](/images/platform/dynamic-secrets/lease-values-aws-iam.png)
   </Step>
 </Steps>
 
 ## Audit or Revoke Leases
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard. 
+Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
 This will allow you to see the lease details and delete the lease ahead of its expiration time.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
