@@ -1,3 +1,4 @@
+import handlebars from "handlebars";
 import { MongoClient } from "mongodb";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
@@ -12,8 +13,14 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = () => {
-  return alphaNumericNanoId(32);
+const generateUsername = (usernameTemplate?: string | null) => {
+  const randomUsername = alphaNumericNanoId(32); // Username must start with an ascii letter, so we prepend the username with "inf-"
+  if (!usernameTemplate) return randomUsername;
+
+  return handlebars.compile(usernameTemplate)({
+    randomUsername,
+    unixTimestamp: Math.floor(Date.now() / 100)
+  });
 };
 
 export const MongoDBProvider = (): TDynamicProviderFns => {
@@ -53,11 +60,12 @@ export const MongoDBProvider = (): TDynamicProviderFns => {
     return isConnected;
   };
 
-  const create = async (inputs: unknown) => {
+  const create = async (data: { inputs: unknown; usernameTemplate?: string | null }) => {
+    const { inputs, usernameTemplate } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
-    const username = generateUsername();
+    const username = generateUsername(usernameTemplate);
     const password = generatePassword();
 
     const db = client.db(providerInputs.database);

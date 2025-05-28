@@ -16,6 +16,7 @@ import {
   PutUserPolicyCommand,
   RemoveUserFromGroupCommand
 } from "@aws-sdk/client-iam";
+import handlebars from "handlebars";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
@@ -23,8 +24,14 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { DynamicSecretAwsIamSchema, TDynamicProviderFns } from "./models";
 
-const generateUsername = () => {
-  return alphaNumericNanoId(32);
+const generateUsername = (usernameTemplate?: string | null) => {
+  const randomUsername = alphaNumericNanoId(32);
+  if (!usernameTemplate) return randomUsername;
+
+  return handlebars.compile(usernameTemplate)({
+    randomUsername,
+    unixTimestamp: Math.floor(Date.now() / 100)
+  });
 };
 
 export const AwsIamProvider = (): TDynamicProviderFns => {
@@ -53,11 +60,13 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
     return isConnected;
   };
 
-  const create = async (inputs: unknown) => {
+  const create = async (data: { inputs: unknown; expireAt: number; usernameTemplate?: string | null }) => {
+    const { inputs, usernameTemplate } = data;
+
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
-    const username = generateUsername();
+    const username = generateUsername(usernameTemplate);
     const { policyArns, userGroups, policyDocument, awsPath, permissionBoundaryPolicyArn } = providerInputs;
     const createUserRes = await client.send(
       new CreateUserCommand({
