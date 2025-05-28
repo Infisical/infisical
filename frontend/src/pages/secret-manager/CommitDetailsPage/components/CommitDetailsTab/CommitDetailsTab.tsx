@@ -300,16 +300,12 @@ export const CommitDetailsTab = ({
                         onClick={() => goToRollbackPreview()}
                       >
                         <div className="flex items-center space-x-3">
-                          <FontAwesomeIcon
-                            icon={faCodeBranch}
-                            className="mt-1 text-gray-300 group-hover:text-white"
-                          />
                           <div className="flex flex-col">
                             <span className="text-sm font-medium text-white">
-                              Restore to this commit
+                              Roll back to this commit
                             </span>
                             <span className="max-w-[180px] whitespace-normal break-words text-xs leading-snug text-gray-400">
-                              Restore the folder as it was at this time
+                              Return this folder to its exact state at the time of this commit, discarding all other changes made after it
                             </span>
                           </div>
                         </div>
@@ -321,16 +317,12 @@ export const CommitDetailsTab = ({
                       onClick={() => handlePopUpOpen("revertChanges")}
                     >
                       <div className="flex items-center space-x-3">
-                        <FontAwesomeIcon
-                          icon={faRotateLeft}
-                          className="mt-1 text-gray-300 group-hover:text-white"
-                        />
                         <div className="flex flex-col">
                           <span className="text-sm font-medium text-white">
                             Revert commit changes
                           </span>
                           <span className="max-w-[180px] whitespace-normal break-words text-xs leading-snug text-gray-400">
-                            Create a new commit that undoes the changes in this commit
+                            Will undo all changes made in this commit
                           </span>
                         </div>
                       </div>
@@ -360,11 +352,11 @@ export const CommitDetailsTab = ({
       <DeleteActionModal
         isOpen={popUp.revertChanges.isOpen}
         deleteKey="revert"
-        title="Are you sure you want to revert changes from this commit?"
-        subTitle="This action will undo all changes made in this commit."
+        title="Are you sure you want to revert all changes made in this commit?"
+        subTitle="This will undo all changes made in this commit."
         onChange={(isOpen) => handlePopUpToggle("revertChanges", isOpen)}
         onDeleteApproved={handleRevertChanges}
-        buttonText="Revert Changes"
+        buttonText="Yes, revert changes"
       />
     </div>
   );

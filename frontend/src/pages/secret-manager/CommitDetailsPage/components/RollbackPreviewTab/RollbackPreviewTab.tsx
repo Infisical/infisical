@@ -222,7 +222,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
         {deepRollback && nestedFolderChanges.length > 0 && (
           <>
             <div className="border-b border-mineshaft-600 bg-mineshaft-800 px-4 py-2">
-              <span className="text-sm font-semibold text-white">Affected Child Folders</span>
+              <span className="text-sm font-semibold text-white">Child folders to be restored</span>
             </div>
             {nestedFolderChanges.map((folder) => (
               <div
@@ -309,7 +309,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
             <div>
               <PageHeader
                 title={`Restore folder at commit ${selectedCommitId.substring(0, 8)}`}
-                description="This will restore all changes to how they appeared at the point in time of this commit. Any modifications made after this commit will be undone."
+                description={`Will return all changes in this folder to how they appeared at the point of commit ${selectedCommitId.substring(0, 8)}. Any modifications made after this commit will be undone.`}
               />
 
               <div className="flex w-full border border-mineshaft-600">
@@ -320,7 +320,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
               <div className="border-x border-mineshaft-600 bg-mineshaft-800 px-6 py-3">
                 <div className="flex items-center justify-end">
                   <div className="flex items-center">
-                    <Tooltip content="Enable/Disable deep rollback to restore all nested folders to their previous state">
+                    <Tooltip content="Will rollback all nested folders to their state at the time of this commit">
                       <FontAwesomeIcon icon={faInfoCircle} className="mr-2 text-mineshaft-400" />
                     </Tooltip>
                     <Switch
@@ -330,7 +330,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
                       onCheckedChange={setDeepRollback}
                       id="deep-rollback"
                     >
-                      Recursively Restore Child Folders
+                      Restore All Child Folders
                     </Switch>
                   </div>
                 </div>
