@@ -153,7 +153,13 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         expiresAt: z.string(),
         expiresAfterViews: z.number().min(1).optional(),
         accessType: z.nativeEnum(SecretSharingAccessType).default(SecretSharingAccessType.Organization),
-        emails: z.string().email().array().max(100).optional()
+        emails: z
+          .string()
+          .email()
+          .array()
+          .max(100)
+          .optional()
+          .transform((val) => (val ? [...new Set(val)] : undefined))
       }),
       response: {
         200: z.object({
