@@ -309,7 +309,8 @@ describe("folderCommitServiceFactory", () => {
             type: CommitType.ADD,
             folderVersionId: "folder-version-1"
           }
-        ]
+        ],
+        omitIgnoreFilter: true
       };
 
       // Act

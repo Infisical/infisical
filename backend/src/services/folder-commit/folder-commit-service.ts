@@ -70,6 +70,7 @@ type TCreateCommitDTO = {
     isUpdate?: boolean;
     folderId?: string;
   }[];
+  omitIgnoreFilter?: boolean;
 };
 
 type TCommitChangeDTO = {
@@ -872,15 +873,18 @@ export const folderCommitServiceFactory = ({
         throw new NotFoundError({ message: `Folder with ID ${data.folderId} not found` });
       }
 
-      const project = await projectDAL.findProjectByEnvId(folder.envId, tx);
+      let { changes } = data;
+      if (!data.omitIgnoreFilter) {
+        const project = await projectDAL.findProjectByEnvId(folder.envId, tx);
 
-      if (!project) {
-        return;
-      }
+        if (!project) {
+          return;
+        }
 
-      const changes = await filterIgnoredChanges(data.changes, project.id, tx);
-      if (changes.length === 0) {
-        return;
+        changes = await filterIgnoredChanges(data.changes, project.id, tx);
+        if (changes.length === 0) {
+          return;
+        }
       }
 
       const newCommit = await folderCommitDAL.create(
@@ -1358,7 +1362,8 @@ export const folderCommitServiceFactory = ({
         },
         message: actorInfo.message || "Rolled back folder state",
         folderId,
-        changes: allCommitChanges
+        changes: allCommitChanges,
+        omitIgnoreFilter: true
       },
       tx
     );
@@ -1573,7 +1578,8 @@ export const folderCommitServiceFactory = ({
           },
           message: "Initialized folder",
           folderId,
-          changes
+          changes,
+          omitIgnoreFilter: true
         },
         tx
       );
