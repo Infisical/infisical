@@ -119,7 +119,8 @@ export const secretFolderServiceFactory = ({
               name: doc.name,
               envId: doc.envId,
               version: doc.version,
-              folderId: doc.id
+              folderId: doc.id,
+              description: doc.description
             })),
             tx
           );
@@ -152,7 +153,8 @@ export const secretFolderServiceFactory = ({
           name: doc.name,
           envId: doc.envId,
           version: doc.version,
-          folderId: doc.id
+          folderId: doc.id,
+          description: doc.description
         },
         tx
       );
@@ -269,7 +271,8 @@ export const secretFolderServiceFactory = ({
               name: doc.name,
               envId: doc.envId,
               version: doc.version,
-              folderId: doc.id
+              folderId: doc.id,
+              description: doc.description
             },
             tx
           );
@@ -385,7 +388,8 @@ export const secretFolderServiceFactory = ({
           name: doc.name,
           envId: doc.envId,
           version: doc.version,
-          folderId: doc.id
+          folderId: doc.id,
+          description: doc.description
         },
         tx
       );
@@ -802,7 +806,8 @@ export const secretFolderServiceFactory = ({
     });
     return versions.map((v) => ({
       version: v.version?.toString() || "1",
-      name: v.name
+      name: v.name,
+      description: v.description
     }));
   };
 

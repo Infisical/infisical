@@ -532,11 +532,12 @@ export const secretSnapshotServiceFactory = ({
         });
         await secretTagDAL.saveTagsToSecretV2(secretTagsToBeInsert, tx);
         const folderVersions = await folderVersionDAL.insertMany(
-          folders.map(({ version, name, id, envId }) => ({
+          folders.map(({ version, name, id, envId, description }) => ({
             name,
             version,
             folderId: id,
-            envId
+            envId,
+            description
           })),
           tx
         );
@@ -743,11 +744,12 @@ export const secretSnapshotServiceFactory = ({
       });
       await secretTagDAL.saveTagsToSecret(secretTagsToBeInsert, tx);
       const folderVersions = await folderVersionDAL.insertMany(
-        folders.map(({ version, name, id, envId }) => ({
+        folders.map(({ version, name, id, envId, description }) => ({
           name,
           version,
           folderId: id,
-          envId
+          envId,
+          description
         })),
         tx
       );

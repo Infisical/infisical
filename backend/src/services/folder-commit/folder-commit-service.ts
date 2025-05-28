@@ -115,6 +115,7 @@ type FolderChange = BaseChange & {
   folderVersion: string;
   versions?: {
     name: string;
+    description?: string | null;
   }[];
 };
 
@@ -604,8 +605,19 @@ export const folderCommitServiceFactory = ({
                 version: [Number(change.folderVersion), Number(change.fromVersion)]
               }
             });
-            const versionsShaped = [...new Set(versions.map((version) => version.name))];
-            if (versionsShaped.length === 1) {
+            const versionsShaped = versions.map((version) => ({
+              name: version.name,
+              description: version.description
+            }));
+            const uniqueVersions = versionsShaped.filter(
+              (item, index, arr) =>
+                arr.findIndex((other) =>
+                  Object.entries(item).every(
+                    ([key, value]) => JSON.stringify(value) === JSON.stringify(other[key as keyof typeof other])
+                  )
+                ) === index
+            );
+            if (uniqueVersions.length === 1) {
               removeNoChangeUpdate.push(change.id);
             }
           } else if (change.type === ResourceType.SECRET && change.secretVersion && change.fromVersion) {
@@ -1108,7 +1120,8 @@ export const folderCommitServiceFactory = ({
                 parentId: folderId,
                 envId: folderVersion.envId,
                 version: (folderVersion.version || 1) + 1,
-                name: folderVersion.name
+                name: folderVersion.name,
+                description: folderVersion.description
               };
               await folderDAL.create(newFolder, tx);
 
@@ -1117,6 +1130,7 @@ export const folderCommitServiceFactory = ({
                   folderId: change.id,
                   version: (folderVersion.version || 1) + 1,
                   name: folderVersion.name,
+                  description: folderVersion.description,
                   envId: folderVersion.envId
                 },
                 tx
@@ -1170,7 +1184,8 @@ export const folderCommitServiceFactory = ({
                     parentId: folderId,
                     envId: versionDetails.envId,
                     version: (versionDetails.version || 1) + 1,
-                    name: versionDetails.name
+                    name: versionDetails.name,
+                    description: versionDetails.description
                   },
                   tx
                 );
@@ -1180,6 +1195,7 @@ export const folderCommitServiceFactory = ({
                     folderId: change.id,
                     version: (versionDetails.version || 1) + 1,
                     name: versionDetails.name,
+                    description: versionDetails.description,
                     envId: versionDetails.envId
                   },
                   tx

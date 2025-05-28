@@ -37,7 +37,8 @@ const secretVersionSchema = z.object({
 // Folder-specific versions schema
 const folderVersionSchema = z.object({
   version: z.string().optional(),
-  name: z.string().optional()
+  name: z.string().optional(),
+  description: z.string().optional().nullable()
 });
 
 // Secret commit change schema
