@@ -1,5 +1,6 @@
 export * from "./access-approval-policies";
 export * from "./access-approval-policies-approvers";
+export * from "./access-approval-policies-bypassers";
 export * from "./access-approval-requests";
 export * from "./access-approval-requests-reviewers";
 export * from "./api-keys";
@@ -92,6 +93,7 @@ export * from "./saml-configs";
 export * from "./scim-tokens";
 export * from "./secret-approval-policies";
 export * from "./secret-approval-policies-approvers";
+export * from "./secret-approval-policies-bypassers";
 export * from "./secret-approval-request-secret-tags";
 export * from "./secret-approval-request-secret-tags-v2";
 export * from "./secret-approval-requests";

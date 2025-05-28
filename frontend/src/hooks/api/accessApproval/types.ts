@@ -16,6 +16,7 @@ export type TAccessApprovalPolicy = {
   enforcementLevel: EnforcementLevel;
   updatedAt: Date;
   approvers?: Approver[];
+  bypassers?: Bypasser[];
   allowedSelfApprovals: boolean;
 };
 
@@ -24,9 +25,19 @@ export enum ApproverType {
   Group = "group"
 }
 
+export enum BypasserType {
+  User = "user",
+  Group = "group"
+}
+
 export type Approver = {
   id: string;
   type: ApproverType;
+};
+
+export type Bypasser = {
+  id: string;
+  type: BypasserType;
 };
 
 export type TAccessApprovalRequest = {
@@ -68,6 +79,7 @@ export type TAccessApprovalRequest = {
     name: string;
     approvals: number;
     approvers: string[];
+    bypassers: string[];
     secretPath?: string | null;
     envId: string;
     enforcementLevel: EnforcementLevel;
@@ -146,6 +158,7 @@ export type TCreateAccessPolicyDTO = {
   name?: string;
   environment: string;
   approvers?: Approver[];
+  bypassers?: Bypasser[];
   approvals?: number;
   secretPath?: string;
   enforcementLevel?: EnforcementLevel;
@@ -156,6 +169,7 @@ export type TUpdateAccessPolicyDTO = {
   id: string;
   name?: string;
   approvers?: Approver[];
+  bypassers?: Bypasser[];
   secretPath?: string;
   environment?: string;
   approvals?: number;

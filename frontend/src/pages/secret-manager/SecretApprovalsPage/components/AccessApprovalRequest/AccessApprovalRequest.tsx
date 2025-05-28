@@ -25,7 +25,6 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
 import {
-  ProjectPermissionApprovalActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProjectPermission,
@@ -102,11 +101,6 @@ export const AccessApprovalRequest = ({
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
 
-  const canBypassApprovalPermission = permission.can(
-    ProjectPermissionApprovalActions.AllowAccessBypass,
-    ProjectPermissionSub.SecretApproval
-  );
-
   const { data: members } = useGetWorkspaceUsers(projectId, true);
   const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
     (prev, curr) => ({ ...prev, [curr.user.id]: curr }),
@@ -163,6 +157,8 @@ export const AccessApprovalRequest = ({
       const isRequestedByCurrentUser = request.requestedByUserId === user.id;
       const isSelfApproveAllowed = request.policy.allowedSelfApprovals;
       const userReviewStatus = request.reviewers.find(({ member }) => member === user.id)?.status;
+      const canBypass =
+        !request.policy.bypassers.length || request.policy.bypassers.includes(user.id);
 
       let displayData: { label: string; type: "primary" | "danger" | "success" } = {
         label: "",
@@ -198,6 +194,7 @@ export const AccessApprovalRequest = ({
         userReviewStatus,
         isAccepted,
         isSoftEnforcement,
+        canBypass,
         isRequestedByCurrentUser,
         isSelfApproveAllowed
       };
@@ -215,9 +212,7 @@ export const AccessApprovalRequest = ({
 
       // Whether the current user can bypass policy
       const canBypass =
-        details.isSoftEnforcement &&
-        details.isRequestedByCurrentUser &&
-        canBypassApprovalPermission;
+        details.isSoftEnforcement && details.isRequestedByCurrentUser && details.canBypass;
 
       // Whether the current user can approve
       const canApprove =
@@ -240,14 +235,7 @@ export const AccessApprovalRequest = ({
 
       handlePopUpOpen("reviewRequest");
     },
-    [
-      generateRequestDetails,
-      canBypassApprovalPermission,
-      membersGroupById,
-      user,
-      setSelectedRequest,
-      handlePopUpOpen
-    ]
+    [generateRequestDetails, membersGroupById, user, setSelectedRequest, handlePopUpOpen]
   );
 
   return (
@@ -471,7 +459,7 @@ export const AccessApprovalRequest = ({
             setSelectedRequest(null);
             refetchRequests();
           }}
-          canBypassApprovalPermission={canBypassApprovalPermission}
+          canBypass={generateRequestDetails(selectedRequest).canBypass}
         />
       )}
 

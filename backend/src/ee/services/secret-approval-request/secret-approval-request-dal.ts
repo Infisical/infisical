@@ -6,6 +6,7 @@ import {
   TableName,
   TSecretApprovalRequests,
   TSecretApprovalRequestsSecrets,
+  TUserGroupMembership,
   TUsers
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -58,15 +59,35 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         `${TableName.SecretApprovalPolicyApprover}.approverUserId`,
         "secretApprovalPolicyApproverUser.id"
       )
-      .leftJoin(
-        TableName.UserGroupMembership,
+      .leftJoin<TUserGroupMembership>(
+        db(TableName.UserGroupMembership).as("approverUserGroupMembership"),
         `${TableName.SecretApprovalPolicyApprover}.approverGroupId`,
-        `${TableName.UserGroupMembership}.groupId`
+        `approverUserGroupMembership.groupId`
       )
       .leftJoin<TUsers>(
         db(TableName.Users).as("secretApprovalPolicyGroupApproverUser"),
-        `${TableName.UserGroupMembership}.userId`,
+        `approverUserGroupMembership.userId`,
         `secretApprovalPolicyGroupApproverUser.id`
+      )
+      .leftJoin(
+        TableName.SecretApprovalPolicyBypasser,
+        `${TableName.SecretApprovalPolicy}.id`,
+        `${TableName.SecretApprovalPolicyBypasser}.policyId`
+      )
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("secretApprovalPolicyBypasserUser"),
+        `${TableName.SecretApprovalPolicyBypasser}.bypasserUserId`,
+        "secretApprovalPolicyBypasserUser.id"
+      )
+      .leftJoin<TUserGroupMembership>(
+        db(TableName.UserGroupMembership).as("bypasserUserGroupMembership"),
+        `${TableName.SecretApprovalPolicyBypasser}.bypasserGroupId`,
+        `bypasserUserGroupMembership.groupId`
+      )
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("secretApprovalPolicyGroupBypasserUser"),
+        `bypasserUserGroupMembership.userId`,
+        `secretApprovalPolicyGroupBypasserUser.id`
       )
       .leftJoin(
         TableName.SecretApprovalRequestReviewer,
@@ -81,7 +102,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
       .select(selectAllTableCols(TableName.SecretApprovalRequest))
       .select(
         tx.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
-        tx.ref("userId").withSchema(TableName.UserGroupMembership).as("approverGroupUserId"),
+        tx.ref("userId").withSchema("approverUserGroupMembership").as("approverGroupUserId"),
         tx.ref("email").withSchema("secretApprovalPolicyApproverUser").as("approverEmail"),
         tx.ref("email").withSchema("secretApprovalPolicyGroupApproverUser").as("approverGroupEmail"),
         tx.ref("username").withSchema("secretApprovalPolicyApproverUser").as("approverUsername"),
@@ -90,6 +111,20 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("firstName").withSchema("secretApprovalPolicyGroupApproverUser").as("approverGroupFirstName"),
         tx.ref("lastName").withSchema("secretApprovalPolicyApproverUser").as("approverLastName"),
         tx.ref("lastName").withSchema("secretApprovalPolicyGroupApproverUser").as("approverGroupLastName"),
+
+        // Bypasser fields
+        tx.ref("bypasserUserId").withSchema(TableName.SecretApprovalPolicyBypasser),
+        tx.ref("bypasserGroupId").withSchema(TableName.SecretApprovalPolicyBypasser),
+        tx.ref("userId").withSchema("bypasserUserGroupMembership").as("bypasserGroupUserId"),
+        tx.ref("email").withSchema("secretApprovalPolicyBypasserUser").as("bypasserEmail"),
+        tx.ref("email").withSchema("secretApprovalPolicyGroupBypasserUser").as("bypasserGroupEmail"),
+        tx.ref("username").withSchema("secretApprovalPolicyBypasserUser").as("bypasserUsername"),
+        tx.ref("username").withSchema("secretApprovalPolicyGroupBypasserUser").as("bypasserGroupUsername"),
+        tx.ref("firstName").withSchema("secretApprovalPolicyBypasserUser").as("bypasserFirstName"),
+        tx.ref("firstName").withSchema("secretApprovalPolicyGroupBypasserUser").as("bypasserGroupFirstName"),
+        tx.ref("lastName").withSchema("secretApprovalPolicyBypasserUser").as("bypasserLastName"),
+        tx.ref("lastName").withSchema("secretApprovalPolicyGroupBypasserUser").as("bypasserGroupLastName"),
+
         tx.ref("email").withSchema("statusChangedByUser").as("statusChangedByUserEmail"),
         tx.ref("username").withSchema("statusChangedByUser").as("statusChangedByUserUsername"),
         tx.ref("firstName").withSchema("statusChangedByUser").as("statusChangedByUserFirstName"),
@@ -121,7 +156,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
     try {
       const sql = findQuery({ [`${TableName.SecretApprovalRequest}.id` as "id"]: id }, tx || db.replicaNode());
       const docs = await sql;
-      const formatedDoc = sqlNestRelationships({
+      const formattedDoc = sqlNestRelationships({
         data: docs,
         key: "id",
         parentMapper: (el) => ({
@@ -203,13 +238,51 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               lastName,
               username
             })
+          },
+          {
+            key: "bypasserUserId",
+            label: "bypassers" as const,
+            mapper: ({
+              bypasserUserId: userId,
+              bypasserEmail: email,
+              bypasserUsername: username,
+              bypasserLastName: lastName,
+              bypasserFirstName: firstName
+            }) => ({
+              userId,
+              email,
+              firstName,
+              lastName,
+              username
+            })
+          },
+          {
+            key: "bypasserGroupUserId",
+            label: "bypassers" as const,
+            mapper: ({
+              bypasserGroupUserId: userId,
+              bypasserGroupEmail: email,
+              bypasserGroupUsername: username,
+              bypasserGroupLastName: lastName,
+              bypasserGroupFirstName: firstName
+            }) => ({
+              userId,
+              email,
+              firstName,
+              lastName,
+              username
+            })
           }
         ]
       });
-      if (!formatedDoc?.[0]) return;
+      if (!formattedDoc?.[0]) return;
       return {
-        ...formatedDoc[0],
-        policy: { ...formatedDoc[0].policy, approvers: formatedDoc[0].approvers }
+        ...formattedDoc[0],
+        policy: {
+          ...formattedDoc[0].policy,
+          approvers: formattedDoc[0].approvers,
+          bypassers: formattedDoc[0].bypassers
+        }
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByIdSAR" });
@@ -291,6 +364,16 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           `${TableName.SecretApprovalPolicyApprover}.approverGroupId`,
           `${TableName.UserGroupMembership}.groupId`
         )
+        .leftJoin(
+          TableName.SecretApprovalPolicyBypasser,
+          `${TableName.SecretApprovalPolicy}.id`,
+          `${TableName.SecretApprovalPolicyBypasser}.policyId`
+        )
+        .leftJoin<TUserGroupMembership>(
+          db(TableName.UserGroupMembership).as("bypasserUserGroupMembership"),
+          `${TableName.SecretApprovalPolicyBypasser}.bypasserGroupId`,
+          `bypasserUserGroupMembership.groupId`
+        )
         .join<TUsers>(
           db(TableName.Users).as("committerUser"),
           `${TableName.SecretApprovalRequest}.committerUserId`,
@@ -342,6 +425,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
           db.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
           db.ref("userId").withSchema(TableName.UserGroupMembership).as("approverGroupUserId"),
+
+          // Bypasser fields
+          db.ref("bypasserUserId").withSchema(TableName.SecretApprovalPolicyBypasser),
+          db.ref("userId").withSchema("bypasserUserGroupMembership").as("bypasserGroupUserId"),
+
           db.ref("email").withSchema("committerUser").as("committerUserEmail"),
           db.ref("username").withSchema("committerUser").as("committerUserUsername"),
           db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
@@ -355,7 +443,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .from<Awaited<typeof query>[number]>("w")
         .where("w.rank", ">=", offset)
         .andWhere("w.rank", "<", offset + limit);
-      const formatedDoc = sqlNestRelationships({
+      const formattedDoc = sqlNestRelationships({
         data: docs,
         key: "id",
         parentMapper: (el) => ({
@@ -403,12 +491,22 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             key: "approverGroupUserId",
             label: "approvers" as const,
             mapper: ({ approverGroupUserId }) => ({ userId: approverGroupUserId })
+          },
+          {
+            key: "bypasserUserId",
+            label: "bypassers" as const,
+            mapper: ({ bypasserUserId }) => ({ userId: bypasserUserId })
+          },
+          {
+            key: "bypasserGroupUserId",
+            label: "bypassers" as const,
+            mapper: ({ bypasserGroupUserId }) => ({ userId: bypasserGroupUserId })
           }
         ]
       });
-      return formatedDoc.map((el) => ({
+      return formattedDoc.map((el) => ({
         ...el,
-        policy: { ...el.policy, approvers: el.approvers }
+        policy: { ...el.policy, approvers: el.approvers, bypassers: el.bypassers }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindSAR" });
@@ -439,6 +537,16 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           TableName.UserGroupMembership,
           `${TableName.SecretApprovalPolicyApprover}.approverGroupId`,
           `${TableName.UserGroupMembership}.groupId`
+        )
+        .leftJoin(
+          TableName.SecretApprovalPolicyBypasser,
+          `${TableName.SecretApprovalPolicy}.id`,
+          `${TableName.SecretApprovalPolicyBypasser}.policyId`
+        )
+        .leftJoin<TUserGroupMembership>(
+          db(TableName.UserGroupMembership).as("bypasserUserGroupMembership"),
+          `${TableName.SecretApprovalPolicyBypasser}.bypasserGroupId`,
+          `bypasserUserGroupMembership.groupId`
         )
         .join<TUsers>(
           db(TableName.Users).as("committerUser"),
@@ -491,6 +599,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
           db.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
           db.ref("userId").withSchema(TableName.UserGroupMembership).as("approverGroupUserId"),
+
+          // Bypasser
+          db.ref("bypasserUserId").withSchema(TableName.SecretApprovalPolicyBypasser),
+          db.ref("userId").withSchema("bypasserUserGroupMembership").as("bypasserGroupUserId"),
+
           db.ref("email").withSchema("committerUser").as("committerUserEmail"),
           db.ref("username").withSchema("committerUser").as("committerUserUsername"),
           db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
@@ -504,7 +617,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .from<Awaited<typeof query>[number]>("w")
         .where("w.rank", ">=", offset)
         .andWhere("w.rank", "<", offset + limit);
-      const formatedDoc = sqlNestRelationships({
+      const formattedDoc = sqlNestRelationships({
         data: docs,
         key: "id",
         parentMapper: (el) => ({
@@ -554,12 +667,24 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             mapper: ({ approverGroupUserId }) => ({
               userId: approverGroupUserId
             })
+          },
+          {
+            key: "bypasserUserId",
+            label: "bypassers" as const,
+            mapper: ({ bypasserUserId }) => ({ userId: bypasserUserId })
+          },
+          {
+            key: "bypasserGroupUserId",
+            label: "bypassers" as const,
+            mapper: ({ bypasserGroupUserId }) => ({
+              userId: bypasserGroupUserId
+            })
           }
         ]
       });
-      return formatedDoc.map((el) => ({
+      return formattedDoc.map((el) => ({
         ...el,
-        policy: { ...el.policy, approvers: el.approvers }
+        policy: { ...el.policy, approvers: el.approvers, bypassers: el.bypassers }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindSAR" });

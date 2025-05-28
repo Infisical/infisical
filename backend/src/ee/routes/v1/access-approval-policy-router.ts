@@ -1,7 +1,7 @@
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
-import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -28,6 +28,13 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           ])
           .array()
           .min(1, { message: "At least one approver should be provided" }),
+        bypassers: z
+          .discriminatedUnion("type", [
+            z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
+            z.object({ type: z.literal(BypasserType.User), id: z.string().optional(), name: z.string().optional() })
+          ])
+          .array()
+          .optional(),
         approvals: z.number().min(1).default(1),
         enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
         allowedSelfApprovals: z.boolean().default(true)
@@ -72,7 +79,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
                 .object({ type: z.nativeEnum(ApproverType), id: z.string().nullable().optional() })
                 .array()
                 .nullable()
-                .optional()
+                .optional(),
+              bypassers: z.object({ type: z.nativeEnum(BypasserType), id: z.string().nullable().optional() }).array()
             })
             .array()
             .nullable()
@@ -147,6 +155,13 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           ])
           .array()
           .min(1, { message: "At least one approver should be provided" }),
+        bypassers: z
+          .discriminatedUnion("type", [
+            z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
+            z.object({ type: z.literal(BypasserType.User), id: z.string().optional(), name: z.string().optional() })
+          ])
+          .array()
+          .optional(),
         approvals: z.number().min(1).optional(),
         enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
         allowedSelfApprovals: z.boolean().default(true)
@@ -215,6 +230,15 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             approvers: z
               .object({
                 type: z.nativeEnum(ApproverType),
+                id: z.string().nullable().optional(),
+                name: z.string().nullable().optional()
+              })
+              .array()
+              .nullable()
+              .optional(),
+            bypassers: z
+              .object({
+                type: z.nativeEnum(BypasserType),
                 id: z.string().nullable().optional(),
                 name: z.string().nullable().optional()
               })

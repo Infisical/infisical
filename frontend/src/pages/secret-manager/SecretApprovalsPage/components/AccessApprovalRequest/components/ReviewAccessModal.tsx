@@ -19,7 +19,7 @@ export const ReviewAccessRequestModal = ({
   projectSlug,
   selectedRequester,
   selectedEnvSlug,
-  canBypassApprovalPermission
+  canBypass
 }: {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -32,7 +32,7 @@ export const ReviewAccessRequestModal = ({
   projectSlug: string;
   selectedRequester: string | undefined;
   selectedEnvSlug: string | undefined;
-  canBypassApprovalPermission: boolean;
+  canBypass: boolean;
 }) => {
   const [isLoading, setIsLoading] = useState<"approved" | "rejected" | null>(null);
   const [bypassApproval, setBypassApproval] = useState(false);
@@ -208,7 +208,7 @@ export const ReviewAccessRequestModal = ({
           {isSoftEnforcement &&
             request.isRequestedByCurrentUser &&
             !(request.isApprover && request.isSelfApproveAllowed) &&
-            canBypassApprovalPermission && (
+            canBypass && (
               <div className="mt-2 flex flex-col space-y-2">
                 <Checkbox
                   onCheckedChange={(checked) => setBypassApproval(checked === true)}

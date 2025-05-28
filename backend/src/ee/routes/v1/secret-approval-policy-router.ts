@@ -1,7 +1,7 @@
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
-import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -34,6 +34,13 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           ])
           .array()
           .min(1, { message: "At least one approver should be provided" }),
+        bypassers: z
+          .discriminatedUnion("type", [
+            z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
+            z.object({ type: z.literal(BypasserType.User), id: z.string().optional(), name: z.string().optional() })
+          ])
+          .array()
+          .optional(),
         approvals: z.number().min(1).default(1),
         enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
         allowedSelfApprovals: z.boolean().default(true)
@@ -79,6 +86,13 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           ])
           .array()
           .min(1, { message: "At least one approver should be provided" }),
+        bypassers: z
+          .discriminatedUnion("type", [
+            z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
+            z.object({ type: z.literal(BypasserType.User), id: z.string().optional(), name: z.string().optional() })
+          ])
+          .array()
+          .optional(),
         approvals: z.number().min(1).default(1),
         secretPath: z
           .string()
@@ -157,6 +171,12 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
                   id: z.string().nullable().optional(),
                   type: z.nativeEnum(ApproverType)
                 })
+                .array(),
+              bypassers: z
+                .object({
+                  id: z.string().nullable().optional(),
+                  type: z.nativeEnum(BypasserType)
+                })
                 .array()
             })
             .array()
@@ -193,6 +213,13 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
               .object({
                 id: z.string().nullable().optional(),
                 type: z.nativeEnum(ApproverType),
+                name: z.string().nullable().optional()
+              })
+              .array(),
+            bypassers: z
+              .object({
+                id: z.string().nullable().optional(),
+                type: z.nativeEnum(BypasserType),
                 name: z.string().nullable().optional()
               })
               .array()

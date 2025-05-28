@@ -14,6 +14,7 @@ export const useCreateSecretApprovalPolicy = () => {
       workspaceId,
       approvals,
       approvers,
+      bypassers,
       secretPath,
       name,
       enforcementLevel,
@@ -24,6 +25,7 @@ export const useCreateSecretApprovalPolicy = () => {
         workspaceId,
         approvals,
         approvers,
+        bypassers,
         secretPath,
         name,
         enforcementLevel,
@@ -46,6 +48,7 @@ export const useUpdateSecretApprovalPolicy = () => {
     mutationFn: async ({
       id,
       approvers,
+      bypassers,
       approvals,
       secretPath,
       name,
@@ -55,6 +58,7 @@ export const useUpdateSecretApprovalPolicy = () => {
       const { data } = await apiRequest.patch(`/api/v1/secret-approvals/${id}`, {
         approvals,
         approvers,
+        bypassers,
         secretPath,
         name,
         enforcementLevel,

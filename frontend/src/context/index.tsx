@@ -10,7 +10,6 @@ export {
 export type { TProjectPermission } from "./ProjectPermissionContext";
 export {
   ProjectPermissionActions,
-  ProjectPermissionApprovalActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCmekActions,
   ProjectPermissionDynamicSecretActions,

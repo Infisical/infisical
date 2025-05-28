@@ -1,12 +1,13 @@
 import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
 
-import { ApproverType } from "../access-approval-policy/access-approval-policy-types";
+import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 
 export type TCreateSapDTO = {
   approvals: number;
   secretPath?: string | null;
   environment: string;
   approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; name?: string })[];
+  bypassers?: ({ type: BypasserType.Group; id: string } | { type: BypasserType.User; id?: string; name?: string })[];
   projectId: string;
   name: string;
   enforcementLevel: EnforcementLevel;
@@ -18,6 +19,7 @@ export type TUpdateSapDTO = {
   approvals?: number;
   secretPath?: string | null;
   approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; name?: string })[];
+  bypassers?: ({ type: BypasserType.Group; id: string } | { type: BypasserType.User; id?: string; name?: string })[];
   name?: string;
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals?: boolean;
