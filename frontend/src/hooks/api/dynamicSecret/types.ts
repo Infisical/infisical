@@ -13,6 +13,7 @@ export type TDynamicSecret = {
   status?: DynamicSecretStatus;
   statusDetails?: string;
   maxTTL: string;
+  usernameTemplate?: string | null;
   metadata?: { key: string; value: string }[];
 };
 
@@ -272,6 +273,7 @@ export type TCreateDynamicSecretDTO = {
   environmentSlug: string;
   name: string;
   metadata?: { key: string; value: string }[];
+  usernameTemplate?: string;
 };
 
 export type TUpdateDynamicSecretDTO = {
@@ -285,6 +287,7 @@ export type TUpdateDynamicSecretDTO = {
     defaultTTL?: string;
     maxTTL?: string | null;
     inputs?: unknown;
+    usernameTemplate?: string | null;
   };
 };
 

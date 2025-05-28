@@ -57,7 +57,8 @@ const formSchema = z.object({
   newName: z
     .string()
     .refine((val) => val.toLowerCase() === val, "Must be lowercase")
-    .optional()
+    .optional(),
+  usernameTemplate: z.string().trim().nullable().optional()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -86,6 +87,7 @@ export const EditDynamicSecretRedisProviderForm = ({
       defaultTTL: dynamicSecret.defaultTTL,
       maxTTL: dynamicSecret.maxTTL,
       newName: dynamicSecret.name,
+      usernameTemplate: dynamicSecret?.usernameTemplate || "{{randomUsername}}",
       inputs: {
         ...(dynamicSecret.inputs as TForm["inputs"])
       }
@@ -94,9 +96,16 @@ export const EditDynamicSecretRedisProviderForm = ({
 
   const updateDynamicSecret = useUpdateDynamicSecret();
 
-  const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
+  const handleUpdateDynamicSecret = async ({
+    inputs,
+    maxTTL,
+    defaultTTL,
+    newName,
+    usernameTemplate
+  }: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isPending) return;
+    const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
     try {
       await updateDynamicSecret.mutateAsync({
         name: dynamicSecret.name,
@@ -104,6 +113,8 @@ export const EditDynamicSecretRedisProviderForm = ({
         projectSlug,
         environmentSlug: environment,
         data: {
+          usernameTemplate:
+            !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate,
           maxTTL: maxTTL || undefined,
           defaultTTL,
           inputs,
@@ -262,6 +273,24 @@ export const EditDynamicSecretRedisProviderForm = ({
               <AccordionItem value="advance-statements">
                 <AccordionTrigger>Modify Redis Statements</AccordionTrigger>
                 <AccordionContent>
+                  <Controller
+                    control={control}
+                    name="usernameTemplate"
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Username Template"
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                      >
+                        <Input
+                          {...field}
+                          value={field.value || undefined}
+                          className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                        />
+                      </FormControl>
+                    )}
+                  />
                   <Controller
                     control={control}
                     name="inputs.creationStatement"

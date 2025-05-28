@@ -97,7 +97,8 @@ const formSchema = z.object({
       value: z.string().trim().default("")
     })
     .array()
-    .optional()
+    .optional(),
+  usernameTemplate: z.string().trim().nullable().optional()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -139,6 +140,7 @@ export const EditDynamicSecretSqlProviderForm = ({
       maxTTL: dynamicSecret.maxTTL,
       newName: dynamicSecret.name,
       metadata: dynamicSecret.metadata,
+      usernameTemplate: dynamicSecret?.usernameTemplate || "{{randomUsername}}",
       inputs: {
         ...(dynamicSecret.inputs as TForm["inputs"]),
         passwordRequirements:
@@ -161,11 +163,13 @@ export const EditDynamicSecretSqlProviderForm = ({
     maxTTL,
     defaultTTL,
     newName,
-    metadata
+    metadata,
+    usernameTemplate
   }: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isPending) return;
     try {
+      const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
       await updateDynamicSecret.mutateAsync({
         name: dynamicSecret.name,
         path: secretPath,
@@ -179,7 +183,8 @@ export const EditDynamicSecretSqlProviderForm = ({
             gatewayId: isGatewayInActive ? null : inputs.gatewayId
           },
           newName: newName === dynamicSecret.name ? undefined : newName,
-          metadata
+          metadata,
+          usernameTemplate: !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate
         }
       });
       onClose();
@@ -427,6 +432,25 @@ export const EditDynamicSecretSqlProviderForm = ({
                     Creation, Revocation & Renew Statements (optional)
                   </AccordionTrigger>
                   <AccordionContent>
+                    <Controller
+                      control={control}
+                      name="usernameTemplate"
+                      defaultValue=""
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Username Template"
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                          helperText="randomUsername: Function used to generate random username"
+                        >
+                          <Input
+                            {...field}
+                            value={field.value || undefined}
+                            className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                          />
+                        </FormControl>
+                      )}
+                    />
                     <div className="mb-4 text-sm text-mineshaft-300">
                       Customize SQL statements for managing database user lifecycle
                     </div>
