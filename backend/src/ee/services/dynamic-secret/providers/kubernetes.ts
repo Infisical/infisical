@@ -80,10 +80,11 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
     };
 
     const url = new URL(providerInputs.url);
-    const k8sHost = `${url.protocol}//${url.hostname}`;
     const k8sPort = url.port ? Number(url.port) : 443;
 
     if (providerInputs.gatewayId) {
+      const k8sHost = url.hostname;
+
       await $gatewayProxyWrapper(
         {
           gatewayId: providerInputs.gatewayId,
@@ -93,6 +94,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
         serviceAccountGetCallback
       );
     } else {
+      const k8sHost = `${url.protocol}//${url.hostname}`;
       await serviceAccountGetCallback(k8sHost, k8sPort);
     }
 
@@ -132,13 +134,14 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
 
     const url = new URL(providerInputs.url);
     const k8sHost = `${url.protocol}//${url.hostname}`;
+    const k8sGatewayHost = url.hostname;
     const k8sPort = url.port ? Number(url.port) : 443;
 
     const tokenData = providerInputs.gatewayId
       ? await $gatewayProxyWrapper(
           {
             gatewayId: providerInputs.gatewayId,
-            targetHost: k8sHost,
+            targetHost: k8sGatewayHost,
             targetPort: k8sPort
           },
           tokenRequestCallback
