@@ -319,11 +319,9 @@ export const CommitDetailsTab = ({
                     >
                       <div className="flex items-center space-x-3">
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-white">
-                            Revert commit changes
-                          </span>
+                          <span className="text-sm font-medium text-white">Revert changes</span>
                           <span className="max-w-[180px] whitespace-normal break-words text-xs leading-snug text-gray-400">
-                            Will undo all changes made in this commit
+                            Will restore to the previous version of affected resources
                           </span>
                         </div>
                       </div>
