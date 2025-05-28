@@ -163,7 +163,8 @@ export const useUpdateIdentityUniversalAuth = () => {
       accessTokenTTL,
       accessTokenMaxTTL,
       accessTokenNumUsesLimit,
-      accessTokenTrustedIps
+      accessTokenTrustedIps,
+      accessTokenPeriod
     }) => {
       const {
         data: { identityUniversalAuth }
@@ -172,7 +173,8 @@ export const useUpdateIdentityUniversalAuth = () => {
         accessTokenTTL,
         accessTokenMaxTTL,
         accessTokenNumUsesLimit,
-        accessTokenTrustedIps
+        accessTokenTrustedIps,
+        accessTokenPeriod
       });
       return identityUniversalAuth;
     },

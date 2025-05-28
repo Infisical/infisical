@@ -107,6 +107,7 @@ export type IdentityUniversalAuth = {
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: IdentityTrustedIp[];
+  accessTokenPeriod: number;
 };
 
 export type AddIdentityUniversalAuthDTO = {
@@ -118,6 +119,7 @@ export type AddIdentityUniversalAuthDTO = {
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
+  accessTokenPeriod: number;
   accessTokenTrustedIps: {
     ipAddress: string;
   }[];
@@ -132,6 +134,7 @@ export type UpdateIdentityUniversalAuthDTO = {
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
+  accessTokenPeriod?: number;
   accessTokenTrustedIps?: {
     ipAddress: string;
   }[];

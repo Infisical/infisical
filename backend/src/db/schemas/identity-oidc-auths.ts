@@ -27,7 +27,8 @@ export const IdentityOidcAuthsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   encryptedCaCertificate: zodBuffer.nullable().optional(),
-  claimMetadataMapping: z.unknown().nullable().optional()
+  claimMetadataMapping: z.unknown().nullable().optional(),
+  accessTokenPeriod: z.coerce.number().default(0)
 });
 
 export type TIdentityOidcAuths = z.infer<typeof IdentityOidcAuthsSchema>;

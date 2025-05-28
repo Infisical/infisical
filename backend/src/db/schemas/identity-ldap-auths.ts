@@ -24,7 +24,8 @@ export const IdentityLdapAuthsSchema = z.object({
   searchFilter: z.string(),
   allowedFields: z.unknown().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  accessTokenPeriod: z.coerce.number().default(0)
 });
 
 export type TIdentityLdapAuths = z.infer<typeof IdentityLdapAuthsSchema>;

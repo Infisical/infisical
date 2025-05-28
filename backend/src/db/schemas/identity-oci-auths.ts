@@ -18,7 +18,8 @@ export const IdentityOciAuthsSchema = z.object({
   identityId: z.string().uuid(),
   type: z.string(),
   tenancyOcid: z.string(),
-  allowedUsernames: z.string().nullable().optional()
+  allowedUsernames: z.string().nullable().optional(),
+  accessTokenPeriod: z.coerce.number().default(0)
 });
 
 export type TIdentityOciAuths = z.infer<typeof IdentityOciAuthsSchema>;
