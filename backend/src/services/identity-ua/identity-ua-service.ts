@@ -114,21 +114,34 @@ export const identityUaServiceFactory = ({
       });
     }
 
+    const accessTokenTTLParams =
+      Number(identityUa.accessTokenPeriod) === 0
+        ? {
+            accessTokenTTL: identityUa.accessTokenTTL,
+            accessTokenMaxTTL: identityUa.accessTokenMaxTTL
+          }
+        : {
+            accessTokenTTL: identityUa.accessTokenPeriod,
+            accessTokenMaxTTL: identityUa.accessTokenPeriod
+          };
+
     const identityAccessToken = await identityUaDAL.transaction(async (tx) => {
       const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
+
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityUa.identityId,
           isAccessTokenRevoked: false,
           identityUAClientSecretId: uaClientSecretDoc.id,
-          accessTokenTTL: identityUa.accessTokenTTL,
-          accessTokenMaxTTL: identityUa.accessTokenMaxTTL,
           accessTokenNumUses: 0,
           accessTokenNumUsesLimit: identityUa.accessTokenNumUsesLimit,
-          authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
+          accessTokenPeriod: identityUa.accessTokenPeriod,
+          authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+          ...accessTokenTTLParams
         },
         tx
       );
+
       return newToken;
     });
 
@@ -149,7 +162,14 @@ export const identityUaServiceFactory = ({
           }
     );
 
-    return { accessToken, identityUa, validClientSecretInfo, identityAccessToken, identityMembershipOrg };
+    return {
+      accessToken,
+      identityUa,
+      validClientSecretInfo,
+      identityAccessToken,
+      identityMembershipOrg,
+      ...accessTokenTTLParams
+    };
   };
 
   const attachUniversalAuth = async ({
@@ -163,7 +183,8 @@ export const identityUaServiceFactory = ({
     actorAuthMethod,
     actor,
     actorOrgId,
-    isActorSuperAdmin
+    isActorSuperAdmin,
+    accessTokenPeriod
   }: TAttachUaDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
@@ -232,7 +253,8 @@ export const identityUaServiceFactory = ({
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,
-          accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps)
+          accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
+          accessTokenPeriod
         },
         tx
       );
@@ -248,6 +270,7 @@ export const identityUaServiceFactory = ({
     accessTokenTTL,
     accessTokenTrustedIps,
     clientSecretTrustedIps,
+    accessTokenPeriod,
     actorId,
     actorAuthMethod,
     actor,
@@ -324,6 +347,7 @@ export const identityUaServiceFactory = ({
       accessTokenMaxTTL,
       accessTokenTTL,
       accessTokenNumUsesLimit,
+      accessTokenPeriod,
       accessTokenTrustedIps: reformattedAccessTokenTrustedIps
         ? JSON.stringify(reformattedAccessTokenTrustedIps)
         : undefined

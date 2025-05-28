@@ -18,7 +18,8 @@ export const IdentityAzureAuthsSchema = z.object({
   identityId: z.string().uuid(),
   tenantId: z.string(),
   resource: z.string(),
-  allowedServicePrincipalIds: z.string()
+  allowedServicePrincipalIds: z.string(),
+  accessTokenPeriod: z.coerce.number().default(0)
 });
 
 export type TIdentityAzureAuths = z.infer<typeof IdentityAzureAuthsSchema>;
