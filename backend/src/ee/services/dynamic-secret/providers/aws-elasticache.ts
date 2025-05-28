@@ -134,7 +134,7 @@ const generatePassword = () => {
 
 const generateUsername = (usernameTemplate?: string | null) => {
   const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-";
-  const randomUsername = `inf-${customAlphabet(charset, 32)()}`; // Username must start with an ascii letter, so we prepend the username with "inf-"
+  const randomUsername = `inf-${customAlphabet(charset, 32)()}`;
   if (!usernameTemplate) return randomUsername;
 
   return handlebars.compile(usernameTemplate)({

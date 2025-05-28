@@ -14,7 +14,7 @@ const generatePassword = (size = 48) => {
 };
 
 const generateUsername = (usernameTemplate?: string | null) => {
-  const randomUsername = alphaNumericNanoId(32); // Username must start with an ascii letter, so we prepend the username with "inf-"
+  const randomUsername = alphaNumericNanoId(32);
   if (!usernameTemplate) return randomUsername;
 
   return handlebars.compile(usernameTemplate)({

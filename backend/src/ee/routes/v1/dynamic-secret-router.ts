@@ -7,6 +7,7 @@ import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { isValidHandleBarTemplate } from "@app/lib/template/validate-handlebars";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -14,9 +15,21 @@ import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchema
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
+const validateUsernameTemplateCharacters = characterValidator([
+  CharacterType.AlphaNumeric,
+  CharacterType.Underscore,
+  CharacterType.Hyphen,
+  CharacterType.OpenBrace,
+  CharacterType.CloseBrace,
+  CharacterType.CloseBracket,
+  CharacterType.OpenBracket,
+  CharacterType.Fullstop
+]);
+
 const userTemplateSchema = z
   .string()
   .trim()
+  .refine((el) => validateUsernameTemplateCharacters(el))
   .refine((el) =>
     isValidHandleBarTemplate(el, {
       allowedExpressions: (val) => ["randomUsername", "unixTimestamp"].includes(val)

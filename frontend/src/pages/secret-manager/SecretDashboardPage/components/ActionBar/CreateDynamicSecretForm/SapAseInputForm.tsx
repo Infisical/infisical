@@ -277,7 +277,6 @@ sp_droplogin '{{username}}';`
                             label="Username Template"
                             isError={Boolean(error?.message)}
                             errorText={error?.message}
-                            tooltipText="randomUsername: Function used to generate random username"
                           >
                             <Input
                               {...field}
