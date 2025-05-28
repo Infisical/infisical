@@ -148,7 +148,8 @@ export const UNIVERSAL_AUTH = {
       "The maximum lifetime for an access token in seconds. This value will be referenced at renewal time.",
     accessTokenNumUsesLimit:
       "The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses.",
-    accessTokenPeriod: "The period for an access token in seconds. This value will be referenced at renewal time."
+    accessTokenPeriod:
+      "The period for an access token in seconds. This value will be referenced at renewal time. Default value is 0."
   },
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve the auth method for."
