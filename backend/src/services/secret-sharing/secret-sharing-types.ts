@@ -37,11 +37,8 @@ export type TGetActiveSharedSecretByIdDTO = {
   sharedSecretId: string;
   hashedHex?: string;
   orgId?: string;
+  actorId?: string;
   password?: string;
-
-  // For secrets shared with specific emails
-  email?: string;
-  hash?: string;
 };
 
 export type TValidateActiveSharedSecretDTO = TGetActiveSharedSecretByIdDTO & {
