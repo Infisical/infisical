@@ -82,23 +82,32 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
     const url = new URL(providerInputs.url);
     const k8sPort = url.port ? Number(url.port) : 443;
 
-    if (providerInputs.gatewayId) {
-      const k8sHost = url.hostname;
+    try {
+      if (providerInputs.gatewayId) {
+        const k8sHost = url.hostname;
 
-      await $gatewayProxyWrapper(
-        {
-          gatewayId: providerInputs.gatewayId,
-          targetHost: k8sHost,
-          targetPort: k8sPort
-        },
-        serviceAccountGetCallback
-      );
-    } else {
-      const k8sHost = `${url.protocol}//${url.hostname}`;
-      await serviceAccountGetCallback(k8sHost, k8sPort);
+        await $gatewayProxyWrapper(
+          {
+            gatewayId: providerInputs.gatewayId,
+            targetHost: k8sHost,
+            targetPort: k8sPort
+          },
+          serviceAccountGetCallback
+        );
+      } else {
+        const k8sHost = `${url.protocol}//${url.hostname}`;
+        await serviceAccountGetCallback(k8sHost, k8sPort);
+      }
+
+      return true;
+    } catch (error) {
+      let errorMessage = error instanceof Error ? error.message : "Unknown error";
+      if (axios.isAxiosError(error) && (error.response?.data as { message: string })?.message) {
+        errorMessage = (error.response?.data as { message: string }).message;
+      }
+
+      throw new Error(`Failed to validate connection: ${errorMessage}`);
     }
-
-    return true;
   };
 
   const create = async (inputs: unknown, expireAt: number) => {
@@ -137,21 +146,30 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
     const k8sGatewayHost = url.hostname;
     const k8sPort = url.port ? Number(url.port) : 443;
 
-    const tokenData = providerInputs.gatewayId
-      ? await $gatewayProxyWrapper(
-          {
-            gatewayId: providerInputs.gatewayId,
-            targetHost: k8sGatewayHost,
-            targetPort: k8sPort
-          },
-          tokenRequestCallback
-        )
-      : await tokenRequestCallback(k8sHost, k8sPort);
+    try {
+      const tokenData = providerInputs.gatewayId
+        ? await $gatewayProxyWrapper(
+            {
+              gatewayId: providerInputs.gatewayId,
+              targetHost: k8sGatewayHost,
+              targetPort: k8sPort
+            },
+            tokenRequestCallback
+          )
+        : await tokenRequestCallback(k8sHost, k8sPort);
 
-    return {
-      entityId: providerInputs.serviceAccountName,
-      data: { TOKEN: tokenData.status.token }
-    };
+      return {
+        entityId: providerInputs.serviceAccountName,
+        data: { TOKEN: tokenData.status.token }
+      };
+    } catch (error) {
+      let errorMessage = error instanceof Error ? error.message : "Unknown error";
+      if (axios.isAxiosError(error) && (error.response?.data as { message: string })?.message) {
+        errorMessage = (error.response?.data as { message: string }).message;
+      }
+
+      throw new Error(`Failed to validate connection: ${errorMessage}`);
+    }
   };
 
   const revoke = async (_inputs: unknown, entityId: string) => {
