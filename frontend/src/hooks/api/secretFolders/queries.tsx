@@ -10,6 +10,7 @@ import {
 import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
+import { commitKeys } from "../folderCommits/queries";
 import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import {
   TCreateFolderDTO,
@@ -166,6 +167,9 @@ export const useCreateFolder = () => {
       queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
       });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.count({ workspaceId: projectId, environment, directory: path })
+      });
     }
   });
 };
@@ -200,6 +204,12 @@ export const useUpdateFolder = () => {
       queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
       });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.count({ workspaceId: projectId, environment, directory: path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.history({ workspaceId: projectId, environment, directory: path })
+      });
     }
   });
 };
@@ -233,6 +243,12 @@ export const useDeleteFolder = () => {
       });
       queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.count({ workspaceId: projectId, environment, directory: path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.history({ workspaceId: projectId, environment, directory: path })
       });
     }
   });
@@ -274,6 +290,20 @@ export const useUpdateFolderBatch = () => {
         });
         queryClient.invalidateQueries({
           queryKey: secretSnapshotKeys.count({
+            workspaceId: projectId,
+            environment: folder.environment,
+            directory: folder.path
+          })
+        });
+        queryClient.invalidateQueries({
+          queryKey: commitKeys.count({
+            workspaceId: projectId,
+            environment: folder.environment,
+            directory: folder.path
+          })
+        });
+        queryClient.invalidateQueries({
+          queryKey: commitKeys.history({
             workspaceId: projectId,
             environment: folder.environment,
             directory: folder.path

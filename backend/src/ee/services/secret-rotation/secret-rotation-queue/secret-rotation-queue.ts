@@ -14,6 +14,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
+import { CommitType, TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -53,6 +54,7 @@ type TSecretRotationQueueFactoryDep = {
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
 };
 
 // These error should stop the repeatable job and ask user to reconfigure rotation
@@ -77,6 +79,7 @@ export const secretRotationQueueFactory = ({
   telemetryService,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
+  folderCommitService,
   kmsService
 }: TSecretRotationQueueFactoryDep) => {
   const addToQueue = async (rotationId: string, interval: number) => {
@@ -330,12 +333,28 @@ export const secretRotationQueueFactory = ({
             })),
             tx
           );
-          await secretVersionV2BridgeDAL.insertMany(
+          const secretVersions = await secretVersionV2BridgeDAL.insertMany(
             updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => ({
               ...el,
               actorType: ActorType.PLATFORM,
               secretId: id
             })),
+            tx
+          );
+
+          await folderCommitService.createCommit(
+            {
+              actor: {
+                type: ActorType.PLATFORM
+              },
+              message: "Changed by Secret rotation",
+              folderId: secretVersions[0].folderId,
+              changes: secretVersions.map((sv) => ({
+                type: CommitType.ADD,
+                isUpdate: true,
+                secretVersionId: sv.id
+              }))
+            },
             tx
           );
         });

@@ -14,6 +14,7 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { ActorType } from "../auth/auth-type";
+import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
@@ -441,6 +442,7 @@ export type TCreateManySecretsRawFnFactory = {
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
 };
 
 export type TCreateManySecretsRawFn = {
@@ -478,6 +480,7 @@ export type TUpdateManySecretsRawFnFactory = {
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
 };
 
 export type TUpdateManySecretsRawFn = {
