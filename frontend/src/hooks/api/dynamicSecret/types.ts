@@ -31,7 +31,8 @@ export enum DynamicSecretProviders {
   SapHana = "sap-hana",
   Snowflake = "snowflake",
   Totp = "totp",
-  SapAse = "sap-ase"
+  SapAse = "sap-ase",
+  Kubernetes = "kubernetes"
 }
 
 export enum SqlProviders {
@@ -261,6 +262,16 @@ export type TDynamicSecretProvider =
             algorithm?: string;
             digits?: number;
           };
+    }
+  | {
+      type: DynamicSecretProviders.Kubernetes;
+      inputs: {
+        url: string;
+        clusterToken: string;
+        ca?: string;
+        serviceAccountName: string;
+        namespace: string;
+      };
     };
 
 export type TCreateDynamicSecretDTO = {

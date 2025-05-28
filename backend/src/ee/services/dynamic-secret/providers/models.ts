@@ -29,6 +29,10 @@ export enum LdapCredentialType {
   Static = "static"
 }
 
+export enum KubernetesCredentialType {
+  Static = "static"
+}
+
 export enum TotpConfigType {
   URL = "url",
   MANUAL = "manual"
@@ -277,6 +281,18 @@ export const LdapSchema = z.union([
   })
 ]);
 
+export const DynamicSecretKubernetesSchema = z.object({
+  url: z.string().url().trim().min(1),
+  gatewayId: z.string().nullable().optional(),
+  sslEnabled: z.boolean().default(true),
+  clusterToken: z.string().trim().min(1),
+  ca: z.string().optional(),
+  serviceAccountName: z.string().trim().min(1),
+  credentialType: z.literal(KubernetesCredentialType.Static),
+  namespace: z.string().trim().min(1),
+  audiences: z.array(z.string().trim().min(1))
+});
+
 export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
   z.object({
     configType: z.literal(TotpConfigType.URL),
@@ -320,7 +336,8 @@ export enum DynamicSecretProviders {
   SapHana = "sap-hana",
   Snowflake = "snowflake",
   Totp = "totp",
-  SapAse = "sap-ase"
+  SapAse = "sap-ase",
+  Kubernetes = "kubernetes"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -338,7 +355,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.AzureEntraID), inputs: AzureEntraIDSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Ldap), inputs: LdapSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Kubernetes), inputs: DynamicSecretKubernetesSchema })
 ]);
 
 export type TDynamicProviderFns = {
