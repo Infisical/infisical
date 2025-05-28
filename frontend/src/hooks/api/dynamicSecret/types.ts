@@ -270,7 +270,11 @@ export type TDynamicSecretProvider =
         clusterToken: string;
         ca?: string;
         serviceAccountName: string;
+        credentialType: "dynamic" | "static";
         namespace: string;
+        gatewayId?: string;
+        sslEnabled: boolean;
+        audiences: string[];
       };
     };
 
