@@ -154,8 +154,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                     everything else untouched.
                     <br />
                     <br />
-                    Destination secrets that do not match the schema will not be deleted or updated,
-                    regardless of other settings.
+                    Destination secrets that do not match the schema will not be deleted or updated.
                   </span>
                 }
               >
