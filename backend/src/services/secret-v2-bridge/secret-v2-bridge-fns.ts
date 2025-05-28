@@ -288,30 +288,6 @@ export const fnSecretBulkUpdate = async ({
     tx
   );
 
-  const commitChanges = secretVersions
-    .filter(({ type }) => type === SecretType.Shared)
-    .map((sv) => ({
-      type: CommitType.ADD,
-      isUpdate: true,
-      secretVersionId: sv.id
-    }));
-  if (commitChanges.length > 0) {
-    await folderCommitService.createCommit(
-      {
-        actor: {
-          type: actorType || ActorType.PLATFORM,
-          metadata: {
-            id: actor?.actorId
-          }
-        },
-        message: "Secret Updated",
-        folderId,
-        changes: commitChanges
-      },
-      tx
-    );
-  }
-
   await secretDAL.upsertSecretReferences(
     inputSecrets
       .filter(({ data: { references } }) => Boolean(references))
@@ -382,6 +358,31 @@ export const fnSecretBulkUpdate = async ({
     },
     { tx }
   );
+
+  const commitChanges = secretVersions
+    .filter(({ type }) => type === SecretType.Shared)
+    .map((sv) => ({
+      type: CommitType.ADD,
+      isUpdate: true,
+      secretVersionId: sv.id
+    }));
+  if (commitChanges.length > 0) {
+    await folderCommitService.createCommit(
+      {
+        actor: {
+          type: actorType || ActorType.PLATFORM,
+          metadata: {
+            id: actor?.actorId
+          }
+        },
+        message: "Secret Updated",
+        folderId,
+        changes: commitChanges
+      },
+      tx
+    );
+  }
+
   return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
 };
 

@@ -100,11 +100,8 @@ type SecretChange = BaseChange & {
     secretKey?: string;
     secretComment?: string;
     skipMultilineEncoding?: boolean | null;
-    secretReminderRepeatDays?: number | null;
-    secretReminderNote?: string | null;
     metadata?: unknown;
     tags?: string[] | null;
-    secretReminderRecipients?: string[] | null;
     secretValue?: string;
   }[];
 };
@@ -770,6 +767,89 @@ export const folderCommitServiceFactory = ({
     );
   };
 
+  const compareSecretVersions = async (
+    version1: TSecretVersionsV2 & { tags: { id: string }[] },
+    version2: TSecretVersionsV2 & { tags: { id: string }[] },
+    projectId: string
+  ) => {
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    const objectsEqual = (o1: unknown, o2: unknown): boolean => {
+      if (typeof o1 !== "object" || o1 === null || typeof o2 !== "object" || o2 === null) {
+        return o1 === o2;
+      }
+
+      const obj1 = o1 as Record<string, unknown>;
+      const obj2 = o2 as Record<string, unknown>;
+      return (
+        Object.keys(obj1).length === Object.keys(obj2).length && Object.keys(obj1).every((p) => obj1[p] === obj2[p])
+      );
+    };
+
+    const arraysEqual = (a1: unknown[], a2: unknown[]) =>
+      a1.length === a2.length && a1.every((obj1) => a2.some((obj2) => objectsEqual(obj1, obj2)));
+
+    const version1Reshaped = {
+      ...version1,
+      encryptedValue: version1.encryptedValue
+        ? secretManagerDecryptor({ cipherTextBlob: version1.encryptedValue }).toString()
+        : "",
+      encryptedComment: version1.encryptedComment
+        ? secretManagerDecryptor({ cipherTextBlob: version1.encryptedComment }).toString()
+        : "",
+      metadata: version1.metadata as { key: string; value: string }[],
+      tags: version1.tags.map((tag) => tag.id)
+    };
+    const version2Reshaped = {
+      ...version2,
+      encryptedValue: version2.encryptedValue
+        ? secretManagerDecryptor({ cipherTextBlob: version2.encryptedValue }).toString()
+        : "",
+      encryptedComment: version2.encryptedComment
+        ? secretManagerDecryptor({ cipherTextBlob: version2.encryptedComment }).toString()
+        : "",
+      metadata: version2.metadata as { key: string; value: string }[],
+      tags: version2.tags.map((tag) => tag.id)
+    };
+    return (
+      version1Reshaped.key === version2Reshaped.key &&
+      version1Reshaped.encryptedValue === version2Reshaped.encryptedValue &&
+      version1Reshaped.encryptedComment === version2Reshaped.encryptedComment &&
+      version1Reshaped.skipMultilineEncoding === version2Reshaped.skipMultilineEncoding &&
+      arraysEqual(version1Reshaped.metadata, version2Reshaped.metadata) &&
+      version1Reshaped.tags.length === version2Reshaped.tags.length &&
+      version1Reshaped.tags.every((tag) => version2Reshaped.tags.includes(tag))
+    );
+  };
+
+  const filterIgnoredChanges = async (
+    changes: {
+      type: string;
+      secretVersionId?: string;
+      folderVersionId?: string;
+      isUpdate?: boolean;
+      folderId?: string;
+    }[],
+    projectId: string,
+    tx?: Knex
+  ) => {
+    let filteredChanges = [...changes];
+    for (const change of changes) {
+      if (change.type === ChangeType.ADD && change.isUpdate && change.secretVersionId) {
+        const secretVersions = await secretVersionV2BridgeDAL.findByIdAndPreviousVersion(change.secretVersionId, tx);
+        const comparison = await compareSecretVersions(secretVersions[0], secretVersions[1], projectId);
+        if (comparison) {
+          filteredChanges = filteredChanges.filter(
+            (filteredChange) => filteredChange.secretVersionId !== change.secretVersionId
+          );
+        }
+      }
+    }
+    return filteredChanges;
+  };
+
   /**
    * Creates a new commit with the provided changes
    */
@@ -792,6 +872,17 @@ export const folderCommitServiceFactory = ({
         throw new NotFoundError({ message: `Folder with ID ${data.folderId} not found` });
       }
 
+      const project = await projectDAL.findProjectByEnvId(folder.envId, tx);
+
+      if (!project) {
+        return;
+      }
+
+      const changes = await filterIgnoredChanges(data.changes, project.id, tx);
+      if (changes.length === 0) {
+        return;
+      }
+
       const newCommit = await folderCommitDAL.create(
         {
           actorMetadata: metadata,
@@ -804,7 +895,7 @@ export const folderCommitServiceFactory = ({
       );
 
       const batchSize = 500;
-      const chunks = chunkArray(data.changes, batchSize);
+      const chunks = chunkArray(changes, batchSize);
 
       await Promise.all(
         chunks.map(async (chunk) => {
@@ -822,7 +913,7 @@ export const folderCommitServiceFactory = ({
       );
 
       await Promise.all(
-        data.changes.map(async (change) => {
+        changes.map(async (change) => {
           if (change.type === ChangeType.DELETE && change.folderId) {
             await createDeleteCommitForNestedFolders({
               folderId: change.folderId,
@@ -1486,7 +1577,9 @@ export const folderCommitServiceFactory = ({
         },
         tx
       );
-      await createFolderCheckpoint({ folderId, folderCommitId: newCommit.id, force: true, tx });
+      if (newCommit) {
+        await createFolderCheckpoint({ folderId, folderCommitId: newCommit.id, force: true, tx });
+      }
     }
   };
 

@@ -27,10 +27,8 @@ const secretVersionSchema = z.object({
   secretKey: z.string(),
   secretComment: z.string(),
   skipMultilineEncoding: z.boolean().nullable().optional(),
-  secretReminderRepeatDays: z.number().nullable().optional(),
   tags: z.array(z.string()).nullable().optional(),
   metadata: z.unknown().nullable().optional(),
-  secretReminderNote: z.string().nullable().optional(),
   secretValue: z.string()
 });
 

@@ -4,7 +4,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { SecretVersionsV2Schema, TableName, TSecretVersionsV2, TSecretVersionsV2Update } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols, sqlNestRelationships, TFindOpt } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindOpt } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
 
@@ -371,6 +371,79 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByIdAndPreviousVersion = async (secretVersionId: string, tx?: Knex) => {
+    try {
+      const targetSecretVersion = await (tx || db.replicaNode())(TableName.SecretVersionV2)
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter({ id: secretVersionId }, TableName.SecretVersionV2))
+        .leftJoin(
+          TableName.SecretVersionV2Tag,
+          `${TableName.SecretVersionV2}.id`,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretVersionV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .select(selectAllTableCols(TableName.SecretVersionV2))
+        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .first();
+      if (targetSecretVersion) {
+        const previousSecretVersion = await (tx || db.replicaNode())(TableName.SecretVersionV2)
+          .where(
+            // eslint-disable-next-line @typescript-eslint/no-misused-promises
+            buildFindFilter(
+              { version: targetSecretVersion.version - 1, secretId: targetSecretVersion.secretId },
+              TableName.SecretVersionV2
+            )
+          )
+          .leftJoin(
+            TableName.SecretVersionV2Tag,
+            `${TableName.SecretVersionV2}.id`,
+            `${TableName.SecretVersionV2Tag}.${TableName.SecretVersionV2}Id`
+          )
+          .leftJoin(
+            TableName.SecretTag,
+            `${TableName.SecretVersionV2Tag}.${TableName.SecretTag}Id`,
+            `${TableName.SecretTag}.id`
+          )
+          .select(selectAllTableCols(TableName.SecretVersionV2))
+          .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+          .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+          .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+          .first();
+        if (!previousSecretVersion) return [];
+        const docs = [previousSecretVersion, targetSecretVersion];
+
+        const data = sqlNestRelationships({
+          data: docs,
+          key: "id",
+          parentMapper: (el) => ({ _id: el.id, ...SecretVersionsV2Schema.parse(el) }),
+          childrenMapper: [
+            {
+              key: "tagId",
+              label: "tags" as const,
+              mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
+                id,
+                color,
+                slug,
+                name: slug
+              })
+            }
+          ]
+        });
+
+        return data;
+      }
+      return [];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByIdAndPreviousVersion" });
+    }
+  };
+
   return {
     ...secretVersionV2Orm,
     pruneExcessVersions,
@@ -379,6 +452,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     findLatestVersionByFolderId,
     findVersionsBySecretIdWithActors,
     findBySecretId,
-    findByIdsWithLatestVersion
+    findByIdsWithLatestVersion,
+    findByIdAndPreviousVersion
   };
 };

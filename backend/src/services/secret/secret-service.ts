@@ -3351,10 +3351,8 @@ export const secretServiceFactory = ({
       secretKey: v.secretKey,
       secretComment: v.secretComment,
       skipMultilineEncoding: v.skipMultilineEncoding,
-      secretReminderRepeatDays: v.secretReminderRepeatDays,
       tags: v.tags?.map((tag) => tag.slug),
       metadata: v.metadata,
-      secretReminderNote: v.secretReminderNote,
       secretValue: v.secretValue
     }));
   };
