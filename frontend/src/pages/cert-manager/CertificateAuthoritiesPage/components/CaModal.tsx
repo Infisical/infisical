@@ -188,11 +188,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           name,
           type: CaType.INTERNAL,
           status,
-          enableDirectIssuance,
-          configuration: {
-            ...configuration,
-            maxPathLength: Number(configuration.maxPathLength)
-          }
+          enableDirectIssuance
         });
       } else {
         // create

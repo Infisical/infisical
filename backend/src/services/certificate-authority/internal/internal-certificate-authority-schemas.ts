@@ -55,8 +55,4 @@ export const CreateInternalCertificateAuthoritySchema = GenericCreateCertificate
   configuration: InternalCertificateAuthorityConfigurationSchema
 });
 
-export const UpdateInternalCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(
-  CaType.INTERNAL
-).extend({
-  configuration: InternalCertificateAuthorityConfigurationSchema.optional()
-});
+export const UpdateInternalCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(CaType.INTERNAL);
