@@ -104,6 +104,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         .object({
           kubernetesHost: z
             .string()
+            .url()
             .trim()
             .min(1)
             .describe(KUBERNETES_AUTH.ATTACH.kubernetesHost)
@@ -223,6 +224,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         .object({
           kubernetesHost: z
             .string()
+            .url()
             .trim()
             .min(1)
             .optional()
