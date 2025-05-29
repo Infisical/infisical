@@ -441,7 +441,6 @@ export const EditDynamicSecretSqlProviderForm = ({
                           label="Username Template"
                           isError={Boolean(error?.message)}
                           errorText={error?.message}
-                          helperText="randomUsername: Function used to generate random username"
                         >
                           <Input
                             {...field}
