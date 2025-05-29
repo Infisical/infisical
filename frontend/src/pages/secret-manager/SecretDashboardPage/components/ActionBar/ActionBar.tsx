@@ -56,10 +56,7 @@ import {
   useSubscription,
   useWorkspace
 } from "@app/context";
-import {
-  ProjectPermissionCommitsActions,
-  ProjectPermissionSecretRotationActions
-} from "@app/context/ProjectPermissionContext/types";
+import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   useCreateFolder,
@@ -126,7 +123,6 @@ type Props = {
       isImported: boolean;
     }[];
   }[];
-  isPITEnabled: boolean;
 };
 
 export const ActionBar = ({
@@ -146,7 +142,6 @@ export const ActionBar = ({
   onToggleRowType,
   protectedBranchPolicyName,
   importedBy,
-  isPITEnabled = false,
   usedBySecretSyncs
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
@@ -782,8 +777,8 @@ export const ActionBar = ({
         </div>
         <div>
           <ProjectPermissionCan
-            I={isPITEnabled ? ProjectPermissionCommitsActions.Read : ProjectPermissionActions.Read}
-            a={isPITEnabled ? ProjectPermissionSub.Commits : ProjectPermissionSub.SecretRollback}
+            I={ProjectPermissionActions.Read}
+            a={ProjectPermissionSub.SecretRollback}
           >
             {(isAllowed) => (
               <Button
@@ -801,7 +796,7 @@ export const ActionBar = ({
                 className="h-10"
                 isDisabled={!isAllowed}
               >
-                {`${snapshotCount} ${isPITEnabled ? "Commit" : "Snapshot"}${snapshotCount === 1 ? "" : "s"}`}
+                {`${snapshotCount} ${snapshotCount === 1 ? "Snapshot" : "Snapshots"}`}
               </Button>
             )}
           </ProjectPermissionCan>

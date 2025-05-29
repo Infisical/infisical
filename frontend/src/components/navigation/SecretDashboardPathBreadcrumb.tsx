@@ -14,15 +14,13 @@ type Props = {
   selectedPathSegmentIndex: number;
   environmentSlug: string;
   projectId: string;
-  disableCopy?: boolean;
 };
 
 export const SecretDashboardPathBreadcrumb = ({
   secretPathSegments,
   selectedPathSegmentIndex,
   environmentSlug,
-  projectId,
-  disableCopy
+  projectId
 }: Props) => {
   const [, isCopying, setIsCopying] = useTimedReset({
     initialState: false
@@ -34,7 +32,7 @@ export const SecretDashboardPathBreadcrumb = ({
 
   return (
     <div className="flex items-center space-x-3">
-      {isLastItem && !disableCopy ? (
+      {isLastItem ? (
         <div className="group flex items-center space-x-2">
           <span
             className={twMerge(
