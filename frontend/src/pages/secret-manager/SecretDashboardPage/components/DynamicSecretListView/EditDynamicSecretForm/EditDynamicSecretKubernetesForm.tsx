@@ -47,7 +47,7 @@ const formSchema = z.object({
     url: z.string().url().trim().min(1),
     clusterToken: z.string().trim().min(1),
     ca: z.string().optional(),
-    sslEnabled: z.boolean().default(true),
+    sslEnabled: z.boolean().default(false),
     credentialType: z.literal(CredentialType.Static),
     serviceAccountName: z.string().trim().min(1),
     namespace: z.string().trim().min(1),
@@ -277,7 +277,7 @@ export const EditDynamicSecretKubernetesForm = ({
                     name="inputs.url"
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
-                        label="URL"
+                        label="Cluster URL"
                         isError={Boolean(error?.message)}
                         errorText={error?.message}
                       >

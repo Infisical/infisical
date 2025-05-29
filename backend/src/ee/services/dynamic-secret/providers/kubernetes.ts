@@ -1,11 +1,12 @@
 import axios from "axios";
 import https from "https";
 
+import { InternalServerError } from "@app/lib/errors";
 import { withGatewayProxy } from "@app/lib/gateway";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TKubernetesTokenRequest } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
-import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretKubernetesSchema, TDynamicProviderFns } from "./models";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
@@ -17,8 +18,11 @@ type TKubernetesProviderDTO = {
 export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretKubernetesSchema.parseAsync(inputs);
-    const [hostIp] = await verifyHostInputValidity(providerInputs.url, Boolean(providerInputs.gatewayId));
-    return { ...providerInputs, hostIp };
+    if (!providerInputs.gatewayId) {
+      await blockLocalAndPrivateIpAddresses(providerInputs.url);
+    }
+
+    return providerInputs;
   };
 
   const $gatewayProxyWrapper = async <T>(
@@ -106,7 +110,9 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
         errorMessage = (error.response?.data as { message: string }).message;
       }
 
-      throw new Error(`Failed to validate connection: ${errorMessage}`);
+      throw new InternalServerError({
+        message: `Failed to validate connection: ${errorMessage}`
+      });
     }
   };
 
@@ -168,7 +174,9 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
         errorMessage = (error.response?.data as { message: string }).message;
       }
 
-      throw new Error(`Failed to validate connection: ${errorMessage}`);
+      throw new InternalServerError({
+        message: `Failed to create dynamic secret: ${errorMessage}`
+      });
     }
   };
 
