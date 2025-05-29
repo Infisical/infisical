@@ -295,10 +295,18 @@ export const folderCommitServiceFactory = ({
       },
       tx
     );
-    await folderCheckpointResourcesDAL.insertMany(
-      checkpointResources.map((resource) => ({ folderCheckpointId: newCheckpoint.id, ...resource })),
-      tx
+    const batchSize = 500;
+    const chunks = chunkArray(checkpointResources, batchSize);
+
+    await Promise.all(
+      chunks.map(async (chunk) => {
+        await folderCheckpointResourcesDAL.insertMany(
+          chunk.map((resource) => ({ folderCheckpointId: newCheckpoint.id, ...resource })),
+          tx
+        );
+      })
     );
+
     return latestCommitId;
   };
 
