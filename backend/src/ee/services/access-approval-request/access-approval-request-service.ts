@@ -57,7 +57,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "findOne"
     | "getCount"
   >;
-  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findOne" | "find">;
+  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findOne" | "find" | "findLastValidPolicy">;
   accessApprovalRequestReviewerDAL: Pick<
     TAccessApprovalRequestReviewerDALFactory,
     "create" | "find" | "findOne" | "transaction"
@@ -132,7 +132,7 @@ export const accessApprovalRequestServiceFactory = ({
 
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
 
-    const policy = await accessApprovalPolicyDAL.findOne({
+    const policy = await accessApprovalPolicyDAL.findLastValidPolicy({
       envId: environment.id,
       secretPath
     });
