@@ -137,6 +137,15 @@ export const pkiSubscriberServiceFactory = ({
       }
     }
 
+    const ca = await certificateAuthorityDAL.findById(caId);
+    if (!ca) {
+      throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    }
+
+    if (ca.projectId !== projectId) {
+      throw new BadRequestError({ message: "CA does not belong to the project" });
+    }
+
     const newSubscriber = await pkiSubscriberDAL.create({
       caId,
       projectId,
@@ -242,6 +251,17 @@ export const pkiSubscriberServiceFactory = ({
     if (enableAutoRenewal) {
       if (!autoRenewalPeriodInDays && !subscriber.autoRenewalPeriodInDays) {
         throw new BadRequestError({ message: "autoRenewalPeriodInDays is required when enableAutoRenewal is true" });
+      }
+    }
+
+    if (caId) {
+      const ca = await certificateAuthorityDAL.findById(caId);
+      if (!ca) {
+        throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+      }
+
+      if (ca.projectId !== projectId) {
+        throw new BadRequestError({ message: "CA does not belong to the project" });
       }
     }
 
