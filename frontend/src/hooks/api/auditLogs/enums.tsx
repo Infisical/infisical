@@ -183,5 +183,16 @@ export enum EventType {
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS = "microsoft-teams-workflow-integration-check-installation-status",
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS = "microsoft-teams-workflow-integration-get-teams",
   MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET = "microsoft-teams-workflow-integration-get",
-  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list"
+  MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST = "microsoft-teams-workflow-integration-list",
+
+  SECRET_SCANNING_DATA_SOURCE_LIST = "secret-scanning-data-source-list",
+  SECRET_SCANNING_DATA_SOURCE_CREATE = "secret-scanning-data-source-create",
+  SECRET_SCANNING_DATA_SOURCE_UPDATE = "secret-scanning-data-source-update",
+  SECRET_SCANNING_DATA_SOURCE_DELETE = "secret-scanning-data-source-delete",
+  SECRET_SCANNING_DATA_SOURCE_GET = "secret-scanning-data-source-get",
+  SECRET_SCANNING_DATA_SOURCE_SCAN = "secret-scanning-data-source-scan",
+  SECRET_SCANNING_RESOURCE_LIST = "secret-scanning-resource-list",
+  SECRET_SCANNING_SCAN_LIST = "secret-scanning-scan-list",
+  SECRET_SCANNING_FINDING_LIST = "secret-scanning-finding-list",
+  SECRET_SCANNING_FINDING_UPDATE = "secret-scanning-finding-update"
 }

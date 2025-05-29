@@ -189,7 +189,18 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.ADD_IDENTITY_LDAP_AUTH]: "Attached LDAP Auth to identity",
   [EventType.UPDATE_IDENTITY_LDAP_AUTH]: "Updated LDAP Auth for identity",
   [EventType.GET_IDENTITY_LDAP_AUTH]: "Retrieved LDAP Auth for identity",
-  [EventType.REVOKE_IDENTITY_LDAP_AUTH]: "Revoked LDAP Auth for identity"
+  [EventType.REVOKE_IDENTITY_LDAP_AUTH]: "Revoked LDAP Auth for identity",
+
+  [EventType.SECRET_SCANNING_DATA_SOURCE_LIST]: "List Secret Scanning Data Sources",
+  [EventType.SECRET_SCANNING_DATA_SOURCE_CREATE]: "Create Secret Scanning Data Source",
+  [EventType.SECRET_SCANNING_DATA_SOURCE_UPDATE]: "Update Secret Scanning Data Source",
+  [EventType.SECRET_SCANNING_DATA_SOURCE_DELETE]: "Delete Secret Scanning Data Source",
+  [EventType.SECRET_SCANNING_DATA_SOURCE_GET]: "Get Secret Scanning Data Source",
+  [EventType.SECRET_SCANNING_DATA_SOURCE_SCAN]: "San Scanning Data Source",
+  [EventType.SECRET_SCANNING_RESOURCE_LIST]: "List Secret Scanning Resources",
+  [EventType.SECRET_SCANNING_SCAN_LIST]: "List Secret Scanning Scans",
+  [EventType.SECRET_SCANNING_FINDING_LIST]: "List Secret Scanning Findings",
+  [EventType.SECRET_SCANNING_FINDING_UPDATE]: "Update Secret Scanning Finding Status"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

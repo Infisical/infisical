@@ -332,17 +332,25 @@ export const MinimizedOrgSidebar = () => {
                   )}
                 </Link>
               )}
-              {(currentOrg.scannerProductEnabled || currentOrg.shareSecretsProductEnabled) && (
-                <div className="w-full bg-mineshaft-500" style={{ height: "1px" }} />
-              )}
               {currentOrg.scannerProductEnabled && (
-                <Link to="/organization/secret-scanning">
+                <Link to="/organization/secret-scanning/overview">
                   {({ isActive }) => (
-                    <MenuIconButton isSelected={isActive} icon="secret-scan">
+                    <MenuIconButton
+                      isSelected={
+                        isActive ||
+                        window.location.pathname.startsWith(
+                          `/organization/${ProjectType.SecretScanning}`
+                        )
+                      }
+                      icon="secret-scan"
+                    >
                       Scanner
                     </MenuIconButton>
                   )}
                 </Link>
+              )}
+              {(currentOrg.scannerProductEnabled || currentOrg.shareSecretsProductEnabled) && (
+                <div className="w-full bg-mineshaft-500" style={{ height: "1px" }} />
               )}
               {currentOrg.shareSecretsProductEnabled && (
                 <Link to="/organization/secret-sharing">

@@ -3,6 +3,12 @@ import {
   SECRET_ROTATION_CONNECTION_MAP,
   SECRET_ROTATION_NAME_MAP
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
+import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  AUTO_SYNC_DESCRIPTION_HELPER,
+  SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP,
+  SECRET_SCANNING_DATA_SOURCE_NAME_MAP
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
@@ -55,7 +61,8 @@ export enum ApiDocsTags {
   SshHostGroups = "SSH Host Groups",
   KmsKeys = "KMS Keys",
   KmsEncryption = "KMS Encryption",
-  KmsSigning = "KMS Signing"
+  KmsSigning = "KMS Signing",
+  SecretScanning = "Secret Scanning"
 }
 
 export const GROUPS = {
@@ -2349,5 +2356,68 @@ export const SecretRotations = {
       accessKeyId: "The name of the secret that the access key ID will be mapped to.",
       secretAccessKey: "The name of the secret that the rotated secret access key will be mapped to."
     }
+  }
+};
+
+export const SecretScanningDataSources = {
+  LIST: (type?: SecretScanningDataSource) => ({
+    projectId: `The ID of the project to list ${type ? SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type] : "Scanning"} Data Sources from.`
+  }),
+  GET_BY_ID: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`
+  }),
+  GET_BY_NAME: (type: SecretScanningDataSource) => ({
+    sourceName: `The name of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`,
+    projectId: `The ID of the project the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source is located in.`
+  }),
+  CREATE: (type: SecretScanningDataSource) => {
+    const sourceType = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
+    const autoScanDescription = AUTO_SYNC_DESCRIPTION_HELPER[type];
+    return {
+      name: `The name of the ${sourceType} Data Source to create. Must be slug-friendly.`,
+      description: `An optional description for the ${sourceType} Data Source.`,
+      projectId: `The ID of the project to create the ${sourceType} Data Source in.`,
+      connectionId: `The ID of the ${
+        APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
+      } Connection to use for this Data Source.`,
+      isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      config: `The configuration parameters to use for this Data Source.`
+    };
+  },
+  UPDATE: (type: SecretScanningDataSource) => {
+    const typeName = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
+    const autoScanDescription = AUTO_SYNC_DESCRIPTION_HELPER[type];
+
+    return {
+      dataSourceId: `The ID of the ${typeName} Data Source to be updated.`,
+      name: `The updated name of the ${typeName} Data Source. Must be slug-friendly.`,
+      description: `The updated description of the ${typeName} Data Source.`,
+      isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      config: `The updated configuration parameters to use for this Data Source.`
+    };
+  },
+  DELETE: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to be deleted.`
+  }),
+  SCAN: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to trigger a scan for.`,
+    resourceId: `The ID of the individual Data Source resource to trigger a scan for.`
+  }),
+  LIST_RESOURCES: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list resources from.`
+  }),
+  LIST_SCANS: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list scans for.`
+  })
+};
+
+export const SecretScanningFindings = {
+  LIST: {
+    projectId: `The ID of the project to list Secret Scanning Findings from.`
+  },
+  UPDATE: {
+    findingId: "The ID of the Secret Scanning Finding to update the resolve status for.",
+    status: "The updated status of the specified Secret Scanning Finding.",
+    remarks: "Remarks pertaining to the resolve status of this finding."
   }
 };

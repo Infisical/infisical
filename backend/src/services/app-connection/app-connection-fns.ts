@@ -42,6 +42,11 @@ import {
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
 import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
 import {
+  getGitHubRadarConnectionListItem,
+  GitHubRadarConnectionMethod,
+  validateGitHubRadarConnectionCredentials
+} from "./github-radar";
+import {
   getHCVaultConnectionListItem,
   HCVaultConnectionMethod,
   validateHCVaultConnectionCredentials
@@ -77,6 +82,7 @@ export const listAppConnectionOptions = () => {
   return [
     getAwsConnectionListItem(),
     getGitHubConnectionListItem(),
+    getGitHubRadarConnectionListItem(),
     getGcpConnectionListItem(),
     getAzureKeyVaultConnectionListItem(),
     getAzureAppConfigurationConnectionListItem(),
@@ -146,6 +152,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.AWS]: validateAwsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Databricks]: validateDatabricksConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GitHub]: validateGitHubConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.GitHubRadar]: validateGitHubRadarConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GCP]: validateGcpConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureKeyVault]: validateAzureKeyVaultConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureAppConfiguration]:
@@ -172,6 +179,8 @@ export const validateAppConnectionCredentials = async (
 export const getAppConnectionMethodName = (method: TAppConnection["method"]) => {
   switch (method) {
     case GitHubConnectionMethod.App:
+      return "GitHub App";
+    case GitHubRadarConnectionMethod.App:
       return "GitHub App";
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
@@ -240,6 +249,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.AWS]: platformManagedCredentialsNotSupported,
   [AppConnection.Databricks]: platformManagedCredentialsNotSupported,
   [AppConnection.GitHub]: platformManagedCredentialsNotSupported,
+  [AppConnection.GitHubRadar]: platformManagedCredentialsNotSupported,
   [AppConnection.GCP]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureKeyVault]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureAppConfiguration]: platformManagedCredentialsNotSupported,
