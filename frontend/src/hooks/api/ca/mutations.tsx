@@ -31,9 +31,13 @@ export const useUpdateCa = () => {
 
       return data;
     },
-    onSuccess: ({ projectId, type }) => {
+    onSuccess: ({ projectId, type }, { caName }) => {
+      caKeys.getCaByNameAndProjectId(caName, projectId);
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByTypeAndProjectId(type, projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: caKeys.getCaByNameAndProjectId(caName, projectId)
       });
     }
   });
