@@ -144,5 +144,28 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
     return softDeletedPolicy;
   };
 
-  return { ...accessApprovalPolicyOrm, find, findById, softDeleteById };
+  const findLastValidPolicy = async ({ envId, secretPath }: { envId: string; secretPath: string }, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.AccessApprovalPolicy)
+        .where(
+          // eslint-disable-next-line @typescript-eslint/no-misused-promises
+          buildFindFilter(
+            {
+              envId,
+              secretPath
+            },
+            TableName.AccessApprovalPolicy
+          )
+        )
+        .orderBy("deletedAt", "desc")
+        .orderByRaw(`"deletedAt" IS NULL`)
+        .first();
+
+      return result;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindLastValidPolicy" });
+    }
+  };
+
+  return { ...accessApprovalPolicyOrm, find, findById, softDeleteById, findLastValidPolicy };
 };
