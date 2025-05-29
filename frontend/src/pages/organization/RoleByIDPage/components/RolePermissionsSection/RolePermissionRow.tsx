@@ -38,8 +38,6 @@ const MEMBERS_PERMISSIONS = [
   { action: "delete", label: "Remove members" }
 ] as const;
 
-
-
 const PROJECT_TEMPLATES_PERMISSIONS = [
   { action: "read", label: "View & Apply" },
   { action: "create", label: "Create" },
@@ -122,35 +120,35 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
     }
     setIsCustom.off();
 
-      switch (val) {
-        case Permission.NoAccess:
-          setValue(
-            `permissions.${formName}`,
-            { read: false, edit: false, create: false, delete: false },
-            { shouldDirty: true }
-          );
-          break;
-        case Permission.FullAccess:
-          setValue(
-            `permissions.${formName}`,
-            { read: true, edit: true, create: true, delete: true },
-            { shouldDirty: true }
-          );
-          break;
-        case Permission.ReadOnly:
-          setValue(
-            `permissions.${formName}`,
-            { read: true, edit: false, create: false, delete: false },
-            { shouldDirty: true }
-          );
-          break;
-        default:
-          setValue(
-            `permissions.${formName}`,
-            { read: false, edit: false, create: false, delete: false },
-            { shouldDirty: true }
-          );
-          break;
+    switch (val) {
+      case Permission.NoAccess:
+        setValue(
+          `permissions.${formName}`,
+          { read: false, edit: false, create: false, delete: false },
+          { shouldDirty: true }
+        );
+        break;
+      case Permission.FullAccess:
+        setValue(
+          `permissions.${formName}`,
+          { read: true, edit: true, create: true, delete: true },
+          { shouldDirty: true }
+        );
+        break;
+      case Permission.ReadOnly:
+        setValue(
+          `permissions.${formName}`,
+          { read: true, edit: false, create: false, delete: false },
+          { shouldDirty: true }
+        );
+        break;
+      default:
+        setValue(
+          `permissions.${formName}`,
+          { read: false, edit: false, create: false, delete: false },
+          { shouldDirty: true }
+        );
+        break;
     }
   };
 

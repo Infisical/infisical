@@ -14,11 +14,11 @@ import {
   TFormSchema
 } from "../OrgRoleModifySection.utils";
 import { OrgPermissionAdminConsoleRow } from "./OrgPermissionAdminConsoleRow";
+import { OrgPermissionBillingRow } from "./OrgPermissionBillingRow";
 import { OrgGatewayPermissionRow } from "./OrgPermissionGatewayRow";
 import { OrgPermissionGroupRow } from "./OrgPermissionGroupRow";
 import { OrgPermissionIdentityRow } from "./OrgPermissionIdentityRow";
 import { OrgPermissionKmipRow } from "./OrgPermissionKmipRow";
-import { OrgPermissionBillingRow } from "./OrgPermissionBillingRow";
 import { OrgPermissionSecretShareRow } from "./OrgPermissionSecretShareRow";
 import { OrgRoleWorkspaceRow } from "./OrgRoleWorkspaceRow";
 import { RolePermissionRow } from "./RolePermissionRow";
