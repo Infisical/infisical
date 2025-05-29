@@ -240,12 +240,19 @@ export const folderCommitServiceFactory = ({
     if (subFolders.length > 0) {
       const subFolderIds = subFolders.map((folder) => folder.id);
       const folderVersions = await folderVersionDAL.findLatestFolderVersions(subFolderIds, tx);
-      resources.push(...Object.values(folderVersions).map((folderVersion) => ({ folderVersionId: folderVersion.id })));
+      resources.push(
+        ...Object.values(folderVersions).map((folderVersion) => ({
+          folderVersionId: folderVersion.id,
+          secretVersionId: undefined
+        }))
+      );
     }
 
     const secretVersions = await secretVersionV2BridgeDAL.findLatestVersionByFolderId(folderId, tx);
     if (secretVersions.length > 0) {
-      resources.push(...secretVersions.map((secretVersion) => ({ secretVersionId: secretVersion.id })));
+      resources.push(
+        ...secretVersions.map((secretVersion) => ({ secretVersionId: secretVersion.id, folderVersionId: undefined }))
+      );
     }
 
     return resources;
@@ -1574,27 +1581,29 @@ export const folderCommitServiceFactory = ({
   /**
    * Initialize a folder with its current state
    */
-  const initializeFolder = async (folderId: string, tx?: Knex) => {
+  const getFolderInitialChanges = async (folderId: string, envId: string, tx?: Knex) => {
     const folderResources = await getFolderResources(folderId, tx);
     const changes = folderResources.map((resource) => ({ type: ChangeType.ADD, ...resource }));
 
     if (changes.length > 0) {
-      const newCommit = await createCommit(
-        {
-          actor: {
-            type: ActorType.PLATFORM
-          },
+      return {
+        commit: {
+          actorMetadata: {},
+          actorType: ActorType.PLATFORM,
           message: "Initialized folder",
           folderId,
-          changes,
-          omitIgnoreFilter: true
+          envId
         },
-        tx
-      );
-      if (newCommit) {
-        await createFolderCheckpoint({ folderId, folderCommitId: newCommit.id, force: true, tx });
-      }
+        changes: changes.map((change) => ({
+          folderId,
+          changeType: change.type,
+          secretVersionId: change.secretVersionId,
+          folderVersionId: change.folderVersionId,
+          isUpdate: false
+        }))
+      };
     }
+    return {};
   };
 
   /**
@@ -1694,33 +1703,6 @@ export const folderCommitServiceFactory = ({
         folderCommitId: folderCommit.id
       })),
       tx
-    );
-  };
-
-  /**
-   * Initialize a project with its current state
-   */
-  const initializeProject = async (projectId: string, tx?: Knex) => {
-    const project = await projectDAL.findById(projectId, tx);
-    if (!project) {
-      throw new NotFoundError({ message: `Project with ID ${projectId} not found` });
-    }
-
-    const folders = await folderDAL.findByProjectId(projectId, tx);
-    const sortedFolders = sortFoldersByHierarchy(folders);
-
-    const batchSize = 5;
-    const chunks = chunkArray(sortedFolders, batchSize);
-
-    for (const chunk of chunks) {
-      await Promise.all(chunk.map((folder) => initializeFolder(folder.id, tx)));
-    }
-
-    const envIds = [...new Set(folders.map((folder) => folder.envId))];
-    await Promise.all(
-      envIds.map(async (envId) => {
-        await createFolderTreeCheckpoint(envId, undefined, tx);
-      })
     );
   };
 
@@ -2173,8 +2155,7 @@ export const folderCommitServiceFactory = ({
     getCommitChanges,
     getCheckpointsByFolderId,
     getLatestCheckpoint,
-    initializeFolder,
-    initializeProject,
+    getFolderInitialChanges,
     createFolderCheckpoint,
     compareFolderStates,
     applyFolderStateDifferences,
