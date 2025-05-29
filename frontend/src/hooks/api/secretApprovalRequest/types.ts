@@ -11,8 +11,7 @@ export enum ApprovalStatus {
 export enum CommitType {
   DELETE = "delete",
   UPDATE = "update",
-  CREATE = "create",
-  ADD = "add"
+  CREATE = "create"
 }
 
 export type TSecretApprovalSecChangeData = {

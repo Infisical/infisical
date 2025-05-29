@@ -44,7 +44,6 @@ import {
 } from "@app/hooks/api";
 import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
-import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
@@ -279,17 +278,6 @@ const Page = () => {
   });
 
   const {
-    data: { count: folderCommitsCount, folderId } = { count: 0, folderId: "" },
-    isPending: isFolderCommitsCountLoading,
-    isFetching: isFolderCommitsCountFetching
-  } = useGetFolderCommitsCount({
-    directory: secretPath,
-    workspaceId,
-    environment,
-    isPaused: !canDoReadRollback
-  });
-
-  const {
     data: snapshotCount,
     isPending: isSnapshotCountLoading,
     isFetching: isSnapshotCountFetching
@@ -299,39 +287,6 @@ const Page = () => {
     directory: secretPath,
     isPaused: !canDoReadRollback
   });
-
-  const isPITEnabled = true;
-
-  const changesCount = useMemo(() => {
-    return isPITEnabled ? folderCommitsCount : snapshotCount;
-  }, [folderCommitsCount, snapshotCount]);
-
-  const isChangesCountPending = useMemo(() => {
-    return isPITEnabled ? isFolderCommitsCountLoading || isSnapshotCountLoading : false;
-  }, [isFolderCommitsCountLoading, isSnapshotCountLoading]);
-
-  const isChangesCountFetching = useMemo(() => {
-    return isPITEnabled ? isFolderCommitsCountFetching || isSnapshotCountFetching : false;
-  }, [isFolderCommitsCountFetching, isSnapshotCountFetching]);
-
-  const handleOnClickRollbackMode = () => {
-    if (isPITEnabled) {
-      navigate({
-        to: `/${ProjectType.SecretManager}/$projectId/commits/$environment/$folderId` as const,
-        params: {
-          projectId: workspaceId,
-          folderId,
-          environment
-        },
-        search: (query) => ({
-          ...query,
-          secretPath
-        })
-      });
-    } else {
-      handlePopUpToggle("snapshots", true);
-    }
-  };
 
   const noAccessSecretCount = Math.max(
     (page * perPage > totalCount ? totalCount % perPage : perPage) -
@@ -493,14 +448,13 @@ const Page = () => {
             onVisibilityToggle={handleToggleVisibility}
             onSearchChange={handleSearchChange}
             onToggleTagFilter={handleTagToggle}
-            snapshotCount={changesCount || 0}
-            isSnapshotCountLoading={isChangesCountPending && isChangesCountFetching}
+            snapshotCount={snapshotCount || 0}
+            isSnapshotCountLoading={isSnapshotCountLoading && isSnapshotCountFetching}
             onToggleRowType={handleToggleRowType}
-            onClickRollbackMode={handleOnClickRollbackMode}
+            onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
             protectedBranchPolicyName={boardPolicy?.name}
             importedBy={importedBy}
             usedBySecretSyncs={usedBySecretSyncs}
-            isPITEnabled={isPITEnabled}
           />
           <div className="thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md rounded-b-none bg-mineshaft-800 text-left text-sm text-bunker-300">
             <div className="flex flex-col" id="dashboard">
@@ -664,7 +618,7 @@ const Page = () => {
           secretPath={secretPath}
           secrets={secrets}
           folders={folders}
-          snapshotCount={changesCount}
+          snapshotCount={snapshotCount}
           onGoBack={handleResetSnapshot}
           onClickListSnapshot={() => handlePopUpToggle("snapshots", true)}
         />

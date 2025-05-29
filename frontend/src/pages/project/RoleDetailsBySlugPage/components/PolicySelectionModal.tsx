@@ -23,7 +23,6 @@ import { useGetProjectTypeFromRoute } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import {
-  EXCLUDED_PERMISSION_SUBS,
   isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   ProjectTypePermissionSubjects,
@@ -67,7 +66,6 @@ const Content = ({ onClose }: ContentProps) => {
           subject as ProjectPermissionSub
         ] && (search ? title.toLowerCase().includes(search.toLowerCase()) : true)
     )
-    .filter(([subject]) => !EXCLUDED_PERMISSION_SUBS.includes(subject as ProjectPermissionSub))
     .sort((a, b) => a[1].title.localeCompare(b[1].title))
     .map(([subject]) => subject);
 

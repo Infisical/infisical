@@ -198,9 +198,6 @@ import { Route as secretManagerIntegrationsGcpSecretManagerOauthCallbackPageRout
 import { Route as secretManagerIntegrationsBitbucketOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/BitbucketOauthCallbackPage/route'
 import { Route as secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/AzureKeyVaultOauthCallbackPage/route'
 import { Route as secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/AzureAppConfigurationOauthCallbackPage/route'
-import { Route as secretManagerCommitsPageRouteImport } from './pages/secret-manager/CommitsPage/route'
-import { Route as secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteImport } from './pages/secret-manager/CommitDetailsPage/components/RollbackPreviewTab/route'
-import { Route as secretManagerCommitDetailsPageRouteImport } from './pages/secret-manager/CommitDetailsPage/route'
 
 // Create Virtual Routes
 
@@ -259,14 +256,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLa
 const AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersImport =
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers',
-  )()
-const AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdImport =
-  createFileRoute(
-    '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId',
-  )()
-const AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdImport =
-  createFileRoute(
-    '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId',
   )()
 
 // Create/Update Routes
@@ -1167,15 +1156,6 @@ const certManagerPkiSubscribersPageRouteRoute =
       AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdCertManagerLayoutSubscribersRoute,
   } as any)
 
-const AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRoute =
-  AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdImport.update(
-    {
-      id: '/commits/$environment/$folderId',
-      path: '/commits/$environment/$folderId',
-      getParentRoute: () => secretManagerLayoutRoute,
-    } as any,
-  )
-
 const secretManagerIntegrationsWindmillConfigurePageRouteRoute =
   secretManagerIntegrationsWindmillConfigurePageRouteImport.update({
     id: '/windmill/create',
@@ -1702,16 +1682,6 @@ const secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute =
       AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
   } as any)
 
-const AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRoute =
-  AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdImport.update(
-    {
-      id: '/$commitId',
-      path: '/$commitId',
-      getParentRoute: () =>
-        AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRoute,
-    } as any,
-  )
-
 const secretManagerIntegrationsVercelOauthCallbackPageRouteRoute =
   secretManagerIntegrationsVercelOauthCallbackPageRouteImport.update({
     id: '/vercel/oauth2/callback',
@@ -1793,30 +1763,6 @@ const secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute 
         AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
     } as any,
   )
-
-const secretManagerCommitsPageRouteRoute =
-  secretManagerCommitsPageRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRoute,
-  } as any)
-
-const secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute =
-  secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteImport.update({
-    id: '/restore',
-    path: '/restore',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRoute,
-  } as any)
-
-const secretManagerCommitDetailsPageRouteRoute =
-  secretManagerCommitDetailsPageRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRoute,
-  } as any)
 
 // Populate the FileRoutesByPath interface
 
@@ -3159,20 +3105,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof secretManagerIntegrationsWindmillConfigurePageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId': {
-      id: '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId'
-      path: '/commits/$environment/$folderId'
-      fullPath: '/secret-manager/$projectId/commits/$environment/$folderId'
-      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdImport
-      parentRoute: typeof secretManagerLayoutImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/': {
-      id: '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/'
-      path: '/'
-      fullPath: '/secret-manager/$projectId/commits/$environment/$folderId/'
-      preLoaderRoute: typeof secretManagerCommitsPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdImport
-    }
     '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback': {
       id: '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback'
       path: '/azure-app-configuration/oauth2/callback'
@@ -3242,27 +3174,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/secret-manager/$projectId/integrations/vercel/oauth2/callback'
       preLoaderRoute: typeof secretManagerIntegrationsVercelOauthCallbackPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId': {
-      id: '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId'
-      path: '/$commitId'
-      fullPath: '/secret-manager/$projectId/commits/$environment/$folderId/$commitId'
-      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/': {
-      id: '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/'
-      path: '/'
-      fullPath: '/secret-manager/$projectId/commits/$environment/$folderId/$commitId/'
-      preLoaderRoute: typeof secretManagerCommitDetailsPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore': {
-      id: '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore'
-      path: '/restore'
-      fullPath: '/secret-manager/$projectId/commits/$environment/$folderId/$commitId/restore'
-      preLoaderRoute: typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdImport
     }
   }
 }
@@ -3807,41 +3718,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLa
     AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutIntegrationsRouteChildren,
   )
 
-interface AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteChildren {
-  secretManagerCommitDetailsPageRouteRoute: typeof secretManagerCommitDetailsPageRouteRoute
-  secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute: typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute
-}
-
-const AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteChildren =
-  {
-    secretManagerCommitDetailsPageRouteRoute:
-      secretManagerCommitDetailsPageRouteRoute,
-    secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute:
-      secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute,
-  }
-
-const AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteWithChildren =
-  AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRoute._addFileChildren(
-    AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteChildren,
-  )
-
-interface AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRouteChildren {
-  secretManagerCommitsPageRouteRoute: typeof secretManagerCommitsPageRouteRoute
-  AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteWithChildren
-}
-
-const AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRouteChildren =
-  {
-    secretManagerCommitsPageRouteRoute: secretManagerCommitsPageRouteRoute,
-    AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRoute:
-      AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteWithChildren,
-  }
-
-const AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRouteWithChildren =
-  AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRoute._addFileChildren(
-    AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRouteChildren,
-  )
-
 interface secretManagerLayoutRouteChildren {
   secretManagerIPAllowlistPageRouteRoute: typeof secretManagerIPAllowlistPageRouteRoute
   secretManagerSecretApprovalsPageRouteRoute: typeof secretManagerSecretApprovalsPageRouteRoute
@@ -3854,7 +3730,6 @@ interface secretManagerLayoutRouteChildren {
   projectIdentityDetailsByIDPageRouteSecretManagerRoute: typeof projectIdentityDetailsByIDPageRouteSecretManagerRoute
   projectMemberDetailsByIDPageRouteSecretManagerRoute: typeof projectMemberDetailsByIDPageRouteSecretManagerRoute
   projectRoleDetailsBySlugPageRouteSecretManagerRoute: typeof projectRoleDetailsBySlugPageRouteSecretManagerRoute
-  AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRouteWithChildren
 }
 
 const secretManagerLayoutRouteChildren: secretManagerLayoutRouteChildren = {
@@ -3878,8 +3753,6 @@ const secretManagerLayoutRouteChildren: secretManagerLayoutRouteChildren = {
     projectMemberDetailsByIDPageRouteSecretManagerRoute,
   projectRoleDetailsBySlugPageRouteSecretManagerRoute:
     projectRoleDetailsBySlugPageRouteSecretManagerRoute,
-  AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRoute:
-    AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRouteWithChildren,
 }
 
 const secretManagerLayoutRouteWithChildren =
@@ -4318,8 +4191,6 @@ export interface FileRoutesByFullPath {
   '/secret-manager/$projectId/integrations/vercel/create': typeof secretManagerIntegrationsVercelConfigurePageRouteRoute
   '/secret-manager/$projectId/integrations/windmill/authorize': typeof secretManagerIntegrationsWindmillAuthorizePageRouteRoute
   '/secret-manager/$projectId/integrations/windmill/create': typeof secretManagerIntegrationsWindmillConfigurePageRouteRoute
-  '/secret-manager/$projectId/commits/$environment/$folderId': typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRouteWithChildren
-  '/secret-manager/$projectId/commits/$environment/$folderId/': typeof secretManagerCommitsPageRouteRoute
   '/secret-manager/$projectId/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute
   '/secret-manager/$projectId/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteRoute
   '/secret-manager/$projectId/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsBitbucketOauthCallbackPageRouteRoute
@@ -4330,9 +4201,6 @@ export interface FileRoutesByFullPath {
   '/secret-manager/$projectId/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute
   '/secret-manager/$projectId/integrations/secret-syncs/$destination/$syncId': typeof secretManagerSecretSyncDetailsByIDPageRouteRoute
   '/secret-manager/$projectId/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
-  '/secret-manager/$projectId/commits/$environment/$folderId/$commitId': typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteWithChildren
-  '/secret-manager/$projectId/commits/$environment/$folderId/$commitId/': typeof secretManagerCommitDetailsPageRouteRoute
-  '/secret-manager/$projectId/commits/$environment/$folderId/$commitId/restore': typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute
 }
 
 export interface FileRoutesByTo {
@@ -4508,7 +4376,6 @@ export interface FileRoutesByTo {
   '/secret-manager/$projectId/integrations/vercel/create': typeof secretManagerIntegrationsVercelConfigurePageRouteRoute
   '/secret-manager/$projectId/integrations/windmill/authorize': typeof secretManagerIntegrationsWindmillAuthorizePageRouteRoute
   '/secret-manager/$projectId/integrations/windmill/create': typeof secretManagerIntegrationsWindmillConfigurePageRouteRoute
-  '/secret-manager/$projectId/commits/$environment/$folderId': typeof secretManagerCommitsPageRouteRoute
   '/secret-manager/$projectId/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute
   '/secret-manager/$projectId/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteRoute
   '/secret-manager/$projectId/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsBitbucketOauthCallbackPageRouteRoute
@@ -4519,8 +4386,6 @@ export interface FileRoutesByTo {
   '/secret-manager/$projectId/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute
   '/secret-manager/$projectId/integrations/secret-syncs/$destination/$syncId': typeof secretManagerSecretSyncDetailsByIDPageRouteRoute
   '/secret-manager/$projectId/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
-  '/secret-manager/$projectId/commits/$environment/$folderId/$commitId': typeof secretManagerCommitDetailsPageRouteRoute
-  '/secret-manager/$projectId/commits/$environment/$folderId/$commitId/restore': typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute
 }
 
 export interface FileRoutesById {
@@ -4716,8 +4581,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/create': typeof secretManagerIntegrationsVercelConfigurePageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/authorize': typeof secretManagerIntegrationsWindmillAuthorizePageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/create': typeof secretManagerIntegrationsWindmillConfigurePageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId': typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRouteWithChildren
-  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/': typeof secretManagerCommitsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsBitbucketOauthCallbackPageRouteRoute
@@ -4728,9 +4591,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId': typeof secretManagerSecretSyncDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId': typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteWithChildren
-  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/': typeof secretManagerCommitDetailsPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore': typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute
 }
 
 export interface FileRouteTypes {
@@ -4918,8 +4778,6 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/integrations/vercel/create'
     | '/secret-manager/$projectId/integrations/windmill/authorize'
     | '/secret-manager/$projectId/integrations/windmill/create'
-    | '/secret-manager/$projectId/commits/$environment/$folderId'
-    | '/secret-manager/$projectId/commits/$environment/$folderId/'
     | '/secret-manager/$projectId/integrations/azure-app-configuration/oauth2/callback'
     | '/secret-manager/$projectId/integrations/azure-key-vault/oauth2/callback'
     | '/secret-manager/$projectId/integrations/bitbucket/oauth2/callback'
@@ -4930,9 +4788,6 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/integrations/netlify/oauth2/callback'
     | '/secret-manager/$projectId/integrations/secret-syncs/$destination/$syncId'
     | '/secret-manager/$projectId/integrations/vercel/oauth2/callback'
-    | '/secret-manager/$projectId/commits/$environment/$folderId/$commitId'
-    | '/secret-manager/$projectId/commits/$environment/$folderId/$commitId/'
-    | '/secret-manager/$projectId/commits/$environment/$folderId/$commitId/restore'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -5107,7 +4962,6 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/integrations/vercel/create'
     | '/secret-manager/$projectId/integrations/windmill/authorize'
     | '/secret-manager/$projectId/integrations/windmill/create'
-    | '/secret-manager/$projectId/commits/$environment/$folderId'
     | '/secret-manager/$projectId/integrations/azure-app-configuration/oauth2/callback'
     | '/secret-manager/$projectId/integrations/azure-key-vault/oauth2/callback'
     | '/secret-manager/$projectId/integrations/bitbucket/oauth2/callback'
@@ -5118,8 +4972,6 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/integrations/netlify/oauth2/callback'
     | '/secret-manager/$projectId/integrations/secret-syncs/$destination/$syncId'
     | '/secret-manager/$projectId/integrations/vercel/oauth2/callback'
-    | '/secret-manager/$projectId/commits/$environment/$folderId/$commitId'
-    | '/secret-manager/$projectId/commits/$environment/$folderId/$commitId/restore'
   id:
     | '__root__'
     | '/'
@@ -5313,8 +5165,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/create'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/authorize'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/create'
-    | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId'
-    | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/oauth2/callback'
@@ -5325,9 +5175,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback'
-    | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId'
-    | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/'
-    | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore'
   fileRoutesById: FileRoutesById
 }
 
@@ -5793,8 +5640,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug",
         "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/identities/$identityId",
         "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/members/$membershipId",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/roles/$roleSlug",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId"
+        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/roles/$roleSlug"
       ]
     },
     "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout": {
@@ -6377,18 +6223,6 @@ export const routeTree = rootRoute
       "filePath": "secret-manager/integrations/WindmillConfigurePage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations"
     },
-    "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId": {
-      "filePath": "",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout",
-      "children": [
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId"
-      ]
-    },
-    "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/": {
-      "filePath": "secret-manager/CommitsPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId"
-    },
     "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback": {
       "filePath": "secret-manager/integrations/AzureAppConfigurationOauthCallbackPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations"
@@ -6428,22 +6262,6 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback": {
       "filePath": "secret-manager/integrations/VercelOauthCallbackPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId": {
-      "filePath": "",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId",
-      "children": [
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore"
-      ]
-    },
-    "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/": {
-      "filePath": "secret-manager/CommitDetailsPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore": {
-      "filePath": "secret-manager/CommitDetailsPage/components/RollbackPreviewTab/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId"
     }
   }
 }

@@ -17,7 +17,6 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
-  ProjectPermissionCommitsActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
@@ -35,7 +34,6 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorType } from "../auth/auth-type";
-import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -92,7 +90,6 @@ type TSecretV2BridgeServiceFactoryDep = {
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
@@ -127,7 +124,6 @@ export const secretV2BridgeServiceFactory = ({
   projectEnvDAL,
   secretTagDAL,
   secretVersionDAL,
-  folderCommitService,
   folderDAL,
   permissionService,
   snapshotService,
@@ -325,14 +321,12 @@ export const secretV2BridgeServiceFactory = ({
             userId: inputSecret.type === SecretType.Personal ? actorId : null,
             tagIds: inputSecret.tagIds,
             references: nestedReferences,
-            metadata: secretMetadata ? JSON.stringify(secretMetadata) : [],
             secretMetadata
           }
         ],
         resourceMetadataDAL,
         secretDAL,
         secretVersionDAL,
-        folderCommitService,
         secretTagDAL,
         secretVersionTagDAL,
         actor: {
@@ -516,7 +510,6 @@ export const secretV2BridgeServiceFactory = ({
         folderId,
         orgId: actorOrgId,
         resourceMetadataDAL,
-        folderCommitService,
         inputSecrets: [
           {
             filter: { id: secretId },
@@ -530,7 +523,6 @@ export const secretV2BridgeServiceFactory = ({
               skipMultilineEncoding: inputSecret.skipMultilineEncoding,
               key: inputSecret.newSecretName || secretName,
               tags: inputSecret.tagIds,
-              metadata: secretMetadata ? JSON.stringify(secretMetadata) : [],
               secretMetadata,
               ...encryptedValue
             }
@@ -658,9 +650,6 @@ export const secretV2BridgeServiceFactory = ({
           projectId,
           folderId,
           actorId,
-          actorType: actor,
-          folderCommitService,
-          secretVersionDAL,
           secretDAL,
           secretQueueService,
           inputSecrets: [
@@ -1601,7 +1590,6 @@ export const secretV2BridgeServiceFactory = ({
         orgId: actorOrgId,
         secretDAL,
         resourceMetadataDAL,
-        folderCommitService,
         secretVersionDAL,
         secretTagDAL,
         secretVersionTagDAL,
@@ -1871,7 +1859,6 @@ export const secretV2BridgeServiceFactory = ({
         const bulkUpdatedSecrets = await fnSecretBulkUpdate({
           folderId,
           orgId: actorOrgId,
-          folderCommitService,
           tx,
           inputSecrets: secretsToUpdate.map((el) => {
             const originalSecret = secretsToUpdateInDBGroupedByKey[el.secretKey][0];
@@ -1941,7 +1928,6 @@ export const secretV2BridgeServiceFactory = ({
             secretVersionDAL,
             secretTagDAL,
             secretVersionTagDAL,
-            folderCommitService,
             actor: {
               type: actor,
               actorId
@@ -2075,8 +2061,6 @@ export const secretV2BridgeServiceFactory = ({
         fnSecretBulkDelete({
           secretDAL,
           secretQueueService,
-          folderCommitService,
-          secretVersionDAL,
           inputSecrets: inputSecrets.map(({ type, secretKey }) => ({
             secretKey,
             type: type || SecretType.Shared
@@ -2084,7 +2068,6 @@ export const secretV2BridgeServiceFactory = ({
           projectId,
           folderId,
           actorId,
-          actorType: actor,
           tx
         })
       );
@@ -2176,25 +2159,15 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-
-    const canRead =
-      permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback) ||
-      permission.can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
-
-    if (!canRead) throw new ForbiddenRequestError({ message: "You do not have permission to read secret versions" });
-
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: folder.projectId
     });
-    const secretVersions = await secretVersionDAL.findVersionsBySecretIdWithActors({
-      secretId,
-      projectId: folder.projectId,
-      findOpt: {
-        offset,
-        limit,
-        sort: [["createdAt", "desc"]]
-      }
+    const secretVersions = await secretVersionDAL.findVersionsBySecretIdWithActors(secretId, folder.projectId, {
+      offset,
+      limit,
+      sort: [["createdAt", "desc"]]
     });
     return secretVersions.map((el) => {
       const secretValueHidden = !hasSecretReadValueOrDescribePermission(
@@ -2496,7 +2469,6 @@ export const secretV2BridgeServiceFactory = ({
             tx,
             secretTagDAL,
             resourceMetadataDAL,
-            folderCommitService,
             secretVersionTagDAL,
             actor: {
               type: actor,
@@ -2523,7 +2495,6 @@ export const secretV2BridgeServiceFactory = ({
             folderId: destinationFolder.id,
             orgId: actorOrgId,
             resourceMetadataDAL,
-            folderCommitService,
             secretVersionDAL,
             secretDAL,
             tx,
@@ -2869,76 +2840,6 @@ export const secretV2BridgeServiceFactory = ({
     };
   };
 
-  const getSecretVersionsByIds = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    secretId,
-    secretVersionNumbers,
-    secretPath,
-    envId,
-    projectId
-  }: TGetSecretVersionsDTO & {
-    secretVersionNumbers: string[];
-    secretPath: string;
-    envId: string;
-    projectId: string;
-  }) => {
-    const environment = await projectEnvDAL.findOne({ id: envId, projectId });
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-
-    const canRead =
-      permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback) ||
-      permission.can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
-
-    if (!canRead) throw new ForbiddenRequestError({ message: "You do not have permission to read secret versions" });
-
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-    const secretVersions = await secretVersionDAL.findVersionsBySecretIdWithActors({
-      secretId,
-      projectId,
-      secretVersions: secretVersionNumbers
-    });
-    return secretVersions.map((el) => {
-      const secretValueHidden = !hasSecretReadValueOrDescribePermission(
-        permission,
-        ProjectPermissionSecretActions.ReadValue,
-        {
-          environment: environment.slug,
-          secretPath,
-          secretName: el.key,
-          ...(el.tags?.length && {
-            secretTags: el.tags.map((tag) => tag.slug)
-          })
-        }
-      );
-
-      return reshapeBridgeSecret(
-        projectId,
-        environment.slug,
-        secretPath,
-        {
-          ...el,
-          value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
-          comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
-        },
-        secretValueHidden
-      );
-    });
-  };
-
   return {
     createSecret,
     deleteSecret,
@@ -2957,7 +2858,6 @@ export const secretV2BridgeServiceFactory = ({
     getSecretReferenceTree,
     getSecretsByFolderMappings,
     getSecretById,
-    getAccessibleSecrets,
-    getSecretVersionsByIds
+    getAccessibleSecrets
   };
 };

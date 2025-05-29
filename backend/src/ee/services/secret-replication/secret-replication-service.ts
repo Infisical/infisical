@@ -10,7 +10,6 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -88,7 +87,6 @@ type TSecretReplicationServiceFactoryDep = {
 
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
 };
 
 export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicationServiceFactory>;
@@ -134,7 +132,6 @@ export const secretReplicationServiceFactory = ({
   secretVersionV2BridgeDAL,
   secretV2BridgeDAL,
   kmsService,
-  folderCommitService,
   resourceMetadataDAL
 }: TSecretReplicationServiceFactoryDep) => {
   const $getReplicatedSecrets = (
@@ -422,7 +419,7 @@ export const secretReplicationServiceFactory = ({
                     return {
                       op: operation,
                       requestId: approvalRequestDoc.id,
-                      metadata: doc.metadata ? JSON.stringify(doc.metadata) : [],
+                      metadata: doc.metadata,
                       secretMetadata: JSON.stringify(doc.secretMetadata),
                       key: doc.key,
                       encryptedValue: doc.encryptedValue,
@@ -449,12 +446,11 @@ export const secretReplicationServiceFactory = ({
                     tx,
                     secretTagDAL,
                     resourceMetadataDAL,
-                    folderCommitService,
                     secretVersionTagDAL: secretVersionV2TagBridgeDAL,
                     inputSecrets: locallyCreatedSecrets.map((doc) => {
                       return {
                         type: doc.type,
-                        metadata: doc.metadata ? JSON.stringify(doc.metadata) : [],
+                        metadata: doc.metadata,
                         key: doc.key,
                         encryptedValue: doc.encryptedValue,
                         encryptedComment: doc.encryptedComment,
@@ -470,7 +466,6 @@ export const secretReplicationServiceFactory = ({
                     orgId,
                     folderId: destinationReplicationFolderId,
                     secretVersionDAL: secretVersionV2BridgeDAL,
-                    folderCommitService,
                     secretDAL: secretV2BridgeDAL,
                     tx,
                     resourceMetadataDAL,
@@ -484,7 +479,7 @@ export const secretReplicationServiceFactory = ({
                         },
                         data: {
                           type: doc.type,
-                          metadata: doc.metadata ? JSON.stringify(doc.metadata) : [],
+                          metadata: doc.metadata,
                           key: doc.key,
                           encryptedValue: doc.encryptedValue as Buffer,
                           encryptedComment: doc.encryptedComment,

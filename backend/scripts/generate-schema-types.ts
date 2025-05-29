@@ -84,11 +84,6 @@ const getZodDefaultValue = (type: unknown, value: string | number | boolean | Ob
   }
 };
 
-const bigIntegerColumns: Record<string, string[]> = {
-  "folder_commits": ["commitId"]
-};
-
-
 const main = async () => {
   const tables = (
     await db("information_schema.tables")
@@ -113,9 +108,6 @@ const main = async () => {
       const columnName = columnNames[colNum];
       const colInfo = columns[columnName];
       let ztype = getZodPrimitiveType(colInfo.type);
-      if (bigIntegerColumns[tableName]?.includes(columnName)) {
-        ztype = "z.coerce.bigint()";
-      }
       if (["zodBuffer"].includes(ztype)) {
         zodImportSet.add(ztype);
       }
