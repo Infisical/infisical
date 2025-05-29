@@ -189,10 +189,10 @@ export const identityKubernetesAuthServiceFactory = ({
     let { kubernetesHost } = identityKubernetesAuth;
 
     if (kubernetesHost.startsWith("https://") || kubernetesHost.startsWith("http://")) {
-      kubernetesHost = kubernetesHost.replace(new RE2("^https?:\\/\\/"), "");
+      kubernetesHost = new RE2("^https?:\\/\\/").replace(kubernetesHost, "");
     }
 
-    const [k8sHost, k8sPort] = kubernetesHost.split(":") ?? [];
+    const [k8sHost, k8sPort] = kubernetesHost.split(":");
 
     const data = identityKubernetesAuth.gatewayId
       ? await $gatewayProxyWrapper(
