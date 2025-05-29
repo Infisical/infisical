@@ -310,7 +310,10 @@ export const licenseServiceFactory = ({
     success_url
   }: TStartOrgTrialDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionBillingActions.ManageBilling,
+      OrgPermissionSubjects.Billing
+    );
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
@@ -337,7 +340,10 @@ export const licenseServiceFactory = ({
     actorOrgId
   }: TCreateOrgPortalSession) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionBillingActions.ManageBilling,
+      OrgPermissionSubjects.Billing
+    );
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
@@ -507,7 +513,10 @@ export const licenseServiceFactory = ({
     email
   }: TUpdateOrgBillingDetailsDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionBillingActions.ManageBilling,
+      OrgPermissionSubjects.Billing
+    );
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
@@ -554,7 +563,10 @@ export const licenseServiceFactory = ({
     cancel_url
   }: TAddOrgPmtMethodDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionBillingActions.ManageBilling,
+      OrgPermissionSubjects.Billing
+    );
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
@@ -583,7 +595,10 @@ export const licenseServiceFactory = ({
     pmtMethodId
   }: TDelOrgPmtMethodDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionBillingActions.ManageBilling,
+      OrgPermissionSubjects.Billing
+    );
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
@@ -618,7 +633,10 @@ export const licenseServiceFactory = ({
 
   const addOrgTaxId = async ({ actorId, actor, actorAuthMethod, actorOrgId, orgId, type, value }: TAddOrgTaxIdDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionBillingActions.ManageBilling,
+      OrgPermissionSubjects.Billing
+    );
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
@@ -639,7 +657,10 @@ export const licenseServiceFactory = ({
 
   const delOrgTaxId = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId, taxId }: TDelOrgTaxIdDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionBillingActions.ManageBilling,
+      OrgPermissionSubjects.Billing
+    );
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
