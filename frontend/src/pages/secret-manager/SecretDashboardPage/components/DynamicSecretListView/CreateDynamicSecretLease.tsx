@@ -320,6 +320,20 @@ const renderOutputForm = (
     );
   }
 
+  if (provider === DynamicSecretProviders.Kubernetes) {
+    const { TOKEN } = data as { TOKEN: string };
+
+    return (
+      <div>
+        <OutputDisplay
+          label="Service Account JWT"
+          value={TOKEN}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
   if (provider === DynamicSecretProviders.Totp) {
     const { TOTP, TIME_REMAINING } = data as {
       TOTP: string;
