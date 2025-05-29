@@ -30,7 +30,8 @@ export const IdentityKubernetesAuthsSchema = z.object({
   allowedAudience: z.string(),
   encryptedKubernetesTokenReviewerJwt: zodBuffer.nullable().optional(),
   encryptedKubernetesCaCertificate: zodBuffer.nullable().optional(),
-  gatewayId: z.string().uuid().nullable().optional()
+  gatewayId: z.string().uuid().nullable().optional(),
+  accessTokenPeriod: z.coerce.number().default(0)
 });
 
 export type TIdentityKubernetesAuths = z.infer<typeof IdentityKubernetesAuthsSchema>;

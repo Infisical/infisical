@@ -17,7 +17,8 @@ export const IdentityUniversalAuthsSchema = z.object({
   accessTokenTrustedIps: z.unknown(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  identityId: z.string().uuid()
+  identityId: z.string().uuid(),
+  accessTokenPeriod: z.coerce.number().default(0)
 });
 
 export type TIdentityUniversalAuths = z.infer<typeof IdentityUniversalAuthsSchema>;

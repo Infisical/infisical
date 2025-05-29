@@ -47,8 +47,15 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { identityUa, accessToken, identityAccessToken, validClientSecretInfo, identityMembershipOrg } =
-        await server.services.identityUa.login(req.body.clientId, req.body.clientSecret, req.realIp);
+      const {
+        identityUa,
+        accessToken,
+        identityAccessToken,
+        validClientSecretInfo,
+        identityMembershipOrg,
+        accessTokenTTL,
+        accessTokenMaxTTL
+      } = await server.services.identityUa.login(req.body.clientId, req.body.clientSecret, req.realIp);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -63,11 +70,12 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
       return {
         accessToken,
         tokenType: "Bearer" as const,
-        expiresIn: identityUa.accessTokenTTL,
-        accessTokenMaxTTL: identityUa.accessTokenMaxTTL
+        expiresIn: accessTokenTTL,
+        accessTokenMaxTTL
       };
     }
   });
@@ -128,7 +136,8 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             .int()
             .min(0)
             .default(0)
-            .describe(UNIVERSAL_AUTH.ATTACH.accessTokenNumUsesLimit)
+            .describe(UNIVERSAL_AUTH.ATTACH.accessTokenNumUsesLimit),
+          accessTokenPeriod: z.number().int().min(0).default(0).describe(UNIVERSAL_AUTH.ATTACH.accessTokenPeriod)
         })
         .refine(
           (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
@@ -227,7 +236,14 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             .min(0)
             .max(315360000)
             .optional()
-            .describe(UNIVERSAL_AUTH.UPDATE.accessTokenMaxTTL)
+            .describe(UNIVERSAL_AUTH.UPDATE.accessTokenMaxTTL),
+          accessTokenPeriod: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .optional()
+            .describe(UNIVERSAL_AUTH.UPDATE.accessTokenPeriod)
         })
         .refine(
           (val) => (val.accessTokenMaxTTL && val.accessTokenTTL ? val.accessTokenTTL <= val.accessTokenMaxTTL : true),

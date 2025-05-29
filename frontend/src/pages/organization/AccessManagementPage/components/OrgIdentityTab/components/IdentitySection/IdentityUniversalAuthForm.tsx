@@ -41,6 +41,13 @@ const schema = z
         (value) => Number(value) <= 315360000,
         "Access Max Token TTL cannot be greater than 315360000"
       ),
+    accessTokenPeriod: z
+      .string()
+      .optional()
+      .refine(
+        (value) => !value || Number(value) <= 315360000,
+        "Access Token Period cannot be greater than 315360000"
+      ),
     accessTokenNumUsesLimit: z.string(),
     clientSecretTrustedIps: z
       .object({
@@ -90,7 +97,8 @@ export const IdentityUniversalAuthForm = ({
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting }
+    formState: { isSubmitting },
+    watch
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -98,9 +106,12 @@ export const IdentityUniversalAuthForm = ({
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "0",
       clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-      accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
+      accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+      accessTokenPeriod: "0"
     }
   });
+
+  const accessTokenPeriodValue = Number(watch("accessTokenPeriod"));
 
   const {
     fields: clientSecretTrustedIpsFields,
@@ -119,6 +130,7 @@ export const IdentityUniversalAuthForm = ({
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
         accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
+        accessTokenPeriod: String(data.accessTokenPeriod),
         clientSecretTrustedIps: data.clientSecretTrustedIps.map(
           ({ ipAddress, prefix }: IdentityTrustedIp) => {
             return {
@@ -139,6 +151,7 @@ export const IdentityUniversalAuthForm = ({
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
         accessTokenNumUsesLimit: "0",
+        accessTokenPeriod: "0",
         clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
         accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
       });
@@ -150,7 +163,8 @@ export const IdentityUniversalAuthForm = ({
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
     clientSecretTrustedIps,
-    accessTokenTrustedIps
+    accessTokenTrustedIps,
+    accessTokenPeriod
   }: FormData) => {
     try {
       if (!identityId) return;
@@ -164,7 +178,8 @@ export const IdentityUniversalAuthForm = ({
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-          accessTokenTrustedIps
+          accessTokenTrustedIps,
+          accessTokenPeriod: Number(accessTokenPeriod)
         });
       } else {
         // create new universal auth configuration
@@ -176,7 +191,8 @@ export const IdentityUniversalAuthForm = ({
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-          accessTokenTrustedIps
+          accessTokenTrustedIps,
+          accessTokenPeriod: Number(accessTokenPeriod)
         });
       }
 
@@ -214,34 +230,42 @@ export const IdentityUniversalAuthForm = ({
           <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
         </TabList>
         <TabPanel value={IdentityFormTab.Configuration}>
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenMaxTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
+          {accessTokenPeriodValue > 0 ? (
+            <div className="mb-4 text-xs text-bunker-400">
+              When Access Token Period is set, TTL and Max TTL are ignored.
+            </div>
+          ) : (
+            <>
+              <Controller
+                control={control}
+                defaultValue="2592000"
+                name="accessTokenTTL"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Access Token TTL (seconds)"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                defaultValue="2592000"
+                name="accessTokenMaxTTL"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Access Token Max TTL (seconds)"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                  </FormControl>
+                )}
+              />
+            </>
+          )}
           <Controller
             control={control}
             defaultValue="0"
@@ -251,6 +275,21 @@ export const IdentityUniversalAuthForm = ({
                 label="Access Token Max Number of Uses"
                 isError={Boolean(error)}
                 errorText={error?.message}
+              >
+                <Input {...field} placeholder="0" type="number" min="0" step="1" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue="0"
+            name="accessTokenPeriod"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Access Token Period (seconds)"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                helperText="For periodic tokens: set a period (in seconds) to allow indefinite renewal. Set to 0 to disable periodic tokens and use TTL-based expiration."
               >
                 <Input {...field} placeholder="0" type="number" min="0" step="1" />
               </FormControl>

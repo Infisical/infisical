@@ -25,7 +25,8 @@ export const IdentityJwtAuthsSchema = z.object({
   boundClaims: z.unknown(),
   boundSubject: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  accessTokenPeriod: z.coerce.number().default(0)
 });
 
 export type TIdentityJwtAuths = z.infer<typeof IdentityJwtAuthsSchema>;

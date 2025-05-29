@@ -147,7 +147,9 @@ export const UNIVERSAL_AUTH = {
     accessTokenMaxTTL:
       "The maximum lifetime for an access token in seconds. This value will be referenced at renewal time.",
     accessTokenNumUsesLimit:
-      "The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
+      "The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses.",
+    accessTokenPeriod:
+      "The period for an access token in seconds. This value will be referenced at renewal time. Default value is 0."
   },
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve the auth method for."
@@ -161,7 +163,8 @@ export const UNIVERSAL_AUTH = {
     accessTokenTrustedIps: "The new list of IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
-    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
+    accessTokenPeriod: "The new period for an access token in seconds."
   },
   CREATE_CLIENT_SECRET: {
     identityId: "The ID of the identity to create a client secret for.",

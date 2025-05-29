@@ -138,7 +138,8 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
           accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
           accessTokenTTL: 2592000,
           accessTokenMaxTTL: 2592000,
-          accessTokenNumUsesLimit: 0
+          accessTokenNumUsesLimit: 0,
+          accessTokenPeriod: 0
         });
 
         handlePopUpToggle("identity", false);
