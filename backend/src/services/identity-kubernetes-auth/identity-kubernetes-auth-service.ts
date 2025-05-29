@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import axios, { AxiosError } from "axios";
 import https from "https";
 import jwt from "jsonwebtoken";
+import RE2 from "re2";
 
 import { IdentityAuthMethod, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
@@ -185,7 +186,13 @@ export const identityKubernetesAuthServiceFactory = ({
       return res.data;
     };
 
-    const [k8sHost, k8sPort] = identityKubernetesAuth.kubernetesHost.split(":");
+    let { kubernetesHost } = identityKubernetesAuth;
+
+    if (kubernetesHost.startsWith("https://") || kubernetesHost.startsWith("http://")) {
+      kubernetesHost = new RE2("^https?:\\/\\/").replace(kubernetesHost, "");
+    }
+
+    const [k8sHost, k8sPort] = kubernetesHost.split(":");
 
     const data = identityKubernetesAuth.gatewayId
       ? await $gatewayProxyWrapper(

@@ -146,11 +146,15 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                       href="https://infisical.com/docs/integrations/secret-syncs/overview#key-schemas"
                       target="_blank"
                       rel="noopener noreferrer"
+                      className="underline"
                     >
                       Key Schema
                     </a>{" "}
                     to ensure that Infisical only manages the specific keys you intend, keeping
                     everything else untouched.
+                    <br />
+                    <br />
+                    Destination secrets that do not match the schema will not be deleted or updated.
                   </span>
                 }
               >

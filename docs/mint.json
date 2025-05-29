@@ -217,7 +217,8 @@
             "documentation/platform/dynamic-secrets/sap-ase",
             "documentation/platform/dynamic-secrets/sap-hana",
             "documentation/platform/dynamic-secrets/snowflake",
-            "documentation/platform/dynamic-secrets/totp"
+            "documentation/platform/dynamic-secrets/totp",
+            "documentation/platform/dynamic-secrets/kubernetes"
           ]
         },
         {
