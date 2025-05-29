@@ -29,6 +29,7 @@ const validateUsernameTemplateCharacters = characterValidator([
 const userTemplateSchema = z
   .string()
   .trim()
+  .max(255)
   .refine((el) => validateUsernameTemplateCharacters(el))
   .refine((el) =>
     isValidHandleBarTemplate(el, {
