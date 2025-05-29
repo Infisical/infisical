@@ -252,6 +252,7 @@ export const DynamicSecretLease = ({
             projectSlug={projectSlug}
             leaseId={(popUp.renewSecret?.data as { leaseId: string })?.leaseId}
             dynamicSecretName={dynamicSecretName}
+            dynamicSecret={dynamicSecret}
             secretPath={secretPath}
             environment={environment}
           />

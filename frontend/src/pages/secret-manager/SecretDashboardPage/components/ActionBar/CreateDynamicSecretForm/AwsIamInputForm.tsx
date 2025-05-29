@@ -121,7 +121,7 @@ export const AwsIamInputForm = ({
                     isError={Boolean(error)}
                     errorText={error?.message}
                   >
-                    <Input {...field} placeholder="dynamic-postgres" />
+                    <Input {...field} placeholder="dynamic-secret" />
                   </FormControl>
                 )}
               />
