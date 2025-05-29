@@ -157,10 +157,16 @@ export enum TableName {
   MicrosoftTeamsIntegrations = "microsoft_teams_integrations",
   ProjectMicrosoftTeamsConfigs = "project_microsoft_teams_configs",
   SecretReminderRecipients = "secret_reminder_recipients",
-  GithubOrgSyncConfig = "github_org_sync_configs"
+  GithubOrgSyncConfig = "github_org_sync_configs",
+  FolderCommit = "folder_commits",
+  FolderCommitChanges = "folder_commit_changes",
+  FolderCheckpoint = "folder_checkpoints",
+  FolderCheckpointResources = "folder_checkpoint_resources",
+  FolderTreeCheckpoint = "folder_tree_checkpoints",
+  FolderTreeCheckpointResources = "folder_tree_checkpoint_resources"
 }
 
-export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
+export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
 
 export const UserDeviceSchema = z
   .object({
