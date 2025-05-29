@@ -67,6 +67,11 @@ export enum OrgPermissionGroupActions {
   RemoveMembers = "remove-members"
 }
 
+export enum OrgPermissionBillingActions {
+  Read = "read",
+  ManageBilling = "manage-billing"
+}
+
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Role = "role",
@@ -107,7 +112,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Ldap]
   | [OrgPermissionGroupActions, OrgPermissionSubjects.Groups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
-  | [OrgPermissionActions, OrgPermissionSubjects.Billing]
+  | [OrgPermissionBillingActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionIdentityActions, OrgPermissionSubjects.Identity]
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
   | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
@@ -298,10 +303,8 @@ const buildAdminPermission = () => {
   can(OrgPermissionGroupActions.AddMembers, OrgPermissionSubjects.Groups);
   can(OrgPermissionGroupActions.RemoveMembers, OrgPermissionSubjects.Groups);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Billing);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Billing);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Billing);
+  can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
+  can(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
 
   can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
@@ -362,7 +365,7 @@ const buildMemberPermission = () => {
   can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
+  can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
