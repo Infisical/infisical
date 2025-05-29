@@ -196,7 +196,8 @@ export const orgAdminServiceFactory = ({
       .filter(
         (member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin) && member.userId !== actorId
       )
-      .map((el) => el.user.email!);
+      .map((el) => el.user.email!)
+      .filter(Boolean);
 
     if (filteredProjectMembers.length) {
       await smtpService.sendMail({
