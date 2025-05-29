@@ -4,6 +4,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -43,6 +44,7 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update" | "find">;
   additionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
   accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update">;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find">;
 };
 
 export type TAccessApprovalPolicyServiceFactory = ReturnType<typeof accessApprovalPolicyServiceFactory>;
@@ -58,7 +60,8 @@ export const accessApprovalPolicyServiceFactory = ({
   userDAL,
   accessApprovalRequestDAL,
   additionalPrivilegeDAL,
-  accessApprovalRequestReviewerDAL
+  accessApprovalRequestReviewerDAL,
+  orgMembershipDAL
 }: TAccessApprovalPolicyServiceFactoryDep) => {
   const createAccessApprovalPolicy = async ({
     name,
@@ -303,11 +306,11 @@ export const accessApprovalPolicyServiceFactory = ({
       .filter(Boolean) as string[];
 
     const accessApprovalPolicy = await accessApprovalPolicyDAL.findById(policyId);
-    const currentAppovals = approvals || accessApprovalPolicy.approvals;
+    const currentApprovals = approvals || accessApprovalPolicy.approvals;
     if (
       groupApprovers?.length === 0 &&
       userApprovers &&
-      currentAppovals > userApprovers.length + userApproverNames.length
+      currentApprovals > userApprovers.length + userApproverNames.length
     ) {
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
     }
@@ -333,6 +336,8 @@ export const accessApprovalPolicyServiceFactory = ({
       groupBypassers = bypassers
         .filter((bypasser) => bypasser.type === BypasserType.Group)
         .map((bypasser) => bypasser.id) as string[];
+
+      groupBypassers = [...new Set(groupBypassers)];
 
       const userBypassers = bypassers
         .filter((bypasser) => bypasser.type === BypasserType.User)
@@ -360,7 +365,39 @@ export const accessApprovalPolicyServiceFactory = ({
           });
         }
 
-        bypasserUserIds = bypasserUserIds.concat(bypasserUsers.map((user) => user.id));
+        bypasserUserIds = [...new Set(bypasserUserIds.concat(bypasserUsers.map((user) => user.id)))];
+      }
+
+      // Validate user bypassers
+      if (bypasserUserIds.length > 0) {
+        const orgMemberships = await orgMembershipDAL.find({
+          $in: { userId: bypasserUserIds },
+          orgId: actorOrgId
+        });
+
+        if (orgMemberships.length !== bypasserUserIds.length) {
+          const foundUserIdsInOrg = new Set(orgMemberships.map((mem) => mem.userId));
+          const missingUserIds = bypasserUserIds.filter((id) => !foundUserIdsInOrg.has(id));
+          throw new BadRequestError({
+            message: `One or more specified bypasser users are not part of the organization or do not exist. Invalid or non-member user IDs: ${missingUserIds.join(", ")}`
+          });
+        }
+      }
+
+      // Validate group bypassers
+      if (groupBypassers.length > 0) {
+        const orgGroups = await groupDAL.find({
+          $in: { id: groupBypassers },
+          orgId: actorOrgId
+        });
+
+        if (orgGroups.length !== groupBypassers.length) {
+          const foundGroupIdsInOrg = new Set(orgGroups.map((group) => group.id));
+          const missingGroupIds = groupBypassers.filter((id) => !foundGroupIdsInOrg.has(id));
+          throw new BadRequestError({
+            message: `One or more specified bypasser groups are not part of the organization or do not exist. Invalid or non-member group IDs: ${missingGroupIds.join(", ")}`
+          });
+        }
       }
     }
 

@@ -1236,7 +1236,8 @@ export const registerRoutes = async (
     userDAL,
     accessApprovalRequestDAL,
     additionalPrivilegeDAL: projectUserAdditionalPrivilegeDAL,
-    accessApprovalRequestReviewerDAL
+    accessApprovalRequestReviewerDAL,
+    orgMembershipDAL
   });
 
   const accessApprovalRequestService = accessApprovalRequestServiceFactory({
