@@ -47,7 +47,7 @@ The RBAC configuration serves a crucial security purpose: it creates a dedicated
 
 The following RBAC configuration creates the necessary permissions for generating service account tokens:
 
-```yaml
+```yaml rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -73,6 +73,10 @@ subjects:
   - kind: ServiceAccount
     name: infisical-token-requester
     namespace: default
+```
+
+```bash
+kubectl apply -f rbac.yaml
 ```
 
 This configuration:
@@ -132,6 +136,22 @@ kubectl get secret infisical-token-requester-token -n default -o=jsonpath='{.dat
 
 This token will be used as the "Cluster Token" in the dynamic secret configuration.
 
+## Obtaining the Cluster URL
+
+The cluster URL is the address of your Kubernetes API server. The simplest way to find it is to use the `kubectl cluster-info` command:
+
+```bash
+kubectl cluster-info
+```
+
+This command works for all Kubernetes environments (managed services like GKE, EKS, AKS, or self-hosted clusters) and will show you the Kubernetes control plane address, which is your cluster URL.
+
+<Note>
+  Make sure the cluster URL is accessible from where you're running Infisical.
+  If you're using a private cluster, you'll need to configure a [Gateway](/documentation/platform/gateways/overview) to
+  access it.
+</Note>
+
 ## Set up Dynamic Secrets with Kubernetes
 
 <Steps>
@@ -157,7 +177,7 @@ This token will be used as the "Cluster Token" in the dynamic secret configurati
     <ParamField path="Gateway" type="string">
       Select a gateway for private cluster access. If not specified, the Internet Gateway will be used.
     </ParamField>
-    <ParamField path="URL" type="string" required>
+    <ParamField path="Cluster URL" type="string" required>
       Kubernetes API server URL (e.g., https://kubernetes.default.svc)
     </ParamField>
     <ParamField path="Enable SSL" type="boolean">
