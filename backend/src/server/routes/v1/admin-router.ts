@@ -1,7 +1,13 @@
 import DOMPurify from "isomorphic-dompurify";
 import { z } from "zod";
 
-import { IdentitiesSchema, OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
+import {
+  IdentitiesSchema,
+  OrganizationsSchema,
+  OrgMembershipsSchema,
+  SuperAdminSchema,
+  UsersSchema
+} from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -157,6 +163,129 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       return {
         users
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/organization-management/organizations",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        searchTerm: z.string().default(""),
+        offset: z.coerce.number().default(0),
+        limit: z.coerce.number().max(100).default(20)
+      }),
+      response: {
+        200: z.object({
+          organizations: OrganizationsSchema.extend({
+            members: z
+              .object({
+                user: z.object({
+                  id: z.string(),
+                  email: z.string().nullish(),
+                  username: z.string(),
+                  firstName: z.string().nullish(),
+                  lastName: z.string().nullish()
+                }),
+                membershipId: z.string(),
+                role: z.string(),
+                roleId: z.string().nullish()
+              })
+              .array(),
+            projects: z
+              .object({
+                name: z.string(),
+                id: z.string(),
+                slug: z.string(),
+                createdAt: z.date()
+              })
+              .array()
+          }).array()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const organizations = await server.services.superAdmin.getOrganizations({
+        ...req.query
+      });
+
+      return {
+        organizations
+      };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/organization-management/organizations/:organizationId/memberships/:membershipId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string(),
+        membershipId: z.string()
+      }),
+      response: {
+        200: z.object({
+          organizationMembership: OrgMembershipsSchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const organizationMembership = await server.services.superAdmin.deleteOrganizationMembership(
+        req.params.organizationId,
+        req.params.membershipId,
+        req.permission.id,
+        req.permission.type
+      );
+
+      return {
+        organizationMembership
+      };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/organization-management/organizations/:organizationId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string()
+      }),
+      response: {
+        200: z.object({
+          organization: OrganizationsSchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const organization = await server.services.superAdmin.deleteOrganization(req.params.organizationId);
+
+      return {
+        organization
       };
     }
   });

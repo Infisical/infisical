@@ -34,6 +34,7 @@ import { AuthPanel } from "./components/AuthPanel";
 import { CachingPanel } from "./components/CachingPanel";
 import { EncryptionPanel } from "./components/EncryptionPanel";
 import { IntegrationPanel } from "./components/IntegrationPanel";
+import { OrganizationsPanel } from "./components/OrganizationsPanel";
 import { UserPanel } from "./components/UserPanel";
 
 enum TabSections {
@@ -42,6 +43,7 @@ enum TabSections {
   Auth = "auth",
   Integrations = "integrations",
   Users = "users",
+  Organizations = "organizations",
   Identities = "identities",
   Kmip = "kmip",
   Caching = "caching"
@@ -157,16 +159,20 @@ export const OverviewPage = () => {
             <ContentLoader text={isNotAllowed ? "Redirecting to org page..." : undefined} />
           ) : (
             <div>
-              <Tabs defaultValue={TabSections.Settings}>
-                <TabList>
-                  <div className="flex w-full flex-row border-b border-mineshaft-600">
+              <Tabs defaultValue={TabSections.Settings} className="w-full">
+                <TabList className="flex w-full flex-row justify-between">
+                  <div className="flex w-full">
                     <Tab value={TabSections.Settings}>General</Tab>
                     <Tab value={TabSections.Encryption}>Encryption</Tab>
                     <Tab value={TabSections.Auth}>Authentication</Tab>
                     <Tab value={TabSections.Integrations}>Integrations</Tab>
+                    <Tab value={TabSections.Caching}>Caching</Tab>
+                  </div>
+
+                  <div className="flex w-full justify-end">
+                    <Tab value={TabSections.Organizations}>Organizations</Tab>
                     <Tab value={TabSections.Users}>User Identities</Tab>
                     <Tab value={TabSections.Identities}>Machine Identities</Tab>
-                    <Tab value={TabSections.Caching}>Caching</Tab>
                   </div>
                 </TabList>
                 <TabPanel value={TabSections.Settings}>
@@ -404,6 +410,9 @@ export const OverviewPage = () => {
                 </TabPanel>
                 <TabPanel value={TabSections.Integrations}>
                   <IntegrationPanel />
+                </TabPanel>
+                <TabPanel value={TabSections.Organizations}>
+                  <OrganizationsPanel />
                 </TabPanel>
                 <TabPanel value={TabSections.Users}>
                   <UserPanel />

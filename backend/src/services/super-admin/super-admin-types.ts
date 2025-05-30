@@ -35,6 +35,12 @@ export type TAdminGetIdentitiesDTO = {
   searchTerm: string;
 };
 
+export type TGetOrganizationsDTO = {
+  offset: number;
+  limit: number;
+  searchTerm: string;
+};
+
 export enum LoginMethod {
   EMAIL = "email",
   GOOGLE = "google",
