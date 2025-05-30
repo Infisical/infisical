@@ -140,6 +140,7 @@ export async function up(knex: Knex): Promise<void> {
           `${TableName.Environment}.projectId`,
           batch.map((project) => project.id)
         )
+        .where(`${TableName.SecretFolder}.isReserved`, false)
         .select(selectAllTableCols(TableName.SecretFolder));
       logger.info(`Found ${folders.length} folders to initialize in project batch ${i} of ${batches.length}`);
 
