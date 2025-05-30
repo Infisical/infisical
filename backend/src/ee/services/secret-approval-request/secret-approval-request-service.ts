@@ -20,6 +20,7 @@ import { EnforcementLevel } from "@app/lib/types";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
@@ -134,6 +135,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
@@ -165,7 +167,8 @@ export const secretApprovalRequestServiceFactory = ({
   projectSlackConfigDAL,
   resourceMetadataDAL,
   projectMicrosoftTeamsConfigDAL,
-  microsoftTeamsService
+  microsoftTeamsService,
+  folderCommitService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
@@ -606,6 +609,10 @@ export const secretApprovalRequestServiceFactory = ({
           ? await fnSecretV2BridgeBulkInsert({
               tx,
               folderId,
+              actor: {
+                actorId,
+                type: actor
+              },
               orgId: actorOrgId,
               inputSecrets: secretCreationCommits.map((el) => ({
                 tagIds: el?.tags.map(({ id }) => id),
@@ -628,13 +635,18 @@ export const secretApprovalRequestServiceFactory = ({
               secretDAL: secretV2BridgeDAL,
               secretVersionDAL: secretVersionV2BridgeDAL,
               secretTagDAL,
-              secretVersionTagDAL: secretVersionTagV2BridgeDAL
+              secretVersionTagDAL: secretVersionTagV2BridgeDAL,
+              folderCommitService
             })
           : [];
         const updatedSecrets = secretUpdationCommits.length
           ? await fnSecretV2BridgeBulkUpdate({
               folderId,
               orgId: actorOrgId,
+              actor: {
+                actorId,
+                type: actor
+              },
               tx,
               inputSecrets: secretUpdationCommits.map((el) => {
                 const encryptedValue =
@@ -668,7 +680,8 @@ export const secretApprovalRequestServiceFactory = ({
               secretVersionDAL: secretVersionV2BridgeDAL,
               secretTagDAL,
               secretVersionTagDAL: secretVersionTagV2BridgeDAL,
-              resourceMetadataDAL
+              resourceMetadataDAL,
+              folderCommitService
             })
           : [];
         const deletedSecret = secretDeletionCommits.length
@@ -676,10 +689,13 @@ export const secretApprovalRequestServiceFactory = ({
               projectId,
               folderId,
               tx,
-              actorId: "",
+              actorId,
+              actorType: actor,
               secretDAL: secretV2BridgeDAL,
               secretQueueService,
-              inputSecrets: secretDeletionCommits.map(({ key }) => ({ secretKey: key, type: SecretType.Shared }))
+              inputSecrets: secretDeletionCommits.map(({ key }) => ({ secretKey: key, type: SecretType.Shared })),
+              folderCommitService,
+              secretVersionDAL: secretVersionV2BridgeDAL
             })
           : [];
         const updatedSecretApproval = await secretApprovalRequestDAL.updateById(

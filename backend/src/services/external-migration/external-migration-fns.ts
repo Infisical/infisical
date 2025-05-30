@@ -10,6 +10,7 @@ import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -18,6 +19,7 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectEnvServiceFactory } from "../project-env/project-env-service";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { fnSecretBulkInsert, getAllSecretReferences } from "../secret-v2-bridge/secret-v2-bridge-fns";
@@ -42,6 +44,8 @@ export type TImportDataIntoInfisicalDTO = {
   projectService: Pick<TProjectServiceFactory, "createProject">;
   projectEnvService: Pick<TProjectEnvServiceFactory, "createEnvironment">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "createManySecret">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "create">;
 
   input: TImportInfisicalDataCreate;
 };
@@ -507,6 +511,8 @@ export const importDataIntoInfisicalFn = async ({
   secretVersionTagDAL,
   folderDAL,
   resourceMetadataDAL,
+  folderVersionDAL,
+  folderCommitService,
   input: { data, actor, actorId, actorOrgId, actorAuthMethod }
 }: TImportDataIntoInfisicalDTO) => {
   // Import data to infisical
@@ -595,6 +601,36 @@ export const importDataIntoInfisicalFn = async ({
             name: folder.name,
             envId: parentEnv.envId,
             parentId: parentEnv.rootFolderId
+          },
+          tx
+        );
+
+        const newFolderVersion = await folderVersionDAL.create(
+          {
+            name: newFolder.name,
+            envId: newFolder.envId,
+            version: newFolder.version,
+            folderId: newFolder.id
+          },
+          tx
+        );
+
+        await folderCommitService.createCommit(
+          {
+            actor: {
+              type: actor,
+              metadata: {
+                id: actorId
+              }
+            },
+            message: "Changed by external migration",
+            folderId: parentEnv.rootFolderId,
+            changes: [
+              {
+                type: CommitType.ADD,
+                folderVersionId: newFolderVersion.id
+              }
+            ]
           },
           tx
         );
@@ -772,6 +808,7 @@ export const importDataIntoInfisicalFn = async ({
             secretVersionDAL,
             secretTagDAL,
             secretVersionTagDAL,
+            folderCommitService,
             actor: {
               type: actor,
               actorId

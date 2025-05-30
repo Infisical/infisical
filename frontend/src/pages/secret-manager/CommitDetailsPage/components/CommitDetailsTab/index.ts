@@ -1,0 +1,1 @@
+export { CommitDetailsTab } from "./CommitDetailsTab";
