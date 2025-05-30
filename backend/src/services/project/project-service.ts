@@ -17,6 +17,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionPkiSubscriberActions,
+  ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
@@ -1131,15 +1132,15 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.CertificateTemplates
-    );
-
     const certificateTemplates = await certificateTemplateDAL.getCertTemplatesByProjectId(projectId);
 
     return {
-      certificateTemplates
+      certificateTemplates: certificateTemplates.filter((el) =>
+        permission.can(
+          ProjectPermissionPkiTemplateActions.Read,
+          subject(ProjectPermissionSub.CertificateTemplates, { name: el.name })
+        )
+      )
     };
   };
 
