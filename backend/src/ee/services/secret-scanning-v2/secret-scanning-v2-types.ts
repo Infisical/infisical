@@ -1,4 +1,9 @@
-import { TSecretScanningFindingsInsert, TSecretScanningResources, TSecretScanningScans } from "@app/db/schemas";
+import {
+  TSecretScanningDataSources,
+  TSecretScanningFindingsInsert,
+  TSecretScanningResources,
+  TSecretScanningScans
+} from "@app/db/schemas";
 import {
   TGitHubDataSource,
   TGitHubDataSourceInput,
@@ -96,6 +101,14 @@ export type TQueueSecretScanningDataSourceFullScan = {
 
 export type TQueueSecretScanningResourceDiffScan = TQueueGitHubResourceDiffScan;
 
+export type TQueueSecretScanningSendNotification = {
+  dataSource: TSecretScanningDataSources;
+  resourceName: string;
+} & (
+  | { status: SecretScanningScanStatus.Failed; errorMessage: string }
+  | { status: SecretScanningScanStatus.Completed; numberOfSecrets: number; scanId: string; isDiffScan: boolean }
+);
+
 export type TCloneRepository = {
   cloneUrl: string;
   repoPath: string;
@@ -163,7 +176,7 @@ export type TFindingsPayload = Pick<TSecretScanningFindingsInsert, "details" | "
 export type TGetFindingsPayload = Promise<TFindingsPayload>;
 
 export type TUpdateSecretScanningFinding = {
-  status: SecretScanningFindingStatus;
+  status?: SecretScanningFindingStatus;
   remarks?: string | null;
   findingId: string;
 };

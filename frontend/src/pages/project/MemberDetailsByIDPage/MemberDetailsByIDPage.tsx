@@ -28,6 +28,7 @@ import {
   useGetWorkspaceUserDetails
 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { MemberProjectAdditionalPrivilegeSection } from "./components/MemberProjectAdditionalPrivilegeSection";
 import { MemberRoleDetailsSection } from "./components/MemberRoleDetailsSection";
@@ -70,7 +71,21 @@ export const Page = () => {
             type: "success",
             text: "User privilege assumption has started"
           });
-          window.location.href = `/${currentWorkspace.type}/${currentWorkspace.id}/overview`;
+
+          let page: string;
+
+          switch (currentWorkspace.type) {
+            case ProjectType.SecretScanning:
+              page = "data-sources";
+              break;
+            case ProjectType.CertificateManager:
+              page = "subscribers";
+              break;
+            default:
+              page = "overview";
+          }
+
+          window.location.href = `/${currentWorkspace.type}/${currentWorkspace.id}/${page}`;
         }
       }
     );

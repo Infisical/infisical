@@ -245,7 +245,8 @@
         {
           "group": "Secret Scanning",
           "pages": [
-            "documentation/platform/secret-scanning/overview"
+            "documentation/platform/secret-scanning/overview",
+            "documentation/platform/secret-scanning/github"
           ]
         }
       ]

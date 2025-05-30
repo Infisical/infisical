@@ -14,4 +14,5 @@ export type TSecretScanningDataSourceBase = {
     name: string;
   };
   isAutoScanEnabled: boolean;
+  isDisconnected: boolean;
 };

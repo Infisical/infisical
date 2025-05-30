@@ -82,7 +82,6 @@ const PageContent = () => {
             <p className="text-3xl font-semibold text-white">{dataSource.name}</p>
             <p className="leading-3 text-bunker-300">{details.name} Data Source</p>
           </div>
-          {/* <SecretSyncActionTriggers dataSource={dataSource} /> */}
         </div>
         <div className="flex justify-center">
           <div className="mr-4 flex w-72 flex-col gap-4">

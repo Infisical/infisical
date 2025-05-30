@@ -7,6 +7,7 @@ import {
   faEllipsisV,
   faExpand,
   faInfoCircle,
+  faPlugCircleXmark,
   faSearch,
   faToggleOff,
   faToggleOn,
@@ -72,7 +73,8 @@ export const SecretScanningDataSourceRow = ({
     unresolvedFindings,
     lastScannedAt,
     lastScanStatus,
-    lastScanStatusMessage
+    lastScanStatusMessage,
+    isDisconnected
   } = dataSource;
 
   const sourceDetails = SECRET_SCANNING_DATA_SOURCE_MAP[type];
@@ -199,7 +201,7 @@ export const SecretScanningDataSourceRow = ({
           ) : (
             <span className="text-mineshaft-400">No scans</span>
           )}
-          {!isAutoScanEnabled && (
+          {!isAutoScanEnabled && !isDisconnected && (
             <Tooltip
               className="text-xs"
               content={`Auto-Scan is disabled. Scans will not be automatically triggered when a ${autoScanDescription.verb} occurs to ${autoScanDescription.pluralNoun} associated with this data source`}
@@ -208,6 +210,22 @@ export const SecretScanningDataSourceRow = ({
                 <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
                   <FontAwesomeIcon icon={faBan} />
                   <span>Auto-Scan Disabled</span>
+                </Badge>
+              </div>
+            </Tooltip>
+          )}
+          {isDisconnected && (
+            <Tooltip
+              className="text-xs"
+              content="The external data source has been removed and can no longer be scanned. Delete this data source and re-initialize the connection."
+            >
+              <div className="ml-auto">
+                <Badge
+                  variant="danger"
+                  className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
+                >
+                  <FontAwesomeIcon icon={faPlugCircleXmark} />
+                  <span>Disconnected</span>
                 </Badge>
               </div>
             </Tooltip>

@@ -21,7 +21,8 @@ export const SecretScanningDataSourcesSchema = z.object({
   isAutoScanEnabled: z.boolean().default(true).nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  isDisconnected: z.boolean().default(false)
 });
 
 export type TSecretScanningDataSources = z.infer<typeof SecretScanningDataSourcesSchema>;

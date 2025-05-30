@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   Button,
@@ -18,6 +19,10 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import {
+  ProjectPermissionSecretScanningFindingActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import {
   SECRET_SCANNING_DATA_SOURCE_MAP,
   SECRET_SCANNING_FINDING_STATUS_ICON_MAP
@@ -191,19 +196,32 @@ export const SecretScanningFindingRow = ({ finding, onUpdate }: Props) => {
                   {details.link}
                 </a>
               </GenericFieldLabel>
-
-              <Button
-                onClick={() => onUpdate(finding)}
-                colorSchema="secondary"
-                leftIcon={
-                  <FontAwesomeIcon
-                    className={SECRET_SCANNING_FINDING_STATUS_ICON_MAP[status].className}
-                    icon={SECRET_SCANNING_FINDING_STATUS_ICON_MAP[status].icon}
-                  />
-                }
+              <div className="col-span-full flex items-center border-t border-mineshaft-500" />
+              <ProjectPermissionCan
+                I={ProjectPermissionSecretScanningFindingActions.Update}
+                a={ProjectPermissionSub.SecretScanningFindings}
               >
-                Update Status
-              </Button>
+                {(isAllowed) => (
+                  <Button
+                    onClick={() => onUpdate(finding)}
+                    colorSchema="secondary"
+                    isDisabled={!isAllowed}
+                    leftIcon={
+                      <FontAwesomeIcon
+                        className={SECRET_SCANNING_FINDING_STATUS_ICON_MAP[status].className}
+                        icon={SECRET_SCANNING_FINDING_STATUS_ICON_MAP[status].icon}
+                      />
+                    }
+                  >
+                    Update Status
+                  </Button>
+                )}
+              </ProjectPermissionCan>
+              {Boolean(remarks) && (
+                <GenericFieldLabel className="col-span-3" label="Remarks">
+                  {remarks}
+                </GenericFieldLabel>
+              )}
             </div>
           </div>
         </Td>

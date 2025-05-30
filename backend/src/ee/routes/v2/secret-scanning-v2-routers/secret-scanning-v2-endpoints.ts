@@ -298,7 +298,7 @@ export const registerSecretScanningEndpoints = <
     handler: async (req) => {
       const { dataSourceId } = req.params;
 
-      const dataSource = (await server.services.secretScanningV2.deleteSecretScanningResource(
+      const dataSource = (await server.services.secretScanningV2.deleteSecretScanningDataSource(
         { type, dataSourceId },
         req.permission
       )) as T;
@@ -349,7 +349,7 @@ export const registerSecretScanningEndpoints = <
         ...req.auditLogInfo,
         projectId: dataSource.projectId,
         event: {
-          type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN,
+          type: EventType.SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN,
           metadata: {
             type,
             dataSourceId
@@ -392,7 +392,7 @@ export const registerSecretScanningEndpoints = <
         ...req.auditLogInfo,
         projectId: dataSource.projectId,
         event: {
-          type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN,
+          type: EventType.SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN,
           metadata: {
             type,
             dataSourceId,

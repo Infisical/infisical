@@ -23,6 +23,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.timestamps(true, true, true);
+      t.boolean("isDisconnected").notNullable().defaultTo(false);
       t.unique(["projectId", "name"]);
     });
     await createOnUpdateTrigger(knex, TableName.SecretScanningDataSource);

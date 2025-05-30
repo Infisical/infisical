@@ -77,6 +77,7 @@ export const ProjectLayout = () => {
   const { data: unresolvedFindings } = useGetSecretScanningUnresolvedFindingCount(workspaceId, {
     enabled:
       isSecretScanning &&
+      subscription.secretScanning &&
       permission.can(
         ProjectPermissionSecretScanningFindingActions.Read,
         ProjectPermissionSub.SecretScanningFindings
@@ -264,7 +265,7 @@ export const ProjectLayout = () => {
                           }}
                         >
                           {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="jigsaw-puzzle">
+                            <MenuItem isSelected={isActive} icon="blocks">
                               Data Sources
                             </MenuItem>
                           )}

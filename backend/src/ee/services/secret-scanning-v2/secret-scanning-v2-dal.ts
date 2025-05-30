@@ -163,7 +163,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   };
 
   const deleteDataSourceById = async (dataSourceId: string, tx?: Knex) => {
-    const secretRotation = (await baseSecretScanningDataSourceQuery({
+    const dataSource = (await baseSecretScanningDataSourceQuery({
       filter: { id: dataSourceId },
       db,
       tx
@@ -171,18 +171,18 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
 
     await dataSourceOrm.deleteById(dataSourceId, tx);
 
-    return expandSecretScanningDataSource(secretRotation);
+    return expandSecretScanningDataSource(dataSource);
   };
 
   const findOneDataSource = async (filter: Parameters<(typeof dataSourceOrm)["findOne"]>[0], tx?: Knex) => {
     try {
-      const secretRotation = await baseSecretScanningDataSourceQuery({ filter, db, tx }).first();
+      const dataSource = await baseSecretScanningDataSourceQuery({ filter, db, tx }).first();
 
-      if (secretRotation) {
-        return expandSecretScanningDataSource(secretRotation);
+      if (dataSource) {
+        return expandSecretScanningDataSource(dataSource);
       }
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find One - Secret Rotation V2" });
+      throw new DatabaseError({ error, name: "Find One - Secret Scanning Data Source" });
     }
   };
 
@@ -264,7 +264,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         };
       });
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find Data Source with Details - Secret Scanning V2" });
+      throw new DatabaseError({ error, name: "Find with Details - Secret Scanning Data Source" });
     }
   };
 
@@ -348,7 +348,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         };
       });
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find Resource with Details - Secret Scanning V2" });
+      throw new DatabaseError({ error, name: "Find with Details - Secret Scanning Resource" });
     }
   };
 
@@ -411,7 +411,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         };
       });
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find Scan with Details By Data Source ID - Secret Scanning V2" });
+      throw new DatabaseError({ error, name: "Find with Details By Data Source ID - Secret Scanning Scan" });
     }
   };
 
@@ -429,7 +429,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
 
       return scans;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find Scan By Data Source ID - Secret Scanning V2" });
+      throw new DatabaseError({ error, name: "Find By Data Source ID - Secret Scanning Scan" });
     }
   };
 

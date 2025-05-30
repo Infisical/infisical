@@ -49,10 +49,6 @@ export type TSecretScanningV2ServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  // auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  // keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
-  // queueService: Pick<TQueueServiceFactory, "queuePg">;
-  // appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   secretScanningV2Queue: Pick<
     TSecretScanningV2QueueServiceFactory,
     "queueDataSourceFullScan" | "queueResourceDiffScan"
@@ -67,10 +63,6 @@ export const secretScanningV2ServiceFactory = ({
   permissionService,
   appConnectionService,
   licenseService,
-  // auditLogService,
-  // keyStore,
-  // queueService,
-  // appConnectionDAL,
   secretScanningV2Queue,
   kmsService
 }: TSecretScanningV2ServiceFactoryDep) => {
@@ -374,7 +366,7 @@ export const secretScanningV2ServiceFactory = ({
     }
   };
 
-  const deleteSecretScanningResource = async (
+  const deleteSecretScanningDataSource = async (
     { type, dataSourceId }: TDeleteSecretScanningDataSourceDTO,
     actor: OrgServiceActor
   ) => {
@@ -750,7 +742,7 @@ export const secretScanningV2ServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningFindingActions.Resolve,
+      ProjectPermissionSecretScanningFindingActions.Update,
       ProjectPermissionSub.SecretScanningFindings
     );
 
@@ -770,7 +762,7 @@ export const secretScanningV2ServiceFactory = ({
     findSecretScanningDataSourceByName,
     createSecretScanningDataSource,
     updateSecretScanningDataSource,
-    deleteSecretScanningResource,
+    deleteSecretScanningDataSource,
     triggerSecretScanningDataSourceScan,
     listSecretScanningResourcesByDataSourceId,
     listSecretScanningScansByDataSourceId,

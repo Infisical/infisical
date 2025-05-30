@@ -2408,7 +2408,12 @@ export const SecretScanningDataSources = {
   }),
   LIST_SCANS: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list scans for.`
-  })
+  }),
+  CONFIG: {
+    GITHUB: {
+      includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
+    }
+  }
 };
 
 export const SecretScanningFindings = {
@@ -2416,8 +2421,8 @@ export const SecretScanningFindings = {
     projectId: `The ID of the project to list Secret Scanning Findings from.`
   },
   UPDATE: {
-    findingId: "The ID of the Secret Scanning Finding to update the resolve status for.",
+    findingId: "The ID of the Secret Scanning Finding to update.",
     status: "The updated status of the specified Secret Scanning Finding.",
-    remarks: "Remarks pertaining to the resolve status of this finding."
+    remarks: "Remarks pertaining to the status of this finding."
   }
 };

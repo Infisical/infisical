@@ -29,7 +29,7 @@ Data sources are configured integrations with external platforms, such as a GitH
 
 A data source acts as a secure intermediary between the external system and the scanner engine. It manages a collection of scannable resources (such as repositories) and handles the authentication and communication required for scanning operations.
 
-[data source page image]
+![data sources](/images/platform/secret-scanning/secret-scanning-data-sources.png)
 
 ### Resources
 
@@ -37,15 +37,13 @@ Resources are the atomic, scannable units, such as a repository, that can be mon
 
 Each resource maintains its own scanning history and status, allowing for granular monitoring and management of secret scanning across your organization.
 
-[resource table image]
+![resources](/images/platform/secret-scanning/secret-scanning-resources.png)
 
 ### Scans
 
 Scans can be initiated in two ways:
 
-1. **Full Scan** - Manually triggered scan that comprehensively checks either:
-    - All resources associated with a data source
-    - A single selected resource
+1. **Full Scan** - Manually triggered scan that comprehensively checks either all resources associated with a data source or a single selected resource.
 
 2. **Diff Scan** - Automatically executed when **Auto-Scan** is enabled on a data source. This scan type specifically focuses on updates to existing resources.
 
@@ -55,42 +53,23 @@ All scan activities can be monitored in real-time through the Infisical UI, whic
 - Resource(s) being scanned
 - Detection results (whether any secrets were found)
 
-[scan table image]
+![scans](/images/platform/secret-scanning/secret-scanning-scans.png)
 
-## [In Progress - old below]
+### Findings
 
-## Code Scanning
+Findings are automatically generated when secret leaks are detected during scanning operations. Each finding contains comprehensive information including:
+- The specific scanning rule that identified the leak
+- File location and line number where the secret was found
+- Resource-specific details (e.g., commit hash and author for Git repositories)
 
-![Scanning Overview](/images/platform/secret-scanning/overview.png)
+Findings are initially marked as **Unresolved** and can be updated to one of the following statuses with additional remarks:
+- **Resolved** - The issue has been addressed
+- **False Positive** - The detection was incorrect
+- **Ignore** - The finding can be safely disregarded
 
-Secret scans are built on event-driven architecture. This means that every time a push is made to one of your selected repositories, Infisical will scan the modified files for any exposed secrets.
+These status options help teams effectively track and manage the lifecycle of detected secret leaks.
 
-If one or more exposed secrets are detected, it will be displayed in your Infisical dashboard. An exposed secret is known as a **"Risk"**. Each risk has the following data associated with it:
-- **Date**: When the risk was first detected.
-- **Secret Type**: Which type of secret was detected.
-- **Info**: Information about the secret, such as the repository, file name, and the committer who made the change.
-
-Once an exposed secret is detected, all organization admins will be sent an e-mail notification containing details about the exposed secret.
-
-<Tip>
-  Each risk also contains a "View Exposed Secret" button, which will take you directly to the GitHub commit and to the line where the secret was exposed.
-</Tip>
-
-
-
-![Exposed Secret](/images/platform/secret-scanning/exposed-secret.png)
-
-
-## Responding to Exposed Secrets
-
-After an exposed secret is detected, it will be marked as `Needs Attention`. When there are risks marked as needs attention, it's important to address them as soon as possible.
-
-You can mark the risk as `Resolved` by changing the status to one of the following states:
-- **This Is a False Positive**: The secret was not exposed, but was detected by the scanner.
-- **I Have Rotated The Secret**: The secret was exposed, but it has now been removed.
-- **No Rotation Needed**: You are choosing to ignore this risk. You may choose to do this if the risk is non-sensitive or otherwise not a security risk.
-
-![Needs Attention](/images/platform/secret-scanning/needs-attention.png)
+![findings](/images/platform/secret-scanning/secret-scanning-findings.png)
 
 ## Ignoring Known Secrets
 If you're intentionally committing a test secret that the secret scanner might flag, you can instruct Infisical to overlook that secret with the methods listed below.

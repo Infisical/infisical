@@ -1,10 +1,11 @@
 import { faArrowUpRightFromSquare, faBookOpen, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretScanningDataSourceModal } from "@app/components/secret-scanning";
 import { Button, Spinner } from "@app/components/v2";
-import { ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSub, useSubscription, useWorkspace } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListSecretScanningDataSources } from "@app/hooks/api/secretScanningV2";
@@ -12,7 +13,12 @@ import { useListSecretScanningDataSources } from "@app/hooks/api/secretScanningV
 import { SecretScanningDataSourcesTable } from "./SecretScanningDataSourcesTable";
 
 export const SecretScanningDataSourcesSection = () => {
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["addDataSource"] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+    "addDataSource",
+    "upgradePlan"
+  ] as const);
+
+  const { subscription } = useSubscription();
 
   const { currentWorkspace } = useWorkspace();
 
@@ -63,7 +69,14 @@ export const SecretScanningDataSourcesSection = () => {
                 colorSchema="secondary"
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("addDataSource")}
+                onClick={() => {
+                  if (!subscription.secretScanning) {
+                    handlePopUpOpen("upgradePlan");
+                    return;
+                  }
+
+                  handlePopUpOpen("addDataSource");
+                }}
                 isDisabled={!isAllowed}
               >
                 Add Data Source
@@ -76,6 +89,11 @@ export const SecretScanningDataSourcesSection = () => {
       <CreateSecretScanningDataSourceModal
         isOpen={popUp.addDataSource.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addDataSource", isOpen)}
+      />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="You can create Data Sources by upgrading to Infisical's Enterprise plan."
       />
     </>
   );

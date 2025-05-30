@@ -140,12 +140,12 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.SecretScanning],
-      description: "Update the resolve status of the specified Secret Scanning Finding.",
+      description: "Update the specified Secret Scanning Finding.",
       params: z.object({
         findingId: z.string().trim().min(1, "Finding ID required").describe(SecretScanningFindings.UPDATE.findingId)
       }),
       body: z.object({
-        status: z.nativeEnum(SecretScanningFindingStatus).describe(SecretScanningFindings.UPDATE.status),
+        status: z.nativeEnum(SecretScanningFindingStatus).optional().describe(SecretScanningFindings.UPDATE.status),
         remarks: z.string().nullish().describe(SecretScanningFindings.UPDATE.remarks)
       }),
       response: {

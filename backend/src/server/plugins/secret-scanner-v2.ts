@@ -12,7 +12,7 @@ export const registerSecretScanningV2Webhooks = async (server: FastifyZodProvide
       const { payload } = context;
       const { installation } = payload;
 
-      await server.services.secretScanningV2.github.handleInstallationDeleted(installation.id);
+      await server.services.secretScanningV2.github.handleInstallationDeletedEvent(installation.id);
     });
 
     app.on("installation", async (context) => {
@@ -28,6 +28,11 @@ export const registerSecretScanningV2Webhooks = async (server: FastifyZodProvide
 
   const appCfg = getConfig();
 
+  if (!appCfg.isSecretScanningV2Configured) {
+    logger.info("Secret Scanning V2 is not configured. Skipping registration of secret scanning v2 webhooks.");
+    return;
+  }
+
   const probot = new Probot({
     appId: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_ID as string,
     privateKey: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY as string,
@@ -36,6 +41,7 @@ export const registerSecretScanningV2Webhooks = async (server: FastifyZodProvide
 
   await probot.load(probotApp);
 
+  // github push event webhook
   server.route({
     method: "POST",
     url: "/github",

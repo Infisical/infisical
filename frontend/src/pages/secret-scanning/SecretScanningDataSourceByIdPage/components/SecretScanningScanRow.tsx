@@ -82,7 +82,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
         </div>
       </Td>
       <Td className="whitespace-nowrap">
-        {type === SecretScanningScanType.FullScan ? "Full scan" : "Diff scan"}
+        {type === SecretScanningScanType.FullScan ? "Full Scan" : "Diff Scan"}
       </Td>
       <Td>
         {

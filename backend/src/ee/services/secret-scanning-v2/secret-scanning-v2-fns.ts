@@ -4,6 +4,7 @@ import { exec } from "child_process";
 import { readFindingsFile } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/github";
+import { titleCaseToCamelCase } from "@app/lib/fn";
 
 import { SecretScanningDataSource, SecretScanningFindingSeverity } from "./secret-scanning-v2-enums";
 import { TCloneRepository, TGetFindingsPayload, TSecretScanningDataSourceListItem } from "./secret-scanning-v2-types";
@@ -41,27 +42,6 @@ export function scanDirectory(inputPath: string, outputPath: string): Promise<vo
     });
   });
 }
-
-export const titleCaseToCamelCase = (obj: unknown): unknown => {
-  if (typeof obj !== "object" || obj === null) {
-    return obj;
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map((item: object) => titleCaseToCamelCase(item));
-  }
-
-  const result: Record<string, unknown> = {};
-
-  for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      const camelKey = key.charAt(0).toLowerCase() + key.slice(1);
-      result[camelKey] = titleCaseToCamelCase((obj as Record<string, unknown>)[key]);
-    }
-  }
-
-  return result;
-};
 
 export const scanGitRepositoryAndGetFindings = async (scanPath: string, findingsPath: string): TGetFindingsPayload => {
   await scanDirectory(scanPath, findingsPath);

@@ -11,10 +11,15 @@ import {
   BaseUpdateSecretScanningDataSourceSchema,
   GitRepositoryScanFindingDetailsSchema
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
+import { SecretScanningDataSources } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 export const GitHubDataSourceConfigSchema = z.object({
-  includeRepos: z.array(z.string()).nonempty("One or more repositories required").default(["*"])
+  includeRepos: z
+    .array(z.string())
+    .nonempty("One or more repositories required")
+    .default(["*"])
+    .describe(SecretScanningDataSources.CONFIG.GITHUB.includeRepos)
 });
 
 export const GitHubDataSourceSchema = BaseSecretScanningDataSourceSchema({

@@ -1703,22 +1703,20 @@ export const registerRoutes = async (
   });
 
   const secretScanningV2Queue = await secretScanningV2QueueServiceFactory({
+    auditLogService,
     secretScanningV2DAL,
     queueService,
-    // projectDAL,
-    // projectMembershipDAL,
-    // smtpService,
-    kmsService
+    projectDAL,
+    projectMembershipDAL,
+    smtpService,
+    kmsService,
+    keyStore
   });
 
   const secretScanningV2Service = secretScanningV2ServiceFactory({
-    // appConnectionDAL,
     permissionService,
     appConnectionService,
     licenseService,
-    // auditLogService,
-    // keyStore,
-    // queueService,
     secretScanningV2DAL,
     secretScanningV2Queue,
     kmsService

@@ -214,7 +214,7 @@ const buildAdminPermissionRules = () => {
   );
 
   can(
-    [ProjectPermissionSecretScanningFindingActions.Read, ProjectPermissionSecretScanningFindingActions.Resolve],
+    [ProjectPermissionSecretScanningFindingActions.Read, ProjectPermissionSecretScanningFindingActions.Update],
     ProjectPermissionSub.SecretScanningFindings
   );
 
@@ -400,9 +400,6 @@ const buildMemberPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionSecretScanningDataSourceActions.Create,
-      ProjectPermissionSecretScanningDataSourceActions.Edit,
-      ProjectPermissionSecretScanningDataSourceActions.Delete,
       ProjectPermissionSecretScanningDataSourceActions.Read,
       ProjectPermissionSecretScanningDataSourceActions.TriggerScans,
       ProjectPermissionSecretScanningDataSourceActions.ReadScans,
@@ -412,7 +409,7 @@ const buildMemberPermissionRules = () => {
   );
 
   can(
-    [ProjectPermissionSecretScanningFindingActions.Read, ProjectPermissionSecretScanningFindingActions.Resolve],
+    [ProjectPermissionSecretScanningFindingActions.Read, ProjectPermissionSecretScanningFindingActions.Update],
     ProjectPermissionSub.SecretScanningFindings
   );
 

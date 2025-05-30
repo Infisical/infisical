@@ -9,7 +9,11 @@ import {
   TSecretRotationV2Raw,
   TUpdateSecretRotationV2DTO
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  SecretScanningDataSource,
+  SecretScanningScanStatus,
+  SecretScanningScanType
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   TCreateSecretScanningDataSourceDTO,
   TDeleteSecretScanningDataSourceDTO,
@@ -390,6 +394,7 @@ export enum EventType {
   SECRET_SCANNING_DATA_SOURCE_UPDATE = "secret-scanning-data-source-update",
   SECRET_SCANNING_DATA_SOURCE_DELETE = "secret-scanning-data-source-delete",
   SECRET_SCANNING_DATA_SOURCE_GET = "secret-scanning-data-source-get",
+  SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN = "secret-scanning-data-source-trigger-scan",
   SECRET_SCANNING_DATA_SOURCE_SCAN = "secret-scanning-data-source-scan",
   SECRET_SCANNING_RESOURCE_LIST = "secret-scanning-resource-list",
   SECRET_SCANNING_SCAN_LIST = "secret-scanning-scan-list",
@@ -2964,9 +2969,23 @@ interface SecretScanningDataSourceDeleteEvent {
   metadata: TDeleteSecretScanningDataSourceDTO;
 }
 
+interface SecretScanningDataSourceTriggerScanEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN;
+  metadata: TTriggerSecretScanningDataSourceDTO;
+}
+
 interface SecretScanningDataSourceScanEvent {
   type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN;
-  metadata: TTriggerSecretScanningDataSourceDTO;
+  metadata: {
+    scanId: string;
+    resourceId: string;
+    resourceType: string;
+    dataSourceId: string;
+    dataSourceType: string;
+    scanStatus: SecretScanningScanStatus;
+    scanType: SecretScanningScanType;
+    numberOfSecretsDetected?: number;
+  };
 }
 
 interface SecretScanningResourceListEvent {
@@ -3273,6 +3292,7 @@ export type Event =
   | SecretScanningDataSourceCreateEvent
   | SecretScanningDataSourceUpdateEvent
   | SecretScanningDataSourceDeleteEvent
+  | SecretScanningDataSourceTriggerScanEvent
   | SecretScanningDataSourceScanEvent
   | SecretScanningResourceListEvent
   | SecretScanningScanListEvent

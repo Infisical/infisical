@@ -135,7 +135,7 @@ export enum ProjectPermissionSecretScanningDataSourceActions {
 
 export enum ProjectPermissionSecretScanningFindingActions {
   Read = "read-findings",
-  Resolve = "resolve-findings"
+  Update = "update-findings"
 }
 
 export enum ProjectPermissionSub {

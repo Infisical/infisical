@@ -104,7 +104,7 @@ const SecretScanningDataSourcePolicyActionSchema = z.object({
 
 const SecretScanningFindingPolicyActionSchema = z.object({
   [ProjectPermissionSecretScanningFindingActions.Read]: z.boolean().optional(),
-  [ProjectPermissionSecretScanningFindingActions.Resolve]: z.boolean().optional()
+  [ProjectPermissionSecretScanningFindingActions.Update]: z.boolean().optional()
 });
 
 const KmipPolicyActionSchema = z.object({
@@ -731,6 +731,52 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         formVal[subject]![0][ProjectPermissionSecretSyncActions.RemoveSecrets] = true;
     }
 
+    if (subject === ProjectPermissionSub.SecretScanningDataSources) {
+      const canRead = action.includes(ProjectPermissionSecretScanningDataSourceActions.Read);
+      const canEdit = action.includes(ProjectPermissionSecretScanningDataSourceActions.Edit);
+      const canDelete = action.includes(ProjectPermissionSecretScanningDataSourceActions.Delete);
+      const canCreate = action.includes(ProjectPermissionSecretScanningDataSourceActions.Create);
+      const canReadScans = action.includes(
+        ProjectPermissionSecretScanningDataSourceActions.ReadScans
+      );
+      const canReadResources = action.includes(
+        ProjectPermissionSecretScanningDataSourceActions.ReadResources
+      );
+      const canTriggerScans = action.includes(
+        ProjectPermissionSecretScanningDataSourceActions.TriggerScans
+      );
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      // from above statement we are sure it won't be undefined
+      if (canRead)
+        formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.Read] = true;
+      if (canEdit)
+        formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.Edit] = true;
+      if (canCreate)
+        formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.Create] = true;
+      if (canDelete)
+        formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.Delete] = true;
+      if (canReadScans)
+        formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.ReadScans] = true;
+      if (canReadResources)
+        formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.ReadResources] = true;
+      if (canTriggerScans)
+        formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.TriggerScans] = true;
+    }
+
+    if (subject === ProjectPermissionSub.SecretScanningFindings) {
+      const canRead = action.includes(ProjectPermissionSecretScanningFindingActions.Read);
+      const canUpdate = action.includes(ProjectPermissionSecretScanningFindingActions.Update);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      // from above statement we are sure it won't be undefined
+      if (canRead) formVal[subject]![0][ProjectPermissionSecretScanningFindingActions.Read] = true;
+      if (canUpdate)
+        formVal[subject]![0][ProjectPermissionSecretScanningFindingActions.Update] = true;
+    }
+
     if (subject === ProjectPermissionSub.SshHosts) {
       if (!formVal[subject]) formVal[subject] = [];
 
@@ -1313,8 +1359,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         value: ProjectPermissionSecretScanningFindingActions.Read
       },
       {
-        label: "Resolve Finding Status",
-        value: ProjectPermissionSecretScanningFindingActions.Resolve
+        label: "Update Findings",
+        value: ProjectPermissionSecretScanningFindingActions.Update
       }
     ]
   }

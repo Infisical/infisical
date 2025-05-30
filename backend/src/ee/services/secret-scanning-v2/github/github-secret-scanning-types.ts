@@ -27,4 +27,6 @@ export type TQueueGitHubResourceDiffScan = {
   dataSourceType: SecretScanningDataSource.GitHub;
   payload: PushEvent;
   dataSourceId: string;
+  resourceId: string;
+  scanId: string;
 };

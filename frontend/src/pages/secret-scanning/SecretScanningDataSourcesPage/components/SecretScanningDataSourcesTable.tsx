@@ -3,9 +3,9 @@ import {
   faArrowDown,
   faArrowUp,
   faCheckCircle,
+  faCubesStacked,
   faFilter,
   faMagnifyingGlass,
-  faPuzzlePiece,
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -368,7 +368,7 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
                 ? "No data sources match search..."
                 : "This project has no data sources configured"
             }
-            icon={dataSources.length ? faSearch : faPuzzlePiece}
+            icon={dataSources.length ? faSearch : faCubesStacked}
           />
         )}
       </TableContainer>
