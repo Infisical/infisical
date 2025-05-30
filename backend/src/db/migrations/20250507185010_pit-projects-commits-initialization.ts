@@ -131,9 +131,10 @@ export async function up(knex: Knex): Promise<void> {
     for (const batch of batches) {
       i += 1;
       logger.info(`Processing project batch ${i} of ${batches.length}`);
-      const foldersCommitsList = [];
+      let foldersCommitsList = [];
 
       const rootFoldersMap: Record<string, string> = {};
+      const envRootFoldersMap: Record<string, string> = {};
 
       // Get All Folders for the Project
       // eslint-disable-next-line no-await-in-loop
@@ -202,10 +203,25 @@ export async function up(knex: Knex): Promise<void> {
           foldersCommitsList.push(folderCommit);
           if (!folder.parentId) {
             rootFoldersMap[folder.id] = folder.envId;
+            envRootFoldersMap[folder.envId] = folder.id;
           }
         }
       }
       logger.info(`Retrieved folder changes for project batch ${i} of ${batches.length}`);
+
+      const filteredBrokenProjectFolders = [];
+
+      foldersCommitsList = foldersCommitsList.filter((folderCommit) => {
+        if (!envRootFoldersMap[folderCommit.commit.envId]) {
+          filteredBrokenProjectFolders.push(folderCommit.commit.folderId);
+          return false;
+        }
+        return true;
+      });
+
+      logger.info(
+        `Filtered ${filteredBrokenProjectFolders.length} broken project folders: ${JSON.stringify(filteredBrokenProjectFolders)}`
+      );
 
       // Insert New Commits in batches of 9000
       const newCommits = foldersCommitsList.map((folderCommit) => folderCommit.commit);
