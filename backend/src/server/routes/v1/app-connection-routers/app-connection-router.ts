@@ -43,6 +43,7 @@ import {
 } from "@app/services/app-connection/humanitec";
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
+import { MySqlConnectionListItemSchema, SanitizedMySqlConnectionSchema } from "@app/services/app-connection/mysql";
 import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
@@ -75,6 +76,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedVercelConnectionSchema.options,
   ...SanitizedPostgresConnectionSchema.options,
   ...SanitizedMsSqlConnectionSchema.options,
+  ...SanitizedMySqlConnectionSchema.options,
   ...SanitizedCamundaConnectionSchema.options,
   ...SanitizedAuth0ConnectionSchema.options,
   ...SanitizedHCVaultConnectionSchema.options,
@@ -98,6 +100,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   VercelConnectionListItemSchema,
   PostgresConnectionListItemSchema,
   MsSqlConnectionListItemSchema,
+  MySqlConnectionListItemSchema,
   CamundaConnectionListItemSchema,
   Auth0ConnectionListItemSchema,
   HCVaultConnectionListItemSchema,

@@ -23,6 +23,7 @@ import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
+import { MySqlConnectionForm } from "./MySqlConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
@@ -89,6 +90,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <PostgresConnectionForm onSubmit={onSubmit} />;
     case AppConnection.MsSql:
       return <MsSqlConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.MySql:
+      return <MySqlConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} />;
     case AppConnection.AzureClientSecrets:
@@ -165,6 +168,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <PostgresConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.MsSql:
       return <MsSqlConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.MySql:
+      return <MySqlConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.AzureClientSecrets:

@@ -13,6 +13,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Vercel]: "Vercel",
   [AppConnection.Postgres]: "PostgreSQL",
   [AppConnection.MsSql]: "Microsoft SQL Server",
+  [AppConnection.MySql]: "MySQL",
   [AppConnection.Camunda]: "Camunda",
   [AppConnection.Windmill]: "Windmill",
   [AppConnection.Auth0]: "Auth0",
@@ -43,5 +44,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.LDAP]: AppConnectionPlanType.Regular,
   [AppConnection.TeamCity]: AppConnectionPlanType.Regular,
   [AppConnection.OCI]: AppConnectionPlanType.Enterprise,
-  [AppConnection.OnePass]: AppConnectionPlanType.Regular
+  [AppConnection.OnePass]: AppConnectionPlanType.Regular,
+  [AppConnection.MySql]: AppConnectionPlanType.Regular
 };

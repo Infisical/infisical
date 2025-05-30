@@ -23,6 +23,7 @@ import {
   HumanitecConnectionMethod,
   LdapConnectionMethod,
   MsSqlConnectionMethod,
+  MySqlConnectionMethod,
   OnePassConnectionMethod,
   PostgresConnectionMethod,
   TAppConnection,
@@ -58,6 +59,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Vercel]: { name: "Vercel", image: "Vercel.png" },
   [AppConnection.Postgres]: { name: "PostgreSQL", image: "Postgres.png" },
   [AppConnection.MsSql]: { name: "Microsoft SQL Server", image: "MsSql.png" },
+  [AppConnection.MySql]: { name: "MySQL", image: "MySql.png" },
   [AppConnection.Camunda]: { name: "Camunda", image: "Camunda.png" },
   [AppConnection.Windmill]: { name: "Windmill", image: "Windmill.png" },
   [AppConnection.Auth0]: { name: "Auth0", image: "Auth0.png", size: 40 },
@@ -95,6 +97,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
+    case MySqlConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:

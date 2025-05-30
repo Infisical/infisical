@@ -55,6 +55,7 @@ import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
+import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
 import { teamcityConnectionService } from "./teamcity/teamcity-connection-service";
@@ -86,6 +87,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Vercel]: ValidateVercelConnectionCredentialsSchema,
   [AppConnection.Postgres]: ValidatePostgresConnectionCredentialsSchema,
   [AppConnection.MsSql]: ValidateMsSqlConnectionCredentialsSchema,
+  [AppConnection.MySql]: ValidateMySqlConnectionCredentialsSchema,
   [AppConnection.Camunda]: ValidateCamundaConnectionCredentialsSchema,
   [AppConnection.AzureClientSecrets]: ValidateAzureClientSecretsConnectionCredentialsSchema,
   [AppConnection.Windmill]: ValidateWindmillConnectionCredentialsSchema,
