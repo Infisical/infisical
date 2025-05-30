@@ -562,9 +562,9 @@ export const AccessPolicyForm = ({
                 </div>
 
                 {bypasserCount <= 0 && (
-                  <span className="text-sm text-red-500">
-                    Not selecting specific users or groups will allow anyone to bypass this policy
-                  </span>
+                  <div className="mt-1 flex rounded-r border-l-2 border-l-red-500 bg-mineshaft-300/5 px-4 py-2.5 text-sm text-bunker-300">
+                    Not selecting specific users or groups will allow anyone to bypass this policy.
+                  </div>
                 )}
               </>
             )}
