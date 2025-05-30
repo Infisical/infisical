@@ -130,7 +130,7 @@ export const PkiTemplateListPage = () => {
                 <THead>
                   <Tr>
                     <Th>Name</Th>
-                    <Th>CA</Th>
+                    <Th>Issuing CA</Th>
                     <Th className="w-64">Last Updated At</Th>
                     <Th />
                   </Tr>

@@ -1,4 +1,5 @@
 import { Controller, useForm } from "react-hook-form";
+
 import { faQuestionCircle } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -133,7 +134,7 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
         await updateCertTemplate({
           templateName: certTemplate.name,
           projectId: currentWorkspace.id,
-          caId: ca.id,
+          caName: ca.name,
           name,
           commonName,
           subjectAlternativeName,
@@ -153,7 +154,7 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
       } else {
         await createCertTemplate({
           projectId: currentWorkspace.id,
-          caId: ca.id,
+          caName: ca.name,
           name,
           commonName,
           subjectAlternativeName,

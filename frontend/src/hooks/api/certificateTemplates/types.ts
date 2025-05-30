@@ -65,7 +65,7 @@ export type TDeleteCertificateTemplateDTO = {
 };
 
 export type TCreateCertificateTemplateV2DTO = {
-  caId: string;
+  caName: string;
   name: string;
   commonName: string;
   subjectAlternativeName: string;
@@ -77,7 +77,7 @@ export type TCreateCertificateTemplateV2DTO = {
 
 export type TUpdateCertificateTemplateV2DTO = {
   templateName: string;
-  caId?: string;
+  caName?: string;
   name?: string;
   commonName?: string;
   subjectAlternativeName?: string;

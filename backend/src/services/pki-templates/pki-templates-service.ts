@@ -56,7 +56,13 @@ type TPkiTemplatesServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
-    "findByIdWithAssociatedCa" | "findById" | "transaction" | "create" | "updateById" | "findWithAssociatedCa"
+    | "findByIdWithAssociatedCa"
+    | "findById"
+    | "transaction"
+    | "create"
+    | "updateById"
+    | "findWithAssociatedCa"
+    | "findOne"
   >;
   internalCaFns: ReturnType<typeof InternalCertificateAuthorityFns>;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey" | "encryptWithKmsKey">;
@@ -92,20 +98,22 @@ export const pkiTemplatesServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    caId,
+    caName,
     commonName,
     extendedKeyUsages,
     keyUsages,
     name,
     subjectAlternativeName,
-    ttl
+    ttl,
+    projectId
   }: TCreatePkiTemplateDTO) => {
-    const ca = await certificateAuthorityDAL.findById(caId);
+    const ca = await certificateAuthorityDAL.findOne({ name: caName, projectId });
     if (!ca) {
       throw new NotFoundError({
-        message: `CA with ID ${caId} not found`
+        message: `CA with name ${caName} not found`
       });
     }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -126,7 +134,7 @@ export const pkiTemplatesServiceFactory = ({
     }
 
     const newTemplate = await pkiTemplatesDAL.create({
-      caId,
+      caId: ca.id,
       name,
       commonName,
       subjectAlternativeName,
@@ -143,7 +151,7 @@ export const pkiTemplatesServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    caId,
+    caName,
     commonName,
     extendedKeyUsages,
     keyUsages,
@@ -173,13 +181,15 @@ export const pkiTemplatesServiceFactory = ({
       subject(ProjectPermissionSub.CertificateTemplates, { name: templateName })
     );
 
-    if (caId) {
-      const ca = await certificateAuthorityDAL.findById(caId);
+    let caId;
+    if (caName) {
+      const ca = await certificateAuthorityDAL.findOne({ name: caName, projectId });
       if (!ca || ca.projectId !== certTemplate.projectId) {
         throw new NotFoundError({
-          message: `CA with ID ${caId} not found`
+          message: `CA with name ${caName} not found`
         });
       }
+      caId = ca.id;
     }
 
     if (name) {

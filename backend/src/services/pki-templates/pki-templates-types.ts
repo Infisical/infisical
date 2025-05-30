@@ -2,7 +2,7 @@ import { TProjectPermission } from "@app/lib/types";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 
 export type TCreatePkiTemplateDTO = {
-  caId: string;
+  caName: string;
   name: string;
   commonName: string;
   subjectAlternativeName: string;
@@ -13,7 +13,7 @@ export type TCreatePkiTemplateDTO = {
 
 export type TUpdatePkiTemplateDTO = {
   templateName: string;
-  caId?: string;
+  caName?: string;
   name?: string;
   commonName?: string;
   subjectAlternativeName?: string;

@@ -26,7 +26,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
       tags: [ApiDocsTags.PkiCertificateTemplates],
       body: z.object({
         name: slugSchema(),
-        caId: z.string(),
+        caName: slugSchema({ field: "caName" }),
         projectId: z.string(),
         commonName: validateTemplateRegexField,
         subjectAlternativeName: validateTemplateRegexField,
@@ -72,7 +72,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
       }),
       body: z.object({
         name: slugSchema().optional(),
-        caId: z.string(),
+        caName: slugSchema(),
         projectId: z.string(),
         commonName: validateTemplateRegexField.optional(),
         subjectAlternativeName: validateTemplateRegexField.optional(),
