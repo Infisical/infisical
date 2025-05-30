@@ -74,7 +74,10 @@ export const CompanyNameSection = () => {
           name="name"
         />
       </div>
-      <OrgPermissionCan I={OrgPermissionBillingActions.ManageBilling} a={OrgPermissionSubjects.Billing}>
+      <OrgPermissionCan
+        I={OrgPermissionBillingActions.ManageBilling}
+        a={OrgPermissionSubjects.Billing}
+      >
         {(isAllowed) => (
           <Button
             type="submit"

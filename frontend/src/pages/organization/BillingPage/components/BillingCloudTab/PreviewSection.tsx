@@ -112,7 +112,10 @@ export const PreviewSection = () => {
                   Get unlimited members, projects, RBAC, smart alerts, and so much more.
                 </p>
               </div>
-              <OrgPermissionCan I={OrgPermissionBillingActions.ManageBilling} a={OrgPermissionSubjects.Billing}>
+              <OrgPermissionCan
+                I={OrgPermissionBillingActions.ManageBilling}
+                a={OrgPermissionSubjects.Billing}
+              >
                 {(isAllowed) => (
                   <Button
                     onClick={() => handleUpgradeBtnClick()}
@@ -156,7 +159,10 @@ export const PreviewSection = () => {
               }`}
             </p>
             {isInfisicalCloud() && (
-              <OrgPermissionCan I={OrgPermissionBillingActions.ManageBilling} a={OrgPermissionSubjects.Billing}>
+              <OrgPermissionCan
+                I={OrgPermissionBillingActions.ManageBilling}
+                a={OrgPermissionSubjects.Billing}
+              >
                 {(isAllowed) => (
                   <button
                     type="button"
