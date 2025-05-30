@@ -126,7 +126,11 @@ export const ProjectLayout = () => {
                             }}
                           >
                             {({ isActive }) => (
-                              <MenuItem isSelected={isActive} icon="pki-subscriber">
+                              <MenuItem
+                                iconMode="reverse"
+                                isSelected={isActive}
+                                icon="pki-template"
+                              >
                                 Certificate Templates
                               </MenuItem>
                             )}
