@@ -490,7 +490,7 @@ export const InternalCertificateAuthorityFns = ({
           notBefore: notBeforeDate,
           notAfter: notAfterDate,
           keyUsages: selectedKeyUsages,
-          extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
+          extendedKeyUsages: selectedExtendedKeyUsages,
           projectId: ca.projectId,
           certificateTemplateId: certificateTemplate.id
         },

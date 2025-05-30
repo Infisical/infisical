@@ -120,6 +120,11 @@ export const pkiTemplatesServiceFactory = ({
       subject(ProjectPermissionSub.CertificateTemplates, { name })
     );
 
+    const existingTemplate = await pkiTemplatesDAL.findOne({ name, projectId: ca.projectId });
+    if (existingTemplate) {
+      throw new BadRequestError({ message: `Template with name ${name} already exists.` });
+    }
+
     const newTemplate = await pkiTemplatesDAL.create({
       caId,
       name,
@@ -182,6 +187,11 @@ export const pkiTemplatesServiceFactory = ({
         ProjectPermissionPkiTemplateActions.Edit,
         subject(ProjectPermissionSub.CertificateTemplates, { name })
       );
+
+      const existingTemplate = await pkiTemplatesDAL.findOne({ name, projectId });
+      if (existingTemplate && existingTemplate.id !== certTemplate.id) {
+        throw new BadRequestError({ message: `Template with name ${name} already exists.` });
+      }
     }
 
     const updatedTemplate = await pkiTemplatesDAL.updateById(certTemplate.id, {

@@ -281,7 +281,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
       body: z.object({
         projectId: z.string(),
         ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
-        csr: z.string().trim().min(1)
+        csr: z.string().trim().min(1).max(4096)
       }),
       response: {
         200: z.object({

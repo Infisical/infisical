@@ -132,7 +132,7 @@ export const PkiTemplatePermissionConditions = ({ position = 0, isDisabled }: Pr
               </div>
               <div>
                 <IconButton
-                  ariaLabel="plus"
+                  ariaLabel="delete"
                   variant="outline_bg"
                   className="p-2.5"
                   onClick={() => items.remove(index)}
