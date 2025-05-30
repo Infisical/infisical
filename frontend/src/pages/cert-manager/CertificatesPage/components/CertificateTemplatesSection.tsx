@@ -9,7 +9,11 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, IconButton } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionPkiTemplateActions,
+  ProjectPermissionSub,
+  useWorkspace
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteCertTemplate } from "@app/hooks/api";
 
@@ -63,7 +67,7 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">Certificate Templates</h3>
         <ProjectPermissionCan
-          I={ProjectPermissionActions.Create}
+          I={ProjectPermissionPkiTemplateActions.Create}
           a={ProjectPermissionSub.CertificateTemplates}
         >
           {(isAllowed) => (

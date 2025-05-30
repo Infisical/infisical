@@ -23,6 +23,7 @@ import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import { PkiSubscriberPermissionConditions } from "./PkiSubscriberPermissionConditions";
+import { PkiTemplatePermissionConditions } from "./PkiTemplatePermissionConditions";
 import {
   formRolePermission2API,
   isConditionalSubjects,
@@ -61,6 +62,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.PkiSubscribers) {
       return <PkiSubscriberPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.CertificateTemplates) {
+      return <PkiTemplatePermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;

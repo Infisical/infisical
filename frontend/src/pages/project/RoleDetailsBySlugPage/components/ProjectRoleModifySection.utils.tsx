@@ -18,6 +18,7 @@ import {
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
+  ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretSyncActions,
@@ -148,6 +149,15 @@ const PkiSubscriberPolicyActionSchema = z.object({
   [ProjectPermissionPkiSubscriberActions.ListCerts]: z.boolean().optional()
 });
 
+const PkiTemplatePolicyActionSchema = z.object({
+  [ProjectPermissionPkiTemplateActions.Read]: z.boolean().optional(),
+  [ProjectPermissionPkiTemplateActions.Create]: z.boolean().optional(),
+  [ProjectPermissionPkiTemplateActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionPkiTemplateActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionPkiTemplateActions.IssueCert]: z.boolean().optional(),
+  [ProjectPermissionPkiTemplateActions.ListCerts]: z.boolean().optional()
+});
+
 const SecretRollbackPolicyActionSchema = z.object({
   read: z.boolean().optional(),
   create: z.boolean().optional()
@@ -255,7 +265,12 @@ export const projectRoleFormSchema = z.object({
         .default([]),
       [ProjectPermissionSub.PkiAlerts]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.PkiCollections]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.CertificateTemplates]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.CertificateTemplates]: PkiTemplatePolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.SshCertificateAuthorities]: GeneralPolicyActionSchema.array().default(
         []
       ),
@@ -295,6 +310,7 @@ type TConditionalFields =
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.DynamicSecrets
   | ProjectPermissionSub.PkiSubscribers
+  | ProjectPermissionSub.CertificateTemplates
   | ProjectPermissionSub.SshHosts
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.Identity;
@@ -309,7 +325,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.Identity ||
   subject === ProjectPermissionSub.SshHosts ||
   subject === ProjectPermissionSub.SecretRotation ||
-  subject === ProjectPermissionSub.PkiSubscribers;
+  subject === ProjectPermissionSub.PkiSubscribers ||
+  subject === ProjectPermissionSub.CertificateTemplates;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -408,7 +425,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.CertificateAuthorities,
         ProjectPermissionSub.PkiAlerts,
         ProjectPermissionSub.PkiCollections,
-        ProjectPermissionSub.CertificateTemplates,
         ProjectPermissionSub.Tags,
         ProjectPermissionSub.SecretRotation,
         ProjectPermissionSub.Kms,
@@ -781,6 +797,34 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
         inverted
       });
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.CertificateTemplates) {
+      if (!formVal[subject]) formVal[subject] = [];
+
+      formVal[subject]!.push({
+        [ProjectPermissionPkiTemplateActions.Edit]: action.includes(
+          ProjectPermissionPkiTemplateActions.Edit
+        ),
+        [ProjectPermissionPkiTemplateActions.Delete]: action.includes(
+          ProjectPermissionPkiTemplateActions.Delete
+        ),
+        [ProjectPermissionPkiTemplateActions.Create]: action.includes(
+          ProjectPermissionPkiTemplateActions.Create
+        ),
+        [ProjectPermissionPkiTemplateActions.Read]: action.includes(
+          ProjectPermissionPkiTemplateActions.Read
+        ),
+        [ProjectPermissionPkiTemplateActions.IssueCert]: action.includes(
+          ProjectPermissionPkiTemplateActions.IssueCert
+        ),
+        [ProjectPermissionPkiTemplateActions.ListCerts]: action.includes(
+          ProjectPermissionPkiTemplateActions.ListCerts
+        ),
+        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+        inverted
+      });
     }
   });
 
@@ -1119,10 +1163,12 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.CertificateTemplates]: {
     title: "Certificate Templates",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: ProjectPermissionPkiTemplateActions.Read },
+      { label: "Create", value: ProjectPermissionPkiTemplateActions.Create },
+      { label: "Modify", value: ProjectPermissionPkiTemplateActions.Edit },
+      { label: "Remove", value: ProjectPermissionPkiTemplateActions.Delete },
+      { label: "Issue Certificates", value: ProjectPermissionPkiTemplateActions.IssueCert },
+      { label: "List Certificates", value: ProjectPermissionPkiTemplateActions.ListCerts }
     ]
   },
   [ProjectPermissionSub.SshCertificateAuthorities]: {
