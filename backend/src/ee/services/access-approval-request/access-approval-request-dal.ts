@@ -392,7 +392,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         ]
       });
 
-      // an approval is pending if there is no reviewer rejections, no privilege ID is set and the number of approvals is less than the number of approvals required
+      // an approval is pending if there is no reviewer rejections, no privilege ID is set and the status is pending
       const pendingApprovals = formattedRequests.filter(
         (req) =>
           !req.privilegeId &&
