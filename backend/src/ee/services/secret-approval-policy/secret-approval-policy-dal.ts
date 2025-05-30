@@ -179,7 +179,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
             label: "approvers" as const,
             mapper: ({ approverUserId: id, approverUsername }) => ({
               type: ApproverType.User,
-              name: approverUsername,
+              username: approverUsername,
               id
             })
           },
@@ -196,7 +196,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
             label: "bypassers" as const,
             mapper: ({ bypasserUserId: id, bypasserUsername }) => ({
               type: BypasserType.User,
-              name: bypasserUsername,
+              username: bypasserUsername,
               id
             })
           },

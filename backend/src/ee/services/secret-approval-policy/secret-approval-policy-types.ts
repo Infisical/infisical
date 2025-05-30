@@ -6,8 +6,11 @@ export type TCreateSapDTO = {
   approvals: number;
   secretPath?: string | null;
   environment: string;
-  approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; name?: string })[];
-  bypassers?: ({ type: BypasserType.Group; id: string } | { type: BypasserType.User; id?: string; name?: string })[];
+  approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; username?: string })[];
+  bypassers?: (
+    | { type: BypasserType.Group; id: string }
+    | { type: BypasserType.User; id?: string; username?: string }
+  )[];
   projectId: string;
   name: string;
   enforcementLevel: EnforcementLevel;
@@ -18,8 +21,11 @@ export type TUpdateSapDTO = {
   secretPolicyId: string;
   approvals?: number;
   secretPath?: string | null;
-  approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; name?: string })[];
-  bypassers?: ({ type: BypasserType.Group; id: string } | { type: BypasserType.User; id?: string; name?: string })[];
+  approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; username?: string })[];
+  bypassers?: (
+    | { type: BypasserType.Group; id: string }
+    | { type: BypasserType.User; id?: string; username?: string }
+  )[];
   name?: string;
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals?: boolean;

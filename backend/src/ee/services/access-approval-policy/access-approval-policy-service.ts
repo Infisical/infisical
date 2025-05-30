@@ -92,7 +92,7 @@ export const accessApprovalPolicyServiceFactory = ({
       .filter(Boolean) as string[];
 
     const userApproverNames = approvers
-      .map((approver) => (approver.type === ApproverType.User ? approver.name : undefined))
+      .map((approver) => (approver.type === ApproverType.User ? approver.username : undefined))
       .filter(Boolean) as string[];
 
     if (!groupApprovers && approvals > userApprovers.length + userApproverNames.length)
@@ -171,7 +171,7 @@ export const accessApprovalPolicyServiceFactory = ({
         .filter(Boolean) as string[];
 
       const userBypasserNames = bypassers
-        .map((bypasser) => (bypasser.type === BypasserType.User ? bypasser.name : undefined))
+        .map((bypasser) => (bypasser.type === BypasserType.User ? bypasser.username : undefined))
         .filter(Boolean) as string[];
 
       bypasserUserIds = userBypassers;
@@ -302,7 +302,7 @@ export const accessApprovalPolicyServiceFactory = ({
       .filter(Boolean) as string[];
 
     const userApproverNames = approvers
-      .map((approver) => (approver.type === ApproverType.User ? approver.name : undefined))
+      .map((approver) => (approver.type === ApproverType.User ? approver.username : undefined))
       .filter(Boolean) as string[];
 
     const accessApprovalPolicy = await accessApprovalPolicyDAL.findById(policyId);
@@ -345,7 +345,7 @@ export const accessApprovalPolicyServiceFactory = ({
         .filter(Boolean) as string[];
 
       const userBypasserNames = bypassers
-        .map((bypasser) => (bypasser.type === BypasserType.User ? bypasser.name : undefined))
+        .map((bypasser) => (bypasser.type === BypasserType.User ? bypasser.username : undefined))
         .filter(Boolean) as string[];
 
       bypasserUserIds = userBypassers;

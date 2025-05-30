@@ -15,6 +15,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/pe
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -44,7 +45,6 @@ import {
   TOidcLoginDTO,
   TUpdateOidcCfgDTO
 } from "./oidc-config-types";
-import { logger } from "@app/lib/logger";
 
 type TOidcConfigServiceFactoryDep = {
   userDAL: Pick<
