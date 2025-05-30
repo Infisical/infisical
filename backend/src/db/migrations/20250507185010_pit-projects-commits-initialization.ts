@@ -8,6 +8,7 @@ import { ChangeType } from "@app/services/folder-commit/folder-commit-service";
 
 import {
   ProjectType,
+  SecretType,
   TableName,
   TFolderCheckpoints,
   TFolderCommits,
@@ -65,6 +66,7 @@ const sortFoldersByHierarchy = (folders: TSecretFolders[]) => {
 const getSecretsByFolderIds = async (knex: Knex, folderIds: string[]): Promise<Record<string, string[]>> => {
   const secrets = await knex(TableName.SecretV2)
     .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
+    .where(`${TableName.SecretV2}.type`, SecretType.Shared)
     .join<TableName.SecretVersionV2>(TableName.SecretVersionV2, (queryBuilder) => {
       void queryBuilder
         .on(`${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)
@@ -88,6 +90,7 @@ const getSecretsByFolderIds = async (knex: Knex, folderIds: string[]): Promise<R
 const getFoldersByParentIds = async (knex: Knex, parentIds: string[]): Promise<Record<string, string[]>> => {
   const folders = await knex(TableName.SecretFolder)
     .whereIn(`${TableName.SecretFolder}.parentId`, parentIds)
+    .where(`${TableName.SecretFolder}.isReserved`, false)
     .join<TableName.SecretFolderVersion>(TableName.SecretFolderVersion, (queryBuilder) => {
       void queryBuilder
         .on(`${TableName.SecretFolderVersion}.folderId`, `${TableName.SecretFolder}.id`)
