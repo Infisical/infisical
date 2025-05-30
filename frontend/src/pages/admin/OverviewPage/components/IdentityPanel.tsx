@@ -120,7 +120,7 @@ const IdentityPanelTable = ({
           <Button
             className="mt-4 py-3 text-sm"
             isFullWidth
-            variant="star"
+            variant="outline_bg"
             isLoading={isFetchingNextPage}
             isDisabled={isFetchingNextPage || !hasNextPage}
             onClick={() => fetchNextPage()}

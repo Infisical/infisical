@@ -11,7 +11,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
-import { AuthMethod, AuthTokenType } from "../auth/auth-type";
+import { ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
@@ -21,7 +21,9 @@ import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { RootKeyEncryptionStrategy } from "../kms/kms-types";
 import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-teams-service";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
+import { TOrgMembershipDALFactory } from "../org-membership/org-membership-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
@@ -33,7 +35,8 @@ import {
   TAdminBootstrapInstanceDTO,
   TAdminGetIdentitiesDTO,
   TAdminGetUsersDTO,
-  TAdminSignUpDTO
+  TAdminSignUpDTO,
+  TGetOrganizationsDTO
 } from "./super-admin-types";
 
 type TSuperAdminServiceFactoryDep = {
@@ -41,6 +44,8 @@ type TSuperAdminServiceFactoryDep = {
   identityTokenAuthDAL: TIdentityTokenAuthDALFactory;
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
+  orgDAL: TOrgDALFactory;
+  orgMembershipDAL: TOrgMembershipDALFactory;
   serverCfgDAL: TSuperAdminDALFactory;
   userDAL: TUserDALFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
@@ -73,6 +78,8 @@ export const superAdminServiceFactory = ({
   serverCfgDAL,
   userDAL,
   identityDAL,
+  orgDAL,
+  orgMembershipDAL,
   userAliasDAL,
   authService,
   orgService,
@@ -519,6 +526,47 @@ export const superAdminServiceFactory = ({
     return updatedUser;
   };
 
+  const getOrganizations = async ({ offset, limit, searchTerm }: TGetOrganizationsDTO) => {
+    const organizations = await orgDAL.findOrganizationsByFilter({
+      offset,
+      searchTerm,
+      sortBy: "name",
+      limit
+    });
+    return organizations;
+  };
+
+  const deleteOrganization = async (organizationId: string) => {
+    const organization = await orgDAL.deleteById(organizationId);
+    return organization;
+  };
+
+  const deleteOrganizationMembership = async (
+    organizationId: string,
+    membershipId: string,
+    actorId: string,
+    actorType: ActorType
+  ) => {
+    if (actorType === ActorType.USER) {
+      const orgMembership = await orgMembershipDAL.findById(membershipId);
+      if (!orgMembership) {
+        throw new NotFoundError({ name: "Organization Membership", message: "Organization membership not found" });
+      }
+
+      if (orgMembership.userId === actorId) {
+        throw new BadRequestError({
+          message: "You cannot remove yourself from the organization from the instance management panel."
+        });
+      }
+    }
+
+    const [organizationMembership] = await orgMembershipDAL.delete({
+      orgId: organizationId,
+      id: membershipId
+    });
+    return organizationMembership;
+  };
+
   const getIdentities = async ({ offset, limit, searchTerm }: TAdminGetIdentitiesDTO) => {
     const identities = await identityDAL.getIdentitiesByFilter({
       limit,
@@ -661,6 +709,9 @@ export const superAdminServiceFactory = ({
     deleteIdentitySuperAdminAccess,
     deleteUserSuperAdminAccess,
     invalidateCache,
-    checkIfInvalidatingCache
+    checkIfInvalidatingCache,
+    getOrganizations,
+    deleteOrganization,
+    deleteOrganizationMembership
   };
 };
