@@ -1,9 +1,10 @@
 import { Knex } from "knex";
 
-import { inMemoryKeyStore } from "@app/keystore/memory";
 import { chunkArray } from "@app/lib/fn";
 import { selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
+import { ActorType } from "@app/services/auth/auth-type";
+import { ChangeType } from "@app/services/folder-commit/folder-commit-service";
 
 import {
   ProjectType,
@@ -13,8 +14,6 @@ import {
   TFolderTreeCheckpoints,
   TSecretFolders
 } from "../schemas";
-import { getMigrationEnvConfig } from "./utils/env-config";
-import { getMigrationPITServices } from "./utils/services";
 
 const sortFoldersByHierarchy = (folders: TSecretFolders[]) => {
   // Create a map for quick lookup of children by parent ID
@@ -63,14 +62,59 @@ const sortFoldersByHierarchy = (folders: TSecretFolders[]) => {
   return result.reverse();
 };
 
+const getSecretsByFolderIds = async (knex: Knex, folderIds: string[]): Promise<Record<string, string[]>> => {
+  const secrets = await knex(TableName.SecretV2)
+    .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
+    .join<TableName.SecretVersionV2>(TableName.SecretVersionV2, (queryBuilder) => {
+      void queryBuilder
+        .on(`${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)
+        .andOn(`${TableName.SecretVersionV2}.version`, `${TableName.SecretV2}.version`);
+    })
+    .select(selectAllTableCols(TableName.SecretV2))
+    .select(knex.ref("id").withSchema(TableName.SecretVersionV2).as("secretVersionId"));
+
+  const secretsMap: Record<string, string[]> = {};
+
+  secrets.forEach((secret) => {
+    if (!secretsMap[secret.folderId]) {
+      secretsMap[secret.folderId] = [];
+    }
+    secretsMap[secret.folderId].push(secret.secretVersionId);
+  });
+
+  return secretsMap;
+};
+
+const getFoldersByParentIds = async (knex: Knex, parentIds: string[]): Promise<Record<string, string[]>> => {
+  const folders = await knex(TableName.SecretFolder)
+    .whereIn(`${TableName.SecretFolder}.parentId`, parentIds)
+    .join<TableName.SecretFolderVersion>(TableName.SecretFolderVersion, (queryBuilder) => {
+      void queryBuilder
+        .on(`${TableName.SecretFolderVersion}.folderId`, `${TableName.SecretFolder}.id`)
+        .andOn(`${TableName.SecretFolderVersion}.version`, `${TableName.SecretFolder}.version`);
+    })
+    .select(selectAllTableCols(TableName.SecretFolder))
+    .select(knex.ref("id").withSchema(TableName.SecretFolderVersion).as("folderVersionId"));
+
+  const foldersMap: Record<string, string[]> = {};
+
+  folders.forEach((folder) => {
+    if (!folder.parentId) {
+      return;
+    }
+    if (!foldersMap[folder.parentId]) {
+      foldersMap[folder.parentId] = [];
+    }
+    foldersMap[folder.parentId].push(folder.folderVersionId);
+  });
+
+  return foldersMap;
+};
+
 export async function up(knex: Knex): Promise<void> {
   logger.info("Initializing folder commits");
   const hasFolderCommitTable = await knex.schema.hasTable(TableName.FolderCommit);
   if (hasFolderCommitTable) {
-    const keyStore = inMemoryKeyStore();
-    const envConfig = getMigrationEnvConfig();
-    const { folderCommitService } = await getMigrationPITServices({ db: knex, keyStore, envConfig });
-
     // Get Projects to Initialize
     const projects = await knex(TableName.Project)
       .where(`${TableName.Project}.version`, 3)
@@ -102,11 +146,55 @@ export async function up(knex: Knex): Promise<void> {
       // Sort Folders by Hierarchy (parents before nested folders)
       const sortedFolders = sortFoldersByHierarchy(folders);
 
+      // eslint-disable-next-line no-await-in-loop
+      const folderSecretsMap = await getSecretsByFolderIds(
+        knex,
+        sortedFolders.map((folder) => folder.id)
+      );
+      // eslint-disable-next-line no-await-in-loop
+      const folderFoldersMap = await getFoldersByParentIds(
+        knex,
+        sortedFolders.map((folder) => folder.id)
+      );
+
       // Get folder commit changes
       for (const folder of sortedFolders) {
-        // eslint-disable-next-line no-await-in-loop
-        const folderCommit = await folderCommitService.getFolderInitialChanges(folder.id, folder.envId, knex);
-        if (folderCommit.commit && folderCommit.changes) {
+        const subFolderVersionIds = folderFoldersMap[folder.id];
+        const secretVersionIds = folderSecretsMap[folder.id];
+        const changes = [];
+        if (subFolderVersionIds) {
+          changes.push(
+            ...subFolderVersionIds.map((folderVersionId) => ({
+              folderId: folder.id,
+              changeType: ChangeType.ADD,
+              secretVersionId: undefined,
+              folderVersionId,
+              isUpdate: false
+            }))
+          );
+        }
+        if (secretVersionIds) {
+          changes.push(
+            ...secretVersionIds.map((secretVersionId) => ({
+              folderId: folder.id,
+              changeType: ChangeType.ADD,
+              secretVersionId,
+              folderVersionId: undefined,
+              isUpdate: false
+            }))
+          );
+        }
+        if (changes.length > 0) {
+          const folderCommit = {
+            commit: {
+              actorMetadata: {},
+              actorType: ActorType.PLATFORM,
+              message: "Initialized folder",
+              folderId: folder.id,
+              envId: folder.envId
+            },
+            changes
+          };
           foldersCommitsList.push(folderCommit);
           if (!folder.parentId) {
             rootFoldersMap[folder.id] = folder.envId;
