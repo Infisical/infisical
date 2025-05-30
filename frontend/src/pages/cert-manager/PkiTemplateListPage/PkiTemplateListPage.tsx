@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import {
-  faArrowUpRightFromSquare,
   faCertificate,
   faEllipsis,
   faPencil,
@@ -107,15 +106,6 @@ export const PkiTemplateListPage = () => {
             <div className="mb-4 flex justify-between">
               <p className="text-xl font-semibold text-mineshaft-100">Templates</p>
               <div className="flex w-full justify-end">
-                <a target="_blank" rel="noopener noreferrer">
-                  <span className="flex w-max cursor-pointer items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
-                    Documentation{" "}
-                    <FontAwesomeIcon
-                      icon={faArrowUpRightFromSquare}
-                      className="mb-[0.06rem] ml-1 text-xs"
-                    />
-                  </span>
-                </a>
                 <ProjectPermissionCan
                   I={ProjectPermissionPkiTemplateActions.Create}
                   a={ProjectPermissionSub.CertificateTemplates}
