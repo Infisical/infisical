@@ -794,7 +794,8 @@ export const registerRoutes = async (
   const projectUserAdditionalPrivilegeService = projectUserAdditionalPrivilegeServiceFactory({
     permissionService,
     projectMembershipDAL,
-    projectUserAdditionalPrivilegeDAL
+    projectUserAdditionalPrivilegeDAL,
+    accessApprovalRequestDAL
   });
   const projectKeyService = projectKeyServiceFactory({
     permissionService,

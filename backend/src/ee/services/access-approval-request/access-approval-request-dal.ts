@@ -145,7 +145,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
               }
             : null,
 
-          isApproved: !!doc.policyDeletedAt || !!doc.privilegeId
+          isApproved: !!doc.policyDeletedAt || !!doc.privilegeId || doc.status !== ApprovalStatus.PENDING
         }),
         childrenMapper: [
           {
@@ -392,14 +392,20 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         ]
       });
 
-      // an approval is pending if there is no reviewer rejections and no privilege ID is set
+      // an approval is pending if there is no reviewer rejections, no privilege ID is set and the number of approvals is less than the number of approvals required
       const pendingApprovals = formattedRequests.filter(
-        (req) => !req.privilegeId && !req.reviewers.some((r) => r.status === ApprovalStatus.REJECTED)
+        (req) =>
+          !req.privilegeId &&
+          !req.reviewers.some((r) => r.status === ApprovalStatus.REJECTED) &&
+          req.status === ApprovalStatus.PENDING
       );
 
-      // an approval is finalized if there are any rejections or a privilege ID is set
+      // an approval is finalized if there are any rejections, a privilege ID is set or the number of approvals is equal to the number of approvals required
       const finalizedApprovals = formattedRequests.filter(
-        (req) => req.privilegeId || req.reviewers.some((r) => r.status === ApprovalStatus.REJECTED)
+        (req) =>
+          req.privilegeId ||
+          req.reviewers.some((r) => r.status === ApprovalStatus.REJECTED) ||
+          req.status !== ApprovalStatus.PENDING
       );
 
       return { pendingCount: pendingApprovals.length, finalizedCount: finalizedApprovals.length };

@@ -204,7 +204,7 @@ export const accessApprovalRequestServiceFactory = ({
 
           const isRejected = reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED);
 
-          if (!isRejected) {
+          if (!isRejected && duplicateRequest.status === ApprovalStatus.PENDING) {
             throw new BadRequestError({ message: "You already have a pending access request with the same criteria" });
           }
         }
@@ -478,7 +478,11 @@ export const accessApprovalRequestServiceFactory = ({
             );
             privilegeIdToSet = privilege.id;
           }
-          await accessApprovalRequestDAL.updateById(accessApprovalRequest.id, { privilegeId: privilegeIdToSet }, tx);
+          await accessApprovalRequestDAL.updateById(
+            accessApprovalRequest.id,
+            { privilegeId: privilegeIdToSet, status: ApprovalStatus.APPROVED },
+            tx
+          );
         }
       }
 
