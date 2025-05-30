@@ -23,7 +23,7 @@ With this approach, you get the following benefits:
 The certificate provisioning workflow begins with setting up your PKI hierarchy in Infisical, where you create root and subordinate certificate authorities.
 When you deploy a `Certificate` CRD in your workload cluster, `cert-manager` uses the Infisical PKI Issuer controller to authenticate with Infisical using machine identity credentials and request an intermediate CA certificate. 
 Infisical verifies the request against your certificate templates and returns the signed certificate.
-From there, Istio's control plane will automatically uses this intermediate CA to sign leaf certificates for workloads in the service mesh, enabling secure mTLS communication across your entire Gloo Mesh infrastructure.
+From there, Istio's control plane will automatically use this intermediate CA to sign leaf certificates for workloads in the service mesh, enabling secure mTLS communication across your entire Gloo Mesh infrastructure.
 
 Follow the [Infisical PKI Issuer guide](/documentation/platform/pki/pki-issuer) for detailed instructions on how to set up the Infisical PKI Issuer and cert-manager for your Istio intermediate CA certificates in Gloo Mesh clusters.
 
