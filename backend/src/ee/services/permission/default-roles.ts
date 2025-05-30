@@ -68,12 +68,10 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionApprovalActions.Read,
-      ProjectPermissionApprovalActions.Edit,
-      ProjectPermissionApprovalActions.Create,
-      ProjectPermissionApprovalActions.Delete,
-      ProjectPermissionApprovalActions.AllowChangeBypass,
-      ProjectPermissionApprovalActions.AllowAccessBypass
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
     ],
     ProjectPermissionSub.SecretApproval
   );
