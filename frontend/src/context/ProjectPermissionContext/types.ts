@@ -104,6 +104,15 @@ export enum ProjectPermissionPkiSubscriberActions {
   ListCerts = "list-certs"
 }
 
+export enum ProjectPermissionPkiTemplateActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueCert = "issue-cert",
+  ListCerts = "list-certs"
+}
+
 export enum ProjectPermissionSecretRotationActions {
   Read = "read",
   ReadGeneratedCredentials = "read-generated-credentials",
@@ -238,6 +247,11 @@ export type PkiSubscriberSubjectFields = {
   name: string;
 };
 
+export type PkiTemplateSubjectFields = {
+  name: string;
+  // (dangtony98): consider adding [commonName] as a subject field in the future
+};
+
 export type ProjectPermissionSet =
   | [
       ProjectPermissionSecretActions,
@@ -295,7 +309,13 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
   | [ProjectPermissionCertificateActions, ProjectPermissionSub.Certificates]
-  | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
+  | [
+      ProjectPermissionPkiTemplateActions,
+      (
+        | ProjectPermissionSub.CertificateTemplates
+        | (ForcedSubject<ProjectPermissionSub.CertificateTemplates> & PkiTemplateSubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]

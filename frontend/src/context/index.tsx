@@ -19,6 +19,7 @@ export {
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
+  ProjectPermissionPkiTemplateActions,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub,
   useProjectPermission

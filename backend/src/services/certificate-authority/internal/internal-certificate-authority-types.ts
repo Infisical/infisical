@@ -221,3 +221,13 @@ export type TOrderCertificateForSubscriberDTO = {
   subscriberId: string;
   caType: CaType;
 };
+
+export type TIssueCertWithTemplateDTO = {
+  commonName: string;
+  altNames: string;
+  ttl: string;
+  notBefore?: string;
+  notAfter?: string;
+  keyUsages?: CertKeyUsage[];
+  extendedKeyUsages?: CertExtendedKeyUsage[];
+};

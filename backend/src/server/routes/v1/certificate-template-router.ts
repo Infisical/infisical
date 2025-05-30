@@ -5,6 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATE_TEMPLATES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
@@ -72,7 +73,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
       body: z.object({
         caId: z.string().describe(CERTIFICATE_TEMPLATES.CREATE.caId),
         pkiCollectionId: z.string().optional().describe(CERTIFICATE_TEMPLATES.CREATE.pkiCollectionId),
-        name: z.string().min(1).describe(CERTIFICATE_TEMPLATES.CREATE.name),
+        name: slugSchema().describe(CERTIFICATE_TEMPLATES.CREATE.name),
         commonName: validateTemplateRegexField.describe(CERTIFICATE_TEMPLATES.CREATE.commonName),
         subjectAlternativeName: validateTemplateRegexField.describe(
           CERTIFICATE_TEMPLATES.CREATE.subjectAlternativeName
@@ -141,7 +142,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
       body: z.object({
         caId: z.string().optional().describe(CERTIFICATE_TEMPLATES.UPDATE.caId),
         pkiCollectionId: z.string().optional().describe(CERTIFICATE_TEMPLATES.UPDATE.pkiCollectionId),
-        name: z.string().min(1).optional().describe(CERTIFICATE_TEMPLATES.UPDATE.name),
+        name: slugSchema().optional().describe(CERTIFICATE_TEMPLATES.UPDATE.name),
         commonName: validateTemplateRegexField.optional().describe(CERTIFICATE_TEMPLATES.UPDATE.commonName),
         subjectAlternativeName: validateTemplateRegexField
           .optional()

@@ -87,6 +87,15 @@ export enum ProjectPermissionSshHostActions {
   IssueHostCert = "issue-host-cert"
 }
 
+export enum ProjectPermissionPkiTemplateActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueCert = "issue-cert",
+  ListCerts = "list-certs"
+}
+
 export enum ProjectPermissionPkiSubscriberActions {
   Read = "read",
   Create = "create",
@@ -200,6 +209,11 @@ export type SshHostSubjectFields = {
   hostname: string;
 };
 
+export type PkiTemplateSubjectFields = {
+  name: string;
+  // (dangtony98): consider adding [commonName] as a subject field in the future
+};
+
 export type PkiSubscriberSubjectFields = {
   name: string;
   // (dangtony98): consider adding [commonName] as a subject field in the future
@@ -256,7 +270,13 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
   | [ProjectPermissionCertificateActions, ProjectPermissionSub.Certificates]
-  | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
+  | [
+      ProjectPermissionPkiTemplateActions,
+      (
+        | ProjectPermissionSub.CertificateTemplates
+        | (ForcedSubject<ProjectPermissionSub.CertificateTemplates> & PkiTemplateSubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
@@ -436,6 +456,21 @@ const PkiSubscriberConditionSchema = z
   })
   .partial();
 
+const PkiTemplateConditionSchema = z
+  .object({
+    name: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
+  })
+  .partial();
+
 const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretApproval).describe("The entity this permission pertains to."),
@@ -524,12 +559,6 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.Certificates).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCertificateActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.CertificateTemplates).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -711,6 +740,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
     ).optional()
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.CertificateTemplates).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPkiTemplateActions).describe(
+      "Describe what action an entity can take."
+    ),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    conditions: PkiTemplateConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.SecretRotation).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretRotationActions).describe(
@@ -720,6 +759,7 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
+
   ...GeneralPermissionSchema
 ]);
 

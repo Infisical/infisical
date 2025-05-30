@@ -211,6 +211,8 @@ import { pkiCollectionServiceFactory } from "@app/services/pki-collection/pki-co
 import { pkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { pkiSubscriberQueueServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-queue";
 import { pkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
+import { pkiTemplatesDALFactory } from "@app/services/pki-templates/pki-templates-dal";
+import { pkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-templates-service";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
@@ -847,6 +849,7 @@ export const registerRoutes = async (
   const pkiCollectionDAL = pkiCollectionDALFactory(db);
   const pkiCollectionItemDAL = pkiCollectionItemDALFactory(db);
   const pkiSubscriberDAL = pkiSubscriberDALFactory(db);
+  const pkiTemplatesDAL = pkiTemplatesDALFactory(db);
 
   const certificateService = certificateServiceFactory({
     certificateDAL,
@@ -1754,6 +1757,21 @@ export const registerRoutes = async (
     internalCaFns
   });
 
+  const pkiTemplateService = pkiTemplatesServiceFactory({
+    pkiTemplatesDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCrlDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    projectDAL,
+    kmsService,
+    permissionService,
+    internalCaFns
+  });
+
   await secretRotationV2QueueServiceFactory({
     secretRotationV2Service,
     secretRotationV2DAL,
@@ -1847,6 +1865,7 @@ export const registerRoutes = async (
     pkiAlert: pkiAlertService,
     pkiCollection: pkiCollectionService,
     pkiSubscriber: pkiSubscriberService,
+    pkiTemplate: pkiTemplateService,
     secretScanning: secretScanningService,
     license: licenseService,
     trustedIp: trustedIpService,

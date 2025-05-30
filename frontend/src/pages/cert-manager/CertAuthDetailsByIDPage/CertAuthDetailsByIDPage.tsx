@@ -23,7 +23,6 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CaInstallCertModal } from "../CertificateAuthoritiesPage/components/CaInstallCertModal";
 import { CaModal } from "../CertificateAuthoritiesPage/components/CaModal";
-import { CertificateTemplatesSection } from "../CertificatesPage/components/CertificateTemplatesSection";
 import {
   CaCertificatesSection,
   CaCrlsSection,
@@ -126,7 +125,6 @@ const Page = () => {
             </div>
             <div className="w-full">
               <CaCertificatesSection caId={data.id} />
-              <CertificateTemplatesSection caId={data.id} />
               <CaCrlsSection caId={data.id} />
             </div>
           </div>

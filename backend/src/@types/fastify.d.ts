@@ -83,6 +83,7 @@ import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-servi
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 import { TPkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
 import { TPkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
+import { TPkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-templates-service";
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env-service";
@@ -271,6 +272,7 @@ declare module "fastify" {
       assumePrivileges: TAssumePrivilegeServiceFactory;
       githubOrgSync: TGithubOrgSyncServiceFactory;
       internalCertificateAuthority: TInternalCertificateAuthorityServiceFactory;
+      pkiTemplate: TPkiTemplatesServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer
