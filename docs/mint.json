@@ -116,9 +116,15 @@
             "documentation/platform/pki/subscribers",
             "documentation/platform/pki/certificates",
             "documentation/platform/pki/acme-ca",
-            "documentation/platform/pki/pki-issuer",
             "documentation/platform/pki/est",
-            "documentation/platform/pki/alerting"
+            "documentation/platform/pki/alerting",
+            {
+              "group": "Integrations",
+              "pages": [
+                "documentation/platform/pki/pki-issuer",
+                "documentation/platform/pki/integration-guides/gloo-mesh"
+              ]
+            }
           ]
         },
         {
