@@ -4,6 +4,7 @@ import {
   SiApachecassandra,
   SiElasticsearch,
   SiFiles,
+  SiKubernetes,
   SiMongodb,
   SiRabbitmq,
   SiSap,
@@ -24,6 +25,7 @@ import { AwsIamInputForm } from "./AwsIamInputForm";
 import { AzureEntraIdInputForm } from "./AzureEntraIdInputForm";
 import { CassandraInputForm } from "./CassandraInputForm";
 import { ElasticSearchInputForm } from "./ElasticSearchInputForm";
+import { KubernetesInputForm } from "./KubernetesInputForm";
 import { LdapInputForm } from "./LdapInputForm";
 import { MongoAtlasInputForm } from "./MongoAtlasInputForm";
 import { MongoDBDatabaseInputForm } from "./MongoDBInputForm";
@@ -124,6 +126,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <FontAwesomeIcon icon={faClock} size="lg" />,
     provider: DynamicSecretProviders.Totp,
     title: "TOTP"
+  },
+  {
+    icon: <SiKubernetes size="1.5rem" />,
+    provider: DynamicSecretProviders.Kubernetes,
+    title: "Kubernetes"
   }
 ];
 
@@ -463,6 +470,25 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <TotpInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.Kubernetes && (
+              <motion.div
+                key="dynamic-kubernetes-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <KubernetesInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}

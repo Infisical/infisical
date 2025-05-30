@@ -49,7 +49,7 @@ const formSchema = z
     environment: z.object({ slug: z.string(), name: z.string() }),
     name: z.string().optional(),
     secretPath: z.string().optional(),
-    approvals: z.number().min(1),
+    approvals: z.number().min(1).default(1),
     userApprovers: z
       .object({ type: z.literal(ApproverType.User), id: z.string() })
       .array()
@@ -67,7 +67,7 @@ const formSchema = z
       .array()
       .default([]),
     policyType: z.nativeEnum(PolicyType),
-    enforcementLevel: z.nativeEnum(EnforcementLevel),
+    enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
     allowedSelfApprovals: z.boolean().default(true)
   })
   .superRefine((data, ctx) => {

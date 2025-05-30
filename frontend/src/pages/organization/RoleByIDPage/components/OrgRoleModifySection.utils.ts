@@ -5,6 +5,7 @@ import { OrgPermissionSubjects } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionAppConnectionActions,
+  OrgPermissionBillingActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
   OrgPermissionKmipActions,
@@ -18,6 +19,13 @@ const generalPermissionSchema = z
     edit: z.boolean().optional(),
     delete: z.boolean().optional(),
     create: z.boolean().optional()
+  })
+  .optional();
+
+const billingPermissionSchema = z
+  .object({
+    [OrgPermissionBillingActions.Read]: z.boolean().optional(),
+    [OrgPermissionBillingActions.ManageBilling]: z.boolean().optional()
   })
   .optional();
 
@@ -113,7 +121,7 @@ export const formSchema = z.object({
       scim: generalPermissionSchema,
       [OrgPermissionSubjects.GithubOrgSync]: generalPermissionSchema,
       ldap: generalPermissionSchema,
-      billing: generalPermissionSchema,
+      billing: billingPermissionSchema,
       identity: identityPermissionSchema,
       "organization-admin-console": adminConsolePermissionSchmea,
       [OrgPermissionSubjects.Kms]: generalPermissionSchema,

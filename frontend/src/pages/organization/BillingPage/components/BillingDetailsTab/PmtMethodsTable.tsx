@@ -16,7 +16,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionBillingActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteOrgPmtMethod, useGetOrgPmtMethods } from "@app/hooks/api";
 
@@ -75,7 +75,7 @@ export const PmtMethodsTable = () => {
                   <Td>{`${exp_month}/${exp_year}`}</Td>
                   <Td>
                     <OrgPermissionCan
-                      I={OrgPermissionActions.Delete}
+                      I={OrgPermissionBillingActions.ManageBilling}
                       a={OrgPermissionSubjects.Billing}
                     >
                       {(isAllowed) => (

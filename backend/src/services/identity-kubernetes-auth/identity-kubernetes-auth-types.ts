@@ -63,6 +63,18 @@ export type TCreateTokenReviewResponse = {
   status: TCreateTokenReviewSuccessResponse | TCreateTokenReviewErrorResponse;
 };
 
+export type TKubernetesTokenRequest = {
+  apiVersion: "authentication.k8s.io/v1";
+  kind: "TokenRequest";
+  spec: {
+    audiences: string[];
+    expirationSeconds: number;
+  };
+  status: {
+    token: string;
+  };
+};
+
 export type TRevokeKubernetesAuthDTO = {
   identityId: string;
 } & Omit<TProjectPermission, "projectId">;
