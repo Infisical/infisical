@@ -1,4 +1,5 @@
 import axios, { AxiosError } from "axios";
+import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
@@ -12,8 +13,14 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = () => {
-  return alphaNumericNanoId(32);
+const generateUsername = (usernameTemplate?: string | null) => {
+  const randomUsername = alphaNumericNanoId(32);
+  if (!usernameTemplate) return randomUsername;
+
+  return handlebars.compile(usernameTemplate)({
+    randomUsername,
+    unixTimestamp: Math.floor(Date.now() / 100)
+  });
 };
 
 export const MongoAtlasProvider = (): TDynamicProviderFns => {
@@ -57,11 +64,12 @@ export const MongoAtlasProvider = (): TDynamicProviderFns => {
     return isConnected;
   };
 
-  const create = async (inputs: unknown, expireAt: number) => {
+  const create = async (data: { inputs: unknown; expireAt: number; usernameTemplate?: string | null }) => {
+    const { inputs, expireAt, usernameTemplate } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
-    const username = generateUsername();
+    const username = generateUsername(usernameTemplate);
     const password = generatePassword();
     const expiration = new Date(expireAt).toISOString();
     await client({

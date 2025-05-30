@@ -62,7 +62,7 @@ Create a user with the required permission in your SQL instance. This user will 
 	<ParamField path="Database Name" type="string" required>
 		Name of the database for which you want to create dynamic secrets
 	</ParamField>
- 
+
 	<ParamField path="CA(SSL)" type="string">
 		A CA may be required if your DB requires it for incoming connections. AWS RDS instances with default settings will requires a CA which can be downloaded [here](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html#UsingWithRDS.SSL.CertificatesAllRegions).
 	</ParamField>
@@ -71,22 +71,30 @@ Create a user with the required permission in your SQL instance. This user will 
 
   </Step>
   <Step title="(Optional) Modify SQL Statements">
-  	If you want to provide specific privileges for the generated dynamic credentials, you can modify the SQL statement to your needs. This is useful if you want to only give access to a specific table(s).
+  ![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/modify-sql-statements-mssql.png)
+  <ParamField path="Username Template" type="string" default="{{randomUsername}}">
+       Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
 
-	![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/modify-sql-statements-mssql.png)
+       Allowed template variables are
+       - `{{randomUsername}}`: Random username string
+       - `{{unixTimestamp}}`: Current Unix timestamp
+	</ParamField>
+	<ParamField path="Customize SQL Statement" type="string">
+   	If you want to provide specific privileges for the generated dynamic credentials, you can modify the SQL statement to your needs. This is useful if you want to only give access to a specific table(s).
+	</ParamField>
   </Step>
   <Step title="Click 'Submit'">
-  	After submitting the form, you will see a dynamic secret created in the dashboard. 
+  	After submitting the form, you will see a dynamic secret created in the dashboard.
 
 	<Note>
-		If this step fails, you may have to add the CA certficate. 
+		If this step fails, you may have to add the CA certificate.
 	</Note>
 
 	![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret.png)
   </Step>
   <Step title="Generate dynamic secrets">
-	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials. 
-	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item. 
+	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
+	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
 	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
 	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
@@ -101,14 +109,14 @@ Create a user with the required permission in your SQL instance. This user will 
 	</Tip>
 
 
-	Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you. 
+	Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you.
 
 	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
   </Step>
 </Steps>
 
 ## Audit or Revoke Leases
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard. 
+Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
 This will allow you to see the expiration time of the lease or delete the lease before it's set time to live.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)

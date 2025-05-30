@@ -19,3 +19,15 @@ export const validateHandlebarTemplate = (templateName: string, template: string
     throw new BadRequestError({ message: `Template sanitization failed: ${templateName}` });
   });
 };
+
+export const isValidHandleBarTemplate = (template: string, dto: SanitizationArg) => {
+  const parsedAst = handlebars.parse(template);
+  return parsedAst.body.every((el) => {
+    if (el.type === "ContentStatement") return true;
+    if (el.type === "MustacheStatement" && "path" in el) {
+      const { path } = el as { type: "MustacheStatement"; path: { type: "PathExpression"; original: string } };
+      if (path.type === "PathExpression" && dto?.allowedExpressions?.(path.original)) return true;
+    }
+    return false;
+  });
+};

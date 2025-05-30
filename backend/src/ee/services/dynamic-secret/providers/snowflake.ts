@@ -17,8 +17,14 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = () => {
-  return `infisical_${alphaNumericNanoId(32)}`; // username must start with alpha character, hence prefix
+const generateUsername = (usernameTemplate?: string | null) => {
+  const randomUsername = `infisical_${alphaNumericNanoId(32)}`; // Username must start with an ascii letter, so we prepend the username with "inf-"
+  if (!usernameTemplate) return randomUsername;
+
+  return handlebars.compile(usernameTemplate)({
+    randomUsername,
+    unixTimestamp: Math.floor(Date.now() / 100)
+  });
 };
 
 const getDaysToExpiry = (expiryDate: Date) => {
@@ -82,12 +88,13 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
     return isValidConnection;
   };
 
-  const create = async (inputs: unknown, expireAt: number) => {
+  const create = async (data: { inputs: unknown; expireAt: number; usernameTemplate?: string | null }) => {
+    const { inputs, expireAt, usernameTemplate } = data;
     const providerInputs = await validateProviderInputs(inputs);
 
     const client = await $getClient(providerInputs);
 
-    const username = generateUsername();
+    const username = generateUsername(usernameTemplate);
     const password = generatePassword();
 
     try {

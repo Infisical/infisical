@@ -235,11 +235,9 @@ export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
   inputIV: true,
   inputTag: true,
   algorithm: true
-}).merge(
-  z.object({
-    metadata: ResourceMetadataSchema.optional()
-  })
-);
+}).extend({
+  metadata: ResourceMetadataSchema.optional()
+});
 
 export const SanitizedAuditLogStreamSchema = z.object({
   id: z.string(),

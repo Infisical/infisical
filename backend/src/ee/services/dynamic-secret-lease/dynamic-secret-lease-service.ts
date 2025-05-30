@@ -132,7 +132,11 @@ export const dynamicSecretLeaseServiceFactory = ({
 
     let result;
     try {
-      result = await selectedProvider.create(decryptedStoredInput, expireAt.getTime());
+      result = await selectedProvider.create({
+        inputs: decryptedStoredInput,
+        expireAt: expireAt.getTime(),
+        usernameTemplate: dynamicSecretCfg.usernameTemplate
+      });
     } catch (error: unknown) {
       if (error && typeof error === "object" && error !== null && "sqlMessage" in error) {
         throw new BadRequestError({ message: error.sqlMessage as string });
