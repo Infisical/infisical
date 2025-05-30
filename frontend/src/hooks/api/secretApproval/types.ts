@@ -25,6 +25,16 @@ export type Approver = {
   type: ApproverType;
 };
 
+export enum BypasserType {
+  User = "user",
+  Group = "group"
+}
+
+export type Bypasser = {
+  id: string;
+  type: BypasserType;
+};
+
 export type TGetSecretApprovalPoliciesDTO = {
   workspaceId: string;
 };
@@ -41,6 +51,7 @@ export type TCreateSecretPolicyDTO = {
   environment: string;
   secretPath?: string | null;
   approvers?: Approver[];
+  bypassers?: Bypasser[];
   approvals?: number;
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
@@ -50,6 +61,7 @@ export type TUpdateSecretPolicyDTO = {
   id: string;
   name?: string;
   approvers?: Approver[];
+  bypassers?: Bypasser[];
   secretPath?: string | null;
   approvals?: number;
   allowedSelfApprovals?: boolean;

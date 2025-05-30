@@ -75,7 +75,10 @@ export const InvoiceEmailSection = () => {
           name="email"
         />
       </div>
-      <OrgPermissionCan I={OrgPermissionBillingActions.ManageBilling} a={OrgPermissionSubjects.Billing}>
+      <OrgPermissionCan
+        I={OrgPermissionBillingActions.ManageBilling}
+        a={OrgPermissionSubjects.Billing}
+      >
         {(isAllowed) => (
           <Button
             type="submit"

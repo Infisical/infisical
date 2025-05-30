@@ -1,11 +1,11 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessApprovalPoliciesSchema, TableName, TAccessApprovalPolicies } from "@app/db/schemas";
+import { AccessApprovalPoliciesSchema, TableName, TAccessApprovalPolicies, TUsers } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindFilter } from "@app/lib/knex";
 
-import { ApproverType } from "./access-approval-policy-types";
+import { ApproverType, BypasserType } from "./access-approval-policy-types";
 
 export type TAccessApprovalPolicyDALFactory = ReturnType<typeof accessApprovalPolicyDALFactory>;
 
@@ -34,9 +34,22 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
         `${TableName.AccessApprovalPolicyApprover}.policyId`
       )
       .leftJoin(TableName.Users, `${TableName.AccessApprovalPolicyApprover}.approverUserId`, `${TableName.Users}.id`)
+      .leftJoin(
+        TableName.AccessApprovalPolicyBypasser,
+        `${TableName.AccessApprovalPolicy}.id`,
+        `${TableName.AccessApprovalPolicyBypasser}.policyId`
+      )
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("bypasserUsers"),
+        `${TableName.AccessApprovalPolicyBypasser}.bypasserUserId`,
+        `bypasserUsers.id`
+      )
       .select(tx.ref("username").withSchema(TableName.Users).as("approverUsername"))
+      .select(tx.ref("username").withSchema("bypasserUsers").as("bypasserUsername"))
       .select(tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
       .select(tx.ref("approverGroupId").withSchema(TableName.AccessApprovalPolicyApprover))
+      .select(tx.ref("bypasserUserId").withSchema(TableName.AccessApprovalPolicyBypasser))
+      .select(tx.ref("bypasserGroupId").withSchema(TableName.AccessApprovalPolicyBypasser))
       .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))
       .select(tx.ref("slug").withSchema(TableName.Environment).as("envSlug"))
       .select(tx.ref("id").withSchema(TableName.Environment).as("envId"))
@@ -128,6 +141,23 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
             mapper: ({ approverGroupId: id }) => ({
               id,
               type: ApproverType.Group
+            })
+          },
+          {
+            key: "bypasserUserId",
+            label: "bypassers" as const,
+            mapper: ({ bypasserUserId: id, bypasserUsername }) => ({
+              id,
+              type: BypasserType.User,
+              name: bypasserUsername
+            })
+          },
+          {
+            key: "bypasserGroupId",
+            label: "bypassers" as const,
+            mapper: ({ bypasserGroupId: id }) => ({
+              id,
+              type: BypasserType.Group
             })
           }
         ]

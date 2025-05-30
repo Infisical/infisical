@@ -1,11 +1,17 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { SecretApprovalPoliciesSchema, TableName, TSecretApprovalPolicies, TUsers } from "@app/db/schemas";
+import {
+  SecretApprovalPoliciesSchema,
+  TableName,
+  TSecretApprovalPolicies,
+  TUserGroupMembership,
+  TUsers
+} from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindFilter } from "@app/lib/knex";
 
-import { ApproverType } from "../access-approval-policy/access-approval-policy-types";
+import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 
 export type TSecretApprovalPolicyDALFactory = ReturnType<typeof secretApprovalPolicyDALFactory>;
 
@@ -43,6 +49,22 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
         `${TableName.SecretApprovalPolicyApprover}.approverUserId`,
         "secretApprovalPolicyApproverUser.id"
       )
+      // Bypasser
+      .leftJoin(
+        TableName.SecretApprovalPolicyBypasser,
+        `${TableName.SecretApprovalPolicy}.id`,
+        `${TableName.SecretApprovalPolicyBypasser}.policyId`
+      )
+      .leftJoin<TUserGroupMembership>(
+        db(TableName.UserGroupMembership).as("bypasserUserGroupMembership"),
+        `${TableName.SecretApprovalPolicyBypasser}.bypasserGroupId`,
+        `bypasserUserGroupMembership.groupId`
+      )
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("secretApprovalPolicyBypasserUser"),
+        `${TableName.SecretApprovalPolicyBypasser}.bypasserUserId`,
+        "secretApprovalPolicyBypasserUser.id"
+      )
       .leftJoin<TUsers>(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
       .select(
         tx.ref("id").withSchema("secretApprovalPolicyApproverUser").as("approverUserId"),
@@ -57,6 +79,20 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
         tx.ref("email").withSchema(TableName.Users).as("approverGroupEmail"),
         tx.ref("firstName").withSchema(TableName.Users).as("approverGroupFirstName"),
         tx.ref("lastName").withSchema(TableName.Users).as("approverGroupLastName")
+      )
+      .select(
+        tx.ref("id").withSchema("secretApprovalPolicyBypasserUser").as("bypasserUserId"),
+        tx.ref("email").withSchema("secretApprovalPolicyBypasserUser").as("bypasserEmail"),
+        tx.ref("firstName").withSchema("secretApprovalPolicyBypasserUser").as("bypasserFirstName"),
+        tx.ref("username").withSchema("secretApprovalPolicyBypasserUser").as("bypasserUsername"),
+        tx.ref("lastName").withSchema("secretApprovalPolicyBypasserUser").as("bypasserLastName")
+      )
+      .select(
+        tx.ref("bypasserGroupId").withSchema(TableName.SecretApprovalPolicyBypasser),
+        tx.ref("userId").withSchema("bypasserUserGroupMembership").as("bypasserGroupUserId"),
+        tx.ref("email").withSchema(TableName.Users).as("bypasserGroupEmail"),
+        tx.ref("firstName").withSchema(TableName.Users).as("bypasserGroupFirstName"),
+        tx.ref("lastName").withSchema(TableName.Users).as("bypasserGroupLastName")
       )
       .select(
         tx.ref("name").withSchema(TableName.Environment).as("envName"),
@@ -143,7 +179,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
             label: "approvers" as const,
             mapper: ({ approverUserId: id, approverUsername }) => ({
               type: ApproverType.User,
-              name: approverUsername,
+              username: approverUsername,
               id
             })
           },
@@ -152,6 +188,23 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
             label: "approvers" as const,
             mapper: ({ approverGroupId: id }) => ({
               type: ApproverType.Group,
+              id
+            })
+          },
+          {
+            key: "bypasserUserId",
+            label: "bypassers" as const,
+            mapper: ({ bypasserUserId: id, bypasserUsername }) => ({
+              type: BypasserType.User,
+              username: bypasserUsername,
+              id
+            })
+          },
+          {
+            key: "bypasserGroupId",
+            label: "bypassers" as const,
+            mapper: ({ bypasserGroupId: id }) => ({
+              type: BypasserType.Group,
               id
             })
           },

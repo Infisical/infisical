@@ -1,7 +1,13 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessApprovalRequestsSchema, TableName, TAccessApprovalRequests, TUsers } from "@app/db/schemas";
+import {
+  AccessApprovalRequestsSchema,
+  TableName,
+  TAccessApprovalRequests,
+  TUserGroupMembership,
+  TUsers
+} from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships, TFindFilter } from "@app/lib/knex";
 
@@ -28,12 +34,12 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           `${TableName.AccessApprovalRequest}.policyId`,
           `${TableName.AccessApprovalPolicy}.id`
         )
-
         .leftJoin(
           TableName.AccessApprovalRequestReviewer,
           `${TableName.AccessApprovalRequest}.id`,
           `${TableName.AccessApprovalRequestReviewer}.requestId`
         )
+
         .leftJoin(
           TableName.AccessApprovalPolicyApprover,
           `${TableName.AccessApprovalPolicy}.id`,
@@ -45,6 +51,17 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           `${TableName.UserGroupMembership}.groupId`
         )
         .leftJoin(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
+
+        .leftJoin(
+          TableName.AccessApprovalPolicyBypasser,
+          `${TableName.AccessApprovalPolicy}.id`,
+          `${TableName.AccessApprovalPolicyBypasser}.policyId`
+        )
+        .leftJoin<TUserGroupMembership>(
+          db(TableName.UserGroupMembership).as("bypasserUserGroupMembership"),
+          `${TableName.AccessApprovalPolicyBypasser}.bypasserGroupId`,
+          `bypasserUserGroupMembership.groupId`
+        )
 
         .join<TUsers>(
           db(TableName.Users).as("requestedByUser"),
@@ -68,6 +85,9 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
 
         .select(db.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
         .select(db.ref("userId").withSchema(TableName.UserGroupMembership).as("approverGroupUserId"))
+
+        .select(db.ref("bypasserUserId").withSchema(TableName.AccessApprovalPolicyBypasser))
+        .select(db.ref("userId").withSchema("bypasserUserGroupMembership").as("bypasserGroupUserId"))
 
         .select(
           db.ref("projectId").withSchema(TableName.Environment),
@@ -158,6 +178,12 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
             key: "approverGroupUserId",
             label: "approvers" as const,
             mapper: ({ approverGroupUserId }) => approverGroupUserId
+          },
+          { key: "bypasserUserId", label: "bypassers" as const, mapper: ({ bypasserUserId }) => bypasserUserId },
+          {
+            key: "bypasserGroupUserId",
+            label: "bypassers" as const,
+            mapper: ({ bypasserGroupUserId }) => bypasserGroupUserId
           }
         ]
       });
@@ -166,7 +192,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
 
       return formattedDocs.map((doc) => ({
         ...doc,
-        policy: { ...doc.policy, approvers: doc.approvers }
+        policy: { ...doc.policy, approvers: doc.approvers, bypassers: doc.bypassers }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindRequestsWithPrivilege" });
@@ -193,7 +219,6 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         `${TableName.AccessApprovalPolicy}.id`,
         `${TableName.AccessApprovalPolicyApprover}.policyId`
       )
-
       .leftJoin<TUsers>(
         db(TableName.Users).as("accessApprovalPolicyApproverUser"),
         `${TableName.AccessApprovalPolicyApprover}.approverUserId`,
@@ -204,11 +229,31 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         `${TableName.AccessApprovalPolicyApprover}.approverGroupId`,
         `${TableName.UserGroupMembership}.groupId`
       )
-
       .leftJoin<TUsers>(
         db(TableName.Users).as("accessApprovalPolicyGroupApproverUser"),
         `${TableName.UserGroupMembership}.userId`,
         "accessApprovalPolicyGroupApproverUser.id"
+      )
+
+      .leftJoin(
+        TableName.AccessApprovalPolicyBypasser,
+        `${TableName.AccessApprovalPolicy}.id`,
+        `${TableName.AccessApprovalPolicyBypasser}.policyId`
+      )
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("accessApprovalPolicyBypasserUser"),
+        `${TableName.AccessApprovalPolicyBypasser}.bypasserUserId`,
+        "accessApprovalPolicyBypasserUser.id"
+      )
+      .leftJoin<TUserGroupMembership>(
+        db(TableName.UserGroupMembership).as("bypasserUserGroupMembership"),
+        `${TableName.AccessApprovalPolicyBypasser}.bypasserGroupId`,
+        `bypasserUserGroupMembership.groupId`
+      )
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("accessApprovalPolicyGroupBypasserUser"),
+        `bypasserUserGroupMembership.userId`,
+        "accessApprovalPolicyGroupBypasserUser.id"
       )
 
       .leftJoin(
@@ -241,6 +286,18 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("firstName").withSchema("requestedByUser").as("requestedByUserFirstName"),
         tx.ref("lastName").withSchema("requestedByUser").as("requestedByUserLastName"),
 
+        // Bypassers
+        tx.ref("bypasserUserId").withSchema(TableName.AccessApprovalPolicyBypasser),
+        tx.ref("userId").withSchema("bypasserUserGroupMembership").as("bypasserGroupUserId"),
+        tx.ref("email").withSchema("accessApprovalPolicyBypasserUser").as("bypasserEmail"),
+        tx.ref("email").withSchema("accessApprovalPolicyGroupBypasserUser").as("bypasserGroupEmail"),
+        tx.ref("username").withSchema("accessApprovalPolicyBypasserUser").as("bypasserUsername"),
+        tx.ref("username").withSchema("accessApprovalPolicyGroupBypasserUser").as("bypasserGroupUsername"),
+        tx.ref("firstName").withSchema("accessApprovalPolicyBypasserUser").as("bypasserFirstName"),
+        tx.ref("firstName").withSchema("accessApprovalPolicyGroupBypasserUser").as("bypasserGroupFirstName"),
+        tx.ref("lastName").withSchema("accessApprovalPolicyBypasserUser").as("bypasserLastName"),
+        tx.ref("lastName").withSchema("accessApprovalPolicyGroupBypasserUser").as("bypasserGroupLastName"),
+
         tx.ref("reviewerUserId").withSchema(TableName.AccessApprovalRequestReviewer),
 
         tx.ref("status").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerStatus"),
@@ -265,7 +322,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
     try {
       const sql = findQuery({ [`${TableName.AccessApprovalRequest}.id` as "id"]: id }, tx || db.replicaNode());
       const docs = await sql;
-      const formatedDoc = sqlNestRelationships({
+      const formattedDoc = sqlNestRelationships({
         data: docs,
         key: "id",
         parentMapper: (el) => ({
@@ -335,13 +392,51 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
               lastName,
               username
             })
+          },
+          {
+            key: "bypasserUserId",
+            label: "bypassers" as const,
+            mapper: ({
+              bypasserUserId,
+              bypasserEmail: email,
+              bypasserUsername: username,
+              bypasserLastName: lastName,
+              bypasserFirstName: firstName
+            }) => ({
+              userId: bypasserUserId,
+              email,
+              firstName,
+              lastName,
+              username
+            })
+          },
+          {
+            key: "bypasserGroupUserId",
+            label: "bypassers" as const,
+            mapper: ({
+              userId,
+              bypasserGroupEmail: email,
+              bypasserGroupUsername: username,
+              bypasserGroupLastName: lastName,
+              bypasserFirstName: firstName
+            }) => ({
+              userId,
+              email,
+              firstName,
+              lastName,
+              username
+            })
           }
         ]
       });
-      if (!formatedDoc?.[0]) return;
+      if (!formattedDoc?.[0]) return;
       return {
-        ...formatedDoc[0],
-        policy: { ...formatedDoc[0].policy, approvers: formatedDoc[0].approvers }
+        ...formattedDoc[0],
+        policy: {
+          ...formattedDoc[0].policy,
+          approvers: formattedDoc[0].approvers,
+          bypassers: formattedDoc[0].bypassers
+        }
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByIdAccessApprovalRequest" });

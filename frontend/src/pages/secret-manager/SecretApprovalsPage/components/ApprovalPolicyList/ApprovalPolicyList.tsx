@@ -35,7 +35,7 @@ import {
   useSubscription,
   useWorkspace
 } from "@app/context";
-import { ProjectPermissionApprovalActions } from "@app/context/ProjectPermissionContext/types";
+import { ProjectPermissionActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteAccessApprovalPolicy,
@@ -61,10 +61,8 @@ const useApprovalPolicies = (permission: TProjectPermission, currentWorkspace?: 
       projectSlug: currentWorkspace?.slug as string,
       options: {
         enabled:
-          permission.can(
-            ProjectPermissionApprovalActions.Read,
-            ProjectPermissionSub.SecretApproval
-          ) && !!currentWorkspace?.slug
+          permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
+          !!currentWorkspace?.slug
       }
     }
   );
@@ -73,10 +71,8 @@ const useApprovalPolicies = (permission: TProjectPermission, currentWorkspace?: 
       workspaceId: currentWorkspace?.id as string,
       options: {
         enabled:
-          permission.can(
-            ProjectPermissionApprovalActions.Read,
-            ProjectPermissionSub.SecretApproval
-          ) && !!currentWorkspace?.id
+          permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
+          !!currentWorkspace?.id
       }
     }
   );
@@ -164,7 +160,7 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
         </div>
         <div>
           <ProjectPermissionCan
-            I={ProjectPermissionApprovalActions.Create}
+            I={ProjectPermissionActions.Create}
             a={ProjectPermissionSub.SecretApproval}
           >
             {(isAllowed) => (

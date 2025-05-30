@@ -12,7 +12,6 @@ import {
 } from "@app/context";
 import {
   PermissionConditionOperators,
-  ProjectPermissionApprovalActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
@@ -54,12 +53,10 @@ const SecretPolicyActionSchema = z.object({
 });
 
 const ApprovalPolicyActionSchema = z.object({
-  [ProjectPermissionApprovalActions.Read]: z.boolean().optional(),
-  [ProjectPermissionApprovalActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionApprovalActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionApprovalActions.Create]: z.boolean().optional(),
-  [ProjectPermissionApprovalActions.AllowChangeBypass]: z.boolean().optional(),
-  [ProjectPermissionApprovalActions.AllowAccessBypass]: z.boolean().optional()
+  [ProjectPermissionActions.Read]: z.boolean().optional(),
+  [ProjectPermissionActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionActions.Create]: z.boolean().optional()
 });
 
 const CmekPolicyActionSchema = z.object({
@@ -574,24 +571,18 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
     }
 
     if (subject === ProjectPermissionSub.SecretApproval) {
-      const canCreate = action.includes(ProjectPermissionApprovalActions.Create);
-      const canDelete = action.includes(ProjectPermissionApprovalActions.Delete);
-      const canEdit = action.includes(ProjectPermissionApprovalActions.Edit);
-      const canRead = action.includes(ProjectPermissionApprovalActions.Read);
-      const canChangeBypass = action.includes(ProjectPermissionApprovalActions.AllowChangeBypass);
-      const canAccessBypass = action.includes(ProjectPermissionApprovalActions.AllowAccessBypass);
+      const canCreate = action.includes(ProjectPermissionActions.Create);
+      const canDelete = action.includes(ProjectPermissionActions.Delete);
+      const canEdit = action.includes(ProjectPermissionActions.Edit);
+      const canRead = action.includes(ProjectPermissionActions.Read);
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
       // Map actions to the keys defined in ApprovalPolicyActionSchema
-      if (canCreate) formVal[subject]![0][ProjectPermissionApprovalActions.Create] = true;
-      if (canDelete) formVal[subject]![0][ProjectPermissionApprovalActions.Delete] = true;
-      if (canEdit) formVal[subject]![0][ProjectPermissionApprovalActions.Edit] = true;
-      if (canRead) formVal[subject]![0][ProjectPermissionApprovalActions.Read] = true;
-      if (canChangeBypass)
-        formVal[subject]![0][ProjectPermissionApprovalActions.AllowChangeBypass] = true;
-      if (canAccessBypass)
-        formVal[subject]![0][ProjectPermissionApprovalActions.AllowAccessBypass] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionActions.Create] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionActions.Delete] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionActions.Edit] = true;
+      if (canRead) formVal[subject]![0][ProjectPermissionActions.Read] = true;
       return;
     }
 
@@ -1212,12 +1203,10 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.SecretApproval]: {
     title: "Secret Approval Policies",
     actions: [
-      { label: "Read", value: ProjectPermissionApprovalActions.Read },
-      { label: "Create", value: ProjectPermissionApprovalActions.Create },
-      { label: "Modify", value: ProjectPermissionApprovalActions.Edit },
-      { label: "Remove", value: ProjectPermissionApprovalActions.Delete },
-      { label: "Allow Change Bypass", value: ProjectPermissionApprovalActions.AllowChangeBypass },
-      { label: "Allow Access Bypass", value: ProjectPermissionApprovalActions.AllowAccessBypass }
+      { label: "Read", value: ProjectPermissionActions.Read },
+      { label: "Create", value: ProjectPermissionActions.Create },
+      { label: "Modify", value: ProjectPermissionActions.Edit },
+      { label: "Remove", value: ProjectPermissionActions.Delete }
     ]
   },
   [ProjectPermissionSub.SecretRotation]: {
@@ -1694,7 +1683,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       },
       {
         subject: ProjectPermissionSub.SecretApproval,
-        actions: Object.values(ProjectPermissionApprovalActions)
+        actions: Object.values(ProjectPermissionActions)
       },
       {
         subject: ProjectPermissionSub.ServiceTokens,

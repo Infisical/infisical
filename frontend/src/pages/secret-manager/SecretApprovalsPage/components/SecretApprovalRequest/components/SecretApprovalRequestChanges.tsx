@@ -139,6 +139,11 @@ export const SecretApprovalRequestChanges = ({
     ({ userId }) => userId === userSession.id
   );
 
+  const isBypasser =
+    !secretApprovalRequestDetails?.policy?.bypassers ||
+    !secretApprovalRequestDetails.policy.bypassers.length ||
+    secretApprovalRequestDetails.policy.bypassers.some(({ userId }) => userId === userSession.id);
+
   const reviewedUsers = secretApprovalRequestDetails?.reviewers?.reduce<
     Record<string, { status: ApprovalStatus; comment: string }>
   >(
@@ -414,6 +419,7 @@ export const SecretApprovalRequestChanges = ({
         <div className="mt-2 flex items-center space-x-6 rounded-lg border border-mineshaft-600 bg-mineshaft-800">
           <SecretApprovalRequestAction
             canApprove={canApprove}
+            isBypasser={isBypasser === undefined ? true : isBypasser}
             approvalRequestId={secretApprovalRequestDetails.id}
             hasMerged={hasMerged}
             approvals={secretApprovalRequestDetails.policy.approvals || 0}

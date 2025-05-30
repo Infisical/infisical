@@ -14,11 +14,6 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { Button, Checkbox, FormControl, Input } from "@app/components/v2";
 import {
-  ProjectPermissionApprovalActions,
-  ProjectPermissionSub,
-  useProjectPermission
-} from "@app/context";
-import {
   usePerformSecretApprovalRequestMerge,
   useUpdateSecretApprovalRequestStatus
 } from "@app/hooks/api";
@@ -31,6 +26,7 @@ type Props = {
   status: "close" | "open";
   approvals: number;
   canApprove?: boolean;
+  isBypasser: boolean;
   statusChangeByEmail?: string;
   workspaceId: string;
   enforcementLevel: EnforcementLevel;
@@ -45,19 +41,14 @@ export const SecretApprovalRequestAction = ({
   statusChangeByEmail,
   workspaceId,
   enforcementLevel,
-  canApprove
+  canApprove,
+  isBypasser
 }: Props) => {
   const { mutateAsync: performSecretApprovalMerge, isPending: isMerging } =
     usePerformSecretApprovalRequestMerge();
 
   const { mutateAsync: updateSecretStatusChange, isPending: isStatusChanging } =
     useUpdateSecretApprovalRequestStatus();
-
-  const { permission } = useProjectPermission();
-  const canBypassApprovalPermission = permission.can(
-    ProjectPermissionApprovalActions.AllowChangeBypass,
-    ProjectPermissionSub.SecretApproval
-  );
 
   const [byPassApproval, setByPassApproval] = useState(false);
   const [bypassReason, setBypassReason] = useState("");
@@ -134,10 +125,10 @@ export const SecretApprovalRequestAction = ({
             )}
           </span>
         </div>
-        <div
-          className={`mt-4 w-full border-mineshaft-600 px-5 ${isMergable ? "border-t pb-2" : "border-y pb-4"}`}
-        >
-          {isSoftEnforcement && !isMergable && canBypassApprovalPermission && (
+        {isSoftEnforcement && !isMergable && isBypasser && (
+          <div
+            className={`mt-4 w-full border-mineshaft-600 px-5 ${isMergable ? "border-t pb-2" : "border-y pb-4"}`}
+          >
             <div className="mt-2 flex flex-col space-y-2 pt-2">
               <Checkbox
                 onCheckedChange={(checked) => setByPassApproval(checked === true)}
@@ -169,8 +160,8 @@ export const SecretApprovalRequestAction = ({
                 </FormControl>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
         <div className="mt-2 flex w-full items-center justify-end space-x-2 px-4">
           {canApprove || isSoftEnforcement ? (
             <div className="flex items-center space-x-4">

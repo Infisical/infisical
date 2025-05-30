@@ -6,6 +6,9 @@ import {
   TAccessApprovalPoliciesApprovers,
   TAccessApprovalPoliciesApproversInsert,
   TAccessApprovalPoliciesApproversUpdate,
+  TAccessApprovalPoliciesBypassers,
+  TAccessApprovalPoliciesBypassersInsert,
+  TAccessApprovalPoliciesBypassersUpdate,
   TAccessApprovalPoliciesInsert,
   TAccessApprovalPoliciesUpdate,
   TAccessApprovalRequests,
@@ -276,6 +279,9 @@ import {
   TSecretApprovalPoliciesApprovers,
   TSecretApprovalPoliciesApproversInsert,
   TSecretApprovalPoliciesApproversUpdate,
+  TSecretApprovalPoliciesBypassers,
+  TSecretApprovalPoliciesBypassersInsert,
+  TSecretApprovalPoliciesBypassersUpdate,
   TSecretApprovalPoliciesInsert,
   TSecretApprovalPoliciesUpdate,
   TSecretApprovalRequests,
@@ -820,6 +826,12 @@ declare module "knex/types/tables" {
       TAccessApprovalPoliciesApproversUpdate
     >;
 
+    [TableName.AccessApprovalPolicyBypasser]: KnexOriginal.CompositeTableType<
+      TAccessApprovalPoliciesBypassers,
+      TAccessApprovalPoliciesBypassersInsert,
+      TAccessApprovalPoliciesBypassersUpdate
+    >;
+
     [TableName.AccessApprovalRequest]: KnexOriginal.CompositeTableType<
       TAccessApprovalRequests,
       TAccessApprovalRequestsInsert,
@@ -842,6 +854,11 @@ declare module "knex/types/tables" {
       TSecretApprovalPoliciesApprovers,
       TSecretApprovalPoliciesApproversInsert,
       TSecretApprovalPoliciesApproversUpdate
+    >;
+    [TableName.SecretApprovalPolicyBypasser]: KnexOriginal.CompositeTableType<
+      TSecretApprovalPoliciesBypassers,
+      TSecretApprovalPoliciesBypassersInsert,
+      TSecretApprovalPoliciesBypassersUpdate
     >;
     [TableName.SecretApprovalRequest]: KnexOriginal.CompositeTableType<
       TSecretApprovalRequests,

@@ -3,18 +3,21 @@ import picomatch from "picomatch";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionApprovalActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { containsGlobPatterns } from "@app/lib/picomatch";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { ApproverType } from "../access-approval-policy/access-approval-policy-types";
+import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalRequestDALFactory } from "../secret-approval-request/secret-approval-request-dal";
 import { RequestState } from "../secret-approval-request/secret-approval-request-types";
-import { TSecretApprovalPolicyApproverDALFactory } from "./secret-approval-policy-approver-dal";
+import {
+  TSecretApprovalPolicyApproverDALFactory,
+  TSecretApprovalPolicyBypasserDALFactory
+} from "./secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "./secret-approval-policy-dal";
 import {
   TCreateSapDTO,
@@ -36,6 +39,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "find">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
+  secretApprovalPolicyBypasserDAL: TSecretApprovalPolicyBypasserDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "update">;
 };
@@ -46,6 +50,7 @@ export const secretApprovalPolicyServiceFactory = ({
   secretApprovalPolicyDAL,
   permissionService,
   secretApprovalPolicyApproverDAL,
+  secretApprovalPolicyBypasserDAL,
   projectEnvDAL,
   userDAL,
   licenseService,
@@ -59,6 +64,7 @@ export const secretApprovalPolicyServiceFactory = ({
     actorAuthMethod,
     approvals,
     approvers,
+    bypassers,
     projectId,
     secretPath,
     environment,
@@ -74,7 +80,7 @@ export const secretApprovalPolicyServiceFactory = ({
       .filter(Boolean) as string[];
 
     const userApproverNames = approvers
-      .map((approver) => (approver.type === ApproverType.User ? approver.name : undefined))
+      .map((approver) => (approver.type === ApproverType.User ? approver.username : undefined))
       .filter(Boolean) as string[];
 
     if (!groupApprovers.length && approvals > approvers.length)
@@ -89,7 +95,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionApprovalActions.Create,
+      ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretApproval
     );
 
@@ -106,6 +112,44 @@ export const secretApprovalPolicyServiceFactory = ({
       throw new NotFoundError({
         message: `Environment with slug '${environment}' not found in project with ID ${projectId}`
       });
+
+    let groupBypassers: string[] = [];
+    let bypasserUserIds: string[] = [];
+
+    if (bypassers && bypassers.length) {
+      groupBypassers = bypassers
+        .filter((bypasser) => bypasser.type === BypasserType.Group)
+        .map((bypasser) => bypasser.id) as string[];
+
+      const userBypassers = bypassers
+        .filter((bypasser) => bypasser.type === BypasserType.User)
+        .map((bypasser) => bypasser.id)
+        .filter(Boolean) as string[];
+
+      const userBypasserNames = bypassers
+        .map((bypasser) => (bypasser.type === BypasserType.User ? bypasser.username : undefined))
+        .filter(Boolean) as string[];
+
+      bypasserUserIds = userBypassers;
+      if (userBypasserNames.length) {
+        const bypasserUsers = await userDAL.find({
+          $in: {
+            username: userBypasserNames
+          }
+        });
+
+        const bypasserNamesFromDb = bypasserUsers.map((user) => user.username);
+        const invalidUsernames = userBypasserNames.filter((username) => !bypasserNamesFromDb.includes(username));
+
+        if (invalidUsernames.length) {
+          throw new BadRequestError({
+            message: `Invalid bypasser user: ${invalidUsernames.join(", ")}`
+          });
+        }
+
+        bypasserUserIds = bypasserUserIds.concat(bypasserUsers.map((user) => user.id));
+      }
+    }
 
     const secretApproval = await secretApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await secretApprovalPolicyDAL.create(
@@ -158,6 +202,27 @@ export const secretApprovalPolicyServiceFactory = ({
         })),
         tx
       );
+
+      if (bypasserUserIds.length) {
+        await secretApprovalPolicyBypasserDAL.insertMany(
+          bypasserUserIds.map((userId) => ({
+            bypasserUserId: userId,
+            policyId: doc.id
+          })),
+          tx
+        );
+      }
+
+      if (groupBypassers.length) {
+        await secretApprovalPolicyBypasserDAL.insertMany(
+          groupBypassers.map((groupId) => ({
+            bypasserGroupId: groupId,
+            policyId: doc.id
+          })),
+          tx
+        );
+      }
+
       return doc;
     });
 
@@ -166,6 +231,7 @@ export const secretApprovalPolicyServiceFactory = ({
 
   const updateSecretApprovalPolicy = async ({
     approvers,
+    bypassers,
     secretPath,
     name,
     actorId,
@@ -186,7 +252,7 @@ export const secretApprovalPolicyServiceFactory = ({
       .filter(Boolean) as string[];
 
     const userApproverNames = approvers
-      .map((approver) => (approver.type === ApproverType.User ? approver.name : undefined))
+      .map((approver) => (approver.type === ApproverType.User ? approver.username : undefined))
       .filter(Boolean) as string[];
 
     const secretApprovalPolicy = await secretApprovalPolicyDAL.findById(secretPolicyId);
@@ -204,10 +270,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionApprovalActions.Edit,
-      ProjectPermissionSub.SecretApproval
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.secretApproval) {
@@ -215,6 +278,44 @@ export const secretApprovalPolicyServiceFactory = ({
         message:
           "Failed to update secret approval policy due to plan restriction. Upgrade plan to update secret approval policy."
       });
+    }
+
+    let groupBypassers: string[] = [];
+    let bypasserUserIds: string[] = [];
+
+    if (bypassers && bypassers.length) {
+      groupBypassers = bypassers
+        .filter((bypasser) => bypasser.type === BypasserType.Group)
+        .map((bypasser) => bypasser.id) as string[];
+
+      const userBypassers = bypassers
+        .filter((bypasser) => bypasser.type === BypasserType.User)
+        .map((bypasser) => bypasser.id)
+        .filter(Boolean) as string[];
+
+      const userBypasserNames = bypassers
+        .map((bypasser) => (bypasser.type === BypasserType.User ? bypasser.username : undefined))
+        .filter(Boolean) as string[];
+
+      bypasserUserIds = userBypassers;
+      if (userBypasserNames.length) {
+        const bypasserUsers = await userDAL.find({
+          $in: {
+            username: userBypasserNames
+          }
+        });
+
+        const bypasserNamesFromDb = bypasserUsers.map((user) => user.username);
+        const invalidUsernames = userBypasserNames.filter((username) => !bypasserNamesFromDb.includes(username));
+
+        if (invalidUsernames.length) {
+          throw new BadRequestError({
+            message: `Invalid bypasser user: ${invalidUsernames.join(", ")}`
+          });
+        }
+
+        bypasserUserIds = bypasserUserIds.concat(bypasserUsers.map((user) => user.id));
+      }
     }
 
     const updatedSap = await secretApprovalPolicyDAL.transaction(async (tx) => {
@@ -275,6 +376,28 @@ export const secretApprovalPolicyServiceFactory = ({
         );
       }
 
+      await secretApprovalPolicyBypasserDAL.delete({ policyId: doc.id }, tx);
+
+      if (bypasserUserIds.length) {
+        await secretApprovalPolicyBypasserDAL.insertMany(
+          bypasserUserIds.map((userId) => ({
+            bypasserUserId: userId,
+            policyId: doc.id
+          })),
+          tx
+        );
+      }
+
+      if (groupBypassers.length) {
+        await secretApprovalPolicyBypasserDAL.insertMany(
+          groupBypassers.map((groupId) => ({
+            bypasserGroupId: groupId,
+            policyId: doc.id
+          })),
+          tx
+        );
+      }
+
       return doc;
     });
     return {
@@ -304,7 +427,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionApprovalActions.Delete,
+      ProjectPermissionActions.Delete,
       ProjectPermissionSub.SecretApproval
     );
 
@@ -343,10 +466,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionApprovalActions.Read,
-      ProjectPermissionSub.SecretApproval
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 
     const sapPolicies = await secretApprovalPolicyDAL.find({ projectId, deletedAt: null });
     return sapPolicies;
@@ -419,10 +539,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionApprovalActions.Read,
-      ProjectPermissionSub.SecretApproval
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 
     return sapPolicy;
   };
