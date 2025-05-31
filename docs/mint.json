@@ -1046,6 +1046,13 @@
                 "api-reference/endpoints/secret-scanning/findings/list",
                 "api-reference/endpoints/secret-scanning/findings/update"
               ]
+            },
+            {
+              "group":  "Configuration",
+              "pages":  [
+                "api-reference/endpoints/secret-scanning/config/get-by-project-id",
+                "api-reference/endpoints/secret-scanning/config/update"
+              ]
             }
           ]
         },

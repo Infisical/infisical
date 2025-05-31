@@ -4,6 +4,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
+  ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
@@ -30,7 +31,8 @@ import {
   TSecretScanningScanWithDetails,
   TTriggerSecretScanningDataSourceDTO,
   TUpdateSecretScanningDataSourceDTO,
-  TUpdateSecretScanningFinding
+  TUpdateSecretScanningFindingDTO,
+  TUpsertSecretScanningConfigDTO
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -714,7 +716,7 @@ export const secretScanningV2ServiceFactory = ({
   };
 
   const updateSecretScanningFindingById = async (
-    { findingId, remarks, status }: TUpdateSecretScanningFinding,
+    { findingId, remarks, status }: TUpdateSecretScanningFindingDTO,
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -754,6 +756,77 @@ export const secretScanningV2ServiceFactory = ({
     return { finding: updatedFinding as TSecretScanningFinding, projectId: finding.projectId };
   };
 
+  const findSecretScanningConfigByProjectId = async (projectId: string, actor: OrgServiceActor) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.secretScanning)
+      throw new BadRequestError({
+        message:
+          "Failed to access Secret Scanning Configuration due to plan restriction. Upgrade plan to enable Secret Scanning."
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretScanning,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretScanningConfigActions.Read,
+      ProjectPermissionSub.SecretScanningConfigs
+    );
+
+    const config = await secretScanningV2DAL.configs.findOne({
+      projectId
+    });
+
+    return (
+      config ?? { content: null, projectId, updatedAt: null } // using default config
+    );
+  };
+
+  const upsertSecretScanningConfig = async (
+    { projectId, content }: TUpsertSecretScanningConfigDTO,
+    actor: OrgServiceActor
+  ) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.secretScanning)
+      throw new BadRequestError({
+        message:
+          "Failed to access Secret Scanning Configuration due to plan restriction. Upgrade plan to enable Secret Scanning."
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretScanning,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretScanningConfigActions.Read,
+      ProjectPermissionSub.SecretScanningConfigs
+    );
+
+    const [config] = await secretScanningV2DAL.configs.upsert(
+      [
+        {
+          projectId,
+          content
+        }
+      ],
+      "projectId"
+    );
+
+    return config;
+  };
+
   return {
     listSecretScanningDataSourceOptions,
     listSecretScanningDataSourcesByProjectId,
@@ -771,6 +844,8 @@ export const secretScanningV2ServiceFactory = ({
     getSecretScanningUnresolvedFindingsCountByProjectId,
     listSecretScanningFindingsByProjectId,
     updateSecretScanningFindingById,
+    findSecretScanningConfigByProjectId,
+    upsertSecretScanningConfig,
     github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue)
   };
 };

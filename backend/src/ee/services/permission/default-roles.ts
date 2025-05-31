@@ -12,6 +12,7 @@ import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
+  ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions,
@@ -218,6 +219,11 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SecretScanningFindings
   );
 
+  can(
+    [ProjectPermissionSecretScanningConfigActions.Read, ProjectPermissionSecretScanningConfigActions.Update],
+    ProjectPermissionSub.SecretScanningConfigs
+  );
+
   return rules;
 };
 
@@ -413,6 +419,8 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.SecretScanningFindings
   );
 
+  can([ProjectPermissionSecretScanningConfigActions.Read], ProjectPermissionSub.SecretScanningConfigs);
+
   return rules;
 };
 
@@ -458,6 +466,8 @@ const buildViewerPermissionRules = () => {
   );
 
   can([ProjectPermissionSecretScanningFindingActions.Read], ProjectPermissionSub.SecretScanningFindings);
+
+  can([ProjectPermissionSecretScanningConfigActions.Read], ProjectPermissionSub.SecretScanningConfigs);
 
   return rules;
 };

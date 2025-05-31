@@ -131,7 +131,7 @@ export type TSecretScanningFactoryGetFullScanPath<T extends TSecretScanningDataS
 export type TSecretScanningFactoryGetDiffScanFindingsPayload<
   T extends TSecretScanningDataSourceWithConnection,
   P extends TQueueSecretScanningResourceDiffScan["payload"]
-> = (parameters: { dataSource: T; resourceName: string; payload: P }) => Promise<TFindingsPayload>;
+> = (parameters: { dataSource: T; resourceName: string; payload: P; configPath?: string }) => Promise<TFindingsPayload>;
 
 export type TSecretScanningDataSourceRaw = NonNullable<
   Awaited<ReturnType<TSecretScanningV2DALFactory["dataSources"]["findById"]>>
@@ -175,10 +175,15 @@ export type TSecretScanningFactory<
 export type TFindingsPayload = Pick<TSecretScanningFindingsInsert, "details" | "fingerprint" | "severity" | "rule">[];
 export type TGetFindingsPayload = Promise<TFindingsPayload>;
 
-export type TUpdateSecretScanningFinding = {
+export type TUpdateSecretScanningFindingDTO = {
   status?: SecretScanningFindingStatus;
   remarks?: string | null;
   findingId: string;
+};
+
+export type TUpsertSecretScanningConfigDTO = {
+  projectId: string;
+  content: string | null;
 };
 
 export type TSecretScanningDataSourceCredentials = undefined;

@@ -201,7 +201,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.SECRET_SCANNING_RESOURCE_LIST]: "List Secret Scanning Resources",
   [EventType.SECRET_SCANNING_SCAN_LIST]: "List Secret Scanning Scans",
   [EventType.SECRET_SCANNING_FINDING_LIST]: "List Secret Scanning Findings",
-  [EventType.SECRET_SCANNING_FINDING_UPDATE]: "Update Secret Scanning Finding Status"
+  [EventType.SECRET_SCANNING_FINDING_UPDATE]: "Update Secret Scanning Finding Status",
+  [EventType.SECRET_SCANNING_CONFIG_GET]: "Get Secret Scanning Configuration",
+  [EventType.SECRET_SCANNING_CONFIG_UPDATE]: "Update Secret Scanning Configuration"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

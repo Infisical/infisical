@@ -114,7 +114,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
                 <span className="text-xs">
                   {totalFindings}{" "}
                   {unresolvedFindings
-                    ? `Secret ${totalFindings > 1 ? "s" : ""} Detected`
+                    ? `Secret${totalFindings > 1 ? "s" : ""} Detected`
                     : "Leak Resolved"}
                 </span>
               </Badge>

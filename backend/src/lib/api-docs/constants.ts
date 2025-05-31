@@ -2426,3 +2426,13 @@ export const SecretScanningFindings = {
     remarks: "Remarks pertaining to the status of this finding."
   }
 };
+
+export const SecretScanningConfigs = {
+  GET_BY_PROJECT_ID: {
+    projectId: `The ID of the project to retrieve the Secret Scanning Configuration for.`
+  },
+  UPDATE: {
+    projectId: "The ID of the project to update the Secret Scanning Configuration for.",
+    content: "The contents of the Secret Scanning Configuration file."
+  }
+};

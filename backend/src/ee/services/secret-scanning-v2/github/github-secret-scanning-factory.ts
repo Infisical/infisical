@@ -8,7 +8,11 @@ import {
   SecretScanningFindingSeverity,
   SecretScanningResource
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
-import { cloneRepository } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
+import {
+  cloneRepository,
+  convertPatchLineToFileLineNumber,
+  replaceNonChangesWithNewlines
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
   TSecretScanningFactoryGetDiffScanFindingsPayload,
   TSecretScanningFactoryGetDiffScanResourcePayload,
@@ -121,7 +125,7 @@ export const GitHubSecretScanningFactory = () => {
   const getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<
     TGitHubDataSourceWithConnection,
     TQueueGitHubResourceDiffScan["payload"]
-  > = async ({ dataSource, payload, resourceName }) => {
+  > = async ({ dataSource, payload, resourceName, configPath }) => {
     const appCfg = getConfig();
     const {
       connection: {
@@ -144,33 +148,52 @@ export const GitHubSecretScanningFactory = () => {
     const allFindings: SecretMatch[] = [];
 
     for (const commit of commits) {
-      for (const filepath of [...commit.added, ...commit.modified]) {
-        // eslint-disable-next-line
-        const fileContentsResponse = await octokit.repos.getContent({
-          owner,
-          repo,
-          path: filepath
-        });
+      // eslint-disable-next-line no-await-in-loop
+      const commitData = await octokit.repos.getCommit({
+        owner,
+        repo,
+        ref: commit.id
+      });
 
-        const { data } = fileContentsResponse;
-        const fileContent = Buffer.from((data as { content: string }).content, "base64").toString();
+      // eslint-disable-next-line no-continue
+      if (!commitData.data.files) continue;
 
-        // eslint-disable-next-line
-        const findings = await scanContentAndGetFindings(`\n${fileContent}`); // extra line to count lines correctly
+      for (const file of commitData.data.files) {
+        if ((file.status === "added" || file.status === "modified") && file.patch) {
+          // eslint-disable-next-line
+          const findings = await scanContentAndGetFindings(
+            replaceNonChangesWithNewlines(`\n${file.patch}`),
+            configPath
+          );
 
-        allFindings.push(
-          ...findings.map((finding) => ({
-            ...finding,
-            File: filepath,
-            Commit: commit.id,
-            Author: commit.author.name,
-            Email: commit.author.email ?? "",
-            Message: commit.message,
-            Fingerprint: `${commit.id}:${filepath}:${finding.RuleID}:${finding.StartLine}`,
-            Date: commit.timestamp,
-            Link: `https://github.com/${resourceName}/blob/${commit.id}/${filepath}#L${finding.StartLine}`
-          }))
-        );
+          const adjustedFindings = findings.map((finding) => {
+            const startLine = convertPatchLineToFileLineNumber(file.patch!, finding.StartLine);
+            const endLine =
+              finding.StartLine === finding.EndLine
+                ? startLine
+                : convertPatchLineToFileLineNumber(file.patch!, finding.EndLine);
+            const startColumn = finding.StartColumn - 1; // subtract 1 for +
+            const endColumn = finding.EndColumn - 1; // subtract 1 for +
+
+            return {
+              ...finding,
+              StartLine: startLine,
+              EndLine: endLine,
+              StartColumn: startColumn,
+              EndColumn: endColumn,
+              File: file.filename,
+              Commit: commit.id,
+              Author: commit.author.name,
+              Email: commit.author.email ?? "",
+              Message: commit.message,
+              Fingerprint: `${commit.id}:${file.filename}:${finding.RuleID}:${startLine}:${startColumn}`,
+              Date: commit.timestamp,
+              Link: `https://github.com/${resourceName}/blob/${commit.id}/${file.filename}#L${startLine}`
+            };
+          });
+
+          allFindings.push(...adjustedFindings);
+        }
       }
     }
 

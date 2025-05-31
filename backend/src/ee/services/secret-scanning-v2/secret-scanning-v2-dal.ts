@@ -111,6 +111,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   const resourceOrm = ormify(db, TableName.SecretScanningResource);
   const scanOrm = ormify(db, TableName.SecretScanningScan);
   const findingOrm = ormify(db, TableName.SecretScanningFinding);
+  const configOrm = ormify(db, TableName.SecretScanningConfig);
 
   const findDataSource = async (filter: Parameters<(typeof dataSourceOrm)["find"]>[0], tx?: Knex) => {
     try {
@@ -406,7 +407,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           unresolvedFindings:
             findings?.filter((finding) => finding.status === SecretScanningFindingStatus.Unresolved).length ?? 0,
           resolvedFindings:
-            findings?.filter((finding) => finding.status === SecretScanningFindingStatus.Resolved).length ?? 0,
+            findings?.filter((finding) => finding.status !== SecretScanningFindingStatus.Unresolved).length ?? 0,
           resourceName: resources[0].name
         };
       });
@@ -453,6 +454,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       findWithDetailsByDataSourceId: findScansWithDetailsByDataSourceId,
       findByDataSourceId: findScansByDataSourceId
     },
-    findings: findingOrm
+    findings: findingOrm,
+    configs: configOrm
   };
 };

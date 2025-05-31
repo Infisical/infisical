@@ -71,6 +71,134 @@ These status options help teams effectively track and manage the lifecycle of de
 
 ![findings](/images/platform/secret-scanning/secret-scanning-findings.png)
 
+### Configuration
+
+You can configure custom scanning rules and exceptions by updating your project's scanning configuration via the UI or API.
+
+The configuration options allow you to:
+- Define custom scanning patterns and rules
+- Set up ignore patterns to reduce false positives
+- Specify file path exclusions
+- Configure entropy thresholds for secret detection
+- Add allowlists for known safe patterns
+
+For detailed configuration options, expand the example configuration below.
+
+<Accordion title="Example Configuration">
+    ```toml
+    # Title for the configuration file
+    title = "Some title"
+
+
+    # This configuration is the foundation that can be expanded. If there are any overlapping rules
+    # between this base and the expanded configuration, the rules in this base will take priority.
+    # Another aspect of extending configurations is the ability to link multiple files, up to a depth of 2.
+    # "Allowlist" arrays get appended and may have repeated elements.
+    # "useDefault" and "path" cannot be used simultaneously. Please choose one.
+    [extend]
+    # useDefault will extend the base configuration with the default config:
+    # https://raw.githubusercontent.com/Infisical/infisical/main/cli/config/infisical-scan.toml
+    useDefault = true
+    # or you can supply a path to a configuration. Path is relative to where infisical cli
+    # was invoked, not the location of the base config.
+    path = "common_config.toml"
+
+    # An array of tables that contain information that define instructions
+    # on how to detect secrets
+    [[rules]]
+
+    # Unique identifier for this rule
+    id = "some-identifier-for-rule"
+
+    # Short human readable description of the rule.
+    description = "awesome rule 1"
+
+    # Golang regular expression used to detect secrets. Note Golang's regex engine
+    # does not support lookaheads.
+    regex = '''one-go-style-regex-for-this-rule'''
+
+    # Golang regular expression used to match paths. This can be used as a standalone rule or it can be used
+    # in conjunction with a valid `regex` entry.
+    path = '''a-file-path-regex'''
+
+    # Array of strings used for metadata and reporting purposes.
+    tags = ["tag","another tag"]
+
+    # A regex match may have many groups, this allows you to specify the group that should be used as (which group the secret is contained in)
+    # its entropy checked if `entropy` is set.
+    secretGroup = 3
+
+    # Float representing the minimum shannon entropy a regex group must have to be considered a secret.
+    # Shannon entropy measures how random a data is. Since secrets are usually composed of many random characters, they typically have high entropy
+    entropy = 3.5
+
+    # Keywords are used for pre-regex check filtering.
+    # If rule has keywords but the text fragment being scanned doesn't have at least one of it's keywords, it will be skipped for processing further.
+    # Ideally these values should either be part of the identifier or unique strings specific to the rule's regex
+    # (introduced in v8.6.0)
+    keywords = [
+        "auth",
+        "password",
+        "token",
+    ]
+
+    # You can include an allowlist table for a single rule to reduce false positives or ignore commits
+    # with known/rotated secrets
+    [rules.allowlist]
+    description = "ignore commit A"
+    commits = [ "commit-A", "commit-B"]
+    paths = [
+        '''go\.mod''',
+        '''go\.sum'''
+    ]
+    # note: (rule) regexTarget defaults to check the _Secret_ in the finding.
+    # if regexTarget is not specified then _Secret_ will be used.
+    # Acceptable values for regexTarget are "match" and "line"
+    regexTarget = "match"
+    regexes = [
+        '''process''',
+        '''getenv''',
+    ]
+    # note: stopwords targets the extracted secret, not the entire regex match
+    # if the extracted secret is found in the stopwords list, the finding will be skipped (i.e not included in report)
+    stopwords = [
+        '''client''',
+        '''endpoint''',
+    ]
+
+
+    # This is a global allowlist which has a higher order of precedence than rule-specific allowlists.
+    # If a commit listed in the `commits` field below is encountered then that commit will be skipped and no
+    # secrets will be detected for said commit. The same logic applies for regexes and paths.
+    [allowlist]
+    description = "global allow list"
+    commits = [ "commit-A", "commit-B", "commit-C"]
+    paths = [
+        '''gitleaks\.toml''',
+        '''(.*?)(jpg|gif|doc)'''
+    ]
+
+    # note: (global) regexTarget defaults to check the _Secret_ in the finding.
+    # if regexTarget is not specified then _Secret_ will be used.
+    # Acceptable values for regexTarget are "match" and "line"
+    regexTarget = "match"
+
+    regexes = [
+        '''219-09-9999''',
+        '''078-05-1120''',
+        '''(9[0-9]{2}|666)-\d{2}-\d{4}''',
+    ]
+    # note: stopwords targets the extracted secret, not the entire regex match
+    # if the extracted secret is found in the stopwords list, the finding will be skipped (i.e not included in report)
+    stopwords = [
+        '''client''',
+        '''endpoint''',
+    ]
+    ```
+</Accordion>
+
+![config](/images/platform/secret-scanning/secret-scanning-config.png)
+
 ## Ignoring Known Secrets
 If you're intentionally committing a test secret that the secret scanner might flag, you can instruct Infisical to overlook that secret with the methods listed below.
 

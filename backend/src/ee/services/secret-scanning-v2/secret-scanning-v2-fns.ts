@@ -30,9 +30,9 @@ export const cloneRepository = async ({ cloneUrl, repoPath }: TCloneRepository):
   });
 };
 
-export function scanDirectory(inputPath: string, outputPath: string): Promise<void> {
+export function scanDirectory(inputPath: string, outputPath: string, configPath?: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const command = `cd ${inputPath} && infisical scan --exit-code=77 -r "${outputPath}"`;
+    const command = `cd ${inputPath} && infisical scan --exit-code=77 -r "${outputPath}" ${configPath ? `-c ${configPath}` : ""}`;
     exec(command, (error) => {
       if (error && error.code !== 77) {
         reject(error);
@@ -43,8 +43,12 @@ export function scanDirectory(inputPath: string, outputPath: string): Promise<vo
   });
 }
 
-export const scanGitRepositoryAndGetFindings = async (scanPath: string, findingsPath: string): TGetFindingsPayload => {
-  await scanDirectory(scanPath, findingsPath);
+export const scanGitRepositoryAndGetFindings = async (
+  scanPath: string,
+  findingsPath: string,
+  configPath?: string
+): TGetFindingsPayload => {
+  await scanDirectory(scanPath, findingsPath, configPath);
 
   const findingsData = JSON.parse(await readFindingsFile(findingsPath)) as SecretMatch[];
 
@@ -56,11 +60,62 @@ export const scanGitRepositoryAndGetFindings = async (scanPath: string, findings
       ...finding
     }) => ({
       details: titleCaseToCamelCase(finding),
-      fingerprint: finding.Fingerprint,
+      fingerprint: `${finding.Fingerprint}:${finding.StartColumn}`,
       severity: SecretScanningFindingSeverity.High,
       rule: finding.RuleID
     })
   );
+};
+
+export const replaceNonChangesWithNewlines = (patch: string) => {
+  return patch
+    .split("\n")
+    .map((line) => {
+      // Keep added lines (remove the + prefix)
+      if (line.startsWith("+") && !line.startsWith("+++")) {
+        return line.substring(1);
+      }
+
+      // Replace everything else with newlines to maintain line positioning
+
+      return "";
+    })
+    .join("\n");
+};
+
+export const convertPatchLineToFileLineNumber = (patch: string, patchLineNumber: number) => {
+  const lines = patch.split("\n");
+  let currentPatchLine = 0;
+  let currentNewLine = 0;
+
+  for (const line of lines) {
+    currentPatchLine += 1;
+
+    // Hunk header: @@ -a,b +c,d @@
+    const hunkHeaderMatch = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
+    if (hunkHeaderMatch) {
+      const startLine = parseInt(hunkHeaderMatch[1], 10);
+      currentNewLine = startLine;
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    if (currentPatchLine === patchLineNumber) {
+      return currentNewLine;
+    }
+
+    if (line.startsWith("+++")) {
+      // eslint-disable-next-line no-continue
+      continue; // skip file metadata lines
+    }
+
+    // Advance only if the line exists in the new file
+    if (line.startsWith("+") || line.startsWith(" ")) {
+      currentNewLine += 1;
+    }
+  }
+
+  return currentNewLine;
 };
 
 const MAX_MESSAGE_LENGTH = 1024;

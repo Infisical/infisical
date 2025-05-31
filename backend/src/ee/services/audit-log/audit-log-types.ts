@@ -399,7 +399,9 @@ export enum EventType {
   SECRET_SCANNING_RESOURCE_LIST = "secret-scanning-resource-list",
   SECRET_SCANNING_SCAN_LIST = "secret-scanning-scan-list",
   SECRET_SCANNING_FINDING_LIST = "secret-scanning-finding-list",
-  SECRET_SCANNING_FINDING_UPDATE = "secret-scanning-finding-update"
+  SECRET_SCANNING_FINDING_UPDATE = "secret-scanning-finding-update",
+  SECRET_SCANNING_CONFIG_GET = "secret-scanning-config-get",
+  SECRET_SCANNING_CONFIG_UPDATE = "secret-scanning-config-update"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -3020,6 +3022,18 @@ interface SecretScanningFindingUpdateEvent {
   metadata: TUpdateSecretScanningFinding;
 }
 
+interface SecretScanningConfigUpdateEvent {
+  type: EventType.SECRET_SCANNING_CONFIG_UPDATE;
+  metadata: {
+    content: string | null;
+  };
+}
+
+interface SecretScanningConfigReadEvent {
+  type: EventType.SECRET_SCANNING_CONFIG_GET;
+  metadata?: Record<string, never>; // not needed, based off projectId
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -3297,4 +3311,6 @@ export type Event =
   | SecretScanningResourceListEvent
   | SecretScanningScanListEvent
   | SecretScanningFindingListEvent
-  | SecretScanningFindingUpdateEvent;
+  | SecretScanningFindingUpdateEvent
+  | SecretScanningConfigUpdateEvent
+  | SecretScanningConfigReadEvent;

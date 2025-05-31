@@ -3,6 +3,7 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import {
+  TGetSecretScanningConfigResponse,
   TGetSecretScanningDataSource,
   TGetSecretScanningUnresolvedFindingsResponse,
   TListSecretScanningDataSourceOptions,
@@ -10,6 +11,7 @@ import {
   TListSecretScanningFindingsResponse,
   TListSecretScanningResourcesResponse,
   TListSecretScanningScansResponse,
+  TSecretScanningConfig,
   TSecretScanningDataSource,
   TSecretScanningDataSourceOption,
   TSecretScanningDataSourceResponse,
@@ -42,7 +44,9 @@ export const secretScanningV2Keys = {
   finding: () => [...secretScanningV2Keys.all, "finding"] as const,
   findingCount: (projectId: string) =>
     [...secretScanningV2Keys.finding(), "count", projectId] as const,
-  listFindings: (projectId: string) => [...secretScanningV2Keys.finding(), "list", projectId]
+  listFindings: (projectId: string) => [...secretScanningV2Keys.finding(), "list", projectId],
+  configByProjectId: (projectId: string) =>
+    [...secretScanningV2Keys.all, "config", projectId] as const
 };
 
 export const useSecretScanningDataSourceOptions = (
@@ -212,6 +216,31 @@ export const useListSecretScanningFindings = (
       );
 
       return data.findings;
+    },
+    ...options
+  });
+};
+
+export const useGetSecretScanningConfig = (
+  projectId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TSecretScanningConfig,
+      unknown,
+      TSecretScanningConfig,
+      ReturnType<typeof secretScanningV2Keys.configByProjectId>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretScanningV2Keys.configByProjectId(projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetSecretScanningConfigResponse>(
+        `/api/v2/secret-scanning/configs/${projectId}`
+      );
+
+      return data.config;
     },
     ...options
   });

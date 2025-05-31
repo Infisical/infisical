@@ -16,8 +16,9 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 
 export const GitHubDataSourceConfigSchema = z.object({
   includeRepos: z
-    .array(z.string())
+    .array(z.string().min(1).max(256))
     .nonempty("One or more repositories required")
+    .max(25)
     .default(["*"])
     .describe(SecretScanningDataSources.CONFIG.GITHUB.includeRepos)
 });

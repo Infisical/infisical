@@ -128,6 +128,11 @@ export enum ProjectPermissionSecretScanningFindingActions {
   Update = "update-findings"
 }
 
+export enum ProjectPermissionSecretScanningConfigActions {
+  Read = "read-configs",
+  Update = "update-configs"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -216,7 +221,8 @@ export enum ProjectPermissionSub {
   SecretSyncs = "secret-syncs",
   Kmip = "kmip",
   SecretScanningDataSources = "secret-scanning-data-sources",
-  SecretScanningFindings = "secret-scanning-findings"
+  SecretScanningFindings = "secret-scanning-findings",
+  SecretScanningConfigs = "secret-scanning-configs"
 }
 
 export type SecretSubjectFields = {
@@ -345,6 +351,7 @@ export type ProjectPermissionSet =
       ProjectPermissionSecretScanningDataSourceActions,
       ProjectPermissionSub.SecretScanningDataSources
     ]
-  | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings];
+  | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
+  | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

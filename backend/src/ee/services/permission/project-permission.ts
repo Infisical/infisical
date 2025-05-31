@@ -138,6 +138,11 @@ export enum ProjectPermissionSecretScanningFindingActions {
   Update = "update-findings"
 }
 
+export enum ProjectPermissionSecretScanningConfigActions {
+  Read = "read-configs",
+  Update = "update-configs"
+}
+
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
@@ -175,7 +180,8 @@ export enum ProjectPermissionSub {
   SecretSyncs = "secret-syncs",
   Kmip = "kmip",
   SecretScanningDataSources = "secret-scanning-data-sources",
-  SecretScanningFindings = "secret-scanning-findings"
+  SecretScanningFindings = "secret-scanning-findings",
+  SecretScanningConfigs = "secret-scanning-configs"
 }
 
 export type SecretSubjectFields = {
@@ -300,7 +306,8 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
   | [ProjectPermissionSecretScanningDataSourceActions, ProjectPermissionSub.SecretScanningDataSources]
-  | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings];
+  | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
+  | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
@@ -633,6 +640,12 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretScanningFindings).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretScanningFindingActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretScanningConfigs).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretScanningConfigActions).describe(
       "Describe what action an entity can take."
     )
   })

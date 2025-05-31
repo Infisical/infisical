@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { SecretScanningConfigsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { GitHubDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/github";
 import {
@@ -10,7 +11,12 @@ import {
   SecretScanningDataSourceSchema,
   SecretScanningFindingSchema
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-union-schemas";
-import { ApiDocsTags, SecretScanningDataSources, SecretScanningFindings } from "@app/lib/api-docs";
+import {
+  ApiDocsTags,
+  SecretScanningConfigs,
+  SecretScanningDataSources,
+  SecretScanningFindings
+} from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -178,6 +184,96 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       });
 
       return { finding };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/configs/:projectId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretScanning],
+      description: "Get the Secret Scanning Config for the specified project.",
+      params: z.object({
+        projectId: z
+          .string()
+          .trim()
+          .min(1, "Project ID required")
+          .describe(SecretScanningConfigs.GET_BY_PROJECT_ID.projectId)
+      }),
+      response: {
+        200: z.object({
+          config: z.object({ content: z.string().nullish(), projectId: z.string(), updatedAt: z.date().nullish() })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { projectId },
+        permission
+      } = req;
+
+      const config = await server.services.secretScanningV2.findSecretScanningConfigByProjectId(projectId, permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.SECRET_SCANNING_CONFIG_GET
+        }
+      });
+
+      return { config };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/configs/:projectId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretScanning],
+      description: "Update the specified Secret Scanning Configuration.",
+      params: z.object({
+        projectId: z.string().trim().min(1, "Finding ID required").describe(SecretScanningConfigs.UPDATE.projectId)
+      }),
+      body: z.object({
+        content: z.string().nullable().describe(SecretScanningConfigs.UPDATE.content)
+      }),
+      response: {
+        200: z.object({ config: SecretScanningConfigsSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { projectId },
+        body,
+        permission
+      } = req;
+
+      const config = await server.services.secretScanningV2.upsertSecretScanningConfig(
+        { projectId, ...body },
+        permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.SECRET_SCANNING_CONFIG_UPDATE,
+          metadata: body
+        }
+      });
+
+      return { config };
     }
   });
 

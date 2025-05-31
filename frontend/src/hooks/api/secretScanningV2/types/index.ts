@@ -115,6 +115,15 @@ export type TGetSecretScanningUnresolvedFindingsResponse = {
   unresolvedFindings: number;
 };
 
+export type TSecretScanningConfig = {
+  projectId: string;
+  content: string | null;
+};
+
+export type TGetSecretScanningConfigResponse = {
+  config: TSecretScanningConfig;
+};
+
 export type TSecretScanningFinding = {
   id: string;
   dataSourceName: string;

@@ -107,6 +107,7 @@ export * from "./secret-rotation-outputs";
 export * from "./secret-rotation-v2-secret-mappings";
 export * from "./secret-rotations";
 export * from "./secret-rotations-v2";
+export * from "./secret-scanning-configs";
 export * from "./secret-scanning-data-sources";
 export * from "./secret-scanning-findings";
 export * from "./secret-scanning-git-risks";
