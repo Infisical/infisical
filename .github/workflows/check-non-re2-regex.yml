@@ -10,11 +10,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Get diff of backend/*
         run: |
           echo "Fetching base ref: ${{ github.base_ref }}"
-          git fetch origin ${{ github.base_ref }}
 
           echo "Generating diff for backend/ directory against origin/${{ github.base_ref }}"
           git diff --unified=0 "origin/${{ github.base_ref }}"...HEAD -- backend/ > diff.txt
