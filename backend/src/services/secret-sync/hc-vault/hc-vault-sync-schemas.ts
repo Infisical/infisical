@@ -23,7 +23,7 @@ const HCVaultSyncDestinationConfigSchema = z.object({
     .trim()
     .min(1, "Path required")
     .max(128)
-    .transform((val) => new RE2("^/+|/+$", "g").replace(val, "")) // removes leading/trailing slashes
+    .transform((val) => val.replace(/^\/+|\/+$/g, "")) // removes leading/trailing slashes
     .refine((val) => new RE2("^([a-zA-Z0-9._-]+/)*[a-zA-Z0-9._-]+$").test(val), {
       message:
         "Invalid Vault path format. Use alphanumerics, dots, dashes, underscores, and single slashes between segments."
