@@ -1,0 +1,56 @@
+name: Detect Non-RE2 Regex
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  check-non-re2-regex:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get diff of backend/*
+        run: |
+          echo "Fetching base ref: ${{ github.base_ref }}"
+          git fetch origin ${{ github.base_ref }}
+
+          echo "Generating diff for backend/ directory against origin/${{ github.base_ref }}"
+          git diff --unified=0 "origin/${{ github.base_ref }}"...HEAD -- backend/ > diff.txt
+
+      - name: Scan backend diff for non-RE2 regex
+        run: |
+          echo "Scanning added/modified lines in backend/ for raw regex literals..."
+          grep '^\+' diff.txt | grep -v '^\+\+\+ ' | sed 's/^\+//' > added_lines.txt
+
+          if [ ! -s added_lines.txt ]; then
+            echo "No relevant lines added or modified in backend/ found in the diff."
+            echo "✅ No raw regex literals to check in backend."
+            exit 0
+          fi
+
+          raw_regex_pattern='(^|[^A-Za-z0-9_])\/[^\/]+\/[gimsuy]*'
+
+          # First, find all added lines that contain the raw_regex_pattern.
+          grep -E "$raw_regex_pattern" added_lines.txt > potential_violations.txt
+
+          if [ -s potential_violations.txt ]; then # If any lines match the raw regex pattern
+            # From these potential violations, filter out lines that also contain the string 'RE2'.
+            grep -v 'RE2' potential_violations.txt > actual_violations.txt
+
+            if [ -s actual_violations.txt ]; then # If there are lines left after filtering out 'RE2'
+              echo "🚨 ERROR: Found raw regex usage in added/modified backend code."
+              echo "Please use 'new RE2(...)' for all regular expressions in the backend."
+              echo "Offending lines (from added/modified code, without leading '+'):"
+              cat actual_violations.txt
+              exit 1
+            else
+              # All lines that matched raw_regex_pattern also contained 'RE2'.
+              echo "✅ All potential raw regex literals found were correctly associated with 'RE2'."
+              echo "✅ No forbidden raw regex literals found in backend."
+            fi
+          else
+            # No lines matched the raw_regex_pattern at all.
+            echo "✅ No raw regex literals found in added/modified backend lines."
+          fi
