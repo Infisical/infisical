@@ -29,7 +29,6 @@ Using a hardware security module comes with the added benefit of having a secure
 
 Enabling HSM encryption has a set of key benefits:
 1. **Root Key Wrapping**: The root KMS encryption key that is used to secure your Infisical instance will be encrypted using the HSM device rather than the standard software-protected key.
-2. **FIPS 140-2/3 Compliance**: Using an HSM device ensures that your Infisical instance is FIPS 140-2 or FIPS 140-3 compliant. For FIPS 140-3, ensure that your HSM is FIPS 140-3 validated.
 
 #### Caveats
 - **Performance**: Using an HSM device can have a performance impact on your Infisical instance. This is due to the additional latency introduced by the HSM device. This is however only noticeable when your instance(s) start up or when the encryption strategy is changed.
@@ -40,13 +39,6 @@ Enabling HSM encryption has a set of key benefits:
 - If you are using Docker, your instance must be using the `infisical/infisical-fips` image.
 - An HSM device from a provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), [Fortanix HSM](https://www.fortanix.com/platform/data-security-manager), or others.
 
-
-### FIPS Compliance
-FIPS, also known as the Federal Information Processing Standard, is a set of standards that are used to accredit cryptographic modules. FIPS 140-2 and FIPS 140-3 are the two most common standards used for cryptographic modules. If your HSM uses FIPS 140-3 validated hardware, Infisical will automatically be FIPS 140-3 compliant. If your HSM uses FIPS 140-2 validated hardware, Infisical will be FIPS 140-2 compliant.
-
-HSM devices are especially useful for organizations that operate in regulated industries such as healthcare, finance, and government, where data security and compliance are of the utmost importance.
-
-For organizations that work with US government agencies, FIPS compliance is almost always a requirement when dealing with sensitive information. FIPS compliance ensures that the cryptographic modules used by the organization meet the security requirements set by the US government.
 
 ## Setup Instructions
 
