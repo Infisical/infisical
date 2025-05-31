@@ -27,7 +27,7 @@ jobs:
       - name: Scan backend diff for non-RE2 regex
         run: |
           echo "Scanning added/modified lines in backend/ for raw regex literals..."
-          grep '^\+' diff.txt | grep -v '^\+\+\+ ' | sed 's/^\+//' > added_lines.txt
+          grep '^+' diff.txt | grep -v '^+++' | sed 's/^\+//' > added_lines.txt
 
           echo "--- Content of added_lines.txt ---"
           cat added_lines.txt
