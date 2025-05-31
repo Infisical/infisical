@@ -20,18 +20,10 @@ jobs:
           echo "Generating diff for backend/ directory against origin/${{ github.base_ref }}"
           git diff --unified=0 "origin/${{ github.base_ref }}"...HEAD -- backend/ > diff.txt
 
-          echo "--- Content of diff.txt ---"
-          cat diff.txt
-          echo "--- End of diff.txt ---"
-
       - name: Scan backend diff for non-RE2 regex
         run: |
           echo "Scanning added/modified lines in backend/ for raw regex literals..."
           grep '^+' diff.txt | grep -v '^+++' | sed 's/^\+//' > added_lines.txt
-
-          echo "--- Content of added_lines.txt ---"
-          cat added_lines.txt
-          echo "--- End of added_lines.txt ---"
 
           if [ ! -s added_lines.txt ]; then
             echo "No relevant lines added or modified in backend/ found in the diff."
@@ -44,27 +36,18 @@ jobs:
           # First, find all added lines that contain the raw_regex_pattern.
           grep -E "$raw_regex_pattern" added_lines.txt > potential_violations.txt
 
-          echo "--- Content of potential_violations.txt ---"
-          cat potential_violations.txt
-          echo "--- End of potential_violations.txt ---"
-
           if [ -s potential_violations.txt ]; then # If any lines match the raw regex pattern
             # From these potential violations, filter out lines that also contain the string 'new RE2'.
             grep -v 'new RE2' potential_violations.txt > actual_violations.txt
 
-            echo "--- Content of actual_violations.txt ---"
-            cat actual_violations.txt
-            echo "--- End of actual_violations.txt ---"
-
             if [ -s actual_violations.txt ]; then # If there are lines left after filtering out 'new RE2'
               echo "🚨 ERROR: Found raw regex usage in added/modified backend code."
               echo "Please use 'new RE2(...)' for all regular expressions in the backend."
-              echo "Offending lines (from added/modified code, without leading '+'):"
+              echo "Offending lines:"
               cat actual_violations.txt
               exit 1
             else
               # All lines that matched raw_regex_pattern also contained 'new RE2'.
-              echo "✅ All potential raw regex literals found were correctly associated with 'new RE2'."
               echo "✅ No forbidden raw regex literals found in backend."
             fi
           else
