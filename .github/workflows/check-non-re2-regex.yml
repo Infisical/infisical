@@ -1,0 +1,51 @@
+name: Detect Non-RE2 Regex
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  check-non-re2-regex:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get diff of backend/*
+        run: |
+          git diff --unified=0 "origin/${{ github.base_ref }}"...HEAD -- backend/ > diff.txt
+
+      - name: Scan backend diff for non-RE2 regex
+        run: |
+          grep '^+' diff.txt | grep -v '^+++' | sed 's/^\+//' > added_lines.txt
+
+          if [ ! -s added_lines.txt ]; then
+            echo "✅ No raw regex literals to check in backend."
+            exit 0
+          fi
+
+          raw_regex_pattern='(^|[^A-Za-z0-9_])\/[^\/]+\/[gimsuy]*'
+
+          # Find all added lines that contain the raw_regex_pattern.
+          grep -E "$raw_regex_pattern" added_lines.txt > potential_violations.txt
+
+          if [ -s potential_violations.txt ]; then # If any lines match the raw regex pattern
+            # Filter out lines that also contain the string 'new RE2'.
+            grep -v 'new RE2' potential_violations.txt > actual_violations.txt
+
+            if [ -s actual_violations.txt ]; then # If there are lines left after filtering out 'new RE2'
+              echo "🚨 ERROR: Found raw regex usage in added/modified backend code."
+              echo "Please use 'new RE2(...)' for all regular expressions in the backend."
+              echo "Offending lines:"
+              cat actual_violations.txt
+              exit 1
+            else
+              # All lines that matched raw_regex_pattern also contained 'new RE2'.
+              echo "✅ No forbidden raw regex literals found in backend."
+            fi
+          else
+            # No lines matched the raw_regex_pattern at all.
+            echo "✅ No raw regex literals found in added/modified backend lines."
+          fi
