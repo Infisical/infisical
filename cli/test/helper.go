@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
@@ -71,7 +72,11 @@ func SetupCli() {
 }
 
 func FilterRequestID(input string) string {
-	// Find the JSON part of the error message
+	requestIDPattern := regexp.MustCompile(`\[request-id=[^\]]+\]`)
+	reqIDPattern := regexp.MustCompile(`\[reqId=[^\]]+\]`)
+	input = requestIDPattern.ReplaceAllString(input, "[request-id=<unknown-value>]")
+	input = reqIDPattern.ReplaceAllString(input, "[reqId=<unknown-value>]")
+
 	start := strings.Index(input, "{")
 	end := strings.LastIndex(input, "}") + 1
 
