@@ -52,6 +52,4 @@ jobs:
                   CLI_TESTS_USER_PASSWORD: ${{ secrets.CLI_TESTS_USER_PASSWORD }}
                 #   INFISICAL_VAULT_FILE_PASSPHRASE: ${{ secrets.CLI_TESTS_INFISICAL_VAULT_FILE_PASSPHRASE }}
 
-              run: UPDATE_SNAPSHOTS=true go test -v -count=1 ./test
-            - name: Print updated files
-              run: cat ./test/.snapshots/test-TestUniversalAuth_SecretsGetWrongEnvironment
+              run: go test -v -count=1 ./test
