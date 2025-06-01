@@ -33,7 +33,7 @@ type APIError struct {
 
 func (e *APIError) Error() string {
 	msg := fmt.Sprintf(
-		"%s Unsuccessful response [%v %v] [status-code=%v] [reqId=%v]",
+		"%s Unsuccessful response [%v %v] [status-code=%v] [request-id=%v]",
 		e.Operation,
 		e.Method,
 		e.URL,
@@ -55,6 +55,10 @@ func (e *APIError) Error() string {
 func NewAPIErrorWithResponse(operation string, res *resty.Response, additionalContext *string) error {
 	errorMessage := util.TryParseErrorBody(res)
 	reqId := util.TryExtractReqId(res)
+
+	if res == nil {
+		return NewGenericRequestError(operation, fmt.Errorf("response is nil"))
+	}
 
 	apiError := &APIError{
 		Operation:  operation,
