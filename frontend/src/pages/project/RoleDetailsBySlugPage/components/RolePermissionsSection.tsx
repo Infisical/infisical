@@ -158,8 +158,8 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                       variant="outline_bg"
                       type="submit"
                       className={twMerge(
-                        "mr-4 h-10 border border-primary",
-                        isDirty && "bg-primary text-black"
+                        "mr-4 h-10 border",
+                        isDirty && "bg-primary text-black hover:bg-primary hover:opacity-80"
                       )}
                       isDisabled={isSubmitting || !isDirty}
                       isLoading={isSubmitting}
