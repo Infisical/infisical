@@ -46,7 +46,7 @@ var initCmd = &cobra.Command{
 		}
 
 		if userCreds.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			userCreds = util.EstablishUserLoginSession()
 		}
 
 		httpClient, err := util.GetRestyClientWithCustomHeaders()
@@ -81,7 +81,7 @@ var initCmd = &cobra.Command{
 		if tokenResponse.MfaEnabled {
 			i := 1
 			for i < 6 {
-				mfaVerifyCode := askForMFACode(tokenResponse.MfaMethod)
+				mfaVerifyCode := util.AskForMFACode(tokenResponse.MfaMethod)
 
 				httpClient, err := util.GetRestyClientWithCustomHeaders()
 				if err != nil {

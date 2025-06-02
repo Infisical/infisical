@@ -184,7 +184,7 @@ func issueCredentials(cmd *cobra.Command, args []string) {
 		}
 
 		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
 		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
@@ -417,7 +417,7 @@ func signKey(cmd *cobra.Command, args []string) {
 		}
 
 		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
 		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
@@ -612,7 +612,7 @@ func sshConnect(cmd *cobra.Command, args []string) {
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
-	
+
 	var infisicalToken string
 
 	if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
@@ -626,7 +626,7 @@ func sshConnect(cmd *cobra.Command, args []string) {
 		}
 
 		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
 		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
@@ -640,7 +640,7 @@ func sshConnect(cmd *cobra.Command, args []string) {
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
-	
+
 	hostname, _ := cmd.Flags().GetString("hostname")
 	loginUser, _ := cmd.Flags().GetString("login-user")
 
@@ -858,7 +858,7 @@ func sshConnect(cmd *cobra.Command, args []string) {
 	err = sshCmd.Run()
 	if err != nil {
 		util.HandleError(err, "SSH connection failed")
-	}	
+	}
 }
 
 func sshAddHost(cmd *cobra.Command, args []string) {
@@ -879,7 +879,7 @@ func sshAddHost(cmd *cobra.Command, args []string) {
 			util.HandleError(err, "Unable to authenticate")
 		}
 		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login]")
+			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
 		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
@@ -904,7 +904,7 @@ func sshAddHost(cmd *cobra.Command, args []string) {
 	if err != nil {
 		util.HandleError(err, "Unable to parse --alias flag")
 	}
-	
+
 	// if alias == "" {
 	// 	util.PrintErrorMessageAndExit("You must provide --alias")
 	// }
@@ -937,7 +937,7 @@ func sshAddHost(cmd *cobra.Command, args []string) {
 	if configureSshd && (!writeUserCaToFile || !writeHostCertToFile) {
 		util.PrintErrorMessageAndExit("--configure-sshd requires both --write-user-ca-to-file and --write-host-cert-to-file to also be set")
 	}
-	
+
 	// Pre-check for file overwrites before proceeding
 	if writeUserCaToFile {
 		if strings.HasPrefix(userCaOutFilePath, "~") {

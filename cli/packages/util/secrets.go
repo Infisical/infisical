@@ -273,7 +273,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 		}
 
 		if isConnected && loggedInUserDetails.LoginExpired {
-			PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = EstablishUserLoginSession()
 		}
 
 		var infisicalDotJson models.WorkspaceConfigFile

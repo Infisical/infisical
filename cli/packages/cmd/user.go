@@ -111,8 +111,9 @@ var userGetTokenCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
+
 		if err != nil {
 			util.HandleError(err, "[infisical user get token]: Unable to get logged in user token")
 		}
@@ -176,7 +177,7 @@ var domainCmd = &cobra.Command{
 		domainQuery := true
 		if config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_EU_URL) && config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_US_URL) {
 
-			override, err := DomainOverridePrompt()
+			override, err := util.DomainOverridePrompt()
 			if err != nil {
 				util.HandleError(err, "[infisical user update domain]: Domain override prompt error")
 			}

@@ -25,7 +25,7 @@ func GetAllFolders(params models.GetAllFoldersParameters) ([]models.SingleFolder
 		}
 
 		if loggedInUserDetails.LoginExpired {
-			PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = EstablishUserLoginSession()
 		}
 
 		workspaceFile, err := GetWorkSpaceFromFile()
@@ -194,7 +194,7 @@ func CreateFolder(params models.CreateFolderParameters) (models.SingleFolder, er
 		}
 
 		if loggedInUserDetails.LoginExpired {
-			PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = EstablishUserLoginSession()
 		}
 
 		params.InfisicalToken = loggedInUserDetails.UserCredentials.JTWToken
@@ -244,7 +244,7 @@ func DeleteFolder(params models.DeleteFolderParameters) ([]models.SingleFolder, 
 		}
 
 		if loggedInUserDetails.LoginExpired {
-			PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = EstablishUserLoginSession()
 		}
 
 		params.InfisicalToken = loggedInUserDetails.UserCredentials.JTWToken
