@@ -1,5 +1,7 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
 import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { faEye, faTrashCan } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowRotateLeft,
   faCaretDown,
@@ -52,7 +54,6 @@ import {
   useDeleteProjectUserAdditionalPrivilege
 } from "@app/hooks/api";
 import { TAccessApprovalPolicy } from "@app/hooks/api/types";
-import { faEye, faTrashCan } from "@fortawesome/free-regular-svg-icons";
 
 const secretPermissionSchema = z.object({
   secretPath: z.string().optional(),
@@ -278,7 +279,7 @@ export const SpecificPrivilegeSecretForm = ({
                 <Select
                   {...field}
                   isDisabled={isMemberEditDisabled}
-                  className="bg-mineshaft-900 hover:bg-mineshaft-800 w-full"
+                  className="w-full bg-mineshaft-900 hover:bg-mineshaft-800"
                   onValueChange={(e) => onChange(e)}
                 >
                   {currentWorkspace?.environments?.map(({ slug, id, name }) => (
@@ -333,27 +334,33 @@ export const SpecificPrivilegeSecretForm = ({
             }}
           />
           <FormControl label="Permissions" className="w-full">
-            <div className="flex flex-col w-full justify-between">
-              <div className="flex flex-row gap-2 w-full">
+            <div className="flex w-full flex-col justify-between">
+              <div className="flex w-full flex-row gap-2">
                 <Controller
                   control={privilegeForm.control}
                   name="read"
                   render={({ field }) => (
-                    <label 
-                      className={`group cursor-pointer w-full flex flex-row justify-start items-center gap-2 border border-mineshaft-600 rounded-md p-3 my-1 bg-mineshaft-900 hover:bg-primary/10 hover:border-primary/30 duration-100 ${field.value ? "bg-primary/10 border-primary/50 hover:border-primary/50" : ""}`}
+                    <label
+                      className={`group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-3 duration-100 hover:border-primary/30 hover:bg-primary/10 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
                       htmlFor="secret-read"
                     >
                       <Checkbox
                         isDisabled={isMemberEditDisabled}
                         id="secret-read"
-                        className={`h-5 w-5 mx-2 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="flex flex-col text-mineshaft-300 ml-1">
+                      <div className="ml-1 flex flex-col text-mineshaft-300">
                         <div className="flex flex-row items-center gap-1">
-                          <FontAwesomeIcon icon={faEye} className={`text-sm ${field.value ? "text-primary-200" : ""}`} />
-                          <FormLabel label="View" className={`ml-0.5 text-mineshaft-300 mt-0 ${field.value ? "text-primary-200" : ""}`} />
+                          <FontAwesomeIcon
+                            icon={faEye}
+                            className={`text-sm ${field.value ? "text-primary-200" : ""}`}
+                          />
+                          <FormLabel
+                            label="View"
+                            className={`ml-0.5 mt-0 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
+                          />
                         </div>
                         <p className="text-xs text-mineshaft-400">Read secret values</p>
                       </div>
@@ -364,21 +371,27 @@ export const SpecificPrivilegeSecretForm = ({
                   control={privilegeForm.control}
                   name="create"
                   render={({ field }) => (
-                    <label 
-                      className={`group cursor-pointer w-full flex flex-row justify-start items-center gap-2 border border-mineshaft-600 rounded-md p-3 my-1 bg-mineshaft-900 hover:bg-primary/10 hover:border-primary/30 duration-100 ${field.value ? "bg-primary/10 border-primary/50 hover:border-primary/50" : ""}`}
+                    <label
+                      className={`group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-3 duration-100 hover:border-primary/30 hover:bg-primary/10 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
                       htmlFor="secret-change"
                     >
                       <Checkbox
                         isDisabled={isMemberEditDisabled}
                         id="secret-change"
-                        className={`h-5 w-5 mx-2 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="flex flex-col text-mineshaft-300 ml-1">
+                      <div className="ml-1 flex flex-col text-mineshaft-300">
                         <div className="flex flex-row items-center gap-1">
-                          <FontAwesomeIcon icon={faPlus} className={`text-sm ${field.value ? "text-primary-200" : ""}`} />
-                          <FormLabel label="Create" className={`ml-0.5 text-mineshaft-300 mt-0 ${field.value ? "text-primary-200" : ""}`} />
+                          <FontAwesomeIcon
+                            icon={faPlus}
+                            className={`text-sm ${field.value ? "text-primary-200" : ""}`}
+                          />
+                          <FormLabel
+                            label="Create"
+                            className={`ml-0.5 mt-0 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
+                          />
                         </div>
                         <p className="text-xs text-mineshaft-400">Create new secrets</p>
                       </div>
@@ -386,26 +399,32 @@ export const SpecificPrivilegeSecretForm = ({
                   )}
                 />
               </div>
-              <div className="flex flex-row gap-2 w-full">
+              <div className="flex w-full flex-row gap-2">
                 <Controller
                   control={privilegeForm.control}
                   name="edit"
                   render={({ field }) => (
-                    <label 
-                      className={`group cursor-pointer w-full flex flex-row justify-start items-center gap-2 border border-mineshaft-600 rounded-md p-3 my-1 bg-mineshaft-900 hover:bg-primary/10 hover:border-primary/30 duration-100 ${field.value ? "bg-primary/10 border-primary/50 hover:border-primary/50" : ""}`}
+                    <label
+                      className={`group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-3 duration-100 hover:border-primary/30 hover:bg-primary/10 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
                       htmlFor="secret-modify"
                     >
                       <Checkbox
                         isDisabled={isMemberEditDisabled}
                         id="secret-modify"
-                        className={`h-5 w-5 mx-2 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="flex flex-col text-mineshaft-300 ml-1">
+                      <div className="ml-1 flex flex-col text-mineshaft-300">
                         <div className="flex flex-row items-center gap-1">
-                          <FontAwesomeIcon icon={faPencil} className={`text-sm ${field.value ? "text-primary-200" : ""}`} />
-                          <FormLabel label="Modify" className={`ml-0.5 text-mineshaft-300 mt-0 ${field.value ? "text-primary-200" : ""}`} />
+                          <FontAwesomeIcon
+                            icon={faPencil}
+                            className={`text-sm ${field.value ? "text-primary-200" : ""}`}
+                          />
+                          <FormLabel
+                            label="Modify"
+                            className={`ml-0.5 mt-0 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
+                          />
                         </div>
                         <p className="text-xs text-mineshaft-400">Update existing secrets</p>
                       </div>
@@ -416,21 +435,27 @@ export const SpecificPrivilegeSecretForm = ({
                   control={privilegeForm.control}
                   name="delete"
                   render={({ field }) => (
-                    <label 
-                      className={`group cursor-pointer w-full flex flex-row justify-start items-center gap-2 border border-mineshaft-600 rounded-md p-3 my-1 bg-mineshaft-900 hover:bg-primary/10 hover:border-primary/30 duration-100 ${field.value ? "bg-primary/10 border-primary/50 hover:border-primary/50" : ""}`}
+                    <label
+                      className={`group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-3 duration-100 hover:border-primary/30 hover:bg-primary/10 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
                       htmlFor="secret-delete"
                     >
                       <Checkbox
                         isDisabled={isMemberEditDisabled}
                         id="secret-delete"
-                        className={`h-5 w-5 mx-2 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="flex flex-col text-mineshaft-300 ml-1">
+                      <div className="ml-1 flex flex-col text-mineshaft-300">
                         <div className="flex flex-row items-center gap-1">
-                          <FontAwesomeIcon icon={faTrashCan} className={`text-sm ${field.value ? "text-primary-200" : ""}`} />
-                          <FormLabel label="Delete" className={`ml-0.5 text-mineshaft-300 mt-0 ${field.value ? "text-primary-200" : ""}`} />
+                          <FontAwesomeIcon
+                            icon={faTrashCan}
+                            className={`text-sm ${field.value ? "text-primary-200" : ""}`}
+                          />
+                          <FormLabel
+                            label="Delete"
+                            className={`ml-0.5 mt-0 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
+                          />
                         </div>
                         <p className="text-xs text-mineshaft-400">Delete existing secrets</p>
                       </div>
@@ -441,7 +466,7 @@ export const SpecificPrivilegeSecretForm = ({
             </div>
           </FormControl>
           <FormControl label="Time Period" className="w-full">
-            <div className="mt-1 flex items-center space-x-2 w-full">
+            <div className="mt-1 flex w-full items-center space-x-2">
               <Popover>
                 <PopoverTrigger disabled={isMemberEditDisabled}>
                   <div className="w-full">
@@ -452,7 +477,7 @@ export const SpecificPrivilegeSecretForm = ({
                         rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-4" />}
                         isDisabled={isMemberEditDisabled}
                         className={twMerge(
-                          "border-mineshaft-600 text-mineshaft-300 w-full hover:border-mineshaft-600 bg-mineshaft-900 py-2.5 text-sm capitalize hover:bg-mineshaft-800",
+                          "w-full border-mineshaft-600 bg-mineshaft-900 py-2.5 text-sm capitalize text-mineshaft-300 hover:border-mineshaft-600 hover:bg-mineshaft-800",
                           isExpired && "text-red-600"
                         )}
                       >
@@ -466,12 +491,10 @@ export const SpecificPrivilegeSecretForm = ({
                   side="right"
                   sideOffset={12}
                   hideCloseBtn
-                  className="border border-mineshaft-600 pt-4 bg-mineshaft-800"
+                  className="border border-mineshaft-600 bg-mineshaft-800 pt-4"
                 >
                   <div className="flex flex-col space-y-4">
-                    <div className="text-sm text-mineshaft-300">
-                      Configure timed access
-                    </div>
+                    <div className="text-sm text-mineshaft-300">Configure timed access</div>
                     {isExpired && <Tag colorSchema="red">Expired</Tag>}
                     <Controller
                       control={privilegeForm.control}
@@ -599,7 +622,13 @@ export const SpecificPrivilegeSecretForm = ({
             render={({ field }) => (
               <div className="w-full">
                 <FormLabel label="Note" className="mb-2" />
-                <Input {...field} isDisabled={isMemberEditDisabled} maxLength={255} placeholder="Add the reason for this access request..." className="text-mineshaft-300" />
+                <Input
+                  {...field}
+                  isDisabled={isMemberEditDisabled}
+                  maxLength={255}
+                  placeholder="Add the reason for this access request..."
+                  className="text-mineshaft-300"
+                />
               </div>
             )}
           />
