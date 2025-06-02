@@ -78,7 +78,8 @@ export const dynamicSecretServiceFactory = ({
     actorOrgId,
     defaultTTL,
     actorAuthMethod,
-    metadata
+    metadata,
+    usernameTemplate
   }: TCreateDynamicSecretDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
@@ -163,7 +164,8 @@ export const dynamicSecretServiceFactory = ({
           defaultTTL,
           folderId: folder.id,
           name,
-          gatewayId: selectedGatewayId
+          gatewayId: selectedGatewayId,
+          usernameTemplate
         },
         tx
       );
@@ -199,7 +201,8 @@ export const dynamicSecretServiceFactory = ({
     newName,
     actorOrgId,
     actorAuthMethod,
-    metadata
+    metadata,
+    usernameTemplate
   }: TUpdateDynamicSecretDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
@@ -311,7 +314,8 @@ export const dynamicSecretServiceFactory = ({
           defaultTTL,
           name: newName ?? name,
           status: null,
-          gatewayId: selectedGatewayId
+          gatewayId: selectedGatewayId,
+          usernameTemplate
         },
         tx
       );
