@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -19,6 +20,8 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+
+	browser "github.com/pkg/browser"
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/config"
@@ -981,7 +984,17 @@ func browserCliLogin() (models.UserCredentials, error) {
 	callbackPort := listener.Addr().(*net.TCPAddr).Port
 	url := fmt.Sprintf("%s?callback_port=%d", config.INFISICAL_LOGIN_URL, callbackPort)
 
-	fmt.Printf("\n\nTo complete your login, open this address in your browser: %v \n", url)
+	defaultPrintStatement := fmt.Sprintf("\n\nTo complete your login, open this address in your browser: %v \n", url)
+
+	if os.Getenv("BROWSER") != "" && (runtime.GOOS == "darwin" || runtime.GOOS == "windows") {
+		if err := browser.OpenURL(url); err != nil {
+			fmt.Print(defaultPrintStatement)
+		} else {
+			fmt.Printf("\n\nPlease proceed to your browser to complete the login process.\nIf the browser doesn't open automatically, please open this address in your browser: %v \n", url)
+		}
+	} else {
+		fmt.Print(defaultPrintStatement)
+	}
 
 	//flow channels
 	success := make(chan models.UserCredentials)
