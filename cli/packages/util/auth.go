@@ -57,15 +57,20 @@ func IsAuthMethodValid(authMethod string, allowUserAuth bool) (isValid bool, str
 func EstablishUserLoginSession() LoggedInUserDetails {
 	log.Info().Msg("No valid login session found, triggering login flow")
 
+	exePath, err := os.Executable()
+	if err != nil {
+		PrintErrorMessageAndExit(fmt.Sprintf("Failed to determine executable path: %v", err))
+	}
+
 	// Spawn infisical login command
-	loginCmd := exec.Command(os.Args[0], "login", "--silent")
+	loginCmd := exec.Command(exePath, "login", "--silent")
 	loginCmd.Stdin = os.Stdin
 	loginCmd.Stdout = os.Stdout
 	loginCmd.Stderr = os.Stderr
 
-	err := loginCmd.Run()
+	err = loginCmd.Run()
 	if err != nil {
-		PrintErrorMessageAndExit(fmt.Sprintf("Failed to execute login command: %v", err))
+		PrintErrorMessageAndExit(fmt.Sprintf("Failed to automatically trigger login flow. Please run [infisical login] manually to login."))
 	}
 
 	loggedInUserDetails, err := GetCurrentLoggedInUserDetails(true)
