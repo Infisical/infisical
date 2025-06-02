@@ -1,8 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
   faBan,
+  faBullseye,
+  faCheckCircle,
+  faFilter,
+  faInfoCircle,
   faMagnifyingGlass,
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
@@ -10,6 +14,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
   EmptyState,
   IconButton,
   Input,
@@ -20,6 +29,7 @@ import {
   TBody,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
@@ -45,6 +55,15 @@ type Props = {
   dataSource: TSecretScanningDataSource;
 };
 
+enum ResourceStatus {
+  Active = "active",
+  Inactive = "inactive"
+}
+
+type ResourceFilters = {
+  status: ResourceStatus[];
+};
+
 export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
   const { permission } = useProjectPermission();
 
@@ -52,6 +71,10 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
     ProjectPermissionSecretScanningDataSourceActions.ReadResources,
     ProjectPermissionSub.SecretScanningDataSources
   );
+
+  const [filters, setFilters] = useState<ResourceFilters>({
+    status: [ResourceStatus.Active]
+  });
 
   const { data: resources = [], isPending: isResourcesPending } = useListSecretScanningResources(
     { dataSourceId: dataSource.id, type: dataSource.type },
@@ -81,6 +104,19 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
       resources
         .filter((resource) => {
           const { name } = resource;
+          const {
+            config: { includeRepos }
+          } = dataSource;
+
+          // scott: will need to be differentiated by type once other data sources are available
+          const isActive = includeRepos.includes("*") || includeRepos.includes(name);
+
+          if (filters.status.length === 1) {
+            if (filters.status.includes(ResourceStatus.Active)) {
+              return isActive;
+            }
+            return !isActive;
+          }
 
           const searchValue = search.trim().toLowerCase();
 
@@ -114,7 +150,7 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
               return resourceOne.name.toLowerCase().localeCompare(resourceTwo.name.toLowerCase());
           }
         }),
-    [resources, orderDirection, search, orderBy]
+    [resources, orderDirection, search, orderBy, filters, dataSource]
   );
 
   useResetPageHelper({
@@ -141,15 +177,74 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
 
   const resourceDetails = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
 
+  const isTableFiltered = Boolean(filters.status.length);
+
   return (
     <div>
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder={`Search ${resourceDetails.pluralNoun}...`}
-        className="flex-1"
-      />
+      <div className="flex gap-2">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          placeholder={`Search ${resourceDetails.pluralNoun}...`}
+          className="flex-1"
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton
+              ariaLabel="Filter data sources"
+              variant="plain"
+              size="sm"
+              className={twMerge(
+                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                isTableFiltered && "border-primary/50 text-primary"
+              )}
+            >
+              <FontAwesomeIcon icon={faFilter} />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
+            <DropdownMenuLabel className="flex w-full items-center justify-between">
+              Status
+              <Tooltip
+                content={`Inactive ${resourceDetails.pluralNoun} will not be scanned due to exclusion in Data Source configuration.`}
+              >
+                <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
+              </Tooltip>
+            </DropdownMenuLabel>
+            {Object.values(ResourceStatus).map((status) => (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  setFilters((prev) => ({
+                    ...prev,
+                    status: prev.status.includes(status)
+                      ? prev.status.filter((s) => s !== status)
+                      : [...prev.status, status]
+                  }));
+                }}
+                key={status}
+                icon={
+                  filters.status.includes(status) && (
+                    <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                  )
+                }
+                iconPos="right"
+              >
+                <div className="flex items-center gap-2">
+                  <FontAwesomeIcon
+                    icon={status === ResourceStatus.Active ? faBullseye : faBan}
+                    className={
+                      status === ResourceStatus.Active ? "text-primary" : "text-mineshaft-400"
+                    }
+                  />
+                  <span className="capitalize">{status.replace("-", " ")}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       <TableContainer className="mt-4">
         <Table>
           <THead>

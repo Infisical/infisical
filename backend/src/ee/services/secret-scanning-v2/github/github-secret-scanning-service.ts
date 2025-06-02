@@ -13,7 +13,8 @@ export const githubSecretScanningService = (
 ) => {
   const handleInstallationDeletedEvent = async (installationId: number) => {
     const dataSource = await secretScanningV2DAL.dataSources.findOne({
-      externalId: String(installationId)
+      externalId: String(installationId),
+      type: SecretScanningDataSource.GitHub
     });
 
     if (!dataSource) {

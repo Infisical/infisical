@@ -145,7 +145,7 @@ export const useUpdateSecretScanningConfig = () => {
   return useMutation({
     mutationFn: async ({ projectId, ...params }: TSecretScanningConfig) => {
       const { data } = await apiRequest.patch<TGetSecretScanningConfigResponse>(
-        `/api/v2/secret-scanning/configs/${projectId}`,
+        `/api/v2/secret-scanning/configs?projectId=${projectId}`,
         params
       );
 

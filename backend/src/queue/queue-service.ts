@@ -19,6 +19,7 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { QueueWorkerProfile } from "@app/lib/types";
 import {
   TFailedIntegrationSyncEmailsPayload,
   TIntegrationSyncPayload,
@@ -269,6 +270,37 @@ export type TQueueJobTypes = {
       };
 };
 
+const SECRET_SCANNING_JOBS = [
+  QueueJobs.SecretScanningV2FullScan,
+  QueueJobs.SecretScanningV2DiffScan,
+  QueueJobs.SecretScanningV2SendNotification,
+  QueueJobs.SecretScan
+];
+
+const NON_STANDARD_JOBS = [...SECRET_SCANNING_JOBS];
+
+const SECRET_SCANNING_QUEUES = [
+  QueueName.SecretScanningV2,
+  QueueName.SecretFullRepoScan,
+  QueueName.SecretPushEventScan
+];
+
+const NON_STANDARD_QUEUES = [...SECRET_SCANNING_QUEUES];
+
+const isQueueEnabled = (name: QueueName) => {
+  const appCfg = getConfig();
+  switch (appCfg.QUEUE_WORKER_PROFILE) {
+    case QueueWorkerProfile.Standard:
+      return !NON_STANDARD_QUEUES.includes(name);
+    case QueueWorkerProfile.SecretScanning:
+      return SECRET_SCANNING_QUEUES.includes(name);
+    case QueueWorkerProfile.All:
+    default:
+      // allow all
+      return true;
+  }
+};
+
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
 export const queueServiceFactory = (
   redisUrl: string,
@@ -325,7 +357,7 @@ export const queueServiceFactory = (
     });
 
     const appCfg = getConfig();
-    if (appCfg.QUEUE_WORKERS_ENABLED) {
+    if (appCfg.QUEUE_WORKERS_ENABLED && isQueueEnabled(name)) {
       workerContainer[name] = new Worker<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name, jobFn, {
         ...queueSettings,
         connection
@@ -342,6 +374,30 @@ export const queueServiceFactory = (
   ) => {
     if (queueContainerPg[jobName]) {
       throw new Error(`${jobName} queue is already initialized`);
+    }
+
+    const appCfg = getConfig();
+
+    if (!appCfg.QUEUE_WORKERS_ENABLED) return;
+
+    switch (appCfg.QUEUE_WORKER_PROFILE) {
+      case QueueWorkerProfile.Standard:
+        if (NON_STANDARD_JOBS.includes(jobName)) {
+          // only process standard jobs
+          return;
+        }
+
+        break;
+      case QueueWorkerProfile.SecretScanning:
+        if (!SECRET_SCANNING_JOBS.includes(jobName)) {
+          // only process secret scanning jobs
+          return;
+        }
+
+        break;
+      case QueueWorkerProfile.All:
+      default:
+      // allow all
     }
 
     await pgBoss.createQueue(jobName);
@@ -363,7 +419,7 @@ export const queueServiceFactory = (
     listener: WorkerListener<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>[U]
   ) => {
     const appCfg = getConfig();
-    if (!appCfg.QUEUE_WORKERS_ENABLED) {
+    if (!appCfg.QUEUE_WORKERS_ENABLED || !isQueueEnabled(name)) {
       return;
     }
 

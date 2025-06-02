@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { join } from "path";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -9,6 +10,12 @@ import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import {
+  createTempFolder,
+  deleteTempFolder,
+  scanContentAndGetFindings,
+  writeTextToFile
+} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { githubSecretScanningService } from "@app/ee/services/secret-scanning-v2/github/github-secret-scanning-service";
 import { SecretScanningFindingStatus } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-factory";
@@ -810,9 +817,25 @@ export const secretScanningV2ServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningConfigActions.Read,
+      ProjectPermissionSecretScanningConfigActions.Update,
       ProjectPermissionSub.SecretScanningConfigs
     );
+
+    if (content) {
+      const tempFolder = await createTempFolder();
+      try {
+        const configPath = join(tempFolder, "infisical-scan.toml");
+        await writeTextToFile(configPath, content);
+
+        await scanContentAndGetFindings("", configPath);
+      } catch (e) {
+        throw new BadRequestError({
+          message: "Unable to parse configuration: Check syntax and formatting."
+        });
+      } finally {
+        await deleteTempFolder(tempFolder);
+      }
+    }
 
     const [config] = await secretScanningV2DAL.configs.upsert(
       [

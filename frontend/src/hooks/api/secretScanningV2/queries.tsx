@@ -237,7 +237,8 @@ export const useGetSecretScanningConfig = (
     queryKey: secretScanningV2Keys.configByProjectId(projectId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetSecretScanningConfigResponse>(
-        `/api/v2/secret-scanning/configs/${projectId}`
+        "/api/v2/secret-scanning/configs",
+        { params: { projectId } }
       );
 
       return data.config;

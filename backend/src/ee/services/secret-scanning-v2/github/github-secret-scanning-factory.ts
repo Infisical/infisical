@@ -1,5 +1,6 @@
 import { join } from "path";
 import { ProbotOctokit } from "probot";
+import RE2 from "re2";
 
 import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
@@ -27,6 +28,8 @@ import { titleCaseToCamelCase } from "@app/lib/fn";
 import { listGitHubRadarRepositories, TGitHubRadarConnection } from "@app/services/app-connection/github-radar";
 
 import { TGitHubDataSourceWithConnection, TQueueGitHubResourceDiffScan } from "./github-secret-scanning-types";
+
+const GitHubRepositoryRegex = new RE2(/^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/);
 
 export const GitHubSecretScanningFactory = () => {
   const initialize: TSecretScanningFactoryInitialize<TGitHubRadarConnection> = async (
@@ -103,6 +106,10 @@ export const GitHubSecretScanningFactory = () => {
     });
 
     const repoPath = join(tempFolder, "repo.git");
+
+    if (!GitHubRepositoryRegex.test(resourceName)) {
+      throw new Error("Invalid GitHub repository name");
+    }
 
     await cloneRepository({
       cloneUrl: `https://x-access-token:${token}@github.com/${resourceName}.git`,

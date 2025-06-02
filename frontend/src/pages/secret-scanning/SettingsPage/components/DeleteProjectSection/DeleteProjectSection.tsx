@@ -64,7 +64,7 @@ export const DeleteProjectSection = () => {
       });
 
       navigate({
-        to: `/organization/${ProjectType.SecretManager}/overview` as const
+        to: `/organization/${ProjectType.SecretScanning}/overview` as const
       });
       handlePopUpClose("deleteWorkspace");
     } catch (err) {
@@ -123,7 +123,7 @@ export const DeleteProjectSection = () => {
       });
 
       navigate({
-        to: `/organization/${ProjectType.SecretManager}/overview` as const
+        to: `/organization/${ProjectType.SecretScanning}/overview` as const
       });
     } catch (err) {
       console.error(err);

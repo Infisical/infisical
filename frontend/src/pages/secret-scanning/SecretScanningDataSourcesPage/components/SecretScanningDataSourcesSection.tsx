@@ -24,10 +24,11 @@ export const SecretScanningDataSourcesSection = () => {
 
   const { data: dataSources = [], isPending: isDataSourcesPending } =
     useListSecretScanningDataSources(currentWorkspace.id, {
-      refetchInterval: 30000
+      refetchInterval: 30000,
+      enabled: subscription.secretScanning
     });
 
-  if (isDataSourcesPending)
+  if (subscription.secretScanning && isDataSourcesPending)
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-2">
         <Spinner />
@@ -57,7 +58,7 @@ export const SecretScanningDataSourcesSection = () => {
               </a>
             </div>
             <p className="text-sm text-bunker-300">
-              Use App Connections to scan for secret leaks from third-party services.
+              Configure Data Sources to scan for secret leaks from third-party services.
             </p>
           </div>
           <ProjectPermissionCan

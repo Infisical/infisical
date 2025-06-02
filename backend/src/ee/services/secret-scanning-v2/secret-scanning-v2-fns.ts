@@ -1,5 +1,6 @@
 import { AxiosError } from "axios";
 import { exec } from "child_process";
+import RE2 from "re2";
 
 import { readFindingsFile } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
@@ -83,6 +84,8 @@ export const replaceNonChangesWithNewlines = (patch: string) => {
     .join("\n");
 };
 
+const HunkHeaderRegex = new RE2(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
+
 export const convertPatchLineToFileLineNumber = (patch: string, patchLineNumber: number) => {
   const lines = patch.split("\n");
   let currentPatchLine = 0;
@@ -92,7 +95,7 @@ export const convertPatchLineToFileLineNumber = (patch: string, patchLineNumber:
     currentPatchLine += 1;
 
     // Hunk header: @@ -a,b +c,d @@
-    const hunkHeaderMatch = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
+    const hunkHeaderMatch = line.match(HunkHeaderRegex);
     if (hunkHeaderMatch) {
       const startLine = parseInt(hunkHeaderMatch[1], 10);
       currentNewLine = startLine;

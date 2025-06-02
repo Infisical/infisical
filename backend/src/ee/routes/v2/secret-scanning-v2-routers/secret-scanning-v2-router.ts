@@ -189,7 +189,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
 
   server.route({
     method: "GET",
-    url: "/configs/:projectId",
+    url: "/configs",
     config: {
       rateLimit: readLimit
     },
@@ -197,7 +197,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       hide: false,
       tags: [ApiDocsTags.SecretScanning],
       description: "Get the Secret Scanning Config for the specified project.",
-      params: z.object({
+      querystring: z.object({
         projectId: z
           .string()
           .trim()
@@ -213,7 +213,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
-        params: { projectId },
+        query: { projectId },
         permission
       } = req;
 
@@ -233,7 +233,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
 
   server.route({
     method: "PATCH",
-    url: "/configs/:projectId",
+    url: "/configs",
     config: {
       rateLimit: writeLimit
     },
@@ -241,7 +241,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       hide: false,
       tags: [ApiDocsTags.SecretScanning],
       description: "Update the specified Secret Scanning Configuration.",
-      params: z.object({
+      querystring: z.object({
         projectId: z.string().trim().min(1, "Finding ID required").describe(SecretScanningConfigs.UPDATE.projectId)
       }),
       body: z.object({
@@ -254,7 +254,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
-        params: { projectId },
+        query: { projectId },
         body,
         permission
       } = req;

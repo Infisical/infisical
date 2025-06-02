@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { QueueWorkerProfile } from "@app/lib/types";
+
 import { removeTrailingSlash } from "../fn";
 import { CustomLogger } from "../logger/logger";
 import { zpStr } from "../zod";
@@ -57,6 +59,7 @@ const envSchema = z
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
     QUEUE_WORKERS_ENABLED: zodStrBool.default("true"),
+    QUEUE_WORKER_PROFILE: z.nativeEnum(QueueWorkerProfile).default(QueueWorkerProfile.All),
     HTTPS_ENABLED: zodStrBool,
     ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     // smtp options

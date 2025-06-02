@@ -102,7 +102,7 @@ export const GitHubDataSourceConfigFields = () => {
                 isLoading={areRepositoriesLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 isMulti
-                value={repositories?.find((project) => value.includes(project.name))}
+                value={repositories?.filter((repository) => value.includes(repository.name))}
                 onChange={(newValue) => {
                   onChange(
                     newValue

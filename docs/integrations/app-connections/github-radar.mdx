@@ -5,6 +5,12 @@ description: "Learn how to configure a GitHub Radar Connection for Infisical."
 
 Infisical supports GitHub App installation for creating a GitHub Radar Connection.
 
+<Note>
+    GitHub Radar Connections are specifically configured for [Secret Scanning](/documentation/platform/secret-scanning/overview) and require specific permissions and webhook configuration.
+
+    Check out our [GitHub Connection](/integrations/app-connections/github) for secret management features such as [Secret Syncs](/integrations/secret-syncs/overview).
+</Note>
+
 <Accordion title="Self-Hosted Instance">
     Using a GitHub Radar Connection with app authentication on a self-hosted instance of Infisical requires configuring an application on GitHub
     and registering your instance with it.
@@ -38,19 +44,14 @@ Infisical supports GitHub App installation for creating a GitHub Radar Connectio
             ![github radar app webhook](/images/app-connections/github-radar/self-hosted-github-radar-step-3.png)
 
             Set the following repository permissions:
-            1. **Checks**: `Read and Write`
-            2. **Content**: `Read-only`
-            3. **Issues**: `Read and Write`
-            4. **Metadata**: `Read-only`
-            5. **Pull Requests**: `Read and Write`
+            - **Contents**: `Read-only`
+            - **Metadata**: `Read-only`
 
             ![github radar app permissions 1](/images/app-connections/github-radar/self-hosted-github-radar-step-4.png)
             ![github radar app permissions 2](/images/app-connections/github-radar/self-hosted-github-radar-step-5.png)
 
             Subscribe to the following events:
-            1. **Check run**
-            2. **Pull request**
-            3. **Push**
+            - **Push**
 
             ![github radar app events](/images/app-connections/github-radar/self-hosted-github-radar-step-6.png)
 
@@ -92,7 +93,7 @@ Infisical supports GitHub App installation for creating a GitHub Radar Connectio
     </Steps>
 </Accordion>
 
-## Setup GitHub Connection in Infisical
+## Setup GitHub Radar Connection in Infisical
 
 <Steps>
     <Step title="Navigate to App Connections">
@@ -100,7 +101,7 @@ Infisical supports GitHub App installation for creating a GitHub Radar Connectio
         ![App Connections Tab](/images/app-connections/general/add-connection.png)
     </Step>
     <Step title="Add Connection">
-        Select the **GitHub Connection** option from the connection options modal.
+        Select the **GitHub Radar Connection** option from the connection options modal.
         ![Select GitHub Radar Connection](/images/app-connections/github-radar/select-github-radar-connection.png)
     </Step>
     <Step title="Authorize Connection">

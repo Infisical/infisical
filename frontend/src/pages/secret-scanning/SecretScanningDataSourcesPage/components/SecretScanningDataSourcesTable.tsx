@@ -45,8 +45,6 @@ import {
 
 import { SecretScanningDataSourceRow } from "./SecretScanningDataSourceRow";
 
-// import { getSecretSyncDestinationColValues } from "./helpers";
-
 enum DataSourcesOrderBy {
   Findings = "findings",
   Name = "name",

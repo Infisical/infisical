@@ -9,7 +9,8 @@ import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { TSecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
-import { DataSourceConfigDisplay } from "@app/pages/secret-scanning/SecretScanningDataSourceByIdPage/components/DataSourceConfigDisplay/DataSourceConfigDisplay";
+
+import { DataSourceConfigDisplay } from "./DataSourceConfigDisplay";
 
 type Props = {
   dataSource: TSecretScanningDataSource;

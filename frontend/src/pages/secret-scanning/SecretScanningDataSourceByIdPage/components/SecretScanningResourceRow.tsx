@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import {
+  faBan,
   faCheck,
   faCopy,
   faEllipsisV,
@@ -49,6 +50,13 @@ type Props = {
 export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
   const { id, name, lastScannedAt, lastScanStatus, unresolvedFindings, lastScanStatusMessage } =
     resource;
+
+  const {
+    config: { includeRepos }
+  } = dataSource;
+
+  // scott: will need to be differentiated by type once other data sources are available
+  const isActive = includeRepos.includes("*") || includeRepos.includes(name);
 
   const triggerDataSourceScan = useTriggerSecretScanningDataSource();
 
@@ -175,61 +183,76 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
         )}
       </Td>
       <Td>
-        <Tooltip className="max-w-sm text-center" content="Options">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton
-                ariaLabel="Options"
-                colorSchema="secondary"
-                className="w-6"
-                variant="plain"
-              >
-                <FontAwesomeIcon icon={faEllipsisV} />
-              </IconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent sideOffset={2} align="end">
-              <DropdownMenuItem
-                icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCopyId(id);
-                }}
-              >
-                Copy Resource ID
-              </DropdownMenuItem>
-              <ProjectPermissionCan
-                I={ProjectPermissionSecretScanningDataSourceActions.TriggerScans}
-                a={ProjectPermissionSub.SecretScanningDataSources}
-              >
-                {(isAllowed) => (
-                  <DropdownMenuItem
-                    isDisabled={!isAllowed}
-                    icon={<FontAwesomeIcon icon={faExpand} />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleTriggerScan();
-                    }}
-                  >
-                    <Tooltip
-                      position="left"
-                      sideOffset={42}
-                      content={`Manually trigger a scan for this ${resourceDetails.singularNoun}.`}
+        <div className="flex items-center justify-end gap-2">
+          {!isActive && (
+            <Tooltip
+              className="text-xs"
+              content={`This ${resourceDetails.singularNoun} will not be scanned due to exclusion in Data Source configuration.`}
+            >
+              <div className="ml-auto">
+                <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+                  <FontAwesomeIcon icon={faBan} />
+                  <span>Inactive</span>
+                </Badge>
+              </div>
+            </Tooltip>
+          )}
+          <Tooltip className="max-w-sm text-center" content="Options">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  ariaLabel="Options"
+                  colorSchema="secondary"
+                  className="w-6"
+                  variant="plain"
+                >
+                  <FontAwesomeIcon icon={faEllipsisV} />
+                </IconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent sideOffset={2} align="end">
+                <DropdownMenuItem
+                  icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopyId(id);
+                  }}
+                >
+                  Copy Resource ID
+                </DropdownMenuItem>
+                <ProjectPermissionCan
+                  I={ProjectPermissionSecretScanningDataSourceActions.TriggerScans}
+                  a={ProjectPermissionSub.SecretScanningDataSources}
+                >
+                  {(isAllowed) => (
+                    <DropdownMenuItem
+                      isDisabled={!isAllowed || !isActive}
+                      icon={<FontAwesomeIcon icon={faExpand} />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTriggerScan();
+                      }}
                     >
-                      <div className="flex h-full w-full items-center justify-between gap-1">
-                        <span> Trigger Scan</span>
-                        <FontAwesomeIcon
-                          className="text-bunker-300"
-                          size="sm"
-                          icon={faInfoCircle}
-                        />
-                      </div>
-                    </Tooltip>
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </Tooltip>
+                      <Tooltip
+                        position="left"
+                        sideOffset={42}
+                        content={`Manually trigger a scan for this ${resourceDetails.singularNoun}.`}
+                      >
+                        <div className="flex h-full w-full items-center justify-between gap-1">
+                          <span> Trigger Scan</span>
+                          <FontAwesomeIcon
+                            className="text-bunker-300"
+                            size="sm"
+                            icon={faInfoCircle}
+                          />
+                        </div>
+                      </Tooltip>
+                    </DropdownMenuItem>
+                  )}
+                </ProjectPermissionCan>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Tooltip>
+        </div>
       </Td>
     </Tr>
   );
