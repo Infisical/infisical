@@ -1,5 +1,7 @@
 import { FileRouteTypes } from "@app/routeTree.gen";
 
+//
+
 const setRoute = <TFull extends FileRouteTypes["fullPaths"], TId extends FileRouteTypes["id"]>(
   path: TFull,
   id: TId

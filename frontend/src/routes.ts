@@ -4,7 +4,16 @@ const middleware = (fileName: string, virtualRoutes: VirtualRouteNode[]) =>
   layout(`middlewares/${fileName}`, virtualRoutes);
 
 const adminRoute = route("/admin", [
-  layout("admin-layout", "admin/layout.tsx", [index("admin/OverviewPage/route.tsx")])
+  layout("admin-layout", "admin/layout.tsx", [
+    index("admin/GeneralPage/route.tsx"),
+    route("/encryption", "admin/EncryptionPage/route.tsx"),
+    route("/authentication", "admin/AuthenticationPage/route.tsx"),
+    route("/integrations", "admin/IntegrationsPage/route.tsx"),
+    route("/caching", "admin/CachingPage/route.tsx"),
+    route("/resources/organizations", "admin/OrganizationResourcesPage/route.tsx"),
+    route("/resources/user-identities", "admin/UserIdentitiesResourcesPage/route.tsx"),
+    route("/resources/machine-identities", "admin/MachineIdentitiesResourcesPage/route.tsx")
+  ])
 ]);
 
 const organizationRoutes = route("/organization", [

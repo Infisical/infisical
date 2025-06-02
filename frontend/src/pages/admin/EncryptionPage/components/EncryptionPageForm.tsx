@@ -8,11 +8,11 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Select, SelectItem } from "@app/components/v2";
 import { useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useUpdateServerEncryptionStrategy } from "@app/hooks/api";
 import {
-  RootKeyEncryptionStrategy,
-  TGetServerRootKmsEncryptionDetails
-} from "@app/hooks/api/admin/types";
+  useGetServerRootKmsEncryptionDetails,
+  useUpdateServerEncryptionStrategy
+} from "@app/hooks/api";
+import { RootKeyEncryptionStrategy } from "@app/hooks/api/admin/types";
 
 const formSchema = z.object({
   encryptionStrategy: z.nativeEnum(RootKeyEncryptionStrategy)
@@ -25,11 +25,9 @@ const strategies: Record<RootKeyEncryptionStrategy, string> = {
 
 type TForm = z.infer<typeof formSchema>;
 
-type Props = {
-  rootKmsDetails?: TGetServerRootKmsEncryptionDetails;
-};
+export const EncryptionPageForm = () => {
+  const { data: rootKmsDetails } = useGetServerRootKmsEncryptionDetails();
 
-export const EncryptionPanel = ({ rootKmsDetails }: Props) => {
   const { mutateAsync: updateEncryptionStrategy } = useUpdateServerEncryptionStrategy();
   const { subscription } = useSubscription();
 
