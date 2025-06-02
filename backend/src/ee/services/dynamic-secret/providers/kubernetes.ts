@@ -116,7 +116,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
     }
   };
 
-  const create = async (inputs: unknown, expireAt: number) => {
+  const create = async ({ inputs, expireAt }: { inputs: unknown; expireAt: number }) => {
     const providerInputs = await validateProviderInputs(inputs);
 
     const tokenRequestCallback = async (host: string, port: number) => {
