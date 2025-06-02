@@ -2,10 +2,20 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TCertificateTemplate, TEstConfig } from "./types";
+import {
+  TCertificateTemplate,
+  TCertificateTemplateV2,
+  TEstConfig,
+  TListCertificateTemplatesDTO
+} from "./types";
 
 export const certTemplateKeys = {
   getCertTemplateById: (id: string) => [{ id }, "cert-template"],
+  listTemplates: ({ projectId, ...el }: { limit?: number; offset?: number; projectId: string }) => [
+    "list-template",
+    projectId,
+    el
+  ],
   getEstConfig: (id: string) => [{ id }, "cert-template-est-config"]
 };
 
@@ -19,6 +29,29 @@ export const useGetCertTemplate = (id: string) => {
       return certificateTemplate;
     },
     enabled: Boolean(id)
+  });
+};
+
+export const useListCertificateTemplates = ({
+  limit = 100,
+  offset = 0,
+  projectId
+}: TListCertificateTemplatesDTO) => {
+  return useQuery({
+    queryKey: certTemplateKeys.listTemplates({ limit, offset, projectId }),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        certificateTemplates: TCertificateTemplateV2[];
+        totalCount?: number;
+      }>("/api/v2/pki/certificate-templates", {
+        params: {
+          limit,
+          offset,
+          projectId
+        }
+      });
+      return data;
+    }
   });
 };
 

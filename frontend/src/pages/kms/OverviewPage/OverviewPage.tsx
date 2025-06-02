@@ -18,7 +18,7 @@ export const OverviewPage = () => {
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
         <div className="mx-auto mb-6 w-full max-w-7xl">
           <PageHeader
-            title="OverviewPage"
+            title="Overview Page"
             description="Manage keys and perform cryptographic operations."
           />
           <ProjectPermissionCan

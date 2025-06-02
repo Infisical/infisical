@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Checkbox, Modal, ModalContent } from "@app/components/v2";
+import { Button, Checkbox, Modal, ModalContent, Tooltip } from "@app/components/v2";
 import { useOrgPermission } from "@app/context";
 import { useUpgradePrivilegeSystem } from "@app/hooks/api";
 
@@ -262,7 +262,6 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                 </div>
               </div>
             </div>
-
             <form onSubmit={handleSubmit(handlePrivilegeSystemUpgrade)}>
               <div className="mt-6 flex items-center justify-end gap-4">
                 <button
@@ -272,17 +271,27 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                 >
                   Cancel
                 </button>
-                <Button
-                  type="submit"
-                  variant="solid"
-                  colorSchema="primary"
-                  size="md"
-                  className="w-[120px] bg-primary hover:bg-primary-600"
-                  isDisabled={!isAllChecksCompleted || !isAdmin}
-                  isLoading={isSubmitting}
+                <Tooltip
+                  content={
+                    !isAdmin
+                      ? `You cannot perform this upgrade because you are not an organization admin. (Your current role: ${membership?.role ?? "Unknown"})`
+                      : undefined
+                  }
                 >
-                  Upgrade
-                </Button>
+                  <div>
+                    <Button
+                      type="submit"
+                      variant="solid"
+                      colorSchema="primary"
+                      size="md"
+                      className="w-[120px] bg-primary hover:bg-primary-600"
+                      isDisabled={!isAllChecksCompleted || !isAdmin}
+                      isLoading={isSubmitting}
+                    >
+                      Upgrade
+                    </Button>
+                  </div>
+                </Tooltip>
               </div>
             </form>
           </div>

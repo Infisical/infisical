@@ -10,7 +10,7 @@ Infisical supports the use of [Simple Binding](https://ldap.com/the-ldap-bind-op
 You will need the following information to establish an LDAP connection:
 
 - **LDAP URL** - The LDAP/LDAPS URL to connect to (e.g., ldap://domain-or-ip:389 or ldaps://domain-or-ip:636)
-- **Binding DN** - The Distinguished Name (DN) of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com')
+- **Binding DN/UPN** - The Distinguished Name (DN), or User Principal Name (UPN) if supported, of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com')
 - **Binding Password** - The password to bind with for authentication
 - **CA Certificate** - The SSL certificate (PEM format) to use for secure connection when using ldaps:// with a self-signed certificate
 

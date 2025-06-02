@@ -56,7 +56,8 @@ const formSchema = z.object({
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
   name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
-  environment: z.object({ name: z.string(), slug: z.string() })
+  environment: z.object({ name: z.string(), slug: z.string() }),
+  usernameTemplate: z.string().nullable().optional()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -89,7 +90,8 @@ export const MongoDBDatabaseInputForm = ({
       provider: {
         roles: [{ roleName: "readWrite" }]
       },
-      environment: isSingleEnvironmentMode ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined,
+      usernameTemplate: "{{randomUsername}}"
     }
   });
 
@@ -105,10 +107,13 @@ export const MongoDBDatabaseInputForm = ({
     maxTTL,
     provider,
     defaultTTL,
-    environment
+    environment,
+    usernameTemplate
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
+
+    const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
     try {
       await createDynamicSecret.mutateAsync({
         provider: {
@@ -124,7 +129,9 @@ export const MongoDBDatabaseInputForm = ({
         path: secretPath,
         defaultTTL,
         projectSlug,
-        environmentSlug: environment.slug
+        environmentSlug: environment.slug,
+        usernameTemplate:
+          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
       });
       onCompleted();
     } catch {
@@ -272,7 +279,7 @@ export const MongoDBDatabaseInputForm = ({
               <FormLabel
                 label="Roles"
                 tooltipClassName="max-w-md whitespace-pre-line"
-                tooltipText={`Human-readable label that identifies a group of privileges assigned to a database user. This value can either be a built-in role or a custom role. 
+                tooltipText={`Human-readable label that identifies a group of privileges assigned to a database user. This value can either be a built-in role or a custom role.
 														Built-in: atlasAdmin, backup, clusterMonitor, dbAdmin, dbAdminAnyDatabase, enableSharding, read, readAnyDatabase, readWrite, readWriteAnyDatabase.`}
               />
               <div className="mb-3 mt-1 flex flex-col space-y-2">
@@ -340,6 +347,25 @@ export const MongoDBDatabaseInputForm = ({
                   )}
                 />
               </div>
+              <Controller
+                control={control}
+                name="usernameTemplate"
+                defaultValue=""
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Username Template"
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                  >
+                    <Input
+                      {...field}
+                      value={field.value || undefined}
+                      className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                      placeholder="{{randomUsername}}"
+                    />
+                  </FormControl>
+                )}
+              />
               {!isSingleEnvironmentMode && (
                 <Controller
                   control={control}

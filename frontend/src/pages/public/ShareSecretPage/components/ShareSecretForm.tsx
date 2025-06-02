@@ -71,12 +71,16 @@ type Props = {
   isPublic: boolean; // whether or not this is a public (non-authenticated) secret sharing form
   value?: string;
   allowSecretSharingOutsideOrganization?: boolean;
+  maxSharedSecretLifetime?: number;
+  maxSharedSecretViewLimit?: number | null;
 };
 
 export const ShareSecretForm = ({
   isPublic,
   value,
-  allowSecretSharingOutsideOrganization = true
+  allowSecretSharingOutsideOrganization = true,
+  maxSharedSecretLifetime,
+  maxSharedSecretViewLimit
 }: Props) => {
   const [secretLink, setSecretLink] = useState<string | null>(null);
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
@@ -87,6 +91,15 @@ export const ShareSecretForm = ({
   const privateSharedSecretCreator = useCreateSharedSecret();
   const createSharedSecret = isPublic ? publicSharedSecretCreator : privateSharedSecretCreator;
 
+  // Note: maxSharedSecretLifetime is in seconds
+  const filteredExpiresInOptions = maxSharedSecretLifetime
+    ? expiresInOptions.filter((v) => v.value / 1000 <= maxSharedSecretLifetime)
+    : expiresInOptions;
+
+  const filteredViewLimitOptions = maxSharedSecretViewLimit
+    ? viewLimitOptions.filter((v) => v.value > 0 && v.value <= maxSharedSecretViewLimit)
+    : viewLimitOptions;
+
   const {
     control,
     reset,
@@ -96,8 +109,9 @@ export const ShareSecretForm = ({
     resolver: zodResolver(schema),
     defaultValues: {
       secret: value || "",
-      viewLimit: "-1",
-      expiresIn: "3600000"
+      viewLimit: filteredViewLimitOptions[filteredViewLimitOptions.length - 1].value.toString(),
+      expiresIn:
+        filteredExpiresInOptions[Math.min(filteredExpiresInOptions.length - 1, 2)].value.toString()
     }
   });
 
@@ -277,6 +291,15 @@ export const ShareSecretForm = ({
                     label="Expires In"
                     errorText={error?.message}
                     isError={Boolean(error)}
+                    helperText={
+                      expiresInOptions.length !== filteredExpiresInOptions.length ? (
+                        <span className="text-yellow-500">
+                          Limited to{" "}
+                          {filteredExpiresInOptions[filteredExpiresInOptions.length - 1].label} by
+                          organization
+                        </span>
+                      ) : undefined
+                    }
                   >
                     <Select
                       defaultValue={field.value}
@@ -285,7 +308,11 @@ export const ShareSecretForm = ({
                       className="w-full"
                     >
                       {expiresInOptions.map(({ label, value: expiresInValue }) => (
-                        <SelectItem value={String(expiresInValue || "")} key={label}>
+                        <SelectItem
+                          value={String(expiresInValue || "")}
+                          key={label}
+                          isDisabled={!filteredExpiresInOptions.some((v) => v.label === label)}
+                        >
                           {label}
                         </SelectItem>
                       ))}
@@ -301,6 +328,15 @@ export const ShareSecretForm = ({
                     label="Max Views"
                     errorText={error?.message}
                     isError={Boolean(error)}
+                    helperText={
+                      viewLimitOptions.length !== filteredViewLimitOptions.length ? (
+                        <span className="text-yellow-500">
+                          Limited to{" "}
+                          {filteredViewLimitOptions[filteredViewLimitOptions.length - 1].label} by
+                          organization
+                        </span>
+                      ) : undefined
+                    }
                   >
                     <Select
                       defaultValue={field.value}
@@ -309,7 +345,11 @@ export const ShareSecretForm = ({
                       className="w-full"
                     >
                       {viewLimitOptions.map(({ label, value: viewLimitValue }) => (
-                        <SelectItem value={String(viewLimitValue || "")} key={label}>
+                        <SelectItem
+                          value={String(viewLimitValue || "")}
+                          key={label}
+                          isDisabled={!filteredViewLimitOptions.some((v) => v.label === label)}
+                        >
                           {label}
                         </SelectItem>
                       ))}

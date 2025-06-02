@@ -2,6 +2,7 @@ import axios, { AxiosError } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
+import { logger } from "@app/lib/logger";
 
 import { TFeatureSet } from "./license-types";
 
@@ -55,15 +56,24 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   kmip: false,
   gateway: false,
   sshHostGroups: false,
-  secretScanning: false
+  secretScanning: false,
+  enterpriseSecretSyncs: false,
+  enterpriseAppConnections: false
 });
 
-export const setupLicenseRequestWithStore = (baseURL: string, refreshUrl: string, licenseKey: string) => {
+export const setupLicenseRequestWithStore = (
+  baseURL: string,
+  refreshUrl: string,
+  licenseKey: string,
+  region?: string
+) => {
   let token: string;
   const licenseReq = axios.create({
     baseURL,
-    timeout: 35 * 1000
-    // signal: AbortSignal.timeout(60 * 1000)
+    timeout: 35 * 1000,
+    headers: {
+      "x-region": region
+    }
   });
 
   const refreshLicense = async () => {
@@ -99,9 +109,10 @@ export const setupLicenseRequestWithStore = (baseURL: string, refreshUrl: string
     (response) => response,
     async (err) => {
       const originalRequest = (err as AxiosError).config;
-
+      const errStatusCode = Number((err as AxiosError)?.response?.status);
+      logger.error((err as AxiosError)?.response?.data, "License server call error");
       // eslint-disable-next-line
-      if ((err as AxiosError)?.response?.status === 401 && !(originalRequest as any)._retry) {
+      if ((errStatusCode === 401 || errStatusCode === 403) && !(originalRequest as any)._retry) {
         // eslint-disable-next-line
         (originalRequest as any)._retry = true; // injected
 

@@ -26,6 +26,8 @@ export type Organization = {
   sshProductEnabled: boolean;
   scannerProductEnabled: boolean;
   shareSecretsProductEnabled: boolean;
+  maxSharedSecretLifetime: number;
+  maxSharedSecretViewLimit: number | null;
 };
 
 export type UpdateOrgDTO = {
@@ -46,6 +48,8 @@ export type UpdateOrgDTO = {
   sshProductEnabled?: boolean;
   scannerProductEnabled?: boolean;
   shareSecretsProductEnabled?: boolean;
+  maxSharedSecretViewLimit?: number | null;
+  maxSharedSecretLifetime?: number;
 };
 
 export type BillingDetails = {

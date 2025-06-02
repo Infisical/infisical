@@ -55,7 +55,7 @@ export const InternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   const { data: csr } = useGetCaCsr(caId);
 
   const { mutateAsync: signIntermediate } = useSignIntermediate();
-  const { mutateAsync: importCaCertificate } = useImportCaCertificate();
+  const { mutateAsync: importCaCertificate } = useImportCaCertificate(currentWorkspace.id);
 
   const {
     control,

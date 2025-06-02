@@ -17,10 +17,18 @@ import {
   // DatePicker
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { CaType, useCreateCa, useGetCaById, useUpdateCa } from "@app/hooks/api/ca";
+import {
+  CaStatus,
+  CaType,
+  InternalCaType,
+  useCreateCa,
+  useGetCa,
+  useUpdateCa
+} from "@app/hooks/api/ca";
 import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { slugSchema } from "@app/lib/schemas";
 
 const isValidDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -35,23 +43,31 @@ const getDateTenYearsFromToday = () => {
 
 const schema = z
   .object({
-    type: z.enum([CaType.ROOT, CaType.INTERMEDIATE]),
-    friendlyName: z.string(),
-    organization: z.string(),
-    ou: z.string(),
-    country: z.string(),
-    province: z.string(),
-    locality: z.string(),
-    commonName: z.string(),
-    notAfter: z.string().trim().refine(isValidDate, { message: "Invalid date format" }),
-    maxPathLength: z.string(),
-    keyAlgorithm: z.enum([
-      CertKeyAlgorithm.RSA_2048,
-      CertKeyAlgorithm.RSA_4096,
-      CertKeyAlgorithm.ECDSA_P256,
-      CertKeyAlgorithm.ECDSA_P384
-    ]),
-    requireTemplateForIssuance: z.boolean()
+    type: z.nativeEnum(CaType),
+    name: slugSchema({
+      field: "Name"
+    }),
+    enableDirectIssuance: z.boolean(),
+    status: z.nativeEnum(CaStatus),
+    configuration: z
+      .object({
+        type: z.enum([InternalCaType.ROOT, InternalCaType.INTERMEDIATE]),
+        organization: z.string(),
+        ou: z.string(),
+        country: z.string(),
+        province: z.string(),
+        locality: z.string(),
+        commonName: z.string(),
+        notAfter: z.string().trim().refine(isValidDate, { message: "Invalid date format" }),
+        maxPathLength: z.string(),
+        keyAlgorithm: z.enum([
+          CertKeyAlgorithm.RSA_2048,
+          CertKeyAlgorithm.RSA_4096,
+          CertKeyAlgorithm.ECDSA_P256,
+          CertKeyAlgorithm.ECDSA_P384
+        ])
+      })
+      .required()
   })
   .required();
 
@@ -63,15 +79,17 @@ type Props = {
 };
 
 const caTypes = [
-  { label: "Root", value: CaType.ROOT },
-  { label: "Intermediate", value: CaType.INTERMEDIATE }
+  { label: "Root", value: InternalCaType.ROOT },
+  { label: "Intermediate", value: InternalCaType.INTERMEDIATE }
 ];
 
 export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  // const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
-
-  const { data: ca } = useGetCaById((popUp?.ca?.data as { caId: string })?.caId || "");
+  const { data: ca } = useGetCa({
+    caName: (popUp?.ca?.data as { name: string })?.name || "",
+    projectId: currentWorkspace?.id || "",
+    type: CaType.INTERNAL
+  });
 
   const { mutateAsync: createMutateAsync } = useCreateCa();
   const { mutateAsync: updateMutateAsync } = useUpdateCa();
@@ -85,42 +103,12 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      type: CaType.ROOT,
-      friendlyName: "",
-      organization: "",
-      ou: "",
-      country: "",
-      province: "",
-      locality: "",
-      commonName: "",
-      notAfter: getDateTenYearsFromToday(),
-      maxPathLength: "-1",
-      keyAlgorithm: CertKeyAlgorithm.RSA_2048
-    }
-  });
-
-  const caType = watch("type");
-
-  useEffect(() => {
-    if (ca) {
-      reset({
-        type: ca.type,
-        friendlyName: ca.friendlyName,
-        organization: ca.organization,
-        ou: ca.ou,
-        country: ca.country,
-        province: ca.province,
-        locality: ca.locality,
-        commonName: ca.commonName,
-        notAfter: ca.notAfter ? format(new Date(ca.notAfter), "yyyy-MM-dd") : "",
-        maxPathLength: ca.maxPathLength ? String(ca.maxPathLength) : "",
-        keyAlgorithm: ca.keyAlgorithm,
-        requireTemplateForIssuance: ca.requireTemplateForIssuance
-      });
-    } else {
-      reset({
-        type: CaType.ROOT,
-        friendlyName: "",
+      type: CaType.INTERNAL,
+      name: "",
+      status: CaStatus.ACTIVE,
+      enableDirectIssuance: true,
+      configuration: {
+        type: InternalCaType.ROOT,
         organization: "",
         ou: "",
         country: "",
@@ -129,25 +117,65 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         commonName: "",
         notAfter: getDateTenYearsFromToday(),
         maxPathLength: "-1",
-        keyAlgorithm: CertKeyAlgorithm.RSA_2048,
-        requireTemplateForIssuance: true
+        keyAlgorithm: CertKeyAlgorithm.RSA_2048
+      }
+    }
+  });
+
+  const caType = watch("configuration.type");
+
+  useEffect(() => {
+    if (ca && ca.type === CaType.INTERNAL) {
+      reset({
+        type: ca.type,
+        name: ca.name,
+        status: ca.status,
+        enableDirectIssuance: ca.enableDirectIssuance,
+        configuration: {
+          type: ca.configuration.type,
+          organization: ca.configuration.organization,
+          ou: ca.configuration.ou,
+          country: ca.configuration.country,
+          province: ca.configuration.province,
+          locality: ca.configuration.locality,
+          commonName: ca.configuration.commonName,
+          notAfter: ca.configuration.notAfter
+            ? format(new Date(ca.configuration.notAfter), "yyyy-MM-dd")
+            : "",
+          maxPathLength: ca.configuration.maxPathLength
+            ? String(ca.configuration.maxPathLength)
+            : "",
+          keyAlgorithm: ca.configuration.keyAlgorithm
+        }
+      });
+    } else {
+      reset({
+        type: CaType.INTERNAL,
+        name: "",
+        status: CaStatus.ACTIVE,
+        enableDirectIssuance: true,
+        configuration: {
+          type: InternalCaType.ROOT,
+          organization: "",
+          ou: "",
+          country: "",
+          province: "",
+          locality: "",
+          commonName: "",
+          notAfter: getDateTenYearsFromToday(),
+          maxPathLength: "-1",
+          keyAlgorithm: CertKeyAlgorithm.RSA_2048
+        }
       });
     }
   }, [ca]);
 
   const onFormSubmit = async ({
     type,
-    friendlyName,
-    commonName,
-    organization,
-    ou,
-    country,
-    locality,
-    province,
-    notAfter,
-    maxPathLength,
-    keyAlgorithm,
-    requireTemplateForIssuance
+    name,
+    enableDirectIssuance,
+    status,
+    configuration
   }: FormData) => {
     try {
       if (!currentWorkspace?.slug) return;
@@ -155,26 +183,25 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
       if (ca) {
         // update
         await updateMutateAsync({
-          projectSlug: currentWorkspace.slug,
-          caId: ca.id,
-          requireTemplateForIssuance
+          caName: ca.name,
+          projectId: currentWorkspace.id,
+          name,
+          type: CaType.INTERNAL,
+          status,
+          enableDirectIssuance
         });
       } else {
         // create
         await createMutateAsync({
-          projectSlug: currentWorkspace.slug,
+          projectId: currentWorkspace.id,
+          name,
           type,
-          friendlyName,
-          commonName,
-          organization,
-          ou,
-          country,
-          province,
-          locality,
-          notAfter,
-          maxPathLength: Number(maxPathLength),
-          keyAlgorithm,
-          requireTemplateForIssuance
+          status,
+          enableDirectIssuance,
+          configuration: {
+            ...configuration,
+            maxPathLength: Number(configuration.maxPathLength)
+          }
         });
       }
 
@@ -211,8 +238,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           )}
           <Controller
             control={control}
-            name="type"
-            defaultValue={CaType.ROOT}
+            name="configuration.type"
+            defaultValue={InternalCaType.ROOT}
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <FormControl label="CA Type" errorText={error?.message} isError={Boolean(error)}>
                 <Select
@@ -231,7 +258,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
               </FormControl>
             )}
           />
-          {caType === CaType.ROOT && (
+          {caType === InternalCaType.ROOT && (
             <>
               {/* <Controller
                 name="notAfter"
@@ -264,7 +291,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
               <Controller
                 control={control}
                 defaultValue=""
-                name="notAfter"
+                name="configuration.notAfter"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label="Valid Until"
@@ -278,7 +305,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
               />
               <Controller
                 control={control}
-                name="maxPathLength"
+                name="configuration.maxPathLength"
                 defaultValue="-1"
                 render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                   <FormControl
@@ -307,7 +334,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           )}
           <Controller
             control={control}
-            name="keyAlgorithm"
+            name="configuration.keyAlgorithm"
             defaultValue={CertKeyAlgorithm.RSA_2048}
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <FormControl
@@ -334,21 +361,22 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           <Controller
             control={control}
             defaultValue=""
-            name="friendlyName"
+            name="name"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Friendly Name"
+                label="Name"
                 isError={Boolean(error)}
                 errorText={error?.message}
+                isRequired
               >
-                <Input {...field} placeholder="My CA" isDisabled={Boolean(ca)} />
+                <Input {...field} placeholder="my-internal-ca" isDisabled={Boolean(ca)} />
               </FormControl>
             )}
           />
           <Controller
             control={control}
             defaultValue=""
-            name="organization"
+            name="configuration.organization"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Organization (O)"
@@ -362,7 +390,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           <Controller
             control={control}
             defaultValue=""
-            name="ou"
+            name="configuration.ou"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Organization Unit (OU)"
@@ -376,7 +404,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           <Controller
             control={control}
             defaultValue=""
-            name="country"
+            name="configuration.country"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Country Name (C)"
@@ -390,7 +418,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           <Controller
             control={control}
             defaultValue=""
-            name="province"
+            name="configuration.province"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="State or Province Name"
@@ -404,7 +432,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           <Controller
             control={control}
             defaultValue=""
-            name="locality"
+            name="configuration.locality"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Locality Name"
@@ -418,7 +446,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           <Controller
             control={control}
             defaultValue=""
-            name="commonName"
+            name="configuration.commonName"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Common Name (CN)"
@@ -431,16 +459,16 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           />
           <Controller
             control={control}
-            name="requireTemplateForIssuance"
+            name="enableDirectIssuance"
             render={({ field, fieldState: { error } }) => {
               return (
                 <FormControl isError={Boolean(error)} errorText={error?.message} className="my-8">
                   <Switch
-                    id="is-active"
+                    id="enable-direct-issuance"
                     onCheckedChange={(value) => field.onChange(value)}
                     isChecked={field.value}
                   >
-                    <p className="w-full">Require Template for Certificate Issuance</p>
+                    <p className="w-full">Enable Direct Issuance</p>
                   </Switch>
                 </FormControl>
               );

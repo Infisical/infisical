@@ -4,6 +4,7 @@ description: "Learn how to authenticate to Infisical from any platform or enviro
 ---
 
 **Universal Auth** is a platform-agnostic authentication method that can be configured for a [machine identity](/documentation/platform/identities/machine-identities) to authenticate from any platform/environment using a Client ID and Client Secret.
+This authentication method supports setting token periods, which can help [overcome secret zero](#solving-secret-zero-with-periodic-tokens). 
 
 ## Diagram
 
@@ -64,7 +65,8 @@ using the Universal Auth authentication method.
     By default, the identity has been configured with Universal Auth. If you wish, you can edit the Universal Auth configuration
     details by pressing to edit the **Authentication** section.
 
-    ![identities organization create universal auth method](/images/platform/identities/identities-org-create-universal-auth-method.png)
+    ![identities organization create universal auth method 1](/images/platform/identities/identities-org-create-universal-auth-method-1.png)
+    ![identities organization create universal auth method 2](/images/platform/identities/identities-org-create-universal-auth-method-2.png)
 
     Here's some more guidance on each field:
 
@@ -73,11 +75,12 @@ using the Universal Auth authentication method.
     - Access Token Max Number of Uses (default is `0`): The maximum number of times that an access token can be used; a value of `0` implies infinite number of uses.
     - Client Secret Trusted IPs: The IPs or CIDR ranges that the **Client Secret** can be used from together with the **Client ID** to get back an access token. By default, **Client Secrets** are given the `0.0.0.0/0`, allowing usage from any network address.
     - Access Token Trusted IPs: The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the `0.0.0.0/0`, allowing usage from any network address.
+    - Access Token Period (optional, default is `0`): If set, the access token becomes a renewable, non-expiring token for the specified period (in seconds). TTL and Max TTL are ignored when this is set. This is ideal for "secret zero" scenarios, where a workload needs to bootstrap itself securely without hard-coded static secrets.
 
     <Warning>
     Restricting **Client Secret** and access token usage to specific trusted IPs is a paid feature.
 
-    If you’re using Infisical Cloud, then it is available under the Pro Tier. If you’re self-hosting Infisical, then you should contact sales@infisical.com to purchase an enterprise license to use it.
+    If you're using Infisical Cloud, then it is available under the Pro Tier. If you're self-hosting Infisical, then you should contact sales@infisical.com to purchase an enterprise license to use it.
     </Warning>
 
   </Step>
@@ -96,6 +99,7 @@ using the Universal Auth authentication method.
     - Description: A description for the **Client Secret**.
     - TTL (default is `0`): The time-to-live for the **Client Secret**. By default, the TTL will be set to 0 which implies that the **Client Secret** will never expire; a value of `0` implies an infinite lifetime.
     - Max Number of Uses (default is `0`): The maximum number of times that the **Client Secret** can be used together with the **Client ID** to get back an access token; a value of `0` implies infinite number of uses.
+
   </Step>
   <Step title="Adding an identity to a project">
     To enable the identity to access project-level resources such as secrets within a specific project, you should add it to that project.
@@ -154,23 +158,50 @@ using the Universal Auth authentication method.
   </Step>
 </Steps>
 
+## Solving Secret Zero with Periodic Tokens
+
+In many automated, cloud-native, or ephemeral environments (such as VMs, containers, or serverless functions), it is often unsafe or impractical to hard-code long-lived credentials for bootstrapping access to secrets management systems. The "secret zero" problem refers to the challenge of securely providing a workload with its initial credential, without manual intervention or static secrets that could be leaked or reused. Periodic tokens in Universal Auth are designed to solve this problem by enabling secure, automated bootstrapping and ongoing access renewal, even in dynamic or short-lived environments.
+
+A common challenge in cloud-native and automated environments is the "secret zero" problem: how to securely bootstrap a workload (such as a VM, container, or serverless function) with its first credential, without hard-coding static secrets or requiring manual intervention.
+
+**Periodic tokens** in Universal Auth solve this by allowing you to issue an access token that can be continuously renewed by your workload before it expires (i.e., a client-initiated rotation mechanism):
+
+- When you set the **Access Token Period** in the Universal Auth configuration, the issued access token can be renewed by your workload for the specified period (in seconds).
+- The token can be renewed any number of times, each time for the same period, with no maximum lifetime (unless you set a use limit).
+- As long as the token is renewed before its period expires, it remains valid, so you do not need to re-issue static credentials.
+- TTL and Max TTL are ignored when Access Token Period is set.
+
+### Example: Bootstrapping with a Periodic Token
+
+1. Configure Universal Auth for your identity and set **Access Token Period** (e.g., `3600` for 1 hour).
+2. For improved security, configure the Client Secret with a low number of uses (e.g., `1`) or a short TTL. This ensures that after the initial login, the Client Secret cannot be reused, and any disruption in token renewal will require manual intervention.
+3. Deploy your workload with the **Client Secret** and **Client ID**.
+4. The workload authenticates with Infisical using the Client Secret and Client ID to obtain the initial access token (JWT).
+5. The workload uses the access token to authenticate and continuously renews it before expiration:
+
+```bash
+curl --location --request POST 'https://app.infisical.com/api/v1/auth/universal-auth/renew' \
+  --header 'Authorization: Bearer <accessToken>'
+```
+
+This approach allows your workload to securely bootstrap and maintain access to Infisical without hard-coded secrets, solving the secret zero problem.
+
 **FAQ**
 
 <AccordionGroup>
-<Accordion title="Why is the Infisical API rejecting my identity credentials?">
-  There are a few reasons for why this might happen:
+  <Accordion title="Why is the Infisical API rejecting my identity credentials?">
+    There are a few reasons for why this might happen:
+    - The client secret or access token has expired.
+    - The identity is insufficiently permissioned to interact with the resources you wish to access.
+    - The client secret/access token is being used from an untrusted IP.
+  </Accordion>
+  <Accordion title="What is access token renewal and TTL/Max TTL?">
+    A identity access token can have a time-to-live (TTL) or incremental lifetime after which it expires.
 
-  - The client secret or access token has expired.
-  - The identity is insufficiently permissioned to interact with the resources you wish to access.
-  - The client secret/access token is being used from an untrusted IP.
-</Accordion>
-<Accordion title="What is access token renewal and TTL/Max TTL?">
-  A identity access token can have a time-to-live (TTL) or incremental lifetime after which it expires.
+    In certain cases, you may want to extend the lifespan of an access token; to do so, you must set a max TTL parameter.
 
-  In certain cases, you may want to extend the lifespan of an access token; to do so, you must set a max TTL parameter.
+    A token can be renewed any number of times where each call to renew it can extend the token's lifetime by increments of the access token's TTL.
+    Regardless of how frequently an access token is renewed, its lifespan remains bound to the maximum TTL determined at its creation.
 
-A token can be renewed any number of times where each call to renew it can extend the token's lifetime by increments of the access token's TTL.
-Regardless of how frequently an access token is renewed, its lifespan remains bound to the maximum TTL determined at its creation.
-
-</Accordion>
+  </Accordion>
 </AccordionGroup>

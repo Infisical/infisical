@@ -18,11 +18,20 @@ export enum ApproverType {
   User = "user"
 }
 
+export enum BypasserType {
+  Group = "group",
+  User = "user"
+}
+
 export type TCreateAccessApprovalPolicy = {
   approvals: number;
   secretPath: string;
   environment: string;
-  approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; name?: string })[];
+  approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; username?: string })[];
+  bypassers?: (
+    | { type: BypasserType.Group; id: string }
+    | { type: BypasserType.User; id?: string; username?: string }
+  )[];
   projectSlug: string;
   name: string;
   enforcementLevel: EnforcementLevel;
@@ -32,7 +41,11 @@ export type TCreateAccessApprovalPolicy = {
 export type TUpdateAccessApprovalPolicy = {
   policyId: string;
   approvals?: number;
-  approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; name?: string })[];
+  approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; username?: string })[];
+  bypassers?: (
+    | { type: BypasserType.Group; id: string }
+    | { type: BypasserType.User; id?: string; username?: string }
+  )[];
   secretPath?: string;
   name?: string;
   enforcementLevel?: EnforcementLevel;

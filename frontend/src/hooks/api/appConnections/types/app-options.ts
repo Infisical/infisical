@@ -65,6 +65,10 @@ export type TMsSqlConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.MsSql;
 };
 
+export type TMySqlConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.MySql;
+};
+
 export type TCamundaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Camunda;
 };
@@ -93,6 +97,10 @@ export type TOCIConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OCI;
 };
 
+export type TOnePassConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.OnePass;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -106,12 +114,14 @@ export type TAppConnectionOption =
   | TVercelConnectionOption
   | TPostgresConnectionOption
   | TMsSqlConnectionOption
+  | TMySqlConnectionOption
   | TCamundaConnectionOption
   | TWindmillConnectionOption
   | TAuth0ConnectionOption
   | THCVaultConnectionOption
   | TTeamCityConnectionOption
-  | TOCIConnectionOption;
+  | TOCIConnectionOption
+  | TOnePassConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -127,6 +137,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Vercel]: TVercelConnectionOption;
   [AppConnection.Postgres]: TPostgresConnectionOption;
   [AppConnection.MsSql]: TMsSqlConnectionOption;
+  [AppConnection.MySql]: TMySqlConnectionOption;
   [AppConnection.Camunda]: TCamundaConnectionOption;
   [AppConnection.Windmill]: TWindmillConnectionOption;
   [AppConnection.Auth0]: TAuth0ConnectionOption;
@@ -134,4 +145,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.LDAP]: TLdapConnectionOption;
   [AppConnection.TeamCity]: TTeamCityConnectionOption;
   [AppConnection.OCI]: TOCIConnectionOption;
+  [AppConnection.OnePass]: TOnePassConnectionOption;
 };

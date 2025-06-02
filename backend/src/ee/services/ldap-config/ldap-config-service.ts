@@ -380,7 +380,7 @@ export const ldapConfigServiceFactory = ({
         if (serverCfg.trustLdapEmails) {
           newUser = await userDAL.findOne(
             {
-              email,
+              email: email.toLowerCase(),
               isEmailVerified: true
             },
             tx
@@ -391,8 +391,8 @@ export const ldapConfigServiceFactory = ({
           const uniqueUsername = await normalizeUsername(username, userDAL);
           newUser = await userDAL.create(
             {
-              username: serverCfg.trustLdapEmails ? email : uniqueUsername,
-              email,
+              username: serverCfg.trustLdapEmails ? email.toLowerCase() : uniqueUsername,
+              email: email.toLowerCase(),
               isEmailVerified: serverCfg.trustLdapEmails,
               firstName,
               lastName,
@@ -429,7 +429,7 @@ export const ldapConfigServiceFactory = ({
           await orgMembershipDAL.create(
             {
               userId: newUser.id,
-              inviteEmail: email,
+              inviteEmail: email.toLowerCase(),
               orgId,
               role,
               roleId,

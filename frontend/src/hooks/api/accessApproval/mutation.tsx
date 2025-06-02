@@ -21,6 +21,7 @@ export const useCreateAccessApprovalPolicy = () => {
       projectSlug,
       approvals,
       approvers,
+      bypassers,
       name,
       secretPath,
       enforcementLevel,
@@ -30,6 +31,7 @@ export const useCreateAccessApprovalPolicy = () => {
         environment,
         projectSlug,
         approvals,
+        bypassers,
         approvers,
         secretPath,
         name,
@@ -53,6 +55,7 @@ export const useUpdateAccessApprovalPolicy = () => {
     mutationFn: async ({
       id,
       approvers,
+      bypassers,
       approvals,
       name,
       secretPath,
@@ -62,6 +65,7 @@ export const useUpdateAccessApprovalPolicy = () => {
       const { data } = await apiRequest.patch(`/api/v1/access-approvals/policies/${id}`, {
         approvals,
         approvers,
+        bypassers,
         secretPath,
         name,
         enforcementLevel,
@@ -131,20 +135,27 @@ export const useReviewAccessRequest = () => {
       projectSlug: string;
       envSlug?: string;
       requestedBy?: string;
+      bypassReason?: string;
     }
   >({
-    mutationFn: async ({ requestId, status }) => {
+    mutationFn: async ({ requestId, status, bypassReason }) => {
       const { data } = await apiRequest.post(
         `/api/v1/access-approvals/requests/${requestId}/review`,
         {
-          status
+          status,
+          bypassReason
         }
       );
       return data;
     },
-    onSuccess: (_, { projectSlug, envSlug, requestedBy }) => {
+    onSuccess: (_, { projectSlug, envSlug, requestedBy, bypassReason }) => {
       queryClient.invalidateQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalRequests(projectSlug, envSlug, requestedBy)
+        queryKey: accessApprovalKeys.getAccessApprovalRequests(
+          projectSlug,
+          envSlug,
+          requestedBy,
+          bypassReason
+        )
       });
       queryClient.invalidateQueries({
         queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)

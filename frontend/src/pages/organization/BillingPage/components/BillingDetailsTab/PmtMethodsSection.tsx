@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionBillingActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useAddOrgPmtMethod } from "@app/hooks/api";
 
 import { PmtMethodsTable } from "./PmtMethodsTable";
@@ -27,7 +27,10 @@ export const PmtMethodsSection = () => {
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-8 flex items-center">
         <h2 className="flex-1 text-xl font-semibold text-white">Payment methods</h2>
-        <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Billing}>
+        <OrgPermissionCan
+          I={OrgPermissionBillingActions.ManageBilling}
+          a={OrgPermissionSubjects.Billing}
+        >
           {(isAllowed) => (
             <Button
               onClick={handleAddPmtMethodBtnClick}

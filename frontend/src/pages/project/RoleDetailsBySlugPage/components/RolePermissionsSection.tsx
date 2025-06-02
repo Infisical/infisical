@@ -23,6 +23,7 @@ import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import { PkiSubscriberPermissionConditions } from "./PkiSubscriberPermissionConditions";
+import { PkiTemplatePermissionConditions } from "./PkiTemplatePermissionConditions";
 import {
   formRolePermission2API,
   isConditionalSubjects,
@@ -61,6 +62,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.PkiSubscribers) {
       return <PkiSubscriberPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.CertificateTemplates) {
+      return <PkiTemplatePermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
@@ -153,8 +158,8 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                       variant="outline_bg"
                       type="submit"
                       className={twMerge(
-                        "mr-4 h-10 border border-primary",
-                        isDirty && "bg-primary text-black"
+                        "mr-4 h-10 border",
+                        isDirty && "bg-primary text-black hover:bg-primary hover:opacity-80"
                       )}
                       isDisabled={isSubmitting || !isDirty}
                       isLoading={isSubmitting}

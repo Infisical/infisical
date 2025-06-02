@@ -81,6 +81,8 @@ export type TUpdateOrgDTO = {
     sshProductEnabled: boolean;
     scannerProductEnabled: boolean;
     shareSecretsProductEnabled: boolean;
+    maxSharedSecretLifetime: number;
+    maxSharedSecretViewLimit: number | null;
   }>;
 } & TOrgPermission;
 

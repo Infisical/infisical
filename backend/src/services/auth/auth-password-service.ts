@@ -121,7 +121,10 @@ export const authPaswordServiceFactory = ({
    */
   const sendPasswordResetEmail = async (email: string) => {
     const sendEmail = async () => {
-      const user = await userDAL.findUserByUsername(email);
+      const users = await userDAL.findUserByUsername(email);
+      // akhilmhdh: case sensitive email resolution
+      const user = users?.length > 1 ? users.find((el) => el.username === email) : users?.[0];
+      if (!user) throw new BadRequestError({ message: "Failed to find user data" });
 
       if (user && user.isAccepted) {
         const cfg = getConfig();
@@ -152,7 +155,10 @@ export const authPaswordServiceFactory = ({
    * */
   const verifyPasswordResetEmail = async (email: string, code: string) => {
     const cfg = getConfig();
-    const user = await userDAL.findUserByUsername(email);
+    const users = await userDAL.findUserByUsername(email);
+    // akhilmhdh: case sensitive email resolution
+    const user = users?.length > 1 ? users.find((el) => el.username === email) : users?.[0];
+    if (!user) throw new BadRequestError({ message: "Failed to find user data" });
 
     const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
 
@@ -189,16 +195,15 @@ export const authPaswordServiceFactory = ({
       throw new BadRequestError({ message: `User encryption key not found for user with ID '${userId}'` });
     }
 
-    if (!user.hashedPassword) {
-      throw new BadRequestError({ message: "Unable to reset password, no password is set" });
-    }
-
     if (!user.authMethods?.includes(AuthMethod.EMAIL)) {
       throw new BadRequestError({ message: "Unable to reset password, no email authentication method is configured" });
     }
 
     // we check the old password if the user is resetting their password while logged in
     if (type === ResetPasswordV2Type.LoggedInReset) {
+      if (!user.hashedPassword) {
+        throw new BadRequestError({ message: "Unable to change password, no password is set" });
+      }
       if (!oldPassword) {
         throw new BadRequestError({ message: "Current password is required." });
       }

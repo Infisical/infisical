@@ -1,5 +1,4 @@
 import { Job, JobsOptions, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
-import Redis from "ioredis";
 import PgBoss, { WorkOptions } from "pg-boss";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
@@ -18,8 +17,10 @@ import {
   TQueueSecretScanningSendNotification
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
+import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
 import { logger } from "@app/lib/logger";
 import { QueueWorkerProfile } from "@app/lib/types";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
   TFailedIntegrationSyncEmailsPayload,
   TIntegrationSyncPayload,
@@ -42,6 +43,7 @@ export enum QueueName {
   AuditLogPrune = "audit-log-prune",
   DailyResourceCleanUp = "daily-resource-cleanup",
   DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
+  PkiSubscriber = "pki-subscriber",
   TelemetryInstanceStats = "telemtry-self-hosted-stats",
   IntegrationSync = "sync-integrations",
   SecretWebhook = "secret-webhook",
@@ -50,6 +52,7 @@ export enum QueueName {
   UpgradeProjectToGhost = "upgrade-project-to-ghost",
   DynamicSecretRevocation = "dynamic-secret-revocation",
   CaCrlRotation = "ca-crl-rotation",
+  CaLifecycle = "ca-lifecycle", // parent queue to ca-order-certificate-for-subscriber
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
   ProjectV3Migration = "project-v3-migration",
@@ -94,7 +97,9 @@ export enum QueueJobs {
   InvalidateCache = "invalidate-cache",
   SecretScanningV2FullScan = "secret-scanning-v2-full-scan",
   SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
-  SecretScanningV2SendNotification = "secret-scanning-v2-notification"
+  SecretScanningV2SendNotification = "secret-scanning-v2-notification",
+  CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
+  PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal"
 }
 
 export type TQueueJobTypes = {
@@ -268,6 +273,17 @@ export type TQueueJobTypes = {
         name: QueueJobs.SecretScanningV2SendNotification;
         payload: TQueueSecretScanningSendNotification;
       };
+  [QueueName.CaLifecycle]: {
+    name: QueueJobs.CaOrderCertificateForSubscriber;
+    payload: {
+      subscriberId: string;
+      caType: CaType;
+    };
+  };
+  [QueueName.PkiSubscriber]: {
+    name: QueueJobs.PkiSubscriberDailyAutoRenewal;
+    payload: undefined;
+  };
 };
 
 const SECRET_SCANNING_JOBS = [
@@ -303,10 +319,10 @@ const isQueueEnabled = (name: QueueName) => {
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
 export const queueServiceFactory = (
-  redisUrl: string,
+  redisCfg: TRedisConfigKeys,
   { dbConnectionUrl, dbRootCert }: { dbConnectionUrl: string; dbRootCert?: string }
 ) => {
-  const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+  const connection = buildRedisFromConfig(redisCfg);
   const queueContainer = {} as Record<
     QueueName,
     Queue<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>

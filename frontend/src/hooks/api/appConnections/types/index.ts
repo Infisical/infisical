@@ -1,4 +1,5 @@
 import { AppConnection } from "../enums";
+import { TOnePassConnection } from "./1password-connection";
 import { TAppConnectionOption } from "./app-options";
 import { TAuth0Connection } from "./auth0-connection";
 import { TAwsConnection } from "./aws-connection";
@@ -14,6 +15,7 @@ import { THCVaultConnection } from "./hc-vault-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
+import { TMySqlConnection } from "./mysql-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
@@ -21,6 +23,7 @@ import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVercelConnection } from "./vercel-connection";
 import { TWindmillConnection } from "./windmill-connection";
 
+export * from "./1password-connection";
 export * from "./auth0-connection";
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
@@ -35,6 +38,7 @@ export * from "./hc-vault-connection";
 export * from "./humanitec-connection";
 export * from "./ldap-connection";
 export * from "./mssql-connection";
+export * from "./mysql-connection";
 export * from "./oci-connection";
 export * from "./postgres-connection";
 export * from "./teamcity-connection";
@@ -56,13 +60,15 @@ export type TAppConnection =
   | TVercelConnection
   | TPostgresConnection
   | TMsSqlConnection
+  | TMySqlConnection
   | TCamundaConnection
   | TWindmillConnection
   | TAuth0Connection
   | THCVaultConnection
   | TLdapConnection
   | TTeamCityConnection
-  | TOCIConnection;
+  | TOCIConnection
+  | TOnePassConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -103,6 +109,7 @@ export type TAppConnectionMap = {
   [AppConnection.Vercel]: TVercelConnection;
   [AppConnection.Postgres]: TPostgresConnection;
   [AppConnection.MsSql]: TMsSqlConnection;
+  [AppConnection.MySql]: TMySqlConnection;
   [AppConnection.Camunda]: TCamundaConnection;
   [AppConnection.Windmill]: TWindmillConnection;
   [AppConnection.Auth0]: TAuth0Connection;
@@ -110,4 +117,5 @@ export type TAppConnectionMap = {
   [AppConnection.LDAP]: TLdapConnection;
   [AppConnection.TeamCity]: TTeamCityConnection;
   [AppConnection.OCI]: TOCIConnection;
+  [AppConnection.OnePass]: TOnePassConnection;
 };

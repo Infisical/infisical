@@ -12,11 +12,13 @@ export enum AppConnection {
   Vercel = "vercel",
   Postgres = "postgres",
   MsSql = "mssql",
+  MySql = "mysql",
   Camunda = "camunda",
   Windmill = "windmill",
   Auth0 = "auth0",
   HCVault = "hashicorp-vault",
   LDAP = "ldap",
   TeamCity = "teamcity",
-  OCI = "oci"
+  OCI = "oci",
+  OnePass = "1password"
 }

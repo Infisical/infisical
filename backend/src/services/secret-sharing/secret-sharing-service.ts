@@ -61,7 +61,9 @@ export const secretSharingServiceFactory = ({
     }
 
     const fiveMins = 5 * 60 * 1000;
-    if (expiryTime - currentTime < fiveMins) {
+
+    // 1 second buffer
+    if (expiryTime - currentTime + 1000 < fiveMins) {
       throw new BadRequestError({ message: "Expiration time cannot be less than 5 mins" });
     }
   };
@@ -97,10 +99,22 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Shared secret value too long" });
     }
 
+    // Check lifetime is within org allowance
+    const expiresAtTimestamp = new Date(expiresAt).getTime();
+    const lifetime = expiresAtTimestamp - new Date().getTime();
+
+    // org.maxSharedSecretLifetime is in seconds
+    if (org.maxSharedSecretLifetime && lifetime / 1000 > org.maxSharedSecretLifetime) {
+      throw new BadRequestError({ message: "Secret lifetime exceeds organization limit" });
+    }
+
+    // Check max view count is within org allowance
+    if (org.maxSharedSecretViewLimit && (!expiresAfterViews || expiresAfterViews > org.maxSharedSecretViewLimit)) {
+      throw new BadRequestError({ message: "Secret max views parameter exceeds organization limit" });
+    }
+
     const encryptWithRoot = kmsService.encryptWithRootKey();
 
-    let salt: string | undefined;
-    let encryptedSalt: Buffer | undefined;
     const orgEmails = [];
 
     if (emails && emails.length > 0) {
@@ -117,10 +131,6 @@ export const secretSharingServiceFactory = ({
           });
         }
       }
-
-      // Generate salt for signing email hashes (if emails are provided)
-      salt = crypto.randomBytes(32).toString("hex");
-      encryptedSalt = encryptWithRoot(Buffer.from(salt));
     }
 
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
@@ -142,14 +152,13 @@ export const secretSharingServiceFactory = ({
       userId: actorId,
       orgId,
       accessType,
-      authorizedEmails: emails && emails.length > 0 ? JSON.stringify(emails) : undefined,
-      encryptedSalt
+      authorizedEmails: emails && emails.length > 0 ? JSON.stringify(emails) : undefined
     });
 
     const idToReturn = `${Buffer.from(newSharedSecret.identifier!, "hex").toString("base64url")}`;
 
     // Loop through recipients and send out emails with unique access links
-    if (emails && salt) {
+    if (emails) {
       const user = await userDAL.findById(actorId);
 
       if (!user) {
@@ -158,9 +167,6 @@ export const secretSharingServiceFactory = ({
 
       for await (const email of emails) {
         try {
-          const hmac = crypto.createHmac("sha256", salt).update(email);
-          const hash = hmac.digest("hex");
-
           // Only show the username to emails which are part of the organization
           const respondentUsername = orgEmails.includes(email) ? user.username : undefined;
 
@@ -170,7 +176,7 @@ export const secretSharingServiceFactory = ({
             substitutions: {
               name,
               respondentUsername,
-              secretRequestUrl: `${appCfg.SITE_URL}/shared/secret/${idToReturn}?email=${encodeURIComponent(email)}&hash=${hash}`
+              secretRequestUrl: `${appCfg.SITE_URL}/shared/secret/${idToReturn}`
             },
             template: SmtpTemplates.SecretRequestCompleted
           });
@@ -458,9 +464,8 @@ export const secretSharingServiceFactory = ({
     sharedSecretId,
     hashedHex,
     orgId,
-    password,
-    email,
-    hash
+    actorId,
+    password
   }: TGetActiveSharedSecretByIdDTO) => {
     const sharedSecret = isUuidV4(sharedSecretId)
       ? await secretSharingDAL.findOne({
@@ -490,6 +495,17 @@ export const secretSharingServiceFactory = ({
       throw new ForbiddenRequestError();
     }
 
+    // If the secret was shared with specific emails, verify that the current user's session email is authorized
+    if (sharedSecret.authorizedEmails && (sharedSecret.authorizedEmails as string[]).length > 0) {
+      if (!actorId) throw new UnauthorizedError();
+
+      const user = await userDAL.findById(actorId);
+      if (!user || !user.email) throw new UnauthorizedError();
+
+      if (!(sharedSecret.authorizedEmails as string[]).includes(user.email))
+        throw new UnauthorizedError({ message: "Email not authorized to view secret" });
+    }
+
     // all secrets pass through here, meaning we check if its expired first and then check if it needs verification
     // or can be safely sent to the client.
     if (expiresAt !== null && expiresAt < new Date()) {
@@ -508,31 +524,6 @@ export const secretSharingServiceFactory = ({
       });
     }
 
-    const decryptWithRoot = kmsService.decryptWithRootKey();
-
-    if (sharedSecret.authorizedEmails && sharedSecret.encryptedSalt) {
-      // Verify both params were passed
-      if (!email || !hash) {
-        throw new BadRequestError({
-          message: "This secret is email protected. Parameters must include email and hash."
-        });
-
-        // Verify that email is authorized to view shared secret
-      } else if (!(sharedSecret.authorizedEmails as string[]).includes(email)) {
-        throw new UnauthorizedError({ message: "Email not authorized to view secret" });
-
-        // Verify that hash matches
-      } else {
-        const salt = decryptWithRoot(sharedSecret.encryptedSalt).toString();
-        const hmac = crypto.createHmac("sha256", salt).update(email);
-        const rebuiltHash = hmac.digest("hex");
-
-        if (rebuiltHash !== hash) {
-          throw new UnauthorizedError({ message: "Email not authorized to view secret" });
-        }
-      }
-    }
-
     // Password checks
     const isPasswordProtected = Boolean(sharedSecret.password);
     const hasProvidedPassword = Boolean(password);
@@ -544,6 +535,8 @@ export const secretSharingServiceFactory = ({
         return { isPasswordProtected };
       }
     }
+
+    const decryptWithRoot = kmsService.decryptWithRootKey();
 
     // If encryptedSecret is set, we know that this secret has been encrypted using KMS, and we can therefore do server-side decryption.
     let decryptedSecretValue: Buffer | undefined;

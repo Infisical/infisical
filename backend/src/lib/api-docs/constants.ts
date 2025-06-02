@@ -11,6 +11,8 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
@@ -152,7 +154,9 @@ export const UNIVERSAL_AUTH = {
     accessTokenMaxTTL:
       "The maximum lifetime for an access token in seconds. This value will be referenced at renewal time.",
     accessTokenNumUsesLimit:
-      "The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
+      "The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses.",
+    accessTokenPeriod:
+      "The period for an access token in seconds. This value will be referenced at renewal time. Default value is 0."
   },
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve the auth method for."
@@ -166,7 +170,8 @@ export const UNIVERSAL_AUTH = {
     accessTokenTrustedIps: "The new list of IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
-    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
+    accessTokenPeriod: "The new period for an access token in seconds."
   },
   CREATE_CLIENT_SECRET: {
     identityId: "The ID of the identity to create a client secret for.",
@@ -1714,6 +1719,19 @@ export const CERTIFICATES = {
     certificateChain: "The certificate chain of the certificate.",
     serialNumberRes: "The serial number of the certificate.",
     privateKey: "The private key of the certificate."
+  },
+  IMPORT: {
+    projectSlug: "Slug of the project to import the certificate into.",
+    certificatePem: "The PEM-encoded leaf certificate.",
+    privateKeyPem: "The PEM-encoded private key corresponding to the certificate.",
+    chainPem: "The PEM-encoded chain of intermediate certificates.",
+    friendlyName: "A friendly name for the certificate.",
+    pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
+
+    certificate: "The issued certificate.",
+    certificateChain: "The certificate chain of the issued certificate.",
+    privateKey: "The private key of the issued certificate.",
+    serialNumber: "The serial number of the issued certificate."
   }
 };
 
@@ -1785,6 +1803,14 @@ export const PKI_SUBSCRIBERS = {
     subscriberName: "The name of the PKI subscriber to get.",
     projectId: "The ID of the project to get the PKI subscriber for."
   },
+  GET_LATEST_CERT_BUNDLE: {
+    subscriberName: "The name of the PKI subscriber to get the active certificate bundle for.",
+    projectId: "The ID of the project to get the active certificate bundle for.",
+    certificate: "The active certificate for the subscriber.",
+    certificateChain: "The certificate chain of the active certificate for the subscriber.",
+    privateKey: "The private key of the active certificate for the subscriber.",
+    serialNumber: "The serial number of the active certificate for the subscriber."
+  },
   CREATE: {
     projectId: "The ID of the project to create the PKI subscriber in.",
     caId: "The ID of the CA that will issue certificates for the PKI subscriber.",
@@ -1795,7 +1821,9 @@ export const PKI_SUBSCRIBERS = {
     subjectAlternativeNames:
       "A list of Subject Alternative Names (SANs) to be used on certificates issued for this subscriber; these can be host names or email addresses.",
     keyUsages: "The key usage extension to be used on certificates issued for this subscriber.",
-    extendedKeyUsages: "The extended key usage extension to be used on certificates issued for this subscriber."
+    extendedKeyUsages: "The extended key usage extension to be used on certificates issued for this subscriber.",
+    enableAutoRenewal: "Whether or not to enable auto renewal for the PKI subscriber.",
+    autoRenewalPeriodInDays: "The period in days to auto renew the PKI subscriber's certificates."
   },
   UPDATE: {
     projectId: "The ID of the project to update the PKI subscriber in.",
@@ -1809,7 +1837,9 @@ export const PKI_SUBSCRIBERS = {
       "A comma-delimited list of Subject Alternative Names (SANs) to be used on certificates issued for this subscriber; these can be host names or email addresses.",
     keyUsages: "The key usage extension to be used on certificates issued for this subscriber to update to.",
     extendedKeyUsages:
-      "The extended key usage extension to be used on certificates issued for this subscriber to update to."
+      "The extended key usage extension to be used on certificates issued for this subscriber to update to.",
+    enableAutoRenewal: "Whether or not to enable auto renewal for the PKI subscriber.",
+    autoRenewalPeriodInDays: "The period in days to auto renew the PKI subscriber's certificates."
   },
   DELETE: {
     subscriberName: "The name of the PKI subscriber to delete.",
@@ -1998,6 +2028,47 @@ export const ProjectTemplates = {
   }
 };
 
+export const CertificateAuthorities = {
+  CREATE: (type: CaType) => ({
+    name: `The name of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority to create. Must be slug-friendly.`,
+    projectId: `The ID of the project to create the Certificate Authority in.`,
+    enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
+    status: `The status of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`
+  }),
+  UPDATE: (type: CaType) => ({
+    caId: `The ID of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority to update.`,
+    projectId: `The ID of the project to update the Certificate Authority in.`,
+    name: `The updated name of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority. Must be slug-friendly.`,
+    enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
+    status: `The updated status of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`
+  }),
+  CONFIGURATIONS: {
+    ACME: {
+      dnsAppConnectionId: `The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.`,
+      directoryUrl: `The directory URL for the ACME Certificate Authority.`,
+      accountEmail: `The email address for the ACME Certificate Authority.`,
+      provider: `The DNS provider for the ACME Certificate Authority.`,
+      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority.`
+    },
+    INTERNAL: {
+      type: "The type of CA to create.",
+      friendlyName: "A friendly name for the CA.",
+      organization: "The organization (O) for the CA.",
+      ou: "The organization unit (OU) for the CA.",
+      country: "The country name (C) for the CA.",
+      province: "The state of province name for the CA.",
+      locality: "The locality name for the CA.",
+      commonName: "The common name (CN) for the CA.",
+      notBefore: "The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+      notAfter: "The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+      maxPathLength:
+        "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
+      keyAlgorithm:
+        "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA."
+    }
+  }
+};
+
 export const AppConnections = {
   GET_BY_ID: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to retrieve.`
@@ -2070,7 +2141,7 @@ export const AppConnections = {
     LDAP: {
       provider: "The type of LDAP provider. Determines provider-specific behaviors.",
       url: "The LDAP/LDAPS URL to connect to (e.g., 'ldap://domain-or-ip:389' or 'ldaps://domain-or-ip:636').",
-      dn: "The Distinguished Name (DN) of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com').",
+      dn: "The Distinguished Name (DN) or User Principal Name (UPN) of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com').",
       password: "The password to bind with for authentication.",
       sslRejectUnauthorized:
         "Whether or not to reject unauthorized SSL certificates (true/false) when using ldaps://. Set to false only in test environments.",
@@ -2091,6 +2162,10 @@ export const AppConnections = {
       region: "The region identifier in Oracle Cloud Infrastructure where the vault is located.",
       fingerprint: "The fingerprint of the public key uploaded to the user's API keys.",
       privateKey: "The private key content in PEM format used to sign API requests."
+    },
+    ONEPASS: {
+      instanceUrl: "The URL of the 1Password Connect Server instance to authenticate with.",
+      apiToken: "The API token used to access the 1Password Connect Server."
     }
   }
 };
@@ -2244,6 +2319,9 @@ export const SecretSyncs = {
       compartmentOcid: "The OCID (Oracle Cloud Identifier) of the compartment where the vault is located.",
       vaultOcid: "The OCID (Oracle Cloud Identifier) of the vault to sync secrets to.",
       keyOcid: "The OCID (Oracle Cloud Identifier) of the encryption key to use when creating secrets in the vault."
+    },
+    ONEPASS: {
+      vaultId: "The ID of the 1Password vault to sync secrets to."
     }
   }
 };
@@ -2315,7 +2393,10 @@ export const SecretRotations = {
       clientId: "The client ID of the Azure Application to rotate the client secret for."
     },
     LDAP_PASSWORD: {
-      dn: "The Distinguished Name (DN) of the principal to rotate the password for."
+      dn: "The Distinguished Name (DN) or User Principal Name (UPN) of the principal to rotate the password for.",
+      rotationMethod:
+        'Whether the rotation should be performed by the LDAP "connection-principal" or the "target-principal" (defaults to \'connection-principal\').',
+      password: 'The password of the provided principal if "parameters.rotationMethod" is set to "target-principal".'
     },
     GENERAL: {
       PASSWORD_REQUIREMENTS: {
@@ -2349,7 +2430,7 @@ export const SecretRotations = {
       clientSecret: "The name of the secret that the rotated client secret will be mapped to."
     },
     LDAP_PASSWORD: {
-      dn: "The name of the secret that the Distinguished Name (DN) of the principal will be mapped to.",
+      dn: "The name of the secret that the Distinguished Name (DN) or User Principal Name (UPN) of the principal will be mapped to.",
       password: "The name of the secret that the rotated password will be mapped to."
     },
     AWS_IAM_USER_SECRET: {

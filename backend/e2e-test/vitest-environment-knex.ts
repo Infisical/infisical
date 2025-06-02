@@ -15,8 +15,8 @@ import { mockSmtpServer } from "./mocks/smtp";
 import { initDbConnection } from "@app/db";
 import { queueServiceFactory } from "@app/queue";
 import { keyStoreFactory } from "@app/keystore/keystore";
-import { Redis } from "ioredis";
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
+import { buildRedisFromConfig } from "@app/lib/config/redis";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 export default {
@@ -30,7 +30,7 @@ export default {
       dbRootCert: envConfig.DB_ROOT_CERT
     });
 
-    const redis = new Redis(envConfig.REDIS_URL);
+    const redis = buildRedisFromConfig(envConfig);
     await redis.flushdb("SYNC");
 
     try {
@@ -55,8 +55,8 @@ export default {
       });
 
       const smtp = mockSmtpServer();
-      const queue = queueServiceFactory(envConfig.REDIS_URL, { dbConnectionUrl: envConfig.DB_CONNECTION_URI });
-      const keyStore = keyStoreFactory(envConfig.REDIS_URL);
+      const queue = queueServiceFactory(envConfig, { dbConnectionUrl: envConfig.DB_CONNECTION_URI });
+      const keyStore = keyStoreFactory(envConfig);
 
       const hsmModule = initializeHsmModule(envConfig);
       hsmModule.initialize();

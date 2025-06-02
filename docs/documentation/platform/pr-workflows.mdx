@@ -33,6 +33,14 @@ First, you would need to create a set of policies for a certain environment. In 
 
 The enforcement level determines how strict the policy is. A **Hard** enforcement level means that any change that matches the policy will need full approval prior merging. A **Soft** enforcement level allows for break glass functionality on the request. If a change request is bypassed, the approvers will be notified via email.
 
+<Note>
+    Enabling the "Bypass Approvals" toggle during policy creation will create a **Soft** enforcement level. Disabling the toggle makes the enforcement level **Hard**.
+</Note>
+
+If you choose to allow approval bypasses (Soft Enforcement), you may select specific users or groups that can perform the bypass for that specific policy. Not choosing users or groups will allow anyone to bypass the policy.
+
+A policy bypasser cannot bypass requests from others; the bypass action can only be performed by the request creator.
+
 ### Self approvals
 
 If the **Self Approvals** option is enabled, users who are designated as approvers on the policy can approve requests that they themselves have submitted.

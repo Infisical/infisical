@@ -6,6 +6,9 @@ import {
   TAccessApprovalPoliciesApprovers,
   TAccessApprovalPoliciesApproversInsert,
   TAccessApprovalPoliciesApproversUpdate,
+  TAccessApprovalPoliciesBypassers,
+  TAccessApprovalPoliciesBypassersInsert,
+  TAccessApprovalPoliciesBypassersUpdate,
   TAccessApprovalPoliciesInsert,
   TAccessApprovalPoliciesUpdate,
   TAccessApprovalRequests,
@@ -68,6 +71,9 @@ import {
   TDynamicSecrets,
   TDynamicSecretsInsert,
   TDynamicSecretsUpdate,
+  TExternalCertificateAuthorities,
+  TExternalCertificateAuthoritiesInsert,
+  TExternalCertificateAuthoritiesUpdate,
   TExternalGroupOrgRoleMappings,
   TExternalGroupOrgRoleMappingsInsert,
   TExternalGroupOrgRoleMappingsUpdate,
@@ -155,6 +161,9 @@ import {
   TIntegrations,
   TIntegrationsInsert,
   TIntegrationsUpdate,
+  TInternalCertificateAuthorities,
+  TInternalCertificateAuthoritiesInsert,
+  TInternalCertificateAuthoritiesUpdate,
   TInternalKms,
   TInternalKmsInsert,
   TInternalKmsUpdate,
@@ -270,6 +279,9 @@ import {
   TSecretApprovalPoliciesApprovers,
   TSecretApprovalPoliciesApproversInsert,
   TSecretApprovalPoliciesApproversUpdate,
+  TSecretApprovalPoliciesBypassers,
+  TSecretApprovalPoliciesBypassersInsert,
+  TSecretApprovalPoliciesBypassersUpdate,
   TSecretApprovalPoliciesInsert,
   TSecretApprovalPoliciesUpdate,
   TSecretApprovalRequests,
@@ -553,6 +565,16 @@ declare module "knex/types/tables" {
       TCertificateAuthorityCrlInsert,
       TCertificateAuthorityCrlUpdate
     >;
+    [TableName.InternalCertificateAuthority]: KnexOriginal.CompositeTableType<
+      TInternalCertificateAuthorities,
+      TInternalCertificateAuthoritiesInsert,
+      TInternalCertificateAuthoritiesUpdate
+    >;
+    [TableName.ExternalCertificateAuthority]: KnexOriginal.CompositeTableType<
+      TExternalCertificateAuthorities,
+      TExternalCertificateAuthoritiesInsert,
+      TExternalCertificateAuthoritiesUpdate
+    >;
     [TableName.Certificate]: KnexOriginal.CompositeTableType<TCertificates, TCertificatesInsert, TCertificatesUpdate>;
     [TableName.CertificateTemplate]: KnexOriginal.CompositeTableType<
       TCertificateTemplates,
@@ -819,6 +841,12 @@ declare module "knex/types/tables" {
       TAccessApprovalPoliciesApproversUpdate
     >;
 
+    [TableName.AccessApprovalPolicyBypasser]: KnexOriginal.CompositeTableType<
+      TAccessApprovalPoliciesBypassers,
+      TAccessApprovalPoliciesBypassersInsert,
+      TAccessApprovalPoliciesBypassersUpdate
+    >;
+
     [TableName.AccessApprovalRequest]: KnexOriginal.CompositeTableType<
       TAccessApprovalRequests,
       TAccessApprovalRequestsInsert,
@@ -841,6 +869,11 @@ declare module "knex/types/tables" {
       TSecretApprovalPoliciesApprovers,
       TSecretApprovalPoliciesApproversInsert,
       TSecretApprovalPoliciesApproversUpdate
+    >;
+    [TableName.SecretApprovalPolicyBypasser]: KnexOriginal.CompositeTableType<
+      TSecretApprovalPoliciesBypassers,
+      TSecretApprovalPoliciesBypassersInsert,
+      TSecretApprovalPoliciesBypassersUpdate
     >;
     [TableName.SecretApprovalRequest]: KnexOriginal.CompositeTableType<
       TSecretApprovalRequests,

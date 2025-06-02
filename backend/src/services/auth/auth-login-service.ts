@@ -199,9 +199,12 @@ export const authLoginServiceFactory = ({
     providerAuthToken,
     clientPublicKey
   }: TLoginGenServerPublicKeyDTO) => {
-    const userEnc = await userDAL.findUserEncKeyByUsername({
+    // akhilmhdh: case sensitive email resolution
+    const usersByUsername = await userDAL.findUserEncKeyByUsername({
       username: email
     });
+    const userEnc =
+      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
 
     const serverCfg = await getServerCfg();
 
@@ -250,9 +253,12 @@ export const authLoginServiceFactory = ({
   }: TLoginClientProofDTO) => {
     const appCfg = getConfig();
 
-    const userEnc = await userDAL.findUserEncKeyByUsername({
+    // akhilmhdh: case sensitive email resolution
+    const usersByUsername = await userDAL.findUserEncKeyByUsername({
       username: email
     });
+    const userEnc =
+      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
     if (!userEnc) throw new Error("Failed to find user");
     const user = await userDAL.findById(userEnc.userId);
     const cfg = getConfig();
@@ -649,10 +655,12 @@ export const authLoginServiceFactory = ({
    * OAuth2 login for google,github, and other oauth2 provider
    * */
   const oauth2Login = async ({ email, firstName, lastName, authMethod, callbackPort }: TOauthLoginDTO) => {
-    let user = await userDAL.findUserByUsername(email);
+    // akhilmhdh: case sensitive email resolution
+    const usersByUsername = await userDAL.findUserByUsername(email);
+    let user = usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
     const serverCfg = await getServerCfg();
 
-    if (serverCfg.enabledLoginMethods) {
+    if (serverCfg.enabledLoginMethods && user) {
       switch (authMethod) {
         case AuthMethod.GITHUB: {
           if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITHUB)) {
@@ -715,8 +723,8 @@ export const authLoginServiceFactory = ({
       }
 
       user = await userDAL.create({
-        username: email,
-        email,
+        username: email.trim().toLowerCase(),
+        email: email.trim().toLowerCase(),
         isEmailVerified: true,
         firstName,
         lastName,
@@ -814,11 +822,14 @@ export const authLoginServiceFactory = ({
         ? decodedProviderToken.orgId
         : undefined;
 
-    const userEnc = await userDAL.findUserEncKeyByUsername({
+    // akhilmhdh: case sensitive email resolution
+    const usersByUsername = await userDAL.findUserEncKeyByUsername({
       username: email
     });
-    if (!userEnc) throw new BadRequestError({ message: "Invalid token" });
-    if (!userEnc.serverEncryptedPrivateKey)
+    const userEnc =
+      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
+
+    if (!userEnc?.serverEncryptedPrivateKey)
       throw new BadRequestError({ message: "Key handoff incomplete. Please try logging in again." });
 
     const token = await generateUserTokens({

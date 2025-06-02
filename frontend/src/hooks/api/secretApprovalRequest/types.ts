@@ -57,8 +57,15 @@ export type TSecretApprovalRequest = {
   secretPath: string;
   hasMerged: boolean;
   status: "open" | "close";
-  policy: Omit<TSecretApprovalPolicy, "approvers"> & {
+  policy: Omit<TSecretApprovalPolicy, "approvers" | "bypassers"> & {
     approvers: {
+      userId: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      username: string;
+    }[];
+    bypassers: {
       userId: string;
       email: string;
       firstName: string;

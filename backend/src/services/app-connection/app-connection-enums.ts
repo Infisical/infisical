@@ -12,13 +12,15 @@ export enum AppConnection {
   Vercel = "vercel",
   Postgres = "postgres",
   MsSql = "mssql",
+  MySql = "mysql",
   Camunda = "camunda",
   Windmill = "windmill",
   Auth0 = "auth0",
   HCVault = "hashicorp-vault",
   LDAP = "ldap",
   TeamCity = "teamcity",
-  OCI = "oci"
+  OCI = "oci",
+  OnePass = "1password"
 }
 
 export enum AWSRegion {
@@ -66,4 +68,9 @@ export enum AWSRegion {
 
   // South America
   SA_EAST_1 = "sa-east-1" // Sao Paulo
+}
+
+export enum AppConnectionPlanType {
+  Enterprise = "enterprise",
+  Regular = "regular"
 }

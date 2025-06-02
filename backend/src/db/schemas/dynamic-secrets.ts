@@ -28,7 +28,8 @@ export const DynamicSecretsSchema = z.object({
   updatedAt: z.date(),
   encryptedInput: zodBuffer,
   projectGatewayId: z.string().uuid().nullable().optional(),
-  gatewayId: z.string().uuid().nullable().optional()
+  gatewayId: z.string().uuid().nullable().optional(),
+  usernameTemplate: z.string().nullable().optional()
 });
 
 export type TDynamicSecrets = z.infer<typeof DynamicSecretsSchema>;

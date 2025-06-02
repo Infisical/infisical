@@ -9,6 +9,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DiscriminativePick } from "@app/types";
 
 import { AppConnectionHeader } from "../AppConnectionHeader";
+import { OnePassConnectionForm } from "./1PasswordConnectionForm";
 import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConnectionForm";
@@ -23,6 +24,7 @@ import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
+import { MySqlConnectionForm } from "./MySqlConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
@@ -91,6 +93,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <PostgresConnectionForm onSubmit={onSubmit} />;
     case AppConnection.MsSql:
       return <MsSqlConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.MySql:
+      return <MySqlConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} />;
     case AppConnection.AzureClientSecrets:
@@ -107,6 +111,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <TeamCityConnectionForm onSubmit={onSubmit} />;
     case AppConnection.OCI:
       return <OCIConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.OnePass:
+      return <OnePassConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -167,6 +173,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <PostgresConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.MsSql:
       return <MsSqlConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.MySql:
+      return <MySqlConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.AzureClientSecrets:
@@ -183,6 +191,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <TeamCityConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.OCI:
       return <OCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.OnePass:
+      return <OnePassConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

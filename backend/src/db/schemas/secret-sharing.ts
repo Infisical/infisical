@@ -28,7 +28,6 @@ export const SecretSharingSchema = z.object({
   encryptedSecret: zodBuffer.nullable().optional(),
   identifier: z.string().nullable().optional(),
   type: z.string().default("share"),
-  encryptedSalt: zodBuffer.nullable().optional(),
   authorizedEmails: z.unknown().nullable().optional()
 });
 

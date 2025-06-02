@@ -1,11 +1,14 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import bcrypt from "bcrypt";
 
 import { ActionProjectType, TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionPkiTemplateActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -78,8 +81,8 @@ export const certificateTemplateServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.CertificateTemplates
+      ProjectPermissionPkiTemplateActions.Create,
+      subject(ProjectPermissionSub.CertificateTemplates, { name })
     );
 
     return certificateTemplateDAL.transaction(async (tx) => {
@@ -140,8 +143,8 @@ export const certificateTemplateServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      ProjectPermissionSub.CertificateTemplates
+      ProjectPermissionPkiTemplateActions.Edit,
+      subject(ProjectPermissionSub.CertificateTemplates, { name: certTemplate.name })
     );
 
     if (caId) {
@@ -151,6 +154,13 @@ export const certificateTemplateServiceFactory = ({
           message: "Invalid CA"
         });
       }
+    }
+
+    if (name) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionPkiTemplateActions.Create,
+        subject(ProjectPermissionSub.CertificateTemplates, { name })
+      );
     }
 
     return certificateTemplateDAL.transaction(async (tx) => {
@@ -198,8 +208,8 @@ export const certificateTemplateServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      ProjectPermissionSub.CertificateTemplates
+      ProjectPermissionPkiTemplateActions.Delete,
+      subject(ProjectPermissionSub.CertificateTemplates, { name: certTemplate.name })
     );
 
     await certificateTemplateDAL.deleteById(certTemplate.id);
@@ -225,8 +235,8 @@ export const certificateTemplateServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.CertificateTemplates
+      ProjectPermissionPkiTemplateActions.Read,
+      subject(ProjectPermissionSub.CertificateTemplates, { name: certTemplate.name })
     );
 
     return certTemplate;
@@ -267,8 +277,8 @@ export const certificateTemplateServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      ProjectPermissionSub.CertificateTemplates
+      ProjectPermissionPkiTemplateActions.Edit,
+      subject(ProjectPermissionSub.CertificateTemplates, { name: certTemplate.name })
     );
 
     const appCfg = getConfig();
@@ -350,8 +360,8 @@ export const certificateTemplateServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      ProjectPermissionSub.CertificateTemplates
+      ProjectPermissionPkiTemplateActions.Edit,
+      subject(ProjectPermissionSub.CertificateTemplates, { name: certTemplate.name })
     );
 
     const originalCaEstConfig = await certificateTemplateEstConfigDAL.findOne({
@@ -430,8 +440,8 @@ export const certificateTemplateServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Edit,
-        ProjectPermissionSub.CertificateTemplates
+        ProjectPermissionPkiTemplateActions.Edit,
+        subject(ProjectPermissionSub.CertificateTemplates, { name: certTemplate.name })
       );
     }
 

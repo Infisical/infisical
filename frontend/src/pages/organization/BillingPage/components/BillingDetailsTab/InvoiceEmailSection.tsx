@@ -6,7 +6,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionBillingActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useGetOrgBillingDetails, useUpdateOrgBillingDetails } from "@app/hooks/api";
 
 const schema = z
@@ -75,7 +75,10 @@ export const InvoiceEmailSection = () => {
           name="email"
         />
       </div>
-      <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Billing}>
+      <OrgPermissionCan
+        I={OrgPermissionBillingActions.ManageBilling}
+        a={OrgPermissionSubjects.Billing}
+      >
         {(isAllowed) => (
           <Button
             type="submit"

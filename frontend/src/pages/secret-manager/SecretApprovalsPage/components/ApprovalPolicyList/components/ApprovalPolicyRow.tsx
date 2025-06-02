@@ -14,7 +14,8 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions } from "@app/context/ProjectPermissionContext/types";
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
 import { Approver } from "@app/hooks/api/accessApproval/types";

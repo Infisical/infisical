@@ -24,5 +24,7 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   kmsProductEnabled: true,
   sshProductEnabled: true,
   scannerProductEnabled: true,
-  shareSecretsProductEnabled: true
+  shareSecretsProductEnabled: true,
+  maxSharedSecretLifetime: true,
+  maxSharedSecretViewLimit: true
 });

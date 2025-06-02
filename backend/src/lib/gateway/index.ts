@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import net from "node:net";
 
 import quicDefault, * as quicModule from "@infisical/quic";
+import axios from "axios";
 
 import { BadRequestError } from "../errors";
 import { logger } from "../logger";
@@ -43,7 +44,7 @@ const createQuicConnection = async (
         if (!certs || certs.length === 0) return quic.native.CryptoError.CertificateRequired;
         const serverCertificate = new crypto.X509Certificate(Buffer.from(certs[0]));
         const caCertificate = new crypto.X509Certificate(tlsOptions.ca);
-        const isValidServerCertificate = serverCertificate.checkIssued(caCertificate);
+        const isValidServerCertificate = serverCertificate.verify(caCertificate.publicKey);
         if (!isValidServerCertificate) return quic.native.CryptoError.BadCertificate;
 
         const subjectDetails = parseSubjectDetails(serverCertificate.subject);
@@ -378,7 +379,12 @@ export const withGatewayProxy = async <T>(
       logger.error(new Error(proxyErrorMessage), "Failed to proxy");
     }
     logger.error(err, "Failed to do gateway");
-    throw new BadRequestError({ message: proxyErrorMessage || (err as Error)?.message });
+    let errorMessage = proxyErrorMessage || (err as Error)?.message;
+    if (axios.isAxiosError(err) && (err.response?.data as { message?: string })?.message) {
+      errorMessage = (err.response?.data as { message: string }).message;
+    }
+
+    throw new BadRequestError({ message: errorMessage });
   } finally {
     // Ensure cleanup happens regardless of success or failure
     await cleanup();

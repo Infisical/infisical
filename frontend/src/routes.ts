@@ -4,7 +4,16 @@ const middleware = (fileName: string, virtualRoutes: VirtualRouteNode[]) =>
   layout(`middlewares/${fileName}`, virtualRoutes);
 
 const adminRoute = route("/admin", [
-  layout("admin-layout", "admin/layout.tsx", [index("admin/OverviewPage/route.tsx")])
+  layout("admin-layout", "admin/layout.tsx", [
+    index("admin/GeneralPage/route.tsx"),
+    route("/encryption", "admin/EncryptionPage/route.tsx"),
+    route("/authentication", "admin/AuthenticationPage/route.tsx"),
+    route("/integrations", "admin/IntegrationsPage/route.tsx"),
+    route("/caching", "admin/CachingPage/route.tsx"),
+    route("/resources/organizations", "admin/OrganizationResourcesPage/route.tsx"),
+    route("/resources/user-identities", "admin/UserIdentitiesResourcesPage/route.tsx"),
+    route("/resources/machine-identities", "admin/MachineIdentitiesResourcesPage/route.tsx")
+  ])
 ]);
 
 const organizationRoutes = route("/organization", [
@@ -295,10 +304,11 @@ const certManagerRoutes = route("/cert-manager/$projectId", [
       index("cert-manager/PkiSubscribersPage/route.tsx"),
       route("/$subscriberName", "cert-manager/PkiSubscriberDetailsByIDPage/route.tsx")
     ]),
+    route("/certificate-templates", [index("cert-manager/PkiTemplateListPage/route.tsx")]),
     route("/certificates", "cert-manager/CertificatesPage/route.tsx"),
     route("/certificate-authorities", "cert-manager/CertificateAuthoritiesPage/route.tsx"),
     route("/alerting", "cert-manager/AlertingPage/route.tsx"),
-    route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
+    route("/ca/$caName", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
     route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
     route("/settings", "cert-manager/SettingsPage/route.tsx"),
     route("/access-management", "project/AccessControlPage/route-cert-manager.tsx"),

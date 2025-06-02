@@ -48,7 +48,8 @@ const FORM_TABS: { name: string; key: string; fields: (keyof TSecretRotationV2Fo
       "rotateAtUtc"
     ]
   },
-  { name: "Parameters", key: "parameters", fields: ["parameters"] },
+  // @ts-expect-error temporary parameters aren't present on all forms
+  { name: "Parameters", key: "parameters", fields: ["parameters", "temporaryParameters"] },
   { name: "Mappings", key: "secretsMapping", fields: ["secretsMapping"] },
   { name: "Details", key: "details", fields: ["name", "description"] },
   { name: "Review", key: "review", fields: [] }
@@ -75,7 +76,7 @@ export const SecretRotationV2Form = ({
   const { rotationOption } = useSecretRotationV2Option(type);
 
   const formMethods = useForm<TSecretRotationV2Form>({
-    resolver: zodResolver(SecretRotationV2FormSchema),
+    resolver: zodResolver(SecretRotationV2FormSchema(Boolean(secretRotation))),
     defaultValues: secretRotation
       ? {
           ...secretRotation,

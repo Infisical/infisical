@@ -1,9 +1,14 @@
 import { z } from "zod";
 
+import { OCIConnectionListItemSchema, SanitizedOCIConnectionSchema } from "@app/ee/services/app-connections/oci";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import {
+  OnePassConnectionListItemSchema,
+  SanitizedOnePassConnectionSchema
+} from "@app/services/app-connection/1password";
 import { Auth0ConnectionListItemSchema, SanitizedAuth0ConnectionSchema } from "@app/services/app-connection/auth0";
 import { AwsConnectionListItemSchema, SanitizedAwsConnectionSchema } from "@app/services/app-connection/aws";
 import {
@@ -42,7 +47,7 @@ import {
 } from "@app/services/app-connection/humanitec";
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
-import { OCIConnectionListItemSchema, SanitizedOCIConnectionSchema } from "@app/services/app-connection/oci";
+import { MySqlConnectionListItemSchema, SanitizedMySqlConnectionSchema } from "@app/services/app-connection/mysql";
 import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
@@ -76,6 +81,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedVercelConnectionSchema.options,
   ...SanitizedPostgresConnectionSchema.options,
   ...SanitizedMsSqlConnectionSchema.options,
+  ...SanitizedMySqlConnectionSchema.options,
   ...SanitizedCamundaConnectionSchema.options,
   ...SanitizedAuth0ConnectionSchema.options,
   ...SanitizedHCVaultConnectionSchema.options,
@@ -83,7 +89,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedWindmillConnectionSchema.options,
   ...SanitizedLdapConnectionSchema.options,
   ...SanitizedTeamCityConnectionSchema.options,
-  ...SanitizedOCIConnectionSchema.options
+  ...SanitizedOCIConnectionSchema.options,
+  ...SanitizedOnePassConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -99,6 +106,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   VercelConnectionListItemSchema,
   PostgresConnectionListItemSchema,
   MsSqlConnectionListItemSchema,
+  MySqlConnectionListItemSchema,
   CamundaConnectionListItemSchema,
   Auth0ConnectionListItemSchema,
   HCVaultConnectionListItemSchema,
@@ -106,7 +114,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   WindmillConnectionListItemSchema,
   LdapConnectionListItemSchema,
   TeamCityConnectionListItemSchema,
-  OCIConnectionListItemSchema
+  OCIConnectionListItemSchema,
+  OnePassConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

@@ -171,8 +171,8 @@ export const oidcConfigServiceFactory = ({
   };
 
   const oidcLogin = async ({
-    externalId,
     email,
+    externalId,
     firstName,
     lastName,
     orgId,
@@ -717,7 +717,7 @@ export const oidcConfigServiceFactory = ({
         const groups = typeof claims.groups === "string" ? [claims.groups] : (claims.groups as string[] | undefined);
 
         oidcLogin({
-          email: claims.email,
+          email: claims.email.toLowerCase(),
           externalId: claims.sub,
           firstName: claims.given_name ?? "",
           lastName: claims.family_name ?? "",

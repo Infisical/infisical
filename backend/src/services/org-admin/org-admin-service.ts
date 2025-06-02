@@ -196,17 +196,20 @@ export const orgAdminServiceFactory = ({
       .filter(
         (member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin) && member.userId !== actorId
       )
-      .map((el) => el.user.email!);
+      .map((el) => el.user.email!)
+      .filter(Boolean);
 
-    await smtpService.sendMail({
-      template: SmtpTemplates.OrgAdminProjectDirectAccess,
-      recipients: filteredProjectMembers,
-      subjectLine: "Organization Admin Project Direct Access Issued",
-      substitutions: {
-        projectName: project.name,
-        email: projectMembers.find((el) => el.userId === actorId)?.user?.username
-      }
-    });
+    if (filteredProjectMembers.length) {
+      await smtpService.sendMail({
+        template: SmtpTemplates.OrgAdminProjectDirectAccess,
+        recipients: filteredProjectMembers,
+        subjectLine: "Organization Admin Project Direct Access Issued",
+        substitutions: {
+          projectName: project.name,
+          email: projectMembers.find((el) => el.userId === actorId)?.user?.username
+        }
+      });
+    }
     return { isExistingMember: false, membership: updatedMembership };
   };
 

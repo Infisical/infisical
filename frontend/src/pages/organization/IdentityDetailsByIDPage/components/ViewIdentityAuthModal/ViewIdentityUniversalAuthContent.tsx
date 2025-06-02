@@ -62,12 +62,20 @@ export const ViewIdentityUniversalAuthContent = ({
       onEdit={() => handlePopUpOpen("identityAuthMethod")}
       onDelete={onDelete}
     >
-      <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
-        {data.accessTokenTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max TTL (seconds)">
-        {data.accessTokenMaxTTL}
-      </IdentityAuthFieldDisplay>
+      {Number(data.accessTokenPeriod) > 0 ? (
+        <IdentityAuthFieldDisplay label="Access Token Period (seconds)">
+          {data.accessTokenPeriod}
+        </IdentityAuthFieldDisplay>
+      ) : (
+        <>
+          <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
+            {data.accessTokenTTL}
+          </IdentityAuthFieldDisplay>
+          <IdentityAuthFieldDisplay label="Access Token Max TTL (seconds)">
+            {data.accessTokenMaxTTL}
+          </IdentityAuthFieldDisplay>
+        </>
+      )}
       <IdentityAuthFieldDisplay label="Access Token Max Number of Uses">
         {data.accessTokenNumUsesLimit}
       </IdentityAuthFieldDisplay>

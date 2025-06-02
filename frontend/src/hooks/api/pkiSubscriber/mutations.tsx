@@ -108,3 +108,17 @@ export const useIssuePkiSubscriberCert = () => {
     }
   });
 };
+
+export const useOrderPkiSubscriberCert = () => {
+  return useMutation<{ message: string }, object, TIssuePkiSubscriberCertDTO>({
+    mutationFn: async ({ subscriberName, projectId }) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/pki/subscribers/${subscriberName}/order-certificate`,
+        {
+          projectId
+        }
+      );
+      return data;
+    }
+  });
+};
