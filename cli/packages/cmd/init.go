@@ -81,7 +81,7 @@ var initCmd = &cobra.Command{
 		if tokenResponse.MfaEnabled {
 			i := 1
 			for i < 6 {
-				mfaVerifyCode := util.AskForMFACode(tokenResponse.MfaMethod)
+				mfaVerifyCode := askForMFACode(tokenResponse.MfaMethod)
 
 				httpClient, err := util.GetRestyClientWithCustomHeaders()
 				if err != nil {

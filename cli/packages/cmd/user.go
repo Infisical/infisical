@@ -177,7 +177,7 @@ var domainCmd = &cobra.Command{
 		domainQuery := true
 		if config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_EU_URL) && config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_US_URL) {
 
-			override, err := util.DomainOverridePrompt()
+			override, err := DomainOverridePrompt()
 			if err != nil {
 				util.HandleError(err, "[infisical user update domain]: Domain override prompt error")
 			}

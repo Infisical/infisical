@@ -77,7 +77,6 @@ func init() {
 
 	isTelemetryOn, _ := rootCmd.PersistentFlags().GetBool("telemetry")
 	Telemetry = telemetry.NewTelemetry(isTelemetryOn)
-	util.Telemetry = Telemetry
 }
 
 func initLog() {

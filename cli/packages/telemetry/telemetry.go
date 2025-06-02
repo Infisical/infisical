@@ -1,7 +1,7 @@
 package telemetry
 
 import (
-	"github.com/Infisical/infisical-merge/packages/config"
+	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/denisbrodbeck/machineid"
 	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
@@ -65,7 +65,7 @@ func (t *Telemetry) GetDistinctId() (string, error) {
 		outputErr = err
 	}
 
-	infisicalConfig, err := config.GetConfigFile()
+	infisicalConfig, err := util.GetConfigFile()
 	if err != nil {
 		outputErr = err
 	}
