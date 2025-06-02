@@ -44,7 +44,7 @@ const createQuicConnection = async (
         if (!certs || certs.length === 0) return quic.native.CryptoError.CertificateRequired;
         const serverCertificate = new crypto.X509Certificate(Buffer.from(certs[0]));
         const caCertificate = new crypto.X509Certificate(tlsOptions.ca);
-        const isValidServerCertificate = serverCertificate.checkIssued(caCertificate);
+        const isValidServerCertificate = serverCertificate.verify(caCertificate.publicKey);
         if (!isValidServerCertificate) return quic.native.CryptoError.BadCertificate;
 
         const subjectDetails = parseSubjectDetails(serverCertificate.subject);
