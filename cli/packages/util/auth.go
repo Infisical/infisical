@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 
@@ -64,7 +65,7 @@ func EstablishUserLoginSession() LoggedInUserDetails {
 
 	err := loginCmd.Run()
 	if err != nil {
-		PrintErrorMessageAndExit("Failed to execute login command")
+		PrintErrorMessageAndExit(fmt.Sprintf("Failed to execute login command: %v", err))
 	}
 
 	loggedInUserDetails, err := GetCurrentLoggedInUserDetails(true)
