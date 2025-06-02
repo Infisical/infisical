@@ -15,10 +15,7 @@ export const CachingPage = () => {
       </Helmet>
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader
-            title="Caching"
-            description="Manage caching settings for your Infisical instance."
-          />
+          <PageHeader title="Caching" description="Manage caching for your Infisical instance." />
           <CachingPageForm />
         </div>
       </div>

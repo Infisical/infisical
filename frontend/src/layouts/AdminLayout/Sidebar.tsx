@@ -103,9 +103,7 @@ export const AdminSidebar = () => {
             </MenuGroup>
           </Menu>
         </div>
-        <div className="relative mt-10 flex w-full cursor-default flex-col items-center px-3 text-sm text-mineshaft-400">
-          {(window.location.origin.includes("https://app.infisical.com") ||
-            window.location.origin.includes("https://gamma.infisical.com")) && <WishForm />}
+        <div className="relative mb-4 mt-10 flex w-full cursor-default flex-col items-center px-3 text-sm text-mineshaft-400">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <div className="mb-2 w-full pl-5 duration-200 hover:text-mineshaft-200">
