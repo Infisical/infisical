@@ -986,7 +986,7 @@ func browserCliLogin() (models.UserCredentials, error) {
 
 	defaultPrintStatement := fmt.Sprintf("\n\nTo complete your login, open this address in your browser: %v \n", url)
 
-	if os.Getenv("BROWSER") != "" && (runtime.GOOS == "darwin" || runtime.GOOS == "windows") {
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
 		if err := browser.OpenURL(url); err != nil {
 			fmt.Print(defaultPrintStatement)
 		} else {
