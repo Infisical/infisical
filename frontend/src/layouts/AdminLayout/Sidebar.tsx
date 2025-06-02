@@ -2,7 +2,6 @@ import { faArrowLeft, faInfo, faQuestion } from "@fortawesome/free-solid-svg-ico
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useMatchRoute } from "@tanstack/react-router";
 
-import { WishForm } from "@app/components/features/WishForm";
 import {
   DropdownMenu,
   DropdownMenuContent,
