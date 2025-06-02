@@ -63,6 +63,41 @@ export const useAdminDeleteUser = () => {
       queryClient.invalidateQueries({
         queryKey: [adminStandaloneKeys.getUsers]
       });
+      queryClient.invalidateQueries({ queryKey: adminStandaloneKeys.getOrganizations });
+    }
+  });
+};
+
+export const useAdminDeleteOrganizationMembership = () => {
+  const queryClient = useQueryClient();
+  return useMutation<object, object, { organizationId: string; membershipId: string }>({
+    mutationFn: async ({ organizationId, membershipId }) => {
+      await apiRequest.delete(
+        `/api/v1/admin/organization-management/organizations/${organizationId}/memberships/${membershipId}`
+      );
+
+      return {};
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [adminStandaloneKeys.getOrganizations]
+      });
+    }
+  });
+};
+
+export const useAdminDeleteOrganization = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (organizationId: string) => {
+      await apiRequest.delete(
+        `/api/v1/admin/organization-management/organizations/${organizationId}`
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [adminStandaloneKeys.getOrganizations]
+      });
     }
   });
 };

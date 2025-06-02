@@ -20,7 +20,7 @@ const formSchema = z.object({
 
 type TAuthForm = z.infer<typeof formSchema>;
 
-export const AuthPanel = () => {
+export const AuthenticationPageForm = () => {
   const { config } = useServerConfig();
   const { enabledLoginMethods } = config;
   const { mutateAsync: updateServerConfig } = useUpdateServerConfig();

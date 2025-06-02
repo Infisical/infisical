@@ -120,7 +120,7 @@ const IdentityPanelTable = ({
           <Button
             className="mt-4 py-3 text-sm"
             isFullWidth
-            variant="star"
+            variant="outline_bg"
             isLoading={isFetchingNextPage}
             isDisabled={isFetchingNextPage || !hasNextPage}
             onClick={() => fetchNextPage()}
@@ -133,7 +133,7 @@ const IdentityPanelTable = ({
   );
 };
 
-export const IdentityPanel = () => {
+export const MachineIdentitiesTable = () => {
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeServerAdmin"
   ] as const);
@@ -161,9 +161,6 @@ export const IdentityPanel = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4">
-        <p className="text-xl font-semibold text-mineshaft-100">Identities</p>
-      </div>
       <IdentityPanelTable handlePopUpOpen={handlePopUpOpen} />
       <DeleteActionModal
         isOpen={popUp.removeServerAdmin.isOpen}

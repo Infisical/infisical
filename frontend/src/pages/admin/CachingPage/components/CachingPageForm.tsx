@@ -10,7 +10,7 @@ import { useInvalidateCache } from "@app/hooks/api";
 import { useGetInvalidatingCacheStatus } from "@app/hooks/api/admin/queries";
 import { CacheType } from "@app/hooks/api/admin/types";
 
-export const CachingPanel = () => {
+export const CachingPageForm = () => {
   const { mutateAsync: invalidateCache } = useInvalidateCache();
   const { user } = useUser();
 

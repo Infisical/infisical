@@ -213,7 +213,7 @@ const UserPanelTable = ({
           <Button
             className="mt-4 py-3 text-sm"
             isFullWidth
-            variant="star"
+            variant="outline_bg"
             isLoading={isFetchingNextPage}
             isDisabled={isFetchingNextPage || !hasNextPage}
             onClick={() => fetchNextPage()}
@@ -226,7 +226,7 @@ const UserPanelTable = ({
   );
 };
 
-export const UserPanel = () => {
+export const UserIdentitiesTable = () => {
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeUser",
     "upgradePlan",
@@ -297,9 +297,6 @@ export const UserPanel = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4">
-        <p className="text-xl font-semibold text-mineshaft-100">Users</p>
-      </div>
       <UserPanelTable handlePopUpOpen={handlePopUpOpen} />
       <DeleteActionModal
         isOpen={popUp.removeUser.isOpen}

@@ -3,7 +3,7 @@ import { useGetAdminIntegrationsConfig } from "@app/hooks/api";
 import { MicrosoftTeamsIntegrationForm } from "./MicrosoftTeamsIntegrationForm";
 import { SlackIntegrationForm } from "./SlackIntegrationForm";
 
-export const IntegrationPanel = () => {
+export const IntegrationsPageForm = () => {
   const { data: adminIntegrationsConfig } = useGetAdminIntegrationsConfig();
 
   return (
