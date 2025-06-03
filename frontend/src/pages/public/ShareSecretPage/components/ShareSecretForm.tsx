@@ -367,9 +367,11 @@ export const ShareSecretForm = ({
                         isError={Boolean(error)}
                         className="flex-1"
                         helperText={
-                          maxSharedSecretViewLimit
-                            ? `Limited to ${maxSharedSecretViewLimit} by organization.`
-                            : undefined
+                          maxSharedSecretViewLimit ? (
+                            <span className="text-yellow-500">
+                              Limited to {maxSharedSecretViewLimit} views by organization
+                            </span>
+                          ) : undefined
                         }
                       >
                         <Input
