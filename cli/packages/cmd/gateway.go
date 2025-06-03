@@ -36,12 +36,9 @@ func getInfisicalSdkInstance(cmd *cobra.Command) (infisicalSdk.InfisicalClientIn
 		return nil, nil, err
 	}
 
-	fmt.Printf("token: %+v\n", token)
-
 	// if the --token param is set, we use it directly for authentication
 	if token != nil {
 		infisicalClient.Auth().SetAccessToken(token.Token)
-		fmt.Printf("token from client: %+v\n", infisicalClient.Auth().GetAccessToken())
 		return infisicalClient, cancel, nil
 	}
 
