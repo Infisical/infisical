@@ -172,7 +172,10 @@ var secretsSetCmd = &cobra.Command{
 		}
 
 		if token == nil && projectId == "" {
-			util.RequireLocalWorkspaceFile()
+			_, err := util.GetWorkSpaceFromFile()
+			if err != nil {
+				util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
+			}
 		}
 
 		secretsPath, err := cmd.Flags().GetString("path")
@@ -225,7 +228,7 @@ var secretsSetCmd = &cobra.Command{
 			if projectId == "" {
 				workspaceFile, err := util.GetWorkSpaceFromFile()
 				if err != nil {
-					util.HandleError(err, "unable to get your local config details [err=%v]")
+					util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
 				}
 
 				projectId = workspaceFile.WorkspaceId
@@ -308,7 +311,7 @@ var secretsDeleteCmd = &cobra.Command{
 		if projectId == "" {
 			workspaceFile, err := util.GetWorkSpaceFromFile()
 			if err != nil {
-				util.HandleError(err, "Unable to get local project details")
+				util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
 			}
 			projectId = workspaceFile.WorkspaceId
 		}

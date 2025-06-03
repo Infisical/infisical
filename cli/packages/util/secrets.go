@@ -253,7 +253,10 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 	if params.InfisicalToken == "" && params.UniversalAuthAccessToken == "" {
 		if params.WorkspaceId == "" {
 			if projectConfigFilePath == "" {
-				RequireLocalWorkspaceFile()
+				_, err := GetWorkSpaceFromFile()
+				if err != nil {
+					PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
+				}
 			} else {
 				ValidateWorkspaceFile(projectConfigFilePath)
 			}
@@ -284,7 +287,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 			if projectConfigFilePath == "" {
 				projectConfig, err := GetWorkSpaceFromFile()
 				if err != nil {
-					return nil, err
+					PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
 				}
 
 				infisicalDotJson = projectConfig

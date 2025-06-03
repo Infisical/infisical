@@ -30,7 +30,7 @@ func GetAllFolders(params models.GetAllFoldersParameters) ([]models.SingleFolder
 		if params.WorkspaceId == "" {
 			workspaceFile, err := GetWorkSpaceFromFile()
 			if err != nil {
-				return nil, err
+				PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
 			}
 			params.WorkspaceId = workspaceFile.WorkspaceId
 		}
