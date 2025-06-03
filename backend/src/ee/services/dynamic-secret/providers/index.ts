@@ -17,6 +17,7 @@ import { SapAseProvider } from "./sap-ase";
 import { SapHanaProvider } from "./sap-hana";
 import { SqlDatabaseProvider } from "./sql-database";
 import { TotpProvider } from "./totp";
+import { VerticaProvider } from "./vertica";
 
 type TBuildDynamicSecretProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
@@ -40,5 +41,6 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.Snowflake]: SnowflakeProvider(),
   [DynamicSecretProviders.Totp]: TotpProvider(),
   [DynamicSecretProviders.SapAse]: SapAseProvider(),
-  [DynamicSecretProviders.Kubernetes]: KubernetesProvider({ gatewayService })
+  [DynamicSecretProviders.Kubernetes]: KubernetesProvider({ gatewayService }),
+  [DynamicSecretProviders.Vertica]: VerticaProvider({ gatewayService })
 });

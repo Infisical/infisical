@@ -1,0 +1,134 @@
+---
+title: "Vertica"
+description: "Learn how to dynamically generate Vertica database users."
+---
+
+The Infisical Vertica dynamic secret allows you to generate Vertica database credentials on demand based on configured role.
+
+## Prerequisite
+
+Create a user with the required permission in your Vertica instance. This user will be used to create new accounts on-demand.
+
+## Set up Dynamic Secrets with Vertica
+
+<Steps>
+  <Step title="Open Secret Overview Dashboard">
+	Open the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret.
+  </Step>
+  <Step title="Click on the 'Add Dynamic Secret' button">
+	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
+  </Step>
+  <Step title="Select `Vertica`">
+	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/vertica/dynamic-secret-modal-vertica.png)
+  </Step>
+  <Step title="Provide the inputs for dynamic secret parameters">
+	<ParamField path="Secret Name" type="string" required>
+		Name by which you want the secret to be referenced
+	</ParamField>
+
+	<ParamField path="Default TTL" type="string" required>
+		Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
+	</ParamField>
+
+	<ParamField path="Max TTL" type="string" required>
+		Maximum time-to-live for a generated secret
+	</ParamField>
+
+    <ParamField path="Gateway" type="string">
+      Select a gateway for private cluster access. If not specified, the Internet Gateway will be used.
+    </ParamField>
+
+	<ParamField path="Host" type="string" required>
+		Vertica database host
+	</ParamField>
+
+	<ParamField path="Port" type="number" required>
+		Vertica database port (default: 5433)
+	</ParamField>
+
+	<ParamField path="Database" type="string" required>
+		Name of the Vertica database for which you want to create dynamic secrets
+	</ParamField>
+
+	<ParamField path="User" type="string" required>
+		Username that will be used to create dynamic secrets
+	</ParamField>
+
+	<ParamField path="Password" type="string" required>
+		Password that will be used to create dynamic secrets
+	</ParamField>
+
+	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/vertica/dynamic-secret-setup-modal-vertica.png)
+
+  </Step>
+  <Step title="(Optional) Modify SQL Statements">
+	![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/vertica/modify-sql-statements-vertica.png)
+	<ParamField path="Username Template" type="string" default="{{randomUsername}}">
+      Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
+
+      Allowed template variables are
+      - `{{randomUsername}}`: Random username string
+      - `{{unixTimestamp}}`: Current Unix timestamp
+	</ParamField>
+	<ParamField path="Creation Statement" type="string">
+  	Customize the SQL statement used to create new users. Default creates a user with basic schema permissions.
+	</ParamField>
+	<ParamField path="Revocation Statement" type="string">
+  	Customize the SQL statement used to revoke users. Default revokes a user.
+	</ParamField>
+  </Step>
+  <Step title="(Optional) Configure Password Requirements">
+	<ParamField path="Password Length" type="number" default="48">
+		Length of generated passwords (1-250 characters)
+	</ParamField>
+	<ParamField path="Character Requirements" type="object">
+		Minimum required character counts:
+		- **Lowercase Count**: Minimum lowercase letters (default: 1)
+		- **Uppercase Count**: Minimum uppercase letters (default: 1) 
+		- **Digit Count**: Minimum digits (default: 1)
+		- **Symbol Count**: Minimum symbols (default: 0)
+	</ParamField>
+	<ParamField path="Allowed Symbols" type="string" default="-_.~!*">
+		Symbols allowed in generated passwords
+	</ParamField>
+  </Step>
+  <Step title="Click 'Submit'">
+  	After submitting the form, you will see a dynamic secret created in the dashboard.
+
+	![Dynamic Secret](../../../images/platform/dynamic-secrets/vertica/dynamic-secret-vertica.png)
+  </Step>
+  <Step title="Generate dynamic secrets">
+	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
+	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
+	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
+
+	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
+	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
+
+	When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate how long the credentials are valid for.
+
+	![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
+
+	<Tip>
+		Ensure that the TTL for the lease falls within the maximum TTL defined when configuring the dynamic secret.
+	</Tip>
+
+	Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you.
+
+	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
+  </Step>
+</Steps>
+
+## Audit or Revoke Leases
+Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
+This will allow you to see the expiration time of the lease or delete the lease before its set time to live.
+
+![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
+
+## Renew Leases
+To extend the life of the generated dynamic secret leases past its initial time to live, simply click on the **Renew** button as illustrated below.
+![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
+
+<Warning>
+	Lease renewals cannot exceed the maximum TTL set when configuring the dynamic secret
+</Warning>

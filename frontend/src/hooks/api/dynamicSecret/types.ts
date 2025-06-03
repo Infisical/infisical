@@ -33,7 +33,8 @@ export enum DynamicSecretProviders {
   Snowflake = "snowflake",
   Totp = "totp",
   SapAse = "sap-ase",
-  Kubernetes = "kubernetes"
+  Kubernetes = "kubernetes",
+  Vertica = "vertica"
 }
 
 export enum SqlProviders {
@@ -276,6 +277,18 @@ export type TDynamicSecretProvider =
         gatewayId?: string;
         sslEnabled: boolean;
         audiences: string[];
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Vertica;
+      inputs: {
+        host: string;
+        port: number;
+        database: string;
+        username: string;
+        password: string;
+        creationStatement: string;
+        revocationStatement: string;
       };
     };
 
