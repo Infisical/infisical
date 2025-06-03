@@ -42,7 +42,9 @@ export const GitHubSecretScanningFactory = () => {
     });
 
     if (existingDataSource)
-      throw new BadRequestError({ message: "A Data Source already exists for this GitHub Radar Connection" });
+      throw new BadRequestError({
+        message: `A Data Source already exists for this GitHub Radar Connection in the Project with ID "${existingDataSource.projectId}"`
+      });
 
     return callback({
       externalId

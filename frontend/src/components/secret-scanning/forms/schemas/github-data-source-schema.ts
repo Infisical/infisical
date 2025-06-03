@@ -12,7 +12,7 @@ export const GitHubDataSourceSchema = z
         .string()
         .array()
         .min(1, "One or more repositories required")
-        .max(25, "Cannot configure more than 25 repositories")
+        .max(100, "Cannot configure more than 100 repositories")
     })
   })
   .merge(BaseSecretScanningDataSourceSchema({ isConnectionRequired: true }));

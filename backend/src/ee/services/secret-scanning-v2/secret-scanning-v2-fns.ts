@@ -95,7 +95,7 @@ export const convertPatchLineToFileLineNumber = (patch: string, patchLineNumber:
     currentPatchLine += 1;
 
     // Hunk header: @@ -a,b +c,d @@
-    const hunkHeaderMatch = line.match(HunkHeaderRegex);
+    const hunkHeaderMatch = HunkHeaderRegex.match(line);
     if (hunkHeaderMatch) {
       const startLine = parseInt(hunkHeaderMatch[1], 10);
       currentNewLine = startLine;
