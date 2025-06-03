@@ -30,6 +30,8 @@ import {
   SecretReminderTemplate,
   SecretRequestCompletedTemplate,
   SecretRotationFailedTemplate,
+  SecretScanningScanFailedTemplate,
+  SecretScanningSecretsDetectedTemplate,
   SecretSyncFailedTemplate,
   ServiceTokenExpiryNoticeTemplate,
   SignupEmailVerificationTemplate,
@@ -73,7 +75,9 @@ export enum SmtpTemplates {
   ProjectAccessRequest = "projectAccess",
   OrgAdminProjectDirectAccess = "orgAdminProjectGrantAccess",
   OrgAdminBreakglassAccess = "orgAdminBreakglassAccess",
-  ServiceTokenExpired = "serviceTokenExpired"
+  ServiceTokenExpired = "serviceTokenExpired",
+  SecretScanningV2ScanFailed = "secretScanningV2ScanFailed",
+  SecretScanningV2SecretsDetected = "secretScanningV2SecretsDetected"
 }
 
 export enum SmtpHost {
@@ -113,7 +117,9 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.SecretApprovalRequestNeedsReview]: SecretApprovalRequestNeedsReviewTemplate,
   [SmtpTemplates.ResetPassword]: PasswordResetTemplate,
   [SmtpTemplates.SetupPassword]: PasswordSetupTemplate,
-  [SmtpTemplates.PkiExpirationAlert]: PkiExpirationAlertTemplate
+  [SmtpTemplates.PkiExpirationAlert]: PkiExpirationAlertTemplate,
+  [SmtpTemplates.SecretScanningV2ScanFailed]: SecretScanningScanFailedTemplate,
+  [SmtpTemplates.SecretScanningV2SecretsDetected]: SecretScanningSecretsDetectedTemplate
 };
 
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {

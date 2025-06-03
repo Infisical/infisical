@@ -19,6 +19,7 @@ import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
+import { GitHubRadarConnectionForm } from "./GitHubRadarConnectionForm";
 import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
@@ -72,6 +73,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <AwsConnectionForm onSubmit={onSubmit} />;
     case AppConnection.GitHub:
       return <GitHubConnectionForm />;
+    case AppConnection.GitHubRadar:
+      return <GitHubRadarConnectionForm />;
     case AppConnection.GCP:
       return <GcpConnectionForm onSubmit={onSubmit} />;
     case AppConnection.AzureKeyVault:
@@ -150,6 +153,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <AwsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
     case AppConnection.GitHub:
       return <GitHubConnectionForm appConnection={appConnection} />;
+    case AppConnection.GitHubRadar:
+      return <GitHubRadarConnectionForm appConnection={appConnection} />;
     case AppConnection.GCP:
       return <GcpConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
     case AppConnection.AzureKeyVault:
@@ -188,7 +193,6 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <OCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.OnePass:
       return <OnePassConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
-
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

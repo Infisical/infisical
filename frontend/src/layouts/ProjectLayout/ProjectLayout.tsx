@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   BreadcrumbContainer,
   Menu,
   MenuGroup,
@@ -19,11 +20,13 @@ import {
   useSubscription,
   useWorkspace
 } from "@app/context";
+import { ProjectPermissionSecretScanningFindingActions } from "@app/context/ProjectPermissionContext/types";
 import {
   useGetAccessRequestsCount,
   useGetSecretApprovalRequestCount,
   useGetSecretRotations
 } from "@app/hooks/api";
+import { useGetSecretScanningUnresolvedFindingCount } from "@app/hooks/api/secretScanningV2";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { AssumePrivilegeModeBanner } from "./components/AssumePrivilegeModeBanner";
@@ -36,6 +39,8 @@ export const ProjectLayout = () => {
   const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
   const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
+  const { permission } = useProjectPermission();
+
   const { t } = useTranslation();
   const { assumedPrivilegeDetails } = useProjectPermission();
   const workspaceId = currentWorkspace?.id || "";
@@ -46,6 +51,7 @@ export const ProjectLayout = () => {
   const isCertManager = currentWorkspace?.type === ProjectType.CertificateManager;
   const isCmek = currentWorkspace?.type === ProjectType.KMS;
   const isSSH = currentWorkspace?.type === ProjectType.SSH;
+  const isSecretScanning = currentWorkspace?.type === ProjectType.SecretScanning;
 
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({
     workspaceId,
@@ -67,6 +73,17 @@ export const ProjectLayout = () => {
 
   const pendingRequestsCount =
     (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
+
+  const { data: unresolvedFindings } = useGetSecretScanningUnresolvedFindingCount(workspaceId, {
+    enabled:
+      isSecretScanning &&
+      subscription.secretScanning &&
+      permission.can(
+        ProjectPermissionSecretScanningFindingActions.Read,
+        ProjectPermissionSub.SecretScanningFindings
+      ),
+    refetchInterval: 30000
+  });
 
   return (
     <>
@@ -257,6 +274,41 @@ export const ProjectLayout = () => {
                             }
                           </ProjectPermissionCan>
                         </>
+                      )}
+                      {isSecretScanning && (
+                        <Link
+                          to={`/${ProjectType.SecretScanning}/$projectId/data-sources` as const}
+                          params={{
+                            projectId: currentWorkspace.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive} icon="blocks">
+                              Data Sources
+                            </MenuItem>
+                          )}
+                        </Link>
+                      )}
+                      {isSecretScanning && (
+                        <Link
+                          to={`/${ProjectType.SecretScanning}/$projectId/findings` as const}
+                          params={{
+                            projectId: currentWorkspace.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive} icon="search">
+                              <div className="flex w-full items-center justify-between">
+                                <span>Findings</span>
+                                {Boolean(unresolvedFindings) && (
+                                  <Badge variant="primary" className="mr-2">
+                                    {unresolvedFindings}
+                                  </Badge>
+                                )}
+                              </div>
+                            </MenuItem>
+                          )}
+                        </Link>
                       )}
                       {isSecretManager && (
                         <Link

@@ -67,6 +67,15 @@ export const OrgAdminProjects = withPermission(
           });
           return;
         }
+        if (type === ProjectType.SecretScanning) {
+          await navigate({
+            to: "/secret-scanning/$projectId/data-sources" as const,
+            params: {
+              projectId
+            }
+          });
+          return;
+        }
         await navigate({
           to: `/${type}/$projectId/overview` as const,
           params: {

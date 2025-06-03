@@ -114,7 +114,7 @@ export const SshCertificateTemplatesSection = ({ caId }: Props) => {
       />
       <DeleteActionModal
         isOpen={popUp.deleteSshCertificateTemplate.isOpen}
-        title={`Are you sure want to delete the SSH certificate template ${
+        title={`Are you sure you want to delete the SSH certificate template ${
           (popUp?.deleteSshCertificateTemplate?.data as { name: string })?.name || ""
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteSshCertificateTemplate", isOpen)}
@@ -127,7 +127,7 @@ export const SshCertificateTemplatesSection = ({ caId }: Props) => {
       />
       <DeleteActionModal
         isOpen={popUp.sshCertificateTemplateStatus.isOpen}
-        title={`Are you sure want to ${
+        title={`Are you sure you want to ${
           (popUp?.sshCertificateTemplateStatus?.data as { status: string })?.status ===
           SshCertTemplateStatus.ACTIVE
             ? "enable"

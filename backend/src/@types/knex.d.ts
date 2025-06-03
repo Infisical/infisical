@@ -336,9 +336,24 @@ import {
   TSecretRotationV2SecretMappingsInsert,
   TSecretRotationV2SecretMappingsUpdate,
   TSecrets,
+  TSecretScanningConfigs,
+  TSecretScanningConfigsInsert,
+  TSecretScanningConfigsUpdate,
+  TSecretScanningDataSources,
+  TSecretScanningDataSourcesInsert,
+  TSecretScanningDataSourcesUpdate,
+  TSecretScanningFindings,
+  TSecretScanningFindingsInsert,
+  TSecretScanningFindingsUpdate,
   TSecretScanningGitRisks,
   TSecretScanningGitRisksInsert,
   TSecretScanningGitRisksUpdate,
+  TSecretScanningResources,
+  TSecretScanningResourcesInsert,
+  TSecretScanningResourcesUpdate,
+  TSecretScanningScans,
+  TSecretScanningScansInsert,
+  TSecretScanningScansUpdate,
   TSecretSharing,
   TSecretSharingInsert,
   TSecretSharingUpdate,
@@ -1106,6 +1121,31 @@ declare module "knex/types/tables" {
       TGithubOrgSyncConfigs,
       TGithubOrgSyncConfigsInsert,
       TGithubOrgSyncConfigsUpdate
+    >;
+    [TableName.SecretScanningDataSource]: KnexOriginal.CompositeTableType<
+      TSecretScanningDataSources,
+      TSecretScanningDataSourcesInsert,
+      TSecretScanningDataSourcesUpdate
+    >;
+    [TableName.SecretScanningResource]: KnexOriginal.CompositeTableType<
+      TSecretScanningResources,
+      TSecretScanningResourcesInsert,
+      TSecretScanningResourcesUpdate
+    >;
+    [TableName.SecretScanningScan]: KnexOriginal.CompositeTableType<
+      TSecretScanningScans,
+      TSecretScanningScansInsert,
+      TSecretScanningScansUpdate
+    >;
+    [TableName.SecretScanningFinding]: KnexOriginal.CompositeTableType<
+      TSecretScanningFindings,
+      TSecretScanningFindingsInsert,
+      TSecretScanningFindingsUpdate
+    >;
+    [TableName.SecretScanningConfig]: KnexOriginal.CompositeTableType<
+      TSecretScanningConfigs,
+      TSecretScanningConfigsInsert,
+      TSecretScanningConfigsUpdate
     >;
   }
 }

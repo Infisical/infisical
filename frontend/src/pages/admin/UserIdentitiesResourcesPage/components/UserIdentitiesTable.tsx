@@ -309,7 +309,7 @@ export const UserIdentitiesTable = () => {
       />
       <DeleteActionModal
         isOpen={popUp.upgradeToServerAdmin.isOpen}
-        title={`Are you sure want to grant Server Admin permissions to ${
+        title={`Are you sure you want to grant Server Admin permissions to ${
           (popUp?.upgradeToServerAdmin?.data as { id: string; username: string })?.username || ""
         }?`}
         subTitle=""
@@ -320,7 +320,7 @@ export const UserIdentitiesTable = () => {
       />
       <DeleteActionModal
         isOpen={popUp.removeServerAdmin.isOpen}
-        title={`Are you sure want to remove Server Admin permissions from ${
+        title={`Are you sure you want to remove Server Admin permissions from ${
           (popUp?.removeServerAdmin?.data as { id: string; username: string })?.username || ""
         }?`}
         subTitle=""

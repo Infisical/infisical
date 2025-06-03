@@ -164,7 +164,7 @@ export const MachineIdentitiesTable = () => {
       <IdentityPanelTable handlePopUpOpen={handlePopUpOpen} />
       <DeleteActionModal
         isOpen={popUp.removeServerAdmin.isOpen}
-        title={`Are you sure want to remove Server Admin permissions from ${
+        title={`Are you sure you want to remove Server Admin permissions from ${
           (popUp?.removeServerAdmin?.data as { name: string })?.name || ""
         }?`}
         subTitle=""

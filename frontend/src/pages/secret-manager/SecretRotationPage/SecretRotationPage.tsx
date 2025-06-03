@@ -387,7 +387,7 @@ const Page = () => {
       />
       <DeleteActionModal
         isOpen={popUp.deleteRotation.isOpen}
-        title="Are you sure want to delete this rotation?"
+        title="Are you sure you want to delete this rotation?"
         subTitle="This will stop the rotation from dynamically changing. Secret won't be deleted"
         onChange={(isOpen) => handlePopUpToggle("deleteRotation", isOpen)}
         deleteKey="delete"

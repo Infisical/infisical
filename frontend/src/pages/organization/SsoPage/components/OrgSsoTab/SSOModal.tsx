@@ -371,7 +371,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
       </Modal>
       <DeleteActionModal
         isOpen={isDeletePopupOpen}
-        title="Are you sure want to delete SAML SSO?"
+        title="Are you sure you want to delete SAML SSO?"
         onChange={() => setIsDeletePopupOpen.toggle()}
         deleteKey="confirm"
         onDeleteApproved={handleSamlSoftDelete}

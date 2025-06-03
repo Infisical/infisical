@@ -78,3 +78,9 @@ export type OrgServiceActor = {
   authMethod: ActorAuthMethod;
   orgId: string;
 };
+
+export enum QueueWorkerProfile {
+  All = "all",
+  Standard = "standard",
+  SecretScanning = "secret-scanning"
+}

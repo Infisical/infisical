@@ -10,6 +10,7 @@ import { TCamundaConnection } from "./camunda-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
+import { TGitHubRadarConnection } from "./github-radar-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TLdapConnection } from "./ldap-connection";
@@ -32,6 +33,7 @@ export * from "./camunda-connection";
 export * from "./databricks-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
+export * from "./github-radar-connection";
 export * from "./hc-vault-connection";
 export * from "./humanitec-connection";
 export * from "./ldap-connection";
@@ -47,6 +49,7 @@ export * from "./windmill-connection";
 export type TAppConnection =
   | TAwsConnection
   | TGitHubConnection
+  | TGitHubRadarConnection
   | TGcpConnection
   | TAzureKeyVaultConnection
   | TAzureAppConfigurationConnection
@@ -95,6 +98,7 @@ export type TDeleteAppConnectionDTO = {
 export type TAppConnectionMap = {
   [AppConnection.AWS]: TAwsConnection;
   [AppConnection.GitHub]: TGitHubConnection;
+  [AppConnection.GitHubRadar]: TGitHubRadarConnection;
   [AppConnection.GCP]: TGcpConnection;
   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnection;
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
