@@ -25,6 +25,7 @@ import { OrgPermissionSubjects } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys, useUpdateDynamicSecret } from "@app/hooks/api";
 import { SqlProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { slugSchema } from "@app/lib/schemas";
 
 import { MetadataForm } from "../MetadataForm";
 
@@ -87,10 +88,7 @@ const formSchema = z.object({
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     })
     .nullable(),
-  newName: z
-    .string()
-    .refine((val) => val.toLowerCase() === val, "Must be lowercase")
-    .optional(),
+  newName: slugSchema().optional(),
   metadata: z
     .object({
       key: z.string().trim().min(1),

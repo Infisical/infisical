@@ -19,6 +19,7 @@ import {
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
+import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
   provider: z.object({
@@ -50,7 +51,7 @@ const formSchema = z.object({
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
+  name: slugSchema(),
   environment: z.object({ name: z.string(), slug: z.string() }),
   usernameTemplate: z.string().nullable().optional()
 });
