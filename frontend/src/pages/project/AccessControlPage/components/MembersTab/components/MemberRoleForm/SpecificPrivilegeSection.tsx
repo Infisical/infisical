@@ -351,7 +351,7 @@ export const SpecificPrivilegeSecretForm = ({
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="ml-1 flex flex-col text-mineshaft-300">
+                      <div className="pointer-events-none ml-1 flex select-none flex-col text-mineshaft-300">
                         <div className="flex flex-row items-center gap-1">
                           <FontAwesomeIcon
                             icon={faEye}
@@ -359,7 +359,7 @@ export const SpecificPrivilegeSecretForm = ({
                           />
                           <FormLabel
                             label="View"
-                            className={`ml-0.5 mt-0 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
+                            className={`my-0 ml-0.5 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
                           />
                         </div>
                         <p className="text-xs text-mineshaft-400">Read secret values</p>
@@ -382,7 +382,7 @@ export const SpecificPrivilegeSecretForm = ({
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="ml-1 flex flex-col text-mineshaft-300">
+                      <div className="pointer-events-none ml-1 flex select-none flex-col text-mineshaft-300">
                         <div className="flex flex-row items-center gap-1">
                           <FontAwesomeIcon
                             icon={faPlus}
@@ -390,7 +390,7 @@ export const SpecificPrivilegeSecretForm = ({
                           />
                           <FormLabel
                             label="Create"
-                            className={`ml-0.5 mt-0 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
+                            className={`my-0 ml-0.5 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
                           />
                         </div>
                         <p className="text-xs text-mineshaft-400">Create new secrets</p>
@@ -415,7 +415,7 @@ export const SpecificPrivilegeSecretForm = ({
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="ml-1 flex flex-col text-mineshaft-300">
+                      <div className="pointer-events-none ml-1 flex select-none flex-col text-mineshaft-300">
                         <div className="flex flex-row items-center gap-1">
                           <FontAwesomeIcon
                             icon={faPencil}
@@ -423,7 +423,7 @@ export const SpecificPrivilegeSecretForm = ({
                           />
                           <FormLabel
                             label="Modify"
-                            className={`ml-0.5 mt-0 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
+                            className={`my-0 ml-0.5 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
                           />
                         </div>
                         <p className="text-xs text-mineshaft-400">Update existing secrets</p>
@@ -446,7 +446,7 @@ export const SpecificPrivilegeSecretForm = ({
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="ml-1 flex flex-col text-mineshaft-300">
+                      <div className="pointer-events-none ml-1 flex select-none flex-col text-mineshaft-300">
                         <div className="flex flex-row items-center gap-1">
                           <FontAwesomeIcon
                             icon={faTrashCan}
@@ -454,7 +454,7 @@ export const SpecificPrivilegeSecretForm = ({
                           />
                           <FormLabel
                             label="Delete"
-                            className={`ml-0.5 mt-0 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
+                            className={`my-0 ml-0.5 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
                           />
                         </div>
                         <p className="text-xs text-mineshaft-400">Delete existing secrets</p>
