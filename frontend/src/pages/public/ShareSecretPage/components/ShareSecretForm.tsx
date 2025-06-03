@@ -369,7 +369,8 @@ export const ShareSecretForm = ({
                         helperText={
                           maxSharedSecretViewLimit ? (
                             <span className="text-yellow-500">
-                              Limited to {maxSharedSecretViewLimit} views by organization
+                              Limited to {maxSharedSecretViewLimit} view
+                              {maxSharedSecretViewLimit === 1 ? "" : "s"} by organization
                             </span>
                           ) : undefined
                         }
