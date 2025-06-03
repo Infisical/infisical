@@ -66,13 +66,13 @@ export const SecretScanningDataSourceForm = ({ type, onComplete, onCancel, dataS
           projectId: currentWorkspace.id
         });
     try {
-      const rotation = await mutation;
+      const source = await mutation;
 
       createNotification({
-        text: `Successfully ${dataSource ? "updated" : "created"} ${sourceType} Data Source`,
+        text: `Successfully ${source ? "updated" : "created"} ${sourceType} Data Source`,
         type: "success"
       });
-      onComplete(rotation);
+      onComplete(source);
     } catch (err: any) {
       createNotification({
         title: `Failed to ${dataSource ? "update" : "create"} ${sourceType} Data Source`,

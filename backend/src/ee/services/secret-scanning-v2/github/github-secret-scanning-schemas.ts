@@ -12,11 +12,12 @@ import {
   GitRepositoryScanFindingDetailsSchema
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
 import { SecretScanningDataSources } from "@app/lib/api-docs";
+import { GitHubRepositoryRegex } from "@app/lib/regex";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 export const GitHubDataSourceConfigSchema = z.object({
   includeRepos: z
-    .array(z.string().min(1).max(256))
+    .array(z.string().regex(GitHubRepositoryRegex, "Invalid repository name format").min(1).max(256))
     .nonempty("One or more repositories required")
     .max(25)
     .default(["*"])

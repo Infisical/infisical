@@ -775,6 +775,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         formVal[subject]![0][ProjectPermissionSecretSyncActions.ImportSecrets] = true;
       if (canRemoveSecrets)
         formVal[subject]![0][ProjectPermissionSecretSyncActions.RemoveSecrets] = true;
+      return;
     }
 
     if (subject === ProjectPermissionSub.SecretScanningDataSources) {
@@ -809,6 +810,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.ReadResources] = true;
       if (canTriggerScans)
         formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.TriggerScans] = true;
+
+      return;
     }
 
     if (subject === ProjectPermissionSub.SecretScanningFindings) {
@@ -821,6 +824,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canRead) formVal[subject]![0][ProjectPermissionSecretScanningFindingActions.Read] = true;
       if (canUpdate)
         formVal[subject]![0][ProjectPermissionSecretScanningFindingActions.Update] = true;
+
+      return;
     }
 
     if (subject === ProjectPermissionSub.SecretScanningConfigs) {
@@ -833,6 +838,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canRead) formVal[subject]![0][ProjectPermissionSecretScanningConfigActions.Read] = true;
       if (canUpdate)
         formVal[subject]![0][ProjectPermissionSecretScanningConfigActions.Update] = true;
+
+      return;
     }
 
     if (subject === ProjectPermissionSub.SshHosts) {
@@ -857,6 +864,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
         inverted
       });
+
+      return;
     }
 
     if (subject === ProjectPermissionSub.PkiSubscribers) {

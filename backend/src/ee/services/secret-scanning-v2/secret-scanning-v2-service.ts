@@ -827,6 +827,7 @@ export const secretScanningV2ServiceFactory = ({
         const configPath = join(tempFolder, "infisical-scan.toml");
         await writeTextToFile(configPath, content);
 
+        // just checking if config parses
         await scanContentAndGetFindings("", configPath);
       } catch (e) {
         throw new BadRequestError({

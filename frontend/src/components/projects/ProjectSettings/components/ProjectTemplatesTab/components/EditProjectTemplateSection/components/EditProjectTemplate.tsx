@@ -112,7 +112,7 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate, onBa
       />
       <DeleteActionModal
         isOpen={popUp.removeTemplate.isOpen}
-        title={`Are you sure want to delete ${projectTemplate.name}?`}
+        title={`Are you sure you want to delete ${projectTemplate.name}?`}
         deleteKey="confirm"
         onChange={(isOpen) => handlePopUpToggle("removeTemplate", isOpen)}
         onDeleteApproved={handleRemoveTemplate}

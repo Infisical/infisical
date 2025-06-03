@@ -184,7 +184,7 @@ const Page = () => {
           />
           <DeleteActionModal
             isOpen={popUp.deleteIdentity.isOpen}
-            title={`Are you sure want to remove ${identityMembershipDetails?.identity?.name} from the project?`}
+            title={`Are you sure you want to remove ${identityMembershipDetails?.identity?.name} from the project?`}
             onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
             deleteKey="remove"
             onDeleteApproved={() => onRemoveIdentitySubmit()}

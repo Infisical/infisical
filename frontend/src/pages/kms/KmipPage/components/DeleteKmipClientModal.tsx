@@ -44,7 +44,7 @@ export const DeleteKmipClientModal = ({ isOpen, onOpenChange, kmipClient }: Prop
   return (
     <DeleteActionModal
       isOpen={isOpen}
-      title={`Are you sure want to delete ${name}?`}
+      title={`Are you sure you want to delete ${name}?`}
       onChange={onOpenChange}
       deleteKey="confirm"
       onDeleteApproved={handleDeleteKmipClient}

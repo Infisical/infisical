@@ -80,7 +80,6 @@ export const APP_CONNECTION_MAP: Record<
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
   switch (method) {
     case GitHubConnectionMethod.App:
-      return { name: "GitHub App", icon: faGithub };
     case GitHubRadarConnectionMethod.App:
       return { name: "GitHub App", icon: faGithub };
     case AzureKeyVaultConnectionMethod.OAuth:

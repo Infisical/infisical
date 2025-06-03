@@ -274,7 +274,7 @@ export const SecretScanningDataSourceRow = ({
                       content={`Manually trigger a scan for this ${sourceDetails.name} data source.`}
                     >
                       <div className="flex h-full w-full items-center justify-between gap-1">
-                        <span> Trigger Scan</span>
+                        <span>Trigger Scan</span>
                         <FontAwesomeIcon
                           className="text-bunker-300"
                           size="sm"

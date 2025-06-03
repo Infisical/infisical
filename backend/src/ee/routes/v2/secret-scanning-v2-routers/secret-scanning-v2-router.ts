@@ -242,7 +242,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       tags: [ApiDocsTags.SecretScanning],
       description: "Update the specified Secret Scanning Configuration.",
       querystring: z.object({
-        projectId: z.string().trim().min(1, "Finding ID required").describe(SecretScanningConfigs.UPDATE.projectId)
+        projectId: z.string().trim().min(1, "Project ID required").describe(SecretScanningConfigs.UPDATE.projectId)
       }),
       body: z.object({
         content: z.string().nullable().describe(SecretScanningConfigs.UPDATE.content)

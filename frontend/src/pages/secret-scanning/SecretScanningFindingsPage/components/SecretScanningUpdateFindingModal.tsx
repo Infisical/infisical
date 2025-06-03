@@ -27,7 +27,7 @@ type Props = {
 };
 
 const FormSchema = z.object({
-  remarks: z.string().optional(),
+  remarks: z.string().max(256, "Cannot exceed 256 characters").optional(),
   status: z.nativeEnum(SecretScanningFindingStatus)
 });
 

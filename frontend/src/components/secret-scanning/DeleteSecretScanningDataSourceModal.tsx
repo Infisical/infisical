@@ -19,7 +19,7 @@ export const DeleteSecretScanningDataSourceModal = ({
   dataSource,
   onComplete
 }: Props) => {
-  const deleteSecretRotation = useDeleteSecretScanningDataSource();
+  const deleteDataSource = useDeleteSecretScanningDataSource();
 
   if (!dataSource) return null;
 
@@ -29,7 +29,7 @@ export const DeleteSecretScanningDataSourceModal = ({
     const dataSourceType = SECRET_SCANNING_DATA_SOURCE_MAP[type].name;
 
     try {
-      await deleteSecretRotation.mutateAsync({
+      await deleteDataSource.mutateAsync({
         dataSourceId,
         type,
         projectId
@@ -54,7 +54,7 @@ export const DeleteSecretScanningDataSourceModal = ({
     <DeleteActionModal
       isOpen={isOpen}
       onChange={onOpenChange}
-      title={`Are you sure want to delete ${name}?`}
+      title={`Are you sure you want to delete ${name}?`}
       deleteKey={name}
       onDeleteApproved={handleDeleteDataSource}
     >

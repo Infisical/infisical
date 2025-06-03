@@ -8,7 +8,11 @@ export const GitHubDataSourceSchema = z
   .object({
     type: z.literal(SecretScanningDataSource.GitHub),
     config: z.object({
-      includeRepos: z.string().array().min(1, "One or more repositories required")
+      includeRepos: z
+        .string()
+        .array()
+        .min(1, "One or more repositories required")
+        .max(25, "Cannot configure more than 25 repositories")
     })
   })
   .merge(BaseSecretScanningDataSourceSchema({ isConnectionRequired: true }));

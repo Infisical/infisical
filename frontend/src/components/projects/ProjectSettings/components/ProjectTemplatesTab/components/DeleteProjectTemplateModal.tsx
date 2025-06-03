@@ -41,7 +41,7 @@ export const DeleteProjectTemplateModal = ({ isOpen, onOpenChange, template }: P
     <DeleteActionModal
       isOpen={isOpen}
       onChange={onOpenChange}
-      title={`Are you sure want to delete ${name}?`}
+      title={`Are you sure you want to delete ${name}?`}
       deleteKey="confirm"
       onDeleteApproved={handleDeleteProjectTemplate}
     />

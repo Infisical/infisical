@@ -114,7 +114,7 @@ export const EnvironmentSection = () => {
       />
       <DeleteActionModal
         isOpen={popUp.deleteEnv.isOpen}
-        title={`Are you sure want to delete ${
+        title={`Are you sure you want to delete ${
           (popUp?.deleteEnv?.data as { name: string })?.name || " "
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}

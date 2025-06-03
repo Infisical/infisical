@@ -43,7 +43,7 @@ export const GitHubDataSourceConfigFields = () => {
     if (!includeRepos) {
       setValue("config.includeRepos", ["*"]);
     }
-  }, [includeRepos]);
+  }, [includeRepos, setValue]);
 
   return (
     <>

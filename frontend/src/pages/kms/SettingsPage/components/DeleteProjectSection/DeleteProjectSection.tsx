@@ -79,14 +79,6 @@ export const DeleteProjectSection = () => {
   };
 
   const handleLeaveWorkspaceSubmit = async () => {
-    console.log({
-      currentWorkspace,
-      currentOrg,
-      members,
-      isNoAccessMember,
-      membership
-    });
-
     try {
       setIsLeaving.on();
 
@@ -170,7 +162,7 @@ export const DeleteProjectSection = () => {
 
       <DeleteActionModal
         isOpen={popUp.deleteWorkspace.isOpen}
-        title="Are you sure want to delete this project?"
+        title="Are you sure you want to delete this project?"
         subTitle={`Permanently delete ${currentWorkspace?.name} and all of its data. This action is not reversible, so please be careful.`}
         onChange={(isOpen) => handlePopUpToggle("deleteWorkspace", isOpen)}
         deleteKey="confirm"
@@ -180,8 +172,8 @@ export const DeleteProjectSection = () => {
 
       <LeaveProjectModal
         isOpen={popUp.leaveWorkspace.isOpen}
-        title="Are you sure want to leave this project?"
-        subTitle={`If you leave ${currentWorkspace?.name} you will lose access to the project and it's contents.`}
+        title="Are you sure you want to leave this project?"
+        subTitle={`If you leave ${currentWorkspace?.name} you will lose access to the project and its contents.`}
         onChange={(isOpen) => handlePopUpToggle("leaveWorkspace", isOpen)}
         deleteKey="confirm"
         buttonText="Leave Project"

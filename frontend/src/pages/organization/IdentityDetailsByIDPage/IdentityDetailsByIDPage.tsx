@@ -101,7 +101,7 @@ const Page = () => {
       />
       <DeleteActionModal
         isOpen={popUp.deleteIdentity.isOpen}
-        title={`Are you sure want to delete ${
+        title={`Are you sure you want to delete ${
           (popUp?.deleteIdentity?.data as { name: string })?.name || ""
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}

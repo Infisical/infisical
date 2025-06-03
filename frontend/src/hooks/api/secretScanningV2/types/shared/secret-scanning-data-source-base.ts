@@ -8,11 +8,11 @@ export type TSecretScanningDataSourceBase = {
   createdAt: string;
   updatedAt: string;
   projectId: string;
-  connection: {
+  connection?: {
     app: AppConnection;
     id: string;
     name: string;
-  };
+  } | null;
   isAutoScanEnabled: boolean;
   isDisconnected: boolean;
 };

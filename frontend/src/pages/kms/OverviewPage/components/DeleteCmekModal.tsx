@@ -43,7 +43,7 @@ export const DeleteCmekModal = ({ isOpen, onOpenChange, cmek }: Props) => {
   return (
     <DeleteActionModal
       isOpen={isOpen}
-      title={`Are you sure want to delete ${name}?`}
+      title={`Are you sure you want to delete ${name}?`}
       onChange={onOpenChange}
       deleteKey="confirm"
       onDeleteApproved={handleDeleteCmek}

@@ -195,7 +195,6 @@ export const validateAppConnectionCredentials = async (
 export const getAppConnectionMethodName = (method: TAppConnection["method"]) => {
   switch (method) {
     case GitHubConnectionMethod.App:
-      return "GitHub App";
     case GitHubRadarConnectionMethod.App:
       return "GitHub App";
     case AzureKeyVaultConnectionMethod.OAuth:

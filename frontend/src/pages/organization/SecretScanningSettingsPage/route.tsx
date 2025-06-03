@@ -16,7 +16,7 @@ export const Route = createFileRoute(
       },
       {
         label: "Secret Scanning",
-        link: linkOptions({ to: "/organization/secret-scanning/settings" })
+        link: linkOptions({ to: "/organization/secret-scanning/overview" })
       },
       {
         label: "Settings"

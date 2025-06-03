@@ -142,7 +142,7 @@ export const WorkflowIntegrationTab = () => {
       />
       <DeleteActionModal
         isOpen={popUp.removeIntegration.isOpen}
-        title="Are you sure want to remove this integration?"
+        title="Are you sure you want to remove this integration?"
         onChange={(isOpen) => handlePopUpToggle("removeIntegration", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={async () => {

@@ -31,7 +31,7 @@ description: "Learn how to configure secret scanning for GitHub."
         ![Data Source Details](/images/platform/secret-scanning/github/github-data-source-step-4.png)
 
             - **Name** - the name of the data source. Must be slug-friendly.
-            - **Description** (optional) - a description of this rotation configuration.
+            - **Description** (optional) - a description of this data source.
 
         5. Review your data source, then click **Create Data Source**.
         ![Data Source Review](/images/platform/secret-scanning/github/github-data-source-step-5.png)
@@ -60,9 +60,8 @@ description: "Learn how to configure secret scanning for GitHub."
             "description": "my github data source",
             "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
             "isAutoScanEnabled": true,
-            "rotationInterval": 30,
             "config": {
-                "includeRepos": ["*"],
+                "includeRepos": ["*"]
             }
         }'
         ```

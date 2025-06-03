@@ -221,7 +221,7 @@ export const MFASection = () => {
       />
       <DeleteActionModal
         isOpen={popUp.deleteTotpConfig.isOpen}
-        title="Are you sure want to delete the configured authenticator?"
+        title="Are you sure you want to delete the configured authenticator?"
         subTitle="This action is irreversible. You’ll have to go through the setup process to enable it again."
         onChange={(isOpen) => handlePopUpToggle("deleteTotpConfig", isOpen)}
         deleteKey="confirm"

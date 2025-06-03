@@ -9,3 +9,5 @@ export const DistinguishedNameRegex =
 export const UserPrincipalNameRegex = new RE2(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}$/);
 
 export const LdapUrlRegex = new RE2(/^ldaps?:\/\//);
+
+export const GitHubRepositoryRegex = new RE2(/^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/);

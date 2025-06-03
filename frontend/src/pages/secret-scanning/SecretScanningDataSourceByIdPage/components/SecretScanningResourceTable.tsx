@@ -293,7 +293,7 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
           </THead>
           <TBody>
             {canReadResources && isResourcesPending && (
-              <TableSkeleton columns={5} innerKey="resource" />
+              <TableSkeleton columns={4} innerKey="resource" />
             )}
             {filteredResources.slice(offset, perPage * page).map((resource) => (
               <SecretScanningResourceRow

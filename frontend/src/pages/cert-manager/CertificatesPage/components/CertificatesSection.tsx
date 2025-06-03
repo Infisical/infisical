@@ -89,7 +89,7 @@ export const CertificatesSection = () => {
       <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteCertificate.isOpen}
-        title={`Are you sure want to remove the certificate ${
+        title={`Are you sure you want to remove the certificate ${
           (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
         } from the project?`}
         onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}

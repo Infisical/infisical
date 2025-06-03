@@ -36,8 +36,6 @@ export const SecretScanningDataSourceConnectionField = ({
     OrgPermissionSubjects.AppConnections
   );
 
-  const appName = APP_CONNECTION_MAP[app].name;
-
   return (
     <>
       <Controller
@@ -89,14 +87,14 @@ export const SecretScanningDataSourceConnectionField = ({
           <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
           {canCreateConnection ? (
             <>
-              You do not have access to any {appName} Connections. Create one from the{" "}
+              You do not have access to any {connectionName} Connections. Create one from the{" "}
               <Link to="/organization/app-connections" className="underline">
                 App Connections
               </Link>{" "}
               page.
             </>
           ) : (
-            `You do not have access to any ${appName} Connections. Contact an admin to create one.`
+            `You do not have access to any ${connectionName} Connections. Contact an admin to create one.`
           )}
         </p>
       )}

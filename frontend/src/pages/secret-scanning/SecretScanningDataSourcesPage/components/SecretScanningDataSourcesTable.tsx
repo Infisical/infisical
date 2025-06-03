@@ -100,7 +100,7 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
           return (
             SECRET_SCANNING_DATA_SOURCE_MAP[type].name.toLowerCase().includes(searchValue) ||
             name.toLowerCase().includes(searchValue) ||
-            connection.name.toLowerCase().includes(searchValue)
+            (connection && connection.name.toLowerCase().includes(searchValue))
           );
         })
         .sort((a, b) => {
