@@ -54,6 +54,10 @@ func NewGateway(identityToken string) (Gateway, error) {
 	}, nil
 }
 
+func (g *Gateway) UpdateIdentityAccessToken(accessToken string) {
+	g.httpClient.SetAuthToken(accessToken)
+}
+
 func (g *Gateway) ConnectWithRelay() error {
 	relayDetails, err := api.CallRegisterGatewayIdentityV1(g.httpClient)
 	if err != nil {
