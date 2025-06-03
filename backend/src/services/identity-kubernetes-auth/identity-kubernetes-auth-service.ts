@@ -139,6 +139,11 @@ export const identityKubernetesAuthServiceFactory = ({
       tokenReviewerJwt = serviceAccountJwt;
     }
 
+    let { kubernetesHost } = identityKubernetesAuth;
+    if (kubernetesHost.startsWith("https://") || kubernetesHost.startsWith("http://")) {
+      kubernetesHost = new RE2("^https?:\\/\\/").replace(kubernetesHost, "");
+    }
+
     const tokenReviewCallback = async (host: string = identityKubernetesAuth.kubernetesHost, port?: number) => {
       const baseUrl = port ? `${host}:${port}` : host;
 
@@ -163,7 +168,8 @@ export const identityKubernetesAuthServiceFactory = ({
             // if ca cert, rejectUnauthorized: true
             httpsAgent: new https.Agent({
               ca: caCert,
-              rejectUnauthorized: !!caCert
+              rejectUnauthorized: Boolean(caCert),
+              servername: kubernetesHost
             })
           }
         )
@@ -185,12 +191,6 @@ export const identityKubernetesAuthServiceFactory = ({
 
       return res.data;
     };
-
-    let { kubernetesHost } = identityKubernetesAuth;
-
-    if (kubernetesHost.startsWith("https://") || kubernetesHost.startsWith("http://")) {
-      kubernetesHost = new RE2("^https?:\\/\\/").replace(kubernetesHost, "");
-    }
 
     const [k8sHost, k8sPort] = kubernetesHost.split(":");
 
