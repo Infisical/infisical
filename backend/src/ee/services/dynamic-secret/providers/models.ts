@@ -16,7 +16,8 @@ export enum SqlProviders {
   MySQL = "mysql2",
   Oracle = "oracledb",
   MsSQL = "mssql",
-  SapAse = "sap-ase"
+  SapAse = "sap-ase",
+  Vertica = "vertica"
 }
 
 export enum ElasticSearchAuthTypes {
@@ -293,6 +294,38 @@ export const DynamicSecretKubernetesSchema = z.object({
   audiences: z.array(z.string().trim().min(1))
 });
 
+export const DynamicSecretVerticaSchema = z.object({
+  host: z.string().trim().toLowerCase(),
+  port: z.number(),
+  username: z.string().trim(),
+  password: z.string().trim(),
+  database: z.string().trim(),
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim(),
+  passwordRequirements: z
+    .object({
+      length: z.number().min(1).max(250),
+      required: z
+        .object({
+          lowercase: z.number().min(0),
+          uppercase: z.number().min(0),
+          digits: z.number().min(0),
+          symbols: z.number().min(0)
+        })
+        .refine((data) => {
+          const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+          return total <= 250;
+        }, "Sum of required characters cannot exceed 250"),
+      allowedSymbols: z.string().optional()
+    })
+    .refine((data) => {
+      const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
+      return total <= data.length;
+    }, "Sum of required characters cannot exceed the total length")
+    .optional()
+    .describe("Password generation requirements")
+});
+
 export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
   z.object({
     configType: z.literal(TotpConfigType.URL),
@@ -337,7 +370,8 @@ export enum DynamicSecretProviders {
   Snowflake = "snowflake",
   Totp = "totp",
   SapAse = "sap-ase",
-  Kubernetes = "kubernetes"
+  Kubernetes = "kubernetes",
+  Vertica = "vertica"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -356,7 +390,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.Ldap), inputs: LdapSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Kubernetes), inputs: DynamicSecretKubernetesSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Kubernetes), inputs: DynamicSecretKubernetesSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Vertica), inputs: DynamicSecretVerticaSchema })
 ]);
 
 export type TDynamicProviderFns = {
