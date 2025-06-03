@@ -112,7 +112,7 @@ var createCmd = &cobra.Command{
 		if projectId == "" {
 			workspaceFile, err := util.GetWorkSpaceFromFile()
 			if err != nil {
-				util.HandleError(err, "Unable to get workspace file")
+				util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
 			}
 
 			projectId = workspaceFile.WorkspaceId
@@ -180,7 +180,7 @@ var deleteCmd = &cobra.Command{
 		if projectId == "" {
 			workspaceFile, err := util.GetWorkSpaceFromFile()
 			if err != nil {
-				util.HandleError(err, "Unable to get workspace file")
+				util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
 			}
 
 			projectId = workspaceFile.WorkspaceId
