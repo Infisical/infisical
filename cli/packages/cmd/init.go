@@ -46,7 +46,7 @@ var initCmd = &cobra.Command{
 		}
 
 		if userCreds.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			userCreds = util.EstablishUserLoginSession()
 		}
 
 		httpClient, err := util.GetRestyClientWithCustomHeaders()

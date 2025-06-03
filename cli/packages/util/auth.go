@@ -1,5 +1,13 @@
 package util
 
+import (
+	"fmt"
+	"os"
+	"os/exec"
+
+	"github.com/rs/zerolog/log"
+)
+
 type AuthStrategyType string
 
 var AuthStrategy = struct {
@@ -42,4 +50,37 @@ func IsAuthMethodValid(authMethod string, allowUserAuth bool) (isValid bool, str
 		}
 	}
 	return false, ""
+}
+
+// EstablishUserLoginSession handles the login flow to either create a new session or restore an expired one.
+// It returns fresh user details if login is successful.
+func EstablishUserLoginSession() LoggedInUserDetails {
+	log.Info().Msg("No valid login session found, triggering login flow")
+
+	exePath, err := os.Executable()
+	if err != nil {
+		PrintErrorMessageAndExit(fmt.Sprintf("Failed to determine executable path: %v", err))
+	}
+
+	// Spawn infisical login command
+	loginCmd := exec.Command(exePath, "login", "--silent")
+	loginCmd.Stdin = os.Stdin
+	loginCmd.Stdout = os.Stdout
+	loginCmd.Stderr = os.Stderr
+
+	err = loginCmd.Run()
+	if err != nil {
+		PrintErrorMessageAndExit(fmt.Sprintf("Failed to automatically trigger login flow. Please run [infisical login] manually to login."))
+	}
+
+	loggedInUserDetails, err := GetCurrentLoggedInUserDetails(true)
+	if err != nil {
+		PrintErrorMessageAndExit("You must be logged in to run this command. To login, run [infisical login]")
+	}
+
+	if loggedInUserDetails.LoginExpired {
+		PrintErrorMessageAndExit("Your login session has expired. Please run [infisical login]")
+	}
+
+	return loggedInUserDetails
 }

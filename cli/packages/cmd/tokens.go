@@ -47,7 +47,7 @@ var tokensCreateCmd = &cobra.Command{
 		}
 
 		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
 
 		tokenOnly, err := cmd.Flags().GetBool("token-only")

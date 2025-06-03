@@ -80,8 +80,9 @@ func getDynamicSecretList(cmd *cobra.Command, args []string) {
 		}
 
 		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
+
 		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
@@ -197,7 +198,7 @@ func createDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		}
 
 		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
 		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
@@ -328,8 +329,9 @@ func renewDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		}
 
 		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
+
 		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
@@ -435,8 +437,9 @@ func revokeDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		}
 
 		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
+
 		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
@@ -541,7 +544,7 @@ func listDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		}
 
 		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
 		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}

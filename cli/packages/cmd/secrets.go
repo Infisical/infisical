@@ -237,7 +237,7 @@ var secretsSetCmd = &cobra.Command{
 			}
 
 			if loggedInUserDetails.LoginExpired {
-				util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+				loggedInUserDetails = util.EstablishUserLoginSession()
 			}
 
 			secretOperations, err = util.SetRawSecrets(processedArgs, secretType, environmentName, secretsPath, projectId, &models.TokenDetails{
@@ -325,7 +325,7 @@ var secretsDeleteCmd = &cobra.Command{
 			}
 
 			if loggedInUserDetails.LoginExpired {
-				util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+				loggedInUserDetails = util.EstablishUserLoginSession()
 			}
 
 			httpClient.SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken)

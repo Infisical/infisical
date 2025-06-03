@@ -174,7 +174,7 @@ func RequireLogin() {
 	configFile, _ := GetConfigFile()
 
 	if configFile.LoggedInUserEmail == "" {
-		PrintErrorMessageAndExit("You must be logged in to run this command. To login, run [infisical login]")
+		EstablishUserLoginSession()
 	}
 }
 
