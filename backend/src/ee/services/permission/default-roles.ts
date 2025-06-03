@@ -148,6 +148,7 @@ const buildAdminPermissionRules = () => {
   can(
     [
       ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.DescribeAndReadValue,
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Create,
       ProjectPermissionSecretActions.Edit,
@@ -228,6 +229,7 @@ const buildMemberPermissionRules = () => {
   can(
     [
       ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.DescribeAndReadValue,
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Edit,
       ProjectPermissionSecretActions.Create,
