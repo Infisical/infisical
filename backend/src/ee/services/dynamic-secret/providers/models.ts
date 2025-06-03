@@ -300,6 +300,7 @@ export const DynamicSecretVerticaSchema = z.object({
   username: z.string().trim(),
   password: z.string().trim(),
   database: z.string().trim(),
+  gatewayId: z.string().nullable().optional(),
   creationStatement: z.string().trim(),
   revocationStatement: z.string().trim(),
   passwordRequirements: z

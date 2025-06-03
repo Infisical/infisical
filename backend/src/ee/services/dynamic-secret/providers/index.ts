@@ -42,5 +42,5 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.Totp]: TotpProvider(),
   [DynamicSecretProviders.SapAse]: SapAseProvider(),
   [DynamicSecretProviders.Kubernetes]: KubernetesProvider({ gatewayService }),
-  [DynamicSecretProviders.Vertica]: VerticaProvider()
+  [DynamicSecretProviders.Vertica]: VerticaProvider({ gatewayService })
 });

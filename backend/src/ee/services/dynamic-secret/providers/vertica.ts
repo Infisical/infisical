@@ -4,12 +4,16 @@ import knex, { Knex } from "knex";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { withGatewayProxy } from "@app/lib/gateway";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
+import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretVerticaSchema, PasswordRequirements, TDynamicProviderFns } from "./models";
+
+const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
 interface VersionResult {
   version: string;
@@ -125,11 +129,15 @@ const generateUsername = (usernameTemplate?: string | null) => {
   });
 };
 
-export const VerticaProvider = (): TDynamicProviderFns => {
+type TVerticaProviderDTO = {
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+};
+
+export const VerticaProvider = ({ gatewayService }: TVerticaProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretVerticaSchema.parseAsync(inputs);
 
-    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
+    const [hostIp] = await verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.gatewayId));
     validateHandlebarTemplate("Vertica creation", providerInputs.creationStatement, {
       allowedExpressions: (val) => ["username", "password"].includes(val)
     });
@@ -152,6 +160,7 @@ export const VerticaProvider = (): TDynamicProviderFns => {
         password: providerInputs.password,
         ssl: false
       },
+      acquireConnectionTimeout: EXTERNAL_REQUEST_TIMEOUT,
       pool: {
         min: 0,
         max: 1,
@@ -176,27 +185,65 @@ export const VerticaProvider = (): TDynamicProviderFns => {
     return client;
   };
 
+  const gatewayProxyWrapper = async (
+    providerInputs: z.infer<typeof DynamicSecretVerticaSchema>,
+    gatewayCallback: (host: string, port: number) => Promise<void>
+  ) => {
+    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(providerInputs.gatewayId as string);
+    const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
+    await withGatewayProxy(
+      async (port) => {
+        await gatewayCallback("localhost", port);
+      },
+      {
+        targetHost: providerInputs.host,
+        targetPort: providerInputs.port,
+        relayHost,
+        relayPort: Number(relayPort),
+        identityId: relayDetails.identityId,
+        orgId: relayDetails.orgId,
+        tlsOptions: {
+          ca: relayDetails.certChain,
+          cert: relayDetails.certificate,
+          key: relayDetails.privateKey.toString()
+        }
+      }
+    );
+  };
+
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    let client: VerticaKnexClient | null = null;
+    let isConnected = false;
 
-    try {
-      client = await $getClient(providerInputs);
+    const gatewayCallback = async (host = providerInputs.hostIp, port = providerInputs.port) => {
+      let client: VerticaKnexClient | null = null;
 
-      const clientResult: DatabaseQueryResult = await client.raw("SELECT version() AS version");
+      try {
+        client = await $getClient({ ...providerInputs, hostIp: host, port });
 
-      const resultFromSelectedDatabase = clientResult.rows?.[0] as VersionResult | undefined;
+        const clientResult: DatabaseQueryResult = await client.raw("SELECT version() AS version");
 
-      if (!resultFromSelectedDatabase?.version) {
-        throw new BadRequestError({
-          message: "Failed to validate Vertica connection, version query failed"
-        });
+        const resultFromSelectedDatabase = clientResult.rows?.[0] as VersionResult | undefined;
+
+        if (!resultFromSelectedDatabase?.version) {
+          throw new BadRequestError({
+            message: "Failed to validate Vertica connection, version query failed"
+          });
+        }
+
+        isConnected = true;
+      } finally {
+        if (client) await client.destroy();
       }
+    };
 
-      return true;
-    } finally {
-      if (client) await client.destroy();
+    if (providerInputs.gatewayId) {
+      await gatewayProxyWrapper(providerInputs, gatewayCallback);
+    } else {
+      await gatewayCallback();
     }
+
+    return isConnected;
   };
 
   const create = async (data: { inputs: unknown; usernameTemplate?: string | null }) => {
@@ -206,87 +253,103 @@ export const VerticaProvider = (): TDynamicProviderFns => {
     const username = generateUsername(usernameTemplate);
     const password = generatePassword(providerInputs.passwordRequirements);
 
-    let client: VerticaKnexClient | null = null;
+    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+      let client: VerticaKnexClient | null = null;
 
-    try {
-      client = await $getClient(providerInputs);
+      try {
+        client = await $getClient({ ...providerInputs, hostIp: host, port });
 
-      const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
-        username,
-        password
-      });
+        const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+          username,
+          password
+        });
 
-      const queries = creationStatement.trim().replaceAll("\n", "").split(";").filter(Boolean);
+        const queries = creationStatement.trim().replaceAll("\n", "").split(";").filter(Boolean);
 
-      // Execute queries sequentially to maintain transaction integrity
-      for (const query of queries) {
-        const trimmedQuery = query.trim();
-        if (trimmedQuery) {
-          // eslint-disable-next-line no-await-in-loop
-          await client.raw(trimmedQuery);
+        // Execute queries sequentially to maintain transaction integrity
+        for (const query of queries) {
+          const trimmedQuery = query.trim();
+          if (trimmedQuery) {
+            // eslint-disable-next-line no-await-in-loop
+            await client.raw(trimmedQuery);
+          }
         }
+      } finally {
+        if (client) await client.destroy();
       }
+    };
 
-      return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
-    } finally {
-      if (client) await client.destroy();
+    if (providerInputs.gatewayId) {
+      await gatewayProxyWrapper(providerInputs, gatewayCallback);
+    } else {
+      await gatewayCallback();
     }
+
+    return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
   };
 
   const revoke = async (inputs: unknown, username: string) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    let client: VerticaKnexClient | null = null;
+    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+      let client: VerticaKnexClient | null = null;
 
-    try {
-      client = await $getClient(providerInputs);
-
-      const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
-        username
-      });
-
-      const queries = revokeStatement.trim().replaceAll("\n", "").split(";").filter(Boolean);
-
-      // Check for active sessions and close them
       try {
-        const sessionResult: DatabaseQueryResult = await client.raw(
-          "SELECT session_id FROM sessions WHERE user_name = ?",
-          [username]
-        );
+        client = await $getClient({ ...providerInputs, hostIp: host, port });
 
-        const activeSessions = (sessionResult.rows || []) as SessionResult[];
+        const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
+          username
+        });
 
-        // Close all sessions in parallel since they're independent operations
-        if (activeSessions.length > 0) {
-          const sessionClosePromises = activeSessions.map(async (session) => {
-            try {
-              await client!.raw("SELECT close_session(?)", [session.session_id]);
-            } catch (error) {
-              // Continue if session is already closed
-              logger.error(error, `Failed to close session ${session.session_id}`);
-            }
-          });
+        const queries = revokeStatement.trim().replaceAll("\n", "").split(";").filter(Boolean);
 
-          await Promise.allSettled(sessionClosePromises);
+        // Check for active sessions and close them
+        try {
+          const sessionResult: DatabaseQueryResult = await client.raw(
+            "SELECT session_id FROM sessions WHERE user_name = ?",
+            [username]
+          );
+
+          const activeSessions = (sessionResult.rows || []) as SessionResult[];
+
+          // Close all sessions in parallel since they're independent operations
+          if (activeSessions.length > 0) {
+            const sessionClosePromises = activeSessions.map(async (session) => {
+              try {
+                await client!.raw("SELECT close_session(?)", [session.session_id]);
+              } catch (error) {
+                // Continue if session is already closed
+                logger.error(error, `Failed to close session ${session.session_id}`);
+              }
+            });
+
+            await Promise.allSettled(sessionClosePromises);
+          }
+        } catch (error) {
+          // Continue if we can't query sessions (permissions, etc.)
+          logger.error(error, "Could not query/close active sessions");
         }
-      } catch (error) {
-        // Continue if we can't query sessions (permissions, etc.)
-        logger.error(error, "Could not query/close active sessions");
-      }
 
-      // Execute revocation queries sequentially to maintain transaction integrity
-      for (const query of queries) {
-        const trimmedQuery = query.trim();
-        if (trimmedQuery) {
-          // eslint-disable-next-line no-await-in-loop
-          await client.raw(trimmedQuery);
+        // Execute revocation queries sequentially to maintain transaction integrity
+        for (const query of queries) {
+          const trimmedQuery = query.trim();
+          if (trimmedQuery) {
+            // eslint-disable-next-line no-await-in-loop
+            await client.raw(trimmedQuery);
+          }
         }
+      } finally {
+        if (client) await client.destroy();
       }
+    };
 
-      return { entityId: username };
-    } finally {
-      if (client) await client.destroy();
+    if (providerInputs.gatewayId) {
+      await gatewayProxyWrapper(providerInputs, gatewayCallback);
+    } else {
+      await gatewayCallback();
     }
+
+    return { entityId: username };
   };
 
   const renew = async (_: unknown, username: string) => {

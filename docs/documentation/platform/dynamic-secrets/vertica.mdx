@@ -34,6 +34,10 @@ Create a user with the required permission in your Vertica instance. This user w
 		Maximum time-to-live for a generated secret
 	</ParamField>
 
+    <ParamField path="Gateway" type="string">
+      Select a gateway for private cluster access. If not specified, the Internet Gateway will be used.
+    </ParamField>
+
 	<ParamField path="Host" type="string" required>
 		Vertica database host
 	</ParamField>
@@ -106,7 +110,7 @@ Create a user with the required permission in your Vertica instance. This user w
 	![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
 
 	<Tip>
-		Ensure that the TTL for the lease fall within the maximum TTL defined when configuring the dynamic secret.
+		Ensure that the TTL for the lease falls within the maximum TTL defined when configuring the dynamic secret.
 	</Tip>
 
 	Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you.
@@ -117,7 +121,7 @@ Create a user with the required permission in your Vertica instance. This user w
 
 ## Audit or Revoke Leases
 Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
-This will allow you to see the expiration time of the lease or delete the lease before it's set time to live.
+This will allow you to see the expiration time of the lease or delete the lease before its set time to live.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 

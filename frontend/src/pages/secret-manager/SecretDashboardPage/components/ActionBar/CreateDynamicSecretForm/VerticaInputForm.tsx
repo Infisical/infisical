@@ -1,10 +1,12 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Accordion,
   AccordionContent,
@@ -14,9 +16,16 @@ import {
   FilterableSelect,
   FormControl,
   Input,
-  TextArea
+  Select,
+  SelectItem,
+  TextArea,
+  Tooltip
 } from "@app/components/v2";
-import { useCreateDynamicSecret } from "@app/hooks/api";
+import {
+  OrgGatewayPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
+import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 
@@ -50,7 +59,8 @@ const formSchema = z.object({
     password: z.string().min(1),
     passwordRequirements: passwordRequirementsSchema.optional(),
     creationStatement: z.string().min(1),
-    revocationStatement: z.string().min(1)
+    revocationStatement: z.string().min(1),
+    gatewayId: z.string().optional()
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
@@ -124,6 +134,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
   });
 
   const createDynamicSecret = useCreateDynamicSecret();
+  const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
   const handleCreateDynamicSecret = async ({
     name,
@@ -184,7 +195,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
                 defaultValue="1h"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
-                    label={<TtlFormLabel label="Max TTL" />}
+                    label={<TtlFormLabel label="Default TTL" />}
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
@@ -200,7 +211,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
                 defaultValue="24h"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
-                    label={<TtlFormLabel label="Default TTL" />}
+                    label={<TtlFormLabel label="Max TTL" />}
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
@@ -213,6 +224,57 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
           <div>
             <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
+            </div>
+            <div>
+              <OrgPermissionCan
+                I={OrgGatewayPermissionActions.AttachGateways}
+                a={OrgPermissionSubjects.Gateway}
+              >
+                {(isAllowed) => (
+                  <Controller
+                    control={control}
+                    name="provider.gatewayId"
+                    defaultValue=""
+                    render={({ field: { value, onChange }, fieldState: { error } }) => (
+                      <FormControl
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        label="Gateway"
+                      >
+                        <Tooltip
+                          isDisabled={isAllowed}
+                          content="Restricted access. You don't have permission to attach gateways to resources."
+                        >
+                          <div>
+                            <Select
+                              isDisabled={!isAllowed}
+                              value={value}
+                              onValueChange={onChange}
+                              className="w-full border border-mineshaft-500"
+                              dropdownContainerClassName="max-w-none"
+                              isLoading={isGatewaysLoading}
+                              placeholder="Default: Internet Gateway"
+                              position="popper"
+                            >
+                              <SelectItem
+                                value={null as unknown as string}
+                                onClick={() => onChange(undefined)}
+                              >
+                                Internet Gateway
+                              </SelectItem>
+                              {gateways?.map((el) => (
+                                <SelectItem value={el.id} key={el.id}>
+                                  {el.name}
+                                </SelectItem>
+                              ))}
+                            </Select>
+                          </div>
+                        </Tooltip>
+                      </FormControl>
+                    )}
+                  />
+                )}
+              </OrgPermissionCan>
             </div>
             <div className="flex flex-col">
               <div className="flex items-center space-x-2">
@@ -227,7 +289,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
-                      <Input placeholder="92.41.22.72" {...field} />
+                      <Input placeholder="Vertica Host" {...field} />
                     </FormControl>
                   )}
                 />
