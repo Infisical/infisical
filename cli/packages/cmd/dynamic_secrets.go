@@ -72,7 +72,6 @@ func getDynamicSecretList(cmd *cobra.Command, args []string) {
 		infisicalToken = token.Token
 	} else {
 		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
 
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if err != nil {
@@ -190,7 +189,6 @@ func createDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		infisicalToken = token.Token
 	} else {
 		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
 
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if err != nil {
@@ -321,7 +319,6 @@ func renewDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		infisicalToken = token.Token
 	} else {
 		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
 
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if err != nil {
@@ -429,7 +426,6 @@ func revokeDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		infisicalToken = token.Token
 	} else {
 		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
 
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if err != nil {
@@ -536,7 +532,6 @@ func listDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		infisicalToken = token.Token
 	} else {
 		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
 
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if err != nil {

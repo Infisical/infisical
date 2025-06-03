@@ -158,10 +158,6 @@ var secretsSetCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		if token == nil {
-			util.RequireLocalWorkspaceFile()
-		}
-
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
 			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
@@ -173,6 +169,10 @@ var secretsSetCmd = &cobra.Command{
 		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
+		}
+
+		if token == nil && projectId == "" {
+			util.RequireLocalWorkspaceFile()
 		}
 
 		secretsPath, err := cmd.Flags().GetString("path")
@@ -317,7 +317,6 @@ var secretsDeleteCmd = &cobra.Command{
 			httpClient.SetAuthToken(token.Token)
 		} else {
 			util.RequireLogin()
-			util.RequireLocalWorkspaceFile()
 
 			loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 			if err != nil {
