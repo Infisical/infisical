@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { MutationCache, QueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
@@ -18,6 +19,39 @@ export const SIGNUP_TEMP_TOKEN_CACHE_KEY = ["infisical__signup-temp-token"];
 export const MFA_TEMP_TOKEN_CACHE_KEY = ["infisical__mfa-temp-token"];
 export const AUTH_TOKEN_CACHE_KEY = ["infisical__auth-token"];
 
+function ValidationErrorModal({ serverResponse }: { serverResponse: TApiErrors }) {
+  const [open, setOpen] = useState(true);
+
+  if (serverResponse.error !== ApiErrorTypes.ValidationError) {
+    return null;
+  }
+
+  return (
+    <Modal isOpen={open} onOpenChange={setOpen}>
+      <ModalContent title="Validation Error Details">
+        <TableContainer>
+          <Table>
+            <THead>
+              <Tr>
+                <Th>Field</Th>
+                <Th>Issue</Th>
+              </Tr>
+            </THead>
+            <TBody>
+              {serverResponse.message?.map(({ message, path }) => (
+                <Tr key={path.join(".")}>
+                  <Td>{path.join(".")}</Td>
+                  <Td>{message.toLowerCase()}</Td>
+                </Tr>
+              ))}
+            </TBody>
+          </Table>
+        </TableContainer>
+      </ModalContent>
+    </Modal>
+  );
+}
+
 export const onRequestError = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     const serverResponse = error.response?.data as TApiErrors;
@@ -27,35 +61,7 @@ export const onRequestError = (error: unknown) => {
           title: "Validation Error",
           type: "error",
           text: "Please check the input and try again.",
-          callToAction: (
-            <Modal>
-              <ModalTrigger asChild>
-                <Button variant="outline_bg" size="xs">
-                  Show more
-                </Button>
-              </ModalTrigger>
-              <ModalContent title="Validation Error Details">
-                <TableContainer>
-                  <Table>
-                    <THead>
-                      <Tr>
-                        <Th>Field</Th>
-                        <Th>Issue</Th>
-                      </Tr>
-                    </THead>
-                    <TBody>
-                      {serverResponse.message?.map(({ message, path }) => (
-                        <Tr key={path.join(".")}>
-                          <Td>{path.join(".")}</Td>
-                          <Td>{message.toLowerCase()}</Td>
-                        </Tr>
-                      ))}
-                    </TBody>
-                  </Table>
-                </TableContainer>
-              </ModalContent>
-            </Modal>
-          ),
+          callToAction: <ValidationErrorModal serverResponse={serverResponse} />,
           copyActions: [
             {
               value: serverResponse.reqId,

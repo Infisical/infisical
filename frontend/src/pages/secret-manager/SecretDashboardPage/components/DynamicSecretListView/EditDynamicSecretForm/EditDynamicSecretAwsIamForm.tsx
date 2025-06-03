@@ -8,6 +8,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, TextArea } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
   inputs: z
@@ -43,10 +44,7 @@ const formSchema = z.object({
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     })
     .nullable(),
-  newName: z
-    .string()
-    .refine((val) => val.toLowerCase() === val, "Must be lowercase")
-    .optional(),
+  newName: slugSchema().optional(),
   usernameTemplate: z.string().trim().nullable().optional()
 });
 type TForm = z.infer<typeof formSchema>;
