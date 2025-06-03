@@ -412,7 +412,15 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return members;
+
+      return members.map((el) => ({
+        ...el,
+        roles: el.roles.sort((a, b) => {
+          const roleA = (a.customRoleName || a.role).toLowerCase();
+          const roleB = (b.customRoleName || b.role).toLowerCase();
+          return roleA.localeCompare(roleB);
+        })
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByProjectId" });
     }
