@@ -1,6 +1,3 @@
-import { faExpand } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
@@ -63,7 +60,6 @@ export const SecretScanningResourceSection = ({ dataSource }: Props) => {
           {(isAllowed) => (
             <Button
               colorSchema="secondary"
-              leftIcon={<FontAwesomeIcon icon={faExpand} />}
               onClick={handleTriggerScan}
               isDisabled={!isAllowed || triggerDataSourceScan.isPending}
               isLoading={triggerDataSourceScan.isPending}
