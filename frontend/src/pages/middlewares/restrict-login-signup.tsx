@@ -90,6 +90,9 @@ export const Route = createFileRoute("/_restrict-login-signup")({
     if (!data) return;
 
     setAuthToken(data.token);
+
+    if (location.pathname === "/signupinvite") return;
+
     // to do cli login
     if (search?.callback_port) {
       if (location.pathname.endsWith("select-organization") || location.pathname.endsWith("login"))
