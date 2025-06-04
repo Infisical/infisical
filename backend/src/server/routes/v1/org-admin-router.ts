@@ -2,9 +2,9 @@ import { z } from "zod";
 
 import { ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 import { SanitizedProjectSchema } from "../sanitizedSchemas";
 
@@ -47,7 +47,9 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/projects/:projectId/grant-admin-access",
     config: {
-      rateLimit: writeLimit
+      rateLimit: smtpRateLimit({
+        keyGenerator: (req) => (req.auth.actor === ActorType.USER ? req.auth.userId : req.realIp)
+      })
     },
     schema: {
       params: z.object({

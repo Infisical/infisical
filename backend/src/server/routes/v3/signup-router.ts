@@ -3,7 +3,7 @@ import { z } from "zod";
 import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
-import { authRateLimit } from "@app/server/config/rateLimiter";
+import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -13,7 +13,9 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     url: "/email/signup",
     method: "POST",
     config: {
-      rateLimit: authRateLimit
+      rateLimit: smtpRateLimit({
+        keyGenerator: (req) => (req.body as { email: string }).email
+      })
     },
     schema: {
       body: z.object({
