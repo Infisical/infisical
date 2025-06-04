@@ -195,7 +195,7 @@ export const SecretApprovalRequestChangeItem = ({
                 <span className="text-md font-medium">New Secret</span>
                 <div className="rounded-full bg-green-600 px-2 pb-[0.14rem] pt-[0.2rem] text-xs font-medium">
                   <FontAwesomeIcon icon={faCircleXmark} className="pr-1 text-white" />
-                  Current
+                  New
                 </div>
               </div>
               <div className="mb-2">

@@ -448,7 +448,6 @@ export const SecretApprovalRequestChanges = ({
           {secretApprovalRequestDetails.commits.map(
             ({ op, secretVersion, secret, ...newVersion }, index) => (
               <SecretApprovalRequestChangeItem
-                isReplicated={secretApprovalRequestDetails?.isReplicated}
                 op={op}
                 conflicts={secretApprovalRequestDetails.conflicts}
                 hasMerged={hasMerged}
