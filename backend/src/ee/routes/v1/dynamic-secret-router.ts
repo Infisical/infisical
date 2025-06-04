@@ -33,7 +33,7 @@ const userTemplateSchema = z
   .refine((el) => validateUsernameTemplateCharacters(el))
   .refine((el) =>
     isValidHandleBarTemplate(el, {
-      allowedExpressions: (val) => ["randomUsername", "unixTimestamp"].includes(val)
+      allowedExpressions: (val) => ["randomUsername", "unixTimestamp", "identityName"].includes(val)
     })
   );
 

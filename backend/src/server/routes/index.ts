@@ -1508,7 +1508,9 @@ export const registerRoutes = async (
     dynamicSecretProviders,
     folderDAL,
     licenseService,
-    kmsService
+    kmsService,
+    userDAL,
+    identityDAL
   });
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     auditLogDAL,

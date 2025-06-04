@@ -1,4 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
+import RE2 from "re2";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -11,10 +12,13 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { ActorType } from "@app/services/auth/auth-type";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { DynamicSecretProviders, TDynamicProviderFns } from "../dynamic-secret/providers/models";
@@ -39,6 +43,8 @@ type TDynamicSecretLeaseServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  userDAL: Pick<TUserDALFactory, "findById">;
+  identityDAL: TIdentityDALFactory;
 };
 
 export type TDynamicSecretLeaseServiceFactory = ReturnType<typeof dynamicSecretLeaseServiceFactory>;
@@ -52,8 +58,16 @@ export const dynamicSecretLeaseServiceFactory = ({
   dynamicSecretQueueService,
   projectDAL,
   licenseService,
-  kmsService
+  kmsService,
+  userDAL,
+  identityDAL
 }: TDynamicSecretLeaseServiceFactoryDep) => {
+  const extractEmailUsername = (email: string) => {
+    const regex = new RE2(/^([^@]+)/);
+    const match = email.match(regex);
+    return match ? match[1] : email;
+  };
+
   const create = async ({
     environmentSlug,
     path,
@@ -132,10 +146,23 @@ export const dynamicSecretLeaseServiceFactory = ({
 
     let result;
     try {
+      let identityName = "";
+      if (actor === ActorType.USER) {
+        const user = await userDAL.findById(actorId);
+        if (user) {
+          identityName = extractEmailUsername(user.username);
+        }
+      } else if (actor === ActorType.Machine) {
+        const identity = await identityDAL.findById(actorId);
+        if (identity) {
+          identityName = identity.name;
+        }
+      }
       result = await selectedProvider.create({
         inputs: decryptedStoredInput,
         expireAt: expireAt.getTime(),
-        usernameTemplate: dynamicSecretCfg.usernameTemplate
+        usernameTemplate: dynamicSecretCfg.usernameTemplate,
+        identityName
       });
     } catch (error: unknown) {
       if (error && typeof error === "object" && error !== null && "sqlMessage" in error) {

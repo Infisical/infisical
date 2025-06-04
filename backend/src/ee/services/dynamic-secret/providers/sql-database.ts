@@ -104,9 +104,8 @@ const generatePassword = (provider: SqlProviders, requirements?: PasswordRequire
   }
 };
 
-const generateUsername = (provider: SqlProviders, usernameTemplate?: string | null) => {
+const generateUsername = (provider: SqlProviders, usernameTemplate?: string | null, identityName?: string) => {
   let randomUsername = "";
-
   // For oracle, the client assumes everything is upper case when not using quotes around the password
   if (provider === SqlProviders.Oracle) {
     randomUsername = alphaNumericNanoId(32).toUpperCase();
@@ -117,7 +116,8 @@ const generateUsername = (provider: SqlProviders, usernameTemplate?: string | nu
 
   return handlebars.compile(usernameTemplate)({
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100)
+    unixTimestamp: Math.floor(Date.now() / 100),
+    identityName
   });
 };
 
@@ -220,11 +220,16 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     return isConnected;
   };
 
-  const create = async (data: { inputs: unknown; expireAt: number; usernameTemplate?: string | null }) => {
-    const { inputs, expireAt, usernameTemplate } = data;
+  const create = async (data: {
+    inputs: unknown;
+    expireAt: number;
+    usernameTemplate?: string | null;
+    identityName?: string;
+  }) => {
+    const { inputs, expireAt, usernameTemplate, identityName } = data;
 
     const providerInputs = await validateProviderInputs(inputs);
-    const username = generateUsername(providerInputs.client, usernameTemplate);
+    const username = generateUsername(providerInputs.client, usernameTemplate, identityName);
 
     const password = generatePassword(providerInputs.client, providerInputs.passwordRequirements);
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {

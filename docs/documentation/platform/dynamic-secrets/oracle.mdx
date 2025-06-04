@@ -77,6 +77,7 @@ Create a user with the required permission in your SQL instance. This user will 
       Allowed template variables are
       - `{{randomUsername}}`: Random username string
       - `{{unixTimestamp}}`: Current Unix timestamp
+	  - `{{identityName}}`: Name of the identity that is generating the secret
 	</ParamField>
 	<ParamField path="Customize SQL Statement" type="string">
   	If you want to provide specific privileges for the generated dynamic credentials, you can modify the SQL statement to your needs. This is useful if you want to only give access to a specific table(s).

@@ -22,13 +22,14 @@ const encodePassword = (password?: string) => {
   return base64Password;
 };
 
-const generateUsername = (usernameTemplate?: string | null) => {
+const generateUsername = (usernameTemplate?: string | null, identityName?: string) => {
   const randomUsername = alphaNumericNanoId(32); // Username must start with an ascii letter, so we prepend the username with "inf-"
   if (!usernameTemplate) return randomUsername;
 
   return handlebars.compile(usernameTemplate)({
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100)
+    unixTimestamp: Math.floor(Date.now() / 100),
+    identityName
   });
 };
 
@@ -196,8 +197,8 @@ export const LdapProvider = (): TDynamicProviderFns => {
     return dnArray;
   };
 
-  const create = async (data: { inputs: unknown; usernameTemplate?: string | null }) => {
-    const { inputs, usernameTemplate } = data;
+  const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identityName?: string }) => {
+    const { inputs, usernameTemplate, identityName } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
@@ -224,7 +225,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
         });
       }
     } else {
-      const username = generateUsername(usernameTemplate);
+      const username = generateUsername(usernameTemplate, identityName);
       const password = generatePassword();
       const generatedLdif = generateLDIF({ username, password, ldifTemplate: providerInputs.creationLdif });
 

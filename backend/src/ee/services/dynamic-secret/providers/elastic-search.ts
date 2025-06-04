@@ -13,13 +13,14 @@ const generatePassword = () => {
   return customAlphabet(charset, 64)();
 };
 
-const generateUsername = (usernameTemplate?: string | null) => {
+const generateUsername = (usernameTemplate?: string | null, identityName?: string) => {
   const randomUsername = alphaNumericNanoId(32); // Username must start with an ascii letter, so we prepend the username with "inf-"
   if (!usernameTemplate) return randomUsername;
 
   return handlebars.compile(usernameTemplate)({
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100)
+    unixTimestamp: Math.floor(Date.now() / 100),
+    identityName
   });
 };
 
@@ -71,12 +72,12 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
     return infoResponse;
   };
 
-  const create = async (data: { inputs: unknown; usernameTemplate?: string | null }) => {
-    const { inputs, usernameTemplate } = data;
+  const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identityName?: string }) => {
+    const { inputs, usernameTemplate, identityName } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const connection = await $getClient(providerInputs);
 
-    const username = generateUsername(usernameTemplate);
+    const username = generateUsername(usernameTemplate, identityName);
     const password = generatePassword();
 
     await connection.security.putUser({

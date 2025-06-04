@@ -85,6 +85,7 @@ The above configuration allows user creation and granting permissions.
        Allowed template variables are
        - `{{randomUsername}}`: Random username string
        - `{{unixTimestamp}}`: Current Unix timestamp
+	   - `{{identityName}}`: Name of the identity that is generating the secret
 	</ParamField>
 	<ParamField path="Customize CQL Statement" type="string">
   	If you want to provide specific privileges for the generated dynamic credentials, you can modify the CQL statement to your needs. This is useful if you want to only give access to a specific key-space(s).

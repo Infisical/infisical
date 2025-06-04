@@ -13,13 +13,14 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = (usernameTemplate?: string | null) => {
+const generateUsername = (usernameTemplate?: string | null, identityName?: string) => {
   const randomUsername = alphaNumericNanoId(32);
   if (!usernameTemplate) return randomUsername;
 
   return handlebars.compile(usernameTemplate)({
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100)
+    unixTimestamp: Math.floor(Date.now() / 100),
+    identityName
   });
 };
 
@@ -60,12 +61,12 @@ export const MongoDBProvider = (): TDynamicProviderFns => {
     return isConnected;
   };
 
-  const create = async (data: { inputs: unknown; usernameTemplate?: string | null }) => {
-    const { inputs, usernameTemplate } = data;
+  const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identityName?: string }) => {
+    const { inputs, usernameTemplate, identityName } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
-    const username = generateUsername(usernameTemplate);
+    const username = generateUsername(usernameTemplate, identityName);
     const password = generatePassword();
 
     const db = client.db(providerInputs.database);
