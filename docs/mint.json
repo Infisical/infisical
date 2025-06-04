@@ -1843,7 +1843,6 @@
         },
         "internals/components",
         "internals/security",
-        "internals/bug-bounty",
         "internals/service-tokens"
       ]
     },
