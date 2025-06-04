@@ -8,6 +8,7 @@ import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars
 
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretCassandraSchema, TDynamicProviderFns } from "./models";
+import { compileUsernameTemplate } from "./templateUtils";
 
 const generatePassword = (size = 48) => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
@@ -17,10 +18,9 @@ const generatePassword = (size = 48) => {
 const generateUsername = (usernameTemplate?: string | null, identityName?: string) => {
   const randomUsername = alphaNumericNanoId(32); // Username must start with an ascii letter, so we prepend the username with "inf-"
   if (!usernameTemplate) return randomUsername;
-
-  return handlebars.compile(usernameTemplate)({
+  return compileUsernameTemplate({
+    usernameTemplate,
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100),
     identityName
   });
 };

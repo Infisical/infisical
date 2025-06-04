@@ -16,21 +16,21 @@ import {
   PutUserPolicyCommand,
   RemoveUserFromGroupCommand
 } from "@aws-sdk/client-iam";
-import handlebars from "handlebars";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { DynamicSecretAwsIamSchema, TDynamicProviderFns } from "./models";
+import { compileUsernameTemplate } from "./templateUtils";
 
 const generateUsername = (usernameTemplate?: string | null, identityName?: string) => {
   const randomUsername = alphaNumericNanoId(32);
   if (!usernameTemplate) return randomUsername;
 
-  return handlebars.compile(usernameTemplate)({
+  return compileUsernameTemplate({
+    usernameTemplate,
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100),
     identityName
   });
 };

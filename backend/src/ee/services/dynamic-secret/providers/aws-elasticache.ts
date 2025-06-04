@@ -16,6 +16,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { DynamicSecretAwsElastiCacheSchema, TDynamicProviderFns } from "./models";
+import { compileUsernameTemplate } from "./templateUtils";
 
 const CreateElastiCacheUserSchema = z.object({
   UserId: z.string().trim().min(1),
@@ -136,10 +137,9 @@ const generateUsername = (usernameTemplate?: string | null, identityName?: strin
   const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-";
   const randomUsername = `inf-${customAlphabet(charset, 32)()}`;
   if (!usernameTemplate) return randomUsername;
-
-  return handlebars.compile(usernameTemplate)({
+  return compileUsernameTemplate({
+    usernameTemplate,
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100),
     identityName
   });
 };

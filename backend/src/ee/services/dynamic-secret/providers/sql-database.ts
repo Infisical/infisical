@@ -10,6 +10,7 @@ import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretSqlDBSchema, PasswordRequirements, SqlProviders, TDynamicProviderFns } from "./models";
+import { compileUsernameTemplate } from "./templateUtils";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
@@ -113,11 +114,13 @@ const generateUsername = (provider: SqlProviders, usernameTemplate?: string | nu
     randomUsername = alphaNumericNanoId(32);
   }
   if (!usernameTemplate) return randomUsername;
-
-  return handlebars.compile(usernameTemplate)({
+  return compileUsernameTemplate({
+    usernameTemplate,
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100),
-    identityName
+    identityName,
+    options: {
+      toUpperCase: provider === SqlProviders.Oracle
+    }
   });
 };
 

@@ -1,4 +1,3 @@
-import handlebars from "handlebars";
 import { MongoClient } from "mongodb";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
@@ -7,6 +6,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretMongoDBSchema, TDynamicProviderFns } from "./models";
+import { compileUsernameTemplate } from "./templateUtils";
 
 const generatePassword = (size = 48) => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
@@ -16,10 +16,9 @@ const generatePassword = (size = 48) => {
 const generateUsername = (usernameTemplate?: string | null, identityName?: string) => {
   const randomUsername = alphaNumericNanoId(32);
   if (!usernameTemplate) return randomUsername;
-
-  return handlebars.compile(usernameTemplate)({
+  return compileUsernameTemplate({
+    usernameTemplate,
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100),
     identityName
   });
 };

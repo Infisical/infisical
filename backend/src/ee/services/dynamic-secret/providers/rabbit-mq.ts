@@ -1,5 +1,4 @@
 import axios, { Axios } from "axios";
-import handlebars from "handlebars";
 import https from "https";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
@@ -9,6 +8,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretRabbitMqSchema, TDynamicProviderFns } from "./models";
+import { compileUsernameTemplate } from "./templateUtils";
 
 const generatePassword = () => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
@@ -18,10 +18,9 @@ const generatePassword = () => {
 const generateUsername = (usernameTemplate?: string | null, identityName?: string) => {
   const randomUsername = alphaNumericNanoId(32); // Username must start with an ascii letter, so we prepend the username with "inf-"
   if (!usernameTemplate) return randomUsername;
-
-  return handlebars.compile(usernameTemplate)({
+  return compileUsernameTemplate({
+    usernameTemplate,
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100),
     identityName
   });
 };
