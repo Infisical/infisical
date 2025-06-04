@@ -106,10 +106,10 @@ export const SecretApprovalRequestChangeItem = ({
                   ) : (
                     <div
                       onClick={() => setIsOldSecretValueVisible(!isOldSecretValueVisible)}
-                      className="flex flex-row items-center justify-between rounded-md border border-mineshaft-500 bg-mineshaft-900 pl-2"
+                      className="relative flex max-w-[100vh] flex-row items-center justify-between rounded-md border border-mineshaft-500 bg-mineshaft-900 px-2"
                     >
                       <div
-                        className={`flex font-mono ${isOldSecretValueVisible || !secretVersion?.secretValue ? "text-md py-[0.55rem]" : "text-lg"}`}
+                        className={`flex break-all font-mono ${isOldSecretValueVisible || !secretVersion?.secretValue ? "text-md py-[0.55rem]" : "text-lg"}`}
                       >
                         {isOldSecretValueVisible
                           ? secretVersion?.secretValue || "EMPTY"
@@ -118,7 +118,7 @@ export const SecretApprovalRequestChangeItem = ({
                             : "EMPTY"}{" "}
                       </div>
                       {secretVersion?.secretValue && (
-                        <div className="flex h-10 w-10 items-center justify-center">
+                        <div className="flex h-10 w-10 items-center justify-center pl-1">
                           <FontAwesomeIcon
                             icon={isOldSecretValueVisible ? faEyeSlash : faEye}
                             className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
@@ -131,7 +131,7 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Comment</div>
-                <div className="text-sm">
+                <div className="max-h-[5rem] overflow-y-auto text-sm">
                   {secretVersion?.secretComment || (
                     <span className="text-sm text-mineshaft-300">-</span>
                   )}{" "}
@@ -218,10 +218,10 @@ export const SecretApprovalRequestChangeItem = ({
                   ) : (
                     <div
                       onClick={() => setIsNewSecretValueVisible(!isNewSecretValueVisible)}
-                      className="flex flex-row items-center justify-between rounded-md border border-mineshaft-500 bg-mineshaft-900 pl-2"
+                      className="relative flex max-w-[100vh] flex-row items-center justify-between rounded-md border border-mineshaft-500 bg-mineshaft-900 px-2"
                     >
                       <div
-                        className={`flex font-mono ${isNewSecretValueVisible || !newVersion?.secretValue ? "text-md py-[0.55rem]" : "text-lg"}`}
+                        className={`flex break-all font-mono ${isNewSecretValueVisible || !newVersion?.secretValue ? "text-md py-[0.55rem]" : "text-lg"}`}
                       >
                         {isNewSecretValueVisible
                           ? newVersion?.secretValue || "EMPTY"
@@ -230,7 +230,7 @@ export const SecretApprovalRequestChangeItem = ({
                             : "EMPTY"}{" "}
                       </div>
                       {newVersion?.secretValue && (
-                        <div className="flex h-10 w-10 items-center justify-center">
+                        <div className="flex h-10 w-10 items-center justify-center pl-1">
                           <FontAwesomeIcon
                             icon={isNewSecretValueVisible ? faEyeSlash : faEye}
                             className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
@@ -243,7 +243,7 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Comment</div>
-                <div className="text-sm">
+                <div className="max-h-[5rem] overflow-y-auto text-sm">
                   {newVersion?.secretComment || (
                     <span className="text-sm text-mineshaft-300">-</span>
                   )}{" "}
