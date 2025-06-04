@@ -243,7 +243,7 @@ export const SignupInvitePage = () => {
                   SecurityClient.setSignupToken(response.token);
                   setStep(2);
                 } else {
-                  navigate({ to: "/login" });
+                  navigate({ to: "/login/select-organization", search: { force: true } });
 
                   // TODO: Redirect user to the newly joined org. The commented code does not work due to auth issues.
                   // const redirectExistingUser = async () => {
