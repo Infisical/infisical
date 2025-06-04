@@ -397,7 +397,7 @@ export const authLoginServiceFactory = ({
 
     // Check if the user actually has access to the specified organization.
     const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
-    const hasOrganizationMembership = userOrgs.some((org) => org.id === organizationId);
+    const hasOrganizationMembership = userOrgs.some((org) => org.id === organizationId && org.userStatus !== "invited");
     const selectedOrg = await orgDAL.findById(organizationId);
 
     if (!hasOrganizationMembership) {

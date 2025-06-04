@@ -243,28 +243,7 @@ export const SignupInvitePage = () => {
                   SecurityClient.setSignupToken(response.token);
                   setStep(2);
                 } else {
-                  const redirectExistingUser = async () => {
-                    try {
-                      const { token: mfaToken, isMfaEnabled } = await selectOrganization({
-                        organizationId
-                      });
-
-                      if (isMfaEnabled) {
-                        SecurityClient.setMfaToken(mfaToken);
-                        toggleShowMfa.on();
-                        setMfaSuccessCallback(() => redirectExistingUser);
-                        return;
-                      }
-
-                      // user will be redirected to dashboard
-                      // if not logged in gets kicked out to login
-                      await navigateUserToOrg(navigate, organizationId);
-                    } catch (err) {
-                      navigate({ to: "/login" });
-                    }
-                  };
-
-                  await redirectExistingUser();
+                  navigate({ to: "/login" });
                 }
               }
             } catch (err) {

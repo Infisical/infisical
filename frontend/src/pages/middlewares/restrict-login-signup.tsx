@@ -74,6 +74,8 @@ export const Route = createFileRoute("/_restrict-login-signup")({
     middlewares: [stripSearchParams({ callback_port: undefined })]
   },
   beforeLoad: async ({ context, location, search }) => {
+    if (location.pathname === "/signupinvite") return;
+
     if (!context.serverConfig.initialized) {
       if (location.pathname.endsWith("/admin/signup")) return;
       throw redirect({ to: "/admin/signup" });
@@ -90,8 +92,6 @@ export const Route = createFileRoute("/_restrict-login-signup")({
     if (!data) return;
 
     setAuthToken(data.token);
-
-    if (location.pathname === "/signupinvite") return;
 
     // to do cli login
     if (search?.callback_port) {
