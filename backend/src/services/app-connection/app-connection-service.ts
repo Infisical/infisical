@@ -173,6 +173,8 @@ import { ValidateWindmillConnectionCredentialsSchema } from "./windmill";
 import { windmillConnectionService } from "./windmill/windmill-connection-service";
 import { ValidateZabbixConnectionCredentialsSchema } from "./zabbix";
 import { zabbixConnectionService } from "./zabbix/zabbix-connection-service";
+import { ValidateCoolifyConnectionCredentialsSchema } from "./coolify";
+import { coolifyConnectionService } from "./coolify/coolify-connection-service";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -266,7 +268,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema,
   [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema,
   [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema,
-  [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema
+  [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema,
+  [AppConnection.Coolify]: ValidateCoolifyConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -840,9 +843,8 @@ export const appConnectionServiceFactory = ({
         }).success
       )
         throw new BadRequestError({
-          message: `Invalid credential format for ${
-            APP_CONNECTION_NAME_MAP[app]
-          } Connection with method ${getAppConnectionMethodName(method)}`
+          message: `Invalid credential format for ${APP_CONNECTION_NAME_MAP[app]
+            } Connection with method ${getAppConnectionMethodName(method)}`
         });
 
       const updateProject = appConnection.projectId ? await projectDAL.findProjectById(appConnection.projectId) : null;
@@ -871,21 +873,21 @@ export const appConnectionServiceFactory = ({
       const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined, tx?: Knex) => {
         const encryptedCredentials = connectionCredentials
           ? await encryptAppConnectionCredentials({
-              credentials: connectionCredentials,
-              orgId: actor.orgId,
-              kmsService,
-              projectId: appConnection.projectId
-            })
+            credentials: connectionCredentials,
+            orgId: actor.orgId,
+            kmsService,
+            projectId: appConnection.projectId
+          })
           : undefined;
 
         const encryptedConfiguration =
           configuration !== undefined
             ? await encryptAppConnectionConfiguration({
-                configuration,
-                orgId: actor.orgId,
-                kmsService,
-                projectId: appConnection.projectId
-              })
+              configuration,
+              orgId: actor.orgId,
+              kmsService,
+              projectId: appConnection.projectId
+            })
             : undefined;
 
         return appConnectionDAL.updateById(
@@ -1139,9 +1141,8 @@ export const appConnectionServiceFactory = ({
 
     if (appConnection.app !== app)
       throw new BadRequestError({
-        message: `${
-          APP_CONNECTION_NAME_MAP[appConnection.app as AppConnection]
-        } Connection with ID ${connectionId} cannot be used to connect to ${APP_CONNECTION_NAME_MAP[app]}`
+        message: `${APP_CONNECTION_NAME_MAP[appConnection.app as AppConnection]
+          } Connection with ID ${connectionId} cannot be used to connect to ${APP_CONNECTION_NAME_MAP[app]}`
       });
 
     const connectionProject = appConnection.projectId
@@ -1360,6 +1361,7 @@ export const appConnectionServiceFactory = ({
     doppler: dopplerConnectionService(connectAppConnectionById),
     digicert: digicertConnectionService(connectAppConnectionById),
     travisCI: travisCIConnectionService(connectAppConnectionById),
-    snowflake: snowflakeConnectionService(connectAppConnectionById)
+    snowflake: snowflakeConnectionService(connectAppConnectionById),
+    coolify: coolifyConnectionService(connectAppConnectionById)
   };
 };

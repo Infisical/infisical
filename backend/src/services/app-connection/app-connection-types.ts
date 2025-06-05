@@ -125,6 +125,12 @@ import {
   TValidateConvexConnectionCredentialsSchema
 } from "./convex";
 import {
+  TCoolifyConnection,
+  TCoolifyConnectionConfig,
+  TCoolifyConnectionInput,
+  TValidateCoolifyConnectionCredentialsSchema
+} from "./coolify";
+import {
   TDatabricksConnection,
   TDatabricksConnectionConfig,
   TDatabricksConnectionInput,
@@ -487,6 +493,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TDatadogConnection
   | TF5BigIpConnection
   | TConvexConnection
+  | TCoolifyConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -568,6 +575,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDatadogConnectionInput
   | TF5BigIpConnectionInput
   | TConvexConnectionInput
+  | TCoolifyConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -680,7 +688,8 @@ export type TAppConnectionConfig =
   | TSnowflakeConnectionConfig
   | TDatadogConnectionConfig
   | TF5BigIpConnectionConfig
-  | TConvexConnectionConfig;
+  | TConvexConnectionConfig
+  | TCoolifyConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -752,7 +761,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSnowflakeConnectionCredentialsSchema
   | TValidateDatadogConnectionCredentialsSchema
   | TValidateF5BigIpConnectionCredentialsSchema
-  | TValidateConvexConnectionCredentialsSchema;
+  | TValidateConvexConnectionCredentialsSchema
+  | TValidateCoolifyConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
