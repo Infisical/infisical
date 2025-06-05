@@ -41,10 +41,11 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
           const allowedContentRegex = new RE2(`^([a-zA-Z0-9_\\-/]|${allowedPlaceholdersRegexPart})*$`);
           const contentIsValid = allowedContentRegex.test(val);
 
-          // Check if {{secretKey}} appears exactly once
-          const secretKeyCount = (val.match(/\{\{secretKey\}\}/g) || []).length;
+          // Check if {{secretKey}} is present
+          const secretKeyRegex = new RE2(/\{\{secretKey\}\}/);
+          const secretKeyIsPresent = secretKeyRegex.test(val);
 
-          return contentIsValid && secretKeyCount === 1;
+          return contentIsValid && secretKeyIsPresent;
         },
         {
           message:
