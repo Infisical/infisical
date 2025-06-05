@@ -29,8 +29,6 @@ import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
-// import { navigateUserToOrg } from "../LoginPage/Login.utils";
-
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
 
