@@ -101,6 +101,10 @@ Key Schemas transform your secret keys by applying a prefix, suffix, or format p
 
 Any destination secrets which do not match the schema will not get deleted or updated by Infisical.
 
+Key Schemas use handlebars syntax to define dynamic values. Here's a full list of available variables:
+- `{{secretKey}}` - The key of the secret
+- `{{environment}}` - The environment which the secret is in (e.g. dev, staging, prod)
+
 **Example:**
 - Infisical key: `SECRET_1`
 - Schema: `INFISICAL_{{secretKey}}`

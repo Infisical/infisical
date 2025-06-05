@@ -86,10 +86,17 @@ const addSchema = (unprocessedSecretMap: TSecretMap, environment: string, schema
 };
 
 // Strip schema from secret keys
-const stripSchema = (unprocessedSecretMap: TSecretMap, schema?: string): TSecretMap => {
+const stripSchema = (unprocessedSecretMap: TSecretMap, environment: string, schema?: string): TSecretMap => {
   if (!schema) return unprocessedSecretMap;
 
-  const [prefix, suffix] = schema.split("{{secretKey}}");
+  const compiledSchemaPattern = handlebars.compile(schema)({
+    secretKey: "{{secretKey}}", // Keep secretKey
+    environment
+  });
+
+  const parts = compiledSchemaPattern.split("{{secretKey}}");
+  const prefix = parts[0];
+  const suffix = parts[parts.length - 1];
 
   const strippedMap: TSecretMap = {};
 
@@ -278,10 +285,9 @@ export const SecretSyncFns = {
         );
     }
 
-    return stripSchema(
-      filterForSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema),
-      secretSync.syncOptions.keySchema
-    );
+    const filtered = filterForSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
+    const stripped = stripSchema(filtered, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
+    return stripped;
   },
   removeSecrets: (
     secretSync: TSecretSyncWithCredentials,
