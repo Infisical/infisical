@@ -128,6 +128,7 @@ export const WindmillSyncFns = {
   syncSecrets: async (secretSync: TWindmillSyncWithCredentials, secretMap: TSecretMap) => {
     const {
       connection,
+      environment,
       destinationConfig: { path },
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
@@ -171,7 +172,7 @@ export const WindmillSyncFns = {
 
     for await (const [key, variable] of Object.entries(variables)) {
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(key, keySchema)) continue;
+      if (!matchesSchema(key, environment?.slug || "", keySchema)) continue;
 
       if (!(key in secretMap)) {
         try {

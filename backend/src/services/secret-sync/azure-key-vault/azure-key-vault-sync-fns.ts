@@ -194,7 +194,7 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
 
     for await (const deleteSecretKey of deleteSecrets.filter(
       (secret) =>
-        matchesSchema(secret, secretSync.syncOptions.keySchema) &&
+        matchesSchema(secret, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema) &&
         !setSecrets.find((setSecret) => setSecret.key === secret)
     )) {
       await request.delete(`${secretSync.destinationConfig.vaultBaseUrl}/secrets/${deleteSecretKey}?api-version=7.3`, {

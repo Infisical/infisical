@@ -118,7 +118,7 @@ export const camundaSyncFactory = ({ kmsService, appConnectionDAL }: TCamundaSec
 
     for await (const secret of Object.keys(camundaSecrets)) {
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(secret, secretSync.syncOptions.keySchema)) continue;
+      if (!matchesSchema(secret, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)) continue;
 
       if (!(secret in secretMap) || !secretMap[secret].value) {
         try {

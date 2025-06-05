@@ -54,7 +54,7 @@ description: "Learn how to configure a Hashicorp Vault Sync for Infisical."
                     - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
                     - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Hashicorp Vault when keys conflict.
                     - **Import Secrets (Prioritize Hashicorp Vault)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Hashicorp Vault over Infisical when keys conflict.
-                - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name.
+                - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
                 <Note>
                     We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
                 </Note>
