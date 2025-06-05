@@ -78,7 +78,7 @@ Modern firewalls automatically track UDP connections and allow return responses.
 - Reduces firewall rule complexity
 - Avoids the need for manual IP whitelisting
 
-In the event that your firewall does not support connection tracking, you will need to whitelist the relay IPs to explicity define return traffic manually.
+In the event that your firewall does not support connection tracking, you will need to whitelist the relay IPs to explicitly define return traffic manually.
 
 ## Common Network Scenarios
 
@@ -95,7 +95,7 @@ For corporate environments with strict egress filtering:
 
 Configure security groups to allow:
 - **Outbound UDP** to relay IPs on port 5349
-- **Outbound HTTPS** to api.infisical.com
+- **Outbound HTTPS** to app.infisical.com/eu.infisical.com on port 443
 - **Inbound UDP** on ephemeral ports (if not using stateful rules)
 
 ## Frequently Asked Questions
@@ -139,7 +139,7 @@ This design maintains security by avoiding the need for inbound firewall rules t
 If your firewall has strict UDP restrictions:
 
 1. **Work with your network team** to allow outbound UDP to the specific relay IP addresses
-2. **Use explicit IP whitelisting** (Option 2) if connection tracking is disabled
+2. **Use explicit IP whitelisting** if connection tracking is disabled  
 3. **Consider network policy exceptions** for the gateway host
 4. **Monitor firewall logs** to identify which specific rules are blocking traffic
 
