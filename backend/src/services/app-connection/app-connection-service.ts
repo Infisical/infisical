@@ -210,6 +210,8 @@ import { windmillConnectionService } from "./windmill/windmill-connection-servic
 import { ValidateWinRMConnectionCredentialsSchema } from "./winrm/winrm-connection-schemas";
 import { ValidateZabbixConnectionCredentialsSchema } from "./zabbix";
 import { zabbixConnectionService } from "./zabbix/zabbix-connection-service";
+import { ValidateCoolifyConnectionCredentialsSchema } from "./coolify";
+import { coolifyConnectionService } from "./coolify/coolify-connection-service";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -323,7 +325,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema,
   [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema,
   [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema,
-  [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema
+  [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema,
+  [AppConnection.Coolify]: ValidateCoolifyConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -915,9 +918,8 @@ export const appConnectionServiceFactory = ({
         }).success
       )
         throw new BadRequestError({
-          message: `Invalid credential format for ${
-            APP_CONNECTION_NAME_MAP[app]
-          } Connection with method ${getAppConnectionMethodName(method)}`
+          message: `Invalid credential format for ${APP_CONNECTION_NAME_MAP[app]
+            } Connection with method ${getAppConnectionMethodName(method)}`
         });
 
       const updateProject = appConnection.projectId ? await projectDAL.findProjectById(appConnection.projectId) : null;
@@ -980,21 +982,21 @@ export const appConnectionServiceFactory = ({
       const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined, tx?: Knex) => {
         const encryptedCredentials = connectionCredentials
           ? await encryptAppConnectionCredentials({
-              credentials: connectionCredentials,
-              orgId: actor.orgId,
-              kmsService,
-              projectId: appConnection.projectId
-            })
+            credentials: connectionCredentials,
+            orgId: actor.orgId,
+            kmsService,
+            projectId: appConnection.projectId
+          })
           : undefined;
 
         const encryptedConfiguration =
           configuration !== undefined
             ? await encryptAppConnectionConfiguration({
-                configuration,
-                orgId: actor.orgId,
-                kmsService,
-                projectId: appConnection.projectId
-              })
+              configuration,
+              orgId: actor.orgId,
+              kmsService,
+              projectId: appConnection.projectId
+            })
             : undefined;
 
         return appConnectionDAL.updateById(
@@ -1250,11 +1252,10 @@ export const appConnectionServiceFactory = ({
 
     if (!allowedApps.includes(connectionApp))
       throw new BadRequestError({
-        message: `${
-          APP_CONNECTION_NAME_MAP[connectionApp]
-        } Connection with ID ${connectionId} cannot be used to connect to ${allowedApps
-          .map((allowedApp) => APP_CONNECTION_NAME_MAP[allowedApp])
-          .join(" or ")}`
+        message: `${APP_CONNECTION_NAME_MAP[connectionApp]
+          } Connection with ID ${connectionId} cannot be used to connect to ${allowedApps
+            .map((allowedApp) => APP_CONNECTION_NAME_MAP[allowedApp])
+            .join(" or ")}`
       });
 
     await enterpriseAppCheck(
@@ -1501,6 +1502,7 @@ export const appConnectionServiceFactory = ({
       gatewayPoolService
     ),
     powerDns: powerDnsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
-    spacelift: spaceliftConnectionService(connectAppConnectionById)
+    spacelift: spaceliftConnectionService(connectAppConnectionById),
+    coolify: coolifyConnectionService(connectAppConnectionById)
   };
 };

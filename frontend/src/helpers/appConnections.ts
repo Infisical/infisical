@@ -23,6 +23,7 @@ import {
   AzureKeyVaultConnectionMethod,
   CamundaConnectionMethod,
   CloudflareConnectionMethod,
+  CoolifyConnectionMethod,
   DatabricksConnectionMethod,
   DaytonaConnectionMethod,
   DbtConnectionMethod,
@@ -659,6 +660,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "Daytona.png",
     category: "PLATFORM",
     description: "Organization secret access for Daytona sandboxes."
+  },
+  [AppConnection.Coolify]: {
+    name: "Coolify",
+    image: "Coolify.png",
+    category: "INFRASTRUCTURE",
+    description: "Project and deployment access for Coolify."
   }
 };
 
@@ -716,7 +723,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TravisCIConnectionMethod.ApiToken:
     case DopplerConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
-      return { name: "API Token", icon: KeyRoundIcon };
+    case CoolifyConnectionMethod.ApiToken:
+      return { name: "API Token", icon: faKey };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
     case PostgresConnectionMethod.UsernameAndPassword:
@@ -908,10 +916,10 @@ export const getConnectionFlowReturnNavigateOptions = ({
     ...(reopenFormApp ? { addConnectionApp: reopenFormApp } : {}),
     ...(returnUrl.includes("integrations")
       ? {
-          selectedTab: reopenFormApp
-            ? IntegrationsListPageTabs.AppConnections
-            : getIntegrationsListTab()
-        }
+        selectedTab: reopenFormApp
+          ? IntegrationsListPageTabs.AppConnections
+          : getIntegrationsListTab()
+      }
       : {})
   };
 
