@@ -200,8 +200,8 @@ export const HumanitecSyncFns = {
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for await (const humanitecSecret of humanitecSecrets) {
-      // eslint-disable-next-line no-continue
       if (!matchesSchema(humanitecSecret.key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema))
+        // eslint-disable-next-line no-continue
         continue;
 
       if (!secretMap[humanitecSecret.key]) {
