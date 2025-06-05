@@ -35,7 +35,7 @@ export const CoolifySyncFields = () => {
           <FormControl
             isError={Boolean(error)}
             errorText={error?.message}
-            label="Vault"
+            label="Application"
             helperText={
               <Tooltip
                 className="max-w-md"
