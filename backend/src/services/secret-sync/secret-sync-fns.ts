@@ -1,5 +1,5 @@
 import { AxiosError } from "axios";
-import RE2 from "re2";
+import handlebars from "handlebars";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
@@ -68,13 +68,17 @@ type TSyncSecretDeps = {
 };
 
 // Add schema to secret keys
-const addSchema = (unprocessedSecretMap: TSecretMap, schema?: string): TSecretMap => {
+const addSchema = (unprocessedSecretMap: TSecretMap, environment: string, schema?: string): TSecretMap => {
   if (!schema) return unprocessedSecretMap;
 
   const processedSecretMap: TSecretMap = {};
 
   for (const [key, value] of Object.entries(unprocessedSecretMap)) {
-    const newKey = new RE2("{{secretKey}}").replace(schema, key);
+    const newKey = handlebars.compile(schema)({
+      secretKey: key,
+      environment
+    });
+
     processedSecretMap[newKey] = value;
   }
 
@@ -103,21 +107,40 @@ const stripSchema = (unprocessedSecretMap: TSecretMap, schema?: string): TSecret
 };
 
 // Checks if a key matches a schema
-export const matchesSchema = (key: string, schema?: string): boolean => {
+export const matchesSchema = (key: string, environment: string, schema?: string): boolean => {
   if (!schema) return true;
 
-  const [prefix, suffix] = schema.split("{{secretKey}}");
-  if (prefix === undefined || suffix === undefined) return true;
+  const compiledSchemaPattern = handlebars.compile(schema)({
+    secretKey: "{{secretKey}}", // Keep secretKey
+    environment
+  });
 
-  return key.startsWith(prefix) && key.endsWith(suffix);
+  // This edge-case shouldn't be possible
+  if (!compiledSchemaPattern.includes("{{secretKey}}")) {
+    return key === compiledSchemaPattern;
+  }
+
+  const parts = compiledSchemaPattern.split("{{secretKey}}");
+  const prefix = parts[0];
+  const suffix = parts[parts.length - 1];
+
+  if (prefix === "" && suffix === "") return true;
+
+  // If prefix is empty, key must end with suffix
+  if (prefix === "") return key.endsWith(suffix);
+
+  // If suffix is empty, key must start with prefix
+  if (suffix === "") return key.startsWith(prefix);
+
+  return key.startsWith(prefix) && key.endsWith(suffix) && key.length >= prefix.length + suffix.length;
 };
 
 // Filter only for secrets with keys that match the schema
-const filterForSchema = (secretMap: TSecretMap, schema?: string): TSecretMap => {
+const filterForSchema = (secretMap: TSecretMap, environment: string, schema?: string): TSecretMap => {
   const filteredMap: TSecretMap = {};
 
   for (const [key, value] of Object.entries(secretMap)) {
-    if (matchesSchema(key, schema)) {
+    if (matchesSchema(key, environment, schema)) {
       filteredMap[key] = value;
     }
   }
@@ -131,7 +154,7 @@ export const SecretSyncFns = {
     secretMap: TSecretMap,
     { kmsService, appConnectionDAL }: TSyncSecretDeps
   ): Promise<void> => {
-    const schemaSecretMap = addSchema(secretMap, secretSync.syncOptions.keySchema);
+    const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -255,14 +278,17 @@ export const SecretSyncFns = {
         );
     }
 
-    return stripSchema(filterForSchema(secretMap), secretSync.syncOptions.keySchema);
+    return stripSchema(
+      filterForSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema),
+      secretSync.syncOptions.keySchema
+    );
   },
   removeSecrets: (
     secretSync: TSecretSyncWithCredentials,
     secretMap: TSecretMap,
     { kmsService, appConnectionDAL }: TSyncSecretDeps
   ): Promise<void> => {
-    const schemaSecretMap = addSchema(secretMap, secretSync.syncOptions.keySchema);
+    const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:

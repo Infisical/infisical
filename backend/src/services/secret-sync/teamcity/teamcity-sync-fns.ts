@@ -127,7 +127,7 @@ export const TeamCitySyncFns = {
 
     for await (const [key, variable] of Object.entries(variables)) {
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(key, secretSync.syncOptions.keySchema)) continue;
+      if (!matchesSchema(key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)) continue;
 
       if (!(key in secretMap)) {
         try {

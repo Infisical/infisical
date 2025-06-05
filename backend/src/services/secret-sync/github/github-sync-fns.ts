@@ -224,7 +224,8 @@ export const GithubSyncFns = {
 
     for await (const encryptedSecret of encryptedSecrets) {
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(encryptedSecret.name, secretSync.syncOptions.keySchema)) continue;
+      if (!matchesSchema(encryptedSecret.name, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema))
+        continue;
 
       if (!(encryptedSecret.name in secretMap)) {
         await deleteSecret(client, secretSync, encryptedSecret);
