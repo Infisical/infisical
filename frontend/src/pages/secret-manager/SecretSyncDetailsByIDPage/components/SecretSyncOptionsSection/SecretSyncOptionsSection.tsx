@@ -77,6 +77,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Chef:
     case SecretSync.OctopusDeploy:
     case SecretSync.CircleCI:
+    case SecretSync.Coolify:
       AdditionalSyncOptionsComponent = null;
       break;
     default:
@@ -86,9 +87,9 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
   const permissionSubject =
     environment && folder
       ? subject(ProjectPermissionSub.SecretSyncs, {
-          environment: environment.slug,
-          secretPath: folder.path
-        })
+        environment: environment.slug,
+        secretPath: folder.path
+      })
       : ProjectPermissionSub.SecretSyncs;
 
   return (

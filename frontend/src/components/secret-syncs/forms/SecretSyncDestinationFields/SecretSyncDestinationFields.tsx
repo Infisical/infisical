@@ -16,6 +16,7 @@ import { ChefSyncFields } from "./ChefSyncFields";
 import { CircleCISyncFields } from "./CircleCISyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
+import { CoolifySyncFields } from "./CoolifySyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { DigitalOceanAppPlatformSyncFields } from "./DigitalOceanAppPlatformSyncFields";
 import { FlyioSyncFields } from "./FlyioSyncFields";
@@ -115,6 +116,8 @@ export const SecretSyncDestinationFields = () => {
       return <OctopusDeploySyncFields />;
     case SecretSync.CircleCI:
       return <CircleCISyncFields />;
+    case SecretSync.Coolify:
+      return <CoolifySyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

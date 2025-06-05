@@ -65,6 +65,7 @@ import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terra
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
 import { ZABBIX_SYNC_LIST_OPTION, ZabbixSyncFns } from "./zabbix";
+import { COOLIFY_SYNC_LIST_OPTION } from "./coolify";
 
 const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AWSParameterStore]: AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
@@ -101,7 +102,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.LaravelForge]: LARAVEL_FORGE_SYNC_LIST_OPTION,
   [SecretSync.Chef]: CHEF_SYNC_LIST_OPTION,
   [SecretSync.OctopusDeploy]: OCTOPUS_DEPLOY_SYNC_LIST_OPTION,
-  [SecretSync.CircleCI]: CIRCLECI_SYNC_LIST_OPTION
+  [SecretSync.CircleCI]: CIRCLECI_SYNC_LIST_OPTION,
+  [SecretSync.Coolify]: COOLIFY_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -311,6 +313,8 @@ export const SecretSyncFns = {
         return OctopusDeploySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.CircleCI:
         return CircleCISyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Coolify:
+        return CoolifySyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
