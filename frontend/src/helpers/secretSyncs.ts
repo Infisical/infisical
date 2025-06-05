@@ -16,6 +16,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
     name: "Azure App Configuration",
     image: "Microsoft Azure.png"
   },
+  [SecretSync.AzureDevOps]: {
+    name: "Azure DevOps",
+    image: "Microsoft Azure.png"
+  },
   [SecretSync.Databricks]: {
     name: "Databricks",
     image: "Databricks.png"
@@ -65,6 +69,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.GCPSecretManager]: AppConnection.GCP,
   [SecretSync.AzureKeyVault]: AppConnection.AzureKeyVault,
   [SecretSync.AzureAppConfiguration]: AppConnection.AzureAppConfiguration,
+  [SecretSync.AzureDevOps]: AppConnection.AzureDevOps,
   [SecretSync.Databricks]: AppConnection.Databricks,
   [SecretSync.Humanitec]: AppConnection.Humanitec,
   [SecretSync.TerraformCloud]: AppConnection.TerraformCloud,

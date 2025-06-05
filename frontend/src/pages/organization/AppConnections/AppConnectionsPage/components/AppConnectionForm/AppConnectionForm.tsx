@@ -14,6 +14,7 @@ import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConnectionForm";
 import { AzureClientSecretsConnectionForm } from "./AzureClientSecretsConnectionForm";
+import { AzureDevOpsConnectionForm } from "./AzureDevOpsConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
@@ -99,6 +100,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <CamundaConnectionForm onSubmit={onSubmit} />;
     case AppConnection.AzureClientSecrets:
       return <AzureClientSecretsConnectionForm />;
+    case AppConnection.AzureDevOps:
+      return <AzureDevOpsConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Windmill:
       return <WindmillConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Auth0:
@@ -179,6 +182,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <CamundaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.AzureClientSecrets:
       return <AzureClientSecretsConnectionForm appConnection={appConnection} />;
+    case AppConnection.AzureDevOps:
+      return <AzureDevOpsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
     case AppConnection.Windmill:
       return <WindmillConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Auth0:

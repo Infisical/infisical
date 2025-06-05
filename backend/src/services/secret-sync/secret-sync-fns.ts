@@ -26,6 +26,7 @@ import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { ONEPASS_SYNC_LIST_OPTION, OnePassSyncFns } from "./1password";
 import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFactory } from "./azure-app-configuration";
+import { AZURE_DEVOPS_SYNC_LIST_OPTION, azureDevOpsSyncFactory } from "./azure-devops";
 import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./azure-key-vault";
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
@@ -45,6 +46,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.GitHub]: GITHUB_SYNC_LIST_OPTION,
   [SecretSync.GCPSecretManager]: GCP_SYNC_LIST_OPTION,
   [SecretSync.AzureKeyVault]: AZURE_KEY_VAULT_SYNC_LIST_OPTION,
+  [SecretSync.AzureDevOps]: AZURE_DEVOPS_SYNC_LIST_OPTION,
   [SecretSync.AzureAppConfiguration]: AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION,
   [SecretSync.Databricks]: DATABRICKS_SYNC_LIST_OPTION,
   [SecretSync.Humanitec]: HUMANITEC_SYNC_LIST_OPTION,
@@ -152,6 +154,11 @@ export const SecretSyncFns = {
           appConnectionDAL,
           kmsService
         }).syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.AzureDevOps:
+        return azureDevOpsSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
@@ -210,6 +217,12 @@ export const SecretSyncFns = {
         break;
       case SecretSync.AzureAppConfiguration:
         secretMap = await azureAppConfigurationSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).getSecrets(secretSync);
+        break;
+      case SecretSync.AzureDevOps:
+        secretMap = await azureDevOpsSyncFactory({
           appConnectionDAL,
           kmsService
         }).getSecrets(secretSync);
@@ -283,6 +296,11 @@ export const SecretSyncFns = {
           appConnectionDAL,
           kmsService
         }).removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.AzureDevOps:
+        return azureDevOpsSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).removeSecrets(secretSync);
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,

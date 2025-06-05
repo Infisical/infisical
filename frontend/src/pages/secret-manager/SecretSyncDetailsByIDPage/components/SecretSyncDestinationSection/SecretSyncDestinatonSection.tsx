@@ -14,6 +14,7 @@ import { OnePassSyncDestinationSection } from "./1PasswordSyncDestinationSection
 import { AwsParameterStoreSyncDestinationSection } from "./AwsParameterStoreSyncDestinationSection";
 import { AwsSecretsManagerSyncDestinationSection } from "./AwsSecretsManagerSyncDestinationSection";
 import { AzureAppConfigurationSyncDestinationSection } from "./AzureAppConfigurationSyncDestinationSection";
+import { AzureDevOpsSyncDestinationSection } from "./AzureDevopsSyncDestinationSection";
 import { AzureKeyVaultSyncDestinationSection } from "./AzureKeyVaultSyncDestinationSection";
 import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
@@ -88,6 +89,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.OnePass:
       DestinationComponents = <OnePassSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.AzureDevOps:
+      DestinationComponents = <AzureDevOpsSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);
