@@ -17,6 +17,7 @@ import {
   AzureClientSecretsConnectionMethod,
   AzureKeyVaultConnectionMethod,
   CamundaConnectionMethod,
+  CoolifyConnectionMethod,
   DatabricksConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
@@ -74,7 +75,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.LDAP]: { name: "LDAP", image: "LDAP.png", size: 65 },
   [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" },
   [AppConnection.OCI]: { name: "OCI", image: "Oracle.png", enterprise: true },
-  [AppConnection.OnePass]: { name: "1Password", image: "1Password.png" }
+  [AppConnection.OnePass]: { name: "1Password", image: "1Password.png" },
+  [AppConnection.Coolify]: { name: "Coolify", image: "Coolify.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -102,6 +104,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
     case OnePassConnectionMethod.ApiToken:
+    case CoolifyConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:

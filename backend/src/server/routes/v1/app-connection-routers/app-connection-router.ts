@@ -27,6 +27,7 @@ import {
   CamundaConnectionListItemSchema,
   SanitizedCamundaConnectionSchema
 } from "@app/services/app-connection/camunda";
+import { CoolifyConnectionListItemSchema, SanitizedCoolifyConnectionSchema } from "@app/services/app-connection/coolify";
 import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
@@ -90,7 +91,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedLdapConnectionSchema.options,
   ...SanitizedTeamCityConnectionSchema.options,
   ...SanitizedOCIConnectionSchema.options,
-  ...SanitizedOnePassConnectionSchema.options
+  ...SanitizedOnePassConnectionSchema.options,
+  ...SanitizedCoolifyConnectionSchema.options,
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -115,7 +117,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   LdapConnectionListItemSchema,
   TeamCityConnectionListItemSchema,
   OCIConnectionListItemSchema,
-  OnePassConnectionListItemSchema
+  OnePassConnectionListItemSchema,
+  CoolifyConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

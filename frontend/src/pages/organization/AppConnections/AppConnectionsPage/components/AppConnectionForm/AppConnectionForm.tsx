@@ -16,6 +16,7 @@ import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConn
 import { AzureClientSecretsConnectionForm } from "./AzureClientSecretsConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
+import { CoolifyConnectionForm } from "./CoolifyConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
@@ -113,6 +114,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <OCIConnectionForm onSubmit={onSubmit} />;
     case AppConnection.OnePass:
       return <OnePassConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Coolify:
+      return <CoolifyConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -193,6 +196,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <OCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.OnePass:
       return <OnePassConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Coolify:
+      return <CoolifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }
