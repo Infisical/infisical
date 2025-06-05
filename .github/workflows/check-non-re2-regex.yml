@@ -22,30 +22,30 @@ jobs:
           grep '^+' diff.txt | grep -v '^+++' | sed 's/^\+//' > added_lines.txt
 
           if [ ! -s added_lines.txt ]; then
-            echo "✅ No raw regex literals to check in backend."
+            echo "✅ No added lines in backend/ to check for regex usage."
             exit 0
           fi
 
-          raw_regex_pattern='(^|[^A-Za-z0-9_])\/[^\/]+\/[gimsuy]*'
+          regex_usage_pattern='(^|[^A-Za-z0-9_])(\/[^\/]+\/[gimsuy]*|new RegExp\()'
 
-          # Find all added lines that contain the raw_regex_pattern.
-          grep -E "$raw_regex_pattern" added_lines.txt > potential_violations.txt
+          # Find all added lines that contain the regex_usage_pattern.
+          grep -E "$regex_usage_pattern" added_lines.txt > potential_violations.txt
 
-          if [ -s potential_violations.txt ]; then # If any lines match the raw regex pattern
-            # Filter out lines that also contain the string 'new RE2'.
+          if [ -s potential_violations.txt ]; then # If any lines match the regex usage pattern
+            # Filter out lines that also contain the string 'new RE2'
             grep -v 'new RE2' potential_violations.txt > actual_violations.txt
 
             if [ -s actual_violations.txt ]; then # If there are lines left after filtering out 'new RE2'
-              echo "🚨 ERROR: Found raw regex usage in added/modified backend code."
+              echo "🚨 ERROR: Found forbidden regex pattern (raw literal '/.../' or 'new RegExp(...)') in added/modified backend code."
               echo "Please use 'new RE2(...)' for all regular expressions in the backend."
               echo "Offending lines:"
               cat actual_violations.txt
               exit 1
             else
-              # All lines that matched raw_regex_pattern also contained 'new RE2'.
-              echo "✅ No forbidden raw regex literals found in backend."
+              # All lines that matched regex_usage_pattern also contained 'new RE2'.
+              echo "✅ All identified regex usages are correctly using 'new RE2(...)'."
             fi
           else
-            # No lines matched the raw_regex_pattern at all.
-            echo "✅ No raw regex literals found in added/modified backend lines."
+            # No lines matched the regex_usage_pattern at all.
+            echo "✅ No raw regex literals ('/.../') or 'new RegExp(...)' usage found in added/modified backend lines."
           fi

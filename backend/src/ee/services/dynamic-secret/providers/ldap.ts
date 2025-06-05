@@ -202,7 +202,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
     const client = await $getClient(providerInputs);
 
     if (providerInputs.credentialType === LdapCredentialType.Static) {
-      const dnRegex = new RE2("^dn:\\s*(.+)", "m");
+      const dnRegex = new RegExp("^dn:\\s*(.+)", "m");
       const dnMatch = dnRegex.exec(providerInputs.rotationLdif);
 
       if (dnMatch) {
