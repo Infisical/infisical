@@ -1,6 +1,9 @@
-name: Release Infisical Core Helm chart
-
-on: [workflow_dispatch]
+name: Run Helm Chart Tests for Infisical Standalone Postgres
+on:
+  pull_request:
+    paths:
+      - "helm-charts/infisical-standalone-postgres/**"
+      - ".github/workflows/run-helm-chart-tests-infisical-standalone-postgres.yml"
 
 jobs:
   test-helm:
@@ -56,22 +59,3 @@ jobs:
             --helm-extra-args="--timeout=300s" \
             --helm-extra-set-args="--set ingress.nginx.enabled=false --set infisical.autoDatabaseSchemaMigration=false --set infisical.replicaCount=1 --set infisical.image.tag=v0.132.2-postgres" \
             --namespace infisical-standalone-postgres
-
-  release:
-    needs: test-helm
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Install Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: v3.10.0
-      - name: Install python
-        uses: actions/setup-python@v4
-      - name: Install Cloudsmith CLI
-        run: pip install --upgrade cloudsmith-cli
-      - name: Build and push helm package to Cloudsmith
-        run: cd helm-charts && sh upload-infisical-core-helm-cloudsmith.sh
-        env:
-          CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}

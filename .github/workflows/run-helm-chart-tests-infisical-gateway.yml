@@ -1,6 +1,9 @@
-name: Release Gateway Helm Chart
+name: Run Helm Chart Tests for Gateway
 on:
-  workflow_dispatch:
+  pull_request:
+    paths:
+      - "helm-charts/infisical-gateway/**"
+      - ".github/workflows/run-helm-chart-tests-infisical-gateway.yml"
 
 jobs:
   test-helm:
@@ -44,27 +47,3 @@ jobs:
             --charts helm-charts/infisical-gateway \
             --helm-extra-args="--timeout=300s" \
             --namespace infisical-gateway
-
-  release-helm:
-    name: Release Helm Chart
-    needs: test-helm
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: v3.10.0
-
-      - name: Install python
-        uses: actions/setup-python@v4
-
-      - name: Install Cloudsmith CLI
-        run: pip install --upgrade cloudsmith-cli
-
-      - name: Build and push helm package to CloudSmith
-        run: cd helm-charts && sh upload-gateway-cloudsmith.sh
-        env:
-          CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}

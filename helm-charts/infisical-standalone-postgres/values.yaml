@@ -5,8 +5,10 @@ nameOverride: ""
 fullnameOverride: ""
 
 infisical:
-  enabled: true # -- Enable Infisical chart deployment
-  name: infisical # -- Sets the name of the deployment within this chart
+  # -- Enable Infisical chart deployment
+  enabled: true
+  # -- Sets the name of the deployment within this chart
+  name: infisical
 
   # -- Automatically migrates new database schema when deploying
   autoDatabaseSchemaMigration: true
@@ -67,7 +69,7 @@ infisical:
   resources:
     limits:
       # -- Memory limit for Infisical container
-      memory: 600Mi
+      memory: 1000Mi
     requests:
       # -- CPU request for Infisical container
       cpu: 350m

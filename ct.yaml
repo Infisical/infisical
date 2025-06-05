@@ -1,0 +1,14 @@
+# Chart testing configuration
+chart-dirs:
+  - helm-charts
+
+# Test against these Kubernetes versions
+kube-versions:
+  - v1.30.0
+  - v1.31.0
+  - v1.32.0
+  - v1.33.0
+
+validate-maintainers: false
+
+kubectl-timeout: 300s
