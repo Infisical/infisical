@@ -1,3 +1,4 @@
 export enum GcpSyncScope {
-  Global = "global"
+  Global = "global",
+  Region = "region"
 }

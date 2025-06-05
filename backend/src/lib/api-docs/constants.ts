@@ -2272,7 +2272,8 @@ export const SecretSyncs = {
     },
     GCP: {
       scope: "The Google project scope that secrets should be synced to.",
-      projectId: "The ID of the Google project secrets should be synced to."
+      projectId: "The ID of the Google project secrets should be synced to.",
+      locationId: 'The ID of the Google project location secrets should be synced to (ie "us-west4").'
     },
     DATABRICKS: {
       scope: "The Databricks secret scope that secrets should be synced to."

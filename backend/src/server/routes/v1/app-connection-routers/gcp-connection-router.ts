@@ -45,4 +45,37 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
       return projects;
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/secret-manager-project-locations`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      querystring: z.object({
+        projectId: z.string()
+      }),
+      response: {
+        200: z.object({ displayName: z.string(), locationId: z.string() }).array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const {
+        params: { connectionId },
+        query: { projectId }
+      } = req;
+
+      const locations = await server.services.appConnection.gcp.listSecretManagerProjectLocations(
+        { connectionId, projectId },
+        req.permission
+      );
+
+      return locations;
+    }
+  });
 };
