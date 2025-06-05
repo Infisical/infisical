@@ -107,7 +107,7 @@ export const identityKubernetesAuthServiceFactory = ({
         // we always pass this, because its needed for both tcp and http protocol
         httpsAgent: new https.Agent({
           ca: inputs.caCert,
-          rejectUnauthorized: !!inputs.caCert
+          rejectUnauthorized: Boolean(inputs.caCert)
         })
       }
     );
@@ -158,6 +158,7 @@ export const identityKubernetesAuthServiceFactory = ({
       if (servername.startsWith("https://") || servername.startsWith("http://")) {
         servername = new RE2("^https?:\\/\\/").replace(servername, "");
       }
+
       // get the last colon index, if it has a port, remove it, including the colon
       const lastColonIndex = servername.lastIndexOf(":");
       if (lastColonIndex !== -1) {
