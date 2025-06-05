@@ -38,6 +38,7 @@ import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
+import { COOLIFY_SYNC_LIST_OPTION } from "./coolify";
 
 const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AWSParameterStore]: AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
@@ -55,7 +56,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.HCVault]: HC_VAULT_SYNC_LIST_OPTION,
   [SecretSync.TeamCity]: TEAMCITY_SYNC_LIST_OPTION,
   [SecretSync.OCIVault]: OCI_VAULT_SYNC_LIST_OPTION,
-  [SecretSync.OnePass]: ONEPASS_SYNC_LIST_OPTION
+  [SecretSync.OnePass]: ONEPASS_SYNC_LIST_OPTION,
+  [SecretSync.Coolify]: COOLIFY_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -178,6 +180,8 @@ export const SecretSyncFns = {
         return OCIVaultSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.OnePass:
         return OnePassSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Coolify:
+        return CoolifySyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
