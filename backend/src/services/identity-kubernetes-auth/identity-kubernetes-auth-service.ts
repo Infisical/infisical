@@ -164,8 +164,6 @@ export const identityKubernetesAuthServiceFactory = ({
         servername = servername.substring(0, lastColonIndex);
       }
 
-      console.log("servername", servername);
-
       const baseUrl = port ? `${host}:${port}` : host;
 
       const res = await axios
