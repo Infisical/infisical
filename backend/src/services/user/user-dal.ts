@@ -22,7 +22,9 @@ export const userDALFactory = (db: TDbClient) => {
     (tx || db)(TableName.Users).whereRaw('lower("username") = :username', { username: username.toLowerCase() });
 
   const findUserByEmail = async (email: string, tx?: Knex) =>
-    (tx || db)(TableName.Users).whereRaw('lower("email") = :email', { email: email.toLowerCase() });
+    (tx || db)(TableName.Users).whereRaw('lower("email") = :email', { email: email.toLowerCase() }).where({
+      isEmailVerified: true
+    });
 
   const getUsersByFilter = async ({
     limit,
