@@ -16,6 +16,7 @@ import {
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
+import { slugSchema } from "@app/lib/schemas";
 
 enum ConfigType {
   URL = "url",
@@ -56,11 +57,7 @@ const formSchema = z.object({
       digits: z.number().optional()
     })
   ]),
-  name: z
-    .string()
-    .trim()
-    .min(1)
-    .refine((val) => val.toLowerCase() === val, "Must be lowercase"),
+  name: slugSchema(),
   environment: z.object({ name: z.string(), slug: z.string() })
 });
 

@@ -29,6 +29,7 @@ import {
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
+import { slugSchema } from "@app/lib/schemas";
 
 import { MetadataForm } from "../../DynamicSecretListView/MetadataForm";
 
@@ -88,7 +89,7 @@ const formSchema = z.object({
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
+  name: slugSchema(),
   environment: z.object({ name: z.string(), slug: z.string() }),
   metadata: z
     .object({

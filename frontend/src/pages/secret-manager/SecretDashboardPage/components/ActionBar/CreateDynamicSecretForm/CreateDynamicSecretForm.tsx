@@ -36,6 +36,7 @@ import { SapHanaInputForm } from "./SapHanaInputForm";
 import { SnowflakeInputForm } from "./SnowflakeInputForm";
 import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
 import { TotpInputForm } from "./TotpInputForm";
+import { VerticaInputForm } from "./VerticaInputForm";
 
 type Props = {
   isOpen?: boolean;
@@ -126,6 +127,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <FontAwesomeIcon icon={faClock} size="lg" />,
     provider: DynamicSecretProviders.Totp,
     title: "TOTP"
+  },
+  {
+    icon: <FontAwesomeIcon icon={faDatabase} size="lg" />,
+    provider: DynamicSecretProviders.Vertica,
+    title: "Vertica"
   },
   {
     icon: <SiKubernetes size="1.5rem" />,
@@ -489,6 +495,25 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <KubernetesInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.Vertica && (
+              <motion.div
+                key="dynamic-vertica-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <VerticaInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}

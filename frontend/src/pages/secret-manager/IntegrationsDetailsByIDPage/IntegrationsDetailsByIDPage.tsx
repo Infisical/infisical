@@ -166,7 +166,7 @@ export const IntegrationDetailsByIDPage = () => {
 
       <DeleteActionModal
         isOpen={popUp.deleteConfirmation.isOpen}
-        title={`Are you sure want to remove ${integration?.integration || " "} integration for ${
+        title={`Are you sure you want to remove ${integration?.integration || " "} integration for ${
           integration?.app || "this project"
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}

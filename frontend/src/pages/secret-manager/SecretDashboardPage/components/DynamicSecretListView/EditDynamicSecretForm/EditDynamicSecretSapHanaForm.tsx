@@ -18,6 +18,7 @@ import {
 } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
   inputs: z
@@ -52,7 +53,7 @@ const formSchema = z.object({
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  newName: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
+  newName: slugSchema().optional(),
   usernameTemplate: z.string().trim().nullable().optional()
 });
 type TForm = z.infer<typeof formSchema>;

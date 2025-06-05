@@ -20,6 +20,7 @@ import { EditDynamicSecretSapHanaForm } from "./EditDynamicSecretSapHanaForm";
 import { EditDynamicSecretSnowflakeForm } from "./EditDynamicSecretSnowflakeForm";
 import { EditDynamicSecretSqlProviderForm } from "./EditDynamicSecretSqlProviderForm";
 import { EditDynamicSecretTotpForm } from "./EditDynamicSecretTotpForm";
+import { EditDynamicSecretVerticaForm } from "./EditDynamicSecretVertica";
 
 type Props = {
   onClose: () => void;
@@ -322,6 +323,23 @@ export const EditDynamicSecretForm = ({
           exit={{ opacity: 0, translateX: -30 }}
         >
           <EditDynamicSecretKubernetesForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+      {dynamicSecretDetails?.type === DynamicSecretProviders.Vertica && (
+        <motion.div
+          key="vertica-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretVerticaForm
             onClose={onClose}
             projectSlug={projectSlug}
             secretPath={secretPath}

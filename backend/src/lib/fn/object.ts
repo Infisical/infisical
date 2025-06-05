@@ -32,3 +32,24 @@ export const shake = <RemovedKeys extends string, T = object>(
     return acc;
   }, {} as T);
 };
+
+export const titleCaseToCamelCase = (obj: unknown): unknown => {
+  if (typeof obj !== "object" || obj === null) {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map((item: object) => titleCaseToCamelCase(item));
+  }
+
+  const result: Record<string, unknown> = {};
+
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const camelKey = key.charAt(0).toLowerCase() + key.slice(1);
+      result[camelKey] = titleCaseToCamelCase((obj as Record<string, unknown>)[key]);
+    }
+  }
+
+  return result;
+};

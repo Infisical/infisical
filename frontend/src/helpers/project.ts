@@ -61,10 +61,14 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
   return project;
 };
 export const getProjectHomePage = (workspace: Workspace) => {
-  if (workspace.type === ProjectType.CertificateManager) {
-    return `/${workspace.type}/$projectId/subscribers` as const;
+  switch (workspace.type) {
+    case ProjectType.CertificateManager:
+      return `/${workspace.type}/$projectId/subscribers` as const;
+    case ProjectType.SecretScanning:
+      return `/${workspace.type}/$projectId/data-sources` as const;
+    default:
+      return `/${workspace.type}/$projectId/overview` as const;
   }
-  return `/${workspace.type}/$projectId/overview` as const;
 };
 
 export const getProjectTitle = (type: ProjectType) => {
@@ -72,7 +76,8 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.SecretManager]: "Secret Management",
     [ProjectType.KMS]: "Key Management",
     [ProjectType.CertificateManager]: "Cert Management",
-    [ProjectType.SSH]: "SSH"
+    [ProjectType.SSH]: "SSH",
+    [ProjectType.SecretScanning]: "Secret Scanning"
   };
   return titleConvert[type];
 };

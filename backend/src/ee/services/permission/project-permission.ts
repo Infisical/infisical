@@ -132,6 +132,26 @@ export enum ProjectPermissionKmipActions {
   GenerateClientCertificates = "generate-client-certificates"
 }
 
+export enum ProjectPermissionSecretScanningDataSourceActions {
+  Read = "read-data-sources",
+  Create = "create-data-sources",
+  Edit = "edit-data-sources",
+  Delete = "delete-data-sources",
+  TriggerScans = "trigger-data-source-scans",
+  ReadScans = "read-data-source-scans",
+  ReadResources = "read-data-source-resources"
+}
+
+export enum ProjectPermissionSecretScanningFindingActions {
+  Read = "read-findings",
+  Update = "update-findings"
+}
+
+export enum ProjectPermissionSecretScanningConfigActions {
+  Read = "read-configs",
+  Update = "update-configs"
+}
+
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
@@ -167,7 +187,10 @@ export enum ProjectPermissionSub {
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
-  Kmip = "kmip"
+  Kmip = "kmip",
+  SecretScanningDataSources = "secret-scanning-data-sources",
+  SecretScanningFindings = "secret-scanning-findings",
+  SecretScanningConfigs = "secret-scanning-configs"
 }
 
 export type SecretSubjectFields = {
@@ -301,7 +324,10 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
-  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms];
+  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
+  | [ProjectPermissionSecretScanningDataSourceActions, ProjectPermissionSub.SecretScanningDataSources]
+  | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
+  | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
@@ -629,6 +655,26 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.Kmip).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionKmipActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z
+      .literal(ProjectPermissionSub.SecretScanningDataSources)
+      .describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretScanningDataSourceActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretScanningFindings).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretScanningFindingActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretScanningConfigs).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretScanningConfigActions).describe(
       "Describe what action an entity can take."
     )
   })

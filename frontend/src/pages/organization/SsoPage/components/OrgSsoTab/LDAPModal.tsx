@@ -361,7 +361,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       </Modal>
       <DeleteActionModal
         isOpen={isDeletePopupOpen}
-        title="Are you sure want to delete LDAP?"
+        title="Are you sure you want to delete LDAP?"
         onChange={() => setIsDeletePopupOpen.toggle()}
         deleteKey="confirm"
         onDeleteApproved={handleLdapSoftDelete}

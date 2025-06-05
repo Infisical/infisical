@@ -15,11 +15,19 @@ export const AppConnectionHeader = ({ app, isConnected, onBack }: Props) => {
 
   return (
     <div className="mb-4 flex w-full items-start gap-2 border-b border-mineshaft-500 pb-4">
-      <img
-        alt={`${appDetails.name} logo`}
-        src={`/images/integrations/${appDetails.image}`}
-        className="h-12 w-12 rounded-md bg-bunker-500 p-2"
-      />
+      <div className="relative">
+        <img
+          alt={`${appDetails.name} logo`}
+          src={`/images/integrations/${appDetails.image}`}
+          className="h-12 w-12 rounded-md bg-bunker-500 p-2"
+        />
+        {appDetails.icon && (
+          <FontAwesomeIcon
+            icon={appDetails.icon}
+            className="absolute bottom-1 right-1 text-primary-700"
+          />
+        )}
+      </div>
       <div>
         <div className="flex items-center text-mineshaft-300">
           {appDetails.name}

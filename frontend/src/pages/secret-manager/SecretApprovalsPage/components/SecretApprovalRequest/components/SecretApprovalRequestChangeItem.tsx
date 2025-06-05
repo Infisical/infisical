@@ -12,7 +12,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Tag, Tooltip } from "@app/components/v2";
+import { SecretInput, Tag, Tooltip } from "@app/components/v2";
 import { CommitType, SecretV3Raw, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
 
 export type Props = {
@@ -86,10 +86,10 @@ export const SecretApprovalRequestChangeItem = ({
           {op === CommitType.UPDATE || op === CommitType.DELETE ? (
             <div className="flex w-full cursor-default flex-col rounded-md border border-red-600/60 bg-red-600/10 p-4 xl:w-1/2">
               <div className="mb-4 flex flex-row justify-between">
-                <span className="text-md font-medium">Legacy Secret</span>
+                <span className="text-md font-medium">Previous Secret</span>
                 <div className="rounded-full bg-red px-2 pb-[0.14rem] pt-[0.2rem] text-xs font-medium">
                   <FontAwesomeIcon icon={faCircleXmark} className="pr-1 text-white" />
-                  Deprecated
+                  Previous
                 </div>
               </div>
               <div className="mb-2">
@@ -104,34 +104,29 @@ export const SecretApprovalRequestChangeItem = ({
                       Rotated Secret value will not be affected
                     </span>
                   ) : (
-                    <div
-                      onClick={() => setIsOldSecretValueVisible(!isOldSecretValueVisible)}
-                      className="flex flex-row items-center justify-between rounded-md border border-mineshaft-500 bg-mineshaft-900 pl-2"
-                    >
+                    <div className="relative">
+                      <SecretInput
+                        isReadOnly
+                        isVisible={isOldSecretValueVisible}
+                        value={secretVersion?.secretValue}
+                        containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-700 px-2 py-1.5"
+                      />
                       <div
-                        className={`flex font-mono ${isOldSecretValueVisible || !secretVersion?.secretValue ? "text-md py-[0.55rem]" : "text-lg"}`}
+                        className="absolute right-1 top-1"
+                        onClick={() => setIsOldSecretValueVisible(!isOldSecretValueVisible)}
                       >
-                        {isOldSecretValueVisible
-                          ? secretVersion?.secretValue || "EMPTY"
-                          : secretVersion?.secretValue
-                            ? secretVersion?.secretValue?.split("").map(() => "•")
-                            : "EMPTY"}{" "}
+                        <FontAwesomeIcon
+                          icon={isOldSecretValueVisible ? faEyeSlash : faEye}
+                          className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
+                        />
                       </div>
-                      {secretVersion?.secretValue && (
-                        <div className="flex h-10 w-10 items-center justify-center">
-                          <FontAwesomeIcon
-                            icon={isOldSecretValueVisible ? faEyeSlash : faEye}
-                            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
-                          />
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Comment</div>
-                <div className="text-sm">
+                <div className="max-h-[5rem] overflow-y-auto text-sm">
                   {secretVersion?.secretComment || (
                     <span className="text-sm text-mineshaft-300">-</span>
                   )}{" "}
@@ -191,8 +186,7 @@ export const SecretApprovalRequestChangeItem = ({
             </div>
           ) : (
             <div className="text-md flex w-full items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 text-mineshaft-300 xl:w-1/2">
-              {" "}
-              Secret not existent in the previous version.
+              Secret did not exist in the previous version.
             </div>
           )}
           {op === CommitType.UPDATE || op === CommitType.CREATE ? (
@@ -201,7 +195,7 @@ export const SecretApprovalRequestChangeItem = ({
                 <span className="text-md font-medium">New Secret</span>
                 <div className="rounded-full bg-green-600 px-2 pb-[0.14rem] pt-[0.2rem] text-xs font-medium">
                   <FontAwesomeIcon icon={faCircleXmark} className="pr-1 text-white" />
-                  Current
+                  New
                 </div>
               </div>
               <div className="mb-2">
@@ -216,34 +210,29 @@ export const SecretApprovalRequestChangeItem = ({
                       Rotated Secret value will not be affected
                     </span>
                   ) : (
-                    <div
-                      onClick={() => setIsNewSecretValueVisible(!isNewSecretValueVisible)}
-                      className="flex flex-row items-center justify-between rounded-md border border-mineshaft-500 bg-mineshaft-900 pl-2"
-                    >
+                    <div className="relative">
+                      <SecretInput
+                        isReadOnly
+                        isVisible={isNewSecretValueVisible}
+                        value={newVersion?.secretValue}
+                        containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-700 px-2 py-1.5"
+                      />
                       <div
-                        className={`flex font-mono ${isNewSecretValueVisible || !newVersion?.secretValue ? "text-md py-[0.55rem]" : "text-lg"}`}
+                        className="absolute right-1 top-1"
+                        onClick={() => setIsNewSecretValueVisible(!isNewSecretValueVisible)}
                       >
-                        {isNewSecretValueVisible
-                          ? newVersion?.secretValue || "EMPTY"
-                          : newVersion?.secretValue
-                            ? newVersion?.secretValue?.split("").map(() => "•")
-                            : "EMPTY"}{" "}
+                        <FontAwesomeIcon
+                          icon={isNewSecretValueVisible ? faEyeSlash : faEye}
+                          className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
+                        />
                       </div>
-                      {newVersion?.secretValue && (
-                        <div className="flex h-10 w-10 items-center justify-center">
-                          <FontAwesomeIcon
-                            icon={isNewSecretValueVisible ? faEyeSlash : faEye}
-                            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
-                          />
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Comment</div>
-                <div className="text-sm">
+                <div className="max-h-[5rem] overflow-y-auto text-sm">
                   {newVersion?.secretComment || (
                     <span className="text-sm text-mineshaft-300">-</span>
                   )}{" "}
@@ -302,7 +291,7 @@ export const SecretApprovalRequestChangeItem = ({
           ) : (
             <div className="text-md flex w-full items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 text-mineshaft-300 xl:w-1/2">
               {" "}
-              Secret not existent in the new version.
+              Secret did not exist in the previous version.
             </div>
           )}
         </div>

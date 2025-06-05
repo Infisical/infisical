@@ -202,7 +202,7 @@ export const NativeIntegrationsTab = () => {
       )}
       <DeleteActionModal
         isOpen={popUp.deleteConfirmation.isOpen}
-        title={`Are you sure want to remove ${
+        title={`Are you sure you want to remove ${
           (popUp?.deleteConfirmation.data as TIntegration)?.integration || " "
         } integration for ${
           (popUp?.deleteConfirmation.data as TIntegration)?.app || "this project"

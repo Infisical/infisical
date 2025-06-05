@@ -151,7 +151,7 @@ export const Content = ({
       />
       <DeleteActionModal
         isOpen={popUp?.revokeAuthMethod?.isOpen}
-        title={`Are you sure want to remove ${identityAuthToNameMap[authMethod]} on this identity?`}
+        title={`Are you sure you want to remove ${identityAuthToNameMap[authMethod]} on this identity?`}
         onChange={(isOpen) => handlePopUpToggle("revokeAuthMethod", isOpen)}
         deleteKey="confirm"
         buttonText="Remove"

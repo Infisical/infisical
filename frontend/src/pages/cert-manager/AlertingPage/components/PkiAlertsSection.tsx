@@ -70,7 +70,7 @@ export const PkiAlertsSection = () => {
       <PkiAlertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deletePkiAlert.isOpen}
-        title={`Are you sure want to remove the alert ${
+        title={`Are you sure you want to remove the alert ${
           (popUp?.deletePkiAlert?.data as { name: string })?.name || ""
         } from the project?`}
         onChange={(isOpen) => handlePopUpToggle("deletePkiAlert", isOpen)}
