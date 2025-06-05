@@ -2,10 +2,10 @@ import { z } from "zod";
 
 import { BackupPrivateKeySchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { authRateLimit } from "@app/server/config/rateLimiter";
+import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { validateSignUpAuthorization } from "@app/services/auth/auth-fns";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { UserEncryption } from "@app/services/user/user-types";
 
 export const registerPasswordRouter = async (server: FastifyZodProvider) => {
@@ -80,7 +80,9 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/email/password-reset",
     config: {
-      rateLimit: authRateLimit
+      rateLimit: smtpRateLimit({
+        keyGenerator: (req) => (req.body as { email?: string })?.email?.trim().substring(0, 100) ?? req.realIp
+      })
     },
     schema: {
       body: z.object({
@@ -224,7 +226,9 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/email/password-setup",
     config: {
-      rateLimit: authRateLimit
+      rateLimit: smtpRateLimit({
+        keyGenerator: (req) => (req.auth.actor === ActorType.USER ? req.auth.userId : req.realIp)
+      })
     },
     schema: {
       response: {
@@ -233,6 +237,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await server.services.password.sendPasswordSetupEmail(req.permission);
 
@@ -267,6 +272,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req, res) => {
       await server.services.password.setupPassword(req.body, req.permission);
 

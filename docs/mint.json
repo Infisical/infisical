@@ -233,7 +233,8 @@
           "group": "Gateway",
           "pages": [
             "documentation/platform/gateways/overview",
-            "documentation/platform/gateways/gateway-security"
+            "documentation/platform/gateways/gateway-security",
+            "documentation/platform/gateways/networking"
           ]
         },
         "documentation/platform/project-templates",
