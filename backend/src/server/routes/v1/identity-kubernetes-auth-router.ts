@@ -307,8 +307,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           if (
             data.tokenReviewMode &&
             data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
-            !data.gatewayId &&
-            data.tokenReviewMode !== undefined
+            !data.gatewayId
           ) {
             ctx.addIssue({
               path: ["gatewayId"],
@@ -316,7 +315,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               message: "When token review mode is set to Gateway, a gateway must be selected"
             });
           }
-          if (data.accessTokenMaxTTL && data.accessTokenTTL ? data.accessTokenTTL <= data.accessTokenMaxTTL : true) {
+          if (data.accessTokenMaxTTL && data.accessTokenTTL ? data.accessTokenTTL > data.accessTokenMaxTTL : false) {
             ctx.addIssue({
               path: ["accessTokenTTL"],
               code: z.ZodIssueCode.custom,

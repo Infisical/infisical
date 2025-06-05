@@ -322,7 +322,6 @@ export const IdentityKubernetesAuthForm = ({
                               isDisabled={!isAllowed}
                               value={value as string}
                               onValueChange={(v) => {
-                                console.log("v", v);
                                 if (v !== "") {
                                   onChange(v);
                                 }

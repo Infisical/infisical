@@ -299,7 +299,7 @@ func GetCmdFlagOrEnv(cmd *cobra.Command, flag string, envNames []string) (string
 	}
 	if value == "" {
 		for _, env := range envNames {
-			value = os.Getenv(env)
+			value = strings.TrimSpace(os.Getenv(env))
 			if value != "" {
 				break
 			}

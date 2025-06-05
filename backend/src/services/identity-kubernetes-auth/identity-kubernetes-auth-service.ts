@@ -249,7 +249,11 @@ export const identityKubernetesAuthServiceFactory = ({
         .catch((err) => {
           if (err instanceof AxiosError) {
             if (err.response) {
-              const { message } = err?.response?.data as unknown as { message?: string };
+              let { message } = err?.response?.data as unknown as { message?: string };
+
+              if (!message && typeof err.response.data === "string") {
+                message = err.response.data;
+              }
 
               if (message) {
                 throw new UnauthorizedError({
