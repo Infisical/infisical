@@ -4,11 +4,18 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"net"
+	"net/http"
+	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/quic-go/quic-go"
 	"github.com/rs/zerolog/log"
@@ -89,6 +96,34 @@ func handleStream(stream quic.Stream, quicConn quic.Connection) {
 			CopyDataFromQuicToTcp(stream, destTarget)
 			log.Info().Msgf("Ending secure transmission between %s->%s", quicConn.LocalAddr().String(), destTarget.LocalAddr().String())
 			return
+
+		case "FORWARD-HTTP":
+			argParts := bytes.Split(args, []byte(" "))
+			if len(argParts) == 0 {
+				log.Error().Msg("FORWARD-HTTP requires target URL")
+				return
+			}
+
+			targetURL := string(argParts[0])
+
+			// Parse optional parameters
+			var caCertB64, verifyParam string
+			for _, part := range argParts[1:] {
+				partStr := string(part)
+				if strings.HasPrefix(partStr, "ca=") {
+					caCertB64 = strings.TrimPrefix(partStr, "ca=")
+				} else if strings.HasPrefix(partStr, "verify=") {
+					verifyParam = strings.TrimPrefix(partStr, "verify=")
+				}
+			}
+
+			log.Info().Msgf("Starting HTTP proxy to: %s", targetURL)
+
+			if err := handleHTTPProxy(stream, reader, targetURL, caCertB64, verifyParam); err != nil {
+				log.Error().Msgf("HTTP proxy error: %v", err)
+			}
+			return
+
 		case "PING":
 			if _, err := stream.Write([]byte("PONG\n")); err != nil {
 				log.Error().Msgf("Error writing PONG response: %v", err)
@@ -99,6 +134,135 @@ func handleStream(stream quic.Stream, quicConn quic.Connection) {
 			return
 		}
 	}
+}
+func handleHTTPProxy(stream quic.Stream, reader *bufio.Reader, targetURL string, caCertB64 string, verifyParam string) error {
+	transport := &http.Transport{
+		DisableKeepAlives: false,
+		MaxIdleConns:      10,
+		IdleConnTimeout:   30 * time.Second,
+	}
+
+	if strings.HasPrefix(targetURL, "https://") {
+		tlsConfig := &tls.Config{}
+
+		if caCertB64 != "" {
+			caCert, err := base64.StdEncoding.DecodeString(caCertB64)
+			if err == nil {
+				caCertPool := x509.NewCertPool()
+				if caCertPool.AppendCertsFromPEM(caCert) {
+					tlsConfig.RootCAs = caCertPool
+					log.Info().Msg("Using provided CA certificate from gateway client")
+				} else {
+					log.Error().Msg("Failed to parse provided CA certificate")
+				}
+			} else {
+				log.Error().Msgf("Failed to decode CA certificate: %v", err)
+			}
+		}
+
+		// set certificate verification based on what the gateway client sent
+		if verifyParam != "" {
+			tlsConfig.InsecureSkipVerify = verifyParam == "false"
+			log.Info().Msgf("TLS verification set to: %s", verifyParam)
+		}
+
+		transport.TLSClientConfig = tlsConfig
+	}
+
+	// read and parse the http request from the stream
+	req, err := http.ReadRequest(reader)
+	if err != nil {
+		return fmt.Errorf("failed to read HTTP request: %v", err)
+	}
+
+	actionHeader := req.Header.Get("x-infisical-action")
+	if actionHeader != "" {
+
+		if actionHeader == "inject-k8s-sa-auth-token" {
+			token, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
+
+			if err != nil {
+				stream.Write([]byte(buildHttpInternalServerError("failed to read k8s sa auth token")))
+				return fmt.Errorf("failed to read k8s sa auth token: %v", err)
+			}
+
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", string(token)))
+			log.Info().Msgf("Injected gateway k8s SA auth token in request to %s", targetURL)
+		}
+
+		req.Header.Del("x-infisical-action")
+	}
+
+	var targetFullURL string
+	if strings.HasPrefix(targetURL, "http://") || strings.HasPrefix(targetURL, "https://") {
+		baseURL := strings.TrimSuffix(targetURL, "/")
+		targetFullURL = baseURL + req.URL.Path
+		if req.URL.RawQuery != "" {
+			targetFullURL += "?" + req.URL.RawQuery
+		}
+	} else {
+		baseURL := strings.TrimSuffix("http://"+targetURL, "/")
+		targetFullURL = baseURL + req.URL.Path
+		if req.URL.RawQuery != "" {
+			targetFullURL += "?" + req.URL.RawQuery
+		}
+	}
+
+	// create the request to the target
+	proxyReq, err := http.NewRequest(req.Method, targetFullURL, req.Body)
+	if err != nil {
+		return fmt.Errorf("failed to create proxy request: %v", err)
+	}
+
+	// copy headers
+	for name, values := range req.Header {
+		for _, value := range values {
+			proxyReq.Header.Add(name, value)
+		}
+	}
+
+	log.Info().Msgf("Proxying %s %s to %s", req.Method, req.URL.Path, targetFullURL)
+
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   30 * time.Second,
+	}
+
+	// make the request to the target
+	resp, err := client.Do(proxyReq)
+	if err != nil {
+		stream.Write([]byte(buildHttpInternalServerError(fmt.Sprintf("failed to reach target due to networking error: %s", err.Error()))))
+		return fmt.Errorf("failed to reach target due to networking error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// write response to stream
+	statusLine := fmt.Sprintf("HTTP/1.1 %d %s\r\n", resp.StatusCode, resp.Status[4:])
+	if _, err := stream.Write([]byte(statusLine)); err != nil {
+		return err
+	}
+
+	// write headers again
+	for name, values := range resp.Header {
+		for _, value := range values {
+			headerLine := fmt.Sprintf("%s: %s\r\n", name, value)
+			if _, err := stream.Write([]byte(headerLine)); err != nil {
+				return err
+			}
+		}
+	}
+
+	// write empty line to end headers
+	if _, err := stream.Write([]byte("\r\n")); err != nil {
+		return err
+	}
+
+	_, err = io.Copy(stream, resp.Body)
+	return err
+}
+
+func buildHttpInternalServerError(message string) string {
+	return fmt.Sprintf("HTTP/1.1 500 Internal Server Error\r\nContent-Type: application/json\r\n\r\n{\"message\": \"gateway: %s\"}", message)
 }
 
 type CloseWrite interface {

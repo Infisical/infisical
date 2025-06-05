@@ -23,6 +23,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
@@ -853,6 +854,7 @@ interface AddIdentityKubernetesAuthEvent {
   metadata: {
     identityId: string;
     kubernetesHost: string;
+    tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
     allowedNamespaces: string;
     allowedNames: string;
     accessTokenTTL: number;
@@ -874,6 +876,7 @@ interface UpdateIdentityKubernetesAuthEvent {
   metadata: {
     identityId: string;
     kubernetesHost?: string;
+    tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
     allowedNamespaces?: string;
     allowedNames?: string;
     accessTokenTTL?: number;

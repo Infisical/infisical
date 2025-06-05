@@ -4,6 +4,7 @@ import net from "node:net";
 
 import quicDefault, * as quicModule from "@infisical/quic";
 import axios from "axios";
+import https from "https";
 
 import { BadRequestError } from "../errors";
 import { logger } from "../logger";
@@ -148,6 +149,11 @@ interface TProxyServer {
   getProxyError: () => string;
 }
 
+export enum ProxyProtocol {
+  Http = "http",
+  Tcp = "tcp"
+}
+
 const setupProxyServer = async ({
   targetPort,
   targetHost,
@@ -155,7 +161,9 @@ const setupProxyServer = async ({
   relayHost,
   relayPort,
   identityId,
-  orgId
+  orgId,
+  protocol = ProxyProtocol.Tcp,
+  httpsAgent
 }: {
   targetHost: string;
   targetPort: number;
@@ -164,6 +172,8 @@ const setupProxyServer = async ({
   tlsOptions: TTlsOption;
   identityId: string;
   orgId: string;
+  protocol?: ProxyProtocol;
+  httpsAgent?: https.Agent;
 }): Promise<TProxyServer> => {
   const quicClient = await createQuicConnection(relayHost, relayPort, tlsOptions, identityId, orgId).catch((err) => {
     throw new BadRequestError({
@@ -184,9 +194,42 @@ const setupProxyServer = async ({
         clientConn.setNoDelay(true);
 
         const stream = quicClient.connection.newStream("bidi");
-        // Send FORWARD-TCP command
+
         const forwardWriter = stream.writable.getWriter();
-        await forwardWriter.write(Buffer.from(`FORWARD-TCP ${targetHost}:${targetPort}\n`));
+        let command: string;
+
+        if (protocol === ProxyProtocol.Http) {
+          const targetUrl = `${targetHost}:${targetPort}`; // note(daniel): targetHost MUST include the scheme (https|http)
+          command = `FORWARD-HTTP ${targetUrl}`;
+          logger.debug(`Using HTTP proxy mode: ${command.trim()}`);
+
+          // extract ca certificate from httpsAgent if present
+          if (httpsAgent && targetHost.startsWith("https://")) {
+            const agentOptions = httpsAgent.options;
+            if (agentOptions && agentOptions.ca) {
+              const caCert = Array.isArray(agentOptions.ca) ? agentOptions.ca.join("\n") : agentOptions.ca;
+              const caB64 = Buffer.from(caCert as string).toString("base64");
+              command += ` ca=${caB64}`;
+
+              const rejectUnauthorized = agentOptions.rejectUnauthorized !== false;
+              command += ` verify=${rejectUnauthorized}`;
+
+              logger.debug(`Using HTTP proxy mode [command=${command.trim()}]`);
+            }
+          }
+
+          command += "\n";
+        } else if (protocol === ProxyProtocol.Tcp) {
+          // For TCP mode, send FORWARD-TCP with host:port
+          command = `FORWARD-TCP ${targetHost}:${targetPort}\n`;
+          logger.debug(`Using TCP proxy mode: ${command.trim()}`);
+        } else {
+          throw new BadRequestError({
+            message: `Invalid protocol: ${protocol as string}`
+          });
+        }
+
+        await forwardWriter.write(Buffer.from(command));
         forwardWriter.releaseLock();
 
         // Set up bidirectional copy
@@ -320,7 +363,7 @@ const setupProxyServer = async ({
         return;
       }
 
-      logger.info("Gateway proxy started");
+      logger.info(`Gateway proxy started on port ${address.port} (${protocol} mode)`);
       resolve({
         server,
         port: address.port,
@@ -351,13 +394,15 @@ interface ProxyOptions {
   tlsOptions: TTlsOption;
   identityId: string;
   orgId: string;
+  protocol: ProxyProtocol;
+  httpsAgent?: https.Agent;
 }
 
 export const withGatewayProxy = async <T>(
-  callback: (port: number) => Promise<T>,
+  callback: (port: number, httpsAgent?: https.Agent) => Promise<T>,
   options: ProxyOptions
 ): Promise<T> => {
-  const { relayHost, relayPort, targetHost, targetPort, tlsOptions, identityId, orgId } = options;
+  const { relayHost, relayPort, targetHost, targetPort, tlsOptions, identityId, orgId, protocol, httpsAgent } = options;
 
   // Setup the proxy server
   const { port, cleanup, getProxyError } = await setupProxyServer({
@@ -367,12 +412,14 @@ export const withGatewayProxy = async <T>(
     relayHost,
     tlsOptions,
     identityId,
-    orgId
+    orgId,
+    protocol,
+    httpsAgent
   });
 
   try {
     // Execute the callback with the allocated port
-    return await callback(port);
+    return await callback(port, httpsAgent);
   } catch (err) {
     const proxyErrorMessage = getProxyError();
     if (proxyErrorMessage) {

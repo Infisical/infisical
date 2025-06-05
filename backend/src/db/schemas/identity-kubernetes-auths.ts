@@ -31,6 +31,7 @@ export const IdentityKubernetesAuthsSchema = z.object({
   encryptedKubernetesTokenReviewerJwt: zodBuffer.nullable().optional(),
   encryptedKubernetesCaCertificate: zodBuffer.nullable().optional(),
   gatewayId: z.string().uuid().nullable().optional(),
+  tokenReviewMode: z.string().default("api"),
   accessTokenPeriod: z.coerce.number().default(0)
 });
 

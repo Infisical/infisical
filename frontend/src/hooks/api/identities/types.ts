@@ -379,10 +379,16 @@ export type DeleteIdentityAzureAuthDTO = {
   identityId: string;
 };
 
+export enum IdentityKubernetesAuthTokenReviewMode {
+  Api = "api",
+  Gateway = "gateway"
+}
+
 export type IdentityKubernetesAuth = {
   identityId: string;
   kubernetesHost: string;
   tokenReviewerJwt: string;
+  tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
   allowedNames: string;
   allowedAudience: string;
@@ -399,6 +405,7 @@ export type AddIdentityKubernetesAuthDTO = {
   identityId: string;
   kubernetesHost: string;
   tokenReviewerJwt?: string;
+  tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
   allowedNames: string;
   allowedAudience: string;
@@ -417,6 +424,7 @@ export type UpdateIdentityKubernetesAuthDTO = {
   identityId: string;
   kubernetesHost?: string;
   tokenReviewerJwt?: string | null;
+  tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces?: string;
   allowedNames?: string;
   allowedAudience?: string;
