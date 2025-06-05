@@ -146,6 +146,8 @@ import { ValidateWindmillConnectionCredentialsSchema } from "./windmill";
 import { windmillConnectionService } from "./windmill/windmill-connection-service";
 import { ValidateZabbixConnectionCredentialsSchema } from "./zabbix";
 import { zabbixConnectionService } from "./zabbix/zabbix-connection-service";
+import { ValidateCoolifyConnectionCredentialsSchema } from "./coolify";
+import { coolifyConnectionService } from "./coolify/coolify-connection-service";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -219,7 +221,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema,
   [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema,
   [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema,
-  [AppConnection.Anthropic]: ValidateAnthropicConnectionCredentialsSchema
+  [AppConnection.Anthropic]: ValidateAnthropicConnectionCredentialsSchema,
+  [AppConnection.Coolify]: ValidateCoolifyConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -633,9 +636,8 @@ export const appConnectionServiceFactory = ({
         }).success
       )
         throw new BadRequestError({
-          message: `Invalid credential format for ${
-            APP_CONNECTION_NAME_MAP[app]
-          } Connection with method ${getAppConnectionMethodName(method)}`
+          message: `Invalid credential format for ${APP_CONNECTION_NAME_MAP[app]
+            } Connection with method ${getAppConnectionMethodName(method)}`
         });
 
       updatedCredentials = await validateAppConnectionCredentials(
@@ -659,11 +661,11 @@ export const appConnectionServiceFactory = ({
       const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined, tx?: Knex) => {
         const encryptedCredentials = connectionCredentials
           ? await encryptAppConnectionCredentials({
-              credentials: connectionCredentials,
-              orgId: actor.orgId,
-              kmsService,
-              projectId: appConnection.projectId
-            })
+            credentials: connectionCredentials,
+            orgId: actor.orgId,
+            kmsService,
+            projectId: appConnection.projectId
+          })
           : undefined;
 
         return appConnectionDAL.updateById(
@@ -891,9 +893,8 @@ export const appConnectionServiceFactory = ({
 
     if (appConnection.app !== app)
       throw new BadRequestError({
-        message: `${
-          APP_CONNECTION_NAME_MAP[appConnection.app as AppConnection]
-        } Connection with ID ${connectionId} cannot be used to connect to ${APP_CONNECTION_NAME_MAP[app]}`
+        message: `${APP_CONNECTION_NAME_MAP[appConnection.app as AppConnection]
+          } Connection with ID ${connectionId} cannot be used to connect to ${APP_CONNECTION_NAME_MAP[app]}`
       });
 
     const connection = await decryptAppConnection(appConnection, kmsService);
@@ -1097,6 +1098,7 @@ export const appConnectionServiceFactory = ({
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
     dbt: dbtConnectionService(connectAppConnectionById),
     circleci: circleciConnectionService(connectAppConnectionById),
-    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
+    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    coolify: coolifyConnectionService(connectAppConnectionById)
   };
 };

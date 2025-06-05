@@ -209,6 +209,7 @@ import {
   WindmillConnectionMethod
 } from "./windmill";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
+import { getCoolifyConnectionListItem, validateCoolifyConnectionCredentials } from "./coolify/coolify-connection-fns";
 
 const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
   Object.entries(SECRET_SYNC_CONNECTION_MAP).map(([key, value]) => [value, key])
@@ -292,7 +293,9 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem(),
     getExternalInfisicalConnectionListItem(),
-    getNetScalerConnectionListItem()
+    getNetScalerConnectionListItem(),
+    getCircleCIConnectionListItem(),
+    getCoolifyConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -332,13 +335,13 @@ export const encryptAppConnectionCredentials = async ({
   const { encryptor } = await kmsService.createCipherPairWithDataKey(
     projectId
       ? {
-          type: KmsDataKey.SecretManager,
-          projectId
-        }
+        type: KmsDataKey.SecretManager,
+        projectId
+      }
       : {
-          type: KmsDataKey.Organization,
-          orgId
-        }
+        type: KmsDataKey.Organization,
+        orgId
+      }
   );
 
   const { cipherTextBlob: encryptedCredentialsBlob } = encryptor({
@@ -363,9 +366,9 @@ export const decryptAppConnectionCredentials = async ({
     projectId
       ? { type: KmsDataKey.SecretManager, projectId }
       : {
-          type: KmsDataKey.Organization,
-          orgId
-        }
+        type: KmsDataKey.Organization,
+        orgId
+      }
   );
 
   const decryptedPlainTextBlob = decryptor({
@@ -443,7 +446,8 @@ export const validateAppConnectionCredentials = async (
       validateExternalInfisicalConnectionCredentials(
         config as TExternalInfisicalConnectionConfig,
         deps.identityUaDAL
-      )) as TAppConnectionCredentialsValidator
+      )) as TAppConnectionCredentialsValidator,
+    [AppConnection.Coolify]: validateCoolifyConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -561,16 +565,16 @@ export const decryptAppConnection = async (
     ...appConnection,
     rotation: appConnection.rotation
       ? {
-          ...appConnection.rotation,
-          lastRotationMessage: appConnection.rotation.encryptedLastRotationMessage
-            ? await decryptRotationMessage({
-                orgId: appConnection.orgId,
-                projectId: appConnection.projectId,
-                encryptedLastRotationMessage: appConnection.rotation.encryptedLastRotationMessage,
-                kmsService
-              })
-            : null
-        }
+        ...appConnection.rotation,
+        lastRotationMessage: appConnection.rotation.encryptedLastRotationMessage
+          ? await decryptRotationMessage({
+            orgId: appConnection.orgId,
+            projectId: appConnection.projectId,
+            encryptedLastRotationMessage: appConnection.rotation.encryptedLastRotationMessage,
+            kmsService
+          })
+          : null
+      }
       : undefined,
     credentials: await decryptAppConnectionCredentials({
       encryptedCredentials: appConnection.encryptedCredentials,
@@ -647,7 +651,9 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
   [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported,
-  [AppConnection.NetScaler]: platformManagedCredentialsNotSupported
+  [AppConnection.NetScaler]: platformManagedCredentialsNotSupported,
+  [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.Coolify]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (
