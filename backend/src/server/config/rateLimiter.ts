@@ -117,8 +117,8 @@ export const requestAccessLimit: RateLimitOptions = {
 export const smtpRateLimit = ({
   keyGenerator = (req) => req.realIp
 }: Pick<RateLimitOptions, "keyGenerator"> = {}): RateLimitOptions => ({
-  timeWindow: 20 * 1000,
+  timeWindow: 40 * 1000,
   hook: "preValidation",
-  max: 1,
+  max: 2,
   keyGenerator
 });
