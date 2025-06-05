@@ -24,14 +24,14 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { DynamicSecretAwsIamSchema, TDynamicProviderFns } from "./models";
 import { compileUsernameTemplate } from "./templateUtils";
 
-const generateUsername = (usernameTemplate?: string | null, identityName?: string) => {
+const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const randomUsername = alphaNumericNanoId(32);
   if (!usernameTemplate) return randomUsername;
 
   return compileUsernameTemplate({
     usernameTemplate,
     randomUsername,
-    identityName
+    identity
   });
 };
 
@@ -65,14 +65,16 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
-    identityName?: string;
+    identity?: {
+      name: string;
+    };
   }) => {
-    const { inputs, usernameTemplate, identityName } = data;
+    const { inputs, usernameTemplate, identity } = data;
 
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
-    const username = generateUsername(usernameTemplate, identityName);
+    const username = generateUsername(usernameTemplate, identity);
     const { policyArns, userGroups, policyDocument, awsPath, permissionBoundaryPolicyArn } = providerInputs;
     const createUserRes = await client.send(
       new CreateUserCommand({

@@ -15,13 +15,13 @@ const generatePassword = () => {
   return customAlphabet(charset, 64)();
 };
 
-const generateUsername = (usernameTemplate?: string | null, identityName?: string) => {
+const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const randomUsername = alphaNumericNanoId(32); // Username must start with an ascii letter, so we prepend the username with "inf-"
   if (!usernameTemplate) return randomUsername;
   return compileUsernameTemplate({
     usernameTemplate,
     randomUsername,
-    identityName
+    identity
   });
 };
 
@@ -117,12 +117,12 @@ export const RabbitMqProvider = (): TDynamicProviderFns => {
     return infoResponse;
   };
 
-  const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identityName?: string }) => {
-    const { inputs, usernameTemplate, identityName } = data;
+  const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identity?: { name: string } }) => {
+    const { inputs, usernameTemplate, identity } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const connection = await $getClient(providerInputs);
 
-    const username = generateUsername(usernameTemplate, identityName);
+    const username = generateUsername(usernameTemplate, identity);
     const password = generatePassword();
 
     await createRabbitMqUser({

@@ -133,14 +133,14 @@ const generatePassword = () => {
   return customAlphabet(charset, 64)();
 };
 
-const generateUsername = (usernameTemplate?: string | null, identityName?: string) => {
+const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-";
   const randomUsername = `inf-${customAlphabet(charset, 32)()}`;
   if (!usernameTemplate) return randomUsername;
   return compileUsernameTemplate({
     usernameTemplate,
     randomUsername,
-    identityName
+    identity
   });
 };
 
@@ -179,15 +179,17 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
-    identityName?: string;
+    identity?: {
+      name: string;
+    };
   }) => {
-    const { inputs, expireAt, usernameTemplate, identityName } = data;
+    const { inputs, expireAt, usernameTemplate, identity } = data;
     const providerInputs = await validateProviderInputs(inputs);
     if (!(await validateConnection(providerInputs))) {
       throw new BadRequestError({ message: "Failed to establish connection" });
     }
 
-    const leaseUsername = generateUsername(usernameTemplate, identityName);
+    const leaseUsername = generateUsername(usernameTemplate, identity);
     const leasePassword = generatePassword();
     const leaseExpiration = new Date(expireAt).toISOString();
 

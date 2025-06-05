@@ -15,13 +15,13 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = (usernameTemplate?: string | null, identityName?: string) => {
+const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const randomUsername = alphaNumericNanoId(32); // Username must start with an ascii letter, so we prepend the username with "inf-"
   if (!usernameTemplate) return randomUsername;
   return compileUsernameTemplate({
     usernameTemplate,
     randomUsername,
-    identityName
+    identity
   });
 };
 
@@ -80,13 +80,13 @@ export const CassandraProvider = (): TDynamicProviderFns => {
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
-    identityName?: string;
+    identity?: { name: string };
   }) => {
-    const { inputs, expireAt, usernameTemplate, identityName } = data;
+    const { inputs, expireAt, usernameTemplate, identity } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
-    const username = generateUsername(usernameTemplate, identityName);
+    const username = generateUsername(usernameTemplate, identity);
     const password = generatePassword();
     const { keyspace } = providerInputs;
     const expiration = new Date(expireAt).toISOString();

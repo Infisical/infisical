@@ -146,23 +146,23 @@ export const dynamicSecretLeaseServiceFactory = ({
 
     let result;
     try {
-      let identityName = "";
+      const identity: { name: string } = { name: "" };
       if (actor === ActorType.USER) {
         const user = await userDAL.findById(actorId);
         if (user) {
-          identityName = extractEmailUsername(user.username);
+          identity.name = extractEmailUsername(user.username);
         }
       } else if (actor === ActorType.Machine) {
-        const identity = await identityDAL.findById(actorId);
-        if (identity) {
-          identityName = identity.name;
+        const machineIdentity = await identityDAL.findById(actorId);
+        if (machineIdentity) {
+          identity.name = machineIdentity.name;
         }
       }
       result = await selectedProvider.create({
         inputs: decryptedStoredInput,
         expireAt: expireAt.getTime(),
         usernameTemplate: dynamicSecretCfg.usernameTemplate,
-        identityName
+        identity
       });
     } catch (error: unknown) {
       if (error && typeof error === "object" && error !== null && "sqlMessage" in error) {

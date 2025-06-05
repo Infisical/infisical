@@ -16,13 +16,13 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = (usernameTemplate?: string | null, identityName?: string) => {
+const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const randomUsername = `inf_${alphaNumericNanoId(25)}`; // Username must start with an ascii letter, so we prepend the username with "inf-"
   if (!usernameTemplate) return randomUsername;
   return compileUsernameTemplate({
     usernameTemplate,
     randomUsername,
-    identityName
+    identity
   });
 };
 
@@ -88,11 +88,11 @@ export const SapAseProvider = (): TDynamicProviderFns => {
     return true;
   };
 
-  const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identityName?: string }) => {
-    const { inputs, usernameTemplate, identityName } = data;
+  const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identity?: { name: string } }) => {
+    const { inputs, usernameTemplate, identity } = data;
     const providerInputs = await validateProviderInputs(inputs);
 
-    const username = generateUsername(usernameTemplate, identityName);
+    const username = generateUsername(usernameTemplate, identity);
     const password = generatePassword();
 
     const client = await $getClient(providerInputs);

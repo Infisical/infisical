@@ -364,7 +364,9 @@ export type TDynamicProviderFns = {
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
-    identityName?: string;
+    identity?: {
+      name: string;
+    };
   }) => Promise<{ entityId: string; data: unknown }>;
   validateConnection: (inputs: unknown) => Promise<boolean>;
   validateProviderInputs: (inputs: object) => Promise<unknown>;

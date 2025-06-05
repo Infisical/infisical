@@ -1,5 +1,4 @@
 import handlebars from "handlebars";
-import RE2 from "re2";
 
 import { BadRequestError } from "../errors";
 import { logger } from "../logger";
@@ -8,16 +7,9 @@ type SanitizationArg = {
   allowedExpressions?: (arg: string) => boolean;
 };
 
-const randomPattern = new RE2("^random-\\d+$");
-
 const isValidExpression = (expression: string, dto: SanitizationArg): boolean => {
-  // Check for random-N pattern (e.g., random-16, random-8)
-  if (expression.startsWith("random-") && randomPattern.test(expression)) {
-    return true;
-  }
-
   // Allow helper functions (replace, truncate)
-  const allowedHelpers = ["replace", "truncate"];
+  const allowedHelpers = ["replace", "truncate", "random"];
   if (allowedHelpers.includes(expression)) {
     return true;
   }
