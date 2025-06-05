@@ -210,15 +210,9 @@ func handleHTTPProxy(stream quic.Stream, reader *bufio.Reader, targetURL string,
 
 	// create the request to the target
 	proxyReq, err := http.NewRequest(req.Method, targetFullURL, req.Body)
+	proxyReq.Header = req.Header.Clone()
 	if err != nil {
 		return fmt.Errorf("failed to create proxy request: %v", err)
-	}
-
-	// copy headers
-	for name, values := range req.Header {
-		for _, value := range values {
-			proxyReq.Header.Add(name, value)
-		}
 	}
 
 	log.Info().Msgf("Proxying %s %s to %s", req.Method, req.URL.Path, targetFullURL)
@@ -236,29 +230,21 @@ func handleHTTPProxy(stream quic.Stream, reader *bufio.Reader, targetURL string,
 	}
 	defer resp.Body.Close()
 
-	// write response to stream
-	statusLine := fmt.Sprintf("HTTP/1.1 %d %s\r\n", resp.StatusCode, resp.Status[4:])
-	if _, err := stream.Write([]byte(statusLine)); err != nil {
-		return err
+	// Write the entire response (status line, headers, body) to the stream
+	// http.Response.Write handles this for "Connection: close" correctly.
+	// For other connection tokens, manual removal might be needed if they cause issues with QUIC.
+	// For a simple proxy, this is generally sufficient.
+	resp.Header.Del("Connection") // Good practice for proxies
+
+	log.Info().Msgf("Writing response to stream: %s", resp.Status)
+	if err := resp.Write(stream); err != nil {
+		// If writing the response fails, the connection to the client might be broken.
+		// Logging the error is important. The original error will be returned.
+		log.Error().Err(err).Msg("Failed to write response to stream")
+		return fmt.Errorf("failed to write response to stream: %w", err)
 	}
 
-	// write headers again
-	for name, values := range resp.Header {
-		for _, value := range values {
-			headerLine := fmt.Sprintf("%s: %s\r\n", name, value)
-			if _, err := stream.Write([]byte(headerLine)); err != nil {
-				return err
-			}
-		}
-	}
-
-	// write empty line to end headers
-	if _, err := stream.Write([]byte("\r\n")); err != nil {
-		return err
-	}
-
-	_, err = io.Copy(stream, resp.Body)
-	return err
+	return nil
 }
 
 func buildHttpInternalServerError(message string) string {
