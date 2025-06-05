@@ -2913,7 +2913,7 @@ export const SecretSyncs = {
       projectName: "The CircleCI project name to sync secrets to."
     },
     COOLIFY: {
-      ApplicationId: "The UUID of the application or service to sync secret to."
+      applicationId: "The UUID of the application or service to sync secret to."
     }
   }
 };
