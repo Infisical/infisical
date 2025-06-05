@@ -46,7 +46,8 @@ export enum SecretSync {
   HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
   Cloud66 = "cloud-66",
-  Spacelift = "spacelift"
+  Spacelift = "spacelift",
+  Coolify = "coolify"
 }
 
 export enum SecretSyncInitialSyncBehavior {

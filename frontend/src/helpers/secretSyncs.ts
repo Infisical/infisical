@@ -306,6 +306,12 @@ export const SECRET_SYNC_MAP: Record<
     image: "Spacelift.png",
     category: "INFRASTRUCTURE",
     description: "Environment variables or file mounts for Spacelift contexts."
+  },
+  [SecretSync.Coolify]: {
+    name: "Coolify",
+    image: "Coolify.png",
+    category: "HOSTING",
+    description: "Environment variables for Coolify Project."
   }
 };
 
@@ -364,7 +370,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.HasuraCloud]: AppConnection.HasuraCloud,
   [SecretSync.Qovery]: AppConnection.Qovery,
   [SecretSync.Cloud66]: AppConnection.Cloud66,
-  [SecretSync.Spacelift]: AppConnection.Spacelift
+  [SecretSync.Spacelift]: AppConnection.Spacelift,
+  [SecretSync.Coolify]: AppConnection.Coolify
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

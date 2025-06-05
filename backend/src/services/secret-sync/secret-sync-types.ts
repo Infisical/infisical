@@ -232,6 +232,7 @@ import {
 } from "./trigger-dev/trigger-dev-sync-types";
 import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
 import { TZabbixSync, TZabbixSyncInput, TZabbixSyncListItem, TZabbixSyncWithCredentials } from "./zabbix";
+import { TCoolifySync, TCoolifySyncInput, TCoolifySyncListItem, TCoolifySyncWithCredentials } from "./coolify";
 
 export type TSecretSync =
   | TAwsParameterStoreSync
@@ -280,7 +281,8 @@ export type TSecretSync =
   | TSnowflakeSync
   | THasuraCloudSync
   | TCloud66Sync
-  | TSpaceliftSync;
+  | TSpaceliftSync
+  | TCoolifySync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -330,7 +332,8 @@ export type TSecretSyncWithCredentials =
   | TSnowflakeSyncWithCredentials
   | THasuraCloudSyncWithCredentials
   | TCloud66SyncWithCredentials
-  | TSpaceliftSyncWithCredentials;
+  | TSpaceliftSyncWithCredentials
+  | TCoolifySyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -380,7 +383,8 @@ export type TSecretSyncInput =
   | TSnowflakeSyncInput
   | THasuraCloudSyncInput
   | TCloud66SyncInput
-  | TSpaceliftSyncInput;
+  | TSpaceliftSyncInput
+  | TCoolifySyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -430,7 +434,8 @@ export type TSecretSyncListItem =
   | TSnowflakeSyncListItem
   | THasuraCloudSyncListItem
   | TCloud66SyncListItem
-  | TSpaceliftSyncListItem;
+  | TSpaceliftSyncListItem
+  | TCoolifySyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
