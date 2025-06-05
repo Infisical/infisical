@@ -165,7 +165,7 @@ type TProjectServiceFactoryDep = {
   sshHostGroupDAL: Pick<TSshHostGroupDALFactory, "find" | "findSshHostGroupsWithLoginMappings">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
   queueService: Pick<TQueueServiceFactory, "stopRepeatableJob">;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne">;
@@ -494,6 +494,10 @@ export const projectServiceFactory = ({
         );
       }
 
+      // no need to invalidate if there was no limit
+      if (plan.workspaceLimit) {
+        await licenseService.invalidateGetPlan(organization.id);
+      }
       return {
         ...project,
         environments: envs,
