@@ -2,7 +2,12 @@ import { request } from "@app/lib/config/request";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { AppConnection } from "../app-connection-enums";
 import { CoolifyConnectionMethod } from "./coolify-connection-enums";
-import { TCoolifyConnectionConfig } from "./coolify-connection-types";
+import {
+  TCoolifyConnection,
+  TCoolifyConnectionConfig,
+  TCoolifyApplication,
+  TCoolifyProject
+} from "./coolify-connection-types";
 import { AxiosError } from "axios";
 import { BadRequestError } from "@app/lib/errors";
 
@@ -41,4 +46,44 @@ export const validateCoolifyConnectionCredentials = async (config: TCoolifyConne
   }
 
   return config.credentials;
+};
+
+const fetchCoolifyData = async <T>(apiUrl: string, apiToken: string): Promise<T> => {
+  const resp = await request.get<T>(apiUrl, {
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      Accept: "application/json"
+    }
+  });
+
+  return resp.data;
+};
+
+export const listCoolifyProjects = async (appConnection: TCoolifyConnection) => {
+  const instanceUrl = getCoolifyInstanceUrl(appConnection);
+  const { apiToken } = appConnection.credentials;
+
+  return fetchCoolifyData<Omit<TCoolifyProject, "environments">[]>(`${instanceUrl}/api/v1/projects`, apiToken);
+};
+
+export const listCoolifyProjectEnvironments = async (appConnection: TCoolifyConnection, projectId: string) => {
+  const instanceUrl = getCoolifyInstanceUrl(appConnection);
+  const { apiToken } = appConnection.credentials;
+
+  const data = await fetchCoolifyData<TCoolifyProject>(`${instanceUrl}/api/v1/projects/${projectId}`, apiToken);
+  return data.environments;
+};
+
+export const listCoolifyApplications = async (appConnection: TCoolifyConnection) => {
+  const instanceUrl = getCoolifyInstanceUrl(appConnection);
+  const { apiToken } = appConnection.credentials;
+
+  const resp = await request.get<TCoolifyApplication[]>(`${instanceUrl}/api/v1/applications`, {
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      Accept: "application/json"
+    }
+  });
+
+  return resp.data;
 };

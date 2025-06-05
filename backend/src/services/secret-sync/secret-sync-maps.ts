@@ -60,7 +60,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Cloud66]: "Cloud 66",
   [SecretSync.Spacelift]: "Spacelift",
   [SecretSync.Daytona]: "Daytona",
-  [SecretSync.Keeper]: "Keeper Password Manager"
+  [SecretSync.Keeper]: "Keeper Password Manager",
+  [SecretSync.Coolify]: "Coolify"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -115,7 +116,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Cloud66]: AppConnection.Cloud66,
   [SecretSync.Spacelift]: AppConnection.Spacelift,
   [SecretSync.Daytona]: AppConnection.Daytona,
-  [SecretSync.Keeper]: AppConnection.Keeper
+  [SecretSync.Keeper]: AppConnection.Keeper,
+  [SecretSync.Coolify]: AppConnection.Coolify
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -170,7 +172,8 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Cloud66]: SecretSyncPlanType.Regular,
   [SecretSync.Spacelift]: SecretSyncPlanType.Regular,
   [SecretSync.Daytona]: SecretSyncPlanType.Regular,
-  [SecretSync.Keeper]: SecretSyncPlanType.Regular
+  [SecretSync.Keeper]: SecretSyncPlanType.Regular,
+  [SecretSync.Coolify]: SecretSyncPlanType.Regular
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
@@ -236,7 +239,8 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Cloud66]: ["stackName"],
   [SecretSync.Spacelift]: ["contextName"],
   [SecretSync.Daytona]: [],
-  [SecretSync.Keeper]: ["folderName"]
+  [SecretSync.Keeper]: ["folderName"],
+  [SecretSync.Coolify]: []
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = async () => true;
@@ -410,7 +414,8 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Cloud66]: defaultDuplicateCheck,
   [SecretSync.Spacelift]: defaultDuplicateCheck,
   [SecretSync.Daytona]: daytonaDuplicateCheck,
-  [SecretSync.Keeper]: defaultDuplicateCheck
+  [SecretSync.Keeper]: defaultDuplicateCheck,
+  [SecretSync.Coolify]: defaultDuplicateCheck
 };
 
 /**

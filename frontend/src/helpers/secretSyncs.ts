@@ -334,6 +334,12 @@ export const SECRET_SYNC_MAP: Record<
     image: "Keeper.png",
     category: "PASSWORD MANAGER",
     description: "Login records in a Keeper Password Manager shared folder."
+  },
+  [SecretSync.Coolify]: {
+    name: "Coolify",
+    image: "Coolify.png",
+    category: "HOSTING",
+    description: "Environment variables for Coolify Project."
   }
 };
 
@@ -396,7 +402,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Cloud66]: AppConnection.Cloud66,
   [SecretSync.Spacelift]: AppConnection.Spacelift,
   [SecretSync.Daytona]: AppConnection.Daytona,
-  [SecretSync.Keeper]: AppConnection.Keeper
+  [SecretSync.Keeper]: AppConnection.Keeper,
+  [SecretSync.Coolify]: AppConnection.Coolify
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

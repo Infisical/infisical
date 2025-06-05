@@ -17,6 +17,7 @@ import { registerCloud66SyncRouter } from "./cloud66-sync-router";
 import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-router";
 import { registerCloudflareSecretsStoreSyncRouter } from "./cloudflare-secrets-store-sync-router";
 import { registerCloudflareWorkersSyncRouter } from "./cloudflare-workers-sync-router";
+import { registerCoolifySyncRouter } from "./coolify-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
 import { registerDaytonaSyncRouter } from "./daytona-sync-router";
 import { registerDevinSyncRouter } from "./devin-sync-router";
@@ -107,5 +108,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Cloud66]: registerCloud66SyncRouter,
   [SecretSync.Spacelift]: registerSpaceliftSyncRouter,
   [SecretSync.Daytona]: registerDaytonaSyncRouter,
-  [SecretSync.Keeper]: registerKeeperSyncRouter
+  [SecretSync.Keeper]: registerKeeperSyncRouter,
+  [SecretSync.Coolify]: registerCoolifySyncRouter
 };

@@ -3872,7 +3872,7 @@ export const SecretSyncs = {
       stackId: "The ID of the Portainer stack to sync secrets to."
     },
     COOLIFY: {
-      ApplicationId: "The UUID of the application or service to sync secret to."
+      applicationId: "The UUID of the application or service to sync secret to."
     }
   }
 };
