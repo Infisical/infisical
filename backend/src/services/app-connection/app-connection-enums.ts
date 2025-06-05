@@ -81,7 +81,8 @@ export enum AppConnection {
   KempLoadMaster = "kemp-loadmaster",
   MicrosoftIntune = "microsoft-intune",
   NutanixPrismCentral = "nutanix-prism-central",
-  Spacelift = "spacelift"
+  Spacelift = "spacelift",
+  Coolify = "coolify"
 }
 
 export enum AWSRegion {

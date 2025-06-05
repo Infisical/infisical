@@ -22,6 +22,7 @@ import {
   AzureKeyVaultConnectionMethod,
   CamundaConnectionMethod,
   CloudflareConnectionMethod,
+  CoolifyConnectionMethod,
   DatabricksConnectionMethod,
   DbtConnectionMethod,
   DevinConnectionMethod,
@@ -623,6 +624,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "Spacelift.png",
     category: "INFRASTRUCTURE",
     description: "Sync and manage resources with Spacelift."
+  },
+  [AppConnection.Coolify]: {
+    name: "Coolify",
+    image: "Coolify.png",
+    category: "INFRASTRUCTURE",
+    description: "Project and deployment access for Coolify."
   }
 };
 
@@ -679,6 +686,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TravisCIConnectionMethod.ApiToken:
     case DopplerConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
+    case CoolifyConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
@@ -867,10 +875,10 @@ export const getConnectionFlowReturnNavigateOptions = ({
     ...(reopenFormApp ? { addConnectionApp: reopenFormApp } : {}),
     ...(returnUrl.includes("integrations")
       ? {
-          selectedTab: reopenFormApp
-            ? IntegrationsListPageTabs.AppConnections
-            : getIntegrationsListTab()
-        }
+        selectedTab: reopenFormApp
+          ? IntegrationsListPageTabs.AppConnections
+          : getIntegrationsListTab()
+      }
       : {})
   };
 

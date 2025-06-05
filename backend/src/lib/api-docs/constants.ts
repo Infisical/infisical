@@ -2856,6 +2856,10 @@ export const AppConnections = {
       apiUrl: "The Spacelift API URL to connect with (e.g., 'https://mycorp.app.spacelift.io').",
       apiKeyId: "The API Key ID used to authenticate with Spacelift.",
       apiKeySecret: "The API Key Secret used to authenticate with Spacelift."
+    },
+    COOLIFY: {
+      instanceUrl: "The Coolify instance URL to connect with",
+      apiToken: "The API token used to access the Coolify server"
     }
   }
 };
@@ -2879,9 +2883,8 @@ export const SecretSyncs = {
       projectId: "The ID of the project to create the sync in.",
       environment: `The slug of the project environment to sync secrets from.`,
       secretPath: `The folder path to sync secrets from.`,
-      connectionId: `The ID of the ${
-        APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
-      } Connection to use for syncing.`,
+      connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
+        } Connection to use for syncing.`,
       isAutoSyncEnabled: `Whether secrets should be automatically synced when changes occur at the source location or not.`,
       syncOptions: "Optional parameters to modify how secrets are synced."
     };
@@ -2890,9 +2893,8 @@ export const SecretSyncs = {
     const destinationName = SECRET_SYNC_NAME_MAP[destination];
     return {
       syncId: `The ID of the ${destinationName} Sync to be updated.`,
-      connectionId: `The updated ID of the ${
-        APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
-      } Connection to use for syncing.`,
+      connectionId: `The updated ID of the ${APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
+        } Connection to use for syncing.`,
       name: `The updated name of the ${destinationName} Sync. Must be slug-friendly.`,
       environment: `The updated slug of the project environment to sync secrets from.`,
       secretPath: `The updated folder path to sync secrets from.`,
@@ -3216,6 +3218,9 @@ export const SecretSyncs = {
         "The file path for the mounted file relative to /mnt/workspace/. Required when configType is 'file-mount'. When fileMountFormat is 'secret-per-file', this is the directory path. Example: 'secrets.env' or 'secrets/'.",
       fileMountFormat:
         "The format for file mount config elements. Either 'dot-env' (default) to store all secrets in a single .env file, or 'secret-per-file' to create a separate file mount per secret under the mount path directory."
+    },
+    COOLIFY: {
+      ApplicationId: "The UUID of the application or service to sync secret to."
     }
   }
 };
@@ -3244,9 +3249,8 @@ export const SecretRotations = {
       projectId: "The ID of the project to create the rotation in.",
       environment: `The slug of the project environment to create the rotation in.`,
       secretPath: `The secret path of the project to create the rotation in.`,
-      connectionId: `The ID of the ${
-        APP_CONNECTION_NAME_MAP[SECRET_ROTATION_CONNECTION_MAP[type]]
-      } Connection to use for rotation.`,
+      connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[SECRET_ROTATION_CONNECTION_MAP[type]]
+        } Connection to use for rotation.`,
       isAutoRotationEnabled: `Whether secrets should be automatically rotated when the specified rotation interval has elapsed.`,
       rotationInterval: `The interval, in days, to automatically rotate secrets.`,
       rotateAtUtc: `The hours and minutes rotation should occur at in UTC. Defaults to Midnight (00:00) UTC.`
@@ -3528,9 +3532,8 @@ export const SecretRotations = {
 
 export const SecretScanningDataSources = {
   LIST: (type?: SecretScanningDataSource) => ({
-    projectId: `The ID of the project to list ${
-      type ? SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type] : "Scanning"
-    } Data Sources from.`
+    projectId: `The ID of the project to list ${type ? SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type] : "Scanning"
+      } Data Sources from.`
   }),
   GET_BY_ID: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`
@@ -3546,9 +3549,8 @@ export const SecretScanningDataSources = {
       name: `The name of the ${sourceType} Data Source to create. Must be slug-friendly.`,
       description: `An optional description for the ${sourceType} Data Source.`,
       projectId: `The ID of the project to create the ${sourceType} Data Source in.`,
-      connectionId: `The ID of the ${
-        APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
-      } Connection to use for this Data Source.`,
+      connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
+        } Connection to use for this Data Source.`,
       isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
       config: `The configuration parameters to use for this Data Source.`
     };
