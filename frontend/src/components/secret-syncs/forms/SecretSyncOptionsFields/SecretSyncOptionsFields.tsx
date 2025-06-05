@@ -142,10 +142,10 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                   <span>Available keys:</span>
                   <ul className="list-disc pl-4 text-sm">
                     <li>
-                      <code>{`{{secretKey}}`}</code> - The key of the secret
+                      <code>{"{{secretKey}}"}</code> - The key of the secret
                     </li>
                     <li>
-                      <code>{`{{environment}}`}</code> - The environment which the secret is in
+                      <code>{"{{environment}}"}</code> - The environment which the secret is in
                       (e.g. dev, staging, prod)
                     </li>
                   </ul>
