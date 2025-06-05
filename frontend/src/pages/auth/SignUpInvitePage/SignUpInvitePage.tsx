@@ -244,30 +244,6 @@ export const SignupInvitePage = () => {
                   setStep(2);
                 } else {
                   navigate({ to: "/login/select-organization", search: { force: true } });
-
-                  // TODO: Redirect user to the newly joined org. The commented code does not work due to auth issues.
-                  // const redirectExistingUser = async () => {
-                  //   try {
-                  //     const { token: mfaToken, isMfaEnabled } = await selectOrganization({
-                  //       organizationId
-                  //     });
-
-                  //     if (isMfaEnabled) {
-                  //       SecurityClient.setMfaToken(mfaToken);
-                  //       toggleShowMfa.on();
-                  //       setMfaSuccessCallback(() => redirectExistingUser);
-                  //       return;
-                  //     }
-
-                  //     // user will be redirected to dashboard
-                  //     // if not logged in gets kicked out to login
-                  //     await navigateUserToOrg(navigate, organizationId);
-                  //   } catch (err) {
-                  //     navigate({ to: "/login" });
-                  //   }
-                  // };
-
-                  // await redirectExistingUser();
                 }
               }
             } catch (err) {

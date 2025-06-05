@@ -94,6 +94,7 @@ export const Route = createFileRoute("/_restrict-login-signup")({
 
     setAuthToken(data.token);
 
+    // Avoid redirect if on select-organization page with force=true
     if (location.pathname.endsWith("select-organization") && search?.force === true) return;
 
     // to do cli login
