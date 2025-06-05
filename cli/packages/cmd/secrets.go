@@ -158,10 +158,6 @@ var secretsSetCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		if token == nil {
-			util.RequireLocalWorkspaceFile()
-		}
-
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
 			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
@@ -173,6 +169,13 @@ var secretsSetCmd = &cobra.Command{
 		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
+		}
+
+		if token == nil && projectId == "" {
+			_, err := util.GetWorkSpaceFromFile()
+			if err != nil {
+				util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
+			}
 		}
 
 		secretsPath, err := cmd.Flags().GetString("path")
@@ -225,7 +228,7 @@ var secretsSetCmd = &cobra.Command{
 			if projectId == "" {
 				workspaceFile, err := util.GetWorkSpaceFromFile()
 				if err != nil {
-					util.HandleError(err, "unable to get your local config details [err=%v]")
+					util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
 				}
 
 				projectId = workspaceFile.WorkspaceId
@@ -237,7 +240,7 @@ var secretsSetCmd = &cobra.Command{
 			}
 
 			if loggedInUserDetails.LoginExpired {
-				util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+				loggedInUserDetails = util.EstablishUserLoginSession()
 			}
 
 			secretOperations, err = util.SetRawSecrets(processedArgs, secretType, environmentName, secretsPath, projectId, &models.TokenDetails{
@@ -308,7 +311,7 @@ var secretsDeleteCmd = &cobra.Command{
 		if projectId == "" {
 			workspaceFile, err := util.GetWorkSpaceFromFile()
 			if err != nil {
-				util.HandleError(err, "Unable to get local project details")
+				util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
 			}
 			projectId = workspaceFile.WorkspaceId
 		}
@@ -317,7 +320,6 @@ var secretsDeleteCmd = &cobra.Command{
 			httpClient.SetAuthToken(token.Token)
 		} else {
 			util.RequireLogin()
-			util.RequireLocalWorkspaceFile()
 
 			loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 			if err != nil {
@@ -325,7 +327,7 @@ var secretsDeleteCmd = &cobra.Command{
 			}
 
 			if loggedInUserDetails.LoginExpired {
-				util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+				loggedInUserDetails = util.EstablishUserLoginSession()
 			}
 
 			httpClient.SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken)

@@ -251,10 +251,15 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 	var errorToReturn error
 
 	if params.InfisicalToken == "" && params.UniversalAuthAccessToken == "" {
-		if projectConfigFilePath == "" {
-			RequireLocalWorkspaceFile()
-		} else {
-			ValidateWorkspaceFile(projectConfigFilePath)
+		if params.WorkspaceId == "" {
+			if projectConfigFilePath == "" {
+				_, err := GetWorkSpaceFromFile()
+				if err != nil {
+					PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
+				}
+			} else {
+				ValidateWorkspaceFile(projectConfigFilePath)
+			}
 		}
 
 		RequireLogin()
@@ -273,32 +278,31 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 		}
 
 		if isConnected && loggedInUserDetails.LoginExpired {
-			PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = EstablishUserLoginSession()
 		}
 
-		var infisicalDotJson models.WorkspaceConfigFile
+		if params.WorkspaceId == "" {
+			var infisicalDotJson models.WorkspaceConfigFile
 
-		if projectConfigFilePath == "" {
-			projectConfig, err := GetWorkSpaceFromFile()
-			if err != nil {
-				return nil, err
+			if projectConfigFilePath == "" {
+				projectConfig, err := GetWorkSpaceFromFile()
+				if err != nil {
+					PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
+				}
+
+				infisicalDotJson = projectConfig
+			} else {
+				projectConfig, err := GetWorkSpaceFromFilePath(projectConfigFilePath)
+				if err != nil {
+					return nil, err
+				}
+
+				infisicalDotJson = projectConfig
 			}
-
-			infisicalDotJson = projectConfig
-		} else {
-			projectConfig, err := GetWorkSpaceFromFilePath(projectConfigFilePath)
-			if err != nil {
-				return nil, err
-			}
-
-			infisicalDotJson = projectConfig
+			params.WorkspaceId = infisicalDotJson.WorkspaceId
 		}
 
-		if params.WorkspaceId != "" {
-			infisicalDotJson.WorkspaceId = params.WorkspaceId
-		}
-
-		res, err := GetPlainTextSecretsV3(loggedInUserDetails.UserCredentials.JTWToken, infisicalDotJson.WorkspaceId,
+		res, err := GetPlainTextSecretsV3(loggedInUserDetails.UserCredentials.JTWToken, params.WorkspaceId,
 			params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive, params.TagSlugs, true)
 		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", err)
 
@@ -307,7 +311,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 			if err != nil {
 				return nil, err
 			}
-			WriteBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath, backupEncryptionKey, res.Secrets)
+			WriteBackupSecrets(params.WorkspaceId, params.Environment, params.SecretsPath, backupEncryptionKey, res.Secrets)
 		}
 
 		secretsToReturn = res.Secrets
@@ -316,7 +320,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 		if !isConnected {
 			backupEncryptionKey, _ := GetBackupEncryptionKey()
 			if backupEncryptionKey != nil {
-				backedUpSecrets, err := ReadBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath, backupEncryptionKey)
+				backedUpSecrets, err := ReadBackupSecrets(params.WorkspaceId, params.Environment, params.SecretsPath, backupEncryptionKey)
 				if len(backedUpSecrets) > 0 {
 					PrintWarning("Unable to fetch the latest secret(s) due to connection error, serving secrets from last successful fetch. For more info, run with --debug")
 					secretsToReturn = backedUpSecrets

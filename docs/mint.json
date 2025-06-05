@@ -199,6 +199,7 @@
             "documentation/platform/secret-rotation/azure-client-secret",
             "documentation/platform/secret-rotation/ldap-password",
             "documentation/platform/secret-rotation/mssql-credentials",
+            "documentation/platform/secret-rotation/mysql-credentials",
             "documentation/platform/secret-rotation/postgres-credentials"
           ]
         },
@@ -224,14 +225,16 @@
             "documentation/platform/dynamic-secrets/sap-hana",
             "documentation/platform/dynamic-secrets/snowflake",
             "documentation/platform/dynamic-secrets/totp",
-            "documentation/platform/dynamic-secrets/kubernetes"
+            "documentation/platform/dynamic-secrets/kubernetes",
+            "documentation/platform/dynamic-secrets/vertica"
           ]
         },
         {
           "group": "Gateway",
           "pages": [
             "documentation/platform/gateways/overview",
-            "documentation/platform/gateways/gateway-security"
+            "documentation/platform/gateways/gateway-security",
+            "documentation/platform/gateways/networking"
           ]
         },
         "documentation/platform/project-templates",
@@ -251,7 +254,13 @@
           ]
         },
         "documentation/platform/secret-sharing",
-        "documentation/platform/secret-scanning"
+        {
+          "group": "Secret Scanning",
+          "pages": [
+            "documentation/platform/secret-scanning/overview",
+            "documentation/platform/secret-scanning/github"
+          ]
+        }
       ]
     },
     {
@@ -335,7 +344,8 @@
                 "documentation/platform/identities/oidc-auth/github",
                 "documentation/platform/identities/oidc-auth/circleci",
                 "documentation/platform/identities/oidc-auth/gitlab",
-                "documentation/platform/identities/oidc-auth/terraform-cloud"
+                "documentation/platform/identities/oidc-auth/terraform-cloud",
+                "documentation/platform/identities/oidc-auth/spire"
               ]
             },
 
@@ -489,10 +499,12 @@
             "integrations/app-connections/databricks",
             "integrations/app-connections/gcp",
             "integrations/app-connections/github",
+            "integrations/app-connections/github-radar",
             "integrations/app-connections/hashicorp-vault",
             "integrations/app-connections/humanitec",
             "integrations/app-connections/ldap",
             "integrations/app-connections/mssql",
+            "integrations/app-connections/mysql",
             "integrations/app-connections/oci",
             "integrations/app-connections/postgres",
             "integrations/app-connections/teamcity",
@@ -1006,6 +1018,19 @@
               ]
             },
             {
+              "group": "MySQL Credentials",
+              "pages": [
+                "api-reference/endpoints/secret-rotations/mysql-credentials/create",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/delete",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/get-by-id",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/get-by-name",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/get-generated-credentials-by-id",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/list",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/rotate-secrets",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/update"
+              ]
+            },
+            {
               "group": "PostgreSQL Credentials",
               "pages": [
                 "api-reference/endpoints/secret-rotations/postgres-credentials/create",
@@ -1016,6 +1041,47 @@
                 "api-reference/endpoints/secret-rotations/postgres-credentials/list",
                 "api-reference/endpoints/secret-rotations/postgres-credentials/rotate-secrets",
                 "api-reference/endpoints/secret-rotations/postgres-credentials/update"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "Secret Scanning",
+          "pages": [
+            {
+              "group":  "Data Sources",
+              "pages":  [
+                "api-reference/endpoints/secret-scanning/data-sources/list",
+                "api-reference/endpoints/secret-scanning/data-sources/options",
+                {
+                  "group": "GitHub",
+                  "pages": [
+                    "api-reference/endpoints/secret-scanning/data-sources/github/list",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/get-by-id",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/get-by-name",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/list-resources",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/list-scans",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/create",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/update",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/delete",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/scan",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/scan-resource"
+                  ]
+                }
+              ]
+            },
+            {
+              "group":  "Findings",
+              "pages":  [
+                "api-reference/endpoints/secret-scanning/findings/list",
+                "api-reference/endpoints/secret-scanning/findings/update"
+              ]
+            },
+            {
+              "group":  "Configuration",
+              "pages":  [
+                "api-reference/endpoints/secret-scanning/config/get-by-project-id",
+                "api-reference/endpoints/secret-scanning/config/update"
               ]
             }
           ]
@@ -1173,6 +1239,18 @@
               ]
             },
             {
+              "group": "GitHub Radar",
+              "pages": [
+                "api-reference/endpoints/app-connections/github-radar/list",
+                "api-reference/endpoints/app-connections/github-radar/available",
+                "api-reference/endpoints/app-connections/github-radar/get-by-id",
+                "api-reference/endpoints/app-connections/github-radar/get-by-name",
+                "api-reference/endpoints/app-connections/github-radar/create",
+                "api-reference/endpoints/app-connections/github-radar/update",
+                "api-reference/endpoints/app-connections/github-radar/delete"
+              ]
+            },
+            {
               "group": "Hashicorp Vault",
               "pages": [
                 "api-reference/endpoints/app-connections/hashicorp-vault/list",
@@ -1218,6 +1296,18 @@
                 "api-reference/endpoints/app-connections/mssql/create",
                 "api-reference/endpoints/app-connections/mssql/update",
                 "api-reference/endpoints/app-connections/mssql/delete"
+              ]
+            },
+            {
+              "group": "MySQL",
+              "pages": [
+                "api-reference/endpoints/app-connections/mysql/list",
+                "api-reference/endpoints/app-connections/mysql/available",
+                "api-reference/endpoints/app-connections/mysql/get-by-id",
+                "api-reference/endpoints/app-connections/mysql/get-by-name",
+                "api-reference/endpoints/app-connections/mysql/create",
+                "api-reference/endpoints/app-connections/mysql/update",
+                "api-reference/endpoints/app-connections/mysql/delete"
               ]
             },
             {
@@ -1755,7 +1845,6 @@
         },
         "internals/components",
         "internals/security",
-        "internals/bug-bounty",
         "internals/service-tokens"
       ]
     },

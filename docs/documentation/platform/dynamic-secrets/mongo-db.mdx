@@ -62,25 +62,32 @@ Create a user with the required permission in your MongoDB instance. This user w
 		 Human-readable label that identifies a group of privileges assigned to a database user. This value can either be a built-in role or a custom role.
 		 - Enum: `atlasAdmin` `backup` `clusterMonitor` `dbAdmin` `dbAdminAnyDatabase` `enableSharding` `read` `readAnyDatabase` `readWrite` `readWriteAnyDatabase` `<a custom role name>`.
 	</ParamField>
- 
+
 	<ParamField path="CA(SSL)" type="string">
 		A CA may be required if your DB requires it for incoming connections.
+	</ParamField>
+  <ParamField path="Username Template" type="string" default="{{randomUsername}}">
+    Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
+
+    Allowed template variables are
+    - `{{randomUsername}}`: Random username string
+    - `{{unixTimestamp}}`: Current Unix timestamp
 	</ParamField>
 
 	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-mongodb.png)
 	</Step>
 
   <Step title="Click `Submit`">
-  	After submitting the form, you will see a dynamic secret created in the dashboard. 
+  	After submitting the form, you will see a dynamic secret created in the dashboard.
 
 	<Note>
-		If this step fails, you may have to add the CA certificate. 
+		If this step fails, you may have to add the CA certificate.
 	</Note>
 
   </Step>
   <Step title="Generate dynamic secrets">
-	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials. 
-	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item. 
+	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
+	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
 	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
 	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
@@ -95,14 +102,14 @@ Create a user with the required permission in your MongoDB instance. This user w
 	</Tip>
 
 
-	Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you. 
+	Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you.
 
 	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
   </Step>
 </Steps>
 
 ## Audit or Revoke Leases
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard. 
+Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
 This will allow you to see the expiration time of the lease or delete a lease before it's set time to live.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)

@@ -8,6 +8,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { slugSchema } from "@app/lib/schemas";
 
 enum ConfigType {
   URL = "url",
@@ -50,11 +51,7 @@ const formSchema = z.object({
       })
     ])
     .optional(),
-  newName: z
-    .string()
-    .trim()
-    .min(1)
-    .refine((val) => val.toLowerCase() === val, "Must be lowercase")
+  newName: slugSchema().optional()
 });
 type TForm = z.infer<typeof formSchema>;
 

@@ -14,9 +14,9 @@ export const RequestAccessModal = ({
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
-        className="max-w-4xl"
+        className="max-w-xl"
         title="Request Access"
-        subTitle="Your role has limited permissions, please contact your administrator to gain access"
+        subTitle="Request access to any secrets and resources based on the predefined policies."
       >
         <SpecificPrivilegeSecretForm onClose={() => onOpenChange(false)} policies={policies} />
       </ModalContent>

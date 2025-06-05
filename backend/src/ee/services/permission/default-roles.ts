@@ -13,6 +13,9 @@ import {
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
+  ProjectPermissionSecretScanningConfigActions,
+  ProjectPermissionSecretScanningDataSourceActions,
+  ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSet,
   ProjectPermissionSshHostActions,
@@ -148,6 +151,7 @@ const buildAdminPermissionRules = () => {
   can(
     [
       ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.DescribeAndReadValue,
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Create,
       ProjectPermissionSecretActions.Edit,
@@ -219,6 +223,29 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SecretRotation
   );
 
+  can(
+    [
+      ProjectPermissionSecretScanningDataSourceActions.Create,
+      ProjectPermissionSecretScanningDataSourceActions.Edit,
+      ProjectPermissionSecretScanningDataSourceActions.Delete,
+      ProjectPermissionSecretScanningDataSourceActions.Read,
+      ProjectPermissionSecretScanningDataSourceActions.TriggerScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadResources
+    ],
+    ProjectPermissionSub.SecretScanningDataSources
+  );
+
+  can(
+    [ProjectPermissionSecretScanningFindingActions.Read, ProjectPermissionSecretScanningFindingActions.Update],
+    ProjectPermissionSub.SecretScanningFindings
+  );
+
+  can(
+    [ProjectPermissionSecretScanningConfigActions.Read, ProjectPermissionSecretScanningConfigActions.Update],
+    ProjectPermissionSub.SecretScanningConfigs
+  );
+
   return rules;
 };
 
@@ -228,6 +255,7 @@ const buildMemberPermissionRules = () => {
   can(
     [
       ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.DescribeAndReadValue,
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Edit,
       ProjectPermissionSecretActions.Create,
@@ -399,6 +427,23 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.SecretSyncs
   );
 
+  can(
+    [
+      ProjectPermissionSecretScanningDataSourceActions.Read,
+      ProjectPermissionSecretScanningDataSourceActions.TriggerScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadResources
+    ],
+    ProjectPermissionSub.SecretScanningDataSources
+  );
+
+  can(
+    [ProjectPermissionSecretScanningFindingActions.Read, ProjectPermissionSecretScanningFindingActions.Update],
+    ProjectPermissionSub.SecretScanningFindings
+  );
+
+  can([ProjectPermissionSecretScanningConfigActions.Read], ProjectPermissionSub.SecretScanningConfigs);
+
   return rules;
 };
 
@@ -434,6 +479,19 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
   can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
+
+  can(
+    [
+      ProjectPermissionSecretScanningDataSourceActions.Read,
+      ProjectPermissionSecretScanningDataSourceActions.ReadScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadResources
+    ],
+    ProjectPermissionSub.SecretScanningDataSources
+  );
+
+  can([ProjectPermissionSecretScanningFindingActions.Read], ProjectPermissionSub.SecretScanningFindings);
+
+  can([ProjectPermissionSecretScanningConfigActions.Read], ProjectPermissionSub.SecretScanningConfigs);
 
   return rules;
 };

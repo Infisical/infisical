@@ -12,6 +12,7 @@ import { SqlCredentialsRotationParametersFields } from "./shared";
 const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.PostgresCredentials]: SqlCredentialsRotationParametersFields,
   [SecretRotation.MsSqlCredentials]: SqlCredentialsRotationParametersFields,
+  [SecretRotation.MySqlCredentials]: SqlCredentialsRotationParametersFields,
   [SecretRotation.Auth0ClientSecret]: Auth0ClientSecretRotationParametersFields,
   [SecretRotation.AzureClientSecret]: AzureClientSecretRotationParametersFields,
   [SecretRotation.LdapPassword]: LdapPasswordRotationParametersFields,

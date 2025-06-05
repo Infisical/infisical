@@ -11,10 +11,12 @@ import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
+import { registerGitHubRadarConnectionRouter } from "./github-radar-connection-router";
 import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
+import { registerMySqlConnectionRouter } from "./mysql-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
@@ -27,6 +29,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
   {
     [AppConnection.AWS]: registerAwsConnectionRouter,
     [AppConnection.GitHub]: registerGitHubConnectionRouter,
+    [AppConnection.GitHubRadar]: registerGitHubRadarConnectionRouter,
     [AppConnection.GCP]: registerGcpConnectionRouter,
     [AppConnection.AzureKeyVault]: registerAzureKeyVaultConnectionRouter,
     [AppConnection.AzureAppConfiguration]: registerAzureAppConfigurationConnectionRouter,
@@ -37,6 +40,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Vercel]: registerVercelConnectionRouter,
     [AppConnection.Postgres]: registerPostgresConnectionRouter,
     [AppConnection.MsSql]: registerMsSqlConnectionRouter,
+    [AppConnection.MySql]: registerMySqlConnectionRouter,
     [AppConnection.Camunda]: registerCamundaConnectionRouter,
     [AppConnection.Windmill]: registerWindmillConnectionRouter,
     [AppConnection.Auth0]: registerAuth0ConnectionRouter,

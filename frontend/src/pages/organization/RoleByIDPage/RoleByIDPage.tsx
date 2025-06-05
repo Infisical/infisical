@@ -155,7 +155,7 @@ export const Page = () => {
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteOrgRole.isOpen}
-        title={`Are you sure want to delete the organization role ${data?.name ?? ""}?`}
+        title={`Are you sure you want to delete the organization role ${data?.name ?? ""}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteOrgRole", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() => onDeleteOrgRoleSubmit()}

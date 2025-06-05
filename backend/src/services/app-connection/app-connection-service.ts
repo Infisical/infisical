@@ -19,6 +19,7 @@ import {
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
 import { auth0ConnectionService } from "@app/services/app-connection/auth0/auth0-connection-service";
+import { githubRadarConnectionService } from "@app/services/app-connection/github-radar/github-radar-connection-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { ValidateOnePassConnectionCredentialsSchema } from "./1password";
@@ -49,12 +50,14 @@ import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
 import { ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
+import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
+import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
 import { teamcityConnectionService } from "./teamcity/teamcity-connection-service";
@@ -77,6 +80,7 @@ export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServic
 const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAppConnectionCredentialsSchema> = {
   [AppConnection.AWS]: ValidateAwsConnectionCredentialsSchema,
   [AppConnection.GitHub]: ValidateGitHubConnectionCredentialsSchema,
+  [AppConnection.GitHubRadar]: ValidateGitHubRadarConnectionCredentialsSchema,
   [AppConnection.GCP]: ValidateGcpConnectionCredentialsSchema,
   [AppConnection.AzureKeyVault]: ValidateAzureKeyVaultConnectionCredentialsSchema,
   [AppConnection.AzureAppConfiguration]: ValidateAzureAppConfigurationConnectionCredentialsSchema,
@@ -86,6 +90,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Vercel]: ValidateVercelConnectionCredentialsSchema,
   [AppConnection.Postgres]: ValidatePostgresConnectionCredentialsSchema,
   [AppConnection.MsSql]: ValidateMsSqlConnectionCredentialsSchema,
+  [AppConnection.MySql]: ValidateMySqlConnectionCredentialsSchema,
   [AppConnection.Camunda]: ValidateCamundaConnectionCredentialsSchema,
   [AppConnection.AzureClientSecrets]: ValidateAzureClientSecretsConnectionCredentialsSchema,
   [AppConnection.Windmill]: ValidateWindmillConnectionCredentialsSchema,
@@ -484,6 +489,7 @@ export const appConnectionServiceFactory = ({
     connectAppConnectionById,
     listAvailableAppConnectionsForUser,
     github: githubConnectionService(connectAppConnectionById),
+    githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
     databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     aws: awsConnectionService(connectAppConnectionById),

@@ -249,7 +249,7 @@ export const LDAPGroupMapModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }:
             </TableContainer>
             <DeleteActionModal
               isOpen={popUp.deleteLdapGroupMap.isOpen}
-              title={`Are you sure want to delete the group mapping for ${
+              title={`Are you sure you want to delete the group mapping for ${
                 (popUp?.deleteLdapGroupMap?.data as { ldapGroupCN: string })?.ldapGroupCN || ""
               }?`}
               onChange={(isOpen) => handlePopUpToggle("deleteLdapGroupMap", isOpen)}

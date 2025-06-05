@@ -62,21 +62,30 @@ The Infisical SAP ASE dynamic secret allows you to generate SAP ASE database cre
     ![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/sap-ase/dynamic-secret-sap-ase-setup-modal.png)
 
   </Step>
-  <Step title="(Optional) Modify SQL Statements">
-  	If you want to provide specific privileges for the generated dynamic credentials, you can modify the SQL statement to your needs.
+  <Step title="(Optional) Modify SAP SQL Statements">
     ![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/sap-ase/dynamic-secret-sap-ase-statements.png)
+    <ParamField path="Username Template" type="string" default="{{randomUsername}}">
+        Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
 
-    <Warning>
-      Due to SAP ASE limitations, the attached SQL statements are not executed as a transaction.
-    </Warning>
+        Allowed template variables are
+        - `{{randomUsername}}`: Random username string
+        - `{{unixTimestamp}}`: Current Unix timestamp
+    </ParamField>
+    <ParamField path="Customize Statement" type="string">
+
+If you want to provide specific privileges for the generated dynamic credentials, you can modify the SQL statement to your needs.
+<Warning>
+Due to SAP ASE limitations, the attached SQL statements are not executed as a transaction.
+</Warning>
+</ParamField>
 
   </Step>
   <Step title="Click 'Submit'">
   	After submitting the form, you will see a dynamic secret created in the dashboard.
   </Step>
   <Step title="Generate dynamic secrets">
-	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials. 
-	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item. 
+	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
+	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
 	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
     ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)

@@ -18,6 +18,7 @@ import {
 } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
   inputs: z
@@ -52,7 +53,8 @@ const formSchema = z.object({
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  newName: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase")
+  newName: slugSchema().optional(),
+  usernameTemplate: z.string().trim().nullable().optional()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -81,6 +83,7 @@ export const EditDynamicSecretSapHanaForm = ({
       defaultTTL: dynamicSecret.defaultTTL,
       maxTTL: dynamicSecret.maxTTL,
       newName: dynamicSecret.name,
+      usernameTemplate: dynamicSecret?.usernameTemplate || "{{randomUsername}}",
       inputs: {
         ...(dynamicSecret.inputs as TForm["inputs"])
       }
@@ -89,9 +92,17 @@ export const EditDynamicSecretSapHanaForm = ({
 
   const updateDynamicSecret = useUpdateDynamicSecret();
 
-  const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
+  const handleUpdateDynamicSecret = async ({
+    inputs,
+    maxTTL,
+    defaultTTL,
+    newName,
+    usernameTemplate
+  }: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isPending) return;
+
+    const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
     try {
       await updateDynamicSecret.mutateAsync({
         name: dynamicSecret.name,
@@ -102,7 +113,8 @@ export const EditDynamicSecretSapHanaForm = ({
           maxTTL: maxTTL || undefined,
           defaultTTL,
           inputs,
-          newName: newName === dynamicSecret.name ? undefined : newName
+          newName: newName === dynamicSecret.name ? undefined : newName,
+          usernameTemplate: !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate
         }
       });
       onClose();
@@ -259,6 +271,24 @@ export const EditDynamicSecretSapHanaForm = ({
                   <AccordionItem value="advance-statements">
                     <AccordionTrigger>Modify SQL Statements</AccordionTrigger>
                     <AccordionContent>
+                      <Controller
+                        control={control}
+                        name="usernameTemplate"
+                        defaultValue=""
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            label="Username Template"
+                            isError={Boolean(error?.message)}
+                            errorText={error?.message}
+                          >
+                            <Input
+                              {...field}
+                              value={field.value || undefined}
+                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                            />
+                          </FormControl>
+                        )}
+                      />
                       <Controller
                         control={control}
                         name="inputs.creationStatement"

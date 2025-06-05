@@ -90,7 +90,7 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
       <CertificateTemplateEnrollmentModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteCertificateTemplate.isOpen}
-        title={`Are you sure want to delete the certificate template ${
+        title={`Are you sure you want to delete the certificate template ${
           (popUp?.deleteCertificateTemplate?.data as { name: string })?.name || ""
         } from the project?`}
         onChange={(isOpen) => handlePopUpToggle("deleteCertificateTemplate", isOpen)}

@@ -12,6 +12,35 @@ import (
 
 const USER_AGENT = "cli"
 
+const (
+	operationCallGetRawSecretsV3                   = "CallGetRawSecretsV3"
+	operationCallGetEncryptedWorkspaceKey          = "CallGetEncryptedWorkspaceKey"
+	operationCallGetServiceTokenDetails            = "CallGetServiceTokenDetails"
+	operationCallLogin1V3                          = "CallLogin1V3"
+	operationCallVerifyMfaToken                    = "CallVerifyMfaToken"
+	operationCallLogin2V3                          = "CallLogin2V3"
+	operationCallGetAllOrganizations               = "CallGetAllOrganizations"
+	operationCallSelectOrganization                = "CallSelectOrganization"
+	operationCallGetAllWorkSpacesUserBelongsTo     = "CallGetAllWorkSpacesUserBelongsTo"
+	operationCallGetProjectById                    = "CallGetProjectById"
+	operationCallIsAuthenticated                   = "CallIsAuthenticated"
+	operationCallGetNewAccessTokenWithRefreshToken = "CallGetNewAccessTokenWithRefreshToken"
+	operationCallGetFoldersV1                      = "CallGetFoldersV1"
+	operationCallCreateFolderV1                    = "CallCreateFolderV1"
+	operationCallDeleteFolderV1                    = "CallDeleteFolderV1"
+	operationCallDeleteSecretsV3                   = "CallDeleteSecretsV3"
+	operationCallCreateServiceToken                = "CallCreateServiceToken"
+	operationCallUniversalAuthLogin                = "CallUniversalAuthLogin"
+	operationCallMachineIdentityRefreshAccessToken = "CallMachineIdentityRefreshAccessToken"
+	operationCallFetchSingleSecretByName           = "CallFetchSingleSecretByName"
+	operationCallCreateRawSecretsV3                = "CallCreateRawSecretsV3"
+	operationCallUpdateRawSecretsV3                = "CallUpdateRawSecretsV3"
+	operationCallRegisterGatewayIdentityV1         = "CallRegisterGatewayIdentityV1"
+	operationCallExchangeRelayCertV1               = "CallExchangeRelayCertV1"
+	operationCallGatewayHeartBeatV1                = "CallGatewayHeartBeatV1"
+	operationCallBootstrapInstance                 = "CallBootstrapInstance"
+)
+
 func CallGetEncryptedWorkspaceKey(httpClient *resty.Client, request GetEncryptedWorkspaceKeyRequest) (GetEncryptedWorkspaceKeyResponse, error) {
 	endpoint := fmt.Sprintf("%v/v2/workspace/%v/encrypted-key", config.INFISICAL_URL, request.WorkspaceId)
 	var result GetEncryptedWorkspaceKeyResponse
@@ -22,11 +51,11 @@ func CallGetEncryptedWorkspaceKey(httpClient *resty.Client, request GetEncrypted
 		Get(endpoint)
 
 	if err != nil {
-		return GetEncryptedWorkspaceKeyResponse{}, fmt.Errorf("CallGetEncryptedWorkspaceKey: Unable to complete api request [err=%s]", err)
+		return GetEncryptedWorkspaceKeyResponse{}, NewGenericRequestError(operationCallGetEncryptedWorkspaceKey, err)
 	}
 
 	if response.IsError() {
-		return GetEncryptedWorkspaceKeyResponse{}, fmt.Errorf("CallGetEncryptedWorkspaceKey: Unsuccessful response [%v %v] [status-code=%v]", response.Request.Method, response.Request.URL, response.StatusCode())
+		return GetEncryptedWorkspaceKeyResponse{}, NewAPIErrorWithResponse(operationCallGetEncryptedWorkspaceKey, response, nil)
 	}
 
 	return result, nil
@@ -41,11 +70,11 @@ func CallGetServiceTokenDetailsV2(httpClient *resty.Client) (GetServiceTokenDeta
 		Get(fmt.Sprintf("%v/v2/service-token", config.INFISICAL_URL))
 
 	if err != nil {
-		return GetServiceTokenDetailsResponse{}, fmt.Errorf("CallGetServiceTokenDetails: Unable to complete api request [err=%s]", err)
+		return GetServiceTokenDetailsResponse{}, NewGenericRequestError(operationCallGetServiceTokenDetails, err)
 	}
 
 	if response.IsError() {
-		return GetServiceTokenDetailsResponse{}, fmt.Errorf("CallGetServiceTokenDetails: Unsuccessful response: [response=%s]", response)
+		return GetServiceTokenDetailsResponse{}, NewAPIErrorWithResponse(operationCallGetServiceTokenDetails, response, nil)
 	}
 
 	return tokenDetailsResponse, nil
@@ -61,11 +90,11 @@ func CallLogin1V2(httpClient *resty.Client, request GetLoginOneV2Request) (GetLo
 		Post(fmt.Sprintf("%v/v3/auth/login1", config.INFISICAL_URL))
 
 	if err != nil {
-		return GetLoginOneV2Response{}, fmt.Errorf("CallLogin1V3: Unable to complete api request [err=%s]", err)
+		return GetLoginOneV2Response{}, NewGenericRequestError(operationCallLogin1V3, err)
 	}
 
 	if response.IsError() {
-		return GetLoginOneV2Response{}, fmt.Errorf("CallLogin1V3: Unsuccessful response: [response=%s]", response)
+		return GetLoginOneV2Response{}, NewAPIErrorWithResponse(operationCallLogin1V3, response, nil)
 	}
 
 	return loginOneV2Response, nil
@@ -99,7 +128,7 @@ func CallVerifyMfaToken(httpClient *resty.Client, request VerifyMfaTokenRequest)
 	}
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("CallVerifyMfaToken: Unable to complete api request [err=%s]", err)
+		return nil, nil, NewGenericRequestError(operationCallVerifyMfaToken, err)
 	}
 
 	if response.IsError() {
@@ -135,11 +164,11 @@ func CallLogin2V2(httpClient *resty.Client, request GetLoginTwoV2Request) (GetLo
 	}
 
 	if err != nil {
-		return GetLoginTwoV2Response{}, fmt.Errorf("CallLogin2V3: Unable to complete api request [err=%s]", err)
+		return GetLoginTwoV2Response{}, NewGenericRequestError(operationCallLogin2V3, err)
 	}
 
 	if response.IsError() {
-		return GetLoginTwoV2Response{}, fmt.Errorf("CallLogin2V3: Unsuccessful response: [response=%s]", response)
+		return GetLoginTwoV2Response{}, NewAPIErrorWithResponse(operationCallLogin2V3, response, nil)
 	}
 
 	return loginTwoV2Response, nil
@@ -154,11 +183,11 @@ func CallGetAllOrganizations(httpClient *resty.Client) (GetOrganizationsResponse
 		Get(fmt.Sprintf("%v/v1/organization", config.INFISICAL_URL))
 
 	if err != nil {
-		return GetOrganizationsResponse{}, err
+		return GetOrganizationsResponse{}, NewGenericRequestError(operationCallGetAllOrganizations, err)
 	}
 
 	if response.IsError() {
-		return GetOrganizationsResponse{}, fmt.Errorf("CallGetAllOrganizations: Unsuccessful response: [response=%v]", response)
+		return GetOrganizationsResponse{}, NewAPIErrorWithResponse(operationCallGetAllOrganizations, response, nil)
 	}
 
 	return orgResponse, nil
@@ -175,11 +204,11 @@ func CallSelectOrganization(httpClient *resty.Client, request SelectOrganization
 		Post(fmt.Sprintf("%v/v3/auth/select-organization", config.INFISICAL_URL))
 
 	if err != nil {
-		return SelectOrganizationResponse{}, err
+		return SelectOrganizationResponse{}, NewGenericRequestError(operationCallSelectOrganization, err)
 	}
 
 	if response.IsError() {
-		return SelectOrganizationResponse{}, fmt.Errorf("CallSelectOrganization: Unsuccessful response: [response=%v]", response)
+		return SelectOrganizationResponse{}, NewAPIErrorWithResponse(operationCallSelectOrganization, response, nil)
 	}
 
 	return selectOrgResponse, nil
@@ -214,11 +243,11 @@ func CallGetProjectById(httpClient *resty.Client, id string) (Project, error) {
 		Get(fmt.Sprintf("%v/v1/workspace/%s", config.INFISICAL_URL, id))
 
 	if err != nil {
-		return Project{}, err
+		return Project{}, NewGenericRequestError(operationCallGetProjectById, err)
 	}
 
 	if response.IsError() {
-		return Project{}, fmt.Errorf("CallGetProjectById: Unsuccessful response:  [response=%v]", response)
+		return Project{}, NewAPIErrorWithResponse(operationCallGetProjectById, response, nil)
 	}
 
 	return projectResponse.Project, nil
@@ -237,7 +266,7 @@ func CallIsAuthenticated(httpClient *resty.Client) bool {
 	}
 
 	if response.IsError() {
-		log.Debug().Msgf("CallIsAuthenticated: Unsuccessful response:  [response=%v]", response)
+		log.Debug().Msgf("%s: Unsuccessful response: [response=%v]", operationCallIsAuthenticated, response)
 		return false
 	}
 
@@ -257,11 +286,11 @@ func CallGetNewAccessTokenWithRefreshToken(httpClient *resty.Client, refreshToke
 		Post(fmt.Sprintf("%v/v1/auth/token", config.INFISICAL_URL))
 
 	if err != nil {
-		return GetNewAccessTokenWithRefreshTokenResponse{}, err
+		return GetNewAccessTokenWithRefreshTokenResponse{}, NewGenericRequestError(operationCallGetNewAccessTokenWithRefreshToken, err)
 	}
 
 	if response.IsError() {
-		return GetNewAccessTokenWithRefreshTokenResponse{}, fmt.Errorf("CallGetNewAccessTokenWithRefreshToken: Unsuccessful response:  [response=%v]", response)
+		return GetNewAccessTokenWithRefreshTokenResponse{}, NewAPIErrorWithResponse(operationCallGetNewAccessTokenWithRefreshToken, response, nil)
 	}
 
 	return newAccessToken, nil
@@ -280,11 +309,11 @@ func CallGetFoldersV1(httpClient *resty.Client, request GetFoldersV1Request) (Ge
 	response, err := httpRequest.Get(fmt.Sprintf("%v/v1/folders", config.INFISICAL_URL))
 
 	if err != nil {
-		return GetFoldersV1Response{}, fmt.Errorf("CallGetFoldersV1: Unable to complete api request [err=%v]", err)
+		return GetFoldersV1Response{}, NewGenericRequestError(operationCallGetFoldersV1, err)
 	}
 
 	if response.IsError() {
-		return GetFoldersV1Response{}, fmt.Errorf("CallGetFoldersV1: Unsuccessful [response=%s]", response)
+		return GetFoldersV1Response{}, NewAPIErrorWithResponse(operationCallGetFoldersV1, response, nil)
 	}
 
 	return foldersResponse, nil
@@ -300,11 +329,11 @@ func CallCreateFolderV1(httpClient *resty.Client, request CreateFolderV1Request)
 
 	response, err := httpRequest.Post(fmt.Sprintf("%v/v1/folders", config.INFISICAL_URL))
 	if err != nil {
-		return CreateFolderV1Response{}, fmt.Errorf("CallCreateFolderV1: Unable to complete api request [err=%s]", err)
+		return CreateFolderV1Response{}, NewGenericRequestError(operationCallCreateFolderV1, err)
 	}
 
 	if response.IsError() {
-		return CreateFolderV1Response{}, fmt.Errorf("CallCreateFolderV1: Unsuccessful [response=%s]", response.String())
+		return CreateFolderV1Response{}, NewAPIErrorWithResponse(operationCallCreateFolderV1, response, nil)
 	}
 
 	return folderResponse, nil
@@ -321,11 +350,11 @@ func CallDeleteFolderV1(httpClient *resty.Client, request DeleteFolderV1Request)
 
 	response, err := httpRequest.Delete(fmt.Sprintf("%v/v1/folders/%v", config.INFISICAL_URL, request.FolderName))
 	if err != nil {
-		return DeleteFolderV1Response{}, fmt.Errorf("CallDeleteFolderV1: Unable to complete api request [err=%s]", err)
+		return DeleteFolderV1Response{}, NewGenericRequestError(operationCallDeleteFolderV1, err)
 	}
 
 	if response.IsError() {
-		return DeleteFolderV1Response{}, fmt.Errorf("CallDeleteFolderV1: Unsuccessful [response=%s]", response.String())
+		return DeleteFolderV1Response{}, NewAPIErrorWithResponse(operationCallDeleteFolderV1, response, nil)
 	}
 
 	return folderResponse, nil
@@ -342,11 +371,12 @@ func CallDeleteSecretsRawV3(httpClient *resty.Client, request DeleteSecretV3Requ
 		Delete(fmt.Sprintf("%v/v3/secrets/raw/%s", config.INFISICAL_URL, request.SecretName))
 
 	if err != nil {
-		return fmt.Errorf("CallDeleteSecretsV3: Unable to complete api request [err=%s]", err)
+		return NewGenericRequestError(operationCallDeleteSecretsV3, err)
 	}
 
 	if response.IsError() {
-		return fmt.Errorf("CallDeleteSecretsV3: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
+		additionalContext := "Please make sure your secret path, workspace and environment name are all correct."
+		return NewAPIErrorWithResponse(operationCallDeleteSecretsV3, response, &additionalContext)
 	}
 
 	return nil
@@ -362,11 +392,11 @@ func CallCreateServiceToken(httpClient *resty.Client, request CreateServiceToken
 		Post(fmt.Sprintf("%v/v2/service-token/", config.INFISICAL_URL))
 
 	if err != nil {
-		return CreateServiceTokenResponse{}, fmt.Errorf("CallCreateServiceToken: Unable to complete api request [err=%s]", err)
+		return CreateServiceTokenResponse{}, NewGenericRequestError(operationCallCreateServiceToken, err)
 	}
 
 	if response.IsError() {
-		return CreateServiceTokenResponse{}, fmt.Errorf("CallCreateServiceToken: Unsuccessful response [%v %v] [status-code=%v]", response.Request.Method, response.Request.URL, response.StatusCode())
+		return CreateServiceTokenResponse{}, NewAPIErrorWithResponse(operationCallCreateServiceToken, response, nil)
 	}
 
 	return createServiceTokenResponse, nil
@@ -382,11 +412,11 @@ func CallUniversalAuthLogin(httpClient *resty.Client, request UniversalAuthLogin
 		Post(fmt.Sprintf("%v/v1/auth/universal-auth/login/", config.INFISICAL_URL))
 
 	if err != nil {
-		return UniversalAuthLoginResponse{}, fmt.Errorf("CallUniversalAuthLogin: Unable to complete api request [err=%s]", err)
+		return UniversalAuthLoginResponse{}, NewGenericRequestError(operationCallUniversalAuthLogin, err)
 	}
 
 	if response.IsError() {
-		return UniversalAuthLoginResponse{}, fmt.Errorf("CallUniversalAuthLogin: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return UniversalAuthLoginResponse{}, NewAPIErrorWithResponse(operationCallUniversalAuthLogin, response, nil)
 	}
 
 	return universalAuthLoginResponse, nil
@@ -402,11 +432,11 @@ func CallMachineIdentityRefreshAccessToken(httpClient *resty.Client, request Uni
 		Post(fmt.Sprintf("%v/v1/auth/token/renew", config.INFISICAL_URL))
 
 	if err != nil {
-		return UniversalAuthRefreshResponse{}, fmt.Errorf("CallMachineIdentityRefreshAccessToken: Unable to complete api request [err=%s]", err)
+		return UniversalAuthRefreshResponse{}, NewGenericRequestError(operationCallMachineIdentityRefreshAccessToken, err)
 	}
 
 	if response.IsError() {
-		return UniversalAuthRefreshResponse{}, fmt.Errorf("CallMachineIdentityRefreshAccessToken: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return UniversalAuthRefreshResponse{}, NewAPIErrorWithResponse(operationCallMachineIdentityRefreshAccessToken, response, nil)
 	}
 
 	return universalAuthRefreshResponse, nil
@@ -441,19 +471,19 @@ func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Reques
 	response, err := req.Get(fmt.Sprintf("%v/v3/secrets/raw", config.INFISICAL_URL))
 
 	if err != nil {
-		return GetRawSecretsV3Response{}, fmt.Errorf("CallGetRawSecretsV3: Unable to complete api request [err=%w]", err)
+		return GetRawSecretsV3Response{}, NewGenericRequestError(operationCallGetRawSecretsV3, err)
 	}
 
 	if response.IsError() &&
 		(strings.Contains(response.String(), "bot_not_found_error") ||
 			strings.Contains(strings.ToLower(response.String()), "failed to find bot key") ||
 			strings.Contains(strings.ToLower(response.String()), "bot is not active")) {
-		return GetRawSecretsV3Response{}, fmt.Errorf(`Project with id %s is incompatible with your current CLI version. Upgrade your project by visiting the project settings page. If you're self-hosting and project upgrade option isn't yet available, contact your administrator to upgrade your Infisical instance to the latest release.
-		`, request.WorkspaceId)
+		additionalContext := fmt.Sprintf(`Project with id %s is incompatible with your current CLI version. Upgrade your project by visiting the project settings page. If you're self-hosting and project upgrade option isn't yet available, contact your administrator to upgrade your Infisical instance to the latest release.`, request.WorkspaceId)
+		return GetRawSecretsV3Response{}, NewAPIErrorWithResponse(operationCallGetRawSecretsV3, response, &additionalContext)
 	}
 
 	if response.IsError() {
-		return GetRawSecretsV3Response{}, fmt.Errorf("CallGetRawSecretsV3: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return GetRawSecretsV3Response{}, NewAPIErrorWithResponse(operationCallGetRawSecretsV3, response, nil)
 	}
 
 	getRawSecretsV3Response.ETag = response.Header().Get(("etag"))
@@ -477,11 +507,11 @@ func CallFetchSingleSecretByName(httpClient *resty.Client, request GetRawSecretV
 		Get(fmt.Sprintf("%v/v3/secrets/raw/%s", config.INFISICAL_URL, request.SecretName))
 
 	if err != nil {
-		return GetRawSecretV3ByNameResponse{}, fmt.Errorf("CallFetchSingleSecretByName: Unable to complete api request [err=%w]", err)
+		return GetRawSecretV3ByNameResponse{}, NewGenericRequestError(operationCallFetchSingleSecretByName, err)
 	}
 
 	if response.IsError() {
-		return GetRawSecretV3ByNameResponse{}, fmt.Errorf("CallFetchSingleSecretByName: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return GetRawSecretV3ByNameResponse{}, NewAPIErrorWithResponse(operationCallFetchSingleSecretByName, response, nil)
 	}
 
 	getRawSecretV3ByNameResponse.ETag = response.Header().Get(("etag"))
@@ -517,11 +547,11 @@ func CallCreateRawSecretsV3(httpClient *resty.Client, request CreateRawSecretV3R
 		Post(fmt.Sprintf("%v/v3/secrets/raw/%s", config.INFISICAL_URL, request.SecretName))
 
 	if err != nil {
-		return fmt.Errorf("CallCreateRawSecretsV3: Unable to complete api request [err=%w]", err)
+		return NewGenericRequestError(operationCallCreateRawSecretsV3, err)
 	}
 
 	if response.IsError() {
-		return fmt.Errorf("CallCreateRawSecretsV3: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return NewAPIErrorWithResponse(operationCallCreateRawSecretsV3, response, nil)
 	}
 
 	return nil
@@ -535,11 +565,11 @@ func CallUpdateRawSecretsV3(httpClient *resty.Client, request UpdateRawSecretByN
 		Patch(fmt.Sprintf("%v/v3/secrets/raw/%s", config.INFISICAL_URL, request.SecretName))
 
 	if err != nil {
-		return fmt.Errorf("CallUpdateRawSecretsV3: Unable to complete api request [err=%w]", err)
+		return NewGenericRequestError(operationCallUpdateRawSecretsV3, err)
 	}
 
 	if response.IsError() {
-		return fmt.Errorf("CallUpdateRawSecretsV3: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return NewAPIErrorWithResponse(operationCallUpdateRawSecretsV3, response, nil)
 	}
 
 	return nil
@@ -554,11 +584,11 @@ func CallRegisterGatewayIdentityV1(httpClient *resty.Client) (*GetRelayCredentia
 		Post(fmt.Sprintf("%v/v1/gateways/register-identity", config.INFISICAL_URL))
 
 	if err != nil {
-		return nil, fmt.Errorf("CallRegisterGatewayIdentityV1: Unable to complete api request [err=%w]", err)
+		return nil, NewGenericRequestError(operationCallRegisterGatewayIdentityV1, err)
 	}
 
 	if response.IsError() {
-		return nil, fmt.Errorf("CallRegisterGatewayIdentityV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return nil, NewAPIErrorWithResponse(operationCallRegisterGatewayIdentityV1, response, nil)
 	}
 
 	return &resBody, nil
@@ -574,11 +604,11 @@ func CallExchangeRelayCertV1(httpClient *resty.Client, request ExchangeRelayCert
 		Post(fmt.Sprintf("%v/v1/gateways/exchange-cert", config.INFISICAL_URL))
 
 	if err != nil {
-		return nil, fmt.Errorf("CallExchangeRelayCertV1: Unable to complete api request [err=%w]", err)
+		return nil, NewGenericRequestError(operationCallExchangeRelayCertV1, err)
 	}
 
 	if response.IsError() {
-		return nil, fmt.Errorf("CallExchangeRelayCertV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return nil, NewAPIErrorWithResponse(operationCallExchangeRelayCertV1, response, nil)
 	}
 
 	return &resBody, nil
@@ -591,11 +621,11 @@ func CallGatewayHeartBeatV1(httpClient *resty.Client) error {
 		Post(fmt.Sprintf("%v/v1/gateways/heartbeat", config.INFISICAL_URL))
 
 	if err != nil {
-		return fmt.Errorf("CallGatewayHeartBeatV1: Unable to complete api request [err=%w]", err)
+		return NewGenericRequestError(operationCallGatewayHeartBeatV1, err)
 	}
 
 	if response.IsError() {
-		return fmt.Errorf("CallGatewayHeartBeatV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return NewAPIErrorWithResponse(operationCallGatewayHeartBeatV1, response, nil)
 	}
 
 	return nil
@@ -611,11 +641,11 @@ func CallBootstrapInstance(httpClient *resty.Client, request BootstrapInstanceRe
 		Post(fmt.Sprintf("%v/v1/admin/bootstrap", request.Domain))
 
 	if err != nil {
-		return nil, fmt.Errorf("CallBootstrapInstance: Unable to complete api request [err=%w]", err)
+		return nil, NewGenericRequestError(operationCallBootstrapInstance, err)
 	}
 
 	if response.IsError() {
-		return nil, fmt.Errorf("CallBootstrapInstance: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return nil, NewAPIErrorWithResponse(operationCallBootstrapInstance, response, nil)
 	}
 
 	return resBody, nil

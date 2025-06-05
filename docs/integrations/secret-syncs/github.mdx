@@ -62,7 +62,7 @@ description: "Learn how to configure a GitHub Sync for Infisical."
                 <Note>
                     GitHub does not support importing secrets.
                 </Note>
-            - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name.
+            - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
             <Note>
                 We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
             </Note>

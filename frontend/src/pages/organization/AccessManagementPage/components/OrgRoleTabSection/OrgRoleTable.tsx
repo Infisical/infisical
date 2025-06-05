@@ -280,7 +280,7 @@ export const OrgRoleTable = () => {
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}
-        title={`Are you sure want to delete ${
+        title={`Are you sure you want to delete ${
           (popUp?.deleteRole?.data as TOrgRole)?.name || " "
         } role?`}
         onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}

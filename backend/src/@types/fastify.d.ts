@@ -37,6 +37,7 @@ import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-ap
 import { TSecretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
 import { TSecretRotationV2ServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-service";
 import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
+import { TSecretScanningV2ServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-service";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { TSshCertificateAuthorityServiceFactory } from "@app/ee/services/ssh/ssh-certificate-authority-service";
 import { TSshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-service";
@@ -271,6 +272,7 @@ declare module "fastify" {
       microsoftTeams: TMicrosoftTeamsServiceFactory;
       assumePrivileges: TAssumePrivilegeServiceFactory;
       githubOrgSync: TGithubOrgSyncServiceFactory;
+      secretScanningV2: TSecretScanningV2ServiceFactory;
       internalCertificateAuthority: TInternalCertificateAuthorityServiceFactory;
       pkiTemplate: TPkiTemplatesServiceFactory;
     };

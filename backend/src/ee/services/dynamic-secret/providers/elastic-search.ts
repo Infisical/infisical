@@ -1,4 +1,5 @@
 import { Client as ElasticSearchClient } from "@elastic/elasticsearch";
+import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
@@ -12,8 +13,14 @@ const generatePassword = () => {
   return customAlphabet(charset, 64)();
 };
 
-const generateUsername = () => {
-  return alphaNumericNanoId(32);
+const generateUsername = (usernameTemplate?: string | null) => {
+  const randomUsername = alphaNumericNanoId(32); // Username must start with an ascii letter, so we prepend the username with "inf-"
+  if (!usernameTemplate) return randomUsername;
+
+  return handlebars.compile(usernameTemplate)({
+    randomUsername,
+    unixTimestamp: Math.floor(Date.now() / 100)
+  });
 };
 
 export const ElasticSearchProvider = (): TDynamicProviderFns => {
@@ -64,11 +71,12 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
     return infoResponse;
   };
 
-  const create = async (inputs: unknown) => {
+  const create = async (data: { inputs: unknown; usernameTemplate?: string | null }) => {
+    const { inputs, usernameTemplate } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const connection = await $getClient(providerInputs);
 
-    const username = generateUsername();
+    const username = generateUsername(usernameTemplate);
     const password = generatePassword();
 
     await connection.security.putUser({

@@ -1,5 +1,6 @@
 export enum AppConnection {
   GitHub = "github",
+  GitHubRadar = "github-radar",
   AWS = "aws",
   Databricks = "databricks",
   GCP = "gcp",
@@ -11,6 +12,7 @@ export enum AppConnection {
   Vercel = "vercel",
   Postgres = "postgres",
   MsSql = "mssql",
+  MySql = "mysql",
   Camunda = "camunda",
   Windmill = "windmill",
   Auth0 = "auth0",

@@ -34,6 +34,10 @@ import {
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import {
+  GitHubRadarConnectionListItemSchema,
+  SanitizedGitHubRadarConnectionSchema
+} from "@app/services/app-connection/github-radar";
+import {
   HCVaultConnectionListItemSchema,
   SanitizedHCVaultConnectionSchema
 } from "@app/services/app-connection/hc-vault";
@@ -43,6 +47,7 @@ import {
 } from "@app/services/app-connection/humanitec";
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
+import { MySqlConnectionListItemSchema, SanitizedMySqlConnectionSchema } from "@app/services/app-connection/mysql";
 import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
@@ -66,6 +71,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAwsConnectionSchema.options,
   ...SanitizedGitHubConnectionSchema.options,
+  ...SanitizedGitHubRadarConnectionSchema.options,
   ...SanitizedGcpConnectionSchema.options,
   ...SanitizedAzureKeyVaultConnectionSchema.options,
   ...SanitizedAzureAppConfigurationConnectionSchema.options,
@@ -75,6 +81,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedVercelConnectionSchema.options,
   ...SanitizedPostgresConnectionSchema.options,
   ...SanitizedMsSqlConnectionSchema.options,
+  ...SanitizedMySqlConnectionSchema.options,
   ...SanitizedCamundaConnectionSchema.options,
   ...SanitizedAuth0ConnectionSchema.options,
   ...SanitizedHCVaultConnectionSchema.options,
@@ -89,6 +96,7 @@ const SanitizedAppConnectionSchema = z.union([
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AwsConnectionListItemSchema,
   GitHubConnectionListItemSchema,
+  GitHubRadarConnectionListItemSchema,
   GcpConnectionListItemSchema,
   AzureKeyVaultConnectionListItemSchema,
   AzureAppConfigurationConnectionListItemSchema,
@@ -98,6 +106,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   VercelConnectionListItemSchema,
   PostgresConnectionListItemSchema,
   MsSqlConnectionListItemSchema,
+  MySqlConnectionListItemSchema,
   CamundaConnectionListItemSchema,
   Auth0ConnectionListItemSchema,
   HCVaultConnectionListItemSchema,

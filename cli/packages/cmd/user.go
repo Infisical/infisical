@@ -111,8 +111,9 @@ var userGetTokenCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
+
 		if err != nil {
 			util.HandleError(err, "[infisical user get token]: Unable to get logged in user token")
 		}

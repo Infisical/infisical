@@ -17,6 +17,11 @@ export type TGitHubConnectionOption = TAppConnectionOptionBase & {
   appClientSlug?: string;
 };
 
+export type TGitHubRadarConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.GitHubRadar;
+  appClientSlug?: string;
+};
+
 export type TGcpConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.GCP;
 };
@@ -58,6 +63,10 @@ export type TPostgresConnectionOption = TAppConnectionOptionBase & {
 
 export type TMsSqlConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.MsSql;
+};
+
+export type TMySqlConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.MySql;
 };
 
 export type TCamundaConnectionOption = TAppConnectionOptionBase & {
@@ -105,6 +114,7 @@ export type TAppConnectionOption =
   | TVercelConnectionOption
   | TPostgresConnectionOption
   | TMsSqlConnectionOption
+  | TMySqlConnectionOption
   | TCamundaConnectionOption
   | TWindmillConnectionOption
   | TAuth0ConnectionOption
@@ -116,6 +126,7 @@ export type TAppConnectionOption =
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
   [AppConnection.GitHub]: TGitHubConnectionOption;
+  [AppConnection.GitHubRadar]: TGitHubRadarConnectionOption;
   [AppConnection.GCP]: TGcpConnectionOption;
   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnectionOption;
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnectionOption;
@@ -126,6 +137,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Vercel]: TVercelConnectionOption;
   [AppConnection.Postgres]: TPostgresConnectionOption;
   [AppConnection.MsSql]: TMsSqlConnectionOption;
+  [AppConnection.MySql]: TMySqlConnectionOption;
   [AppConnection.Camunda]: TCamundaConnectionOption;
   [AppConnection.Windmill]: TWindmillConnectionOption;
   [AppConnection.Auth0]: TAuth0ConnectionOption;

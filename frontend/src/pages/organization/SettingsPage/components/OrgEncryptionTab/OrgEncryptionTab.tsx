@@ -136,7 +136,7 @@ export const OrgEncryptionTab = withPermission(
         />
         <DeleteActionModal
           isOpen={popUp.removeExternalKms.isOpen}
-          title={`Are you sure want to remove ${
+          title={`Are you sure you want to remove ${
             (popUp?.removeExternalKms?.data as { slug: string })?.slug || ""
           } from ${(popUp?.removeExternalKms?.data as { provider: string })?.provider || ""}?`}
           onChange={(isOpen) => handlePopUpToggle("removeExternalKms", isOpen)}

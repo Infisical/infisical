@@ -117,6 +117,7 @@ export const OCIVaultSyncFns = {
   syncSecrets: async (secretSync: TOCIVaultSyncWithCredentials, secretMap: TSecretMap) => {
     const {
       connection,
+      environment,
       destinationConfig: { compartmentOcid, vaultOcid, keyOcid }
     } = secretSync;
 
@@ -213,7 +214,7 @@ export const OCIVaultSyncFns = {
     // Update and delete secrets
     for await (const [key, variable] of Object.entries(variables)) {
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(key, secretSync.syncOptions.keySchema)) continue;
+      if (!matchesSchema(key, environment?.slug || "", secretSync.syncOptions.keySchema)) continue;
 
       // Only update / delete active secrets
       if (variable.lifecycleState === vault.models.SecretSummary.LifecycleState.Active) {

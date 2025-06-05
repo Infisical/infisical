@@ -843,7 +843,8 @@ export const useAddIdentityKubernetesAuth = () => {
       accessTokenMaxTTL,
       accessTokenNumUsesLimit,
       accessTokenTrustedIps,
-      gatewayId
+      gatewayId,
+      tokenReviewMode
     }) => {
       const {
         data: { identityKubernetesAuth }
@@ -860,7 +861,8 @@ export const useAddIdentityKubernetesAuth = () => {
           accessTokenMaxTTL,
           accessTokenNumUsesLimit,
           accessTokenTrustedIps,
-          gatewayId
+          gatewayId,
+          tokenReviewMode
         }
       );
 
@@ -950,7 +952,8 @@ export const useUpdateIdentityKubernetesAuth = () => {
       accessTokenMaxTTL,
       accessTokenNumUsesLimit,
       accessTokenTrustedIps,
-      gatewayId
+      gatewayId,
+      tokenReviewMode
     }) => {
       const {
         data: { identityKubernetesAuth }
@@ -967,7 +970,8 @@ export const useUpdateIdentityKubernetesAuth = () => {
           accessTokenMaxTTL,
           accessTokenNumUsesLimit,
           accessTokenTrustedIps,
-          gatewayId
+          gatewayId,
+          tokenReviewMode
         }
       );
 

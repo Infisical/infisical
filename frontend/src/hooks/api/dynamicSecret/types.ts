@@ -13,6 +13,7 @@ export type TDynamicSecret = {
   status?: DynamicSecretStatus;
   statusDetails?: string;
   maxTTL: string;
+  usernameTemplate?: string | null;
   metadata?: { key: string; value: string }[];
 };
 
@@ -32,7 +33,8 @@ export enum DynamicSecretProviders {
   Snowflake = "snowflake",
   Totp = "totp",
   SapAse = "sap-ase",
-  Kubernetes = "kubernetes"
+  Kubernetes = "kubernetes",
+  Vertica = "vertica"
 }
 
 export enum SqlProviders {
@@ -276,6 +278,18 @@ export type TDynamicSecretProvider =
         sslEnabled: boolean;
         audiences: string[];
       };
+    }
+  | {
+      type: DynamicSecretProviders.Vertica;
+      inputs: {
+        host: string;
+        port: number;
+        database: string;
+        username: string;
+        password: string;
+        creationStatement: string;
+        revocationStatement: string;
+      };
     };
 
 export type TCreateDynamicSecretDTO = {
@@ -287,6 +301,7 @@ export type TCreateDynamicSecretDTO = {
   environmentSlug: string;
   name: string;
   metadata?: { key: string; value: string }[];
+  usernameTemplate?: string;
 };
 
 export type TUpdateDynamicSecretDTO = {
@@ -300,6 +315,7 @@ export type TUpdateDynamicSecretDTO = {
     defaultTTL?: string;
     maxTTL?: string | null;
     inputs?: unknown;
+    usernameTemplate?: string | null;
   };
 };
 

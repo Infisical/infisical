@@ -4,6 +4,7 @@ import { twMerge } from "tailwind-merge";
 interface IProps {
   children: React.ReactNode;
   className?: string;
+  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
 const badgeVariants = cva(
@@ -23,9 +24,12 @@ const badgeVariants = cva(
 
 export type BadgeProps = VariantProps<typeof badgeVariants> & IProps;
 
-export const Badge = ({ children, className, variant }: BadgeProps) => {
+export const Badge = ({ children, className, variant, ...props }: BadgeProps) => {
   return (
-    <div className={twMerge(badgeVariants({ variant: variant || "primary" }), className)}>
+    <div
+      className={twMerge(badgeVariants({ variant: variant || "primary" }), className)}
+      {...props}
+    >
       {children}
     </div>
   );

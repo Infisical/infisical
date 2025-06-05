@@ -11,6 +11,8 @@ export const verifyHostInputValidity = async (host: string, isGateway = false) =
 
   if (appCfg.isDevelopmentMode) return [host];
 
+  if (isGateway) return [host];
+
   const reservedHosts = [appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI)].concat(
     (appCfg.DB_READ_REPLICAS || []).map((el) => getDbConnectionHost(el.DB_CONNECTION_URI)),
     getDbConnectionHost(appCfg.REDIS_URL),
@@ -58,7 +60,7 @@ export const verifyHostInputValidity = async (host: string, isGateway = false) =
     }
   }
 
-  if (!isGateway && !(appCfg.DYNAMIC_SECRET_ALLOW_INTERNAL_IP || appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)) {
+  if (!(appCfg.DYNAMIC_SECRET_ALLOW_INTERNAL_IP || appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)) {
     const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));
     if (isInternalIp) throw new BadRequestError({ message: "Invalid db host" });
   }

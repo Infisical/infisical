@@ -48,7 +48,7 @@ export const DeleteAccountSection = () => {
       </Button>
       <DeleteActionModal
         isOpen={popUp.deleteAccount.isOpen}
-        title="Are you sure want to delete your account?"
+        title="Are you sure you want to delete your account?"
         subTitle="Permanently remove this account and all of its data. This action is not reversible, so please be careful."
         onChange={(isOpen) => handlePopUpToggle("deleteAccount", isOpen)}
         deleteKey="confirm"
