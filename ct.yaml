@@ -10,3 +10,5 @@ kube-versions:
   - v1.33.0
 
 validate-maintainers: false
+
+kubectl-timeout: 300s
