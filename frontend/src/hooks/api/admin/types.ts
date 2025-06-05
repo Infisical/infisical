@@ -1,3 +1,5 @@
+import { Organization } from "../types";
+
 export enum LoginMethod {
   EMAIL = "email",
   GOOGLE = "google",
@@ -7,6 +9,27 @@ export enum LoginMethod {
   LDAP = "ldap",
   OIDC = "oidc"
 }
+
+export type OrganizationWithProjects = Organization & {
+  members: {
+    user: {
+      id: string;
+      email: string | null;
+      username: string;
+      firstName: string | null;
+      lastName: string | null;
+    };
+    membershipId: string;
+    role: string;
+    roleId: string | null;
+  }[];
+  projects: {
+    name: string;
+    id: string;
+    slug: string;
+    createdAt: string;
+  }[];
+};
 
 export type TServerConfig = {
   initialized: boolean;
@@ -49,6 +72,11 @@ export type TCreateAdminUserDTO = {
   publicKey: string;
   verifier: string;
   salt: string;
+};
+
+export type AdminGetOrganizationsFilters = {
+  limit: number;
+  searchTerm: string;
 };
 
 export type AdminGetUsersFilters = {

@@ -7,6 +7,11 @@ export enum OrgPermissionActions {
   Delete = "delete"
 }
 
+export enum OrgPermissionBillingActions {
+  Read = "read",
+  ManageBilling = "manage-billing"
+}
+
 export enum OrgGatewayPermissionActions {
   // is there a better word for this. This mean can an identity be a gateway
   CreateGateways = "create-gateways",
@@ -100,7 +105,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Ldap]
   | [OrgPermissionGroupActions, OrgPermissionSubjects.Groups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
-  | [OrgPermissionActions, OrgPermissionSubjects.Billing]
+  | [OrgPermissionBillingActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole]
   | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]

@@ -1,16 +1,2 @@
-export {
-  useAdminDeleteUser,
-  useAdminGrantServerAdminAccess,
-  useAdminRemoveIdentitySuperAdminAccess,
-  useCreateAdminUser,
-  useInvalidateCache,
-  useRemoveUserServerAdminAccess,
-  useUpdateServerConfig,
-  useUpdateServerEncryptionStrategy
-} from "./mutation";
-export {
-  useAdminGetUsers,
-  useGetAdminIntegrationsConfig,
-  useGetServerConfig,
-  useGetServerRootKmsEncryptionDetails
-} from "./queries";
+export * from "./mutation";
+export * from "./queries";

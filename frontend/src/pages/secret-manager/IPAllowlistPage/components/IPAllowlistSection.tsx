@@ -91,7 +91,7 @@ export const IPAllowlistSection = () => {
       />
       <DeleteActionModal
         isOpen={popUp.deleteTrustedIp.isOpen}
-        title={`Are you sure want to delete ${
+        title={`Are you sure you want to delete ${
           (popUp?.deleteTrustedIp?.data as { name: string })?.name || " "
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteTrustedIp", isOpen)}

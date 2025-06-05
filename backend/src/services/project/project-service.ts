@@ -17,6 +17,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionPkiSubscriberActions,
+  ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
@@ -29,7 +30,7 @@ import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-
 import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
 import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { TSshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -258,16 +259,17 @@ export const projectServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
 
-    const plan = await licenseService.getPlan(organization.id);
-    if (plan.workspaceLimit !== null && plan.workspacesUsed >= plan.workspaceLimit) {
-      // case: limit imposed on number of workspaces allowed
-      // case: number of workspaces used exceeds the number of workspaces allowed
-      throw new BadRequestError({
-        message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
-      });
-    }
-
     const results = await (trx || projectDAL).transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
+
+      const plan = await licenseService.getPlan(organization.id);
+      if (plan.workspaceLimit !== null && plan.workspacesUsed >= plan.workspaceLimit) {
+        // case: limit imposed on number of workspaces allowed
+        // case: number of workspaces used exceeds the number of workspaces allowed
+        throw new BadRequestError({
+          message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
+        });
+      }
       const ghostUser = await orgService.addGhostUser(organization.id, tx);
 
       if (kmsKeyId) {
@@ -572,12 +574,16 @@ export const projectServiceFactory = ({
 
   const getProjects = async ({
     actorId,
+    actor,
     includeRoles,
     actorAuthMethod,
     actorOrgId,
     type = ProjectType.SecretManager
   }: TListProjectsDTO) => {
-    const workspaces = await projectDAL.findUserProjects(actorId, actorOrgId, type);
+    const workspaces =
+      actor === ActorType.IDENTITY
+        ? await projectDAL.findIdentityProjects(actorId, actorOrgId, type)
+        : await projectDAL.findUserProjects(actorId, actorOrgId, type);
 
     if (includeRoles) {
       const { permission } = await permissionService.getUserOrgPermission(
@@ -1131,15 +1137,15 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.CertificateTemplates
-    );
-
     const certificateTemplates = await certificateTemplateDAL.getCertTemplatesByProjectId(projectId);
 
     return {
-      certificateTemplates
+      certificateTemplates: certificateTemplates.filter((el) =>
+        permission.can(
+          ProjectPermissionPkiTemplateActions.Read,
+          subject(ProjectPermissionSub.CertificateTemplates, { name: el.name })
+        )
+      )
     };
   };
 

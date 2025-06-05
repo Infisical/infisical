@@ -8,3 +8,10 @@ export const accessApprovalPolicyApproverDALFactory = (db: TDbClient) => {
   const accessApprovalPolicyApproverOrm = ormify(db, TableName.AccessApprovalPolicyApprover);
   return { ...accessApprovalPolicyApproverOrm };
 };
+
+export type TAccessApprovalPolicyBypasserDALFactory = ReturnType<typeof accessApprovalPolicyBypasserDALFactory>;
+
+export const accessApprovalPolicyBypasserDALFactory = (db: TDbClient) => {
+  const accessApprovalPolicyBypasserOrm = ormify(db, TableName.AccessApprovalPolicyBypasser);
+  return { ...accessApprovalPolicyBypasserOrm };
+};

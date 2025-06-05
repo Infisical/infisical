@@ -8,9 +8,12 @@ import { certTemplateKeys } from "./queries";
 import {
   TCertificateTemplate,
   TCreateCertificateTemplateDTO,
+  TCreateCertificateTemplateV2DTO,
   TCreateEstConfigDTO,
   TDeleteCertificateTemplateDTO,
+  TDeleteCertificateTemplateV2DTO,
   TUpdateCertificateTemplateDTO,
+  TUpdateCertificateTemplateV2DTO,
   TUpdateEstConfigDTO
 } from "./types";
 
@@ -69,6 +72,58 @@ export const useDeleteCertTemplate = () => {
       });
       queryClient.invalidateQueries({ queryKey: certTemplateKeys.getCertTemplateById(id) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCertTemplates(caId) });
+    }
+  });
+};
+
+export const useCreateCertTemplateV2 = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TCertificateTemplate, object, TCreateCertificateTemplateV2DTO>({
+    mutationFn: async (dto) => {
+      const { data } = await apiRequest.post<{
+        certificateTemplate: TCertificateTemplate;
+      }>("/api/v2/pki/certificate-templates", dto);
+      return data.certificateTemplate;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: certTemplateKeys.listTemplates({ projectId }) });
+    }
+  });
+};
+
+export const useUpdateCertTemplateV2 = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TCertificateTemplate, object, TUpdateCertificateTemplateV2DTO>({
+    mutationFn: async (dto) => {
+      const { data } = await apiRequest.patch<{ certificateTemplate: TCertificateTemplate }>(
+        `/api/v2/pki/certificate-templates/${dto.templateName}`,
+        dto
+      );
+
+      return data.certificateTemplate;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: certTemplateKeys.listTemplates({ projectId }) });
+    }
+  });
+};
+
+export const useDeleteCertTemplateV2 = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TCertificateTemplate, object, TDeleteCertificateTemplateV2DTO>({
+    mutationFn: async (dto) => {
+      const { data } = await apiRequest.delete<{ certificateTemplate: TCertificateTemplate }>(
+        `/api/v2/pki/certificate-templates/${dto.templateName}`,
+        {
+          data: {
+            projectId: dto.projectId
+          }
+        }
+      );
+      return data.certificateTemplate;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: certTemplateKeys.listTemplates({ projectId }) });
     }
   });
 };

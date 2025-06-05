@@ -2,7 +2,6 @@ export { useProjectPermission } from "./ProjectPermissionContext";
 export type { ProjectPermissionSet, TProjectPermission } from "./types";
 export {
   ProjectPermissionActions,
-  ProjectPermissionApprovalActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCmekActions,
   ProjectPermissionDynamicSecretActions,
@@ -11,6 +10,7 @@ export {
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
+  ProjectPermissionPkiTemplateActions,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "./types";

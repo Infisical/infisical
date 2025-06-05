@@ -1,11 +1,15 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
 import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { faEye, faTrashCan } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowRotateLeft,
   faCaretDown,
   faCheck,
   faClock,
   faLockOpen,
+  faPencil,
+  faPlus,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -205,7 +209,7 @@ export const SpecificPrivilegeSecretForm = ({
     if (!data.secretPath) {
       createNotification({
         type: "error",
-        text: "Please select a secret path",
+        text: "Please select a secret path...",
         title: "Error"
       });
       return;
@@ -264,18 +268,18 @@ export const SpecificPrivilegeSecretForm = ({
   };
 
   return (
-    <div className="mt-4 w-full">
+    <div className="w-full">
       <form onSubmit={privilegeForm.handleSubmit(handleSubmit)}>
-        <div className={twMerge("flex items-start gap-4", !privilege && "flex-wrap")}>
+        <div className={twMerge("flex items-start", !privilege && "flex-col")}>
           <Controller
             control={privilegeForm.control}
             name="environmentSlug"
             render={({ field: { onChange, ...field } }) => (
-              <FormControl label="Environment">
+              <FormControl label="Environment" className="w-full">
                 <Select
                   {...field}
                   isDisabled={isMemberEditDisabled}
-                  className="bg-mineshaft-600 hover:bg-mineshaft-500"
+                  className="w-full bg-mineshaft-900 hover:bg-mineshaft-800"
                   onValueChange={(e) => onChange(e)}
                 >
                   {currentWorkspace?.environments?.map(({ slug, id, name }) => (
@@ -297,12 +301,13 @@ export const SpecificPrivilegeSecretForm = ({
                     isDisabled={!!selectablePaths.length}
                     content="The selected environment doesn't have any policies."
                   >
-                    <div>
+                    <div className="w-full">
                       <FormControl label="Secret Path">
                         <Select
                           {...field}
                           isDisabled={isMemberEditDisabled || !selectablePaths.length}
-                          className="w-48"
+                          className="w-full hover:bg-mineshaft-800"
+                          placeholder="Select a secret path"
                           onValueChange={(e) => field.onChange(e)}
                         >
                           {selectablePaths.map((path) => (
@@ -328,222 +333,287 @@ export const SpecificPrivilegeSecretForm = ({
               );
             }}
           />
-          <div className="flex flex-grow justify-between">
-            <Controller
-              control={privilegeForm.control}
-              name="read"
-              render={({ field }) => (
-                <div className="flex flex-col items-center">
-                  <FormLabel label="View" className="mb-4" />
-                  <Checkbox
-                    isDisabled={isMemberEditDisabled}
-                    id="secret-read"
-                    className="h-5 w-5"
-                    isChecked={field.value}
-                    onCheckedChange={(isChecked) => field.onChange(isChecked)}
-                  />
-                </div>
-              )}
-            />
-            <Controller
-              control={privilegeForm.control}
-              name="create"
-              render={({ field }) => (
-                <div className="flex flex-col items-center">
-                  <FormLabel label="Create" className="mb-4" />
-                  <Checkbox
-                    isDisabled={isMemberEditDisabled}
-                    id="secret-create"
-                    className="h-5 w-5"
-                    isChecked={field.value}
-                    onCheckedChange={(isChecked) => field.onChange(isChecked)}
-                  />
-                </div>
-              )}
-            />
-            <Controller
-              control={privilegeForm.control}
-              name="edit"
-              render={({ field }) => (
-                <div className="flex flex-col items-center">
-                  <FormLabel label="Modify" className="mb-4" />
-                  <Checkbox
-                    isDisabled={isMemberEditDisabled}
-                    id="secret-modify"
-                    className="h-5 w-5"
-                    isChecked={field.value}
-                    onCheckedChange={(isChecked) => field.onChange(isChecked)}
-                  />
-                </div>
-              )}
-            />
-            <Controller
-              control={privilegeForm.control}
-              name="delete"
-              render={({ field }) => (
-                <div className="flex flex-col items-center">
-                  <FormLabel label="Delete" className="mb-4" />
-                  <Checkbox
-                    isDisabled={isMemberEditDisabled}
-                    id="secret-delete"
-                    className="h-5 w-5"
-                    isChecked={field.value}
-                    onCheckedChange={(isChecked) => field.onChange(isChecked)}
-                  />
-                </div>
-              )}
-            />
-          </div>
-          <div className="mt-6 flex items-center space-x-2">
-            <Popover>
-              <PopoverTrigger disabled={isMemberEditDisabled}>
-                <div>
-                  <Tooltip content={getAccessLabel(true)}>
-                    <Button
-                      variant="outline_bg"
-                      leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
-                      rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
-                      isDisabled={isMemberEditDisabled}
-                      className={twMerge(
-                        "border-none bg-mineshaft-600 py-2.5 text-xs capitalize hover:bg-mineshaft-500",
-                        isTemporary && "text-primary",
-                        isExpired && "text-red-600"
-                      )}
+          <FormControl label="Permissions" className="w-full">
+            <div className="flex w-full flex-col justify-between">
+              <div className="flex w-full flex-row gap-2">
+                <Controller
+                  control={privilegeForm.control}
+                  name="read"
+                  render={({ field }) => (
+                    <label
+                      className={`group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-3 duration-100 hover:border-primary/30 hover:bg-primary/10 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
+                      htmlFor="secret-read"
                     >
-                      {getAccessLabel(false)}
-                    </Button>
-                  </Tooltip>
-                </div>
-              </PopoverTrigger>
-              <PopoverContent
-                arrowClassName="fill-gray-600"
-                side="right"
-                sideOffset={12}
-                hideCloseBtn
-                className="border border-gray-600 pt-4"
-              >
-                <div className="flex flex-col space-y-4">
-                  <div className="border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
-                    Configure timed access
-                  </div>
-                  {isExpired && <Tag colorSchema="red">Expired</Tag>}
-                  <Controller
-                    control={privilegeForm.control}
-                    defaultValue="1h"
-                    name="temporaryAccess.temporaryRange"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label={<TtlFormLabel label="Validity" />}
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
+                      <Checkbox
+                        isDisabled={isMemberEditDisabled}
+                        id="secret-read"
+                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        isChecked={field.value}
+                        onCheckedChange={(isChecked) => field.onChange(isChecked)}
+                      />
+                      <div className="pointer-events-none ml-1 flex select-none flex-col text-mineshaft-300">
+                        <div className="flex flex-row items-center gap-1">
+                          <FontAwesomeIcon
+                            icon={faEye}
+                            className={`text-sm ${field.value ? "text-primary-200" : ""}`}
+                          />
+                          <FormLabel
+                            label="View"
+                            className={`my-0 ml-0.5 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
+                          />
+                        </div>
+                        <p className="text-xs text-mineshaft-400">Read secret values</p>
+                      </div>
+                    </label>
+                  )}
+                />
+                <Controller
+                  control={privilegeForm.control}
+                  name="create"
+                  render={({ field }) => (
+                    <label
+                      className={`group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-3 duration-100 hover:border-primary/30 hover:bg-primary/10 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
+                      htmlFor="secret-change"
+                    >
+                      <Checkbox
+                        isDisabled={isMemberEditDisabled}
+                        id="secret-change"
+                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        isChecked={field.value}
+                        onCheckedChange={(isChecked) => field.onChange(isChecked)}
+                      />
+                      <div className="pointer-events-none ml-1 flex select-none flex-col text-mineshaft-300">
+                        <div className="flex flex-row items-center gap-1">
+                          <FontAwesomeIcon
+                            icon={faPlus}
+                            className={`text-sm ${field.value ? "text-primary-200" : ""}`}
+                          />
+                          <FormLabel
+                            label="Create"
+                            className={`my-0 ml-0.5 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
+                          />
+                        </div>
+                        <p className="text-xs text-mineshaft-400">Create new secrets</p>
+                      </div>
+                    </label>
+                  )}
+                />
+              </div>
+              <div className="flex w-full flex-row gap-2">
+                <Controller
+                  control={privilegeForm.control}
+                  name="edit"
+                  render={({ field }) => (
+                    <label
+                      className={`group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-3 duration-100 hover:border-primary/30 hover:bg-primary/10 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
+                      htmlFor="secret-modify"
+                    >
+                      <Checkbox
+                        isDisabled={isMemberEditDisabled}
+                        id="secret-modify"
+                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        isChecked={field.value}
+                        onCheckedChange={(isChecked) => field.onChange(isChecked)}
+                      />
+                      <div className="pointer-events-none ml-1 flex select-none flex-col text-mineshaft-300">
+                        <div className="flex flex-row items-center gap-1">
+                          <FontAwesomeIcon
+                            icon={faPencil}
+                            className={`text-sm ${field.value ? "text-primary-200" : ""}`}
+                          />
+                          <FormLabel
+                            label="Modify"
+                            className={`my-0 ml-0.5 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
+                          />
+                        </div>
+                        <p className="text-xs text-mineshaft-400">Update existing secrets</p>
+                      </div>
+                    </label>
+                  )}
+                />
+                <Controller
+                  control={privilegeForm.control}
+                  name="delete"
+                  render={({ field }) => (
+                    <label
+                      className={`group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-3 duration-100 hover:border-primary/30 hover:bg-primary/10 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
+                      htmlFor="secret-delete"
+                    >
+                      <Checkbox
+                        isDisabled={isMemberEditDisabled}
+                        id="secret-delete"
+                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        isChecked={field.value}
+                        onCheckedChange={(isChecked) => field.onChange(isChecked)}
+                      />
+                      <div className="pointer-events-none ml-1 flex select-none flex-col text-mineshaft-300">
+                        <div className="flex flex-row items-center gap-1">
+                          <FontAwesomeIcon
+                            icon={faTrashCan}
+                            className={`text-sm ${field.value ? "text-primary-200" : ""}`}
+                          />
+                          <FormLabel
+                            label="Delete"
+                            className={`my-0 ml-0.5 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
+                          />
+                        </div>
+                        <p className="text-xs text-mineshaft-400">Delete existing secrets</p>
+                      </div>
+                    </label>
+                  )}
+                />
+              </div>
+            </div>
+          </FormControl>
+          <FormControl label="Time Period" className="w-full">
+            <div className="mt-1 flex w-full items-center space-x-2">
+              <Popover>
+                <PopoverTrigger disabled={isMemberEditDisabled}>
+                  <div className="w-full">
+                    <Tooltip content={getAccessLabel(true)}>
+                      <Button
+                        variant="outline_bg"
+                        leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
+                        rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-4" />}
+                        isDisabled={isMemberEditDisabled}
+                        className={twMerge(
+                          "w-full border-mineshaft-600 bg-mineshaft-900 py-2.5 text-sm capitalize text-mineshaft-300 hover:border-mineshaft-600 hover:bg-mineshaft-800",
+                          isExpired && "text-red-600"
+                        )}
                       >
-                        <Input {...field} />
-                      </FormControl>
-                    )}
-                  />
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      size="xs"
-                      onClick={() => {
-                        const temporaryRange = privilegeForm.getValues(
-                          "temporaryAccess.temporaryRange"
-                        );
-                        if (!temporaryRange) {
-                          privilegeForm.setError(
-                            "temporaryAccess.temporaryRange",
-                            { type: "required", message: "Required" },
-                            { shouldFocus: true }
-                          );
-                          return;
-                        }
-                        privilegeForm.clearErrors("temporaryAccess.temporaryRange");
-                        privilegeForm.setValue(
-                          "temporaryAccess",
-                          {
-                            isTemporary: true,
-                            temporaryAccessStartTime: new Date().toISOString(),
-                            temporaryRange,
-                            temporaryAccessEndTime: new Date(
-                              new Date().getTime() + ms(temporaryRange)
-                            ).toISOString()
-                          },
-                          { shouldDirty: true }
-                        );
-                      }}
-                    >
-                      {temporaryAccessField.isTemporary && !policies ? "Restart" : "Grant"}
-                    </Button>
-
-                    {temporaryAccessField.isTemporary && (
+                        {getAccessLabel(false)}
+                      </Button>
+                    </Tooltip>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent
+                  arrowClassName="fill-mineshaft-600"
+                  side="right"
+                  sideOffset={12}
+                  hideCloseBtn
+                  className="border border-mineshaft-600 bg-mineshaft-800 pt-4"
+                >
+                  <div className="flex flex-col space-y-4">
+                    <div className="text-sm text-mineshaft-300">Configure timed access</div>
+                    {isExpired && <Tag colorSchema="red">Expired</Tag>}
+                    <Controller
+                      control={privilegeForm.control}
+                      defaultValue="1h"
+                      name="temporaryAccess.temporaryRange"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label={<TtlFormLabel label="Validity" />}
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                        >
+                          <Input {...field} />
+                        </FormControl>
+                      )}
+                    />
+                    <div className="flex items-center space-x-2">
                       <Button
                         size="xs"
-                        variant="outline_bg"
-                        colorSchema="danger"
                         onClick={() => {
-                          privilegeForm.setValue("temporaryAccess", {
-                            isTemporary: false
-                          });
+                          const temporaryRange = privilegeForm.getValues(
+                            "temporaryAccess.temporaryRange"
+                          );
+                          if (!temporaryRange) {
+                            privilegeForm.setError(
+                              "temporaryAccess.temporaryRange",
+                              { type: "required", message: "Required" },
+                              { shouldFocus: true }
+                            );
+                            return;
+                          }
+                          privilegeForm.clearErrors("temporaryAccess.temporaryRange");
+                          privilegeForm.setValue(
+                            "temporaryAccess",
+                            {
+                              isTemporary: true,
+                              temporaryAccessStartTime: new Date().toISOString(),
+                              temporaryRange,
+                              temporaryAccessEndTime: new Date(
+                                new Date().getTime() + ms(temporaryRange)
+                              ).toISOString()
+                            },
+                            { shouldDirty: true }
+                          );
                         }}
                       >
-                        Cancel
+                        {temporaryAccessField.isTemporary && !policies ? "Restart" : "Grant"}
                       </Button>
-                    )}
+
+                      {temporaryAccessField.isTemporary && (
+                        <Button
+                          size="xs"
+                          variant="outline_bg"
+                          colorSchema="danger"
+                          onClick={() => {
+                            privilegeForm.setValue("temporaryAccess", {
+                              isTemporary: false
+                            });
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-            {/* eslint-disable-next-line no-nested-ternary */}
-            {privilegeForm.formState.isDirty && privilege ? (
-              <>
-                <Tooltip content="Cancel" className="mr-4">
-                  <IconButton
-                    variant="outline_bg"
-                    className="border border-mineshaft-500 bg-mineshaft-600 py-2.5 hover:border-red/70 hover:bg-red/20"
-                    ariaLabel="delete-privilege"
-                    isDisabled={privilegeForm.formState.isSubmitting}
-                    onClick={() => privilegeForm.reset()}
+                </PopoverContent>
+              </Popover>
+              {/* eslint-disable-next-line no-nested-ternary */}
+              {privilegeForm.formState.isDirty && privilege ? (
+                <>
+                  <Tooltip content="Cancel" className="mr-4">
+                    <IconButton
+                      variant="outline_bg"
+                      className="border border-mineshaft-500 bg-mineshaft-600 py-2.5 hover:border-red/70 hover:bg-red/20"
+                      ariaLabel="delete-privilege"
+                      isDisabled={privilegeForm.formState.isSubmitting}
+                      onClick={() => privilegeForm.reset()}
+                    >
+                      <FontAwesomeIcon icon={faArrowRotateLeft} className="py-0.5" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip
+                    content={isMemberEditDisabled ? "Access restricted" : "Save"}
+                    className="mr-4"
                   >
-                    <FontAwesomeIcon icon={faArrowRotateLeft} className="py-0.5" />
-                  </IconButton>
-                </Tooltip>
+                    <IconButton
+                      isDisabled={isMemberEditDisabled}
+                      className="border-none py-3"
+                      ariaLabel="save-privilege"
+                      type="submit"
+                    >
+                      {privilegeForm.formState.isSubmitting ? (
+                        <Spinner size="xs" className="m-0 h-3 w-3 text-slate-500" />
+                      ) : (
+                        <FontAwesomeIcon icon={faCheck} className="px-0.5" />
+                      )}
+                    </IconButton>
+                  </Tooltip>
+                </>
+              ) : // eslint-disable-next-line no-nested-ternary
+              privilege ? (
                 <Tooltip
-                  content={isMemberEditDisabled ? "Access restricted" : "Save"}
+                  content={isMemberEditDisabled ? "Access restricted" : "Delete"}
                   className="mr-4"
                 >
                   <IconButton
                     isDisabled={isMemberEditDisabled}
-                    className="border-none py-3"
-                    ariaLabel="save-privilege"
-                    type="submit"
+                    variant="outline_bg"
+                    className="border border-mineshaft-500 bg-mineshaft-600 py-3 hover:border-red/70 hover:bg-red/20"
+                    ariaLabel="delete-privilege"
+                    onClick={() => handlePopUpOpen("deletePrivilege")}
                   >
-                    {privilegeForm.formState.isSubmitting ? (
-                      <Spinner size="xs" className="m-0 h-3 w-3 text-slate-500" />
-                    ) : (
-                      <FontAwesomeIcon icon={faCheck} className="px-0.5" />
-                    )}
+                    <FontAwesomeIcon icon={faTrash} />
                   </IconButton>
                 </Tooltip>
-              </>
-            ) : // eslint-disable-next-line no-nested-ternary
-            privilege ? (
-              <Tooltip
-                content={isMemberEditDisabled ? "Access restricted" : "Delete"}
-                className="mr-4"
-              >
-                <IconButton
-                  isDisabled={isMemberEditDisabled}
-                  variant="outline_bg"
-                  className="border border-mineshaft-500 bg-mineshaft-600 py-3 hover:border-red/70 hover:bg-red/20"
-                  ariaLabel="delete-privilege"
-                  onClick={() => handlePopUpOpen("deletePrivilege")}
-                >
-                  <FontAwesomeIcon icon={faTrash} />
-                </IconButton>
-              </Tooltip>
-            ) : (
-              <div />
-            )}
-          </div>
+              ) : (
+                <div />
+              )}
+            </div>
+          </FormControl>
         </div>
         <div className="mb-4 flex w-full">
           <Controller
@@ -552,7 +622,13 @@ export const SpecificPrivilegeSecretForm = ({
             render={({ field }) => (
               <div className="w-full">
                 <FormLabel label="Note" className="mb-2" />
-                <Input {...field} isDisabled={isMemberEditDisabled} maxLength={255} />
+                <Input
+                  {...field}
+                  isDisabled={isMemberEditDisabled}
+                  maxLength={255}
+                  placeholder="Add the reason for this access request..."
+                  className="text-mineshaft-300"
+                />
               </div>
             )}
           />

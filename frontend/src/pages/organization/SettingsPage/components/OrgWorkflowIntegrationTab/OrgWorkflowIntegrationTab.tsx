@@ -305,7 +305,7 @@ export const OrgWorkflowIntegrationTab = withPermission(
         />
         <DeleteActionModal
           isOpen={popUp.removeIntegration.isOpen}
-          title={`Are you sure want to remove ${popUp?.removeIntegration?.data?.slug}?`}
+          title={`Are you sure you want to remove ${popUp?.removeIntegration?.data?.slug}?`}
           onChange={(isOpen) => handlePopUpToggle("removeIntegration", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={handleRemoveIntegration}

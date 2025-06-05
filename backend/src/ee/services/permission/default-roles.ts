@@ -2,7 +2,6 @@ import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability"
 
 import {
   ProjectPermissionActions,
-  ProjectPermissionApprovalActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCmekActions,
   ProjectPermissionCommitsActions,
@@ -12,8 +11,12 @@ import {
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
+  ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
+  ProjectPermissionSecretScanningConfigActions,
+  ProjectPermissionSecretScanningDataSourceActions,
+  ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSet,
   ProjectPermissionSshHostActions,
@@ -37,7 +40,6 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.AuditLogs,
     ProjectPermissionSub.IpAllowList,
     ProjectPermissionSub.CertificateAuthorities,
-    ProjectPermissionSub.CertificateTemplates,
     ProjectPermissionSub.PkiAlerts,
     ProjectPermissionSub.PkiCollections,
     ProjectPermissionSub.SshCertificateAuthorities,
@@ -58,12 +60,22 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionApprovalActions.Read,
-      ProjectPermissionApprovalActions.Edit,
-      ProjectPermissionApprovalActions.Create,
-      ProjectPermissionApprovalActions.Delete,
-      ProjectPermissionApprovalActions.AllowChangeBypass,
-      ProjectPermissionApprovalActions.AllowAccessBypass
+      ProjectPermissionPkiTemplateActions.Read,
+      ProjectPermissionPkiTemplateActions.Edit,
+      ProjectPermissionPkiTemplateActions.Create,
+      ProjectPermissionPkiTemplateActions.Delete,
+      ProjectPermissionPkiTemplateActions.IssueCert,
+      ProjectPermissionPkiTemplateActions.ListCerts
+    ],
+    ProjectPermissionSub.CertificateTemplates
+  );
+
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
     ],
     ProjectPermissionSub.SecretApproval
   );
@@ -145,6 +157,7 @@ const buildAdminPermissionRules = () => {
   can(
     [
       ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.DescribeAndReadValue,
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Create,
       ProjectPermissionSecretActions.Edit,
@@ -216,6 +229,29 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SecretRotation
   );
 
+  can(
+    [
+      ProjectPermissionSecretScanningDataSourceActions.Create,
+      ProjectPermissionSecretScanningDataSourceActions.Edit,
+      ProjectPermissionSecretScanningDataSourceActions.Delete,
+      ProjectPermissionSecretScanningDataSourceActions.Read,
+      ProjectPermissionSecretScanningDataSourceActions.TriggerScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadResources
+    ],
+    ProjectPermissionSub.SecretScanningDataSources
+  );
+
+  can(
+    [ProjectPermissionSecretScanningFindingActions.Read, ProjectPermissionSecretScanningFindingActions.Update],
+    ProjectPermissionSub.SecretScanningFindings
+  );
+
+  can(
+    [ProjectPermissionSecretScanningConfigActions.Read, ProjectPermissionSecretScanningConfigActions.Update],
+    ProjectPermissionSub.SecretScanningConfigs
+  );
+
   return rules;
 };
 
@@ -225,6 +261,7 @@ const buildMemberPermissionRules = () => {
   can(
     [
       ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.DescribeAndReadValue,
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Edit,
       ProjectPermissionSecretActions.Create,
@@ -266,7 +303,7 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.Commits
   );
 
-  can([ProjectPermissionApprovalActions.Read], ProjectPermissionSub.SecretApproval);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.SecretApproval);
   can([ProjectPermissionSecretRotationActions.Read], ProjectPermissionSub.SecretRotation);
 
   can([ProjectPermissionActions.Read, ProjectPermissionActions.Create], ProjectPermissionSub.SecretRollback);
@@ -362,7 +399,7 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.Certificates
   );
 
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.CertificateTemplates);
+  can([ProjectPermissionPkiTemplateActions.Read], ProjectPermissionSub.CertificateTemplates);
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiAlerts);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiCollections);
@@ -401,6 +438,23 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.SecretSyncs
   );
 
+  can(
+    [
+      ProjectPermissionSecretScanningDataSourceActions.Read,
+      ProjectPermissionSecretScanningDataSourceActions.TriggerScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadResources
+    ],
+    ProjectPermissionSub.SecretScanningDataSources
+  );
+
+  can(
+    [ProjectPermissionSecretScanningFindingActions.Read, ProjectPermissionSecretScanningFindingActions.Update],
+    ProjectPermissionSub.SecretScanningFindings
+  );
+
+  can([ProjectPermissionSecretScanningConfigActions.Read], ProjectPermissionSub.SecretScanningConfigs);
+
   return rules;
 };
 
@@ -414,7 +468,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
   can(ProjectPermissionDynamicSecretActions.ReadRootCredential, ProjectPermissionSub.DynamicSecrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
-  can(ProjectPermissionApprovalActions.Read, ProjectPermissionSub.SecretApproval);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionSecretRotationActions.Read, ProjectPermissionSub.SecretRotation);
   can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
@@ -431,11 +485,25 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
   can(ProjectPermissionCertificateActions.Read, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionPkiTemplateActions.Read, ProjectPermissionSub.CertificateTemplates);
   can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
   can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
   can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
+
+  can(
+    [
+      ProjectPermissionSecretScanningDataSourceActions.Read,
+      ProjectPermissionSecretScanningDataSourceActions.ReadScans,
+      ProjectPermissionSecretScanningDataSourceActions.ReadResources
+    ],
+    ProjectPermissionSub.SecretScanningDataSources
+  );
+
+  can([ProjectPermissionSecretScanningFindingActions.Read], ProjectPermissionSub.SecretScanningFindings);
+
+  can([ProjectPermissionSecretScanningConfigActions.Read], ProjectPermissionSub.SecretScanningConfigs);
 
   return rules;
 };

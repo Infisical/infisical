@@ -23,7 +23,6 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CaInstallCertModal } from "../CertificateAuthoritiesPage/components/CaInstallCertModal";
 import { CaModal } from "../CertificateAuthoritiesPage/components/CaModal";
-import { CertificateTemplatesSection } from "../CertificatesPage/components/CertificateTemplatesSection";
 import {
   CaCertificatesSection,
   CaCrlsSection,
@@ -126,7 +125,6 @@ const Page = () => {
             </div>
             <div className="w-full">
               <CaCertificatesSection caId={data.id} />
-              <CertificateTemplatesSection caId={data.id} />
               <CaCrlsSection caId={data.id} />
             </div>
           </div>
@@ -137,7 +135,7 @@ const Page = () => {
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteCa.isOpen}
-        title={`Are you sure want to remove the CA ${
+        title={`Are you sure you want to remove the CA ${
           (popUp?.deleteCa?.data as { dn: string })?.dn || ""
         } from the project?`}
         subTitle="This action will delete other CAs and certificates below it in your CA hierarchy."

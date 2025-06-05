@@ -9,6 +9,7 @@ import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/per
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 
+import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
 import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import {
@@ -16,6 +17,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "../permission/project-permission";
+import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "./project-user-additional-privilege-dal";
 import {
   ProjectUserAdditionalPrivilegeTemporaryMode,
@@ -30,6 +32,7 @@ type TProjectUserAdditionalPrivilegeServiceFactoryDep = {
   projectUserAdditionalPrivilegeDAL: TProjectUserAdditionalPrivilegeDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update">;
 };
 
 export type TProjectUserAdditionalPrivilegeServiceFactory = ReturnType<
@@ -44,7 +47,8 @@ const unpackPermissions = (permissions: unknown) =>
 export const projectUserAdditionalPrivilegeServiceFactory = ({
   projectUserAdditionalPrivilegeDAL,
   projectMembershipDAL,
-  permissionService
+  permissionService,
+  accessApprovalRequestDAL
 }: TProjectUserAdditionalPrivilegeServiceFactoryDep) => {
   const create = async ({
     slug,
@@ -279,6 +283,15 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
 
+    await accessApprovalRequestDAL.update(
+      {
+        privilegeId: userPrivilege.id
+      },
+      {
+        privilegeDeletedAt: new Date(),
+        status: ApprovalStatus.REJECTED
+      }
+    );
     const deletedPrivilege = await projectUserAdditionalPrivilegeDAL.deleteById(userPrivilege.id);
     return {
       ...deletedPrivilege,

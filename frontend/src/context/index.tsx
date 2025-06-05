@@ -2,6 +2,7 @@ export { useOrganization } from "./OrganizationContext";
 export type { TOrgPermission } from "./OrgPermissionContext";
 export {
   OrgPermissionActions,
+  OrgPermissionBillingActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
   OrgPermissionSubjects,
@@ -10,7 +11,6 @@ export {
 export type { TProjectPermission } from "./ProjectPermissionContext";
 export {
   ProjectPermissionActions,
-  ProjectPermissionApprovalActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCmekActions,
   ProjectPermissionDynamicSecretActions,
@@ -19,6 +19,7 @@ export {
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
+  ProjectPermissionPkiTemplateActions,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub,
   useProjectPermission

@@ -23,7 +23,6 @@ import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-poli
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionApprovalActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "../project-user-additional-privilege/project-user-additional-privilege-types";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
@@ -57,7 +56,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "findOne"
     | "getCount"
   >;
-  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findOne" | "find">;
+  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findOne" | "find" | "findLastValidPolicy">;
   accessApprovalRequestReviewerDAL: Pick<
     TAccessApprovalRequestReviewerDALFactory,
     "create" | "find" | "findOne" | "transaction"
@@ -132,7 +131,7 @@ export const accessApprovalRequestServiceFactory = ({
 
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
 
-    const policy = await accessApprovalPolicyDAL.findOne({
+    const policy = await accessApprovalPolicyDAL.findLastValidPolicy({
       envId: environment.id,
       secretPath
     });
@@ -204,7 +203,7 @@ export const accessApprovalRequestServiceFactory = ({
 
           const isRejected = reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED);
 
-          if (!isRejected) {
+          if (!isRejected && duplicateRequest.status === ApprovalStatus.PENDING) {
             throw new BadRequestError({ message: "You already have a pending access request with the same criteria" });
           }
         }
@@ -340,7 +339,7 @@ export const accessApprovalRequestServiceFactory = ({
       });
     }
 
-    const { membership, hasRole, permission } = await permissionService.getProjectPermission({
+    const { membership, hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: accessApprovalRequest.projectId,
@@ -355,13 +354,13 @@ export const accessApprovalRequestServiceFactory = ({
 
     const isSelfApproval = actorId === accessApprovalRequest.requestedByUserId;
     const isSoftEnforcement = policy.enforcementLevel === EnforcementLevel.Soft;
-    const canBypassApproval = permission.can(
-      ProjectPermissionApprovalActions.AllowAccessBypass,
-      ProjectPermissionSub.SecretApproval
-    );
-    const cannotBypassUnderSoftEnforcement = !(isSoftEnforcement && canBypassApproval);
+    const canBypass = !policy.bypassers.length || policy.bypassers.some((bypasser) => bypasser.userId === actorId);
+    const cannotBypassUnderSoftEnforcement = !(isSoftEnforcement && canBypass);
 
-    if (!policy.allowedSelfApprovals && isSelfApproval && cannotBypassUnderSoftEnforcement) {
+    const isApprover = policy.approvers.find((approver) => approver.userId === actorId);
+
+    // If user is (not an approver OR cant self approve) AND can't bypass policy
+    if ((!isApprover || (!policy.allowedSelfApprovals && isSelfApproval)) && cannotBypassUnderSoftEnforcement) {
       throw new BadRequestError({
         message: "Failed to review access approval request. Users are not authorized to review their own request."
       });
@@ -370,7 +369,7 @@ export const accessApprovalRequestServiceFactory = ({
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
       accessApprovalRequest.requestedByUserId !== actorId && // The request wasn't made by the current user
-      !policy.approvers.find((approver) => approver.userId === actorId) // The request isn't performed by an assigned approver
+      !isApprover // The request isn't performed by an assigned approver
     ) {
       throw new ForbiddenRequestError({ message: "You are not authorized to approve this request" });
     }
@@ -478,7 +477,11 @@ export const accessApprovalRequestServiceFactory = ({
             );
             privilegeIdToSet = privilege.id;
           }
-          await accessApprovalRequestDAL.updateById(accessApprovalRequest.id, { privilegeId: privilegeIdToSet }, tx);
+          await accessApprovalRequestDAL.updateById(
+            accessApprovalRequest.id,
+            { privilegeId: privilegeIdToSet, status: ApprovalStatus.APPROVED },
+            tx
+          );
         }
       }
 

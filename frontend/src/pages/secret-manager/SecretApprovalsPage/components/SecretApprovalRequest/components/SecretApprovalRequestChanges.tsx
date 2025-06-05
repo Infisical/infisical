@@ -30,19 +30,24 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { useUser } from "@app/context";
+import { useUser, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   useGetSecretApprovalRequestDetails,
+  useGetSecretImports,
   useUpdateSecretApprovalReviewStatus
 } from "@app/hooks/api";
 import { ApprovalStatus, CommitType } from "@app/hooks/api/types";
-import { formatReservedPaths } from "@app/lib/fn/string";
+import { formatReservedPaths, parsePathFromReplicatedPath } from "@app/lib/fn/string";
 
 import { SecretApprovalRequestAction } from "./SecretApprovalRequestAction";
 import { SecretApprovalRequestChangeItem } from "./SecretApprovalRequestChangeItem";
 
-export const generateCommitText = (commits: { op: CommitType }[] = []) => {
+export const generateCommitText = (commits: { op: CommitType }[] = [], isReplicated = false) => {
+  if (isReplicated) {
+    return <span>{commits.length} secret pending import</span>;
+  }
+
   const score: Record<string, number> = {};
   commits.forEach(({ op }) => {
     score[op] = (score?.[op] || 0) + 1;
@@ -74,7 +79,6 @@ export const generateCommitText = (commits: { op: CommitType }[] = []) => {
         <span style={{ color: "#F83030" }}> deleted</span>
       </span>
     );
-
   return text;
 };
 
@@ -105,6 +109,7 @@ export const SecretApprovalRequestChanges = ({
   workspaceId
 }: Props) => {
   const { user: userSession } = useUser();
+  const { currentWorkspace } = useWorkspace();
   const {
     data: secretApprovalRequestDetails,
     isSuccess: isSecretApprovalRequestSuccess,
@@ -112,6 +117,20 @@ export const SecretApprovalRequestChanges = ({
   } = useGetSecretApprovalRequestDetails({
     id: approvalRequestId
   });
+  const approvalSecretPath = parsePathFromReplicatedPath(
+    secretApprovalRequestDetails?.secretPath || ""
+  );
+  const { data: secretImports } = useGetSecretImports({
+    environment: secretApprovalRequestDetails?.environment || "",
+    projectId: currentWorkspace.id,
+    path: approvalSecretPath
+  });
+
+  const replicatedImport = secretApprovalRequestDetails?.isReplicated
+    ? secretImports?.find(
+        (el) => secretApprovalRequestDetails?.secretPath?.includes(el.id) && el.isReplication
+      )
+    : undefined;
 
   const {
     mutateAsync: updateSecretApprovalRequestStatus,
@@ -138,6 +157,11 @@ export const SecretApprovalRequestChanges = ({
   const canApprove = secretApprovalRequestDetails?.policy?.approvers?.some(
     ({ userId }) => userId === userSession.id
   );
+
+  const isBypasser =
+    !secretApprovalRequestDetails?.policy?.bypassers ||
+    !secretApprovalRequestDetails.policy.bypassers.length ||
+    secretApprovalRequestDetails.policy.bypassers.some(({ userId }) => userId === userSession.id);
 
   const reviewedUsers = secretApprovalRequestDetails?.reviewers?.reduce<
     Record<string, { status: ApprovalStatus; comment: string }>
@@ -221,34 +245,16 @@ export const SecretApprovalRequestChanges = ({
                 : secretApprovalRequestDetails.status}
             </span>
           </div>
-          <div className="flex flex-grow flex-col">
-            <div className="text-lg">
-              {generateCommitText(secretApprovalRequestDetails.commits)}
-              {secretApprovalRequestDetails.isReplicated && (
-                <span className="text-sm text-bunker-300"> (replication)</span>
+          <div className="flex-grow flex-col">
+            <div className="text-xl">
+              {generateCommitText(
+                secretApprovalRequestDetails.commits,
+                secretApprovalRequestDetails.isReplicated
               )}
             </div>
-            <div className="text-sm text-bunker-300">
-              <p className="inline">
-                {secretApprovalRequestDetails?.committerUser?.firstName || ""}
-                {secretApprovalRequestDetails?.committerUser?.lastName || ""} (
-                {secretApprovalRequestDetails?.committerUser?.email}) wants to change{" "}
-                {secretApprovalRequestDetails.commits.length} secret values in
-              </p>
-              <p className="mx-1 inline rounded bg-primary-600/40 px-1 py-1 text-primary-300">
-                {secretApprovalRequestDetails.environment}
-              </p>
-              <div className="inline-flex w-min items-center rounded border border-mineshaft-500 pl-1 pr-2">
-                <p className="cursor-default border-r border-mineshaft-500 pr-1">
-                  <FontAwesomeIcon icon={faFolder} className="text-primary" size="sm" />
-                </p>
-                <p
-                  className="cursor-default truncate pb-0.5 pl-2 text-sm"
-                  style={{ maxWidth: "10rem" }}
-                >
-                  {formatReservedPaths(secretApprovalRequestDetails.secretPath)}
-                </p>
-              </div>
+            <div className="flex items-center space-x-2 text-xs text-gray-400">
+              By {secretApprovalRequestDetails?.committerUser?.firstName} (
+              {secretApprovalRequestDetails?.committerUser?.email})
             </div>
           </div>
           {!hasMerged &&
@@ -362,6 +368,82 @@ export const SecretApprovalRequestChanges = ({
               </DropdownMenu>
             )}
         </div>
+        <div className="mb-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
+          <div>
+            {secretApprovalRequestDetails.isReplicated ? (
+              <div className="text-sm text-bunker-300">
+                A secret import in
+                <p
+                  className="mx-1 inline rounded bg-primary-600/40 text-primary-300"
+                  style={{ padding: "2px 4px" }}
+                >
+                  {secretApprovalRequestDetails?.environment}
+                </p>
+                <div className="mr-2 inline-flex w-min items-center rounded border border-mineshaft-500 pl-1 pr-2">
+                  <p className="cursor-default border-r border-mineshaft-500 pr-1">
+                    <FontAwesomeIcon icon={faFolder} className="text-primary" size="sm" />
+                  </p>
+                  <Tooltip content={approvalSecretPath}>
+                    <p
+                      className="cursor-default truncate pb-0.5 pl-2 text-sm"
+                      style={{ maxWidth: "15rem" }}
+                    >
+                      {approvalSecretPath}
+                    </p>
+                  </Tooltip>
+                </div>
+                has pending changes to be accepted from its source at{" "}
+                <p
+                  className="mx-1 inline rounded bg-primary-600/40 text-primary-300"
+                  style={{ padding: "2px 4px" }}
+                >
+                  {replicatedImport?.importEnv?.slug}
+                </p>
+                <div className="inline-flex w-min items-center rounded border border-mineshaft-500 pl-1 pr-2">
+                  <p className="cursor-default border-r border-mineshaft-500 pr-1">
+                    <FontAwesomeIcon icon={faFolder} className="text-primary" size="sm" />
+                  </p>
+                  <Tooltip content={replicatedImport?.importPath}>
+                    <p
+                      className="cursor-default truncate pb-0.5 pl-2 text-sm"
+                      style={{ maxWidth: "15rem" }}
+                    >
+                      {replicatedImport?.importPath}
+                    </p>
+                  </Tooltip>
+                </div>
+                . Approving these changes will add them to that import.
+              </div>
+            ) : (
+              <div className="text-sm text-bunker-300">
+                <p className="inline">Secret(s) in</p>
+                <p
+                  className="mx-1 inline rounded bg-primary-600/40 text-primary-300"
+                  style={{ padding: "2px 4px" }}
+                >
+                  {secretApprovalRequestDetails?.environment}
+                </p>
+                <div className="mr-1 inline-flex w-min items-center rounded border border-mineshaft-500 pl-1 pr-2">
+                  <p className="cursor-default border-r border-mineshaft-500 pr-1">
+                    <FontAwesomeIcon icon={faFolder} className="text-primary" size="sm" />
+                  </p>
+                  <Tooltip content={formatReservedPaths(secretApprovalRequestDetails.secretPath)}>
+                    <p
+                      className="cursor-default truncate pb-0.5 pl-2 text-sm"
+                      style={{ maxWidth: "20rem" }}
+                    >
+                      {formatReservedPaths(secretApprovalRequestDetails.secretPath)}
+                    </p>
+                  </Tooltip>
+                </div>
+                <p className="inline">
+                  have pending changes. Approving these changes will add them to that environment
+                  and path.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
         <div className="flex flex-col space-y-4">
           {secretApprovalRequestDetails.commits.map(
             ({ op, secretVersion, secret, ...newVersion }, index) => (
@@ -414,6 +496,7 @@ export const SecretApprovalRequestChanges = ({
         <div className="mt-2 flex items-center space-x-6 rounded-lg border border-mineshaft-600 bg-mineshaft-800">
           <SecretApprovalRequestAction
             canApprove={canApprove}
+            isBypasser={isBypasser === undefined ? true : isBypasser}
             approvalRequestId={secretApprovalRequestDetails.id}
             hasMerged={hasMerged}
             approvals={secretApprovalRequestDetails.policy.approvals || 0}

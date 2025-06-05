@@ -21,6 +21,7 @@ export const useCreateAccessApprovalPolicy = () => {
       projectSlug,
       approvals,
       approvers,
+      bypassers,
       name,
       secretPath,
       enforcementLevel,
@@ -30,6 +31,7 @@ export const useCreateAccessApprovalPolicy = () => {
         environment,
         projectSlug,
         approvals,
+        bypassers,
         approvers,
         secretPath,
         name,
@@ -53,6 +55,7 @@ export const useUpdateAccessApprovalPolicy = () => {
     mutationFn: async ({
       id,
       approvers,
+      bypassers,
       approvals,
       name,
       secretPath,
@@ -62,6 +65,7 @@ export const useUpdateAccessApprovalPolicy = () => {
       const { data } = await apiRequest.patch(`/api/v1/access-approvals/policies/${id}`, {
         approvals,
         approvers,
+        bypassers,
         secretPath,
         name,
         enforcementLevel,

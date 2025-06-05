@@ -209,7 +209,7 @@ export async function up(knex: Knex): Promise<void> {
       }
       logger.info(`Retrieved folder changes for project batch ${i} of ${batches.length}`);
 
-      const filteredBrokenProjectFolders = [];
+      const filteredBrokenProjectFolders: string[] = [];
 
       foldersCommitsList = foldersCommitsList.filter((folderCommit) => {
         if (!envRootFoldersMap[folderCommit.commit.envId]) {

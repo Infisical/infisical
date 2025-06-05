@@ -432,7 +432,7 @@ export const IdentityTab = withProjectPermission(
           <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
           <DeleteActionModal
             isOpen={popUp.deleteIdentity.isOpen}
-            title={`Are you sure want to remove ${
+            title={`Are you sure you want to remove ${
               (popUp?.deleteIdentity?.data as { name: string })?.name || ""
             } from the project?`}
             onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}

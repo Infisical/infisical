@@ -224,8 +224,7 @@ export const SecretApprovalRequest = () => {
                     createdAt,
                     reviewers,
                     status,
-                    committerUser,
-                    isReplicated: isReplication
+                    committerUser
                   } = secretApproval;
                   const isReviewed = reviewers.some(
                     ({ status: reviewStatus, userId }) =>
@@ -244,13 +243,15 @@ export const SecretApprovalRequest = () => {
                     >
                       <div className="mb-1">
                         <FontAwesomeIcon icon={faCodeBranch} className="mr-2" />
-                        {generateCommitText(commits)}
+                        {secretApproval.isReplicated
+                          ? `${commits.length} secret pending import`
+                          : generateCommitText(commits)}
                         <span className="text-xs text-bunker-300"> #{secretApproval.slug}</span>
                       </div>
                       <span className="text-xs text-gray-500">
                         Opened {formatDistance(new Date(createdAt), new Date())} ago by{" "}
                         {committerUser?.firstName || ""} {committerUser?.lastName || ""} (
-                        {committerUser?.email}){isReplication && " via replication"}
+                        {committerUser?.email})
                         {!isReviewed && status === "open" && " - Review required"}
                       </span>
                     </div>

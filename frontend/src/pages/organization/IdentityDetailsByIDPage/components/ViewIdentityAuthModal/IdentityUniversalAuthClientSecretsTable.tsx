@@ -175,7 +175,7 @@ export const IdentityUniversalAuthClientSecretsTable = ({ clientSecrets, identit
       </TableContainer>
       <DeleteActionModal
         isOpen={popUp.revokeClientSecret.isOpen}
-        title={`Are you sure want to delete the client secret ${
+        title={`Are you sure you want to delete the client secret ${
           (popUp?.revokeClientSecret?.data as { clientSecretPrefix: string })?.clientSecretPrefix ||
           ""
         }************?`}

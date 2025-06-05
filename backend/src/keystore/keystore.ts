@@ -10,7 +10,8 @@ export const PgSqlLock = {
   KmsRootKeyInit: 2025,
   OrgGatewayRootCaInit: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-root-ca:${orgId}`),
   OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`),
-  SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`)
+  SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
+  CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`)
 } as const;
 
 export type TKeyStoreFactory = ReturnType<typeof keyStoreFactory>;
@@ -37,6 +38,8 @@ export const KeyStorePrefixes = {
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
+  SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
+    `secret-scanning-v2-mutex-${dataSourceId}-${resourceExternalId}` as const,
   CaOrderCertificateForSubscriberLock: (subscriberId: string) =>
     `ca-order-certificate-for-subscriber-lock-${subscriberId}` as const,
   SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,

@@ -68,6 +68,7 @@ export const HCVaultSyncFns = {
   syncSecrets: async (secretSync: THCVaultSyncWithCredentials, secretMap: TSecretMap) => {
     const {
       connection,
+      environment,
       destinationConfig: { mount, path },
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
@@ -97,7 +98,7 @@ export const HCVaultSyncFns = {
 
     for await (const [key] of Object.entries(variables)) {
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(key, keySchema)) continue;
+      if (!matchesSchema(key, environment?.slug || "", keySchema)) continue;
 
       if (!(key in secretMap)) {
         delete variables[key];

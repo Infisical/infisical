@@ -12,7 +12,6 @@ import {
 } from "@app/context";
 import {
   PermissionConditionOperators,
-  ProjectPermissionApprovalActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
@@ -20,8 +19,12 @@ import {
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
+  ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
+  ProjectPermissionSecretScanningConfigActions,
+  ProjectPermissionSecretScanningDataSourceActions,
+  ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSshHostActions,
   TPermissionCondition,
@@ -55,12 +58,10 @@ const SecretPolicyActionSchema = z.object({
 });
 
 const ApprovalPolicyActionSchema = z.object({
-  [ProjectPermissionApprovalActions.Read]: z.boolean().optional(),
-  [ProjectPermissionApprovalActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionApprovalActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionApprovalActions.Create]: z.boolean().optional(),
-  [ProjectPermissionApprovalActions.AllowChangeBypass]: z.boolean().optional(),
-  [ProjectPermissionApprovalActions.AllowAccessBypass]: z.boolean().optional()
+  [ProjectPermissionActions.Read]: z.boolean().optional(),
+  [ProjectPermissionActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionActions.Create]: z.boolean().optional()
 });
 
 const CmekPolicyActionSchema = z.object({
@@ -104,6 +105,26 @@ const SecretRotationPolicyActionSchema = z.object({
   [ProjectPermissionSecretRotationActions.Edit]: z.boolean().optional(),
   [ProjectPermissionSecretRotationActions.Delete]: z.boolean().optional(),
   [ProjectPermissionSecretRotationActions.RotateSecrets]: z.boolean().optional()
+});
+
+const SecretScanningDataSourcePolicyActionSchema = z.object({
+  [ProjectPermissionSecretScanningDataSourceActions.Read]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningDataSourceActions.Create]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningDataSourceActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningDataSourceActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningDataSourceActions.ReadScans]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningDataSourceActions.ReadResources]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningDataSourceActions.TriggerScans]: z.boolean().optional()
+});
+
+const SecretScanningFindingPolicyActionSchema = z.object({
+  [ProjectPermissionSecretScanningFindingActions.Read]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningFindingActions.Update]: z.boolean().optional()
+});
+
+const SecretScanningConfigPolicyActionSchema = z.object({
+  [ProjectPermissionSecretScanningConfigActions.Read]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningConfigActions.Update]: z.boolean().optional()
 });
 
 const KmipPolicyActionSchema = z.object({
@@ -157,6 +178,15 @@ const PkiSubscriberPolicyActionSchema = z.object({
   [ProjectPermissionPkiSubscriberActions.ListCerts]: z.boolean().optional()
 });
 
+const PkiTemplatePolicyActionSchema = z.object({
+  [ProjectPermissionPkiTemplateActions.Read]: z.boolean().optional(),
+  [ProjectPermissionPkiTemplateActions.Create]: z.boolean().optional(),
+  [ProjectPermissionPkiTemplateActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionPkiTemplateActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionPkiTemplateActions.IssueCert]: z.boolean().optional(),
+  [ProjectPermissionPkiTemplateActions.ListCerts]: z.boolean().optional()
+});
+
 const SecretRollbackPolicyActionSchema = z.object({
   read: z.boolean().optional(),
   create: z.boolean().optional()
@@ -202,6 +232,23 @@ const ConditionSchema = z
             : el.rhs.trim().startsWith("/")
         ),
     { message: "Invalid Secret Path. Must start with '/'" }
+  )
+  .refine(
+    (val) =>
+      val
+        .filter((el) => el.operator === PermissionConditionOperators.$EQ)
+        .every((el) => !el.rhs.includes(",")),
+    { message: '"Equal" checks cannot contain comma separated values. Use "IN" operator instead.' }
+  )
+  .refine(
+    (val) =>
+      val
+        .filter((el) => el.operator === PermissionConditionOperators.$NEQ)
+        .every((el) => !el.rhs.includes(",")),
+    {
+      message:
+        '"Not Equal" checks cannot contain comma separated values. Use "IN" operator with "Forbid" instead.'
+    }
   );
 
 export const projectRoleFormSchema = z.object({
@@ -265,7 +312,12 @@ export const projectRoleFormSchema = z.object({
         .default([]),
       [ProjectPermissionSub.PkiAlerts]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.PkiCollections]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.CertificateTemplates]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.CertificateTemplates]: PkiTemplatePolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.SshCertificateAuthorities]: GeneralPolicyActionSchema.array().default(
         []
       ),
@@ -291,7 +343,13 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Kms]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Cmek]: CmekPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretSyncs]: SecretSyncPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.Kmip]: KmipPolicyActionSchema.array().default([])
+      [ProjectPermissionSub.Kmip]: KmipPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SecretScanningDataSources]:
+        SecretScanningDataSourcePolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SecretScanningFindings]:
+        SecretScanningFindingPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SecretScanningConfigs]:
+        SecretScanningConfigPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -305,6 +363,7 @@ type TConditionalFields =
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.DynamicSecrets
   | ProjectPermissionSub.PkiSubscribers
+  | ProjectPermissionSub.CertificateTemplates
   | ProjectPermissionSub.SshHosts
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.Identity;
@@ -319,7 +378,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.Identity ||
   subject === ProjectPermissionSub.SshHosts ||
   subject === ProjectPermissionSub.SecretRotation ||
-  subject === ProjectPermissionSub.PkiSubscribers;
+  subject === ProjectPermissionSub.PkiSubscribers ||
+  subject === ProjectPermissionSub.CertificateTemplates;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -418,7 +478,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.CertificateAuthorities,
         ProjectPermissionSub.PkiAlerts,
         ProjectPermissionSub.PkiCollections,
-        ProjectPermissionSub.CertificateTemplates,
         ProjectPermissionSub.Tags,
         ProjectPermissionSub.SecretRotation,
         ProjectPermissionSub.Kms,
@@ -581,24 +640,18 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
     }
 
     if (subject === ProjectPermissionSub.SecretApproval) {
-      const canCreate = action.includes(ProjectPermissionApprovalActions.Create);
-      const canDelete = action.includes(ProjectPermissionApprovalActions.Delete);
-      const canEdit = action.includes(ProjectPermissionApprovalActions.Edit);
-      const canRead = action.includes(ProjectPermissionApprovalActions.Read);
-      const canChangeBypass = action.includes(ProjectPermissionApprovalActions.AllowChangeBypass);
-      const canAccessBypass = action.includes(ProjectPermissionApprovalActions.AllowAccessBypass);
+      const canCreate = action.includes(ProjectPermissionActions.Create);
+      const canDelete = action.includes(ProjectPermissionActions.Delete);
+      const canEdit = action.includes(ProjectPermissionActions.Edit);
+      const canRead = action.includes(ProjectPermissionActions.Read);
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
       // Map actions to the keys defined in ApprovalPolicyActionSchema
-      if (canCreate) formVal[subject]![0][ProjectPermissionApprovalActions.Create] = true;
-      if (canDelete) formVal[subject]![0][ProjectPermissionApprovalActions.Delete] = true;
-      if (canEdit) formVal[subject]![0][ProjectPermissionApprovalActions.Edit] = true;
-      if (canRead) formVal[subject]![0][ProjectPermissionApprovalActions.Read] = true;
-      if (canChangeBypass)
-        formVal[subject]![0][ProjectPermissionApprovalActions.AllowChangeBypass] = true;
-      if (canAccessBypass)
-        formVal[subject]![0][ProjectPermissionApprovalActions.AllowAccessBypass] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionActions.Create] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionActions.Delete] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionActions.Edit] = true;
+      if (canRead) formVal[subject]![0][ProjectPermissionActions.Read] = true;
       return;
     }
 
@@ -746,6 +799,71 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         formVal[subject]![0][ProjectPermissionSecretSyncActions.ImportSecrets] = true;
       if (canRemoveSecrets)
         formVal[subject]![0][ProjectPermissionSecretSyncActions.RemoveSecrets] = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.SecretScanningDataSources) {
+      const canRead = action.includes(ProjectPermissionSecretScanningDataSourceActions.Read);
+      const canEdit = action.includes(ProjectPermissionSecretScanningDataSourceActions.Edit);
+      const canDelete = action.includes(ProjectPermissionSecretScanningDataSourceActions.Delete);
+      const canCreate = action.includes(ProjectPermissionSecretScanningDataSourceActions.Create);
+      const canReadScans = action.includes(
+        ProjectPermissionSecretScanningDataSourceActions.ReadScans
+      );
+      const canReadResources = action.includes(
+        ProjectPermissionSecretScanningDataSourceActions.ReadResources
+      );
+      const canTriggerScans = action.includes(
+        ProjectPermissionSecretScanningDataSourceActions.TriggerScans
+      );
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      // from above statement we are sure it won't be undefined
+      if (canRead)
+        formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.Read] = true;
+      if (canEdit)
+        formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.Edit] = true;
+      if (canCreate)
+        formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.Create] = true;
+      if (canDelete)
+        formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.Delete] = true;
+      if (canReadScans)
+        formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.ReadScans] = true;
+      if (canReadResources)
+        formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.ReadResources] = true;
+      if (canTriggerScans)
+        formVal[subject]![0][ProjectPermissionSecretScanningDataSourceActions.TriggerScans] = true;
+
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.SecretScanningFindings) {
+      const canRead = action.includes(ProjectPermissionSecretScanningFindingActions.Read);
+      const canUpdate = action.includes(ProjectPermissionSecretScanningFindingActions.Update);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      // from above statement we are sure it won't be undefined
+      if (canRead) formVal[subject]![0][ProjectPermissionSecretScanningFindingActions.Read] = true;
+      if (canUpdate)
+        formVal[subject]![0][ProjectPermissionSecretScanningFindingActions.Update] = true;
+
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.SecretScanningConfigs) {
+      const canRead = action.includes(ProjectPermissionSecretScanningConfigActions.Read);
+      const canUpdate = action.includes(ProjectPermissionSecretScanningConfigActions.Update);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      // from above statement we are sure it won't be undefined
+      if (canRead) formVal[subject]![0][ProjectPermissionSecretScanningConfigActions.Read] = true;
+      if (canUpdate)
+        formVal[subject]![0][ProjectPermissionSecretScanningConfigActions.Update] = true;
+
+      return;
     }
 
     if (subject === ProjectPermissionSub.SshHosts) {
@@ -770,6 +888,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
         inverted
       });
+
+      return;
     }
 
     if (subject === ProjectPermissionSub.Commits) {
@@ -804,6 +924,34 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ),
         [ProjectPermissionPkiSubscriberActions.ListCerts]: action.includes(
           ProjectPermissionPkiSubscriberActions.ListCerts
+        ),
+        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+        inverted
+      });
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.CertificateTemplates) {
+      if (!formVal[subject]) formVal[subject] = [];
+
+      formVal[subject]!.push({
+        [ProjectPermissionPkiTemplateActions.Edit]: action.includes(
+          ProjectPermissionPkiTemplateActions.Edit
+        ),
+        [ProjectPermissionPkiTemplateActions.Delete]: action.includes(
+          ProjectPermissionPkiTemplateActions.Delete
+        ),
+        [ProjectPermissionPkiTemplateActions.Create]: action.includes(
+          ProjectPermissionPkiTemplateActions.Create
+        ),
+        [ProjectPermissionPkiTemplateActions.Read]: action.includes(
+          ProjectPermissionPkiTemplateActions.Read
+        ),
+        [ProjectPermissionPkiTemplateActions.IssueCert]: action.includes(
+          ProjectPermissionPkiTemplateActions.IssueCert
+        ),
+        [ProjectPermissionPkiTemplateActions.ListCerts]: action.includes(
+          ProjectPermissionPkiTemplateActions.ListCerts
         ),
         conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
         inverted
@@ -1155,10 +1303,12 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.CertificateTemplates]: {
     title: "Certificate Templates",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: ProjectPermissionPkiTemplateActions.Read },
+      { label: "Create", value: ProjectPermissionPkiTemplateActions.Create },
+      { label: "Modify", value: ProjectPermissionPkiTemplateActions.Edit },
+      { label: "Remove", value: ProjectPermissionPkiTemplateActions.Delete },
+      { label: "Issue Certificates", value: ProjectPermissionPkiTemplateActions.IssueCert },
+      { label: "List Certificates", value: ProjectPermissionPkiTemplateActions.ListCerts }
     ]
   },
   [ProjectPermissionSub.SshCertificateAuthorities]: {
@@ -1239,12 +1389,10 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.SecretApproval]: {
     title: "Secret Approval Policies",
     actions: [
-      { label: "Read", value: ProjectPermissionApprovalActions.Read },
-      { label: "Create", value: ProjectPermissionApprovalActions.Create },
-      { label: "Modify", value: ProjectPermissionApprovalActions.Edit },
-      { label: "Remove", value: ProjectPermissionApprovalActions.Delete },
-      { label: "Allow Change Bypass", value: ProjectPermissionApprovalActions.AllowChangeBypass },
-      { label: "Allow Access Bypass", value: ProjectPermissionApprovalActions.AllowAccessBypass }
+      { label: "Read", value: ProjectPermissionActions.Read },
+      { label: "Create", value: ProjectPermissionActions.Create },
+      { label: "Modify", value: ProjectPermissionActions.Edit },
+      { label: "Remove", value: ProjectPermissionActions.Delete }
     ]
   },
   [ProjectPermissionSub.SecretRotation]: {
@@ -1310,6 +1458,65 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         value: ProjectPermissionKmipActions.GenerateClientCertificates
       }
     ]
+  },
+  [ProjectPermissionSub.SecretScanningDataSources]: {
+    title: "Secret Scanning Data Sources",
+    actions: [
+      {
+        label: "Read Data Sources",
+        value: ProjectPermissionSecretScanningDataSourceActions.Read
+      },
+      {
+        label: "Create Data Sources",
+        value: ProjectPermissionSecretScanningDataSourceActions.Create
+      },
+      {
+        label: "Modify Data Sources",
+        value: ProjectPermissionSecretScanningDataSourceActions.Edit
+      },
+      {
+        label: "Delete Data Sources",
+        value: ProjectPermissionSecretScanningDataSourceActions.Delete
+      },
+      {
+        label: "Read Resources",
+        value: ProjectPermissionSecretScanningDataSourceActions.ReadResources
+      },
+      {
+        label: "Read Scans",
+        value: ProjectPermissionSecretScanningDataSourceActions.ReadScans
+      },
+      {
+        label: "Trigger Scans",
+        value: ProjectPermissionSecretScanningDataSourceActions.TriggerScans
+      }
+    ]
+  },
+  [ProjectPermissionSub.SecretScanningFindings]: {
+    title: "Secret Scanning Findings",
+    actions: [
+      {
+        label: "Read Findings",
+        value: ProjectPermissionSecretScanningFindingActions.Read
+      },
+      {
+        label: "Update Findings",
+        value: ProjectPermissionSecretScanningFindingActions.Update
+      }
+    ]
+  },
+  [ProjectPermissionSub.SecretScanningConfigs]: {
+    title: "Secret Scanning Config",
+    actions: [
+      {
+        label: "Read Config",
+        value: ProjectPermissionSecretScanningConfigActions.Read
+      },
+      {
+        label: "Update Config",
+        value: ProjectPermissionSecretScanningConfigActions.Update
+      }
+    ]
   }
 };
 
@@ -1364,6 +1571,12 @@ const SshPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SshHostGroups]: enabled
 });
 
+const SecretScanningSubject = (enabled = false) => ({
+  [ProjectPermissionSub.SecretScanningDataSources]: enabled,
+  [ProjectPermissionSub.SecretScanningFindings]: enabled,
+  [ProjectPermissionSub.SecretScanningConfigs]: enabled
+});
+
 // scott: this structure ensures we don't forget to add project permissions to their relevant project type
 export const ProjectTypePermissionSubjects: Record<
   ProjectType,
@@ -1374,25 +1587,37 @@ export const ProjectTypePermissionSubjects: Record<
     ...SecretsManagerPermissionSubjects(true),
     ...KmsPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
-    ...SshPermissionSubjects()
+    ...SshPermissionSubjects(),
+    ...SecretScanningSubject()
   },
   [ProjectType.KMS]: {
     ...SharedPermissionSubjects,
     ...KmsPermissionSubjects(true),
     ...SecretsManagerPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
-    ...SshPermissionSubjects()
+    ...SshPermissionSubjects(),
+    ...SecretScanningSubject()
   },
   [ProjectType.CertificateManager]: {
     ...SharedPermissionSubjects,
     ...CertificateManagerPermissionSubjects(true),
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
-    ...SshPermissionSubjects()
+    ...SshPermissionSubjects(),
+    ...SecretScanningSubject()
   },
   [ProjectType.SSH]: {
     ...SharedPermissionSubjects,
     ...SshPermissionSubjects(true),
+    ...CertificateManagerPermissionSubjects(),
+    ...KmsPermissionSubjects(),
+    ...SecretsManagerPermissionSubjects(),
+    ...SecretScanningSubject()
+  },
+  [ProjectType.SecretScanning]: {
+    ...SharedPermissionSubjects,
+    ...SecretScanningSubject(true),
+    ...SshPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects()
@@ -1607,6 +1832,56 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
     },
     projectManagerTemplate()
   ],
+  [ProjectType.SecretScanning]: [
+    {
+      id: "scanning-viewer",
+      name: "Secret Scanning Viewing Policies",
+      description: "Grants read access to data sources and findings",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.SecretScanningDataSources,
+          actions: [
+            ProjectPermissionSecretScanningDataSourceActions.Read,
+            ProjectPermissionSecretScanningDataSourceActions.ReadResources,
+            ProjectPermissionSecretScanningDataSourceActions.ReadScans
+          ]
+        },
+        {
+          subject: ProjectPermissionSub.SecretScanningFindings,
+          actions: [ProjectPermissionSecretScanningFindingActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.SecretScanningConfigs,
+          actions: [ProjectPermissionSecretScanningConfigActions.Read]
+        }
+      ]
+    },
+    {
+      id: "scanning-editor",
+      name: "Secret Scanning Editing Policies",
+      description: "Grants read and edit access to data sources and findings",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.SecretScanningDataSources,
+          actions: Object.values(ProjectPermissionSecretScanningDataSourceActions)
+        },
+        {
+          subject: ProjectPermissionSub.SecretScanningFindings,
+          actions: Object.values(ProjectPermissionSecretScanningFindingActions)
+        },
+        {
+          subject: ProjectPermissionSub.SecretScanningConfigs,
+          actions: [ProjectPermissionSecretScanningConfigActions.Read]
+        }
+      ]
+    },
+    projectManagerTemplate([
+      {
+        subject: ProjectPermissionSub.SecretScanningConfigs,
+        actions: Object.values(ProjectPermissionSecretScanningConfigActions)
+      }
+    ])
+  ],
   [ProjectType.SecretManager]: [
     {
       id: "secret-viewer",
@@ -1730,7 +2005,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       },
       {
         subject: ProjectPermissionSub.SecretApproval,
-        actions: Object.values(ProjectPermissionApprovalActions)
+        actions: Object.values(ProjectPermissionActions)
       },
       {
         subject: ProjectPermissionSub.ServiceTokens,

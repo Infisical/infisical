@@ -95,10 +95,12 @@ export enum TableName {
   ScimToken = "scim_tokens",
   AccessApprovalPolicy = "access_approval_policies",
   AccessApprovalPolicyApprover = "access_approval_policies_approvers",
+  AccessApprovalPolicyBypasser = "access_approval_policies_bypassers",
   AccessApprovalRequest = "access_approval_requests",
   AccessApprovalRequestReviewer = "access_approval_requests_reviewers",
   SecretApprovalPolicy = "secret_approval_policies",
   SecretApprovalPolicyApprover = "secret_approval_policies_approvers",
+  SecretApprovalPolicyBypasser = "secret_approval_policies_bypassers",
   SecretApprovalRequest = "secret_approval_requests",
   SecretApprovalRequestReviewer = "secret_approval_requests_reviewers",
   SecretApprovalRequestSecret = "secret_approval_requests_secrets",
@@ -163,7 +165,12 @@ export enum TableName {
   FolderCheckpoint = "folder_checkpoints",
   FolderCheckpointResources = "folder_checkpoint_resources",
   FolderTreeCheckpoint = "folder_tree_checkpoints",
-  FolderTreeCheckpointResources = "folder_tree_checkpoint_resources"
+  FolderTreeCheckpointResources = "folder_tree_checkpoint_resources",
+  SecretScanningDataSource = "secret_scanning_data_sources",
+  SecretScanningResource = "secret_scanning_resources",
+  SecretScanningScan = "secret_scanning_scans",
+  SecretScanningFinding = "secret_scanning_findings",
+  SecretScanningConfig = "secret_scanning_configs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
@@ -252,7 +259,8 @@ export enum ProjectType {
   SecretManager = "secret-manager",
   CertificateManager = "cert-manager",
   KMS = "kms",
-  SSH = "ssh"
+  SSH = "ssh",
+  SecretScanning = "secret-scanning"
 }
 
 export enum ActionProjectType {
@@ -260,6 +268,7 @@ export enum ActionProjectType {
   CertificateManager = ProjectType.CertificateManager,
   KMS = ProjectType.KMS,
   SSH = ProjectType.SSH,
+  SecretScanning = ProjectType.SecretScanning,
   // project operations that happen on all types
   Any = "any"
 }

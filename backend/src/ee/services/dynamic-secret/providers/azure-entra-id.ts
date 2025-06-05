@@ -55,7 +55,7 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
     return data.success;
   };
 
-  const create = async (inputs: unknown) => {
+  const create = async ({ inputs }: { inputs: unknown }) => {
     const providerInputs = await validateProviderInputs(inputs);
     const data = await $getToken(providerInputs.tenantId, providerInputs.applicationId, providerInputs.clientSecret);
     if (!data.success) {
@@ -88,7 +88,7 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
 
   const revoke = async (inputs: unknown, entityId: string) => {
     // Creates a new password
-    await create(inputs);
+    await create({ inputs });
     return { entityId };
   };
 

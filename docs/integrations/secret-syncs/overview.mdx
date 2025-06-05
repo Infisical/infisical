@@ -99,6 +99,12 @@ via the UI or API for the third-party service you intend to sync secrets to.
 
 Key Schemas transform your secret keys by applying a prefix, suffix, or format pattern during sync to external destinations. This makes it clear which secrets are managed by Infisical and prevents accidental changes to unrelated secrets.
 
+Any destination secrets which do not match the schema will not get deleted or updated by Infisical.
+
+Key Schemas use handlebars syntax to define dynamic values. Here's a full list of available variables:
+- `{{secretKey}}` - The key of the secret
+- `{{environment}}` - The environment which the secret is in (e.g. dev, staging, prod)
+
 **Example:**
 - Infisical key: `SECRET_1`
 - Schema: `INFISICAL_{{secretKey}}`

@@ -1,0 +1,1 @@
+export { GeneralPageForm } from "./GeneralPageForm";

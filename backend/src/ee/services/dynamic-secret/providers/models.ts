@@ -16,7 +16,8 @@ export enum SqlProviders {
   MySQL = "mysql2",
   Oracle = "oracledb",
   MsSQL = "mssql",
-  SapAse = "sap-ase"
+  SapAse = "sap-ase",
+  Vertica = "vertica"
 }
 
 export enum ElasticSearchAuthTypes {
@@ -26,6 +27,10 @@ export enum ElasticSearchAuthTypes {
 
 export enum LdapCredentialType {
   Dynamic = "dynamic",
+  Static = "static"
+}
+
+export enum KubernetesCredentialType {
   Static = "static"
 }
 
@@ -277,6 +282,51 @@ export const LdapSchema = z.union([
   })
 ]);
 
+export const DynamicSecretKubernetesSchema = z.object({
+  url: z.string().url().trim().min(1),
+  gatewayId: z.string().nullable().optional(),
+  sslEnabled: z.boolean().default(true),
+  clusterToken: z.string().trim().min(1),
+  ca: z.string().optional(),
+  serviceAccountName: z.string().trim().min(1),
+  credentialType: z.literal(KubernetesCredentialType.Static),
+  namespace: z.string().trim().min(1),
+  audiences: z.array(z.string().trim().min(1))
+});
+
+export const DynamicSecretVerticaSchema = z.object({
+  host: z.string().trim().toLowerCase(),
+  port: z.number(),
+  username: z.string().trim(),
+  password: z.string().trim(),
+  database: z.string().trim(),
+  gatewayId: z.string().nullable().optional(),
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim(),
+  passwordRequirements: z
+    .object({
+      length: z.number().min(1).max(250),
+      required: z
+        .object({
+          lowercase: z.number().min(0),
+          uppercase: z.number().min(0),
+          digits: z.number().min(0),
+          symbols: z.number().min(0)
+        })
+        .refine((data) => {
+          const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+          return total <= 250;
+        }, "Sum of required characters cannot exceed 250"),
+      allowedSymbols: z.string().optional()
+    })
+    .refine((data) => {
+      const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
+      return total <= data.length;
+    }, "Sum of required characters cannot exceed the total length")
+    .optional()
+    .describe("Password generation requirements")
+});
+
 export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
   z.object({
     configType: z.literal(TotpConfigType.URL),
@@ -320,7 +370,9 @@ export enum DynamicSecretProviders {
   SapHana = "sap-hana",
   Snowflake = "snowflake",
   Totp = "totp",
-  SapAse = "sap-ase"
+  SapAse = "sap-ase",
+  Kubernetes = "kubernetes",
+  Vertica = "vertica"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -338,11 +390,17 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.AzureEntraID), inputs: AzureEntraIDSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Ldap), inputs: LdapSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Kubernetes), inputs: DynamicSecretKubernetesSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Vertica), inputs: DynamicSecretVerticaSchema })
 ]);
 
 export type TDynamicProviderFns = {
-  create: (inputs: unknown, expireAt: number) => Promise<{ entityId: string; data: unknown }>;
+  create: (arg: {
+    inputs: unknown;
+    expireAt: number;
+    usernameTemplate?: string | null;
+  }) => Promise<{ entityId: string; data: unknown }>;
   validateConnection: (inputs: unknown) => Promise<boolean>;
   validateProviderInputs: (inputs: object) => Promise<unknown>;
   revoke: (inputs: unknown, entityId: string) => Promise<{ entityId: string }>;

@@ -71,7 +71,8 @@ const formSchema = z
     maxLifetimeUnit: z.enum(["m", "h", "d"], {
       invalid_type_error: "Please select a valid time unit"
     }),
-    maxViewLimit: z.string()
+    maxViewLimit: z.string(),
+    shouldLimitView: z.boolean()
   })
   .superRefine((data, ctx) => {
     const { maxLifetimeValue, maxLifetimeUnit } = data;
@@ -112,8 +113,8 @@ const formSchema = z
 type TForm = z.infer<typeof formSchema>;
 
 const viewLimitOptions = [
-  { label: "1", value: 1 },
-  { label: "Unlimited", value: -1 }
+  { label: "Unlimited", value: false },
+  { label: "Limited", value: true }
 ];
 
 export const OrgSecretShareLimitSection = () => {
@@ -125,19 +126,23 @@ export const OrgSecretShareLimitSection = () => {
     return {
       maxLifetimeValue: initialLifetime.maxLifetimeValue,
       maxLifetimeUnit: initialLifetime.maxLifetimeUnit,
-      maxViewLimit: currentOrg?.maxSharedSecretViewLimit?.toString() || "-1"
+      maxViewLimit: currentOrg?.maxSharedSecretViewLimit?.toString() || "1",
+      shouldLimitView: Boolean(currentOrg?.maxSharedSecretViewLimit)
     };
   };
 
   const {
     control,
     formState: { isSubmitting, isDirty },
+    watch,
     handleSubmit,
     reset
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: getDefaultFormValues()
   });
+
+  const shouldLimitView = watch("shouldLimitView");
 
   useEffect(() => {
     if (currentOrg) {
@@ -154,8 +159,7 @@ export const OrgSecretShareLimitSection = () => {
 
       await mutateAsync({
         orgId: currentOrg.id,
-        maxSharedSecretViewLimit:
-          formData.maxViewLimit === "-1" ? null : Number(formData.maxViewLimit),
+        maxSharedSecretViewLimit: formData.shouldLimitView ? Number(formData.maxViewLimit) : null,
         maxSharedSecretLifetime: maxSharedSecretLifetimeSeconds
       });
 
@@ -249,26 +253,32 @@ export const OrgSecretShareLimitSection = () => {
                 )}
               />
             </div>
-            <div className="flex max-w-sm">
+            <div className="flex max-w-sm items-end gap-2">
               <Controller
                 control={control}
-                name="maxViewLimit"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                name="shouldLimitView"
+                render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
                   <FormControl
                     label="Max Views"
                     errorText={error?.message}
                     isError={Boolean(error)}
-                    className="w-full"
+                    className="w-48"
                   >
                     <Select
-                      defaultValue={field.value}
-                      {...field}
-                      onValueChange={(e) => onChange(e)}
+                      defaultValue={value.toString()}
+                      value={value.toString()}
+                      onValueChange={(e) => onChange(e === "true")}
                       className="w-full"
+                      position="popper"
+                      dropdownContainerClassName="max-w-none"
                       isDisabled={!isAllowed}
+                      {...field}
                     >
                       {viewLimitOptions.map(({ label, value: viewLimitValue }) => (
-                        <SelectItem value={String(viewLimitValue || "")} key={label}>
+                        <SelectItem
+                          value={viewLimitValue.toString()}
+                          key={viewLimitValue.toString()}
+                        >
                           {label}
                         </SelectItem>
                       ))}
@@ -276,6 +286,29 @@ export const OrgSecretShareLimitSection = () => {
                   </FormControl>
                 )}
               />
+              {shouldLimitView && (
+                <Controller
+                  control={control}
+                  name="maxViewLimit"
+                  render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
+                    <FormControl
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      className="w-48"
+                    >
+                      <Input
+                        value={value}
+                        onChange={onChange}
+                        {...field}
+                        min={1}
+                        max={1000}
+                        type="number"
+                        isDisabled={!isAllowed}
+                      />
+                    </FormControl>
+                  )}
+                />
+              )}
             </div>
             <Button
               colorSchema="secondary"

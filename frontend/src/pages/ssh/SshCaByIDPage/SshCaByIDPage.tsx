@@ -119,7 +119,7 @@ const Page = () => {
       <SshCaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteSshCa.isOpen}
-        title="Are you sure want to remove the SSH CA from the project?"
+        title="Are you sure you want to remove the SSH CA from the project?"
         onChange={(isOpen) => handlePopUpToggle("deleteSshCa", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>

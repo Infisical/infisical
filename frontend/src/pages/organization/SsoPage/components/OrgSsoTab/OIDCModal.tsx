@@ -478,7 +478,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       </Modal>
       <DeleteActionModal
         isOpen={isDeletePopupOpen}
-        title="Are you sure want to delete OIDC?"
+        title="Are you sure you want to delete OIDC?"
         onChange={() => setIsDeletePopupOpen.toggle()}
         deleteKey="confirm"
         onDeleteApproved={handleOidcSoftDelete}

@@ -294,7 +294,7 @@ const deleteParametersBatch = async (
 
 export const AwsParameterStoreSyncFns = {
   syncSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, secretMap: TSecretMap) => {
-    const { destinationConfig, syncOptions } = secretSync;
+    const { destinationConfig, syncOptions, environment } = secretSync;
 
     const ssm = await getSSM(secretSync);
 
@@ -391,7 +391,7 @@ export const AwsParameterStoreSyncFns = {
       const [key, parameter] = entry;
 
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(key, syncOptions.keySchema)) continue;
+      if (!matchesSchema(key, environment?.slug || "", syncOptions.keySchema)) continue;
 
       if (!(key in secretMap) || !secretMap[key].value) {
         parametersToDelete.push(parameter);

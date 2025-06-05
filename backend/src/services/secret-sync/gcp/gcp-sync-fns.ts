@@ -155,7 +155,7 @@ export const GcpSyncFns = {
 
     for await (const key of Object.keys(gcpSecrets)) {
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(key, secretSync.syncOptions.keySchema)) continue;
+      if (!matchesSchema(key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)) continue;
 
       try {
         if (!(key in secretMap) || !secretMap[key].value) {

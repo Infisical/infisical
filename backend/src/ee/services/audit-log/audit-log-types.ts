@@ -10,6 +10,18 @@ import {
   TSecretRotationV2Raw,
   TUpdateSecretRotationV2DTO
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import {
+  SecretScanningDataSource,
+  SecretScanningScanStatus,
+  SecretScanningScanType
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  TCreateSecretScanningDataSourceDTO,
+  TDeleteSecretScanningDataSourceDTO,
+  TTriggerSecretScanningDataSourceDTO,
+  TUpdateSecretScanningDataSourceDTO,
+  TUpdateSecretScanningFindingDTO
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
@@ -388,6 +400,19 @@ export enum EventType {
   PIT_REVERT_COMMIT = "pit-revert-commit",
   PIT_GET_FOLDER_STATE = "pit-get-folder-state",
   PIT_COMPARE_FOLDER_STATES = "pit-compare-folder-states",
+  SECRET_SCANNING_DATA_SOURCE_LIST = "secret-scanning-data-source-list",
+  SECRET_SCANNING_DATA_SOURCE_CREATE = "secret-scanning-data-source-create",
+  SECRET_SCANNING_DATA_SOURCE_UPDATE = "secret-scanning-data-source-update",
+  SECRET_SCANNING_DATA_SOURCE_DELETE = "secret-scanning-data-source-delete",
+  SECRET_SCANNING_DATA_SOURCE_GET = "secret-scanning-data-source-get",
+  SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN = "secret-scanning-data-source-trigger-scan",
+  SECRET_SCANNING_DATA_SOURCE_SCAN = "secret-scanning-data-source-scan",
+  SECRET_SCANNING_RESOURCE_LIST = "secret-scanning-resource-list",
+  SECRET_SCANNING_SCAN_LIST = "secret-scanning-scan-list",
+  SECRET_SCANNING_FINDING_LIST = "secret-scanning-finding-list",
+  SECRET_SCANNING_FINDING_UPDATE = "secret-scanning-finding-update",
+  SECRET_SCANNING_CONFIG_GET = "secret-scanning-config-get",
+  SECRET_SCANNING_CONFIG_UPDATE = "secret-scanning-config-update",
 
   UPDATE_ORG = "update-org",
 
@@ -3033,6 +3058,101 @@ interface PitCompareFolderStatesEvent {
   };
 }
 
+interface SecretScanningDataSourceListEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_LIST;
+  metadata: {
+    type?: SecretScanningDataSource;
+    count: number;
+    dataSourceIds: string[];
+  };
+}
+
+interface SecretScanningDataSourceGetEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_GET;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+  };
+}
+
+interface SecretScanningDataSourceCreateEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_CREATE;
+  metadata: Omit<TCreateSecretScanningDataSourceDTO, "projectId"> & { dataSourceId: string };
+}
+
+interface SecretScanningDataSourceUpdateEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_UPDATE;
+  metadata: TUpdateSecretScanningDataSourceDTO;
+}
+
+interface SecretScanningDataSourceDeleteEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_DELETE;
+  metadata: TDeleteSecretScanningDataSourceDTO;
+}
+
+interface SecretScanningDataSourceTriggerScanEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN;
+  metadata: TTriggerSecretScanningDataSourceDTO;
+}
+
+interface SecretScanningDataSourceScanEvent {
+  type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN;
+  metadata: {
+    scanId: string;
+    resourceId: string;
+    resourceType: string;
+    dataSourceId: string;
+    dataSourceType: string;
+    scanStatus: SecretScanningScanStatus;
+    scanType: SecretScanningScanType;
+    numberOfSecretsDetected?: number;
+  };
+}
+
+interface SecretScanningResourceListEvent {
+  type: EventType.SECRET_SCANNING_RESOURCE_LIST;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+    resourceIds: string[];
+    count: number;
+  };
+}
+
+interface SecretScanningScanListEvent {
+  type: EventType.SECRET_SCANNING_SCAN_LIST;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+    count: number;
+  };
+}
+
+interface SecretScanningFindingListEvent {
+  type: EventType.SECRET_SCANNING_FINDING_LIST;
+  metadata: {
+    findingIds: string[];
+    count: number;
+  };
+}
+
+interface SecretScanningFindingUpdateEvent {
+  type: EventType.SECRET_SCANNING_FINDING_UPDATE;
+  metadata: TUpdateSecretScanningFindingDTO;
+}
+
+interface SecretScanningConfigUpdateEvent {
+  type: EventType.SECRET_SCANNING_CONFIG_UPDATE;
+  metadata: {
+    content: string | null;
+  };
+}
+
+interface SecretScanningConfigReadEvent {
+  type: EventType.SECRET_SCANNING_CONFIG_GET;
+  metadata?: Record<string, never>; // not needed, based off projectId
+}
+
 interface OrgUpdateEvent {
   type: EventType.UPDATE_ORG;
   metadata: {
@@ -3363,6 +3483,19 @@ export type Event =
   | PitRevertCommitEvent
   | PitCompareFolderStatesEvent
   | PitGetFolderStateEvent
+  | SecretScanningDataSourceListEvent
+  | SecretScanningDataSourceGetEvent
+  | SecretScanningDataSourceCreateEvent
+  | SecretScanningDataSourceUpdateEvent
+  | SecretScanningDataSourceDeleteEvent
+  | SecretScanningDataSourceTriggerScanEvent
+  | SecretScanningDataSourceScanEvent
+  | SecretScanningResourceListEvent
+  | SecretScanningScanListEvent
+  | SecretScanningFindingListEvent
+  | SecretScanningFindingUpdateEvent
+  | SecretScanningConfigUpdateEvent
+  | SecretScanningConfigReadEvent
   | OrgUpdateEvent
   | ProjectCreateEvent
   | ProjectUpdateEvent

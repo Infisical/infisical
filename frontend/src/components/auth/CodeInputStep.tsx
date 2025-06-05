@@ -78,11 +78,14 @@ export default function CodeInputStep({
   const resendVerificationEmail = async () => {
     setIsResendingVerificationEmail(true);
     setIsLoading(true);
-    await mutateAsync({ email });
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsResendingVerificationEmail(false);
-    }, 2000);
+    try {
+      await mutateAsync({ email });
+    } finally {
+      setTimeout(() => {
+        setIsLoading(false);
+        setIsResendingVerificationEmail(false);
+      }, 1000);
+    }
   };
 
   return (

@@ -117,7 +117,7 @@ export const databricksSyncFactory = ({ kmsService, appConnectionDAL }: TDatabri
 
     for await (const secret of databricksSecretKeys) {
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(secret.key, secretSync.syncOptions.keySchema)) continue;
+      if (!matchesSchema(secret.key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)) continue;
 
       if (!(secret.key in secretMap)) {
         await deleteDatabricksSecrets({

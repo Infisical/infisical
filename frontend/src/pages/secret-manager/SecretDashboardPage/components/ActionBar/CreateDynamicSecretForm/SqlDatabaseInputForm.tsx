@@ -29,6 +29,7 @@ import {
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
+import { slugSchema } from "@app/lib/schemas";
 
 import { MetadataForm } from "../../DynamicSecretListView/MetadataForm";
 
@@ -88,7 +89,7 @@ const formSchema = z.object({
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
+  name: slugSchema(),
   environment: z.object({ name: z.string(), slug: z.string() }),
   metadata: z
     .object({
@@ -96,7 +97,8 @@ const formSchema = z.object({
       value: z.string().trim().default("")
     })
     .array()
-    .optional()
+    .optional(),
+  usernameTemplate: z.string().nullable().optional()
 });
 
 type TForm = z.infer<typeof formSchema>;
@@ -191,7 +193,8 @@ export const SqlDatabaseInputForm = ({
           allowedSymbols: "-_.~!*"
         }
       },
-      environment: isSingleEnvironmentMode ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined,
+      usernameTemplate: "{{randomUsername}}"
     }
   });
 
@@ -204,11 +207,13 @@ export const SqlDatabaseInputForm = ({
     provider,
     defaultTTL,
     environment,
-    metadata
+    metadata,
+    usernameTemplate
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
 
+    const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
     try {
       await createDynamicSecret.mutateAsync({
         provider: { type: DynamicSecretProviders.SqlDatabase, inputs: provider },
@@ -218,7 +223,9 @@ export const SqlDatabaseInputForm = ({
         defaultTTL,
         projectSlug,
         environmentSlug: environment.slug,
-        metadata
+        metadata,
+        usernameTemplate:
+          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
       });
       onCompleted();
     } catch {
@@ -474,6 +481,25 @@ export const SqlDatabaseInputForm = ({
                       Creation, Revocation & Renew Statements (optional)
                     </AccordionTrigger>
                     <AccordionContent>
+                      <Controller
+                        control={control}
+                        name="usernameTemplate"
+                        defaultValue=""
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            label="Username Template"
+                            isError={Boolean(error?.message)}
+                            errorText={error?.message}
+                          >
+                            <Input
+                              {...field}
+                              value={field.value || undefined}
+                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              placeholder="{{randomUsername}}"
+                            />
+                          </FormControl>
+                        )}
+                      />
                       <div className="mb-4 text-sm text-mineshaft-300">
                         Customize SQL statements for managing database user lifecycle
                       </div>

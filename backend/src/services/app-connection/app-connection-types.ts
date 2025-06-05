@@ -70,6 +70,12 @@ import {
   TValidateGitHubConnectionCredentialsSchema
 } from "./github";
 import {
+  TGitHubRadarConnection,
+  TGitHubRadarConnectionConfig,
+  TGitHubRadarConnectionInput,
+  TValidateGitHubRadarConnectionCredentialsSchema
+} from "./github-radar";
+import {
   THCVaultConnection,
   THCVaultConnectionConfig,
   THCVaultConnectionInput,
@@ -88,6 +94,7 @@ import {
   TValidateLdapConnectionCredentialsSchema
 } from "./ldap";
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
+import { TMySqlConnection, TMySqlConnectionInput, TValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import {
   TPostgresConnection,
   TPostgresConnectionInput,
@@ -121,6 +128,7 @@ import {
 export type TAppConnection = { id: string } & (
   | TAwsConnection
   | TGitHubConnection
+  | TGitHubRadarConnection
   | TGcpConnection
   | TAzureKeyVaultConnection
   | TAzureAppConfigurationConnection
@@ -130,6 +138,7 @@ export type TAppConnection = { id: string } & (
   | TVercelConnection
   | TPostgresConnection
   | TMsSqlConnection
+  | TMySqlConnection
   | TCamundaConnection
   | TAzureClientSecretsConnection
   | TWindmillConnection
@@ -143,11 +152,12 @@ export type TAppConnection = { id: string } & (
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
 
-export type TSqlConnection = TPostgresConnection | TMsSqlConnection;
+export type TSqlConnection = TPostgresConnection | TMsSqlConnection | TMySqlConnection;
 
 export type TAppConnectionInput = { id: string } & (
   | TAwsConnectionInput
   | TGitHubConnectionInput
+  | TGitHubRadarConnectionInput
   | TGcpConnectionInput
   | TAzureKeyVaultConnectionInput
   | TAzureAppConfigurationConnectionInput
@@ -157,6 +167,7 @@ export type TAppConnectionInput = { id: string } & (
   | TVercelConnectionInput
   | TPostgresConnectionInput
   | TMsSqlConnectionInput
+  | TMySqlConnectionInput
   | TCamundaConnectionInput
   | TAzureClientSecretsConnectionInput
   | TWindmillConnectionInput
@@ -168,7 +179,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOnePassConnectionInput
 );
 
-export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput;
+export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput | TMySqlConnectionInput;
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnectionInput,
@@ -182,6 +193,7 @@ export type TUpdateAppConnectionDTO = Partial<Omit<TCreateAppConnectionDTO, "met
 export type TAppConnectionConfig =
   | TAwsConnectionConfig
   | TGitHubConnectionConfig
+  | TGitHubRadarConnectionConfig
   | TGcpConnectionConfig
   | TAzureKeyVaultConnectionConfig
   | TAzureAppConfigurationConnectionConfig
@@ -203,6 +215,7 @@ export type TAppConnectionConfig =
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
   | TValidateGitHubConnectionCredentialsSchema
+  | TValidateGitHubRadarConnectionCredentialsSchema
   | TValidateGcpConnectionCredentialsSchema
   | TValidateAzureKeyVaultConnectionCredentialsSchema
   | TValidateAzureAppConfigurationConnectionCredentialsSchema
@@ -211,6 +224,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateHumanitecConnectionCredentialsSchema
   | TValidatePostgresConnectionCredentialsSchema
   | TValidateMsSqlConnectionCredentialsSchema
+  | TValidateMySqlConnectionCredentialsSchema
   | TValidateCamundaConnectionCredentialsSchema
   | TValidateVercelConnectionCredentialsSchema
   | TValidateTerraformCloudConnectionCredentialsSchema

@@ -14,6 +14,7 @@ import {
   TFormSchema
 } from "../OrgRoleModifySection.utils";
 import { OrgPermissionAdminConsoleRow } from "./OrgPermissionAdminConsoleRow";
+import { OrgPermissionBillingRow } from "./OrgPermissionBillingRow";
 import { OrgGatewayPermissionRow } from "./OrgPermissionGatewayRow";
 import { OrgPermissionGroupRow } from "./OrgPermissionGroupRow";
 import { OrgPermissionIdentityRow } from "./OrgPermissionIdentityRow";
@@ -26,10 +27,6 @@ const SIMPLE_PERMISSION_OPTIONS = [
   {
     title: "User Management",
     formName: "member"
-  },
-  {
-    title: "Usage & Billing",
-    formName: "billing"
   },
   {
     title: "Role Management",
@@ -182,6 +179,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                 isEditable={isCustomRole}
               />
               <OrgGatewayPermissionRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
+              <OrgPermissionBillingRow
                 control={control}
                 setValue={setValue}
                 isEditable={isCustomRole}

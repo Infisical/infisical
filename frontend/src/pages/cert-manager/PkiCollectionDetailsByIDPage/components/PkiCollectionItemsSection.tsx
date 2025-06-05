@@ -74,7 +74,7 @@ export const PkiCollectionItemsSection = ({ collectionId, type }: Props) => {
       />
       <DeleteActionModal
         isOpen={popUp.deletePkiCollectionItem.isOpen}
-        title={`Are you sure want to remove the item from the collection ${pkiCollection.name}?`}
+        title={`Are you sure you want to remove the item from the collection ${pkiCollection.name}?`}
         onChange={(isOpen) => handlePopUpToggle("deletePkiCollectionItem", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() => {

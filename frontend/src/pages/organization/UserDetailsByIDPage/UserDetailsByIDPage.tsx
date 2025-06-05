@@ -259,7 +259,7 @@ const Page = withPermission(
         )}
         <DeleteActionModal
           isOpen={popUp.removeMember.isOpen}
-          title={`Are you sure want to remove member with username ${
+          title={`Are you sure you want to remove member with username ${
             (popUp?.removeMember?.data as { username: string })?.username || ""
           }?`}
           onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
@@ -272,7 +272,7 @@ const Page = withPermission(
         />
         <DeleteActionModal
           isOpen={popUp.deactivateMember.isOpen}
-          title={`Are you sure want to deactivate member with username ${
+          title={`Are you sure you want to deactivate member with username ${
             (popUp?.deactivateMember?.data as { username: string })?.username || ""
           }?`}
           onChange={(isOpen) => handlePopUpToggle("deactivateMember", isOpen)}

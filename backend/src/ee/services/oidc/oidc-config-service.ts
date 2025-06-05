@@ -44,7 +44,6 @@ import {
   TOidcLoginDTO,
   TUpdateOidcCfgDTO
 } from "./oidc-config-types";
-import { logger } from "@app/lib/logger";
 
 type TOidcConfigServiceFactoryDep = {
   userDAL: Pick<
@@ -700,7 +699,6 @@ export const oidcConfigServiceFactory = ({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (_req: any, tokenSet: TokenSet, cb: any) => {
         const claims = tokenSet.claims();
-        logger.info(`User OIDC claims received for [orgId=${org.id}] [claims=${JSON.stringify(claims)}]`);
         if (!claims.email || !claims.given_name) {
           throw new BadRequestError({
             message: "Invalid request. Missing email or first name"

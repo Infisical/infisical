@@ -5,11 +5,17 @@ export type TLoginKubernetesAuthDTO = {
   jwt: string;
 };
 
+export enum IdentityKubernetesAuthTokenReviewMode {
+  Api = "api",
+  Gateway = "gateway"
+}
+
 export type TAttachKubernetesAuthDTO = {
   identityId: string;
   kubernetesHost: string;
   caCert: string;
   tokenReviewerJwt?: string;
+  tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
   allowedNames: string;
   allowedAudience: string;
@@ -26,6 +32,7 @@ export type TUpdateKubernetesAuthDTO = {
   kubernetesHost?: string;
   caCert?: string;
   tokenReviewerJwt?: string | null;
+  tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces?: string;
   allowedNames?: string;
   allowedAudience?: string;
@@ -61,6 +68,18 @@ export type TCreateTokenReviewResponse = {
     token: string;
   };
   status: TCreateTokenReviewSuccessResponse | TCreateTokenReviewErrorResponse;
+};
+
+export type TKubernetesTokenRequest = {
+  apiVersion: "authentication.k8s.io/v1";
+  kind: "TokenRequest";
+  spec: {
+    audiences: string[];
+    expirationSeconds: number;
+  };
+  status: {
+    token: string;
+  };
 };
 
 export type TRevokeKubernetesAuthDTO = {

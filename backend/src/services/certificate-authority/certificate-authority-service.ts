@@ -311,7 +311,6 @@ export const certificateAuthorityServiceFactory = ({
       }
 
       const updatedCa = await internalCertificateAuthorityService.updateCaById({
-        ...configuration,
         isInternal: true,
         enableDirectIssuance,
         caId: certificateAuthority.id,

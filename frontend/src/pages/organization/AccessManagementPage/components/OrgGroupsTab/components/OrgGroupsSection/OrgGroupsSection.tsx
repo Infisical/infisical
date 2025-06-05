@@ -80,7 +80,7 @@ export const OrgGroupsSection = () => {
       />
       <DeleteActionModal
         isOpen={popUp.deleteGroup.isOpen}
-        title={`Are you sure want to delete the group named ${
+        title={`Are you sure you want to delete the group named ${
           (popUp?.deleteGroup?.data as { name: string })?.name || ""
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
