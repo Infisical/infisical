@@ -159,6 +159,7 @@ export const AddOrgMemberModal = ({
         text: "Failed to invite user to org",
         type: "error"
       });
+      return;
     }
 
     if (serverDetails?.emailConfigured) {
