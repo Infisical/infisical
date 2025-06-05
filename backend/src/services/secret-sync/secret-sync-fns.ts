@@ -626,6 +626,9 @@ export const SecretSyncFns = {
       case SecretSync.Keeper:
         secretMap = await KeeperSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Coolify:
+        secretMap = await CoolifySyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -777,6 +780,8 @@ export const SecretSyncFns = {
         return DaytonaSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Keeper:
         return KeeperSyncFns.removeSecrets(secretSync, payload);
+      case SecretSync.Coolify:
+        return CoolifySyncFns.removeSecrets(secretSync, payload as unknown as TSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
