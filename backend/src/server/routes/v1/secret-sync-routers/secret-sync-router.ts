@@ -38,6 +38,7 @@ import {
   CloudflareWorkersSyncListItemSchema,
   CloudflareWorkersSyncSchema
 } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
+import { CoolifySyncListItemSchema, CoolifySyncSchema } from "@app/services/secret-sync/coolify";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
 import { DevinSyncListItemSchema, DevinSyncSchema } from "@app/services/secret-sync/devin";
 import {
@@ -116,7 +117,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   DevinSyncSchema,
   OnaSyncSchema,
   TravisCISyncSchema,
-  SnowflakeSyncSchema
+  SnowflakeSyncSchema,
+  CoolifySyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -162,7 +164,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   DevinSyncListItemSchema,
   OnaSyncListItemSchema,
   TravisCISyncListItemSchema,
-  SnowflakeSyncListItemSchema
+  SnowflakeSyncListItemSchema,
+  CoolifySyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

@@ -15,6 +15,7 @@ import { TChefSync } from "./chef-sync";
 import { TCircleCISync } from "./circleci-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
+import { TCoolifySync } from "./coolify-sync";
 import { TDatabricksSync } from "./databricks-sync";
 import { TDevinSync } from "./devin-sync";
 import { TDigitalOceanAppPlatformSync } from "./digital-ocean-app-platform-sync";
@@ -98,7 +99,8 @@ export type TSecretSync =
   | TOnaSync
   | TTravisCISync
   | TSnowflakeSync
-  | TTriggerDevSync;
+  | TTriggerDevSync
+  | TCoolifySync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 
