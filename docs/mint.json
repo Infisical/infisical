@@ -32,7 +32,10 @@
     "thumbsRating": true
   },
   "api": {
-    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
+    "baseUrl": [
+      "https://app.infisical.com",
+      "http://localhost:8080"
+    ]
   },
   "topbarLinks": [
     {
@@ -73,7 +76,9 @@
         "documentation/getting-started/introduction",
         {
           "group": "Quickstart",
-          "pages": ["documentation/guides/local-development"]
+          "pages": [
+            "documentation/guides/local-development"
+          ]
         },
         {
           "group": "Guides",
@@ -88,7 +93,9 @@
         },
         {
           "group": "Setup",
-          "pages": ["documentation/setup/networking"]
+          "pages": [
+            "documentation/setup/networking"
+          ]
         }
       ]
     },
@@ -324,7 +331,6 @@
             }
           ]
         },
-
         {
           "group": "Machine Identities",
           "pages": [
@@ -347,7 +353,6 @@
                 "documentation/platform/identities/oidc-auth/spire"
               ]
             },
-
             {
               "group": "LDAP Auth",
               "pages": [
@@ -495,6 +500,7 @@
             "integrations/app-connections/azure-client-secrets",
             "integrations/app-connections/azure-key-vault",
             "integrations/app-connections/camunda",
+            "integrations/app-connections/coolify",
             "integrations/app-connections/databricks",
             "integrations/app-connections/gcp",
             "integrations/app-connections/github",
@@ -527,6 +533,7 @@
             "integrations/secret-syncs/azure-app-configuration",
             "integrations/secret-syncs/azure-key-vault",
             "integrations/secret-syncs/camunda",
+            "integrations/secret-syncs/coolify",
             "integrations/secret-syncs/databricks",
             "integrations/secret-syncs/gcp-secret-manager",
             "integrations/secret-syncs/github",
@@ -639,15 +646,21 @@
     },
     {
       "group": "Build Tool Integrations",
-      "pages": ["integrations/build-tools/gradle"]
+      "pages": [
+        "integrations/build-tools/gradle"
+      ]
     },
     {
       "group": "Others",
-      "pages": ["integrations/external/backstage"]
+      "pages": [
+        "integrations/external/backstage"
+      ]
     },
     {
       "group": "",
-      "pages": ["sdks/overview"]
+      "pages": [
+        "sdks/overview"
+      ]
     },
     {
       "group": "SDK's",
@@ -667,7 +680,9 @@
         "api-reference/overview/authentication",
         {
           "group": "Examples",
-          "pages": ["api-reference/overview/examples/integration"]
+          "pages": [
+            "api-reference/overview/examples/integration"
+          ]
         }
       ]
     },
@@ -1048,8 +1063,8 @@
           "group": "Secret Scanning",
           "pages": [
             {
-              "group":  "Data Sources",
-              "pages":  [
+              "group": "Data Sources",
+              "pages": [
                 "api-reference/endpoints/secret-scanning/data-sources/list",
                 "api-reference/endpoints/secret-scanning/data-sources/options",
                 {
@@ -1070,15 +1085,15 @@
               ]
             },
             {
-              "group":  "Findings",
-              "pages":  [
+              "group": "Findings",
+              "pages": [
                 "api-reference/endpoints/secret-scanning/findings/list",
                 "api-reference/endpoints/secret-scanning/findings/update"
               ]
             },
             {
-              "group":  "Configuration",
-              "pages":  [
+              "group": "Configuration",
+              "pages": [
                 "api-reference/endpoints/secret-scanning/config/get-by-project-id",
                 "api-reference/endpoints/secret-scanning/config/update"
               ]
@@ -1199,6 +1214,19 @@
                 "api-reference/endpoints/app-connections/camunda/create",
                 "api-reference/endpoints/app-connections/camunda/update",
                 "api-reference/endpoints/app-connections/camunda/delete"
+              ]
+            },
+            {
+              "group": "Coolify",
+              "pages": [
+                "api-reference/endpoints/app-connections/coolify/list",
+                "api-reference/endpoints/app-connections/coolify/available",
+                "api-reference/endpoints/app-connections/coolify/get-by-id",
+                "api-reference/endpoints/app-connections/coolify/get-by-name",
+                "api-reference/endpoints/app-connections/coolify/get-applications",
+                "api-reference/endpoints/app-connections/coolify/create",
+                "api-reference/endpoints/app-connections/coolify/update",
+                "api-reference/endpoints/app-connections/coolify/delete"
               ]
             },
             {
@@ -1472,6 +1500,20 @@
               ]
             },
             {
+              "group": "Coolify",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/coolify/list",
+                "api-reference/endpoints/secret-syncs/coolify/get-by-id",
+                "api-reference/endpoints/secret-syncs/coolify/get-by-name",
+                "api-reference/endpoints/secret-syncs/coolify/create",
+                "api-reference/endpoints/secret-syncs/coolify/update",
+                "api-reference/endpoints/secret-syncs/coolify/delete",
+                "api-reference/endpoints/secret-syncs/coolify/sync-secrets",
+                "api-reference/endpoints/secret-syncs/coolify/import-secrets",
+                "api-reference/endpoints/secret-syncs/coolify/remove-secrets"
+              ]
+            },
+            {
               "group": "Databricks",
               "pages": [
                 "api-reference/endpoints/secret-syncs/databricks/list",
@@ -1625,11 +1667,15 @@
         },
         {
           "group": "Service Tokens",
-          "pages": ["api-reference/endpoints/service-tokens/get"]
+          "pages": [
+            "api-reference/endpoints/service-tokens/get"
+          ]
         },
         {
           "group": "Audit Logs",
-          "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+          "pages": [
+            "api-reference/endpoints/audit-logs/export-audit-log"
+          ]
         }
       ]
     },
@@ -1849,7 +1895,9 @@
     },
     {
       "group": "",
-      "pages": ["changelog/overview"]
+      "pages": [
+        "changelog/overview"
+      ]
     },
     {
       "group": "Contributing",
@@ -1873,7 +1921,9 @@
         },
         {
           "group": "Contributing to SDK",
-          "pages": ["contributing/sdk/developing"]
+          "pages": [
+            "contributing/sdk/developing"
+          ]
         }
       ]
     }
