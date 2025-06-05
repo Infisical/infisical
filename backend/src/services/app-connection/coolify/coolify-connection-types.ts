@@ -20,3 +20,32 @@ export type TValidateCoolifyConnectionCredentialsSchema = typeof ValidateCoolify
 export type TCoolifyConnectionConfig = DiscriminativePick<TCoolifyConnectionInput, "method" | "app" | "credentials"> & {
   orgId: string;
 };
+
+export type TCoolifyApplication = {
+  uuid: string;
+  name: string;
+  environment_id: number;
+  projectName: string;
+  environmentName: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TCoolifyProject = {
+  id: number;
+  uuid: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+  environments: TCoolifyProjectEnvironment[];
+};
+
+export type TCoolifyProjectEnvironment = {
+  id: number;
+  uuid: string;
+  name: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+  projectName: string;
+};

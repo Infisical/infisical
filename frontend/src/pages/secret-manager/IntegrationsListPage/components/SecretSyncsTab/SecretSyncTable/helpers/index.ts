@@ -304,6 +304,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
           ? "environment variables"
           : "file mount";
       break;
+    case SecretSync.Coolify:
+      primaryText = destinationConfig.appId;
+      secondaryText = "Application ID";
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }
