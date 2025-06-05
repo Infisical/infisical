@@ -80,6 +80,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.CircleCI:
     case SecretSync.AzureEntraIdScim:
     case SecretSync.ExternalInfisical:
+    case SecretSync.Coolify:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

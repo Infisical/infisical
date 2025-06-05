@@ -15,6 +15,7 @@ import { registerChecklySyncRouter } from "./checkly-sync-router";
 import { registerCircleCISyncRouter } from "./circleci-sync-router";
 import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-router";
 import { registerCloudflareWorkersSyncRouter } from "./cloudflare-workers-sync-router";
+import { registerCoolifySyncRouter } from "./coolify-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
 import { registerDigitalOceanAppPlatformSyncRouter } from "./digital-ocean-app-platform-sync-router";
 import { registerExternalInfisicalSyncRouter } from "./external-infisical-sync-router";
@@ -77,5 +78,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.OctopusDeploy]: registerOctopusDeploySyncRouter,
   [SecretSync.CircleCI]: registerCircleCISyncRouter,
   [SecretSync.AzureEntraIdScim]: registerAzureEntraIdScimSyncRouter,
-  [SecretSync.ExternalInfisical]: registerExternalInfisicalSyncRouter
+  [SecretSync.ExternalInfisical]: registerExternalInfisicalSyncRouter,
+  [SecretSync.Coolify]: registerCoolifySyncRouter
 };

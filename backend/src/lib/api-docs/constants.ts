@@ -3082,7 +3082,7 @@ export const SecretSyncs = {
       secretPath: "The secret path on the external Infisical instance to sync secrets to."
     },
     COOLIFY: {
-      ApplicationId: "The UUID of the application or service to sync secret to."
+      applicationId: "The UUID of the application or service to sync secret to."
     }
   }
 };

@@ -79,6 +79,7 @@ import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terra
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
 import { ZABBIX_SYNC_LIST_OPTION, ZabbixSyncFns } from "./zabbix";
+import { COOLIFY_SYNC_LIST_OPTION, CoolifySyncFns } from "./coolify";
 
 const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AWSParameterStore]: AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
@@ -117,7 +118,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.OctopusDeploy]: OCTOPUS_DEPLOY_SYNC_LIST_OPTION,
   [SecretSync.CircleCI]: CIRCLECI_SYNC_LIST_OPTION,
   [SecretSync.AzureEntraIdScim]: AZURE_ENTRA_ID_SCIM_SYNC_LIST_OPTION,
-  [SecretSync.ExternalInfisical]: EXTERNAL_INFISICAL_SYNC_LIST_OPTION
+  [SecretSync.ExternalInfisical]: EXTERNAL_INFISICAL_SYNC_LIST_OPTION,
+  [SecretSync.Coolify]: COOLIFY_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -378,6 +380,8 @@ export const SecretSyncFns = {
         // Key schema is intentionally not applied for Infisical-to-Infisical syncs to prevent
         // infinite sync loops where the prefixed key triggers another sync cycle.
         return ExternalInfisicalSyncFns.syncSecrets(secretSync, secretMap);
+      case SecretSync.Coolify:
+        return CoolifySyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

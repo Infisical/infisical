@@ -190,6 +190,7 @@ import {
 } from "./terraform-cloud";
 import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
 import { TZabbixSync, TZabbixSyncInput, TZabbixSyncListItem, TZabbixSyncWithCredentials } from "./zabbix";
+import { TCoolifySync, TCoolifySyncInput, TCoolifySyncListItem, TCoolifySyncWithCredentials } from "./coolify";
 
 export type TSecretSync =
   | TAwsParameterStoreSync
@@ -227,7 +228,8 @@ export type TSecretSync =
   | TOctopusDeploySync
   | TCircleCISync
   | TAzureEntraIdScimSync
-  | TExternalInfisicalSync;
+  | TExternalInfisicalSync
+  | TCoolifySync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -266,7 +268,8 @@ export type TSecretSyncWithCredentials =
   | TOctopusDeploySyncWithCredentials
   | TCircleCISyncWithCredentials
   | TAzureEntraIdScimSyncWithCredentials
-  | TExternalInfisicalSyncWithCredentials;
+  | TExternalInfisicalSyncWithCredentials
+  | TCoolifySyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -305,7 +308,8 @@ export type TSecretSyncInput =
   | TOctopusDeploySyncInput
   | TCircleCISyncInput
   | TAzureEntraIdScimSyncInput
-  | TExternalInfisicalSyncInput;
+  | TExternalInfisicalSyncInput
+  | TCoolifySyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -344,7 +348,8 @@ export type TSecretSyncListItem =
   | TOctopusDeploySyncListItem
   | TCircleCISyncListItem
   | TAzureEntraIdScimSyncListItem
-  | TExternalInfisicalSyncListItem;
+  | TExternalInfisicalSyncListItem
+  | TCoolifySyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
