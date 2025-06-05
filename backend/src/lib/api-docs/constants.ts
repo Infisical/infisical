@@ -3478,6 +3478,10 @@ export const AppConnections = {
       secretAccessKey: "The Secret Access Key used to authenticate with the storage provider.",
       region:
         "The region to sign requests for when the endpoint is a hostname allowed in the Server Console. Defaults to 'us-east-1'. The built-in providers take the region from the endpoint."
+    },
+    COOLIFY: {
+      instanceUrl: "The Coolify instance URL to connect with",
+      apiToken: "The API token used to access the Coolify server"
     }
   },
   PALO_ALTO_NETWORKS_LOOKUPS: {
@@ -3517,9 +3521,8 @@ export const SecretSyncs = {
     const destinationName = SECRET_SYNC_NAME_MAP[destination];
     return {
       syncId: `The ID of the ${destinationName} Sync to be updated.`,
-      connectionId: `The updated ID of the ${
-        APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
-      } Connection to use for syncing.`,
+      connectionId: `The updated ID of the ${APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
+        } Connection to use for syncing.`,
       name: `The updated name of the ${destinationName} Sync. Must be slug-friendly.`,
       environment: `The updated slug of the project environment to sync secrets from.`,
       secretPath: `The updated folder path to sync secrets from.`,
@@ -3867,6 +3870,9 @@ export const SecretSyncs = {
     PORTAINER: {
       environmentId: "The ID of the Portainer environment (endpoint) that hosts the stack.",
       stackId: "The ID of the Portainer stack to sync secrets to."
+    },
+    COOLIFY: {
+      ApplicationId: "The UUID of the application or service to sync secret to."
     }
   }
 };
@@ -4605,9 +4611,8 @@ export const RELAYS = {
 
 export const SecretValidationRules = {
   LIST: (type?: SecretValidationRuleType) => ({
-    projectId: `The ID of the project to list ${
-      type ? SECRET_VALIDATION_RULE_NAME_MAP[type] : "Secret"
-    } Validation Rules from.`
+    projectId: `The ID of the project to list ${type ? SECRET_VALIDATION_RULE_NAME_MAP[type] : "Secret"
+      } Validation Rules from.`
   }),
   GET_BY_ID: (type: SecretValidationRuleType) => ({
     ruleId: `The ID of the ${SECRET_VALIDATION_RULE_NAME_MAP[type]} Validation Rule to retrieve.`

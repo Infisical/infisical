@@ -96,7 +96,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.ServiceNow]: "ServiceNow",
   [AppConnection.S3Compatible]: "S3-Compatible Storage",
   [AppConnection.Jira]: "Jira",
-  [AppConnection.ClickHouse]: "ClickHouse"
+  [AppConnection.ClickHouse]: "ClickHouse",
+  [AppConnection.Coolify]: "Coolify"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -195,5 +196,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.ServiceNow]: AppConnectionPlanType.Enterprise,
   [AppConnection.S3Compatible]: AppConnectionPlanType.Regular,
   [AppConnection.Jira]: AppConnectionPlanType.Regular,
-  [AppConnection.ClickHouse]: AppConnectionPlanType.Regular
+  [AppConnection.ClickHouse]: AppConnectionPlanType.Regular,
+  [AppConnection.Coolify]: AppConnectionPlanType.Regular
 };

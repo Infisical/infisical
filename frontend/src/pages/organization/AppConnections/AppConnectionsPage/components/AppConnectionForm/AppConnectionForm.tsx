@@ -37,6 +37,7 @@ import { ClickHouseConnectionForm } from "./ClickHouseConnectionForm";
 import { Cloud66ConnectionForm } from "./Cloud66ConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { ConvexConnectionForm } from "./ConvexConnectionForm";
+import { CoolifyConnectionForm } from "./CoolifyConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DatadogConnectionForm } from "./DatadogConnectionForm";
 import { DaytonaConnectionForm } from "./DaytonaConnectionForm";
@@ -421,6 +422,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <NutanixPrismCentralConnectionForm onSubmit={onSubmit} />;
       case AppConnection.PowerDns:
         return <PowerDnsConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Coolify:
+        return <CoolifyConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -751,6 +754,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <NetlifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.MicrosoftIntune:
         return <MicrosoftIntuneConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Coolify:
+        return <CoolifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }
