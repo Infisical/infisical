@@ -204,7 +204,6 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           metadata: {
             identityId: identityKubernetesAuth.identityId,
             kubernetesHost: identityKubernetesAuth.kubernetesHost,
-            tokenReviewMode: identityKubernetesAuth.tokenReviewMode,
             allowedNamespaces: identityKubernetesAuth.allowedNamespaces,
             allowedNames: identityKubernetesAuth.allowedNames,
             accessTokenTTL: identityKubernetesAuth.accessTokenTTL,
@@ -347,7 +346,6 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           metadata: {
             identityId: identityKubernetesAuth.identityId,
             kubernetesHost: identityKubernetesAuth.kubernetesHost,
-            tokenReviewMode: identityKubernetesAuth.tokenReviewMode,
             allowedNamespaces: identityKubernetesAuth.allowedNamespaces,
             allowedNames: identityKubernetesAuth.allowedNames,
             accessTokenTTL: identityKubernetesAuth.accessTokenTTL,
