@@ -2,7 +2,7 @@ import axios from "axios";
 import https from "https";
 
 import { InternalServerError } from "@app/lib/errors";
-import { ProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TKubernetesTokenRequest } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
@@ -43,7 +43,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
         return res;
       },
       {
-        protocol: ProxyProtocol.Tcp,
+        protocol: GatewayProxyProtocol.Tcp,
         targetHost: inputs.targetHost,
         targetPort: inputs.targetPort,
         relayHost,

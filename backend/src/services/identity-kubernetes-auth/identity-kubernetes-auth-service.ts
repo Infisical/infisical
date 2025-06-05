@@ -20,7 +20,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
-import { ProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 
@@ -92,7 +92,7 @@ export const identityKubernetesAuthServiceFactory = ({
         return res;
       },
       {
-        protocol: inputs.reviewTokenThroughGateway ? ProxyProtocol.Http : ProxyProtocol.Tcp,
+        protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
         targetHost: inputs.targetHost,
         targetPort: inputs.targetPort,
         relayHost,
@@ -239,7 +239,7 @@ export const identityKubernetesAuthServiceFactory = ({
           {
             headers: {
               "Content-Type": "application/json",
-              "x-infisical-action": "inject-k8s-sa-auth-token"
+              "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken
             },
             signal: AbortSignal.timeout(10000),
             timeout: 10000,

@@ -4,7 +4,7 @@ import knex, { Knex } from "knex";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
-import { ProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
@@ -196,7 +196,7 @@ export const VerticaProvider = ({ gatewayService }: TVerticaProviderDTO): TDynam
         await gatewayCallback("localhost", port);
       },
       {
-        protocol: ProxyProtocol.Tcp,
+        protocol: GatewayProxyProtocol.Tcp,
         targetHost: providerInputs.host,
         targetPort: providerInputs.port,
         relayHost,
