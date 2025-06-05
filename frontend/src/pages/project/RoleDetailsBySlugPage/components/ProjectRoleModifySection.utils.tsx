@@ -226,6 +226,23 @@ const ConditionSchema = z
             : el.rhs.trim().startsWith("/")
         ),
     { message: "Invalid Secret Path. Must start with '/'" }
+  )
+  .refine(
+    (val) =>
+      val
+        .filter((el) => el.operator === PermissionConditionOperators.$EQ)
+        .every((el) => !el.rhs.includes(",")),
+    { message: '"Equal" checks cannot contain comma separated values. Use "IN" operator instead.' }
+  )
+  .refine(
+    (val) =>
+      val
+        .filter((el) => el.operator === PermissionConditionOperators.$NEQ)
+        .every((el) => !el.rhs.includes(",")),
+    {
+      message:
+        '"Not Equal" checks cannot contain comma separated values. Use "IN" operator with "Forbid" instead.'
+    }
   );
 
 export const projectRoleFormSchema = z.object({

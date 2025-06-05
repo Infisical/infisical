@@ -8,6 +8,11 @@ export const formatReservedPaths = (secretPath: string) => {
   return secretPath;
 };
 
+export const parsePathFromReplicatedPath = (secretPath: string) => {
+  const i = secretPath.indexOf(ReservedFolders.SecretReplication);
+  return secretPath.slice(0, i);
+};
+
 export const camelCaseToSpaces = (input: string) => {
   return input.replace(/([a-z])([A-Z])/g, "$1 $2");
 };

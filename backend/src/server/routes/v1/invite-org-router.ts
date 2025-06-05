@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { OrgMembershipRole, ProjectMembershipRole, UsersSchema } from "@app/db/schemas";
-import { inviteUserRateLimit } from "@app/server/config/rateLimiter";
+import { inviteUserRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -11,7 +11,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/signup",
     config: {
-      rateLimit: inviteUserRateLimit
+      rateLimit: smtpRateLimit()
     },
     method: "POST",
     schema: {
@@ -81,7 +81,10 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/signup-resend",
     config: {
-      rateLimit: inviteUserRateLimit
+      rateLimit: smtpRateLimit({
+        keyGenerator: (req) =>
+          (req.body as { membershipId?: string })?.membershipId?.trim().substring(0, 100) ?? req.realIp
+      })
     },
     method: "POST",
     schema: {

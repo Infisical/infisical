@@ -343,7 +343,8 @@
                 "documentation/platform/identities/oidc-auth/github",
                 "documentation/platform/identities/oidc-auth/circleci",
                 "documentation/platform/identities/oidc-auth/gitlab",
-                "documentation/platform/identities/oidc-auth/terraform-cloud"
+                "documentation/platform/identities/oidc-auth/terraform-cloud",
+                "documentation/platform/identities/oidc-auth/spire"
               ]
             },
 
@@ -1843,7 +1844,6 @@
         },
         "internals/components",
         "internals/security",
-        "internals/bug-bounty",
         "internals/service-tokens"
       ]
     },
