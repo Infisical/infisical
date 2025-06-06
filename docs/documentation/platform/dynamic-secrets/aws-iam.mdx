@@ -50,110 +50,281 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
 
 ## Set up Dynamic Secrets with AWS IAM
 
-<Steps>
-  <Step title="Secret Overview Dashboard">
-	Navigate to the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret to.
-  </Step>
-  <Step title="Click on the 'Add Dynamic Secret' button">
-	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
-  </Step>
-  <Step title="Select AWS IAM">
-	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-aws-iam.png)
-  </Step>
-  <Step title="Provide the inputs for dynamic secret parameters">
-	<ParamField path="Secret Name" type="string" required>
-		Name by which you want the secret to be referenced
-	</ParamField>
+<Tabs>
+  <Tab title="Assume Role (Recommended)">
+    Infisical will assume the provided role in your AWS account securely, without the need to share any credentials.
+        <Accordion title="Self-Hosted Instance">
+            To connect your self-hosted Infisical instance with AWS, you need to set up an AWS IAM User account that can assume the configured AWS IAM Role.
 
-	<ParamField path="Default TTL" type="string" required>
-		Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
-	</ParamField>
+            If your instance is deployed on AWS, the aws-sdk will automatically retrieve the credentials. Ensure that you assign the provided permission policy to your deployed instance, such as ECS or EC2.
 
-	<ParamField path="Max TTL" type="string" required>
-		Maximum time-to-live for a generated secret
-	</ParamField>
+            The following steps are for instances not deployed on AWS:
+            <Steps>
+                <Step title="Create an IAM User">
+                    Navigate to [Create IAM User](https://console.aws.amazon.com/iamv2/home#/users/create) in your AWS Console.
+                </Step>
+                <Step title="Create an Inline Policy">
+                    Attach the following inline permission policy to the IAM User to allow it to assume any IAM Roles:
+                    ```json
+                    {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                    {
+                        "Sid": "AllowAssumeAnyRole",
+                        "Effect": "Allow",
+                        "Action": "sts:AssumeRole",
+                        "Resource": "arn:aws:iam::*:role/*"
+                    }
+                        ]
+                    }
+                    ```
+                </Step>
+                <Step title="Obtain the IAM User Credentials">
+                    Obtain the AWS access key ID and secret access key for your IAM User by navigating to **IAM > Users > [Your User] > Security credentials > Access keys**.
 
-	<ParamField path="AWS Access Key" type="string" required>
-				The managing AWS IAM User Access Key
-  </ParamField>
+                    ![Access Key Step 1](/images/integrations/aws/integrations-aws-access-key-1.png)
+                    ![Access Key Step 2](/images/integrations/aws/integrations-aws-access-key-2.png)
+                    ![Access Key Step 3](/images/integrations/aws/integrations-aws-access-key-3.png)
+                </Step>
+                <Step title="Set Up Connection Keys">
+                    1. Set the access key as **DYNAMIC_SECRET_AWS_ACCESS_KEY_ID**.
+                    2. Set the secret key as **DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY**.
+                </Step>
+            </Steps>
+        </Accordion>
 
-	<ParamField path="AWS Secret Key" type="string" required>
-				The managing AWS IAM User Secret Key
-  </ParamField>
+    <Steps>
+         <Step title="Create the Managing User IAM Role for Infisical">
+                1. Navigate to the [Create IAM Role](https://console.aws.amazon.com/iamv2/home#/roles/create?step=selectEntities) page in your AWS Console.
+                ![IAM Role Creation](/images/integrations/aws/integration-aws-iam-assume-role.png)
 
-	<ParamField path="AWS IAM Path" type="string">
-				[IAM AWS Path](https://aws.amazon.com/blogs/security/optimize-aws-administration-with-iam-paths/) to scope created IAM User resource access.
-	</ParamField>
+                2. Select **AWS Account** as the **Trusted Entity Type**.
+                3. Select **Another AWS Account** and provide the appropriate Infisical AWS Account ID: use **381492033652** for the **US region**, and **345594589636** for the **EU region**. This restricts the role to be assumed only by Infisical. If self-hosting, provide your AWS account number instead.
+                4. (Recommended) <strong>Enable "Require external ID"</strong> and input your **Project ID** to strengthen security and mitigate the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html).
+                5. Assign permission as shared in prerequisite.
 
-	<ParamField path="AWS Region" type="string" required>
-				The AWS data center region.
-	</ParamField>
+                <Warning type="warning" title="Security Best Practice: Use External ID to Prevent Confused Deputy Attacks">
+                    When configuring an IAM Role that Infisical will assume, it’s highly recommended to enable the **"Require external ID"** option and specify your **Project ID**.
 
-	<ParamField path="IAM User Permission Boundary" type="string" required>
-				The IAM Policy ARN of the [AWS Permissions Boundary](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) to attach to IAM users created in the role.
-	</ParamField>
+                    This precaution helps protect your AWS account against the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html), a potential security vulnerability where Infisical could be tricked into performing actions on your behalf by an unauthorized actor.
 
-	<ParamField path="AWS IAM Groups" type="string">
-	The AWS IAM groups that should be assigned to the created users. Multiple values can be provided by separating them with commas
-</ParamField>
+                    <strong>Always enable "Require external ID" and use your Project ID when setting up the IAM Role.</strong>
+                </Warning>
+      </Step>
+    			<Step title="Copy the AWS IAM Role ARN">
+                ![Copy IAM Role ARN](/images/integrations/aws/integration-aws-iam-assume-arn.png)
+            </Step>
+      <Step title="Secret Overview Dashboard">
+        Navigate to the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret to.
+      </Step>
+      <Step title="Click on the 'Add Dynamic Secret' button">
+        ![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
+      </Step>
+      <Step title="Select AWS IAM">
+        ![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-aws-iam.png)
+      </Step>
+      <Step title="Provide the inputs for dynamic secret parameters">
+        ![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-aws-iam-assume-role.png)
+        <ParamField path="Secret Name" type="string" required>
+          Name by which you want the secret to be referenced
+        </ParamField>
 
-	<ParamField path="AWS Policy ARNs" type="string">
-	The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas
-</ParamField>
+        <ParamField path="Default TTL" type="string" required>
+          Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
+        </ParamField>
 
-<ParamField path="AWS IAM Policy Document" type="string">
-	The AWS IAM inline policy that should be attached to the created users. Multiple values can be provided by separating them with commas
-</ParamField>
+        <ParamField path="Max TTL" type="string" required>
+          Maximum time-to-live for a generated secret
+        </ParamField>
 
-<ParamField path="Username Template" type="string" default="{{randomUsername}}">
-Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
+    			<ParamField path="Method" type="string" required>
+    			   Select *Assume Role* method.
+    			</ParamField>
 
-Allowed template variables are
-- `{{randomUsername}}`: Random username string
-- `{{unixTimestamp}}`: Current Unix timestamp
-</ParamField>
+        <ParamField path="Aws Role ARN" type="string" required>
+    			   The ARN of the AWS Role to assume.
+        </ParamField>
 
-	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-aws-iam.png)
+        <ParamField path="AWS IAM Path" type="string">
+          [IAM AWS Path](https://aws.amazon.com/blogs/security/optimize-aws-administration-with-iam-paths/) to scope created IAM User resource access.
+        </ParamField>
 
-  </Step>
-  <Step title="Click 'Submit'">
-  	After submitting the form, you will see a dynamic secret created in the dashboard.
+        <ParamField path="AWS Region" type="string" required>
+          The AWS data center region.
+        </ParamField>
 
-	![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret.png)
-  </Step>
-  <Step title="Generate dynamic secrets">
-	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
-	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
-	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
+        <ParamField path="IAM User Permission Boundary" type="string" required>
+          The IAM Policy ARN of the [AWS Permissions Boundary](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) to attach to IAM users created in the role.
+        </ParamField>
 
-	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
-	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
+        <ParamField path="AWS IAM Groups" type="string">
+          The AWS IAM groups that should be assigned to the created users. Multiple values can be provided by separating them with commas
+        </ParamField>
 
-	When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate how long the credentials are valid for.
+        <ParamField path="AWS Policy ARNs" type="string">
+          The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas
+        </ParamField>
 
-	![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
+        <ParamField path="AWS IAM Policy Document" type="string">
+          The AWS IAM inline policy that should be attached to the created users.
+          Multiple values can be provided by separating them with commas
+        </ParamField>
 
-	<Tip>
-		Ensure that the TTL for the lease fall within the maximum TTL defined when configuring the dynamic secret in step 4.
-	</Tip>
+        <ParamField path="Username Template" type="string" default="{{randomUsername}}">
+          Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
 
+          Allowed template variables are
 
-	Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you.
+          - `{{randomUsername}}`: Random username string
+          - `{{unixTimestamp}}`: Current Unix timestamp
+        </ParamField>
+      </Step>
 
-	![Provision Lease](/images/platform/dynamic-secrets/lease-values-aws-iam.png)
-  </Step>
-</Steps>
+      <Step title="Click 'Submit'">
+        After submitting the form, you will see a dynamic secret created in the dashboard.
+        ![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret.png)
+      </Step>
+
+      <Step title="Generate dynamic secrets">
+        Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
+        To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
+        Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
+
+        ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
+        ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
+
+        When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate how long the credentials are valid for.
+
+        ![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
+
+        <Tip>
+          Ensure that the TTL for the lease falls within the maximum TTL defined when configuring the dynamic secret in step 4.
+        </Tip>
+
+        Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you.
+
+        ![Provision Lease](/images/platform/dynamic-secrets/lease-values-aws-iam.png)
+      </Step>
+    </Steps>
+
+  </Tab>
+  <Tab title="Access Key">
+        Infisical will use the provided **Access Key ID** and **Secret Key** to connect to your AWS instance.
+  <Steps>
+      <Step title="Secret Overview Dashboard">
+        Navigate to the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret to.
+      </Step>
+      <Step title="Click on the 'Add Dynamic Secret' button">
+        ![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
+      </Step>
+      <Step title="Select AWS IAM">
+        ![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-aws-iam.png)
+      </Step>
+      <Step title="Provide the inputs for dynamic secret parameters">
+        ![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-aws-iam-access-key.png)
+        <ParamField path="Secret Name" type="string" required>
+          Name by which you want the secret to be referenced
+        </ParamField>
+
+        <ParamField path="Default TTL" type="string" required>
+          Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
+        </ParamField>
+
+        <ParamField path="Max TTL" type="string" required>
+          Maximum time-to-live for a generated secret
+        </ParamField>
+
+    			<ParamField path="Method" type="string" required>
+    			   Select *Access Key* method.
+    			</ParamField>
+
+        <ParamField path="AWS Access Key" type="string" required>
+          The managing AWS IAM User Access Key
+        </ParamField>
+
+        <ParamField path="AWS Secret Key" type="string" required>
+          The managing AWS IAM User Secret Key
+        </ParamField>
+
+        <ParamField path="AWS IAM Path" type="string">
+          [IAM AWS Path](https://aws.amazon.com/blogs/security/optimize-aws-administration-with-iam-paths/) to scope created IAM User resource access.
+        </ParamField>
+
+        <ParamField path="AWS Region" type="string" required>
+          The AWS data center region.
+        </ParamField>
+
+        <ParamField path="IAM User Permission Boundary" type="string" required>
+          The IAM Policy ARN of the [AWS Permissions Boundary](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) to attach to IAM users created in the role.
+        </ParamField>
+
+        <ParamField path="AWS IAM Groups" type="string">
+          The AWS IAM groups that should be assigned to the created users. Multiple values can be provided by separating them with commas
+        </ParamField>
+
+        <ParamField path="AWS Policy ARNs" type="string">
+          The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas
+        </ParamField>
+
+        <ParamField path="AWS IAM Policy Document" type="string">
+          The AWS IAM inline policy that should be attached to the created users.
+          Multiple values can be provided by separating them with commas
+        </ParamField>
+
+        <ParamField path="Username Template" type="string" default="{{randomUsername}}">
+          Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
+
+          Allowed template variables are
+
+          - `{{randomUsername}}`: Random username string
+          - `{{unixTimestamp}}`: Current Unix timestamp
+        </ParamField>
+
+      </Step>
+
+      <Step title="Click 'Submit'">
+        After submitting the form, you will see a dynamic secret created in the dashboard.
+        ![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret.png)
+      </Step>
+
+      <Step title="Generate dynamic secrets">
+        Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
+        To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
+        Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
+
+        ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
+        ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
+
+        When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate how long the credentials are valid for.
+
+        ![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
+
+        <Tip>
+          Ensure that the TTL for the lease falls within the maximum TTL defined when configuring the dynamic secret in step 4.
+        </Tip>
+
+        Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you.
+
+        ![Provision Lease](/images/platform/dynamic-secrets/lease-values-aws-iam.png)
+      </Step>
+    </Steps>
+
+  </Tab>
+</Tabs>
 
 ## Audit or Revoke Leases
+
 Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
 This will allow you to see the lease details and delete the lease ahead of its expiration time.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
 ## Renew Leases
+
 To extend the life of the generated dynamic secret lease past its initial time to live, simply click on the **Renew** button as illustrated below.
 ![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
-	Lease renewals cannot exceed the maximum TTL set when configuring the dynamic secret
+  Lease renewals cannot exceed the maximum TTL set when configuring the dynamic
+  secret
 </Warning>

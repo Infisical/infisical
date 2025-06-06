@@ -5,14 +5,15 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, TextArea } from "@app/components/v2";
+import { Button, FormControl, Input, Select, SelectItem, TextArea } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
-import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { DynamicSecretAwsIamAuth, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
-  inputs: z
-    .object({
+  inputs: z.discriminatedUnion("method", [
+    z.object({
+      method: z.literal(DynamicSecretAwsIamAuth.AccessKey),
       accessKey: z.string().trim().min(1),
       secretAccessKey: z.string().trim().min(1),
       region: z.string().trim().min(1),
@@ -21,8 +22,18 @@ const formSchema = z.object({
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
       policyArns: z.string().trim().optional()
+    }),
+    z.object({
+      method: z.literal(DynamicSecretAwsIamAuth.AssumeRole),
+      roleArn: z.string().trim().min(1),
+      region: z.string().trim().min(1),
+      awsPath: z.string().trim().optional(),
+      permissionBoundaryPolicyArn: z.string().trim().optional(),
+      policyDocument: z.string().trim().optional(),
+      userGroups: z.string().trim().optional(),
+      policyArns: z.string().trim().optional()
     })
-    .partial(),
+  ]),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
     if (valMs < 60 * 1000)
@@ -66,6 +77,7 @@ export const EditDynamicSecretAwsIamForm = ({
 }: Props) => {
   const {
     control,
+    watch,
     formState: { isSubmitting },
     handleSubmit
   } = useForm<TForm>({
@@ -80,6 +92,7 @@ export const EditDynamicSecretAwsIamForm = ({
       }
     }
   });
+  const isAccessKeyMethod = watch("inputs.method") === DynamicSecretAwsIamAuth.AccessKey;
 
   const updateDynamicSecret = useUpdateDynamicSecret();
 
@@ -173,38 +186,82 @@ export const EditDynamicSecretAwsIamForm = ({
         <div>
           <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
           <div className="flex flex-col">
-            <div className="flex items-center space-x-2">
-              <Controller
-                control={control}
-                name="inputs.accessKey"
-                defaultValue=""
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="AWS Access Key"
-                    className="flex-grow"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
+            <Controller
+              name="inputs.method"
+              control={control}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label="Method"
+                >
+                  <Select
+                    value={value}
+                    onValueChange={(val) => onChange(val)}
+                    className="w-full border border-mineshaft-500"
+                    position="popper"
+                    dropdownContainerClassName="max-w-none"
                   >
-                    <Input {...field} />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="inputs.secretAccessKey"
-                defaultValue=""
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="AWS Secret Key"
-                    className="flex-grow"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} type="password" />
-                  </FormControl>
-                )}
-              />
-            </div>
+                    <SelectItem value={DynamicSecretAwsIamAuth.AssumeRole}>
+                      Assume Role (Recommended)
+                    </SelectItem>
+                    <SelectItem value={DynamicSecretAwsIamAuth.AccessKey}>Access Key</SelectItem>
+                  </Select>
+                </FormControl>
+              )}
+            />
+            {isAccessKeyMethod ? (
+              <div className="flex items-center space-x-2">
+                <Controller
+                  control={control}
+                  name="inputs.accessKey"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="AWS Access Key"
+                      className="flex-grow"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                    >
+                      <Input {...field} />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="inputs.secretAccessKey"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="AWS Secret Key"
+                      className="flex-grow"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                    >
+                      <Input {...field} type="password" />
+                    </FormControl>
+                  )}
+                />
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Controller
+                  control={control}
+                  name="inputs.roleArn"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Assume Role ARN"
+                      className="flex-grow"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                    >
+                      <Input {...field} />
+                    </FormControl>
+                  )}
+                />
+              </div>
+            )}
             <div className="flex items-center space-x-2">
               <Controller
                 control={control}

@@ -99,7 +99,9 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
         ) as object;
 
-        await selectedProvider.revoke(decryptedStoredInput, dynamicSecretLease.externalEntityId);
+        await selectedProvider.revoke(decryptedStoredInput, dynamicSecretLease.externalEntityId, {
+          projectId: folder.projectId
+        });
         await dynamicSecretLeaseDAL.deleteById(dynamicSecretLease.id);
         return;
       }
@@ -133,7 +135,9 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           await Promise.all(dynamicSecretLeases.map(({ id }) => unsetLeaseRevocation(id)));
           await Promise.all(
             dynamicSecretLeases.map(({ externalEntityId }) =>
-              selectedProvider.revoke(decryptedStoredInput, externalEntityId)
+              selectedProvider.revoke(decryptedStoredInput, externalEntityId, {
+                projectId: folder.projectId
+              })
             )
           );
         }
