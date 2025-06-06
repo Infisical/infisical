@@ -1,4 +1,7 @@
 import z from "zod";
+
+import { SecretSyncs } from "@app/lib/api-docs";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
   BaseSecretSyncSchema,
@@ -6,13 +9,15 @@ import {
   GenericUpdateSecretSyncFieldsSchema
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { SecretSyncs } from "@app/lib/api-docs";
 
 const CoolifySyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
 const CoolifySyncDestinationConfigSchema = z.object({
-  appId: z.string().trim().cuid2("Application/Service required").describe(SecretSyncs.DESTINATION_CONFIG.COOLIFY.applicationId)
+  appId: z
+    .string()
+    .trim()
+    .cuid2("Application/Service required")
+    .describe(SecretSyncs.DESTINATION_CONFIG.COOLIFY.applicationId)
 });
 
 export const CoolifySyncSchema = BaseSecretSyncSchema(SecretSync.Coolify, CoolifySyncOptionsConfig).extend({
