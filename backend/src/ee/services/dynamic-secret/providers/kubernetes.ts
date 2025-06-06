@@ -94,7 +94,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    const serviceAccountDynamicCallback = async (host: string, port: number) => {
+    const serviceAccountDynamicCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
       if (providerInputs.credentialType !== KubernetesCredentialType.Dynamic) {
         throw new Error("invalid callback");
       }
@@ -121,10 +121,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           },
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
           timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent: new https.Agent({
-            ca: providerInputs.ca,
-            rejectUnauthorized: providerInputs.sslEnabled
-          })
+          httpsAgent
         }
       );
 
@@ -165,10 +162,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           },
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
           timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent: new https.Agent({
-            ca: providerInputs.ca,
-            rejectUnauthorized: providerInputs.sslEnabled
-          })
+          httpsAgent
         }
       );
 
@@ -190,10 +184,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           },
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
           timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent: new https.Agent({
-            ca: providerInputs.ca,
-            rejectUnauthorized: providerInputs.sslEnabled
-          })
+          httpsAgent
         }
       );
 
@@ -210,10 +201,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
             },
             signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
             timeout: EXTERNAL_REQUEST_TIMEOUT,
-            httpsAgent: new https.Agent({
-              ca: providerInputs.ca,
-              rejectUnauthorized: providerInputs.sslEnabled
-            })
+            httpsAgent
           }
         );
       } else {
@@ -226,10 +214,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           },
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
           timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent: new https.Agent({
-            ca: providerInputs.ca,
-            rejectUnauthorized: providerInputs.sslEnabled
-          })
+          httpsAgent
         });
       }
 
@@ -244,15 +229,12 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           },
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
           timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent: new https.Agent({
-            ca: providerInputs.ca,
-            rejectUnauthorized: providerInputs.sslEnabled
-          })
+          httpsAgent
         }
       );
     };
 
-    const serviceAccountStaticCallback = async (host: string, port: number) => {
+    const serviceAccountStaticCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
       if (providerInputs.credentialType !== KubernetesCredentialType.Static) {
         throw new Error("invalid callback");
       }
@@ -270,10 +252,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           },
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
           timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent: new https.Agent({
-            ca: providerInputs.ca,
-            rejectUnauthorized: providerInputs.sslEnabled
-          })
+          httpsAgent
         }
       );
     };
@@ -344,7 +323,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
   }) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    const serviceAccountDynamicCallback = async (host: string, port: number) => {
+    const serviceAccountDynamicCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
       if (providerInputs.credentialType !== KubernetesCredentialType.Dynamic) {
         throw new Error("invalid callback");
       }
@@ -371,10 +350,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           },
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
           timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent: new https.Agent({
-            ca: providerInputs.ca,
-            rejectUnauthorized: providerInputs.sslEnabled
-          })
+          httpsAgent
         }
       );
 
@@ -415,10 +391,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           },
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
           timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent: new https.Agent({
-            ca: providerInputs.ca,
-            rejectUnauthorized: providerInputs.sslEnabled
-          })
+          httpsAgent
         }
       );
 
@@ -440,17 +413,14 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           },
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
           timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent: new https.Agent({
-            ca: providerInputs.ca,
-            rejectUnauthorized: providerInputs.sslEnabled
-          })
+          httpsAgent
         }
       );
 
       return { ...res.data, serviceAccountName };
     };
 
-    const tokenRequestStaticCallback = async (host: string, port: number) => {
+    const tokenRequestStaticCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
       if (providerInputs.credentialType !== KubernetesCredentialType.Static) {
         throw new Error("invalid callback");
       }
@@ -474,10 +444,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           },
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
           timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent: new https.Agent({
-            ca: providerInputs.ca,
-            rejectUnauthorized: providerInputs.sslEnabled
-          })
+          httpsAgent
         }
       );
 
@@ -547,7 +514,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    const serviceAccountDynamicCallback = async (host: string, port: number) => {
+    const serviceAccountDynamicCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
       if (providerInputs.credentialType !== KubernetesCredentialType.Dynamic) {
         throw new Error("invalid callback");
       }
@@ -567,10 +534,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
             },
             signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
             timeout: EXTERNAL_REQUEST_TIMEOUT,
-            httpsAgent: new https.Agent({
-              ca: providerInputs.ca,
-              rejectUnauthorized: providerInputs.sslEnabled
-            })
+            httpsAgent
           }
         );
       } else {
@@ -583,10 +547,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           },
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
           timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent: new https.Agent({
-            ca: providerInputs.ca,
-            rejectUnauthorized: providerInputs.sslEnabled
-          })
+          httpsAgent
         });
       }
 
@@ -600,10 +561,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
         },
         signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
         timeout: EXTERNAL_REQUEST_TIMEOUT,
-        httpsAgent: new https.Agent({
-          ca: providerInputs.ca,
-          rejectUnauthorized: providerInputs.sslEnabled
-        })
+        httpsAgent
       });
     };
 

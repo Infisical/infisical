@@ -119,7 +119,7 @@ const formSchema = z
       ctx.addIssue({
         path: ["inputs.clusterToken"],
         code: z.ZodIssueCode.custom,
-        message: "When auth method is set to Manual Token, a cluster token must be provided"
+        message: "When auth method is set to Token, a cluster token must be provided"
       });
     }
   });
@@ -411,7 +411,7 @@ export const EditDynamicSecretKubernetesForm = ({
                           className="w-full"
                           onValueChange={(e) => field.onChange(e)}
                         >
-                          <SelectItem value={AuthMethod.Api}>Manual Token (API)</SelectItem>
+                          <SelectItem value={AuthMethod.Api}>Token (API)</SelectItem>
                           <SelectItem value={AuthMethod.Gateway}>Gateway</SelectItem>
                         </Select>
                       </FormControl>
