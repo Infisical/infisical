@@ -135,7 +135,8 @@ export const dynamicSecretLeaseServiceFactory = ({
       result = await selectedProvider.create({
         inputs: decryptedStoredInput,
         expireAt: expireAt.getTime(),
-        usernameTemplate: dynamicSecretCfg.usernameTemplate
+        usernameTemplate: dynamicSecretCfg.usernameTemplate,
+        metadata: { projectId }
       });
     } catch (error: unknown) {
       if (error && typeof error === "object" && error !== null && "sqlMessage" in error) {
@@ -237,7 +238,8 @@ export const dynamicSecretLeaseServiceFactory = ({
     const { entityId } = await selectedProvider.renew(
       decryptedStoredInput,
       dynamicSecretLease.externalEntityId,
-      expireAt.getTime()
+      expireAt.getTime(),
+      { projectId }
     );
 
     await dynamicSecretQueueService.unsetLeaseRevocation(dynamicSecretLease.id);
@@ -313,7 +315,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     ) as object;
 
     const revokeResponse = await selectedProvider
-      .revoke(decryptedStoredInput, dynamicSecretLease.externalEntityId)
+      .revoke(decryptedStoredInput, dynamicSecretLease.externalEntityId, { projectId })
       .catch(async (err) => {
         // only propogate this error if forced is false
         if (!isForced) return { error: err as Error };

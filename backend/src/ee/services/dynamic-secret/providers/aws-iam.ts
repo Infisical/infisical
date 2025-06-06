@@ -16,13 +16,16 @@ import {
   PutUserPolicyCommand,
   RemoveUserFromGroupCommand
 } from "@aws-sdk/client-iam";
+import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
+import { randomUUID } from "crypto";
 import handlebars from "handlebars";
 import { z } from "zod";
 
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-import { DynamicSecretAwsIamSchema, TDynamicProviderFns } from "./models";
+import { AwsIamAuthType, DynamicSecretAwsIamSchema, TDynamicProviderFns } from "./models";
 
 const generateUsername = (usernameTemplate?: string | null) => {
   const randomUsername = alphaNumericNanoId(32);
@@ -40,7 +43,45 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretAwsIamSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretAwsIamSchema>, projectId: string) => {
+    const appCfg = getConfig();
+    if (providerInputs.method === AwsIamAuthType.AssumeRole) {
+      console.log(appCfg.DYNAMIC_SECRET_AWS_ACCESS_KEY_ID, appCfg.DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY);
+      const stsClient = new STSClient({
+        region: providerInputs.region,
+        credentials:
+          appCfg.DYNAMIC_SECRET_AWS_ACCESS_KEY_ID && appCfg.DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY
+            ? {
+                accessKeyId: appCfg.DYNAMIC_SECRET_AWS_ACCESS_KEY_ID,
+                secretAccessKey: appCfg.DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY
+              }
+            : undefined // if hosting on AWS
+      });
+
+      const command = new AssumeRoleCommand({
+        RoleArn: providerInputs.roleArn,
+        RoleSessionName: `infisical-dynamic-secret-${randomUUID()}`,
+        DurationSeconds: 900, // 15 mins
+        ExternalId: projectId
+      });
+
+      const assumeRes = await stsClient.send(command);
+
+      if (!assumeRes.Credentials?.AccessKeyId || !assumeRes.Credentials?.SecretAccessKey) {
+        throw new BadRequestError({ message: "Failed to assume role - verify credentials and role configuration" });
+      }
+      console.log(assumeRes.Credentials);
+      const client = new IAMClient({
+        region: providerInputs.region,
+        credentials: {
+          accessKeyId: assumeRes.Credentials?.AccessKeyId,
+          secretAccessKey: assumeRes.Credentials?.SecretAccessKey,
+          sessionToken: assumeRes.Credentials?.SessionToken
+        }
+      });
+      return client;
+    }
+
     const client = new IAMClient({
       region: providerInputs.region,
       credentials: {
@@ -52,22 +93,39 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
     return client;
   };
 
-  const validateConnection = async (inputs: unknown) => {
+  const validateConnection = async (inputs: unknown, { projectId }: { projectId: string }) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await $getClient(providerInputs);
-
-    const isConnected = await client.send(new GetUserCommand({})).then(() => true);
+    const client = await $getClient(providerInputs, projectId);
+    const isConnected = await client
+      .send(new GetUserCommand({}))
+      .then(() => true)
+      .catch((err) => {
+        const message = (err as Error)?.message;
+        if (
+          providerInputs.method === AwsIamAuthType.AssumeRole &&
+          message.includes("Must specify userName when calling with non-User credentials")
+        ) {
+          return true;
+        }
+        throw err;
+      });
     return isConnected;
   };
 
-  const create = async (data: { inputs: unknown; expireAt: number; usernameTemplate?: string | null }) => {
-    const { inputs, usernameTemplate } = data;
+  const create = async (data: {
+    inputs: unknown;
+    expireAt: number;
+    usernameTemplate?: string | null;
+    metadata: { projectId: string };
+  }) => {
+    const { inputs, usernameTemplate, metadata } = data;
 
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await $getClient(providerInputs);
+    const client = await $getClient(providerInputs, metadata.projectId);
 
     const username = generateUsername(usernameTemplate);
     const { policyArns, userGroups, policyDocument, awsPath, permissionBoundaryPolicyArn } = providerInputs;
+    console.log("Hit");
     const createUserRes = await client.send(
       new CreateUserCommand({
         Path: awsPath,
@@ -76,6 +134,8 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
         UserName: username
       })
     );
+
+    console.log("Hit fail");
     if (!createUserRes.User) throw new BadRequestError({ message: "Failed to create AWS IAM User" });
     if (userGroups) {
       await Promise.all(
@@ -125,9 +185,9 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
     };
   };
 
-  const revoke = async (inputs: unknown, entityId: string) => {
+  const revoke = async (inputs: unknown, entityId: string, metadata: { projectId: string }) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await $getClient(providerInputs);
+    const client = await $getClient(providerInputs, metadata.projectId);
 
     const username = entityId;
 
