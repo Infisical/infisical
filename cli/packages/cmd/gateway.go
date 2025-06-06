@@ -43,7 +43,8 @@ func getInfisicalSdkInstance(cmd *cobra.Command) (infisicalSdk.InfisicalClientIn
 	}
 
 	// if the --token param is not set, we use the auth-method flag to determine the authentication method, and perform the appropriate login flow based on that
-	authMethod, err := cmd.Flags().GetString("auth-method")
+	authMethod, err := util.GetCmdFlagOrEnv(cmd, "auth-method", []string{util.INFISICAL_AUTH_METHOD_NAME})
+
 	if err != nil {
 		cancel()
 		return nil, nil, err

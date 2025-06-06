@@ -190,7 +190,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
     </Steps>
 
   </Accordion>
-    <Accordion title="OIDC Auth">
+  <Accordion title="OIDC Auth">
     The OIDC Auth method is used to authenticate with Infisical via identity tokens with OIDC.
 
     <ParamField query="Flags">
@@ -198,7 +198,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
           <ParamField query="machine-identity-id" type="string" required>
             Your machine identity ID.
           </ParamField>
-          <ParamField query="oidc-jwt" type="string" required>
+          <ParamField query="jwt" type="string" required>
             The OIDC JWT from the identity provider.
           </ParamField>
       </Expandable>
@@ -212,11 +212,35 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
         Run the `login` command with the following flags to obtain an access token:
 
       ```bash
-        infisical login --method=oidc-auth --machine-identity-id=<machine-identity-id> --oidc-jwt=<oidc-jwt>
+        infisical login --method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt>
       ```
       </Step>
     </Steps>
+  </Accordion>
 
+  <Accordion title="JWT Auth">
+    The JWT Auth method is used to authenticate with Infisical via a JWT token.
+
+    <ParamField query="Flags">
+      <Expandable title="properties">
+          <ParamField query="jwt" type="string" required>
+            The JWT token to use for authentication.
+          </ParamField>
+          <ParamField query="machine-identity-id" type="string" required>
+            Your machine identity ID.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    <Steps>
+      <Step title="Obtain an access token">
+        Run the `login` command with the following flags to obtain an access token:
+
+      ```bash
+        infisical login --method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id>
+      ```
+      </Step>
+    </Steps>
   </Accordion>
 </AccordionGroup>
 

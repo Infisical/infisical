@@ -243,6 +243,7 @@ var loginCmd = &cobra.Command{
 				util.AuthStrategy.GCP_IAM_AUTH:      sdkAuthenticator.HandleGcpIamAuthLogin,
 				util.AuthStrategy.AWS_IAM_AUTH:      sdkAuthenticator.HandleAwsIamAuthLogin,
 				util.AuthStrategy.OIDC_AUTH:         sdkAuthenticator.HandleOidcAuthLogin,
+				util.AuthStrategy.JWT_AUTH:          sdkAuthenticator.HandleJwtAuthLogin,
 			}
 
 			credential, err := authStrategies[strategy]()

@@ -96,6 +96,11 @@ func GetInfisicalToken(cmd *cobra.Command) (token *models.TokenDetails, err erro
 			infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
 			source = fmt.Sprintf("%s environment variable", INFISICAL_TOKEN_NAME)
 		}
+
+		if infisicalToken == "" { // if its still empty, check for the `TOKEN` environment variable (for gateway helm)
+			infisicalToken = os.Getenv(INFISICAL_GATEWAY_TOKEN_NAME_LEGACY)
+			source = fmt.Sprintf("%s environment variable", INFISICAL_GATEWAY_TOKEN_NAME_LEGACY)
+		}
 	}
 
 	if infisicalToken == "" { // If it's empty, we return nothing at all.
