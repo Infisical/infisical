@@ -97,8 +97,8 @@ export const registerCoolifyConnectionRouter = async (server: FastifyZodProvider
           .object({
             uuid: z.string(),
             name: z.string(),
-            created_at: z.string(),
-            updated_at: z.string()
+            created_at: z.string().datetime(),
+            updated_at: z.string().datetime()
           })
           .array()
       }
