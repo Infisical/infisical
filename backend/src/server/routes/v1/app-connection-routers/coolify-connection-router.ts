@@ -22,7 +22,7 @@ export const registerCoolifyConnectionRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "GET",
-    url: "/:connectionId/applications",
+    url: "/:connectionId/projects",
     config: {
       rateLimit: readLimit
     },
@@ -34,9 +34,68 @@ export const registerCoolifyConnectionRouter = async (server: FastifyZodProvider
         200: z
           .object({
             uuid: z.string(),
+            name: z.string()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+      const projects = await server.services.appConnection.coolify.listProjects(connectionId, req.permission);
+      return projects;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:connectionId/projects/:projectId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        connectionId: z.string().uuid(),
+        projectId: z.string().cuid2()
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.number(),
+            uuid: z.string(),
+            name: z.string()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId, projectId } = req.params;
+      const applications = await server.services.appConnection.coolify.listProjectEnvironments(
+        connectionId,
+        projectId,
+        req.permission
+      );
+      return applications;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:connectionId/environments/:envId/applications",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        connectionId: z.string().uuid(),
+        envId: z.coerce.number()
+      }),
+      response: {
+        200: z
+          .object({
+            uuid: z.string(),
             name: z.string(),
-            projectName: z.string(),
-            environmentName: z.string(),
             created_at: z.string(),
             updated_at: z.string()
           })
@@ -45,8 +104,12 @@ export const registerCoolifyConnectionRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { connectionId } = req.params;
-      const applications = await server.services.appConnection.coolify.listApplications(connectionId, req.permission);
+      const { connectionId, envId } = req.params;
+      const applications = await server.services.appConnection.coolify.listApplications(
+        connectionId,
+        envId,
+        req.permission
+      );
       return applications;
     }
   });

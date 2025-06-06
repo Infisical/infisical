@@ -33,6 +33,7 @@ export type TCoolifyApplication = {
 
 export type TCoolifyProject = {
   id: number;
+  name: string;
   uuid: string;
   description: string;
   created_at: string;
