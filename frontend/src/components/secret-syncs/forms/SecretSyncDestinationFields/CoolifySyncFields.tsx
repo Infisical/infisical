@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
@@ -16,7 +17,6 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
 import { SecretSyncConnectionField } from "../SecretSyncConnectionField";
-import { useState } from "react";
 
 export const CoolifySyncFields = () => {
   const { control, setValue } = useFormContext<

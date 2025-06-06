@@ -1,15 +1,16 @@
+import { z } from "zod";
+
+import { readLimit } from "@app/server/config/rateLimiter";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   CreateCoolifyConnectionSchema,
   SanitizedCoolifyConnectionSchema,
   UpdateCoolifyConnectionSchema
 } from "@app/services/app-connection/coolify";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
-import { readLimit } from "@app/server/config/rateLimiter";
-import { z } from "zod";
-import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerCoolifyConnectionRouter = async (server: FastifyZodProvider) => {
   registerAppConnectionEndpoints({
