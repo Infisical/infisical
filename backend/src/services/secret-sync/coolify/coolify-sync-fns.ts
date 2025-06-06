@@ -43,7 +43,7 @@ const createCoolifySecret = async (secretSync: TCoolifySyncWithCredentials, secr
   await request.post<TCoolifyAPICreateEnvResponse>(`${instanceUrl}/api/v1/applications/${appId}/envs`, secret, {
     headers: {
       Authorization: `Bearer ${apiToken}`,
-      ContentType: "application/json"
+      "Content-Type": "application/json"
     }
   });
 };
@@ -63,7 +63,7 @@ const updateCoolifySecret = async (
   await request.patch<TCoolifyAPIResponse>(`${instanceUrl}/api/v1/applications/${appId}/envs`, secret, {
     headers: {
       Authorization: `Bearer ${apiToken}`,
-      ContentType: "application/json"
+      "Content-Type": "application/json"
     }
   });
 };
@@ -146,9 +146,9 @@ export const CoolifySyncFns = {
         value: secret.real_value,
         skipMultilineEncoding: secret.is_multiline,
         secretMetadata: [
-          { key: "key", value: String(secret.is_build_time) },
-          { key: "key", value: String(secret.is_literal) },
-          { key: "key", value: String(secret.is_preview) }
+          { key: "is_build_time", value: String(secret.is_build_time) },
+          { key: "is_literal", value: String(secret.is_literal) },
+          { key: "is_preview", value: String(secret.is_preview) }
         ]
       };
     }
