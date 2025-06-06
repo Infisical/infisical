@@ -16,6 +16,7 @@ import {
   AwsSecretsManagerSyncReviewFields
 } from "./AwsSecretsManagerSyncReviewFields";
 import { AzureAppConfigurationSyncReviewFields } from "./AzureAppConfigurationSyncReviewFields";
+import { AzureDevOpsSyncReviewFields } from "./AzureDevOpsSyncReviewFields";
 import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
 import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
@@ -69,6 +70,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.AzureAppConfiguration:
       DestinationFieldsComponent = <AzureAppConfigurationSyncReviewFields />;
+      break;
+    case SecretSync.AzureDevOps:
+      DestinationFieldsComponent = <AzureDevOpsSyncReviewFields />;
       break;
     case SecretSync.Databricks:
       DestinationFieldsComponent = <DatabricksSyncReviewFields />;

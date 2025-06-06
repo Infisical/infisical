@@ -112,6 +112,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.vaultId;
       secondaryText = "Vault ID";
       break;
+    case SecretSync.AzureDevOps:
+      primaryText = destinationConfig.devopsProjectName;
+      secondaryText = destinationConfig.devopsProjectId;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

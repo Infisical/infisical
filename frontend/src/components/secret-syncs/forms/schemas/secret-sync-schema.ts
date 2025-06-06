@@ -4,6 +4,7 @@ import { OnePassSyncDestinationSchema } from "./1password-sync-destination-schem
 import { AwsParameterStoreSyncDestinationSchema } from "./aws-parameter-store-sync-destination-schema";
 import { AwsSecretsManagerSyncDestinationSchema } from "./aws-secrets-manager-sync-destination-schema";
 import { AzureAppConfigurationSyncDestinationSchema } from "./azure-app-configuration-sync-destination-schema";
+import { AzureDevOpsSyncDestinationSchema } from "./azure-devops-sync-destination-schema";
 import { AzureKeyVaultSyncDestinationSchema } from "./azure-key-vault-sync-destination-schema";
 import { CamundaSyncDestinationSchema } from "./camunda-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
@@ -24,6 +25,7 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   GcpSyncDestinationSchema,
   AzureKeyVaultSyncDestinationSchema,
   AzureAppConfigurationSyncDestinationSchema,
+  AzureDevOpsSyncDestinationSchema,
   DatabricksSyncDestinationSchema,
   HumanitecSyncDestinationSchema,
   TerraformCloudSyncDestinationSchema,

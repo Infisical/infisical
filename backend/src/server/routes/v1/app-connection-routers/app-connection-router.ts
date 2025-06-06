@@ -20,6 +20,10 @@ import {
   SanitizedAzureClientSecretsConnectionSchema
 } from "@app/services/app-connection/azure-client-secrets";
 import {
+  AzureDevOpsConnectionListItemSchema,
+  SanitizedAzureDevOpsConnectionSchema
+} from "@app/services/app-connection/azure-devops/azure-devops-schemas";
+import {
   AzureKeyVaultConnectionListItemSchema,
   SanitizedAzureKeyVaultConnectionSchema
 } from "@app/services/app-connection/azure-key-vault";
@@ -75,6 +79,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedGcpConnectionSchema.options,
   ...SanitizedAzureKeyVaultConnectionSchema.options,
   ...SanitizedAzureAppConfigurationConnectionSchema.options,
+  ...SanitizedAzureDevOpsConnectionSchema.options,
   ...SanitizedDatabricksConnectionSchema.options,
   ...SanitizedHumanitecConnectionSchema.options,
   ...SanitizedTerraformCloudConnectionSchema.options,
@@ -100,6 +105,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   GcpConnectionListItemSchema,
   AzureKeyVaultConnectionListItemSchema,
   AzureAppConfigurationConnectionListItemSchema,
+  AzureDevOpsConnectionListItemSchema,
   DatabricksConnectionListItemSchema,
   HumanitecConnectionListItemSchema,
   TerraformCloudConnectionListItemSchema,
