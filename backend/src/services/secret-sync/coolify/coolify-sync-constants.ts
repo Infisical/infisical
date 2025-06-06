@@ -7,4 +7,4 @@ export const COOLIFY_SYNC_LIST_OPTION: TSecretSyncListItem = {
   destination: SecretSync.Coolify,
   connection: AppConnection.Coolify,
   canImportSecrets: true
-}
+};

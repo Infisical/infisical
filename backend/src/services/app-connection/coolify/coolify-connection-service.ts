@@ -1,9 +1,9 @@
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
+import { listCoolifyApplications, listCoolifyProjectEnvironments, listCoolifyProjects } from "./coolify-connection-fns";
 import { TCoolifyConnection } from "./coolify-connection-types";
-import { listCoolifyApplications, listCoolifyProjects, listCoolifyProjectEnvironments } from "./coolify-connection-fns";
-import { logger } from "@app/lib/logger";
 
 type TGetAppConnectionFunc = (
   app: AppConnection,
