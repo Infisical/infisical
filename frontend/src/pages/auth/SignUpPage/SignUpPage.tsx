@@ -21,7 +21,6 @@ export const SignUpPage = () => {
   const [name, setName] = useState("");
   const [organizationName, setOrganizationName] = useState("");
   const [attributionSource, setAttributionSource] = useState("");
-  const [code, setCode] = useState("123456");
   const [codeError, setCodeError] = useState(false);
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
@@ -47,21 +46,7 @@ export const SignUpPage = () => {
    * Step 5 is inviting users
    */
   const incrementStep = async () => {
-    if (step === 1 || step === 3 || step === 4) {
       setStep(step + 1);
-    } else if (step === 2) {
-      setIsCodeInputCheckLoading(true);
-      // Checking if the code matches the email.
-      try {
-        const { token } = await mutateAsync({ email, code });
-        SecurityClient.setSignupToken(token);
-        setStep(3);
-      } catch (err) {
-        console.error(err);
-        setCodeError(true);
-      }
-      setIsCodeInputCheckLoading(false);
-    }
   };
 
   // when email service is not configured, skip step 2 and 5
@@ -79,6 +64,21 @@ export const SignUpPage = () => {
     })();
   }, [step]);
 
+  const handleCodeChange = async (value: string) => {
+    setCodeError(false);
+    if (value.length === 6 && step === 2 && !isCodeInputCheckLoading) {
+      setIsCodeInputCheckLoading(true);
+      try {
+        const { token } = await mutateAsync({ email, code: value });
+        SecurityClient.setSignupToken(token);
+        incrementStep();
+      } catch (err) {
+        setCodeError(true);
+      }
+      setIsCodeInputCheckLoading(false);
+    }
+  };
+
   const renderView = (registerStep: number) => {
     if (isSignupWithEmail && registerStep === 1) {
       return <EnterEmailStep email={email} setEmail={setEmail} incrementStep={incrementStep} />;
@@ -92,10 +92,8 @@ export const SignUpPage = () => {
       return (
         <CodeInputStep
           email={email}
-          incrementStep={incrementStep}
-          setCode={setCode}
+          setCode={handleCodeChange}
           codeError={codeError}
-          isCodeInputCheckLoading={isCodeInputCheckLoading}
         />
       );
     }
