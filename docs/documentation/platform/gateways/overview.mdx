@@ -164,7 +164,7 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
           <Accordion title="Native GCP ID Token">
             The Native GCP ID Token method is used to authenticate with Infisical when running in a GCP environment.
 
-            <ParamField query="Flags">
+            <ParamField query="Environment Variables">
               <Expandable title="properties">
                   <ParamField query="INFISICAL_MACHINE_IDENTITY_ID" type="string" required>
                     Your machine identity ID.
@@ -239,18 +239,9 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
               </Expandable>
             </ParamField>
 
-            <Steps>
-              <Step title="Create an OIDC machine identity">
-                To create an OIDC machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/oidc-auth/general).
-              </Step>
-              <Step title="Obtain an access token">
-                Run the `login` command with the following flags to obtain an access token:
-
-              ```bash
-                infisical gateway --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt>
-              ```
-              </Step>
-            </Steps>
+            ```bash
+              kubectl create secret generic infisical-gateway-environment --from-literal=INFISICAL_AUTH_METHOD=oidc-auth --from-literal=INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id> --from-literal=INFISICAL_JWT=<oidc-jwt>
+            ```
           </Accordion>
 
           <Accordion title="JWT Auth">
