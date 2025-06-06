@@ -79,13 +79,5 @@ export const listCoolifyProjectEnvironments = async (appConnection: TCoolifyConn
 export const listCoolifyApplications = async (appConnection: TCoolifyConnection) => {
   const instanceUrl = getCoolifyInstanceUrl(appConnection);
   const { apiToken } = appConnection.credentials;
-
-  const resp = await request.get<TCoolifyApplication[]>(`${instanceUrl}/api/v1/applications`, {
-    headers: {
-      Authorization: `Bearer ${apiToken}`,
-      Accept: "application/json"
-    }
-  });
-
-  return resp.data;
+  return fetchCoolifyData<TCoolifyApplication[]>(`${instanceUrl}/api/v1/applications`, apiToken);
 };
