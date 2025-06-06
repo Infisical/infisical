@@ -18,7 +18,6 @@ import {
 } from "@aws-sdk/client-iam";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { randomUUID } from "crypto";
-import handlebars from "handlebars";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
@@ -26,14 +25,16 @@ import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { AwsIamAuthType, DynamicSecretAwsIamSchema, TDynamicProviderFns } from "./models";
+import { compileUsernameTemplate } from "./templateUtils";
 
-const generateUsername = (usernameTemplate?: string | null) => {
+const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const randomUsername = alphaNumericNanoId(32);
   if (!usernameTemplate) return randomUsername;
 
-  return handlebars.compile(usernameTemplate)({
+  return compileUsernameTemplate({
+    usernameTemplate,
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100)
+    identity
   });
 };
 
@@ -115,14 +116,17 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
+    identity?: {
+      name: string;
+    };
     metadata: { projectId: string };
   }) => {
-    const { inputs, usernameTemplate, metadata } = data;
+    const { inputs, usernameTemplate, metadata, identity } = data;
 
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs, metadata.projectId);
 
-    const username = generateUsername(usernameTemplate);
+    const username = generateUsername(usernameTemplate, identity);
     const { policyArns, userGroups, policyDocument, awsPath, permissionBoundaryPolicyArn } = providerInputs;
     const createUserRes = await client.send(
       new CreateUserCommand({

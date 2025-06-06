@@ -8,6 +8,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { DynamicSecretSnowflakeSchema, TDynamicProviderFns } from "./models";
+import { compileUsernameTemplate } from "./templateUtils";
 
 // destroy client requires callback...
 const noop = () => {};
@@ -17,13 +18,13 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = (usernameTemplate?: string | null) => {
+const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const randomUsername = `infisical_${alphaNumericNanoId(32)}`; // Username must start with an ascii letter, so we prepend the username with "inf-"
   if (!usernameTemplate) return randomUsername;
-
-  return handlebars.compile(usernameTemplate)({
+  return compileUsernameTemplate({
+    usernameTemplate,
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100)
+    identity
   });
 };
 
@@ -88,13 +89,18 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
     return isValidConnection;
   };
 
-  const create = async (data: { inputs: unknown; expireAt: number; usernameTemplate?: string | null }) => {
-    const { inputs, expireAt, usernameTemplate } = data;
+  const create = async (data: {
+    inputs: unknown;
+    expireAt: number;
+    usernameTemplate?: string | null;
+    identity?: { name: string };
+  }) => {
+    const { inputs, expireAt, usernameTemplate, identity } = data;
     const providerInputs = await validateProviderInputs(inputs);
 
     const client = await $getClient(providerInputs);
 
-    const username = generateUsername(usernameTemplate);
+    const username = generateUsername(usernameTemplate, identity);
     const password = generatePassword();
 
     try {

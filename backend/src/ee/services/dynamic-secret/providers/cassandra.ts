@@ -8,19 +8,20 @@ import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars
 
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretCassandraSchema, TDynamicProviderFns } from "./models";
+import { compileUsernameTemplate } from "./templateUtils";
 
 const generatePassword = (size = 48) => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = (usernameTemplate?: string | null) => {
+const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const randomUsername = alphaNumericNanoId(32); // Username must start with an ascii letter, so we prepend the username with "inf-"
   if (!usernameTemplate) return randomUsername;
-
-  return handlebars.compile(usernameTemplate)({
+  return compileUsernameTemplate({
+    usernameTemplate,
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100)
+    identity
   });
 };
 
@@ -75,12 +76,17 @@ export const CassandraProvider = (): TDynamicProviderFns => {
     return isConnected;
   };
 
-  const create = async (data: { inputs: unknown; expireAt: number; usernameTemplate?: string | null }) => {
-    const { inputs, expireAt, usernameTemplate } = data;
+  const create = async (data: {
+    inputs: unknown;
+    expireAt: number;
+    usernameTemplate?: string | null;
+    identity?: { name: string };
+  }) => {
+    const { inputs, expireAt, usernameTemplate, identity } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
-    const username = generateUsername(usernameTemplate);
+    const username = generateUsername(usernameTemplate, identity);
     const password = generatePassword();
     const { keyspace } = providerInputs;
     const expiration = new Date(expireAt).toISOString();

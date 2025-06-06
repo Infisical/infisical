@@ -427,6 +427,9 @@ export type TDynamicProviderFns = {
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
+    identity?: {
+      name: string;
+    };
     metadata: { projectId: string };
   }) => Promise<{ entityId: string; data: unknown }>;
   validateConnection: (inputs: unknown, metadata: { projectId: string }) => Promise<boolean>;
