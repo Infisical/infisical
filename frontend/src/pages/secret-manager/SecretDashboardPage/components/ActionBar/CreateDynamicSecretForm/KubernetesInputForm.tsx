@@ -38,46 +38,94 @@ enum CredentialType {
   Static = "static"
 }
 
+enum RoleType {
+  ClusterRole = "cluster-role",
+  Role = "role"
+}
+
+export enum AuthMethod {
+  Api = "api",
+  Gateway = "gateway"
+}
+
 const credentialTypes = [
   {
     label: "Static",
     value: CredentialType.Static
+  },
+  {
+    label: "Dynamic",
+    value: CredentialType.Dynamic
   }
 ] as const;
 
-const formSchema = z.object({
-  provider: z.object({
-    url: z.string().url().trim().min(1),
-    clusterToken: z.string().trim().min(1),
-    ca: z.string().optional(),
-    sslEnabled: z.boolean().default(false),
-    credentialType: z.literal(CredentialType.Static),
-    serviceAccountName: z.string().trim().min(1),
-    namespace: z.string().trim().min(1),
-    gatewayId: z.string().optional(),
-    audiences: z.array(z.string().trim().min(1))
-  }),
-  defaultTTL: z.string().superRefine((val, ctx) => {
-    const valMs = ms(val);
-    if (valMs < 60 * 1000)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
-    if (valMs > 24 * 60 * 60 * 1000)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
-  }),
-  maxTTL: z
-    .string()
-    .optional()
-    .superRefine((val, ctx) => {
-      if (!val) return;
+const formSchema = z
+  .object({
+    provider: z.discriminatedUnion("credentialType", [
+      z.object({
+        url: z.string().url().trim().min(1),
+        clusterToken: z.string().trim().optional(),
+        ca: z.string().optional(),
+        sslEnabled: z.boolean().default(false),
+        credentialType: z.literal(CredentialType.Static),
+        serviceAccountName: z.string().trim().min(1),
+        namespace: z.string().trim().min(1),
+        gatewayId: z.string().optional(),
+        audiences: z.array(z.string().trim().min(1)),
+        authMethod: z.nativeEnum(AuthMethod).default(AuthMethod.Api)
+      }),
+      z.object({
+        url: z.string().url().trim().min(1),
+        clusterToken: z.string().trim().optional(),
+        ca: z.string().optional(),
+        sslEnabled: z.boolean().default(false),
+        credentialType: z.literal(CredentialType.Dynamic),
+        namespace: z.string().trim().min(1),
+        gatewayId: z.string().optional(),
+        audiences: z.array(z.string().trim().min(1)),
+        roleType: z.nativeEnum(RoleType),
+        role: z.string().trim().min(1),
+        authMethod: z.nativeEnum(AuthMethod).default(AuthMethod.Api)
+      })
+    ]),
+    defaultTTL: z.string().superRefine((val, ctx) => {
       const valMs = ms(val);
       if (valMs < 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  name: slugSchema(),
-  environment: z.object({ name: z.string(), slug: z.string() })
-});
+    maxTTL: z
+      .string()
+      .optional()
+      .superRefine((val, ctx) => {
+        if (!val) return;
+        const valMs = ms(val);
+        if (valMs < 60 * 1000)
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
+        if (valMs > 24 * 60 * 60 * 1000)
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
+      }),
+    name: slugSchema(),
+    environment: z.object({ name: z.string(), slug: z.string() }),
+    usernameTemplate: z.string().trim().optional()
+  })
+  .superRefine((data, ctx) => {
+    if (data.provider.authMethod === AuthMethod.Gateway && !data.provider.gatewayId) {
+      ctx.addIssue({
+        path: ["provider.gatewayId"],
+        code: z.ZodIssueCode.custom,
+        message: "When auth method is set to Gateway, a gateway must be selected"
+      });
+    }
+    if (data.provider.authMethod === AuthMethod.Api && !data.provider.clusterToken) {
+      ctx.addIssue({
+        path: ["provider.clusterToken"],
+        code: z.ZodIssueCode.custom,
+        message: "When auth method is set to Manual Token, a cluster token must be provided"
+      });
+    }
+  });
 
 type TForm = z.infer<typeof formSchema> & FieldValues;
 
@@ -115,8 +163,9 @@ export const KubernetesInputForm = ({
         namespace: "",
         credentialType: CredentialType.Static,
         gatewayId: undefined,
-        audiences: []
-      },
+        audiences: [],
+        authMethod: AuthMethod.Api
+      } as const,
       environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
@@ -130,12 +179,16 @@ export const KubernetesInputForm = ({
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
   const sslEnabled = watch("provider.sslEnabled");
+  const credentialType = watch("provider.credentialType");
+  const authMethod = watch("provider.authMethod");
 
   const handleCreateDynamicSecret = async (formData: TForm) => {
-    const { provider, ...rest } = formData;
+    const { provider, usernameTemplate, ...rest } = formData;
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
+
     try {
+      const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
       await createDynamicSecret.mutateAsync({
         provider: { type: DynamicSecretProviders.Kubernetes, inputs: provider },
         maxTTL: rest.maxTTL,
@@ -143,7 +196,9 @@ export const KubernetesInputForm = ({
         path: secretPath,
         defaultTTL: rest.defaultTTL,
         projectSlug,
-        environmentSlug: rest.environment.slug
+        environmentSlug: rest.environment.slug,
+        usernameTemplate:
+          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
       });
 
       onCompleted();
@@ -343,20 +398,44 @@ export const KubernetesInputForm = ({
                     </FormControl>
                   )}
                 />
-
                 <Controller
                   control={control}
-                  name="provider.clusterToken"
+                  name="provider.authMethod"
+                  defaultValue={AuthMethod.Api}
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label="Cluster Token"
+                      label="Auth Method"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
+                      className="w-full"
                     >
-                      <Input {...field} type="password" autoComplete="new-password" />
+                      <Select
+                        defaultValue={field.value}
+                        {...field}
+                        className="w-full"
+                        onValueChange={(e) => field.onChange(e)}
+                      >
+                        <SelectItem value={AuthMethod.Api}>Manual Token (API)</SelectItem>
+                        <SelectItem value={AuthMethod.Gateway}>Gateway</SelectItem>
+                      </Select>
                     </FormControl>
                   )}
                 />
+                {authMethod === AuthMethod.Api && (
+                  <Controller
+                    control={control}
+                    name="provider.clusterToken"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Cluster Token"
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                      >
+                        <Input {...field} type="password" autoComplete="new-password" />
+                      </FormControl>
+                    )}
+                  />
+                )}
                 <Controller
                   control={control}
                   name="provider.credentialType"
@@ -373,12 +452,9 @@ export const KubernetesInputForm = ({
                         className="w-full"
                         onValueChange={(e) => field.onChange(e)}
                       >
-                        {credentialTypes.map((credentialType) => (
-                          <SelectItem
-                            value={credentialType.value}
-                            key={`credential-type-${credentialType.value}`}
-                          >
-                            {credentialType.label}
+                        {credentialTypes.map((ct) => (
+                          <SelectItem value={ct.value} key={`credential-type-${ct.value}`}>
+                            {ct.label}
                           </SelectItem>
                         ))}
                       </Select>
@@ -386,21 +462,45 @@ export const KubernetesInputForm = ({
                   )}
                 />
                 <div className="flex items-center space-x-2">
-                  <div className="flex-1">
-                    <Controller
-                      control={control}
-                      name="provider.serviceAccountName"
-                      render={({ field, fieldState: { error } }) => (
-                        <FormControl
-                          label="Service Account Name"
-                          isError={Boolean(error?.message)}
-                          errorText={error?.message}
-                        >
-                          <Input {...field} autoComplete="new-password" />
-                        </FormControl>
-                      )}
-                    />
-                  </div>
+                  {credentialType === CredentialType.Static && (
+                    <div className="flex-1">
+                      <Controller
+                        control={control}
+                        name="provider.serviceAccountName"
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            label="Service Account Name"
+                            isError={Boolean(error?.message)}
+                            errorText={error?.message}
+                          >
+                            <Input {...field} autoComplete="new-password" />
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+                  )}
+                  {credentialType === CredentialType.Dynamic && (
+                    <div className="flex-1">
+                      <Controller
+                        control={control}
+                        name="usernameTemplate"
+                        defaultValue="{{randomUsername}}"
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            label="Username Template"
+                            isError={Boolean(error?.message)}
+                            errorText={error?.message}
+                          >
+                            <Input
+                              {...field}
+                              value={field.value || undefined}
+                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                            />
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+                  )}
                   <div className="flex-1">
                     <Controller
                       control={control}
@@ -417,6 +517,56 @@ export const KubernetesInputForm = ({
                     />
                   </div>
                 </div>
+                {credentialType === CredentialType.Dynamic && (
+                  <div className="flex items-center space-x-2">
+                    <div className="flex-1">
+                      <Controller
+                        control={control}
+                        name="provider.roleType"
+                        defaultValue={RoleType.ClusterRole}
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            label="Role Type"
+                            isError={Boolean(error?.message)}
+                            errorText={error?.message}
+                          >
+                            <Select
+                              defaultValue={field.value}
+                              {...field}
+                              className="w-full"
+                              onValueChange={(e) => field.onChange(e)}
+                            >
+                              <SelectItem
+                                value={RoleType.ClusterRole}
+                                key={`role-type-${RoleType.ClusterRole}`}
+                              >
+                                Cluster Role
+                              </SelectItem>
+                              <SelectItem value={RoleType.Role} key={`role-type-${RoleType.Role}`}>
+                                Role
+                              </SelectItem>
+                            </Select>
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Controller
+                        control={control}
+                        name="provider.role"
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            label="Role"
+                            isError={Boolean(error?.message)}
+                            errorText={error?.message}
+                          >
+                            <Input {...field} />
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="mt-2 w-1/2">
                   <Controller
                     control={control}

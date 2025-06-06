@@ -267,17 +267,32 @@ export type TDynamicSecretProvider =
     }
   | {
       type: DynamicSecretProviders.Kubernetes;
-      inputs: {
-        url: string;
-        clusterToken: string;
-        ca?: string;
-        serviceAccountName: string;
-        credentialType: "dynamic" | "static";
-        namespace: string;
-        gatewayId?: string;
-        sslEnabled: boolean;
-        audiences: string[];
-      };
+      inputs:
+        | {
+            url: string;
+            clusterToken?: string;
+            ca?: string;
+            serviceAccountName: string;
+            credentialType: "static";
+            namespace: string;
+            gatewayId?: string;
+            sslEnabled: boolean;
+            audiences: string[];
+            authMethod: string;
+          }
+        | {
+            url: string;
+            clusterToken?: string;
+            ca?: string;
+            credentialType: "dynamic";
+            namespace: string;
+            gatewayId?: string;
+            sslEnabled: boolean;
+            audiences: string[];
+            roleType: string;
+            role: string;
+            authMethod: string;
+          };
     }
   | {
       type: DynamicSecretProviders.Vertica;

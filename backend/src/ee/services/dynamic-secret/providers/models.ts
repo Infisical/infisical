@@ -31,7 +31,18 @@ export enum LdapCredentialType {
 }
 
 export enum KubernetesCredentialType {
-  Static = "static"
+  Static = "static",
+  Dynamic = "dynamic"
+}
+
+export enum KubernetesRoleType {
+  ClusterRole = "cluster-role",
+  Role = "role"
+}
+
+export enum KubernetesAuthMethod {
+  Gateway = "gateway",
+  Api = "api"
 }
 
 export enum TotpConfigType {
@@ -282,17 +293,50 @@ export const LdapSchema = z.union([
   })
 ]);
 
-export const DynamicSecretKubernetesSchema = z.object({
-  url: z.string().url().trim().min(1),
-  gatewayId: z.string().nullable().optional(),
-  sslEnabled: z.boolean().default(true),
-  clusterToken: z.string().trim().min(1),
-  ca: z.string().optional(),
-  serviceAccountName: z.string().trim().min(1),
-  credentialType: z.literal(KubernetesCredentialType.Static),
-  namespace: z.string().trim().min(1),
-  audiences: z.array(z.string().trim().min(1))
-});
+export const DynamicSecretKubernetesSchema = z
+  .discriminatedUnion("credentialType", [
+    z.object({
+      url: z.string().url().trim().min(1),
+      clusterToken: z.string().trim().optional(),
+      ca: z.string().optional(),
+      sslEnabled: z.boolean().default(false),
+      credentialType: z.literal(KubernetesCredentialType.Static),
+      serviceAccountName: z.string().trim().min(1),
+      namespace: z.string().trim().min(1),
+      gatewayId: z.string().optional(),
+      audiences: z.array(z.string().trim().min(1)),
+      authMethod: z.nativeEnum(KubernetesAuthMethod).default(KubernetesAuthMethod.Api)
+    }),
+    z.object({
+      url: z.string().url().trim().min(1),
+      clusterToken: z.string().trim().optional(),
+      ca: z.string().optional(),
+      sslEnabled: z.boolean().default(false),
+      credentialType: z.literal(KubernetesCredentialType.Dynamic),
+      namespace: z.string().trim().min(1),
+      gatewayId: z.string().optional(),
+      audiences: z.array(z.string().trim().min(1)),
+      roleType: z.nativeEnum(KubernetesRoleType),
+      role: z.string().trim().min(1),
+      authMethod: z.nativeEnum(KubernetesAuthMethod).default(KubernetesAuthMethod.Api)
+    })
+  ])
+  .superRefine((data, ctx) => {
+    if (data.authMethod === KubernetesAuthMethod.Gateway && !data.gatewayId) {
+      ctx.addIssue({
+        path: ["gatewayId"],
+        code: z.ZodIssueCode.custom,
+        message: "When auth method is set to Gateway, a gateway must be selected"
+      });
+    }
+    if ((data.authMethod === KubernetesAuthMethod.Api || !data.authMethod) && !data.clusterToken) {
+      ctx.addIssue({
+        path: ["clusterToken"],
+        code: z.ZodIssueCode.custom,
+        message: "When auth method is set to Manual Token, a cluster token must be provided"
+      });
+    }
+  });
 
 export const DynamicSecretVerticaSchema = z.object({
   host: z.string().trim().toLowerCase(),
