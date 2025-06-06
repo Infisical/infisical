@@ -101,6 +101,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
         const message = (err as Error)?.message;
         if (
           providerInputs.method === AwsIamAuthType.AssumeRole &&
+          // assume role will throw an error asking to provider username, but if so this has access in aws correctly
           message.includes("Must specify userName when calling with non-User credentials")
         ) {
           return true;

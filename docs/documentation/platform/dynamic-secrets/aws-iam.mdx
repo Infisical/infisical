@@ -94,6 +94,26 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
         </Accordion>
 
     <Steps>
+         <Step title="Create the Managing User IAM Role for Infisical">
+                1. Navigate to the [Create IAM Role](https://console.aws.amazon.com/iamv2/home#/roles/create?step=selectEntities) page in your AWS Console.
+                ![IAM Role Creation](/images/integrations/aws/integration-aws-iam-assume-role.png)
+
+                2. Select **AWS Account** as the **Trusted Entity Type**.
+                3. Select **Another AWS Account** and provide the appropriate Infisical AWS Account ID: use **381492033652** for the **US region**, and **345594589636** for the **EU region**. This restricts the role to be assumed only by Infisical. If self-hosting, provide your AWS account number instead.
+                4. (Recommended) <strong>Enable "Require external ID"</strong> and input your **Organization ID** to strengthen security and mitigate the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html).
+                5. Assign permission as shared in prerequisite.
+
+                <Warning type="warning" title="Security Best Practice: Use External ID to Prevent Confused Deputy Attacks">
+                    When configuring an IAM Role that Infisical will assume, it’s highly recommended to enable the **"Require external ID"** option and specify your **Project ID**.
+
+                    This precaution helps protect your AWS account against the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html), a potential security vulnerability where Infisical could be tricked into performing actions on your behalf by an unauthorized actor.
+
+                    <strong>Always enable "Require external ID" and use your Project ID when setting up the IAM Role.</strong>
+                </Warning>
+      </Step>
+    			<Step title="Copy the AWS IAM Role ARN">
+                ![Copy IAM Role ARN](/images/integrations/aws/integration-aws-iam-assume-arn.png)
+            </Step>
       <Step title="Secret Overview Dashboard">
         Navigate to the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret to.
       </Step>
