@@ -67,8 +67,9 @@ export const CoolifyConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
-              tooltipText={`The method you would like to use to connect with ${APP_CONNECTION_MAP[AppConnection.Coolify].name
-                }. This field cannot be changed after creation.`}
+              tooltipText={`The method you would like to use to connect with ${
+                APP_CONNECTION_MAP[AppConnection.Coolify].name
+              }. This field cannot be changed after creation.`}
               errorText={error?.message}
               isError={Boolean(error?.message)}
               label="Method"
