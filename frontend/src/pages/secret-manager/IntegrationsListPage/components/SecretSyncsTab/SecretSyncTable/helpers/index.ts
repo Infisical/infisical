@@ -1,5 +1,6 @@
 import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform-cloud";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
+import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import {
   GitHubSyncScope,
   GitHubSyncVisibility
@@ -47,7 +48,8 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.GCPSecretManager:
       primaryText = destinationConfig.projectId;
-      secondaryText = "Global";
+      secondaryText =
+        destinationConfig.scope === GcpSyncScope.Global ? "Global" : destinationConfig.locationId;
       break;
     case SecretSync.AzureKeyVault:
       primaryText = destinationConfig.vaultBaseUrl;

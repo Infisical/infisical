@@ -119,6 +119,10 @@ declare module "@fastify/request-context" {
       oidc?: {
         claims: Record<string, string>;
       };
+      kubernetes?: {
+        namespace: string;
+        name: string;
+      };
     };
     identityPermissionMetadata?: Record<string, unknown>; // filled by permission service
     assumedPrivilegeDetails?: { requesterId: string; actorId: string; actorType: ActorType; projectId: string };

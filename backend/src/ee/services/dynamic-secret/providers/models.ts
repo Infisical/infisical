@@ -20,6 +20,11 @@ export enum SqlProviders {
   Vertica = "vertica"
 }
 
+export enum AwsIamAuthType {
+  AssumeRole = "assume-role",
+  AccessKey = "access-key"
+}
+
 export enum ElasticSearchAuthTypes {
   User = "user",
   ApiKey = "api-key"
@@ -168,16 +173,38 @@ export const DynamicSecretSapAseSchema = z.object({
   revocationStatement: z.string().trim()
 });
 
-export const DynamicSecretAwsIamSchema = z.object({
-  accessKey: z.string().trim().min(1),
-  secretAccessKey: z.string().trim().min(1),
-  region: z.string().trim().min(1),
-  awsPath: z.string().trim().optional(),
-  permissionBoundaryPolicyArn: z.string().trim().optional(),
-  policyDocument: z.string().trim().optional(),
-  userGroups: z.string().trim().optional(),
-  policyArns: z.string().trim().optional()
-});
+export const DynamicSecretAwsIamSchema = z.preprocess(
+  (val) => {
+    if (typeof val === "object" && val !== null && !Object.hasOwn(val, "method")) {
+      // eslint-disable-next-line no-param-reassign
+      (val as { method: string }).method = AwsIamAuthType.AccessKey;
+    }
+    return val;
+  },
+  z.discriminatedUnion("method", [
+    z.object({
+      method: z.literal(AwsIamAuthType.AccessKey),
+      accessKey: z.string().trim().min(1),
+      secretAccessKey: z.string().trim().min(1),
+      region: z.string().trim().min(1),
+      awsPath: z.string().trim().optional(),
+      permissionBoundaryPolicyArn: z.string().trim().optional(),
+      policyDocument: z.string().trim().optional(),
+      userGroups: z.string().trim().optional(),
+      policyArns: z.string().trim().optional()
+    }),
+    z.object({
+      method: z.literal(AwsIamAuthType.AssumeRole),
+      roleArn: z.string().trim().min(1, "Role ARN required"),
+      region: z.string().trim().min(1),
+      awsPath: z.string().trim().optional(),
+      permissionBoundaryPolicyArn: z.string().trim().optional(),
+      policyDocument: z.string().trim().optional(),
+      userGroups: z.string().trim().optional(),
+      policyArns: z.string().trim().optional()
+    })
+  ])
+);
 
 export const DynamicSecretMongoAtlasSchema = z.object({
   adminPublicKey: z.string().trim().min(1).describe("Admin user public api key"),
@@ -400,9 +427,18 @@ export type TDynamicProviderFns = {
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
+    identity?: {
+      name: string;
+    };
+    metadata: { projectId: string };
   }) => Promise<{ entityId: string; data: unknown }>;
-  validateConnection: (inputs: unknown) => Promise<boolean>;
-  validateProviderInputs: (inputs: object) => Promise<unknown>;
-  revoke: (inputs: unknown, entityId: string) => Promise<{ entityId: string }>;
-  renew: (inputs: unknown, entityId: string, expireAt: number) => Promise<{ entityId: string }>;
+  validateConnection: (inputs: unknown, metadata: { projectId: string }) => Promise<boolean>;
+  validateProviderInputs: (inputs: object, metadata: { projectId: string }) => Promise<unknown>;
+  revoke: (inputs: unknown, entityId: string, metadata: { projectId: string }) => Promise<{ entityId: string }>;
+  renew: (
+    inputs: unknown,
+    entityId: string,
+    expireAt: number,
+    metadata: { projectId: string }
+  ) => Promise<{ entityId: string }>;
 };

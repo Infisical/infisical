@@ -7,9 +7,16 @@ import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 export const GcpSyncDestinationSchema = BaseSecretSyncSchema().merge(
   z.object({
     destination: z.literal(SecretSync.GCPSecretManager),
-    destinationConfig: z.object({
-      scope: z.literal(GcpSyncScope.Global),
-      projectId: z.string().min(1, "Project ID required")
-    })
+    destinationConfig: z.discriminatedUnion("scope", [
+      z.object({
+        scope: z.literal(GcpSyncScope.Global),
+        projectId: z.string().min(1, "Project ID required")
+      }),
+      z.object({
+        scope: z.literal(GcpSyncScope.Region),
+        projectId: z.string().min(1, "Project ID required"),
+        locationId: z.string().min(1, "Region required")
+      })
+    ])
   })
 );

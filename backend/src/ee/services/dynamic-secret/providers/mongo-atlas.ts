@@ -1,5 +1,4 @@
 import axios, { AxiosError } from "axios";
-import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
@@ -7,19 +6,20 @@ import { createDigestAuthRequestInterceptor } from "@app/lib/axios/digest-auth";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { DynamicSecretMongoAtlasSchema, TDynamicProviderFns } from "./models";
+import { compileUsernameTemplate } from "./templateUtils";
 
 const generatePassword = (size = 48) => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = (usernameTemplate?: string | null) => {
+const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const randomUsername = alphaNumericNanoId(32);
   if (!usernameTemplate) return randomUsername;
-
-  return handlebars.compile(usernameTemplate)({
+  return compileUsernameTemplate({
+    usernameTemplate,
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100)
+    identity
   });
 };
 
@@ -64,12 +64,17 @@ export const MongoAtlasProvider = (): TDynamicProviderFns => {
     return isConnected;
   };
 
-  const create = async (data: { inputs: unknown; expireAt: number; usernameTemplate?: string | null }) => {
-    const { inputs, expireAt, usernameTemplate } = data;
+  const create = async (data: {
+    inputs: unknown;
+    expireAt: number;
+    usernameTemplate?: string | null;
+    identity?: { name: string };
+  }) => {
+    const { inputs, expireAt, usernameTemplate, identity } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
-    const username = generateUsername(usernameTemplate);
+    const username = generateUsername(usernameTemplate, identity);
     const password = generatePassword();
     const expiration = new Date(expireAt).toISOString();
     await client({
