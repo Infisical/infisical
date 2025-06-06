@@ -1,3 +1,7 @@
+## 0.0.3 (June 6, 2025)
+
+* Minor fix for handling malformed URL's for HTTP forwarding
+
 ## 0.0.2 (June 6, 2025)
 
 * Bumped default CLI image version from 0.41.1 -> 0.41.8.
