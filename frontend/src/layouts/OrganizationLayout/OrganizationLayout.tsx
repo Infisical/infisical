@@ -55,16 +55,15 @@ export const OrganizationLayout = () => {
       linkOptions({ to: "/organization/kms/overview" }).to,
       linkOptions({ to: "/organization/kms/settings" }).to,
       linkOptions({ to: "/organization/ssh/overview" }).to,
-      linkOptions({ to: "/organization/ssh/settings" }).to
+      linkOptions({ to: "/organization/ssh/settings" }).to,
+      linkOptions({ to: "/organization/secret-scanning/overview" }).to,
+      linkOptions({ to: "/organization/secret-scanning/settings" }).to
     ] as string[]
   ).includes(location.pathname);
 
   const shouldShowOrgSidebar =
     location.pathname.startsWith("/organization") &&
-    (!isSecretSharingPage || shouldShowProductsSidebar) &&
-    !([linkOptions({ to: "/organization/secret-scanning" }).to] as string[]).includes(
-      location.pathname
-    );
+    (!isSecretSharingPage || shouldShowProductsSidebar);
 
   const containerHeight = config.pageFrameContent ? "h-[94vh]" : "h-screen";
 

@@ -23,6 +23,8 @@ const organizationRoutes = route("/organization", [
   route("/cert-manager/settings", "organization/CertManagerSettingsPage/route.tsx"),
   route("/ssh/overview", "organization/SshOverviewPage/route.tsx"),
   route("/ssh/settings", "organization/SshSettingsPage/route.tsx"),
+  route("/secret-scanning/overview", "organization/SecretScanningOverviewPage/route.tsx"),
+  route("/secret-scanning/settings", "organization/SecretScanningSettingsPage/route.tsx"),
   route("/kms/overview", "organization/KmsOverviewPage/route.tsx"),
   route("/kms/settings", "organization/KmsSettingsPage/route.tsx"),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
@@ -38,7 +40,7 @@ const organizationRoutes = route("/organization", [
     route("/oauth/callback", "organization/SettingsPage/OauthCallbackPage/route.tsx")
   ]),
   route("/sso", "organization/SsoPage/route.tsx"),
-  route("/secret-scanning", "organization/SecretScanningPage/route.tsx"),
+  // route("/secret-scanning", "organization/SecretScanningPage/route.tsx"),
   route("/groups/$groupId", "organization/GroupDetailsByIDPage/route.tsx"),
   route("/members/$membershipId", "organization/UserDetailsByIDPage/route.tsx"),
   route("/roles/$roleId", "organization/RoleByIDPage/route.tsx"),
@@ -343,6 +345,21 @@ const sshRoutes = route("/ssh/$projectId", [
   ])
 ]);
 
+const secretScanningRoutes = route("/secret-scanning/$projectId", [
+  layout("secret-scanning-layout", "secret-scanning/layout.tsx", [
+    route("/data-sources", [
+      index("secret-scanning/SecretScanningDataSourcesPage/route.tsx"),
+      route("/$type/$dataSourceId", "secret-scanning/SecretScanningDataSourceByIdPage/route.tsx")
+    ]),
+    route("/findings", "secret-scanning/SecretScanningFindingsPage/route.tsx"),
+    route("/settings", "secret-scanning/SettingsPage/route.tsx"),
+    route("/access-management", "project/AccessControlPage/route-secret-scanning.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-secret-scanning.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-secret-scanning.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-secret-scanning.tsx")
+  ])
+]);
+
 export const routes = rootRoute("root.tsx", [
   index("index.tsx"),
   route("/shared/secret/$secretId", "public/ViewSharedSecretByIDPage/route.tsx"),
@@ -384,7 +401,8 @@ export const routes = rootRoute("root.tsx", [
         secretManagerIntegrationsRedirect,
         certManagerRoutes,
         kmsRoutes,
-        sshRoutes
+        sshRoutes,
+        secretScanningRoutes
       ])
     ])
   ])

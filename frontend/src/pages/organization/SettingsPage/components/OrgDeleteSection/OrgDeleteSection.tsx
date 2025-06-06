@@ -59,7 +59,7 @@ export const OrgDeleteSection = () => {
       </div>
       <DeleteActionModal
         isOpen={popUp.deleteOrg.isOpen}
-        title="Are you sure want to delete this organization?"
+        title="Are you sure you want to delete this organization?"
         subTitle={`Permanently remove ${currentOrg?.name} and all of its data. This action is not reversible, so please be careful.`}
         onChange={(isOpen) => handlePopUpToggle("deleteOrg", isOpen)}
         deleteKey="confirm"

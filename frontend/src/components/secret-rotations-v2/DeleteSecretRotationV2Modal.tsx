@@ -66,7 +66,7 @@ export const DeleteSecretRotationV2Modal = ({
     <DeleteActionModal
       isOpen={isOpen}
       onChange={onOpenChange}
-      title={`Are you sure want to delete ${name}?`}
+      title={`Are you sure you want to delete ${name}?`}
       deleteKey={name}
       onDeleteApproved={handleDeleteSecretRotation}
     >

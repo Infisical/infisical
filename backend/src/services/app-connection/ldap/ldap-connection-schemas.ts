@@ -13,7 +13,12 @@ import { LdapConnectionMethod, LdapProvider } from "./ldap-connection-enums";
 
 export const LdapConnectionSimpleBindCredentialsSchema = z.object({
   provider: z.nativeEnum(LdapProvider).describe(AppConnections.CREDENTIALS.LDAP.provider),
-  url: z.string().trim().min(1, "URL required").regex(LdapUrlRegex).describe(AppConnections.CREDENTIALS.LDAP.url),
+  url: z
+    .string()
+    .trim()
+    .min(1, "URL required")
+    .refine((value) => LdapUrlRegex.test(value), "Invalid LDAP URL")
+    .describe(AppConnections.CREDENTIALS.LDAP.url),
   dn: z
     .string()
     .trim()

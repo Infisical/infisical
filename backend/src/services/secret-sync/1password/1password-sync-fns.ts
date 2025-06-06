@@ -127,6 +127,7 @@ export const OnePassSyncFns = {
   syncSecrets: async (secretSync: TOnePassSyncWithCredentials, secretMap: TSecretMap) => {
     const {
       connection,
+      environment,
       destinationConfig: { vaultId }
     } = secretSync;
 
@@ -164,7 +165,7 @@ export const OnePassSyncFns = {
 
     for await (const [key, variable] of Object.entries(items)) {
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(key, secretSync.syncOptions.keySchema)) continue;
+      if (!matchesSchema(key, environment?.slug || "", secretSync.syncOptions.keySchema)) continue;
 
       if (!(key in secretMap)) {
         try {

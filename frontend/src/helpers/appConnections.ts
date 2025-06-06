@@ -1,5 +1,6 @@
-import { faGithub } from "@fortawesome/free-brands-svg-icons";
+import { faGithub, IconDefinition } from "@fortawesome/free-brands-svg-icons";
 import {
+  faBullseye,
   faKey,
   faLink,
   faLock,
@@ -19,6 +20,7 @@ import {
   DatabricksConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
+  GitHubRadarConnectionMethod,
   HCVaultConnectionMethod,
   HumanitecConnectionMethod,
   LdapConnectionMethod,
@@ -36,10 +38,15 @@ import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-con
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
-  { name: string; image: string; size?: number; enterprise?: boolean }
+  { name: string; image: string; size?: number; icon?: IconDefinition; enterprise?: boolean }
 > = {
   [AppConnection.AWS]: { name: "AWS", image: "Amazon Web Services.png" },
   [AppConnection.GitHub]: { name: "GitHub", image: "GitHub.png" },
+  [AppConnection.GitHubRadar]: {
+    name: "GitHub Radar",
+    image: "GitHub.png",
+    icon: faBullseye
+  },
   [AppConnection.GCP]: {
     name: "GCP",
     image: "Google Cloud Platform.png"
@@ -73,6 +80,7 @@ export const APP_CONNECTION_MAP: Record<
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
   switch (method) {
     case GitHubConnectionMethod.App:
+    case GitHubRadarConnectionMethod.App:
       return { name: "GitHub App", icon: faGithub };
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:

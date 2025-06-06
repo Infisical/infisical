@@ -16,7 +16,13 @@ export enum SqlProviders {
   MySQL = "mysql2",
   Oracle = "oracledb",
   MsSQL = "mssql",
-  SapAse = "sap-ase"
+  SapAse = "sap-ase",
+  Vertica = "vertica"
+}
+
+export enum AwsIamAuthType {
+  AssumeRole = "assume-role",
+  AccessKey = "access-key"
 }
 
 export enum ElasticSearchAuthTypes {
@@ -167,16 +173,38 @@ export const DynamicSecretSapAseSchema = z.object({
   revocationStatement: z.string().trim()
 });
 
-export const DynamicSecretAwsIamSchema = z.object({
-  accessKey: z.string().trim().min(1),
-  secretAccessKey: z.string().trim().min(1),
-  region: z.string().trim().min(1),
-  awsPath: z.string().trim().optional(),
-  permissionBoundaryPolicyArn: z.string().trim().optional(),
-  policyDocument: z.string().trim().optional(),
-  userGroups: z.string().trim().optional(),
-  policyArns: z.string().trim().optional()
-});
+export const DynamicSecretAwsIamSchema = z.preprocess(
+  (val) => {
+    if (typeof val === "object" && val !== null && !Object.hasOwn(val, "method")) {
+      // eslint-disable-next-line no-param-reassign
+      (val as { method: string }).method = AwsIamAuthType.AccessKey;
+    }
+    return val;
+  },
+  z.discriminatedUnion("method", [
+    z.object({
+      method: z.literal(AwsIamAuthType.AccessKey),
+      accessKey: z.string().trim().min(1),
+      secretAccessKey: z.string().trim().min(1),
+      region: z.string().trim().min(1),
+      awsPath: z.string().trim().optional(),
+      permissionBoundaryPolicyArn: z.string().trim().optional(),
+      policyDocument: z.string().trim().optional(),
+      userGroups: z.string().trim().optional(),
+      policyArns: z.string().trim().optional()
+    }),
+    z.object({
+      method: z.literal(AwsIamAuthType.AssumeRole),
+      roleArn: z.string().trim().min(1, "Role ARN required"),
+      region: z.string().trim().min(1),
+      awsPath: z.string().trim().optional(),
+      permissionBoundaryPolicyArn: z.string().trim().optional(),
+      policyDocument: z.string().trim().optional(),
+      userGroups: z.string().trim().optional(),
+      policyArns: z.string().trim().optional()
+    })
+  ])
+);
 
 export const DynamicSecretMongoAtlasSchema = z.object({
   adminPublicKey: z.string().trim().min(1).describe("Admin user public api key"),
@@ -293,6 +321,39 @@ export const DynamicSecretKubernetesSchema = z.object({
   audiences: z.array(z.string().trim().min(1))
 });
 
+export const DynamicSecretVerticaSchema = z.object({
+  host: z.string().trim().toLowerCase(),
+  port: z.number(),
+  username: z.string().trim(),
+  password: z.string().trim(),
+  database: z.string().trim(),
+  gatewayId: z.string().nullable().optional(),
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim(),
+  passwordRequirements: z
+    .object({
+      length: z.number().min(1).max(250),
+      required: z
+        .object({
+          lowercase: z.number().min(0),
+          uppercase: z.number().min(0),
+          digits: z.number().min(0),
+          symbols: z.number().min(0)
+        })
+        .refine((data) => {
+          const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+          return total <= 250;
+        }, "Sum of required characters cannot exceed 250"),
+      allowedSymbols: z.string().optional()
+    })
+    .refine((data) => {
+      const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
+      return total <= data.length;
+    }, "Sum of required characters cannot exceed the total length")
+    .optional()
+    .describe("Password generation requirements")
+});
+
 export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
   z.object({
     configType: z.literal(TotpConfigType.URL),
@@ -337,7 +398,8 @@ export enum DynamicSecretProviders {
   Snowflake = "snowflake",
   Totp = "totp",
   SapAse = "sap-ase",
-  Kubernetes = "kubernetes"
+  Kubernetes = "kubernetes",
+  Vertica = "vertica"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -356,7 +418,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.Ldap), inputs: LdapSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Kubernetes), inputs: DynamicSecretKubernetesSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Kubernetes), inputs: DynamicSecretKubernetesSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Vertica), inputs: DynamicSecretVerticaSchema })
 ]);
 
 export type TDynamicProviderFns = {
@@ -367,9 +430,15 @@ export type TDynamicProviderFns = {
     identity?: {
       name: string;
     };
+    metadata: { projectId: string };
   }) => Promise<{ entityId: string; data: unknown }>;
-  validateConnection: (inputs: unknown) => Promise<boolean>;
-  validateProviderInputs: (inputs: object) => Promise<unknown>;
-  revoke: (inputs: unknown, entityId: string) => Promise<{ entityId: string }>;
-  renew: (inputs: unknown, entityId: string, expireAt: number) => Promise<{ entityId: string }>;
+  validateConnection: (inputs: unknown, metadata: { projectId: string }) => Promise<boolean>;
+  validateProviderInputs: (inputs: object, metadata: { projectId: string }) => Promise<unknown>;
+  revoke: (inputs: unknown, entityId: string, metadata: { projectId: string }) => Promise<{ entityId: string }>;
+  renew: (
+    inputs: unknown,
+    entityId: string,
+    expireAt: number,
+    metadata: { projectId: string }
+  ) => Promise<{ entityId: string }>;
 };

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { QueueWorkerProfile } from "@app/lib/types";
+
 import { removeTrailingSlash } from "../fn";
 import { CustomLogger } from "../logger/logger";
 import { zpStr } from "../zod";
@@ -69,6 +71,7 @@ const envSchema = z
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
     QUEUE_WORKERS_ENABLED: zodStrBool.default("true"),
+    QUEUE_WORKER_PROFILE: z.nativeEnum(QueueWorkerProfile).default(QueueWorkerProfile.All),
     HTTPS_ENABLED: zodStrBool,
     ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     // smtp options
@@ -210,6 +213,12 @@ const envSchema = z
     GATEWAY_RELAY_AUTH_SECRET: zpStr(z.string().optional()),
 
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
+    DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
+      process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
+    ),
+    DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()).default(
+      process.env.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
+    ),
     /* ----------------------------------------------------------------------------- */
 
     /* App Connections ----------------------------------------------------------------------------- */
@@ -229,6 +238,14 @@ const envSchema = z
     INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_APP_SLUG: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_APP_ID: zpStr(z.string().optional()),
+
+    // github radar app
+    INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_RADAR_APP_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET: zpStr(z.string().optional()),
 
     // gcp app
     INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL: zpStr(z.string().optional()),
@@ -298,6 +315,13 @@ const envSchema = z
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
       Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET),
+    isSecretScanningV2Configured:
+      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) &&
+      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY) &&
+      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG) &&
+      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID) &&
+      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET) &&
+      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET),
     isHsmConfigured:
       Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,

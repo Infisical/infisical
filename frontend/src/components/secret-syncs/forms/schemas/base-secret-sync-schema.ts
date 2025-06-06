@@ -13,11 +13,27 @@ export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefi
       .string()
       .optional()
       .refine(
-        (val) =>
-          !val || /^(?:[a-zA-Z0-9_\-/]*)(?:\{\{secretKey\}\})(?:[a-zA-Z0-9_\-/]*)$/.test(val),
+        (val) => {
+          if (!val) return true;
+
+          const allowedOptionalPlaceholders = ["{{environment}}"];
+
+          const allowedPlaceholdersRegexPart = ["{{secretKey}}", ...allowedOptionalPlaceholders]
+            .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")) // Escape regex special characters
+            .join("|");
+
+          const allowedContentRegex = new RegExp(
+            `^([a-zA-Z0-9_\\-/]|${allowedPlaceholdersRegexPart})*$`
+          );
+          const contentIsValid = allowedContentRegex.test(val);
+
+          const secretKeyCount = (val.match(/\{\{secretKey\}\}/g) || []).length;
+
+          return contentIsValid && secretKeyCount === 1;
+        },
         {
           message:
-            "Key schema must include one {{secretKey}} and only contain letters, numbers, dashes, underscores, slashes, and the {{secretKey}} placeholder."
+            "Key schema must include exactly one {{secretKey}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
         }
       )
   });

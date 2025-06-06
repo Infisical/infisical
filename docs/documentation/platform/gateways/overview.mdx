@@ -32,7 +32,7 @@ For detailed installation instructions, refer to the Infisical [CLI Installation
 To function, the Gateway must authenticate with Infisical. This requires a machine identity configured with the appropriate permissions to create and manage a Gateway.
 Once authenticated, the Gateway establishes a secure connection with Infisical to allow your private resources to be reachable.
 
-### Deployment process
+### Get started
 
 <Steps>
   <Step title="Create a Gateway Identity">
@@ -128,7 +128,7 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
 
       </Tab>
 
-      <Tab title="Development (direct)">
+      <Tab title="Local Installation (testing)">
         For development or testing, you can run the Gateway directly. Log in with your machine identity and start the Gateway in one command:
         ```bash
         infisical gateway --token $(infisical login --method=universal-auth --client-id=<> --client-secret=<> --plain)

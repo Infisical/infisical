@@ -35,8 +35,8 @@ const expiresInOptions = [
 ];
 
 const viewLimitOptions = [
-  { label: "1", value: 1 },
-  { label: "Unlimited", value: -1 }
+  { label: "Unlimited", value: false },
+  { label: "Limited", value: true }
 ];
 
 const schema = z.object({
@@ -45,6 +45,7 @@ const schema = z.object({
   secret: z.string().min(1),
   expiresIn: z.string(),
   viewLimit: z.string(),
+  shouldLimitView: z.boolean(),
   accessType: z.nativeEnum(SecretSharingAccessType).optional(),
   emails: z
     .string()
@@ -96,24 +97,24 @@ export const ShareSecretForm = ({
     ? expiresInOptions.filter((v) => v.value / 1000 <= maxSharedSecretLifetime)
     : expiresInOptions;
 
-  const filteredViewLimitOptions = maxSharedSecretViewLimit
-    ? viewLimitOptions.filter((v) => v.value > 0 && v.value <= maxSharedSecretViewLimit)
-    : viewLimitOptions;
-
   const {
     control,
     reset,
     handleSubmit,
-    formState: { isSubmitting }
+    formState: { isSubmitting },
+    watch
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       secret: value || "",
-      viewLimit: filteredViewLimitOptions[filteredViewLimitOptions.length - 1].value.toString(),
+      viewLimit: maxSharedSecretViewLimit?.toString() ?? "1",
+      shouldLimitView: Boolean(maxSharedSecretViewLimit),
       expiresIn:
         filteredExpiresInOptions[Math.min(filteredExpiresInOptions.length - 1, 2)].value.toString()
     }
   });
+
+  const isLimitingView = watch("shouldLimitView");
 
   const onFormSubmit = async ({
     name,
@@ -122,7 +123,8 @@ export const ShareSecretForm = ({
     expiresIn,
     viewLimit,
     accessType,
-    emails
+    emails,
+    shouldLimitView
   }: FormData) => {
     try {
       const expiresAt = new Date(new Date().getTime() + Number(expiresIn));
@@ -134,7 +136,7 @@ export const ShareSecretForm = ({
         password,
         secretValue: secret,
         expiresAt,
-        expiresAfterViews: viewLimit === "-1" ? undefined : Number(viewLimit),
+        expiresAfterViews: shouldLimitView ? Number(viewLimit) : undefined,
         accessType,
         emails: processedEmails
       });
@@ -320,44 +322,72 @@ export const ShareSecretForm = ({
                   </FormControl>
                 )}
               />
-              <Controller
-                control={control}
-                name="viewLimit"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Max Views"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                    helperText={
-                      viewLimitOptions.length !== filteredViewLimitOptions.length ? (
-                        <span className="text-yellow-500">
-                          Limited to{" "}
-                          {filteredViewLimitOptions[filteredViewLimitOptions.length - 1].label} by
-                          organization
-                        </span>
-                      ) : undefined
-                    }
-                  >
-                    <Select
-                      defaultValue={field.value}
-                      {...field}
-                      onValueChange={(e) => onChange(e)}
-                      className="w-full"
-                    >
-                      {viewLimitOptions.map(({ label, value: viewLimitValue }) => (
-                        <SelectItem
-                          value={String(viewLimitValue || "")}
-                          key={label}
-                          isDisabled={!filteredViewLimitOptions.some((v) => v.label === label)}
+              <div className="flex w-full items-end gap-2">
+                {maxSharedSecretViewLimit === null && (
+                  <Controller
+                    control={control}
+                    name="shouldLimitView"
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                      <FormControl
+                        label="Max Views"
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                        className="flex-1"
+                      >
+                        <Select
+                          defaultValue={field.value.toString()}
+                          onValueChange={(e) => onChange(e === "true")}
+                          className="w-full"
+                          position="popper"
+                          {...field}
+                          value={field.value.toString()}
+                          dropdownContainerClassName="max-w-none"
                         >
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                          {viewLimitOptions.map(({ label, value: viewLimitValue }) => (
+                            <SelectItem
+                              value={viewLimitValue.toString()}
+                              key={viewLimitValue.toString()}
+                            >
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
                 )}
-              />
-
+                {isLimitingView && (
+                  <Controller
+                    control={control}
+                    name="viewLimit"
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                      <FormControl
+                        label={maxSharedSecretViewLimit ? "Max Views" : undefined}
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                        className="flex-1"
+                        helperText={
+                          maxSharedSecretViewLimit ? (
+                            <span className="text-yellow-500">
+                              Limited to {maxSharedSecretViewLimit} view
+                              {maxSharedSecretViewLimit === 1 ? "" : "s"} by organization
+                            </span>
+                          ) : undefined
+                        }
+                      >
+                        <Input
+                          onChange={onChange}
+                          {...field}
+                          min={1}
+                          max={maxSharedSecretViewLimit ?? 1000}
+                          type="number"
+                          className="h-[37px]"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                )}
+              </div>
               {!isPublic && (
                 <Controller
                   control={control}

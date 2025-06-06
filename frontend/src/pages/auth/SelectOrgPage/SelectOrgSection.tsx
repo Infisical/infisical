@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import axios from "axios";
 import { addSeconds, formatISO } from "date-fns";
 import { jwtDecode } from "jwt-decode";
@@ -51,6 +51,7 @@ export const SelectOrganizationSection = () => {
 
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
 
+  const router = useRouter();
   const queryParams = new URLSearchParams(window.location.search);
   const orgId = queryParams.get("org_id");
   const callbackPort = queryParams.get("callback_port");
@@ -117,6 +118,8 @@ export const SelectOrganizationSection = () => {
           userAgent: callbackPort ? UserAgentType.CLI : undefined
         })
         .finally(() => setIsInitialOrgCheckLoading(false));
+
+      await router.invalidate();
 
       if (isMfaEnabled) {
         SecurityClient.setMfaToken(token);

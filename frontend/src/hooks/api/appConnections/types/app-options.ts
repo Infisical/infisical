@@ -17,6 +17,11 @@ export type TGitHubConnectionOption = TAppConnectionOptionBase & {
   appClientSlug?: string;
 };
 
+export type TGitHubRadarConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.GitHubRadar;
+  appClientSlug?: string;
+};
+
 export type TGcpConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.GCP;
 };
@@ -121,6 +126,7 @@ export type TAppConnectionOption =
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
   [AppConnection.GitHub]: TGitHubConnectionOption;
+  [AppConnection.GitHubRadar]: TGitHubRadarConnectionOption;
   [AppConnection.GCP]: TGcpConnectionOption;
   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnectionOption;
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnectionOption;

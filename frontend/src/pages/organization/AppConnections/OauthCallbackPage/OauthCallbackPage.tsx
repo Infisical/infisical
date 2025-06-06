@@ -14,6 +14,7 @@ import {
   TAzureClientSecretsConnection,
   TAzureKeyVaultConnection,
   TGitHubConnection,
+  TGitHubRadarConnection,
   useCreateAppConnection,
   useUpdateAppConnection
 } from "@app/hooks/api/appConnections";
@@ -25,6 +26,9 @@ type BaseFormData = {
 };
 
 type GithubFormData = BaseFormData & Pick<TGitHubConnection, "name" | "method" | "description">;
+
+type GithubRadarFormData = BaseFormData &
+  Pick<TGitHubRadarConnection, "name" | "method" | "description">;
 
 type AzureKeyVaultFormData = BaseFormData &
   Pick<TAzureKeyVaultConnection, "name" | "method" | "description"> &
@@ -40,6 +44,7 @@ type AzureClientSecretsFormData = BaseFormData &
 
 type FormDataMap = {
   [AppConnection.GitHub]: GithubFormData & { app: AppConnection.GitHub };
+  [AppConnection.GitHubRadar]: GithubRadarFormData & { app: AppConnection.GitHubRadar };
   [AppConnection.AzureKeyVault]: AzureKeyVaultFormData & { app: AppConnection.AzureKeyVault };
   [AppConnection.AzureAppConfiguration]: AzureAppConfigurationFormData & {
     app: AppConnection.AzureAppConfiguration;
@@ -51,6 +56,7 @@ type FormDataMap = {
 
 const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
   [AppConnection.GitHub]: "githubConnectionFormData",
+  [AppConnection.GitHubRadar]: "githubRadarConnectionFormData",
   [AppConnection.AzureKeyVault]: "azureKeyVaultConnectionFormData",
   [AppConnection.AzureAppConfiguration]: "azureAppConfigurationConnectionFormData",
   [AppConnection.AzureClientSecrets]: "azureClientSecretsConnectionFormData"
@@ -318,6 +324,54 @@ export const OAuthCallbackPage = () => {
     };
   }, []);
 
+  const handleGithubRadar = useCallback(async () => {
+    const formData = getFormData(AppConnection.GitHubRadar);
+    if (formData === null) return null;
+
+    clearState(AppConnection.GitHubRadar);
+
+    const { connectionId, name, description, returnUrl } = formData;
+
+    try {
+      if (connectionId) {
+        await updateAppConnection.mutateAsync({
+          app: AppConnection.GitHubRadar,
+          connectionId,
+          credentials: {
+            code: code as string,
+            installationId: installationId as string
+          }
+        });
+      } else {
+        await createAppConnection.mutateAsync({
+          app: AppConnection.GitHubRadar,
+          name,
+          description,
+          method: GitHubConnectionMethod.App,
+          credentials: {
+            code: code as string,
+            installationId: installationId as string
+          }
+        });
+      }
+    } catch (e: any) {
+      createNotification({
+        title: `Failed to ${connectionId ? "update" : "add"} GitHub Radar Connection`,
+        text: e.message,
+        type: "error"
+      });
+      navigate({
+        to: returnUrl ?? "/organization/app-connections"
+      });
+    }
+
+    return {
+      connectionId,
+      returnUrl,
+      appConnectionName: formData.app
+    };
+  }, []);
+
   // Ensure that the localstorage is ready for use, to avoid the form data being malformed
   useEffect(() => {
     if (!isReady) {
@@ -334,6 +388,8 @@ export const OAuthCallbackPage = () => {
 
       if (appConnection === AppConnection.GitHub) {
         data = await handleGithub();
+      } else if (appConnection === AppConnection.GitHubRadar) {
+        data = await handleGithubRadar();
       } else if (appConnection === AppConnection.AzureKeyVault) {
         data = await handleAzureKeyVault();
       } else if (appConnection === AppConnection.AzureAppConfiguration) {

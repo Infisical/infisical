@@ -22,8 +22,12 @@ export const VerifyEmailPage = () => {
    */
   const sendVerificationEmail = async () => {
     if (email) {
-      await mutateAsync({ email });
-      setStep(2);
+      try {
+        await mutateAsync({ email });
+        setStep(2);
+      } catch {
+        setLoading(false);
+      }
     }
   };
 

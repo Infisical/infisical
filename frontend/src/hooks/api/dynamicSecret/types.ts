@@ -33,7 +33,8 @@ export enum DynamicSecretProviders {
   Snowflake = "snowflake",
   Totp = "totp",
   SapAse = "sap-ase",
-  Kubernetes = "kubernetes"
+  Kubernetes = "kubernetes",
+  Vertica = "vertica"
 }
 
 export enum SqlProviders {
@@ -41,6 +42,11 @@ export enum SqlProviders {
   MySql = "mysql2",
   Oracle = "oracledb",
   MsSQL = "mssql"
+}
+
+export enum DynamicSecretAwsIamAuth {
+  AssumeRole = "assume-role",
+  AccessKey = "access-key"
 }
 
 export type TDynamicSecretProvider =
@@ -77,15 +83,26 @@ export type TDynamicSecretProvider =
     }
   | {
       type: DynamicSecretProviders.AwsIam;
-      inputs: {
-        accessKey: string;
-        secretAccessKey: string;
-        region: string;
-        awsPath?: string;
-        policyDocument?: string;
-        userGroups?: string;
-        policyArns?: string;
-      };
+      inputs:
+        | {
+            method: DynamicSecretAwsIamAuth.AccessKey;
+            accessKey: string;
+            secretAccessKey: string;
+            region: string;
+            awsPath?: string;
+            policyDocument?: string;
+            userGroups?: string;
+            policyArns?: string;
+          }
+        | {
+            method: DynamicSecretAwsIamAuth.AssumeRole;
+            roleArn: string;
+            region: string;
+            awsPath?: string;
+            policyDocument?: string;
+            userGroups?: string;
+            policyArns?: string;
+          };
     }
   | {
       type: DynamicSecretProviders.Redis;
@@ -276,6 +293,18 @@ export type TDynamicSecretProvider =
         gatewayId?: string;
         sslEnabled: boolean;
         audiences: string[];
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Vertica;
+      inputs: {
+        host: string;
+        port: number;
+        database: string;
+        username: string;
+        password: string;
+        creationStatement: string;
+        revocationStatement: string;
       };
     };
 

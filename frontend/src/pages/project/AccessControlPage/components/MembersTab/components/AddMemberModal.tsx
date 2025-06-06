@@ -163,6 +163,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
         text: "Failed to add user to project",
         type: "error"
       });
+      return;
     }
     handlePopUpToggle("addMember", false);
     reset();

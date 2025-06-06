@@ -131,7 +131,27 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
             tooltipClassName="max-w-md"
-            tooltipText="When a secret is synced, its key will be injected into the key schema before it reaches the destination. This is useful for organization."
+            tooltipText={
+              <div className="flex flex-col gap-3">
+                <span>
+                  When a secret is synced, values will be injected into the key schema before it
+                  reaches the destination. This is useful for organization.
+                </span>
+
+                <div className="flex flex-col">
+                  <span>Available keys:</span>
+                  <ul className="list-disc pl-4 text-sm">
+                    <li>
+                      <code>{"{{secretKey}}"}</code> - The key of the secret
+                    </li>
+                    <li>
+                      <code>{"{{environment}}"}</code> - The environment which the secret is in
+                      (e.g. dev, staging, prod)
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            }
             isError={Boolean(error)}
             isOptional
             errorText={error?.message}

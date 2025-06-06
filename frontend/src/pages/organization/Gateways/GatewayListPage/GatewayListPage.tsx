@@ -229,7 +229,7 @@ export const GatewayListPage = withPermission(
                   )}
                   <DeleteActionModal
                     isOpen={popUp.deleteGateway.isOpen}
-                    title={`Are you sure want to delete gateway ${
+                    title={`Are you sure you want to delete gateway ${
                       (popUp?.deleteGateway?.data as { name: string })?.name || ""
                     }?`}
                     onChange={(isOpen) => handlePopUpToggle("deleteGateway", isOpen)}

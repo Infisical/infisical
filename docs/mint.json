@@ -225,14 +225,16 @@
             "documentation/platform/dynamic-secrets/sap-hana",
             "documentation/platform/dynamic-secrets/snowflake",
             "documentation/platform/dynamic-secrets/totp",
-            "documentation/platform/dynamic-secrets/kubernetes"
+            "documentation/platform/dynamic-secrets/kubernetes",
+            "documentation/platform/dynamic-secrets/vertica"
           ]
         },
         {
           "group": "Gateway",
           "pages": [
             "documentation/platform/gateways/overview",
-            "documentation/platform/gateways/gateway-security"
+            "documentation/platform/gateways/gateway-security",
+            "documentation/platform/gateways/networking"
           ]
         },
         "documentation/platform/project-templates",
@@ -252,7 +254,13 @@
           ]
         },
         "documentation/platform/secret-sharing",
-        "documentation/platform/secret-scanning"
+        {
+          "group": "Secret Scanning",
+          "pages": [
+            "documentation/platform/secret-scanning/overview",
+            "documentation/platform/secret-scanning/github"
+          ]
+        }
       ]
     },
     {
@@ -333,10 +341,12 @@
               "group": "OIDC Auth",
               "pages": [
                 "documentation/platform/identities/oidc-auth/general",
+                "documentation/platform/identities/oidc-auth/azure",
                 "documentation/platform/identities/oidc-auth/github",
                 "documentation/platform/identities/oidc-auth/circleci",
                 "documentation/platform/identities/oidc-auth/gitlab",
-                "documentation/platform/identities/oidc-auth/terraform-cloud"
+                "documentation/platform/identities/oidc-auth/terraform-cloud",
+                "documentation/platform/identities/oidc-auth/spire"
               ]
             },
 
@@ -490,6 +500,7 @@
             "integrations/app-connections/databricks",
             "integrations/app-connections/gcp",
             "integrations/app-connections/github",
+            "integrations/app-connections/github-radar",
             "integrations/app-connections/hashicorp-vault",
             "integrations/app-connections/humanitec",
             "integrations/app-connections/ldap",
@@ -1036,6 +1047,47 @@
           ]
         },
         {
+          "group": "Secret Scanning",
+          "pages": [
+            {
+              "group":  "Data Sources",
+              "pages":  [
+                "api-reference/endpoints/secret-scanning/data-sources/list",
+                "api-reference/endpoints/secret-scanning/data-sources/options",
+                {
+                  "group": "GitHub",
+                  "pages": [
+                    "api-reference/endpoints/secret-scanning/data-sources/github/list",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/get-by-id",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/get-by-name",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/list-resources",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/list-scans",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/create",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/update",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/delete",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/scan",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/scan-resource"
+                  ]
+                }
+              ]
+            },
+            {
+              "group":  "Findings",
+              "pages":  [
+                "api-reference/endpoints/secret-scanning/findings/list",
+                "api-reference/endpoints/secret-scanning/findings/update"
+              ]
+            },
+            {
+              "group":  "Configuration",
+              "pages":  [
+                "api-reference/endpoints/secret-scanning/config/get-by-project-id",
+                "api-reference/endpoints/secret-scanning/config/update"
+              ]
+            }
+          ]
+        },
+        {
           "group": "Identity Specific Privilege",
           "pages": [
             {
@@ -1185,6 +1237,18 @@
                 "api-reference/endpoints/app-connections/github/create",
                 "api-reference/endpoints/app-connections/github/update",
                 "api-reference/endpoints/app-connections/github/delete"
+              ]
+            },
+            {
+              "group": "GitHub Radar",
+              "pages": [
+                "api-reference/endpoints/app-connections/github-radar/list",
+                "api-reference/endpoints/app-connections/github-radar/available",
+                "api-reference/endpoints/app-connections/github-radar/get-by-id",
+                "api-reference/endpoints/app-connections/github-radar/get-by-name",
+                "api-reference/endpoints/app-connections/github-radar/create",
+                "api-reference/endpoints/app-connections/github-radar/update",
+                "api-reference/endpoints/app-connections/github-radar/delete"
               ]
             },
             {
@@ -1782,7 +1846,6 @@
         },
         "internals/components",
         "internals/security",
-        "internals/bug-bounty",
         "internals/service-tokens"
       ]
     },

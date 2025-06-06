@@ -3,6 +3,7 @@ import { AppConnection, AppConnectionPlanType } from "./app-connection-enums";
 export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.AWS]: "AWS",
   [AppConnection.GitHub]: "GitHub",
+  [AppConnection.GitHubRadar]: "GitHub Radar",
   [AppConnection.GCP]: "GCP",
   [AppConnection.AzureKeyVault]: "Azure Key Vault",
   [AppConnection.AzureAppConfiguration]: "Azure App Configuration",
@@ -27,6 +28,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
   [AppConnection.AWS]: AppConnectionPlanType.Regular,
   [AppConnection.GitHub]: AppConnectionPlanType.Regular,
+  [AppConnection.GitHubRadar]: AppConnectionPlanType.Regular,
   [AppConnection.GCP]: AppConnectionPlanType.Regular,
   [AppConnection.AzureKeyVault]: AppConnectionPlanType.Regular,
   [AppConnection.AzureAppConfiguration]: AppConnectionPlanType.Regular,

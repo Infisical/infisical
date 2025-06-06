@@ -218,7 +218,7 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
       </TableContainer>
       <DeleteActionModal
         isOpen={popUp.revokeToken.isOpen}
-        title={`Are you sure want to revoke ${
+        title={`Are you sure you want to revoke ${
           (popUp?.revokeToken?.data as { name: string })?.name || ""
         }?`}
         onChange={(isOpen) => handlePopUpToggle("revokeToken", isOpen)}

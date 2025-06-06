@@ -50,6 +50,7 @@ export type SubscriptionPlan = {
   enforceMfa: boolean;
   projectTemplates: boolean;
   kmip: boolean;
+  secretScanning: boolean;
   enterpriseSecretSyncs: boolean;
   enterpriseAppConnections: boolean;
 };

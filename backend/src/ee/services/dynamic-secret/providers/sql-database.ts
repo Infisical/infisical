@@ -3,7 +3,7 @@ import handlebars from "handlebars";
 import knex from "knex";
 import { z } from "zod";
 
-import { withGatewayProxy } from "@app/lib/gateway";
+import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
@@ -188,6 +188,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
         await gatewayCallback("localhost", port);
       },
       {
+        protocol: GatewayProxyProtocol.Tcp,
         targetHost: providerInputs.host,
         targetPort: providerInputs.port,
         relayHost,

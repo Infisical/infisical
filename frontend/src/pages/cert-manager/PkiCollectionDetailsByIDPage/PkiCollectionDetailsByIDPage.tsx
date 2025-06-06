@@ -152,7 +152,7 @@ export const PkiCollectionPage = () => {
       <PkiCollectionModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deletePkiCollection.isOpen}
-        title={`Are you sure want to delete the PKI collection ${data?.name ?? ""}?`}
+        title={`Are you sure you want to delete the PKI collection ${data?.name ?? ""}?`}
         onChange={(isOpen) => handlePopUpToggle("deletePkiCollection", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>

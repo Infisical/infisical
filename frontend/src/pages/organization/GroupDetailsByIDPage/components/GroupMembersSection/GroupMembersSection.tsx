@@ -94,7 +94,7 @@ export const GroupMembersSection = ({ groupId, groupSlug }: Props) => {
       <AddGroupMembersModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.removeMemberFromGroup.isOpen}
-        title={`Are you sure want to remove ${
+        title={`Are you sure you want to remove ${
           (popUp?.removeMemberFromGroup?.data as { username: string })?.username || ""
         } from the group?`}
         onChange={(isOpen) => handlePopUpToggle("removeMemberFromGroup", isOpen)}
