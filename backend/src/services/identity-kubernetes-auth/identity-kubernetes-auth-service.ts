@@ -274,9 +274,27 @@ export const identityKubernetesAuthServiceFactory = ({
 
     if (identityKubernetesAuth.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
       const { kubernetesHost } = identityKubernetesAuth;
-      const lastColonIndex = kubernetesHost.lastIndexOf(":");
-      const k8sHost = kubernetesHost.substring(0, lastColonIndex);
-      const k8sPort = kubernetesHost.substring(lastColonIndex + 1);
+
+      let urlString = kubernetesHost;
+      if (!kubernetesHost.startsWith("http://") && !kubernetesHost.startsWith("https://")) {
+        urlString = `https://${kubernetesHost}`;
+      }
+
+      const url = new URL(urlString);
+      let { port: k8sPort } = url;
+      const { protocol, hostname: k8sHost } = url;
+
+      const cleanedProtocol = new RE2(/[^a-zA-Z0-9]/g).replace(protocol, "").toLowerCase();
+
+      if (!["https", "http"].includes(cleanedProtocol)) {
+        throw new BadRequestError({
+          message: "Invalid Kubernetes host URL, must start with http:// or https://"
+        });
+      }
+
+      if (!k8sPort) {
+        k8sPort = cleanedProtocol === "https" ? "443" : "80";
+      }
 
       if (!identityKubernetesAuth.gatewayId) {
         throw new BadRequestError({
@@ -287,7 +305,7 @@ export const identityKubernetesAuthServiceFactory = ({
       data = await $gatewayProxyWrapper(
         {
           gatewayId: identityKubernetesAuth.gatewayId,
-          targetHost: k8sHost, // note(daniel): must include the protocol (https|http)
+          targetHost: `${cleanedProtocol}://${k8sHost}`, // note(daniel): must include the protocol (https|http)
           targetPort: k8sPort ? Number(k8sPort) : 443,
           caCert,
           reviewTokenThroughGateway: true

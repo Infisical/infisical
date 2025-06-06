@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -105,6 +106,11 @@ func handleStream(stream quic.Stream, quicConn quic.Connection) {
 			}
 
 			targetURL := string(argParts[0])
+
+			if !isValidURL(targetURL) {
+				log.Error().Msgf("Invalid target URL: %s", targetURL)
+				return
+			}
 
 			// Parse optional parameters
 			var caCertB64, verifyParam string
@@ -253,6 +259,11 @@ func buildHttpInternalServerError(message string) string {
 
 type CloseWrite interface {
 	CloseWrite() error
+}
+
+func isValidURL(str string) bool {
+	u, err := url.Parse(str)
+	return err == nil && u.Scheme != "" && u.Host != ""
 }
 
 func CopyDataFromQuicToTcp(quicStream quic.Stream, tcpConn net.Conn) {
