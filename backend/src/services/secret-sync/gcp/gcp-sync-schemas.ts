@@ -10,7 +10,7 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSync } from "../secret-sync-enums";
-import { GcpSyncScope } from "./gcp-sync-enums";
+import { GCPSecretManagerLocation, GcpSyncScope } from "./gcp-sync-enums";
 
 const GcpSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
@@ -29,7 +29,7 @@ const GcpSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
     .object({
       scope: z.literal(GcpSyncScope.Region).describe(SecretSyncs.DESTINATION_CONFIG.GCP.scope),
       projectId: z.string().min(1, "Project ID is required").describe(SecretSyncs.DESTINATION_CONFIG.GCP.projectId),
-      locationId: z.string().min(1, "Location ID is required").describe(SecretSyncs.DESTINATION_CONFIG.GCP.locationId)
+      locationId: z.nativeEnum(GCPSecretManagerLocation).describe(SecretSyncs.DESTINATION_CONFIG.GCP.locationId)
     })
     .describe(
       JSON.stringify({
