@@ -28,6 +28,7 @@ import {
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { ProjectType } from "@app/hooks/api/workspace/types";
+import { isLoggedIn } from "@app/hooks/api/reactQuery";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -68,6 +69,8 @@ export const SignupInvitePage = () => {
   const metadata = queryParams.get("metadata") || undefined;
 
   const { mutateAsync: selectOrganization } = useSelectOrganization();
+
+  const loggedIn = isLoggedIn();
 
   // Verifies if the information that the users entered (name, workspace) is there, and if the password matched the criteria.
   const signupErrorCheck = async () => {
@@ -240,8 +243,10 @@ export const SignupInvitePage = () => {
                 if (response?.token) {
                   SecurityClient.setSignupToken(response.token);
                   setStep(2);
-                } else {
+                } else if (loggedIn) {
                   navigate({ to: "/login/select-organization", search: { force: true } });
+                } else {
+                  navigate({ to: "/login" });
                 }
               }
             } catch (err) {
