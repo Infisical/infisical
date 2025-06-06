@@ -1,6 +1,6 @@
 export const BillingPlanRows = {
-  MemberLimit: { name: "Organization member limit", field: "memberLimit" },
-  IdentityLimit: { name: "Organization identity limit", field: "identityLimit" },
+  MemberLimit: { name: "Organization user identity limit", field: "memberLimit" },
+  IdentityLimit: { name: "Organization machine identity limit", field: "identityLimit" },
   WorkspaceLimit: { name: "Project limit", field: "workspaceLimit" },
   EnvironmentLimit: { name: "Environment limit", field: "environmentLimit" },
   SecretVersioning: { name: "Secret versioning", field: "secretVersioning" },
