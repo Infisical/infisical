@@ -50,5 +50,5 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.TeamCity]: registerTeamCityConnectionRouter,
     [AppConnection.OCI]: registerOCIConnectionRouter,
     [AppConnection.OnePass]: registerOnePassConnectionRouter,
-    [AppConnection.Coolify]: registerCoolifyConnectionRouter,
+    [AppConnection.Coolify]: registerCoolifyConnectionRouter
   };

@@ -44,6 +44,8 @@ import { azureClientSecretsConnectionService } from "./azure-client-secrets/azur
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
+import { ValidateCoolifyConnectionCredentialsSchema } from "./coolify";
+import { coolifyConnectionService } from "./coolify/coolify-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
@@ -67,8 +69,6 @@ import { ValidateVercelConnectionCredentialsSchema } from "./vercel";
 import { vercelConnectionService } from "./vercel/vercel-connection-service";
 import { ValidateWindmillConnectionCredentialsSchema } from "./windmill";
 import { windmillConnectionService } from "./windmill/windmill-connection-service";
-import { ValidateCoolifyConnectionCredentialsSchema } from "./coolify";
-import { coolifyConnectionService } from "./coolify/coolify-connection-service";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -129,8 +129,8 @@ export const appConnectionServiceFactory = ({
       app
         ? { orgId: actor.orgId, app }
         : {
-          orgId: actor.orgId
-        }
+            orgId: actor.orgId
+          }
     );
 
     return Promise.all(
@@ -314,8 +314,9 @@ export const appConnectionServiceFactory = ({
         }).success
       )
         throw new BadRequestError({
-          message: `Invalid credential format for ${APP_CONNECTION_NAME_MAP[app]
-            } Connection with method ${getAppConnectionMethodName(method)}`
+          message: `Invalid credential format for ${
+            APP_CONNECTION_NAME_MAP[app]
+          } Connection with method ${getAppConnectionMethodName(method)}`
         });
 
       updatedCredentials = await validateAppConnectionCredentials({
@@ -333,10 +334,10 @@ export const appConnectionServiceFactory = ({
       const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined) => {
         const encryptedCredentials = connectionCredentials
           ? await encryptAppConnectionCredentials({
-            credentials: connectionCredentials,
-            orgId: actor.orgId,
-            kmsService
-          })
+              credentials: connectionCredentials,
+              orgId: actor.orgId,
+              kmsService
+            })
           : undefined;
 
         return appConnectionDAL.updateById(connectionId, {
@@ -449,8 +450,9 @@ export const appConnectionServiceFactory = ({
 
     if (appConnection.app !== app)
       throw new BadRequestError({
-        message: `${APP_CONNECTION_NAME_MAP[appConnection.app as AppConnection]
-          } Connection with ID ${connectionId} cannot be used to connect to ${APP_CONNECTION_NAME_MAP[app]}`
+        message: `${
+          APP_CONNECTION_NAME_MAP[appConnection.app as AppConnection]
+        } Connection with ID ${connectionId} cannot be used to connect to ${APP_CONNECTION_NAME_MAP[app]}`
       });
 
     const connection = await decryptAppConnection(appConnection, kmsService);

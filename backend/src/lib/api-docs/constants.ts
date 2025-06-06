@@ -2193,8 +2193,9 @@ export const SecretSyncs = {
       projectId: "The ID of the project to create the sync in.",
       environment: `The slug of the project environment to sync secrets from.`,
       secretPath: `The folder path to sync secrets from.`,
-      connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
-        } Connection to use for syncing.`,
+      connectionId: `The ID of the ${
+        APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
+      } Connection to use for syncing.`,
       isAutoSyncEnabled: `Whether secrets should be automatically synced when changes occur at the source location or not.`,
       syncOptions: "Optional parameters to modify how secrets are synced."
     };
@@ -2203,8 +2204,9 @@ export const SecretSyncs = {
     const destinationName = SECRET_SYNC_NAME_MAP[destination];
     return {
       syncId: `The ID of the ${destinationName} Sync to be updated.`,
-      connectionId: `The updated ID of the ${APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
-        } Connection to use for syncing.`,
+      connectionId: `The updated ID of the ${
+        APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
+      } Connection to use for syncing.`,
       name: `The updated name of the ${destinationName} Sync. Must be slug-friendly.`,
       environment: `The updated slug of the project environment to sync secrets from.`,
       secretPath: `The updated folder path to sync secrets from.`,
@@ -2355,8 +2357,9 @@ export const SecretRotations = {
       projectId: "The ID of the project to create the rotation in.",
       environment: `The slug of the project environment to create the rotation in.`,
       secretPath: `The secret path of the project to create the rotation in.`,
-      connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[SECRET_ROTATION_CONNECTION_MAP[type]]
-        } Connection to use for rotation.`,
+      connectionId: `The ID of the ${
+        APP_CONNECTION_NAME_MAP[SECRET_ROTATION_CONNECTION_MAP[type]]
+      } Connection to use for rotation.`,
       isAutoRotationEnabled: `Whether secrets should be automatically rotated when the specified rotation interval has elapsed.`,
       rotationInterval: `The interval, in days, to automatically rotate secrets.`,
       rotateAtUtc: `The hours and minutes rotation should occur at in UTC. Defaults to Midnight (00:00) UTC.`
@@ -2462,8 +2465,9 @@ export const SecretScanningDataSources = {
       name: `The name of the ${sourceType} Data Source to create. Must be slug-friendly.`,
       description: `An optional description for the ${sourceType} Data Source.`,
       projectId: `The ID of the project to create the ${sourceType} Data Source in.`,
-      connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
-        } Connection to use for this Data Source.`,
+      connectionId: `The ID of the ${
+        APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
+      } Connection to use for this Data Source.`,
       isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
       config: `The configuration parameters to use for this Data Source.`
     };

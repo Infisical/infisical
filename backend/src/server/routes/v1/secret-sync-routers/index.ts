@@ -7,6 +7,7 @@ import { registerAwsSecretsManagerSyncRouter } from "./aws-secrets-manager-sync-
 import { registerAzureAppConfigurationSyncRouter } from "./azure-app-configuration-sync-router";
 import { registerAzureKeyVaultSyncRouter } from "./azure-key-vault-sync-router";
 import { registerCamundaSyncRouter } from "./camunda-sync-router";
+import { registerCoolifySyncRouter } from "./coolify-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
 import { registerGcpSyncRouter } from "./gcp-sync-router";
 import { registerGitHubSyncRouter } from "./github-sync-router";
@@ -16,7 +17,6 @@ import { registerTeamCitySyncRouter } from "./teamcity-sync-router";
 import { registerTerraformCloudSyncRouter } from "./terraform-cloud-sync-router";
 import { registerVercelSyncRouter } from "./vercel-sync-router";
 import { registerWindmillSyncRouter } from "./windmill-sync-router";
-import { registerCoolifySyncRouter } from "./coolify-sync-router";
 
 export * from "./secret-sync-router";
 
