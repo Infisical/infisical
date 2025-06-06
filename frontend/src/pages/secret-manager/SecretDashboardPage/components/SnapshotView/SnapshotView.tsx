@@ -5,14 +5,14 @@ import {
   faCodeCommit,
   faFolder,
   faMagnifyingGlass,
-  faUndo,
-  faWarning
+  faUndo
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, ContentLoader, Input, Tag, Tooltip } from "@app/components/v2";
+import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useGetSnapshotSecrets, usePerformSecretRollback } from "@app/hooks/api";
 import { SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
@@ -155,20 +155,24 @@ export const SnapshotView = ({
 
   return (
     <>
-      <div className="my-2 flex w-full flex-row items-center rounded-md border border-primary-600/70 bg-primary/[.07] p-4 text-base text-white">
-        <FontAwesomeIcon icon={faWarning} className="pr-6 text-4xl text-white/80" />
-        <div className="flex w-full flex-col text-sm">
-          <span className="mb-1 text-lg font-semibold">Deprecation Notice</span>
-          <p>
-            Snapshots are being deprecated in favor of Commits. They will be officially removed on
-            November 2025.
-          </p>
-        </div>
-      </div>
       <div className="flex items-center space-x-4">
         <h6 className="text-2xl">Snapshot</h6>
         <Tag colorSchema="green">{new Date(snapshotData?.createdAt || "").toLocaleString()}</Tag>
       </div>
+      <NoticeBannerV2 title="Snapshots are being deprecated" className="my-2">
+        <p className="my-1 text-sm text-mineshaft-300">
+          Snapshots are being deprecated in favor of{" "}
+          <a
+            target="_blank"
+            href="https://infisical.com/docs/documentation/platform/pit-recovery"
+            rel="noopener noreferrer"
+            className="underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
+          >
+            Commits
+          </a>
+          . This feature will be officially removed in November 2025.
+        </p>
+      </NoticeBannerV2>
       <div className="mt-4 flex items-center space-x-2">
         <div className="w-2/5">
           <Input
@@ -204,26 +208,24 @@ export const SnapshotView = ({
             Go Back
           </Button>
         </div>
-        {isAllowedRollback && (
-          <div>
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Create}
-              a={ProjectPermissionSub.SecretRollback}
-            >
-              {(isAllowed) => (
-                <Button
-                  onClick={handleClickRollback}
-                  isDisabled={isRollingBack || !isAllowed}
-                  isLoading={isRollingBack}
-                  leftIcon={<FontAwesomeIcon icon={faUndo} />}
-                  className="h-10"
-                >
-                  Rollback
-                </Button>
-              )}
-            </ProjectPermissionCan>
-          </div>
-        )}
+        <div>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.SecretRollback}
+          >
+            {(isAllowed) => (
+              <Button
+                onClick={handleClickRollback}
+                isDisabled={isRollingBack || !isAllowed || !isAllowedRollback}
+                isLoading={isRollingBack}
+                leftIcon={<FontAwesomeIcon icon={faUndo} />}
+                className="h-10"
+              >
+                Rollback
+              </Button>
+            )}
+          </ProjectPermissionCan>
+        </div>
       </div>
       <div className="mt-4 rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300">
         <div className="flex flex-col">
