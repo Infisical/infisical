@@ -4,7 +4,7 @@ import { OnePassSyncDestinationCol } from "./1PasswordSyncDestinationCol";
 import { AwsParameterStoreSyncDestinationCol } from "./AwsParameterStoreSyncDestinationCol";
 import { AwsSecretsManagerSyncDestinationCol } from "./AwsSecretsManagerSyncDestinationCol";
 import { AzureAppConfigurationDestinationSyncCol } from "./AzureAppConfigurationDestinationSyncCol";
-import { AzureDevOpsSyncDestinationCol } from "./AzureDevopsDestinationCol";
+import { AzureDevOpsSyncDestinationCol } from "./AzureDevOpsSyncDestinationCol";
 import { AzureKeyVaultDestinationSyncCol } from "./AzureKeyVaultDestinationSyncCol";
 import { CamundaSyncDestinationCol } from "./CamundaSyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";

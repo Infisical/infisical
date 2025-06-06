@@ -68,7 +68,7 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
     environmentName: string,
     isOAuth: boolean
   ) => {
-    const url = `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${orgName}/${projectId}/_apis/distributedtask/variablegroups?api-version=7.1`;
+    const url = `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${encodeURIComponent(orgName)}/${encodeURIComponent(projectId)}/_apis/distributedtask/variablegroups?api-version=7.1`;
     const response = await request.get<AzureDevOpsVariableGroupList>(url, {
       headers: {
         Authorization: getAuthHeader(accessToken, isOAuth)

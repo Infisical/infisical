@@ -52,11 +52,3 @@ export interface TAzureListRegisteredAppsResponse {
   "@odata.nextLink"?: string;
   value: TAzureRegisteredApp[];
 }
-
-export interface TAzureDevOps {
-  keyId: string;
-  displayName?: string;
-  startDateTime: string;
-  endDateTime: string;
-  secretText?: string;
-}

@@ -70,7 +70,7 @@ const listAzureDevOpsProjects = async (
 
   // Use the standard Azure DevOps Projects API endpoint
   // This endpoint returns only projects that the authenticated user has access to
-  const devOpsEndpoint = `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${orgName}/_apis/projects?api-version=7.1`;
+  const devOpsEndpoint = `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${encodeURIComponent(orgName)}/_apis/projects?api-version=7.1`;
   try {
     const { data } = await request.get<TAzureDevOpsProjectsResponse>(devOpsEndpoint, {
       headers: getAuthHeaders(appConnection, accessToken)

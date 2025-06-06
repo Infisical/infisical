@@ -7,7 +7,7 @@ import { OnePassSyncFields } from "./1PasswordSyncFields";
 import { AwsParameterStoreSyncFields } from "./AwsParameterStoreSyncFields";
 import { AwsSecretsManagerSyncFields } from "./AwsSecretsManagerSyncFields";
 import { AzureAppConfigurationSyncFields } from "./AzureAppConfigurationSyncFields";
-import { AzureDevOpsSyncFields } from "./AzureDevopsSyncFields";
+import { AzureDevOpsSyncFields } from "./AzureDevOpsSyncFields";
 import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
 import { CamundaSyncFields } from "./CamundaSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";

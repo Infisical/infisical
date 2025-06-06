@@ -16,7 +16,7 @@ import {
   AwsSecretsManagerSyncReviewFields
 } from "./AwsSecretsManagerSyncReviewFields";
 import { AzureAppConfigurationSyncReviewFields } from "./AzureAppConfigurationSyncReviewFields";
-import { AzureDevOpsSyncReviewFields } from "./AzureDevopsSyncReviewFields";
+import { AzureDevOpsSyncReviewFields } from "./AzureDevOpsSyncReviewFields";
 import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
 import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";

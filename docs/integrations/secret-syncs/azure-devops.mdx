@@ -5,8 +5,8 @@ description: "Learn how to configure a Azure DevOps Sync for Infisical."
 
 **Prerequisites:**
 
-        - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
-        - Create an [Azure DevOps Connection](/integrations/app-connections/azure-devops)
+- Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
+- Create an [Azure DevOps Connection](/integrations/app-connections/azure-devops)
 
 <Tabs>
     <Tab title="Infisical UI">
@@ -31,7 +31,7 @@ description: "Learn how to configure a Azure DevOps Sync for Infisical."
 
             - **Azure DevOps Connection**: The Azure DevOps Connection to authenticate with.
             - **Project**: The Azure DevOps project to deploy secrets to.
-            <p class="height:1px"  />
+            <p class="height:1px"/>
 
         5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
         ![Configure Options](/images/secret-syncs/azure-devops/devops-options.png)
@@ -92,7 +92,7 @@ description: "Learn how to configure a Azure DevOps Sync for Infisical."
         {
             "secretSync": {
                 "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "name": "my-key-vault-sync",
+                "name": "my-devops-sync",
                 "description": "an example sync",
                 "isEnabled": true,
                 "version": 1,
@@ -114,7 +114,7 @@ description: "Learn how to configure a Azure DevOps Sync for Infisical."
                 "lastRemovedAt": null,
                 "syncOptions": {
                 "initialSyncBehavior": "overwrite-destination",
-                "keySchema": "PIPELINE_${key}",
+                "keySchema": "PIPELINE_${secretKey}",
                 "disableSecretDeletion": true
                 },
                 "connection": {
