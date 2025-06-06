@@ -1,15 +1,17 @@
+import { AxiosError } from "axios";
+
 import { request } from "@app/lib/config/request";
+import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+
 import { AppConnection } from "../app-connection-enums";
 import { CoolifyConnectionMethod } from "./coolify-connection-enums";
 import {
+  TCoolifyApplication,
   TCoolifyConnection,
   TCoolifyConnectionConfig,
-  TCoolifyApplication,
   TCoolifyProject
 } from "./coolify-connection-types";
-import { AxiosError } from "axios";
-import { BadRequestError } from "@app/lib/errors";
 
 export const getCoolifyInstanceUrl = (config: TCoolifyConnectionConfig) => {
   return removeTrailingSlash(config.credentials.instanceUrl);

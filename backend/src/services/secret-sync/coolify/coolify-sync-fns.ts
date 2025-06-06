@@ -1,4 +1,9 @@
+import { request } from "@app/lib/config/request";
+import { getCoolifyInstanceUrl } from "@app/services/app-connection/coolify";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+
 import {
   TCoolifyAPICreateEnvResponse,
   TCoolifyAPIResponse,
@@ -6,10 +11,6 @@ import {
   TCoolifySecret,
   TCoolifySyncWithCredentials
 } from "./coolify-sync-types";
-import { getCoolifyInstanceUrl } from "@app/services/app-connection/coolify";
-import { request } from "@app/lib/config/request";
-import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 const getAllCoolifySecrets = async (secretSync: TCoolifySyncWithCredentials) => {
   const {
