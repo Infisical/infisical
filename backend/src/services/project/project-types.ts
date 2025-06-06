@@ -94,6 +94,7 @@ export type TUpdateProjectDTO = {
     hasDeleteProtection?: boolean;
     slug?: string;
     secretSharing?: boolean;
+    showSnapshotsLegacy?: boolean;
   };
 } & Omit<TProjectPermission, "projectId">;
 

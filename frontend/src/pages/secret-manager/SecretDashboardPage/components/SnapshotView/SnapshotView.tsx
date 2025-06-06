@@ -5,7 +5,8 @@ import {
   faCodeCommit,
   faFolder,
   faMagnifyingGlass,
-  faUndo
+  faUndo,
+  faWarning
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -60,6 +61,7 @@ export const SnapshotView = ({
 
   const rollingFolder = snapshotData?.folders || [];
   const rollingSecrets = snapshotData?.secrets || [];
+  const isAllowedRollback = false;
 
   const folderDiffView = useMemo(() => {
     const folderGroupById = folders.reduce<Record<string, TSecretFolder>>(
@@ -153,6 +155,16 @@ export const SnapshotView = ({
 
   return (
     <>
+      <div className="my-2 flex w-full flex-row items-center rounded-md border border-primary-600/70 bg-primary/[.07] p-4 text-base text-white">
+        <FontAwesomeIcon icon={faWarning} className="pr-6 text-4xl text-white/80" />
+        <div className="flex w-full flex-col text-sm">
+          <span className="mb-1 text-lg font-semibold">Deprecation Notice</span>
+          <p>
+            Snapshots are being deprecated in favor of Commits. They will be officially removed on
+            November 2025.
+          </p>
+        </div>
+      </div>
       <div className="flex items-center space-x-4">
         <h6 className="text-2xl">Snapshot</h6>
         <Tag colorSchema="green">{new Date(snapshotData?.createdAt || "").toLocaleString()}</Tag>
@@ -168,17 +180,19 @@ export const SnapshotView = ({
           />
         </div>
         <div className="flex-grow" />
-        <div>
-          <Button
-            variant="outline_bg"
-            onClick={onClickListSnapshot}
-            leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
-            className="h-10"
-            isDisabled={isRollingBack}
-          >
-            {snapshotCount} Commits
-          </Button>
-        </div>
+        {isAllowedRollback && (
+          <div>
+            <Button
+              variant="outline_bg"
+              onClick={onClickListSnapshot}
+              leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
+              className="h-10"
+              isDisabled={isRollingBack}
+            >
+              {snapshotCount} Commits
+            </Button>
+          </div>
+        )}
         <div>
           <Button
             onClick={onGoBack}
@@ -190,24 +204,26 @@ export const SnapshotView = ({
             Go Back
           </Button>
         </div>
-        <div>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={ProjectPermissionSub.SecretRollback}
-          >
-            {(isAllowed) => (
-              <Button
-                onClick={handleClickRollback}
-                isDisabled={isRollingBack || !isAllowed}
-                isLoading={isRollingBack}
-                leftIcon={<FontAwesomeIcon icon={faUndo} />}
-                className="h-10"
-              >
-                Rollback
-              </Button>
-            )}
-          </ProjectPermissionCan>
-        </div>
+        {isAllowedRollback && (
+          <div>
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Create}
+              a={ProjectPermissionSub.SecretRollback}
+            >
+              {(isAllowed) => (
+                <Button
+                  onClick={handleClickRollback}
+                  isDisabled={isRollingBack || !isAllowed}
+                  isLoading={isRollingBack}
+                  leftIcon={<FontAwesomeIcon icon={faUndo} />}
+                  className="h-10"
+                >
+                  Rollback
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          </div>
+        )}
       </div>
       <div className="mt-4 rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300">
         <div className="flex flex-col">

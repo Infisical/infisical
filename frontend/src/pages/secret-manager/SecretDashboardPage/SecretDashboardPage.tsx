@@ -300,7 +300,7 @@ const Page = () => {
     isPaused: !canDoReadRollback
   });
 
-  const isPITEnabled = true;
+  const isPITEnabled = !currentWorkspace?.showSnapshotsLegacy;
 
   const changesCount = useMemo(() => {
     return isPITEnabled ? folderCommitsCount : snapshotCount;
