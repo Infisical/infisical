@@ -41,7 +41,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
       });
 
       createNotification({
-        text: "Successfully removed identity from project",
+        text: "Successfully removed group from project",
         type: "success"
       });
 

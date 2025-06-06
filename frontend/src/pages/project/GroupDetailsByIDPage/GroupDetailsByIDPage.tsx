@@ -54,7 +54,7 @@ export const GroupDetailsByIDPage = () => {
   return (
     <>
       <Helmet>
-        <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
+        <title>{t("common.head-title", { title: "Project Group" })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <ProjectPermissionCan

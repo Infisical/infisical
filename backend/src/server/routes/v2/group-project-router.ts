@@ -308,6 +308,9 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     url: "/:projectId/groups/:groupId/users",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProjectGroups],
