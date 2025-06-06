@@ -44,6 +44,11 @@ export enum SqlProviders {
   MsSQL = "mssql"
 }
 
+export enum DynamicSecretAwsIamAuth {
+  AssumeRole = "assume-role",
+  AccessKey = "access-key"
+}
+
 export type TDynamicSecretProvider =
   | {
       type: DynamicSecretProviders.SqlDatabase;
@@ -78,15 +83,26 @@ export type TDynamicSecretProvider =
     }
   | {
       type: DynamicSecretProviders.AwsIam;
-      inputs: {
-        accessKey: string;
-        secretAccessKey: string;
-        region: string;
-        awsPath?: string;
-        policyDocument?: string;
-        userGroups?: string;
-        policyArns?: string;
-      };
+      inputs:
+        | {
+            method: DynamicSecretAwsIamAuth.AccessKey;
+            accessKey: string;
+            secretAccessKey: string;
+            region: string;
+            awsPath?: string;
+            policyDocument?: string;
+            userGroups?: string;
+            policyArns?: string;
+          }
+        | {
+            method: DynamicSecretAwsIamAuth.AssumeRole;
+            roleArn: string;
+            region: string;
+            awsPath?: string;
+            policyDocument?: string;
+            userGroups?: string;
+            policyArns?: string;
+          };
     }
   | {
       type: DynamicSecretProviders.Redis;
