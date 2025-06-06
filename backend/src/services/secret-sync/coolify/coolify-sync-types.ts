@@ -1,7 +1,8 @@
 import z from "zod";
 
-import { CoolifySyncListItemSchema, CoolifySyncSchema, CreateCoolifySyncSchema } from "./coolify-sync-schemas";
 import { TCoolifyConnection } from "@app/services/app-connection/coolify";
+
+import { CoolifySyncListItemSchema, CoolifySyncSchema, CreateCoolifySyncSchema } from "./coolify-sync-schemas";
 
 export type TCoolifySync = z.infer<typeof CoolifySyncSchema>;
 
