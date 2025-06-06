@@ -232,8 +232,11 @@ export const TerraformCloudSyncFns = {
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for (const terraformCloudVariable of terraformCloudVariables) {
-      // eslint-disable-next-line no-continue
-      if (!matchesSchema(terraformCloudVariable.key, secretSync.syncOptions.keySchema)) continue;
+      if (
+        !matchesSchema(terraformCloudVariable.key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)
+      )
+        // eslint-disable-next-line no-continue
+        continue;
 
       if (!Object.prototype.hasOwnProperty.call(secretMap, terraformCloudVariable.key)) {
         await deleteVariable(secretSync, terraformCloudVariable);

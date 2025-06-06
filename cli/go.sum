@@ -294,6 +294,10 @@ github.com/inconshreveable/mousetrap v1.0.1 h1:U3uMjPSQEBMNp1lFxmllqCPM6P5u/Xq7P
 github.com/inconshreveable/mousetrap v1.0.1/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/infisical/go-sdk v0.5.92 h1:PoCnVndrd6Dbkipuxl9fFiwlD5vCKsabtQo09mo8lUE=
 github.com/infisical/go-sdk v0.5.92/go.mod h1:ExjqFLRz7LSpZpGluqDLvFl6dFBLq5LKyLW7GBaMAIs=
+github.com/infisical/go-sdk v0.5.94 h1:wKBj+KpJEe+ZzOJ7koXQZDR0dLL9bt0Kqgf/1q+7tG4=
+github.com/infisical/go-sdk v0.5.94/go.mod h1:ExjqFLRz7LSpZpGluqDLvFl6dFBLq5LKyLW7GBaMAIs=
+github.com/infisical/go-sdk v0.5.95 h1:so0YwPofbT7j6Ao8Xcxee/o3ia33meuEVDU2vWr9yfs=
+github.com/infisical/go-sdk v0.5.95/go.mod h1:ExjqFLRz7LSpZpGluqDLvFl6dFBLq5LKyLW7GBaMAIs=
 github.com/infisical/infisical-kmip v0.3.5 h1:QM3s0e18B+mYv3a9HQNjNAlbwZJBzXq5BAJM2scIeiE=
 github.com/infisical/infisical-kmip v0.3.5/go.mod h1:bO1M4YtKyutNg1bREPmlyZspC5duSR7hyQ3lPmLzrIs=
 github.com/jedib0t/go-pretty v4.3.0+incompatible h1:CGs8AVhEKg/n9YbUenWmNStRW2PHJzaeDodcfvRAbIo=

@@ -837,16 +837,22 @@ export const orgServiceFactory = ({
 
         // if the user doesn't exist we create the user with the email
         if (!inviteeUser) {
-          inviteeUser = await userDAL.create(
-            {
-              isAccepted: false,
-              email: inviteeEmail,
-              username: inviteeEmail,
-              authMethods: [AuthMethod.EMAIL],
-              isGhost: false
-            },
-            tx
-          );
+          // TODO(carlos): will be removed once the function receives usernames instead of emails
+          const usersByEmail = await userDAL.findUserByEmail(inviteeEmail, tx);
+          if (usersByEmail?.length === 1) {
+            [inviteeUser] = usersByEmail;
+          } else {
+            inviteeUser = await userDAL.create(
+              {
+                isAccepted: false,
+                email: inviteeEmail,
+                username: inviteeEmail,
+                authMethods: [AuthMethod.EMAIL],
+                isGhost: false
+              },
+              tx
+            );
+          }
         }
 
         const inviteeUserId = inviteeUser?.id;
