@@ -4,6 +4,7 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/hooks/api/secretSyncs";
+import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 
 export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }> = {
@@ -122,5 +123,16 @@ export const HUMANITEC_SYNC_SCOPES: Record<
     name: "Environment",
     description:
       "Infisical will sync secrets as environment level shared values to the specified Humanitec application environment."
+  }
+};
+
+export const GCP_SYNC_SCOPES: Record<GcpSyncScope, { name: string; description: string }> = {
+  [GcpSyncScope.Global]: {
+    name: "Global",
+    description: "Secrets will be synced globally; being available in all project regions."
+  },
+  [GcpSyncScope.Region]: {
+    name: "Region",
+    description: "Secrets will be synced to the specified region."
   }
 };
