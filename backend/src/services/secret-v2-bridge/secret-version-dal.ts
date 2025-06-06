@@ -4,7 +4,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { SecretVersionsV2Schema, TableName, TSecretVersionsV2, TSecretVersionsV2Update } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols, sqlNestRelationships, TFindOpt } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindOpt } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
 
@@ -138,7 +138,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         {}
       );
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindLatestVersinMany" });
+      throw new DatabaseError({ error, name: "FindLatestVersionMany" });
     }
   };
 
@@ -162,6 +162,8 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
         .join("version_cte", "version_cte.id", `${TableName.SecretVersionV2}.id`)
         .whereRaw(`version_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+        // Projects with version >= 3 will require to have all secret versions for PIT
+        .andWhere(`${TableName.Project}.version`, "<", 3)
         .delete();
     } catch (error) {
       throw new DatabaseError({
@@ -172,13 +174,21 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret version v2 completed`);
   };
 
-  const findVersionsBySecretIdWithActors = async (
-    secretId: string,
-    projectId: string,
-    { offset, limit, sort = [["createdAt", "desc"]] }: TFindOpt<TSecretVersionsV2> = {},
-    tx?: Knex
-  ) => {
+  const findVersionsBySecretIdWithActors = async ({
+    secretId,
+    projectId,
+    secretVersions,
+    findOpt = {},
+    tx
+  }: {
+    secretId: string;
+    projectId: string;
+    secretVersions?: string[];
+    findOpt?: TFindOpt<TSecretVersionsV2>;
+    tx?: Knex;
+  }) => {
     try {
+      const { offset, limit, sort = [["createdAt", "desc"]] } = findOpt;
       const query = (tx || db)(TableName.SecretVersionV2)
         .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.SecretVersionV2}.userActorId`)
         .leftJoin(
@@ -189,22 +199,24 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.SecretVersionV2}.identityActorId`)
         .leftJoin(TableName.SecretV2, `${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)
         .leftJoin(
-          TableName.SecretV2JnTag,
-          `${TableName.SecretV2}.id`,
-          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+          TableName.SecretVersionV2Tag,
+          `${TableName.SecretVersionV2}.id`,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretVersionV2}Id`
         )
         .leftJoin(
           TableName.SecretTag,
-          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
         .where((qb) => {
           void qb.where(`${TableName.SecretVersionV2}.secretId`, secretId);
           void qb.where(`${TableName.ProjectMembership}.projectId`, projectId);
+          if (secretVersions?.length) void qb.whereIn(`${TableName.SecretVersionV2}.version`, secretVersions);
         })
         .orWhere((qb) => {
           void qb.where(`${TableName.SecretVersionV2}.secretId`, secretId);
           void qb.whereNull(`${TableName.ProjectMembership}.projectId`);
+          if (secretVersions?.length) void qb.whereIn(`${TableName.SecretVersionV2}.version`, secretVersions);
         })
         .select(
           selectAllTableCols(TableName.SecretVersionV2),
@@ -260,6 +272,178 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Function to fetch latest versions by secretIds
+  const getLatestVersionsBySecretIds = async (
+    folderId: string,
+    secretIds: string[],
+    tx?: Knex
+  ): Promise<Array<TSecretVersionsV2>> => {
+    if (!secretIds.length) return [];
+
+    const knexInstance = tx || db.replicaNode();
+    return knexInstance(TableName.SecretVersionV2)
+      .where("folderId", folderId)
+      .whereIn(`${TableName.SecretVersionV2}.secretId`, secretIds)
+      .join(
+        knexInstance(TableName.SecretVersionV2)
+          .groupBy("secretId")
+          .max("version")
+          .select("secretId")
+          .as("latestVersion"),
+        (bd) => {
+          bd.on(`${TableName.SecretVersionV2}.secretId`, "latestVersion.secretId").andOn(
+            `${TableName.SecretVersionV2}.version`,
+            "latestVersion.max"
+          );
+        }
+      );
+  };
+
+  // Function to fetch specific versions by versionIds
+  const getSpecificVersionsWithLatestInfo = async (
+    folderId: string,
+    versionIds: string[],
+    tx?: Knex
+  ): Promise<Array<TSecretVersionsV2>> => {
+    if (!versionIds.length) return [];
+
+    const knexInstance = tx || db.replicaNode();
+
+    // Get the specific versions
+    const specificVersions = await knexInstance(TableName.SecretVersionV2)
+      .where("folderId", folderId)
+      .whereIn("id", versionIds);
+
+    // Get the secretIds from these versions
+    const specificSecretIds = [...new Set(specificVersions.map((v) => v.secretId).filter(Boolean))];
+
+    if (!specificSecretIds.length) return specificVersions;
+
+    // Get max versions for these secretIds
+    const maxVersionsQuery = await knexInstance(TableName.SecretVersionV2)
+      .whereIn("secretId", specificSecretIds)
+      .groupBy("secretId")
+      .select("secretId")
+      .max("version", { as: "maxVersion" });
+
+    // Create a lookup map for max versions
+    const maxVersionMap = maxVersionsQuery.reduce(
+      (acc, item) => {
+        acc[item.secretId] = item.maxVersion;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+    // Update the version field with maxVersion when needed
+    return specificVersions.map((version) => {
+      // Replace version with maxVersion
+      return {
+        ...version,
+        version: maxVersionMap[version.secretId] || version.version
+      };
+    });
+  };
+
+  const findByIdsWithLatestVersion = async (
+    folderId: string,
+    secretIds: string[],
+    versionIds?: string[],
+    tx?: Knex
+  ) => {
+    try {
+      if (!secretIds.length && (!versionIds || !versionIds.length)) return {};
+
+      const [latestVersions, specificVersionsWithLatest] = await Promise.all([
+        secretIds.length ? getLatestVersionsBySecretIds(folderId, secretIds, tx) : [],
+        versionIds?.length ? getSpecificVersionsWithLatestInfo(folderId, versionIds, tx) : []
+      ]);
+
+      const allDocs = [...latestVersions, ...specificVersionsWithLatest];
+
+      // Convert array to record with secretId as key
+      return allDocs.reduce<Record<string, TSecretVersionsV2>>(
+        (prev, curr) => ({ ...prev, [curr.secretId || ""]: curr }),
+        {}
+      );
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByIdsWithLatestVersion" });
+    }
+  };
+
+  const findByIdAndPreviousVersion = async (secretVersionId: string, tx?: Knex) => {
+    try {
+      const targetSecretVersion = await (tx || db.replicaNode())(TableName.SecretVersionV2)
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter({ id: secretVersionId }, TableName.SecretVersionV2))
+        .leftJoin(
+          TableName.SecretVersionV2Tag,
+          `${TableName.SecretVersionV2}.id`,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretVersionV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .select(selectAllTableCols(TableName.SecretVersionV2))
+        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .first();
+      if (targetSecretVersion) {
+        const previousSecretVersion = await (tx || db.replicaNode())(TableName.SecretVersionV2)
+          .where(
+            // eslint-disable-next-line @typescript-eslint/no-misused-promises
+            buildFindFilter(
+              { version: targetSecretVersion.version - 1, secretId: targetSecretVersion.secretId },
+              TableName.SecretVersionV2
+            )
+          )
+          .leftJoin(
+            TableName.SecretVersionV2Tag,
+            `${TableName.SecretVersionV2}.id`,
+            `${TableName.SecretVersionV2Tag}.${TableName.SecretVersionV2}Id`
+          )
+          .leftJoin(
+            TableName.SecretTag,
+            `${TableName.SecretVersionV2Tag}.${TableName.SecretTag}Id`,
+            `${TableName.SecretTag}.id`
+          )
+          .select(selectAllTableCols(TableName.SecretVersionV2))
+          .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+          .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+          .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+          .first();
+        if (!previousSecretVersion) return [];
+        const docs = [previousSecretVersion, targetSecretVersion];
+
+        const data = sqlNestRelationships({
+          data: docs,
+          key: "id",
+          parentMapper: (el) => ({ _id: el.id, ...SecretVersionsV2Schema.parse(el) }),
+          childrenMapper: [
+            {
+              key: "tagId",
+              label: "tags" as const,
+              mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
+                id,
+                color,
+                slug,
+                name: slug
+              })
+            }
+          ]
+        });
+
+        return data;
+      }
+      return [];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByIdAndPreviousVersion" });
+    }
+  };
+
   return {
     ...secretVersionV2Orm,
     pruneExcessVersions,
@@ -267,6 +451,8 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     bulkUpdate,
     findLatestVersionByFolderId,
     findVersionsBySecretIdWithActors,
-    findBySecretId
+    findBySecretId,
+    findByIdsWithLatestVersion,
+    findByIdAndPreviousVersion
   };
 };

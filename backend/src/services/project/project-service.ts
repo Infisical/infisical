@@ -671,7 +671,8 @@ export const projectServiceFactory = ({
       enforceCapitalization: update.autoCapitalization,
       hasDeleteProtection: update.hasDeleteProtection,
       slug: update.slug,
-      secretSharing: update.secretSharing
+      secretSharing: update.secretSharing,
+      showSnapshotsLegacy: update.showSnapshotsLegacy
     });
 
     return updatedProject;

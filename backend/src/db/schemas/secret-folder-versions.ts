@@ -14,7 +14,8 @@ export const SecretFolderVersionsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   envId: z.string().uuid(),
-  folderId: z.string().uuid()
+  folderId: z.string().uuid(),
+  description: z.string().nullable().optional()
 });
 
 export type TSecretFolderVersions = z.infer<typeof SecretFolderVersionsSchema>;

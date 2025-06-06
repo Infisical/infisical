@@ -65,9 +65,10 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
+      deprecated: true,
       tags: [ApiDocsTags.Projects],
-      description: "Roll back project secrets to those captured in a secret snapshot version.",
+      description: "(Deprecated) Roll back project secrets to those captured in a secret snapshot version.",
       security: [
         {
           bearerAuth: []
@@ -84,6 +85,10 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      throw new Error(
+        "This endpoint is deprecated. Please use the new PIT recovery system. More information is available at: https://infisical.com/docs/documentation/platform/pit-recovery."
+      );
+
       const secretSnapshot = await server.services.snapshot.rollbackSnapshot({
         actor: req.permission.type,
         actorId: req.permission.id,

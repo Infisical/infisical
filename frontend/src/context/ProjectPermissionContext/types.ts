@@ -152,6 +152,11 @@ export enum PermissionConditionOperators {
   $ELEMENTMATCH = "$elemMatch"
 }
 
+export enum ProjectPermissionCommitsActions {
+  Read = "read",
+  PerformRollback = "perform-rollback"
+}
+
 export type IdentityManagementSubjectFields = {
   identityId: string;
 };
@@ -229,6 +234,7 @@ export enum ProjectPermissionSub {
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
   Kmip = "kmip",
+  Commits = "commits",
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
   SecretScanningConfigs = "secret-scanning-configs"
@@ -367,6 +373,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
   | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip]
+  | [ProjectPermissionCommitsActions, ProjectPermissionSub.Commits]
   | [
       ProjectPermissionSecretScanningDataSourceActions,
       ProjectPermissionSub.SecretScanningDataSources

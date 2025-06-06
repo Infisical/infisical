@@ -28,7 +28,8 @@ export const ProjectsSchema = z.object({
   type: z.string(),
   enforceCapitalization: z.boolean().default(false),
   hasDeleteProtection: z.boolean().default(false).nullable().optional(),
-  secretSharing: z.boolean().default(true)
+  secretSharing: z.boolean().default(true),
+  showSnapshotsLegacy: z.boolean().default(false)
 });
 
 export type TProjects = z.infer<typeof ProjectsSchema>;

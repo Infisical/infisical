@@ -39,6 +39,7 @@ export type Workspace = {
   roles?: TProjectRole[];
   hasDeleteProtection: boolean;
   secretSharing: boolean;
+  showSnapshotsLegacy: boolean;
 };
 
 export type WorkspaceEnv = {
@@ -79,6 +80,7 @@ export type UpdateProjectDTO = {
   newProjectDescription?: string;
   newSlug?: string;
   secretSharing?: boolean;
+  showSnapshotsLegacy?: boolean;
 };
 
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };
