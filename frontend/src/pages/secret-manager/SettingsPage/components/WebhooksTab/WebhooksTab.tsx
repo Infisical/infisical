@@ -194,6 +194,7 @@ export const WebhooksTab = withProjectPermission(
                       <Tr key={id}>
                         <Td className="max-w-xs overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
                           {url}
+                          <p className="text-xs text-mineshaft-400">{id}</p>
                         </Td>
                         <Td>{environment.slug}</Td>
                         <Td>{secretPath}</Td>

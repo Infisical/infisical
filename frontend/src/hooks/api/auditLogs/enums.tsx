@@ -65,6 +65,7 @@ export enum EventType {
   CREATE_WEBHOOK = "create-webhook",
   UPDATE_WEBHOOK_STATUS = "update-webhook-status",
   DELETE_WEBHOOK = "delete-webhook",
+  WEBHOOK_TRIGGERED = "webhook-triggered",
   GET_SECRET_IMPORTS = "get-secret-imports",
   CREATE_SECRET_IMPORT = "create-secret-import",
   UPDATE_SECRET_IMPORT = "update-secret-import",

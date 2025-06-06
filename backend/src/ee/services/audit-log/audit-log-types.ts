@@ -44,6 +44,7 @@ import {
   TSecretSyncRaw,
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
+import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import { KmipPermission } from "../kmip/kmip-enum";
@@ -206,6 +207,7 @@ export enum EventType {
   CREATE_WEBHOOK = "create-webhook",
   UPDATE_WEBHOOK_STATUS = "update-webhook-status",
   DELETE_WEBHOOK = "delete-webhook",
+  WEBHOOK_TRIGGERED = "webhook-triggered",
   GET_SECRET_IMPORTS = "get-secret-imports",
   GET_SECRET_IMPORT = "get-secret-import",
   CREATE_SECRET_IMPORT = "create-secret-import",
@@ -1438,6 +1440,14 @@ interface DeleteWebhookEvent {
     secretPath: string;
     isDisabled: boolean;
   };
+}
+
+export interface WebhookTriggeredEvent {
+  type: EventType.WEBHOOK_TRIGGERED;
+  metadata: {
+    webhookId: string;
+    status: string;
+  } & TWebhookPayloads;
 }
 
 interface GetSecretImportsEvent {
@@ -3221,6 +3231,7 @@ export type Event =
   | CreateWebhookEvent
   | UpdateWebhookStatusEvent
   | DeleteWebhookEvent
+  | WebhookTriggeredEvent
   | GetSecretImportsEvent
   | GetSecretImportEvent
   | CreateSecretImportEvent

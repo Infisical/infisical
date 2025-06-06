@@ -4,9 +4,12 @@ import { AxiosError } from "axios";
 import picomatch from "picomatch";
 
 import { TWebhooks } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
+import { EventType, WebhookTriggeredEvent } from "@app/ee/services/audit-log/audit-log-types";
 import { request } from "@app/lib/config/request";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { ActorType } from "@app/services/auth/auth-type";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -163,6 +166,7 @@ export type TFnTriggerWebhookDTO = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   secretManagerDecryptor: (value: Buffer) => string;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 // this is reusable function
@@ -175,7 +179,8 @@ export const fnTriggerWebhook = async ({
   projectEnvDAL,
   event,
   secretManagerDecryptor,
-  projectDAL
+  projectDAL,
+  auditLogService
 }: TFnTriggerWebhookDTO) => {
   const webhooks = await webhookDAL.findAllWebhooks(projectId, environment);
   const toBeTriggeredHooks = webhooks.filter(
@@ -200,16 +205,43 @@ export const fnTriggerWebhook = async ({
     })
   );
 
+  const eventPayloads: WebhookTriggeredEvent["metadata"][] = [];
   // filter hooks by status
   const successWebhooks = webhooksTriggered
     .filter(({ status }) => status === "fulfilled")
-    .map((_, i) => toBeTriggeredHooks[i].id);
+    .map((_, i) => {
+      eventPayloads.push({
+        webhookId: toBeTriggeredHooks[i].id,
+        type: event.type,
+        payload: {
+          type: toBeTriggeredHooks[i].type!,
+          ...event.payload,
+          projectName
+        },
+        status: "success"
+      } as WebhookTriggeredEvent["metadata"]);
+
+      return toBeTriggeredHooks[i].id;
+    });
   const failedWebhooks = webhooksTriggered
     .filter(({ status }) => status === "rejected")
-    .map((data, i) => ({
-      id: toBeTriggeredHooks[i].id,
-      error: data.status === "rejected" ? (data.reason as AxiosError).message : ""
-    }));
+    .map((data, i) => {
+      eventPayloads.push({
+        webhookId: toBeTriggeredHooks[i].id,
+        type: event.type,
+        payload: {
+          type: toBeTriggeredHooks[i].type!,
+          ...event.payload,
+          projectName
+        },
+        status: "failed"
+      } as WebhookTriggeredEvent["metadata"]);
+
+      return {
+        id: toBeTriggeredHooks[i].id,
+        error: data.status === "rejected" ? (data.reason as AxiosError).message : ""
+      };
+    });
 
   await webhookDAL.transaction(async (tx) => {
     const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
@@ -236,5 +268,21 @@ export const fnTriggerWebhook = async ({
       );
     }
   });
+
+  for (const eventPayload of eventPayloads) {
+    // eslint-disable-next-line no-await-in-loop
+    await auditLogService.createAuditLog({
+      actor: {
+        type: ActorType.PLATFORM,
+        metadata: {}
+      },
+      projectId,
+      event: {
+        type: EventType.WEBHOOK_TRIGGERED,
+        metadata: eventPayload
+      }
+    });
+  }
+
   logger.info({ environment, secretPath, projectId }, "Secret webhook job ended");
 };

@@ -52,6 +52,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_WEBHOOK]: "Create webhook",
   [EventType.UPDATE_WEBHOOK_STATUS]: "Update webhook status",
   [EventType.DELETE_WEBHOOK]: "Delete webhook",
+  [EventType.WEBHOOK_TRIGGERED]: "Webhook event",
   [EventType.GET_SECRET_IMPORTS]: "List secret imports",
   [EventType.CREATE_SECRET_IMPORT]: "Create secret import",
   [EventType.UPDATE_SECRET_IMPORT]: "Update secret import",

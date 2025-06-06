@@ -1581,6 +1581,7 @@ export const secretQueueFactory = ({
       projectDAL,
       webhookDAL,
       event: job.data,
+      auditLogService,
       secretManagerDecryptor: (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString()
     });
   });
