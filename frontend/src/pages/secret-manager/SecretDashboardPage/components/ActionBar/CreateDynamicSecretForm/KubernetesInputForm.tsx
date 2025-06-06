@@ -408,6 +408,7 @@ export const KubernetesInputForm = ({
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                       className="w-full"
+                      tooltipText="Select the method of authentication. Token (API) uses a direct API token, while Gateway uses the service account of a Gateway deployed in a Kubernetes cluster to generate the service account token."
                     >
                       <Select
                         defaultValue={field.value}
@@ -445,6 +446,7 @@ export const KubernetesInputForm = ({
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                       className="w-full"
+                      tooltipText="Choose 'Static' to generate service account tokens for a predefined service account. Choose 'Dynamic' to create a temporary service account, assign it to a defined role/cluster-role, and generate the service account token. Only 'Dynamic' supports role assignment."
                     >
                       <Select
                         defaultValue={field.value}
