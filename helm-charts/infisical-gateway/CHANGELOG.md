@@ -1,6 +1,6 @@
 ## 0.0.3 (June 6, 2025)
 
-* Minor fix for handling malformed URL's for HTTP forwarding
+* Minor fix for handling malformed URLs for HTTP forwarding
 
 ## 0.0.2 (June 6, 2025)
 
