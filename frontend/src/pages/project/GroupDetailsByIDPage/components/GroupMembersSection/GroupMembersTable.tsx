@@ -8,9 +8,9 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { OrgPermissionCan } from "@app/components/permissions";
+import { createNotification } from "@app/components/notifications";
 import {
-  Button,
+  ConfirmActionModal,
   EmptyState,
   IconButton,
   Input,
@@ -21,37 +21,33 @@ import {
   TBody,
   Th,
   THead,
-  Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { useWorkspace } from "@app/context";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useListGroupUsers, useOidcManageGroupMembershipsEnabled } from "@app/hooks/api";
+import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { useAssumeProjectPrivileges } from "@app/hooks/api";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { EFilterReturnedUsers } from "@app/hooks/api/groups/types";
-import { UsePopUpState } from "@app/hooks/usePopUp";
+import { useListProjectGroupUsers } from "@app/hooks/api/groups/queries";
+import { EFilterReturnedUsers, TGroupMembership } from "@app/hooks/api/groups/types";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { GroupMembershipRow } from "./GroupMembershipRow";
 
 type Props = {
-  groupId: string;
-  groupSlug: string;
-  handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeMemberFromGroup", "addGroupMembers"]>,
-    data?: object
-  ) => void;
+  groupMembership: TGroupMembership;
 };
 
 enum GroupMembersOrderBy {
   Name = "name"
 }
 
-export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props) => {
+export const GroupMembersTable = ({ groupMembership }: Props) => {
   const {
     search,
     setSearch,
@@ -63,22 +59,22 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
     orderDirection,
     toggleOrderDirection
   } = usePagination(GroupMembersOrderBy.Name, {
-    initPerPage: getUserTablePreference("groupMembersTable", PreferenceKey.PerPage, 20)
+    initPerPage: getUserTablePreference("projectGroupMembersTable", PreferenceKey.PerPage, 20)
   });
+
+  const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["assumePrivileges"] as const);
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
-    setUserTablePreference("groupMembersTable", PreferenceKey.PerPage, newPerPage);
+    setUserTablePreference("projectGroupMembersTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const { currentOrg } = useOrganization();
+  const { currentWorkspace } = useWorkspace();
 
-  const { data: isOidcManageGroupMembershipsEnabled = false } =
-    useOidcManageGroupMembershipsEnabled(currentOrg.id);
-
-  const { data: groupMemberships, isPending } = useListGroupUsers({
-    id: groupId,
-    groupSlug,
+  const { data: groupMemberships, isPending } = useListProjectGroupUsers({
+    id: groupMembership.group.id,
+    groupSlug: groupMembership.group.slug,
+    projectId: currentWorkspace.id,
     offset,
     limit: perPage,
     search,
@@ -123,6 +119,42 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
     setPage
   });
 
+  const assumePrivileges = useAssumeProjectPrivileges();
+
+  const handleAssumePrivileges = async () => {
+    const { userId } = popUp?.assumePrivileges?.data as { userId: string };
+    assumePrivileges.mutate(
+      {
+        actorId: userId,
+        actorType: ActorType.USER,
+        projectId: currentWorkspace.id
+      },
+      {
+        onSuccess: () => {
+          createNotification({
+            type: "success",
+            text: "User privilege assumption has started"
+          });
+
+          let overviewPage: string;
+
+          switch (currentWorkspace.type) {
+            case ProjectType.SecretScanning:
+              overviewPage = "data-sources";
+              break;
+            case ProjectType.CertificateManager:
+              overviewPage = "subscribers";
+              break;
+            default:
+              overviewPage = "overview";
+          }
+
+          window.location.href = `/${currentWorkspace.type}/${currentWorkspace.id}/${overviewPage}`;
+        }
+      }
+    );
+  };
+
   return (
     <div>
       <Input
@@ -163,7 +195,7 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
                   <GroupMembershipRow
                     key={`user-group-membership-${userGroupMembership.id}`}
                     user={userGroupMembership}
-                    handlePopUpOpen={handlePopUpOpen}
+                    onAssumePrivileges={(userId) => handlePopUpOpen("assumePrivileges", { userId })}
                   />
                 );
               })}
@@ -188,37 +220,16 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
             icon={groupMemberships?.users.length ? faSearch : faFolder}
           />
         )}
-        {!groupMemberships?.users.length && (
-          <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
-            {(isAllowed) => (
-              <Tooltip
-                className="text-center"
-                content={
-                  isOidcManageGroupMembershipsEnabled
-                    ? "OIDC Group Membership Mapping Enabled. Assign users to this group in your OIDC provider."
-                    : undefined
-                }
-              >
-                <div className="mb-4 flex items-center justify-center">
-                  <Button
-                    variant="solid"
-                    colorSchema="secondary"
-                    isDisabled={isOidcManageGroupMembershipsEnabled || !isAllowed}
-                    onClick={() => {
-                      handlePopUpOpen("addGroupMembers", {
-                        groupId,
-                        slug: groupSlug
-                      });
-                    }}
-                  >
-                    Add members
-                  </Button>
-                </div>
-              </Tooltip>
-            )}
-          </OrgPermissionCan>
-        )}
       </TableContainer>
+      <ConfirmActionModal
+        isOpen={popUp.assumePrivileges.isOpen}
+        confirmKey="assume"
+        title="Do you want to assume privileges of this user?"
+        subTitle="This will set your privileges to those of the user for the next hour."
+        onChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
+        onConfirmed={handleAssumePrivileges}
+        buttonText="Confirm"
+      />
     </div>
   );
 };

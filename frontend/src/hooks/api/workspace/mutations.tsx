@@ -50,9 +50,12 @@ export const useUpdateGroupWorkspaceRole = () => {
 
       return groupMembership;
     },
-    onSuccess: (_, { projectId }) => {
+    onSuccess: (_, { projectId, groupId }) => {
       queryClient.invalidateQueries({
         queryKey: workspaceKeys.getWorkspaceGroupMemberships(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceGroupMembershipDetails(projectId, groupId)
       });
     }
   });

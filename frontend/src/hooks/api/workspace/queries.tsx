@@ -691,6 +691,21 @@ export const useGetWorkspaceIdentityMembershipDetails = (projectId: string, iden
   });
 };
 
+export const useGetWorkspaceGroupMembershipDetails = (projectId: string, groupId: string) => {
+  return useQuery({
+    enabled: Boolean(projectId && groupId),
+    queryKey: workspaceKeys.getWorkspaceGroupMembershipDetails(projectId, groupId),
+    queryFn: async () => {
+      const {
+        data: { groupMembership }
+      } = await apiRequest.get<{ groupMembership: TGroupMembership }>(
+        `/api/v2/workspace/${projectId}/groups/${groupId}`
+      );
+      return groupMembership;
+    }
+  });
+};
+
 export const useListWorkspaceGroups = (projectId: string) => {
   return useQuery({
     queryKey: workspaceKeys.getWorkspaceGroupMemberships(projectId),
