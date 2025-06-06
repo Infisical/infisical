@@ -46,7 +46,6 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretAwsIamSchema>, projectId: string) => {
     const appCfg = getConfig();
     if (providerInputs.method === AwsIamAuthType.AssumeRole) {
-      console.log(appCfg.DYNAMIC_SECRET_AWS_ACCESS_KEY_ID, appCfg.DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY);
       const stsClient = new STSClient({
         region: providerInputs.region,
         credentials:
@@ -70,7 +69,6 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
       if (!assumeRes.Credentials?.AccessKeyId || !assumeRes.Credentials?.SecretAccessKey) {
         throw new BadRequestError({ message: "Failed to assume role - verify credentials and role configuration" });
       }
-      console.log(assumeRes.Credentials);
       const client = new IAMClient({
         region: providerInputs.region,
         credentials: {
@@ -125,7 +123,6 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
 
     const username = generateUsername(usernameTemplate);
     const { policyArns, userGroups, policyDocument, awsPath, permissionBoundaryPolicyArn } = providerInputs;
-    console.log("Hit");
     const createUserRes = await client.send(
       new CreateUserCommand({
         Path: awsPath,
@@ -135,7 +132,6 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
       })
     );
 
-    console.log("Hit fail");
     if (!createUserRes.User) throw new BadRequestError({ message: "Failed to create AWS IAM User" });
     if (userGroups) {
       await Promise.all(
