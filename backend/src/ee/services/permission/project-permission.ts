@@ -376,7 +376,8 @@ const DynamicSecretConditionV2Schema = z
         .object({
           [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
           [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
         })
         .partial()
     ]),
@@ -401,6 +402,23 @@ const DynamicSecretConditionV2Schema = z
         })
         .partial()
     })
+  })
+  .partial();
+
+const SecretImportConditionSchema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
   })
   .partial();
 
@@ -741,7 +759,7 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     ),
-    conditions: SecretConditionV1Schema.describe(
+    conditions: SecretImportConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
