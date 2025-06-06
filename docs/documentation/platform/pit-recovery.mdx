@@ -11,13 +11,12 @@ description: "Learn how to rollback secrets and configurations to any snapshot w
 </Info>
 
 Infisical's point-in-time recovery functionality allows secrets to be rolled back to any point in time for any given [folder](./folder) or [environment](/documentation/platform/project#project-environments).
-Every time a secret is updated, a new commit is created – capturing the state of the folder and environment at that point of time.
 
 <Tabs>
   <Tab title="Commits Interface">
     ## Understanding Commits
 
-    Similar to Git, a commit in Infisical represents a snapshot of changes made to your project's secrets at a specific point in time. Each commit is scoped to an environment and [folder](./folder) within it. Unlike the legacy snapshot system, the new commits interface provides granular tracking of individual changes, allowing you to see exactly what was modified, added, or removed in each commit.
+    Similar to Git, a commit in Infisical represents a snapshot of changes made to your project's resources at a specific point in time. Each commit is scoped to an environment and [folder](./folder) within it. Unlike the legacy snapshot system, the new commits interface provides granular tracking of individual changes, allowing you to see exactly what was modified, added, or removed in each commit.
 
     ### Accessing Commits
 
@@ -60,8 +59,7 @@ Every time a secret is updated, a new commit is created – capturing the state 
     - Lists all secrets that were added, updated, or removed
     - Shows the complete secret configuration including:
       - Secret key and value
-      - Comments and metadata
-      - Tags and metadata
+      - Comments, tags  and metadata
       - Encoding settings (e.g., skipMultilineEncoding)
     - Values are displayed with appropriate masking for security
 
@@ -91,6 +89,7 @@ Every time a secret is updated, a new commit is created – capturing the state 
     ![Rollback](../../images/platform/pit-recovery/pit-recovery-revamp/pit-commit-restore.png)
 
     - **Complete State Restoration**: Returns the entire folder to its exact state at the time of this commit
+    - **Restore All Child Folders**: If enabled, it'll also restore all nested folders to their exact state at the time of this commit.
     - **Destructive Operation**: Discards ALL changes made after the selected commit
     - **New Commit Creation**: Creates a new commit representing this rollback operation
     - **Use Case**: Ideal when you want to completely undo a series of changes and return to a known good state
@@ -123,7 +122,7 @@ Every time a secret is updated, a new commit is created – capturing the state 
 
     ![PIT snapshot](../../images/platform/pit-recovery/pit-recovery-rollback.png)
 
-    Rolling back secrets to a past snapshot creates a creates a snapshot at the top of the stack and updates secret versions.
+    Rolling back secrets to a past snapshot creates a snapshot at the top of the stack and updates secret versions.
 
     <Note>
     Rollbacks are localized to not affect other folders within the same environment. This means each [folder](./folder) maintains its own independent history of changes, offering precise and isolated control over rollback actions.
