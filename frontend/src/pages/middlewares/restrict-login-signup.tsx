@@ -15,7 +15,8 @@ import { setAuthToken } from "@app/hooks/api/reactQuery";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const QueryParamsSchema = z.object({
-  callback_port: z.coerce.number().optional().catch(undefined)
+  callback_port: z.coerce.number().optional().catch(undefined),
+  force: z.boolean().optional()
 });
 
 export const AuthConsentWrapper = () => {
@@ -71,7 +72,7 @@ export const AuthConsentWrapper = () => {
 export const Route = createFileRoute("/_restrict-login-signup")({
   validateSearch: zodValidator(QueryParamsSchema),
   search: {
-    middlewares: [stripSearchParams({ callback_port: undefined })]
+    middlewares: [stripSearchParams({ callback_port: undefined, force: undefined })]
   },
   beforeLoad: async ({ context, location, search }) => {
     if (!context.serverConfig.initialized) {
@@ -90,6 +91,12 @@ export const Route = createFileRoute("/_restrict-login-signup")({
     if (!data) return;
 
     setAuthToken(data.token);
+
+    if (location.pathname === "/signupinvite") return;
+
+    // Avoid redirect if on select-organization page with force=true
+    if (location.pathname.endsWith("select-organization") && search?.force === true) return;
+
     // to do cli login
     if (search?.callback_port) {
       if (location.pathname.endsWith("select-organization") || location.pathname.endsWith("login"))
