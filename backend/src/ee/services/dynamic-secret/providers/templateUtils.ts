@@ -23,26 +23,13 @@ export const compileUsernameTemplate = ({
   // Create isolated handlebars instance
   const hbs = handlebars.create();
 
-  // Pre-process template to replace {{random N}} patterns using RE2
-  let processedTemplate = usernameTemplate;
-
-  try {
-    const randomPattern = new RE2("\\{\\{random (\\d+)\\}\\}", "g");
-
-    // Use RE2's replace with callback function
-    processedTemplate = randomPattern.replace(processedTemplate, (fullMatch: string, lengthStr: string) => {
-      const length = parseInt(lengthStr, 10);
-
-      if (length > 0 && length <= 100) {
-        return alphaNumericNanoId(length);
-      }
-
-      // Return original match if invalid length
-      return fullMatch;
-    });
-  } catch (error) {
-    logger.error(error, "RE2 pattern failed, using original template");
-  }
+  // Register random helper on local instance
+  hbs.registerHelper("random", function (length: number) {
+    if (typeof length !== "number" || length <= 0 || length > 100) {
+      return "";
+    }
+    return alphaNumericNanoId(length);
+  });
 
   // Register replace helper on local instance
   hbs.registerHelper("replace", function (text: string, searchValue: string, replaceValue: string) {
@@ -55,7 +42,7 @@ export const compileUsernameTemplate = ({
     try {
       const re2Pattern = new RE2(searchValue, "g");
       // Replace all occurrences
-      return textStr.replace(re2Pattern, replaceValue);
+      return re2Pattern.replace(textStr, replaceValue);
     } catch (error) {
       logger.error(error, "RE2 pattern failed, using original template");
       return textStr;
@@ -83,7 +70,7 @@ export const compileUsernameTemplate = ({
     }
   };
 
-  const result = hbs.compile(processedTemplate)(context);
+  const result = hbs.compile(usernameTemplate)(context);
 
   if (options?.toUpperCase) {
     return result.toUpperCase();
