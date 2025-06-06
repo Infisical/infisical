@@ -26,12 +26,10 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
   Run the Infisical gateway in the foreground. The gateway will connect to the relay service and maintain a persistent connection.
 
   ```bash
-  infisical gateway --token=<token> --domain=<domain>
+  infisical gateway --domain=<domain> --auth-method=<auth-method>
   ```
 
   ### Authentication
-
-
 
   The Infisical CLI supports multiple authentication methods. Below are the available authentication methods, with their respective flags.
 
@@ -53,19 +51,10 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
       </Expandable>
     </ParamField>
 
-    <Steps>
-      <Step title="Create a universal auth machine identity">
-        To create a universal auth machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/universal-auth).
-      </Step>
-      <Step title="Obtain an access token">
-        Run the `login` command with the following flags to obtain an access token:
+    ```bash
+      infisical gateway --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
+    ```
 
-      ```bash
-        infisical gateway --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
-      ```
-      </Step>
-
-    </Steps>
   </Accordion>
   <Accordion title="Native Kubernetes">
     The Native Kubernetes method is used to authenticate with Infisical when running in a Kubernetes environment. It requires a service account token to authenticate with Infisical.
@@ -85,20 +74,10 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
 
     </ParamField>
 
-    <Steps>
-      <Step title="Create a Kubernetes machine identity">
-        To create a Kubernetes machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/kubernetes-auth).
-      </Step>
-      <Step title="Obtain access an token">
-        Run the `login` command with the following flags to obtain an access token:
 
-      ```bash
-        # --service-account-token-path is optional, and will default to '/var/run/secrets/kubernetes.io/serviceaccount/token' if not provided.
-        infisical gateway --auth-method=kubernetes --machine-identity-id=<machine-identity-id> --service-account-token-path=<service-account-token-path>
-      ```
-      </Step>
-
-    </Steps>
+    ```bash
+      infisical gateway --auth-method=kubernetes --machine-identity-id=<machine-identity-id>
+    ```
 
   </Accordion>
   <Accordion title="Native Azure">
@@ -115,18 +94,12 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
       </Expandable>
     </ParamField>
 
-    <Steps>
-      <Step title="Create an Azure machine identity">
-        To create an Azure machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/azure-auth).
-      </Step>
-      <Step title="Obtain an access token">
-       Run the `login` command with the following flags to obtain an access token:
 
-      ```bash
-        infisical gateway --auth-method=azure --machine-identity-id=<machine-identity-id>
-      ```
-      </Step>
-    </Steps>
+
+    ```bash
+      infisical gateway --auth-method=azure --machine-identity-id=<machine-identity-id>
+    ```
+
   </Accordion>
   <Accordion title="Native GCP ID Token">
     The Native GCP ID Token method is used to authenticate with Infisical when running in a GCP environment.
@@ -142,18 +115,12 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
       </Expandable>
     </ParamField>
 
-    <Steps>
-      <Step title="Create a GCP machine identity">
-        To create a GCP machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/gcp-auth).
-      </Step>
-      <Step title="Obtain an access token">
-        Run the `login` command with the following flags to obtain an access token:
 
-      ```bash
-        infisical gateway --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id>
-      ```
-      </Step>
-    </Steps>
+
+    ```bash
+      infisical gateway --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id>
+    ```
+
 
   </Accordion>
   <Accordion title="GCP IAM">
@@ -173,18 +140,9 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
       </Expandable>
     </ParamField>
 
-    <Steps>
-      <Step title="Create a GCP machine identity">
-        To create a GCP machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/gcp-auth).
-      </Step>
-      <Step title="Obtain an access token">
-        Run the `login` command with the following flags to obtain an access token:
-
-      ```bash
-        infisical gateway --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path>
-      ```
-      </Step>
-    </Steps>
+    ```bash
+      infisical gateway --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path>
+    ```
 
   </Accordion>
   <Accordion title="Native AWS IAM">
@@ -201,18 +159,10 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
       </Expandable>
     </ParamField>
 
-    <Steps>
-      <Step title="Create an AWS machine identity">
-        To create an AWS machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/aws-auth).
-      </Step>
-      <Step title="Obtain an access token">
-        Run the `login` command with the following flags to obtain an access token:
-
       ```bash
         infisical gateway --auth-method=aws-iam --machine-identity-id=<machine-identity-id>
       ```
-      </Step>
-    </Steps>
+
 
   </Accordion>
   <Accordion title="OIDC Auth">
@@ -232,18 +182,9 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
       </Expandable>
     </ParamField>
 
-    <Steps>
-      <Step title="Create an OIDC machine identity">
-        To create an OIDC machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/oidc-auth/general).
-      </Step>
-      <Step title="Obtain an access token">
-        Run the `login` command with the following flags to obtain an access token:
-
-      ```bash
-        infisical gateway --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt>
-      ```
-      </Step>
-    </Steps>
+    ```bash
+      infisical gateway --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt>
+    ```
   </Accordion>
 
   <Accordion title="JWT Auth">
@@ -263,25 +204,26 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
       </Expandable>
     </ParamField>
 
-    <Steps>
-      <Step title="Obtain an access token">
-        Run the `login` command with the following flags to obtain an access token:
-
-      ```bash
-        infisical gateway --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id>
-      ```
-      </Step>
-    </Steps>
-  </Accordion>
-  <Accordion title="--token">
-    You can use the `--token` flag to authenticate with Infisical with a raw machine identity access token. If the token is passed, no other flags are needed.
 
     ```bash
-    # Example
-    infisical gateway --token=<token>
+      infisical gateway --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id>
+    ```
+  </Accordion>
+  <Accordion title="Token Auth">
+    You can use the `INFISICAL_TOKEN` environment variable to authenticate with Infisical with a raw machine identity access token.
+
+    <ParamField query="Flags">
+      <Expandable title="properties">
+          <ParamField query="token" type="string" required>
+            The machine identity access token to use for authentication.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    ```bash
+      infisical gateway --token=<token>
     ```
 
-    You may also expose the token to the CLI by setting the environment variable `INFISICAL_TOKEN` before executing the gateway command.
   </Accordion>
 </AccordionGroup>
 
