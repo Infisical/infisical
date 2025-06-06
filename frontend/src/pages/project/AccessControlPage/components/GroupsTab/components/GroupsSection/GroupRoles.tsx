@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { faCheck, faClock, faEdit, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { PopperContentProps } from "@radix-ui/react-popper";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
@@ -196,12 +197,20 @@ type TForm = z.infer<typeof formSchema>;
 export type TMemberRolesProp = {
   disableEdit?: boolean;
   groupId: string;
+  className?: string;
   roles: TGroupMembership["roles"];
+  popperContentProps?: PopperContentProps;
 };
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
-export const GroupRoles = ({ roles = [], disableEdit = false, groupId }: TMemberRolesProp) => {
+export const GroupRoles = ({
+  roles = [],
+  disableEdit = false,
+  groupId,
+  className,
+  popperContentProps
+}: TMemberRolesProp) => {
   const { currentWorkspace } = useWorkspace();
   const { popUp, handlePopUpToggle } = usePopUp(["editRole"] as const);
   const [searchRoles, setSearchRoles] = useState("");
@@ -209,7 +218,6 @@ export const GroupRoles = ({ roles = [], disableEdit = false, groupId }: TMember
   const {
     handleSubmit,
     control,
-    reset,
     setValue,
     formState: { isSubmitting, isDirty }
   } = useForm<TForm>({
@@ -261,7 +269,7 @@ export const GroupRoles = ({ roles = [], disableEdit = false, groupId }: TMember
   };
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className={twMerge("flex items-center space-x-1", className)}>
       {roles
         .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
         .map(({ role, customRoleName, id, isTemporary, temporaryAccessEndTime }) => {
@@ -325,17 +333,21 @@ export const GroupRoles = ({ roles = [], disableEdit = false, groupId }: TMember
           open={popUp.editRole.isOpen}
           onOpenChange={(isOpen) => {
             handlePopUpToggle("editRole", isOpen);
-            reset();
           }}
         >
           {!disableEdit && (
-            <PopoverTrigger>
+            <PopoverTrigger onClick={(e) => e.stopPropagation()}>
               <IconButton size="sm" variant="plain" ariaLabel="update">
                 <FontAwesomeIcon icon={faEdit} />
               </IconButton>
             </PopoverTrigger>
           )}
-          <PopoverContent hideCloseBtn className="pt-4">
+          <PopoverContent
+            {...popperContentProps}
+            onClick={(e) => e.stopPropagation()}
+            hideCloseBtn
+            className="pt-4"
+          >
             {isRolesLoading ? (
               <div className="flex h-8 w-full items-center justify-center">
                 <Spinner />
