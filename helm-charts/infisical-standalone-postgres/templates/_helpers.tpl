@@ -91,6 +91,32 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end -}}
 
 {{/*
+Create a PostgreSQL connection string from custom URI parameters
+*/}}
+{{- define "infisical.customPostgresDBConnectionString" -}}
+{{- if .Values.postgresql.customURIParameters.enabled -}}
+{{- $pgParams := .Values.postgresql.customURIParameters -}}
+{{- if and $pgParams.username $pgParams.host $pgParams.port $pgParams.database -}}
+{{- $sslParams := "" -}}
+{{- if $pgParams.ssl.enabled -}}
+{{- if and $pgParams.ssl.mode $pgParams.ssl.rootCertPath -}}
+{{- $sslParams = printf "?sslmode=%s&sslrootcert=%s" $pgParams.ssl.mode $pgParams.ssl.rootCertPath -}}
+{{- else -}}
+{{- $sslParams = printf "?sslmode=disable" -}}
+{{- end -}}
+{{- else -}}
+{{- $sslParams = printf "?sslmode=disable" -}}
+{{- end -}}
+{{- printf "postgresql://%s:$(DB_PASSWORD)@%s:%v/%s%s" $pgParams.username $pgParams.host $pgParams.port $pgParams.database $sslParams -}}
+{{- else -}}
+{{- fail "PostgreSQL custom URI parameters missing required fields (username, host, port, database)" -}}
+{{- end -}}
+{{- else -}}
+{{- print "" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Create a fully qualified redis name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
@@ -121,4 +147,20 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- $password := .Values.redis.auth.password -}}
 {{- $serviceName := include "infisical.redisServiceName" . -}}
 {{- printf "redis://default:%s@%s:6379" $password "redis-master" -}}
+{{- end -}}
+
+{{/*
+Create a Redis connection string from custom URI parameters
+*/}}
+{{- define "infisical.customRedisConnectionString" -}}
+{{- if .Values.redis.customURIParameters.enabled -}}
+{{- $redisParams := .Values.redis.customURIParameters -}}
+{{- if and $redisParams.host $redisParams.port -}}
+{{- printf "redis://default:$(REDIS_PASSWORD)@%s:%v" $redisParams.host $redisParams.port -}}
+{{- else -}}
+{{- fail "Redis custom URI parameters missing required fields (host, port)" -}}
+{{- end -}}
+{{- else -}}
+{{- print "" -}}
+{{- end -}}
 {{- end -}}
