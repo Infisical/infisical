@@ -19,8 +19,14 @@ Infisical supports connecting to OracleDB using a database user.
         Infisical recommends creating a designated user in your Oracle Database for your connection.
         ```SQL
         -- create user
-        CREATE USER "infisical" IDENTIFIED BY "my-password";
+        CREATE USER infisical IDENTIFIED BY "my-password";
+
+        -- grant create session privileges
+        GRANT CREATE SESSION TO infisical;
         ```
+        <Note>
+          Username must either be ALL UPPERCASE or not be surrounded by "quotes". Values not surrounded by quotes get automatically transformed to uppercase by Oracle Database.
+        </Note>
     </Step>
     <Step title="Grant Relevant Permissions">
        Depending on how you intend to use your OracleDB connection, you'll need to grant one or more of the following permissions.
@@ -32,7 +38,7 @@ Infisical supports connecting to OracleDB using a database user.
                 For Secret Rotations, your Infisical user will require the ability to alter other users' passwords:
                 ```SQL
                 -- enable permissions to alter login credentials
-                GRANT ALTER USER TO "infisical";
+                GRANT ALTER USER TO infisical;
                 ```
             </Tab>
         </Tabs>

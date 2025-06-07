@@ -4,6 +4,7 @@ import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms
 import { FormControl, Input } from "@app/components/v2";
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secretRotationsV2";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 export const SqlCredentialsRotationParametersFields = () => {
   const { control, watch } = useFormContext<
@@ -25,7 +26,15 @@ export const SqlCredentialsRotationParametersFields = () => {
             errorText={error?.message}
             label="Database Username 1"
           >
-            <Input value={value} onChange={onChange} placeholder="infiscal_user_1" />
+            <Input
+              value={value}
+              onChange={onChange}
+              placeholder={
+                rotationOption.connection === AppConnection.OracleDB
+                  ? "INFISICAL_USER_1"
+                  : "infisical_user_1"
+              }
+            />
           </FormControl>
         )}
         control={control}
@@ -38,7 +47,15 @@ export const SqlCredentialsRotationParametersFields = () => {
             errorText={error?.message}
             label="Database Username 2"
           >
-            <Input value={value} onChange={onChange} placeholder="infiscal_user_2" />
+            <Input
+              value={value}
+              onChange={onChange}
+              placeholder={
+                rotationOption.connection === AppConnection.OracleDB
+                  ? "INFISICAL_USER_1"
+                  : "infisical_user_1"
+              }
+            />
           </FormControl>
         )}
         control={control}
