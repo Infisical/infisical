@@ -7,6 +7,6 @@ export const getOracleDBConnectionListItem = () => {
     name: "OracleDB" as const,
     app: AppConnection.OracleDB as const,
     methods: Object.values(OracleDBConnectionMethod) as [OracleDBConnectionMethod.UsernameAndPassword],
-    supportsPlatformManagement: true as const // TODO(andrey): Explore if possible
+    supportsPlatformManagement: true as const
   };
 };

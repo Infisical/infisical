@@ -288,7 +288,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.LDAP]: platformManagedCredentialsNotSupported, // we could support this in the future
   [AppConnection.TeamCity]: platformManagedCredentialsNotSupported,
   [AppConnection.OCI]: platformManagedCredentialsNotSupported,
-  [AppConnection.OracleDB]: platformManagedCredentialsNotSupported, // TODO(andrey): If managed credentials change this
+  [AppConnection.OracleDB]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.OnePass]: platformManagedCredentialsNotSupported
 };
 

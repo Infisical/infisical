@@ -60,7 +60,14 @@ const getConnectionConfig = ({
     }
     // TODO(andrey): Might be interesting for later
     case AppConnection.OracleDB: {
-      return {};
+      return {
+        ssl: sslEnabled
+          ? {
+              sslCA: sslCertificate,
+              sslServerDNMatch: sslRejectUnauthorized
+            }
+          : false
+      };
     }
     default:
       throw new Error(`Unhandled SQL Connection Config: ${app as AppConnection}`);

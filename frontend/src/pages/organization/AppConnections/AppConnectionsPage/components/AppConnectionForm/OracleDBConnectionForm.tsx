@@ -51,7 +51,7 @@ export const OracleDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
       credentials: {
         host: "",
         port: 1521,
-        database: "FREEPDB1",
+        database: "ORCL", // Typically FREEPDB1 or ORCL
         username: "", // Typically pdbadmin or ADMIN
         password: "",
         sslEnabled: true,
