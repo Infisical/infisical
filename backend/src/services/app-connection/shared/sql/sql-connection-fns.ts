@@ -16,7 +16,8 @@ const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 const SQL_CONNECTION_CLIENT_MAP = {
   [AppConnection.Postgres]: "pg",
   [AppConnection.MsSql]: "mssql",
-  [AppConnection.MySql]: "mysql2"
+  [AppConnection.MySql]: "mysql2",
+  [AppConnection.OracleDB]: "oracledb"
 };
 
 const getConnectionConfig = ({
@@ -56,6 +57,10 @@ const getConnectionConfig = ({
             }
           : false
       };
+    }
+    // TODO(andrey): Might be interesting for later
+    case AppConnection.OracleDB: {
+      return {};
     }
     default:
       throw new Error(`Unhandled SQL Connection Config: ${app as AppConnection}`);
@@ -114,7 +119,8 @@ export const SQL_CONNECTION_ALTER_LOGIN_STATEMENT: Record<
 > = {
   [AppConnection.Postgres]: ({ username, password }) => [`ALTER USER ?? WITH PASSWORD '${password}';`, [username]],
   [AppConnection.MsSql]: ({ username, password }) => [`ALTER LOGIN ?? WITH PASSWORD = '${password}';`, [username]],
-  [AppConnection.MySql]: ({ username, password }) => [`ALTER USER ??@'%' IDENTIFIED BY '${password}';`, [username]]
+  [AppConnection.MySql]: ({ username, password }) => [`ALTER USER ??@'%' IDENTIFIED BY '${password}';`, [username]],
+  [AppConnection.OracleDB]: ({ username, password }) => [`ALTER USER ?? IDENTIFIED BY "${password}"`, [username]]
 };
 
 export const transferSqlConnectionCredentialsToPlatform = async (

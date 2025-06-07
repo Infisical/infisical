@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import { OCIConnectionListItemSchema, SanitizedOCIConnectionSchema } from "@app/ee/services/app-connections/oci";
+import {
+  OracleDBConnectionListItemSchema,
+  SanitizedOracleDBConnectionSchema
+} from "@app/ee/services/app-connections/oracledb";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
@@ -90,6 +94,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedLdapConnectionSchema.options,
   ...SanitizedTeamCityConnectionSchema.options,
   ...SanitizedOCIConnectionSchema.options,
+  ...SanitizedOracleDBConnectionSchema.options,
   ...SanitizedOnePassConnectionSchema.options
 ]);
 
@@ -115,6 +120,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   LdapConnectionListItemSchema,
   TeamCityConnectionListItemSchema,
   OCIConnectionListItemSchema,
+  OracleDBConnectionListItemSchema,
   OnePassConnectionListItemSchema
 ]);
 

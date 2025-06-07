@@ -4,6 +4,11 @@ import {
   TOCIConnectionInput,
   TValidateOCIConnectionCredentialsSchema
 } from "@app/ee/services/app-connections/oci";
+import {
+  TOracleDBConnection,
+  TOracleDBConnectionInput,
+  TValidateOracleDBConnectionCredentialsSchema
+} from "@app/ee/services/app-connections/oracledb";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
@@ -147,12 +152,13 @@ export type TAppConnection = { id: string } & (
   | TLdapConnection
   | TTeamCityConnection
   | TOCIConnection
+  | TOracleDBConnection
   | TOnePassConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
 
-export type TSqlConnection = TPostgresConnection | TMsSqlConnection | TMySqlConnection;
+export type TSqlConnection = TPostgresConnection | TMsSqlConnection | TMySqlConnection | TOracleDBConnection;
 
 export type TAppConnectionInput = { id: string } & (
   | TAwsConnectionInput
@@ -176,10 +182,15 @@ export type TAppConnectionInput = { id: string } & (
   | TLdapConnectionInput
   | TTeamCityConnectionInput
   | TOCIConnectionInput
+  | TOracleDBConnectionInput
   | TOnePassConnectionInput
 );
 
-export type TSqlConnectionInput = TPostgresConnectionInput | TMsSqlConnectionInput | TMySqlConnectionInput;
+export type TSqlConnectionInput =
+  | TPostgresConnectionInput
+  | TMsSqlConnectionInput
+  | TMySqlConnectionInput
+  | TOracleDBConnectionInput;
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnectionInput,
@@ -234,6 +245,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateLdapConnectionCredentialsSchema
   | TValidateTeamCityConnectionCredentialsSchema
   | TValidateOCIConnectionCredentialsSchema
+  | TValidateOracleDBConnectionCredentialsSchema
   | TValidateOnePassConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

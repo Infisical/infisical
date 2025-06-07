@@ -4,6 +4,7 @@ import {
   OCIConnectionMethod,
   validateOCIConnectionCredentials
 } from "@app/ee/services/app-connections/oci";
+import { getOracleDBConnectionListItem, OracleDBConnectionMethod } from "@app/ee/services/app-connections/oracledb";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { generateHash } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
@@ -113,6 +114,7 @@ export const listAppConnectionOptions = () => {
     getLdapConnectionListItem(),
     getTeamCityConnectionListItem(),
     getOCIConnectionListItem(),
+    getOracleDBConnectionListItem(),
     getOnePassConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -186,6 +188,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.LDAP]: validateLdapConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TeamCity]: validateTeamCityConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.OracleDB]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
@@ -221,6 +224,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:
+    case OracleDBConnectionMethod.UsernameAndPassword:
       return "Username & Password";
     case WindmillConnectionMethod.AccessToken:
     case HCVaultConnectionMethod.AccessToken:
@@ -284,6 +288,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.LDAP]: platformManagedCredentialsNotSupported, // we could support this in the future
   [AppConnection.TeamCity]: platformManagedCredentialsNotSupported,
   [AppConnection.OCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.OracleDB]: platformManagedCredentialsNotSupported, // TODO(andrey): If managed credentials change this
   [AppConnection.OnePass]: platformManagedCredentialsNotSupported
 };
 

@@ -8,11 +8,13 @@ import { MySqlCredentialsRotationSchema } from "@app/ee/services/secret-rotation
 import { PostgresCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 
 import { AwsIamUserSecretRotationSchema } from "./aws-iam-user-secret";
+import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials";
 
 export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   PostgresCredentialsRotationSchema,
   MsSqlCredentialsRotationSchema,
   MySqlCredentialsRotationSchema,
+  OracleDBCredentialsRotationSchema,
   Auth0ClientSecretRotationSchema,
   AzureClientSecretRotationSchema,
   LdapPasswordRotationSchema,
