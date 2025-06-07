@@ -58,7 +58,7 @@ const getConnectionConfig = ({
           : false
       };
     }
-    // TODO(andrey): Might be interesting for later
+
     case AppConnection.OracleDB: {
       return {
         ssl: sslEnabled
