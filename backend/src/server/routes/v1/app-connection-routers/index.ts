@@ -8,6 +8,7 @@ import { registerAzureAppConfigurationConnectionRouter } from "./azure-app-confi
 import { registerAzureClientSecretsConnectionRouter } from "./azure-client-secrets-connection-router";
 import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connection-router";
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
+import { registerCoolifyConnectionRouter } from "./coolify-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
@@ -48,5 +49,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.LDAP]: registerLdapConnectionRouter,
     [AppConnection.TeamCity]: registerTeamCityConnectionRouter,
     [AppConnection.OCI]: registerOCIConnectionRouter,
-    [AppConnection.OnePass]: registerOnePassConnectionRouter
+    [AppConnection.OnePass]: registerOnePassConnectionRouter,
+    [AppConnection.Coolify]: registerCoolifyConnectionRouter
   };

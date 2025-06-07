@@ -20,7 +20,8 @@ export enum AppConnection {
   LDAP = "ldap",
   TeamCity = "teamcity",
   OCI = "oci",
-  OnePass = "1password"
+  OnePass = "1password",
+  Coolify = "coolify"
 }
 
 export enum AWSRegion {

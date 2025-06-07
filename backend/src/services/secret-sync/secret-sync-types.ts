@@ -66,6 +66,7 @@ import {
   TAzureKeyVaultSyncListItem,
   TAzureKeyVaultSyncWithCredentials
 } from "./azure-key-vault";
+import { TCoolifySync, TCoolifySyncInput, TCoolifySyncListItem, TCoolifySyncWithCredentials } from "./coolify";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import {
   THCVaultSync,
@@ -109,7 +110,8 @@ export type TSecretSync =
   | THCVaultSync
   | TTeamCitySync
   | TOCIVaultSync
-  | TOnePassSync;
+  | TOnePassSync
+  | TCoolifySync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -127,7 +129,8 @@ export type TSecretSyncWithCredentials =
   | THCVaultSyncWithCredentials
   | TTeamCitySyncWithCredentials
   | TOCIVaultSyncWithCredentials
-  | TOnePassSyncWithCredentials;
+  | TOnePassSyncWithCredentials
+  | TCoolifySyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -145,7 +148,8 @@ export type TSecretSyncInput =
   | THCVaultSyncInput
   | TTeamCitySyncInput
   | TOCIVaultSyncInput
-  | TOnePassSyncInput;
+  | TOnePassSyncInput
+  | TCoolifySyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -163,7 +167,8 @@ export type TSecretSyncListItem =
   | THCVaultSyncListItem
   | TTeamCitySyncListItem
   | TOCIVaultSyncListItem
-  | TOnePassSyncListItem;
+  | TOnePassSyncListItem
+  | TCoolifySyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
