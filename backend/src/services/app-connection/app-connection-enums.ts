@@ -20,6 +20,7 @@ export enum AppConnection {
   LDAP = "ldap",
   TeamCity = "teamcity",
   OCI = "oci",
+  OracleDB = "oracledb",
   OnePass = "1password"
 }
 

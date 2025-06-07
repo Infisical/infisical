@@ -35,11 +35,16 @@ import {
   TMySqlCredentialsRotation,
   TMySqlCredentialsRotationGeneratedCredentialsResponse
 } from "./mysql-credentials-rotation";
+import {
+  TOracleDBCredentialsRotation,
+  TOracleDBCredentialsRotationGeneratedCredentialsResponse
+} from "./oracledb-credentials-rotation";
 
 export type TSecretRotationV2 = (
   | TPostgresCredentialsRotation
   | TMsSqlCredentialsRotation
   | TMySqlCredentialsRotation
+  | TOracleDBCredentialsRotation
   | TAuth0ClientSecretRotation
   | TAzureClientSecretRotation
   | TLdapPasswordRotation
@@ -63,6 +68,7 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TPostgresCredentialsRotationGeneratedCredentialsResponse
   | TMsSqlCredentialsRotationGeneratedCredentialsResponse
   | TMySqlCredentialsRotationGeneratedCredentialsResponse
+  | TOracleDBCredentialsRotationGeneratedCredentialsResponse
   | TAuth0ClientSecretRotationGeneratedCredentialsResponse
   | TAzureClientSecretRotationGeneratedCredentialsResponse
   | TLdapPasswordRotationGeneratedCredentialsResponse
@@ -113,6 +119,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.PostgresCredentials]: TSqlCredentialsRotationOption;
   [SecretRotation.MsSqlCredentials]: TSqlCredentialsRotationOption;
   [SecretRotation.MySqlCredentials]: TSqlCredentialsRotationOption;
+  [SecretRotation.OracleDBCredentials]: TSqlCredentialsRotationOption;
   [SecretRotation.Auth0ClientSecret]: TAuth0ClientSecretRotationOption;
   [SecretRotation.AzureClientSecret]: TAzureClientSecretRotationOption;
   [SecretRotation.LdapPassword]: TLdapPasswordRotationOption;
@@ -123,6 +130,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.PostgresCredentials]: TPostgresCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.MsSqlCredentials]: TMsSqlCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.MySqlCredentials]: TMySqlCredentialsRotationGeneratedCredentialsResponse;
+  [SecretRotation.OracleDBCredentials]: TOracleDBCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.Auth0ClientSecret]: TAuth0ClientSecretRotationGeneratedCredentialsResponse;
   [SecretRotation.AzureClientSecret]: TAzureClientSecretRotationGeneratedCredentialsResponse;
   [SecretRotation.LdapPassword]: TLdapPasswordRotationGeneratedCredentialsResponse;

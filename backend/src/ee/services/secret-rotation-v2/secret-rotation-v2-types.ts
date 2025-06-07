@@ -46,6 +46,12 @@ import {
   TMySqlCredentialsRotationWithConnection
 } from "./mysql-credentials";
 import {
+  TOracleDBCredentialsRotation,
+  TOracleDBCredentialsRotationInput,
+  TOracleDBCredentialsRotationListItem,
+  TOracleDBCredentialsRotationWithConnection
+} from "./oracledb-credentials";
+import {
   TPostgresCredentialsRotation,
   TPostgresCredentialsRotationInput,
   TPostgresCredentialsRotationListItem,
@@ -58,6 +64,7 @@ export type TSecretRotationV2 =
   | TPostgresCredentialsRotation
   | TMsSqlCredentialsRotation
   | TMySqlCredentialsRotation
+  | TOracleDBCredentialsRotation
   | TAuth0ClientSecretRotation
   | TAzureClientSecretRotation
   | TLdapPasswordRotation
@@ -67,6 +74,7 @@ export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
   | TMsSqlCredentialsRotationWithConnection
   | TMySqlCredentialsRotationWithConnection
+  | TOracleDBCredentialsRotationWithConnection
   | TAuth0ClientSecretRotationWithConnection
   | TAzureClientSecretRotationWithConnection
   | TLdapPasswordRotationWithConnection
@@ -83,6 +91,7 @@ export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
   | TMsSqlCredentialsRotationInput
   | TMySqlCredentialsRotationInput
+  | TOracleDBCredentialsRotationInput
   | TAuth0ClientSecretRotationInput
   | TAzureClientSecretRotationInput
   | TLdapPasswordRotationInput
@@ -92,6 +101,7 @@ export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
   | TMsSqlCredentialsRotationListItem
   | TMySqlCredentialsRotationListItem
+  | TOracleDBCredentialsRotationListItem
   | TAuth0ClientSecretRotationListItem
   | TAzureClientSecretRotationListItem
   | TLdapPasswordRotationListItem

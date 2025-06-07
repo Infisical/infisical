@@ -10,6 +10,8 @@ import { PostgresCredentialsRotationSchema } from "@app/components/secret-rotati
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
 
+import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotation-schema";
+
 export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
   z
     .intersection(
@@ -19,6 +21,7 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         PostgresCredentialsRotationSchema,
         MsSqlCredentialsRotationSchema,
         MySqlCredentialsRotationSchema,
+        OracleDBCredentialsRotationSchema,
         LdapPasswordRotationSchema,
         AwsIamUserSecretRotationSchema
       ]),

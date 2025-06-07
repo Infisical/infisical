@@ -6,6 +6,7 @@ import { registerAzureClientSecretRotationRouter } from "./azure-client-secret-r
 import { registerLdapPasswordRotationRouter } from "./ldap-password-rotation-router";
 import { registerMsSqlCredentialsRotationRouter } from "./mssql-credentials-rotation-router";
 import { registerMySqlCredentialsRotationRouter } from "./mysql-credentials-rotation-router";
+import { registerOracleDBCredentialsRotationRouter } from "./oracledb-credentials-rotation-router";
 import { registerPostgresCredentialsRotationRouter } from "./postgres-credentials-rotation-router";
 
 export * from "./secret-rotation-v2-router";
@@ -17,6 +18,7 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.PostgresCredentials]: registerPostgresCredentialsRotationRouter,
   [SecretRotation.MsSqlCredentials]: registerMsSqlCredentialsRotationRouter,
   [SecretRotation.MySqlCredentials]: registerMySqlCredentialsRotationRouter,
+  [SecretRotation.OracleDBCredentials]: registerOracleDBCredentialsRotationRouter,
   [SecretRotation.Auth0ClientSecret]: registerAuth0ClientSecretRotationRouter,
   [SecretRotation.AzureClientSecret]: registerAzureClientSecretRotationRouter,
   [SecretRotation.AwsIamUserSecret]: registerAwsIamUserSecretRotationRouter,

@@ -22,6 +22,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.LDAP]: "LDAP",
   [AppConnection.TeamCity]: "TeamCity",
   [AppConnection.OCI]: "OCI",
+  [AppConnection.OracleDB]: "OracleDB",
   [AppConnection.OnePass]: "1Password"
 };
 
@@ -46,6 +47,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.LDAP]: AppConnectionPlanType.Regular,
   [AppConnection.TeamCity]: AppConnectionPlanType.Regular,
   [AppConnection.OCI]: AppConnectionPlanType.Enterprise,
+  [AppConnection.OracleDB]: AppConnectionPlanType.Enterprise,
   [AppConnection.OnePass]: AppConnectionPlanType.Regular,
   [AppConnection.MySql]: AppConnectionPlanType.Regular
 };
