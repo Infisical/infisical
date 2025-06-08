@@ -73,127 +73,130 @@ This feature is ideal for scenarios where you need to:
 
         Choose your authentication method:
 
-        #### Option 1: Token (API) Authentication
-        This method uses a service account token to authenticate with the Kubernetes cluster. It's suitable when:
-        - You want to use a specific service account token that you've created
-        - You're working with a public cluster or have network access to the cluster's API server
-        - You want to explicitly control which service account is used for operations
+        <AccordionGroup>
+          <Accordion title="Token (API) Authentication">
+            This method uses a service account token to authenticate with the Kubernetes cluster. It's suitable when:
+            - You want to use a specific service account token that you've created
+            - You're working with a public cluster or have network access to the cluster's API server
+            - You want to explicitly control which service account is used for operations
 
-        <Note>
-          With Token (API) authentication, Infisical uses the provided service account token
-          to make API calls to your Kubernetes cluster. This token must have the necessary
-          permissions to generate tokens for the target service account.
-        </Note>
+            <Note>
+              With Token (API) authentication, Infisical uses the provided service account token
+              to make API calls to your Kubernetes cluster. This token must have the necessary
+              permissions to generate tokens for the target service account.
+            </Note>
 
-        1. Create a service account:
-        ```yaml infisical-service-account.yaml
-        apiVersion: v1
-        kind: ServiceAccount
-        metadata:
-          name: infisical-token-requester
-          namespace: default
-        ```
+            1. Create a service account:
+            ```yaml infisical-service-account.yaml
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: infisical-token-requester
+              namespace: default
+            ```
 
-        ```bash
-        kubectl apply -f infisical-service-account.yaml
-        ```
+            ```bash
+            kubectl apply -f infisical-service-account.yaml
+            ```
 
-        2. Set up RBAC permissions:
-        ```yaml rbac.yaml
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRole
-        metadata:
-          name: tokenrequest
-        rules:
-          - apiGroups: [""]
-            resources:
-              - "serviceaccounts/token"
-              - "serviceaccounts"
-            verbs:
-              - "create"
-              - "get"
-        ---
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRoleBinding
-        metadata:
-          name: tokenrequest
-        roleRef:
-          apiGroup: rbac.authorization.k8s.io
-          kind: ClusterRole
-          name: tokenrequest
-        subjects:
-          - kind: ServiceAccount
-            name: infisical-token-requester
-            namespace: default
-        ```
+            2. Set up RBAC permissions:
+            ```yaml rbac.yaml
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: tokenrequest
+            rules:
+              - apiGroups: [""]
+                resources:
+                  - "serviceaccounts/token"
+                  - "serviceaccounts"
+                verbs:
+                  - "create"
+                  - "get"
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: tokenrequest
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: tokenrequest
+            subjects:
+              - kind: ServiceAccount
+                name: infisical-token-requester
+                namespace: default
+            ```
 
-        ```bash
-        kubectl apply -f rbac.yaml
-        ```
+            ```bash
+            kubectl apply -f rbac.yaml
+            ```
 
-        3. Create and obtain the token:
-        ```yaml service-account-token.yaml
-        apiVersion: v1
-        kind: Secret
-        type: kubernetes.io/service-account-token
-        metadata:
-          name: infisical-token-requester-token
-          annotations:
-            kubernetes.io/service-account.name: "infisical-token-requester"
-        ```
+            3. Create and obtain the token:
+            ```yaml service-account-token.yaml
+            apiVersion: v1
+            kind: Secret
+            type: kubernetes.io/service-account-token
+            metadata:
+              name: infisical-token-requester-token
+              annotations:
+                kubernetes.io/service-account.name: "infisical-token-requester"
+            ```
 
-        ```bash
-        kubectl apply -f service-account-token.yaml
-        kubectl patch serviceaccount infisical-token-requester -p '{"secrets": [{"name": "infisical-token-requester-token"}]}' -n default
-        kubectl get secret infisical-token-requester-token -n default -o=jsonpath='{.data.token}' | base64 --decode
-        ```
+            ```bash
+            kubectl apply -f service-account-token.yaml
+            kubectl patch serviceaccount infisical-token-requester -p '{"secrets": [{"name": "infisical-token-requester-token"}]}' -n default
+            kubectl get secret infisical-token-requester-token -n default -o=jsonpath='{.data.token}' | base64 --decode
+            ```
+          </Accordion>
+          <Accordion title="Gateway Authentication">
+            This method uses an Infisical Gateway deployed in your Kubernetes cluster. It's ideal when:
+            - You want to avoid storing static service account tokens
+            - You prefer to use the Gateway's pre-configured service account
+            - You want centralized management of cluster operations
 
-        #### Option 2: Gateway Authentication
-        This method uses an Infisical Gateway deployed in your Kubernetes cluster. It's ideal when:
-        - You want to avoid storing static service account tokens
-        - You prefer to use the Gateway's pre-configured service account
-        - You want centralized management of cluster operations
+            <Note>
+              With Gateway authentication, Infisical communicates with the Gateway, which then
+              uses its own service account to make API calls to the Kubernetes API server.
+              The Gateway's service account must have the necessary permissions to generate
+              tokens for the target service account.
+            </Note>
 
-        <Note>
-          With Gateway authentication, Infisical communicates with the Gateway, which then
-          uses its own service account to make API calls to the Kubernetes API server.
-          The Gateway's service account must have the necessary permissions to generate
-          tokens for the target service account.
-        </Note>
+            1. Deploy the Infisical Gateway in your cluster
+            2. Set up RBAC permissions for the Gateway's service account:
+            ```yaml rbac.yaml
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: tokenrequest
+            rules:
+              - apiGroups: [""]
+                resources:
+                  - "serviceaccounts/token"
+                  - "serviceaccounts"
+                verbs:
+                  - "create"
+                  - "get"
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: tokenrequest
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: tokenrequest
+            subjects:
+              - kind: ServiceAccount
+                name: infisical-gateway
+                namespace: infisical
+            ```
 
-        1. Deploy the Infisical Gateway in your cluster
-        2. Set up RBAC permissions for the Gateway's service account:
-        ```yaml rbac.yaml
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRole
-        metadata:
-          name: tokenrequest
-        rules:
-          - apiGroups: [""]
-            resources:
-              - "serviceaccounts/token"
-              - "serviceaccounts"
-            verbs:
-              - "create"
-              - "get"
-        ---
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRoleBinding
-        metadata:
-          name: tokenrequest
-        roleRef:
-          apiGroup: rbac.authorization.k8s.io
-          kind: ClusterRole
-          name: tokenrequest
-        subjects:
-          - kind: ServiceAccount
-            name: infisical-gateway
-            namespace: infisical
-        ```
-
-        ```bash
-        kubectl apply -f rbac.yaml
-        ```
+            ```bash
+            kubectl apply -f rbac.yaml
+            ```
+          </Accordion>
+        </AccordionGroup>
 
       </Tab>
 
@@ -214,201 +217,163 @@ This feature is ideal for scenarios where you need to:
 
         Choose your authentication method:
 
-        #### Option 1: Token (API) Authentication
-        This method uses a service account token to authenticate with the Kubernetes cluster. It's suitable when:
-        - You want to use a specific service account token that you've created
-        - You're working with a public cluster or have network access to the cluster's API server
-        - You want to explicitly control which service account is used for operations
+        <AccordionGroup>
+          <Accordion title="Token (API) Authentication">
+            This method uses a service account token to authenticate with the Kubernetes cluster. It's suitable when:
+            - You want to use a specific service account token that you've created
+            - You're working with a public cluster or have network access to the cluster's API server
+            - You want to explicitly control which service account is used for operations
 
-        <Note>
-          With Token (API) authentication, Infisical uses the provided service account token
-          to make API calls to your Kubernetes cluster. This token must have the necessary
-          permissions to create and manage service accounts, their tokens, and RBAC resources.
-        </Note>
+            <Note>
+              With Token (API) authentication, Infisical uses the provided service account token
+              to make API calls to your Kubernetes cluster. This token must have the necessary
+              permissions to create and manage service accounts, their tokens, and RBAC resources.
+            </Note>
 
-        1. Create a service account:
-        ```yaml service-account.yaml
-        apiVersion: v1
-        kind: ServiceAccount
-        metadata:
-          name: infisical-token-requester
-          namespace: default
-        ---
-        apiVersion: v1
-        kind: Secret
-        type: kubernetes.io/service-account-token
-        metadata:
-          name: infisical-token-requester-token
-          annotations:
-            kubernetes.io/service-account.name: "infisical-token-requester"
-        ```
+            1. Create a service account:
+            ```yaml service-account.yaml
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: infisical-token-requester
+              namespace: default
+            ---
+            apiVersion: v1
+            kind: Secret
+            type: kubernetes.io/service-account-token
+            metadata:
+              name: infisical-token-requester-token
+              annotations:
+                kubernetes.io/service-account.name: "infisical-token-requester"
+            ```
 
-        ```bash
-        kubectl apply -f service-account.yaml
-        ```
+            ```bash
+            kubectl apply -f service-account.yaml
+            ```
 
-        2. Set up RBAC permissions:
-        ```yaml rbac.yaml
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRole
-        metadata:
-          name: tokenrequest
-        rules:
-          - apiGroups: [""]
-            resources:
-              - "serviceaccounts/token"
-              - "serviceaccounts"
-            verbs:
-              - "create"
-              - "get"
-              - "delete"
-          - apiGroups: ["rbac.authorization.k8s.io"]
-            resources:
-              - "rolebindings"
-              - "clusterrolebindings"
-            verbs:
-              - "create"
-              - "delete"
-        ---
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRoleBinding
-        metadata:
-          name: tokenrequest
-        roleRef:
-          apiGroup: rbac.authorization.k8s.io
-          kind: ClusterRole
-          name: tokenrequest
-        subjects:
-          - kind: ServiceAccount
-            name: infisical-token-requester
-            namespace: default
-        ---
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRoleBinding
-        metadata:
-          name: infisical-dynamic-role-binding-sa
-        roleRef:
-          apiGroup: rbac.authorization.k8s.io
-          kind: ClusterRole
-          name: infisical-dynamic-role
-        subjects:
-          - kind: ServiceAccount
-            name: infisical-token-requester
-            namespace: default
-        ```
+            2. Set up RBAC permissions:
+            ```yaml rbac.yaml
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: tokenrequest
+            rules:
+              - apiGroups: [""]
+                resources:
+                  - "serviceaccounts/token"
+                  - "serviceaccounts"
+                verbs:
+                  - "create"
+                  - "get"
+                  - "delete"
+              - apiGroups: ["rbac.authorization.k8s.io"]
+                resources:
+                  - "rolebindings"
+                  - "clusterrolebindings"
+                verbs:
+                  - "create"
+                  - "delete"
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: tokenrequest
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: tokenrequest
+            subjects:
+              - kind: ServiceAccount
+                name: infisical-token-requester
+                namespace: default
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: infisical-dynamic-role-binding-sa
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: infisical-dynamic-role
+            subjects:
+              - kind: ServiceAccount
+                name: infisical-token-requester
+                namespace: default
+            ```
 
-        ```bash
-        kubectl apply -f rbac.yaml
-        ```
+            ```bash
+            kubectl apply -f rbac.yaml
+            ```
+          </Accordion>
+          <Accordion title="Gateway Authentication">
+            This method uses an Infisical Gateway deployed in your Kubernetes cluster. It's ideal when:
+            - You want to avoid storing static service account tokens
+            - You prefer to use the Gateway's pre-configured service account
+            - You want centralized management of cluster operations
 
-        #### Option 2: Gateway Authentication
-        This method uses an Infisical Gateway deployed in your Kubernetes cluster. It's ideal when:
-        - You want to avoid storing static service account tokens
-        - You prefer to use the Gateway's pre-configured service account
-        - You want centralized management of cluster operations
+            <Note>
+              With Gateway authentication, Infisical communicates with the Gateway, which then
+              uses its own service account to make API calls to the Kubernetes API server.
+              The Gateway's service account must have the necessary permissions to create and
+              manage service accounts, their tokens, and RBAC resources.
+            </Note>
 
-        <Note>
-          With Gateway authentication, Infisical communicates with the Gateway, which then
-          uses its own service account to make API calls to the Kubernetes API server.
-          The Gateway's service account must have the necessary permissions to create and
-          manage service accounts, their tokens, and RBAC resources.
-        </Note>
+            1. Deploy the Infisical Gateway in your cluster
+            2. Set up RBAC permissions for the Gateway's service account:
+            ```yaml rbac.yaml
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: tokenrequest
+            rules:
+              - apiGroups: [""]
+                resources:
+                  - "serviceaccounts/token"
+                  - "serviceaccounts"
+                verbs:
+                  - "create"
+                  - "get"
+                  - "delete"
+              - apiGroups: ["rbac.authorization.k8s.io"]
+                resources:
+                  - "rolebindings"
+                  - "clusterrolebindings"
+                verbs:
+                  - "create"
+                  - "delete"
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: tokenrequest
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: tokenrequest
+            subjects:
+              - kind: ServiceAccount
+                name: infisical-gateway
+                namespace: infisical
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: infisical-dynamic-role-binding-sa
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: infisical-dynamic-role
+            subjects:
+              - kind: ServiceAccount
+                name: infisical-gateway
+                namespace: infisical
+            ```
 
-        1. Deploy the Infisical Gateway in your cluster
-        2. Set up RBAC permissions for the Gateway's service account:
-        ```yaml rbac.yaml
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRole
-        metadata:
-          name: tokenrequest
-        rules:
-          - apiGroups: [""]
-            resources:
-              - "serviceaccounts/token"
-              - "serviceaccounts"
-            verbs:
-              - "create"
-              - "get"
-              - "delete"
-          - apiGroups: ["rbac.authorization.k8s.io"]
-            resources:
-              - "rolebindings"
-              - "clusterrolebindings"
-            verbs:
-              - "create"
-              - "delete"
-        ---
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRoleBinding
-        metadata:
-          name: tokenrequest
-        roleRef:
-          apiGroup: rbac.authorization.k8s.io
-          kind: ClusterRole
-          name: tokenrequest
-        subjects:
-          - kind: ServiceAccount
-            name: infisical-gateway
-            namespace: infisical
-        ---
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRoleBinding
-        metadata:
-          name: infisical-dynamic-role-binding-sa
-        roleRef:
-          apiGroup: rbac.authorization.k8s.io
-          kind: ClusterRole
-          name: infisical-dynamic-role
-        subjects:
-          - kind: ServiceAccount
-            name: infisical-gateway
-            namespace: infisical
-        ```
-
-        ```bash
-        kubectl apply -f rbac.yaml
-        ```
-
-        ### Example Role Configuration
-
-        Here's an example of a role that can be assigned to dynamically created service accounts:
-
-        ```yaml test-role.yaml
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRole
-        metadata:
-          name: infisical-dynamic-role
-        rules:
-          - apiGroups: [""]
-            resources:
-              - "pods"
-              - "configmaps"
-              - "secrets"
-            verbs:
-              - "get"
-              - "list"
-              - "watch"
-          - apiGroups: ["apps"]
-            resources:
-              - "deployments"
-              - "statefulsets"
-            verbs:
-              - "get"
-              - "list"
-              - "watch"
-          - apiGroups: ["batch"]
-            resources:
-              - "jobs"
-              - "cronjobs"
-            verbs:
-              - "get"
-              - "list"
-              - "watch"
-        ```
-
-        ```bash
-        kubectl apply -f test-role.yaml
-        ```
+            ```bash
+            kubectl apply -f rbac.yaml
+            ```
+          </Accordion>
+        </AccordionGroup>
 
         <Note>
           In Kubernetes RBAC, a service account can only create role bindings for resources that it has access to.
