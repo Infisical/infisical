@@ -33,125 +33,6 @@ This feature is ideal for scenarios where you need to:
 - Maintain a secure audit trail of cluster access
 - Manage access to multiple Kubernetes clusters
 
-## Prerequisites
-
-- A Kubernetes cluster with a service account
-- Cluster access token with permissions to create service account tokens
-- (Optional) [Gateway](/documentation/platform/gateways/overview) for private cluster access
-
-## RBAC Configuration
-
-Before you can start generating dynamic service account tokens, you'll need to configure the appropriate permissions in your Kubernetes cluster. This involves setting up Role-Based Access Control (RBAC) to allow the creation and management of service account tokens.
-
-The RBAC configuration serves a crucial security purpose: it creates a dedicated service account with minimal permissions that can only create and manage service account tokens. This follows the principle of least privilege, ensuring that the token generation process is secure and controlled.
-
-The following RBAC configuration creates the necessary permissions for generating service account tokens:
-
-```yaml rbac.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: tokenrequest
-rules:
-  - apiGroups: [""]
-    resources:
-      - "serviceaccounts/token"
-      - "serviceaccounts"
-    verbs:
-      - "create"
-      - "get"
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: tokenrequest
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: tokenrequest
-subjects:
-  - kind: ServiceAccount
-    name: infisical-token-requester
-    namespace: default
-```
-
-```bash
-kubectl apply -f rbac.yaml
-```
-
-This configuration:
-
-1. Creates a `ClusterRole` named `tokenrequest` that allows:
-   - Creating and getting service account tokens
-   - Getting service account information
-2. Creates a `ClusterRoleBinding` that binds the role to a service account named `infisical-token-requester` in the `default` namespace
-
-You can customize the service account name and namespace according to your needs.
-
-## Obtaining the Cluster Token
-
-After setting up the RBAC configuration, you need to obtain a token for the service account that will be used to create dynamic secrets. Here's how to get the token:
-
-1. Create a service account in your Kubernetes cluster that will be used to create service account tokens:
-
-```yaml infisical-service-account.yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: infisical-token-requester
-  namespace: default
-```
-
-```bash
-kubectl apply -f infisical-service-account.yaml
-```
-
-2. Create a long-lived service account token using this configuration file:
-
-```yaml service-account-token.yaml
-apiVersion: v1
-kind: Secret
-type: kubernetes.io/service-account-token
-metadata:
-  name: infisical-token-requester-token
-  annotations:
-    kubernetes.io/service-account.name: "infisical-token-requester"
-```
-
-```bash
-kubectl apply -f service-account-token.yaml
-```
-
-3. Link the secret to the service account:
-
-```bash
-kubectl patch serviceaccount infisical-token-requester -p '{"secrets": [{"name": "infisical-token-requester-token"}]}' -n default
-```
-
-4. Retrieve the token:
-
-```bash
-kubectl get secret infisical-token-requester-token -n default -o=jsonpath='{.data.token}' | base64 --decode
-```
-
-This token will be used as the "Cluster Token" in the dynamic secret configuration.
-
-## Obtaining the Cluster URL
-
-The cluster URL is the address of your Kubernetes API server. The simplest way to find it is to use the `kubectl cluster-info` command:
-
-```bash
-kubectl cluster-info
-```
-
-This command works for all Kubernetes environments (managed services like GKE, EKS, AKS, or self-hosted clusters) and will show you the Kubernetes control plane address, which is your cluster URL.
-
-<Note>
-  Make sure the cluster URL is accessible from where you're running Infisical.
-  If you're using a private cluster, you'll need to configure a [Gateway](/documentation/platform/gateways/overview) to
-  access it.
-</Note>
-
 ## Set up Dynamic Secrets with Kubernetes
 
 <Steps>
@@ -163,6 +44,348 @@ This command works for all Kubernetes environments (managed services like GKE, E
   </Step>
   <Step title="Select Kubernetes">
     ![Dynamic Secret Modal](/images/platform/dynamic-secrets/dynamic-secret-modal-kubernetes.png)
+  </Step>
+  <Step title="Choose your configuration options">
+    Before proceeding with the setup, you'll need to make two key decisions:
+
+    1. **Credential Type**: How you want to manage service accounts
+       - **Static**: Use an existing service account with predefined permissions
+       - **Dynamic**: Create temporary service accounts with specific role assignments
+
+    2. **Authentication Method**: How you want to authenticate with the cluster
+       - **Token (API)**: Use a service account token for direct API access
+       - **Gateway**: Use an Infisical Gateway deployed in your cluster
+
+    <Tabs>
+      <Tab title="Static Credentials">
+        Static credentials generate service account tokens for a predefined service account. This is useful when you want to:
+        - Generate tokens for an existing service account
+        - Maintain consistent permissions across token generations
+        - Use a service account that already has the necessary RBAC permissions
+
+        ### Prerequisites
+
+        - A Kubernetes cluster with a service account
+        - Cluster access token with permissions to create service account tokens
+        - (Optional) [Gateway](/documentation/platform/gateways/overview) for private cluster access
+
+        ### Authentication Setup
+
+        Choose your authentication method:
+
+        <AccordionGroup>
+          <Accordion title="Token (API) Authentication">
+            This method uses a service account token to authenticate with the Kubernetes cluster. It's suitable when:
+            - You want to use a specific service account token that you've created
+            - You're working with a public cluster or have network access to the cluster's API server
+            - You want to explicitly control which service account is used for operations
+
+            <Note>
+              With Token (API) authentication, Infisical uses the provided service account token
+              to make API calls to your Kubernetes cluster. This token must have the necessary
+              permissions to generate tokens for the target service account.
+            </Note>
+
+            1. Create a service account:
+            ```yaml infisical-service-account.yaml
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: infisical-token-requester
+              namespace: default
+            ```
+
+            ```bash
+            kubectl apply -f infisical-service-account.yaml
+            ```
+
+            2. Set up RBAC permissions:
+            ```yaml rbac.yaml
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: tokenrequest
+            rules:
+              - apiGroups: [""]
+                resources:
+                  - "serviceaccounts/token"
+                  - "serviceaccounts"
+                verbs:
+                  - "create"
+                  - "get"
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: tokenrequest
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: tokenrequest
+            subjects:
+              - kind: ServiceAccount
+                name: infisical-token-requester
+                namespace: default
+            ```
+
+            ```bash
+            kubectl apply -f rbac.yaml
+            ```
+
+            3. Create and obtain the token:
+            ```yaml service-account-token.yaml
+            apiVersion: v1
+            kind: Secret
+            type: kubernetes.io/service-account-token
+            metadata:
+              name: infisical-token-requester-token
+              annotations:
+                kubernetes.io/service-account.name: "infisical-token-requester"
+            ```
+
+            ```bash
+            kubectl apply -f service-account-token.yaml
+            kubectl patch serviceaccount infisical-token-requester -p '{"secrets": [{"name": "infisical-token-requester-token"}]}' -n default
+            kubectl get secret infisical-token-requester-token -n default -o=jsonpath='{.data.token}' | base64 --decode
+            ```
+          </Accordion>
+          <Accordion title="Gateway Authentication">
+            This method uses an Infisical Gateway deployed in your Kubernetes cluster. It's ideal when:
+            - You want to avoid storing static service account tokens
+            - You prefer to use the Gateway's pre-configured service account
+            - You want centralized management of cluster operations
+
+            <Note>
+              With Gateway authentication, Infisical communicates with the Gateway, which then
+              uses its own service account to make API calls to the Kubernetes API server.
+              The Gateway's service account must have the necessary permissions to generate
+              tokens for the target service account.
+            </Note>
+
+            1. Deploy the Infisical Gateway in your cluster
+            2. Set up RBAC permissions for the Gateway's service account:
+            ```yaml rbac.yaml
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: tokenrequest
+            rules:
+              - apiGroups: [""]
+                resources:
+                  - "serviceaccounts/token"
+                  - "serviceaccounts"
+                verbs:
+                  - "create"
+                  - "get"
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: tokenrequest
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: tokenrequest
+            subjects:
+              - kind: ServiceAccount
+                name: infisical-gateway
+                namespace: infisical
+            ```
+
+            ```bash
+            kubectl apply -f rbac.yaml
+            ```
+          </Accordion>
+        </AccordionGroup>
+
+      </Tab>
+
+      <Tab title="Dynamic Credentials">
+        Dynamic credentials create a temporary service account, assign it to a defined role/cluster-role, and generate a service account token. This is useful when you want to:
+        - Create temporary service accounts with specific permissions
+        - Automatically clean up service accounts after token expiration
+        - Assign different roles to different users or applications
+        - Maintain strict control over service account permissions
+
+        ### Prerequisites
+
+        - A Kubernetes cluster with a service account
+        - Cluster access token with permissions to create service accounts and manage RBAC
+        - (Optional) [Gateway](/documentation/platform/gateways/overview) for private cluster access
+
+        ### Authentication Setup
+
+        Choose your authentication method:
+
+        <AccordionGroup>
+          <Accordion title="Token (API) Authentication">
+            This method uses a service account token to authenticate with the Kubernetes cluster. It's suitable when:
+            - You want to use a specific service account token that you've created
+            - You're working with a public cluster or have network access to the cluster's API server
+            - You want to explicitly control which service account is used for operations
+
+            <Note>
+              With Token (API) authentication, Infisical uses the provided service account token
+              to make API calls to your Kubernetes cluster. This token must have the necessary
+              permissions to create and manage service accounts, their tokens, and RBAC resources.
+            </Note>
+
+            1. Create a service account:
+            ```yaml service-account.yaml
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: infisical-token-requester
+              namespace: default
+            ---
+            apiVersion: v1
+            kind: Secret
+            type: kubernetes.io/service-account-token
+            metadata:
+              name: infisical-token-requester-token
+              annotations:
+                kubernetes.io/service-account.name: "infisical-token-requester"
+            ```
+
+            ```bash
+            kubectl apply -f service-account.yaml
+            ```
+
+            2. Set up RBAC permissions:
+            ```yaml rbac.yaml
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: tokenrequest
+            rules:
+              - apiGroups: [""]
+                resources:
+                  - "serviceaccounts/token"
+                  - "serviceaccounts"
+                verbs:
+                  - "create"
+                  - "get"
+                  - "delete"
+              - apiGroups: ["rbac.authorization.k8s.io"]
+                resources:
+                  - "rolebindings"
+                  - "clusterrolebindings"
+                verbs:
+                  - "create"
+                  - "delete"
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: tokenrequest
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: tokenrequest
+            subjects:
+              - kind: ServiceAccount
+                name: infisical-token-requester
+                namespace: default
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: infisical-dynamic-role-binding-sa
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: infisical-dynamic-role
+            subjects:
+              - kind: ServiceAccount
+                name: infisical-token-requester
+                namespace: default
+            ```
+
+            ```bash
+            kubectl apply -f rbac.yaml
+            ```
+          </Accordion>
+          <Accordion title="Gateway Authentication">
+            This method uses an Infisical Gateway deployed in your Kubernetes cluster. It's ideal when:
+            - You want to avoid storing static service account tokens
+            - You prefer to use the Gateway's pre-configured service account
+            - You want centralized management of cluster operations
+
+            <Note>
+              With Gateway authentication, Infisical communicates with the Gateway, which then
+              uses its own service account to make API calls to the Kubernetes API server.
+              The Gateway's service account must have the necessary permissions to create and
+              manage service accounts, their tokens, and RBAC resources.
+            </Note>
+
+            1. Deploy the Infisical Gateway in your cluster
+            2. Set up RBAC permissions for the Gateway's service account:
+            ```yaml rbac.yaml
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: tokenrequest
+            rules:
+              - apiGroups: [""]
+                resources:
+                  - "serviceaccounts/token"
+                  - "serviceaccounts"
+                verbs:
+                  - "create"
+                  - "get"
+                  - "delete"
+              - apiGroups: ["rbac.authorization.k8s.io"]
+                resources:
+                  - "rolebindings"
+                  - "clusterrolebindings"
+                verbs:
+                  - "create"
+                  - "delete"
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: tokenrequest
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: tokenrequest
+            subjects:
+              - kind: ServiceAccount
+                name: infisical-gateway
+                namespace: infisical
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: infisical-dynamic-role-binding-sa
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: infisical-dynamic-role
+            subjects:
+              - kind: ServiceAccount
+                name: infisical-gateway
+                namespace: infisical
+            ```
+
+            ```bash
+            kubectl apply -f rbac.yaml
+            ```
+          </Accordion>
+        </AccordionGroup>
+
+        <Note>
+          In Kubernetes RBAC, a service account can only create role bindings for resources that it has access to.
+          This means that if you want to create dynamic service accounts with access to certain resources,
+          the service account creating these bindings (either the token requester or Gateway service account)
+          must also have access to those same resources. For example, if you want to create dynamic service
+          accounts that can access secrets, the token requester service account must also have access to secrets.
+        </Note>
+
+      </Tab>
+    </Tabs>
+
   </Step>
   <Step title="Provide the inputs for dynamic secret parameters">
     <ParamField path="Secret Name" type="string" required>
@@ -186,47 +409,61 @@ This command works for all Kubernetes environments (managed services like GKE, E
     <ParamField path="CA" type="string">
       Custom CA certificate for the Kubernetes API server. Leave blank to use the system/public CA.
     </ParamField>
+    <ParamField path="Auth Method" type="string" required>
+      Choose between Token (API) or Gateway authentication. If using Gateway, the Gateway must be deployed in your Kubernetes cluster.
+    </ParamField>
     <ParamField path="Cluster Token" type="string" required>
-      Token with permissions to create service account tokens
+      Token with permissions to create service accounts and manage RBAC (required when using Token authentication)
+    </ParamField>
+    <ParamField path="Credential Type" type="string" required>
+      Choose between Static (predefined service account) or Dynamic (temporary service accounts with role assignments)
     </ParamField>
     <ParamField path="Service Account Name" type="string" required>
-      Name of the service account to generate tokens for
+      Name of the service account to generate tokens for (required for Static credentials)
     </ParamField>
     <ParamField path="Namespace" type="string" required>
-      Kubernetes namespace where the service account exists
+      Kubernetes namespace where the service account exists or will be created
+    </ParamField>
+    <ParamField path="Role Type" type="string" required>
+      Type of role to assign (ClusterRole or Role) (required for Dynamic credentials)
+    </ParamField>
+    <ParamField path="Role" type="string" required>
+      Name of the role to assign to the temporary service account (required for Dynamic credentials)
     </ParamField>
     <ParamField path="Audiences" type="array">
       Optional list of audiences to include in the generated token
     </ParamField>
 
-    ![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-kubernetes.png)
+    ![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-kubernetes-1.png)
+    ![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-kubernetes-2.png)
 
   </Step>
   <Step title="Click 'Submit'">
     After submitting the form, you will see a dynamic secret created in the dashboard.
   </Step>
-  <Step title="Generate dynamic secrets">
-    Once you've successfully configured the dynamic secret, you're ready to generate on-demand service account tokens.
-    To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
-    Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
-
-    ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
-    ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
-
-    When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate how long the credentials are valid for.
-
-    ![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
-
-    <Tip>
-      Ensure that the TTL for the lease fall within the maximum TTL defined when configuring the dynamic secret.
-    </Tip>
-
-    Once you click the `Submit` button, a new secret lease will be generated and the service account token will be shown to you.
-
-    ![Provision Lease](/images/platform/dynamic-secrets/kubernetes-lease-value.png)
-
-  </Step>
 </Steps>
+
+## Generate and Manage Tokens
+
+Once you've successfully configured the dynamic secret, you're ready to generate on-demand service account tokens.
+To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
+Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
+
+![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
+![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
+
+When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate how long the credentials are valid for.
+
+![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
+
+<Tip>
+  Ensure that the TTL for the lease fall within the maximum TTL defined when
+  configuring the dynamic secret.
+</Tip>
+
+Once you click the `Submit` button, a new secret lease will be generated and the service account token will be shown to you.
+
+![Provision Lease](/images/platform/dynamic-secrets/kubernetes-lease-value.png)
 
 ## Audit or Revoke Leases
 

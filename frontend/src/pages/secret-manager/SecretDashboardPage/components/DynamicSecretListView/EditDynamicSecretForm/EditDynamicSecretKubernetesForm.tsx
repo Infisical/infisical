@@ -28,53 +28,99 @@ import {
 import { OrgPermissionSubjects } from "@app/context/OrgPermissionContext";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys, useUpdateDynamicSecret } from "@app/hooks/api";
-import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import {
+  KubernetesDynamicSecretCredentialType,
+  TDynamicSecret
+} from "@app/hooks/api/dynamicSecret/types";
 import { slugSchema } from "@app/lib/schemas";
 
-enum CredentialType {
-  Dynamic = "dynamic",
-  Static = "static"
+enum RoleType {
+  ClusterRole = "cluster-role",
+  Role = "role"
+}
+
+enum AuthMethod {
+  Api = "api",
+  Gateway = "gateway"
 }
 
 const credentialTypes = [
   {
     label: "Static",
-    value: CredentialType.Static
+    value: KubernetesDynamicSecretCredentialType.Static
+  },
+  {
+    label: "Dynamic",
+    value: KubernetesDynamicSecretCredentialType.Dynamic
   }
 ] as const;
 
-const formSchema = z.object({
-  inputs: z.object({
-    url: z.string().url().trim().min(1),
-    clusterToken: z.string().trim().min(1),
-    ca: z.string().optional(),
-    sslEnabled: z.boolean().default(false),
-    credentialType: z.literal(CredentialType.Static),
-    serviceAccountName: z.string().trim().min(1),
-    namespace: z.string().trim().min(1),
-    gatewayId: z.string().optional(),
-    audiences: z.array(z.string().trim().min(1))
-  }),
-  defaultTTL: z.string().superRefine((val, ctx) => {
-    const valMs = ms(val);
-    if (valMs < 60 * 1000)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
-    if (valMs > 24 * 60 * 60 * 1000)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
-  }),
-  maxTTL: z
-    .string()
-    .optional()
-    .superRefine((val, ctx) => {
-      if (!val) return;
+const formSchema = z
+  .object({
+    inputs: z.discriminatedUnion("credentialType", [
+      z.object({
+        url: z.string().url().trim().min(1),
+        clusterToken: z.string().trim().optional(),
+        ca: z.string().optional(),
+        sslEnabled: z.boolean().default(false),
+        credentialType: z.literal(KubernetesDynamicSecretCredentialType.Static),
+        serviceAccountName: z.string().trim().min(1),
+        namespace: z.string().trim().min(1),
+        gatewayId: z.string().optional(),
+        audiences: z.array(z.string().trim().min(1)),
+        authMethod: z.nativeEnum(AuthMethod).default(AuthMethod.Api)
+      }),
+      z.object({
+        url: z.string().url().trim().min(1),
+        clusterToken: z.string().trim().optional(),
+        ca: z.string().optional(),
+        sslEnabled: z.boolean().default(false),
+        credentialType: z.literal(KubernetesDynamicSecretCredentialType.Dynamic),
+        namespace: z.string().trim().min(1),
+        gatewayId: z.string().optional(),
+        audiences: z.array(z.string().trim().min(1)),
+        roleType: z.nativeEnum(RoleType),
+        role: z.string().trim().min(1),
+        authMethod: z.nativeEnum(AuthMethod).default(AuthMethod.Api)
+      })
+    ]),
+    defaultTTL: z.string().superRefine((val, ctx) => {
       const valMs = ms(val);
       if (valMs < 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  newName: slugSchema().optional()
-});
+    maxTTL: z
+      .string()
+      .optional()
+      .superRefine((val, ctx) => {
+        if (!val) return;
+        const valMs = ms(val);
+        if (valMs < 60 * 1000)
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
+        if (valMs > 24 * 60 * 60 * 1000)
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
+      }),
+    newName: slugSchema().optional(),
+    usernameTemplate: z.string().trim().optional()
+  })
+  .superRefine((data, ctx) => {
+    if (data.inputs.authMethod === AuthMethod.Gateway && !data.inputs.gatewayId) {
+      ctx.addIssue({
+        path: ["inputs.gatewayId"],
+        code: z.ZodIssueCode.custom,
+        message: "When auth method is set to Gateway, a gateway must be selected"
+      });
+    }
+    if (data.inputs.authMethod === AuthMethod.Api && !data.inputs.clusterToken) {
+      ctx.addIssue({
+        path: ["inputs.clusterToken"],
+        code: z.ZodIssueCode.custom,
+        message: "When auth method is set to Token, a cluster token must be provided"
+      });
+    }
+  });
 
 type TForm = z.infer<typeof formSchema> & FieldValues;
 
@@ -103,6 +149,7 @@ export const EditDynamicSecretKubernetesForm = ({
     values: {
       newName: dynamicSecret.name,
       defaultTTL: dynamicSecret.defaultTTL,
+      usernameTemplate: dynamicSecret?.usernameTemplate || "{{randomUsername}}",
       maxTTL: dynamicSecret.maxTTL,
       inputs: dynamicSecret.inputs as TForm["inputs"]
     }
@@ -110,17 +157,20 @@ export const EditDynamicSecretKubernetesForm = ({
 
   const { fields, append, remove } = useFieldArray({
     control,
-    name: "inputs.audiences" as const
+    name: "inputs.audiences"
   });
 
   const updateDynamicSecret = useUpdateDynamicSecret();
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
   const sslEnabled = watch("inputs.sslEnabled");
+  const credentialType = watch("inputs.credentialType");
+  const authMethod = watch("inputs.authMethod");
 
   const handleUpdateDynamicSecret = async (formData: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isPending) return;
+    const isDefaultUsernameTemplate = formData.usernameTemplate === "{{randomUsername}}";
     try {
       await updateDynamicSecret.mutateAsync({
         name: dynamicSecret.name,
@@ -131,9 +181,14 @@ export const EditDynamicSecretKubernetesForm = ({
           inputs: formData.inputs,
           newName: formData.newName === dynamicSecret.name ? undefined : formData.newName,
           defaultTTL: formData.defaultTTL,
-          maxTTL: formData.maxTTL
+          maxTTL: formData.maxTTL,
+          usernameTemplate:
+            !formData.usernameTemplate || isDefaultUsernameTemplate
+              ? null
+              : formData.usernameTemplate
         }
       });
+
       onClose();
       createNotification({
         type: "success",
@@ -339,17 +394,43 @@ export const EditDynamicSecretKubernetesForm = ({
 
                   <Controller
                     control={control}
-                    name="inputs.clusterToken"
+                    name="inputs.authMethod"
+                    defaultValue={AuthMethod.Api}
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
-                        label="Cluster Token"
+                        label="Auth Method"
                         isError={Boolean(error?.message)}
                         errorText={error?.message}
+                        className="w-full"
+                        tooltipText="Select the method of authentication. Token (API) uses a direct API token, while Gateway uses the service account of a Gateway deployed in a Kubernetes cluster to generate the service account token."
                       >
-                        <Input {...field} type="password" autoComplete="new-password" />
+                        <Select
+                          defaultValue={field.value}
+                          {...field}
+                          className="w-full"
+                          onValueChange={(e) => field.onChange(e)}
+                        >
+                          <SelectItem value={AuthMethod.Api}>Token (API)</SelectItem>
+                          <SelectItem value={AuthMethod.Gateway}>Gateway</SelectItem>
+                        </Select>
                       </FormControl>
                     )}
                   />
+                  {authMethod === AuthMethod.Api && (
+                    <Controller
+                      control={control}
+                      name="inputs.clusterToken"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Cluster Token"
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                        >
+                          <Input {...field} type="password" autoComplete="new-password" />
+                        </FormControl>
+                      )}
+                    />
+                  )}
                   <Controller
                     control={control}
                     name="inputs.credentialType"
@@ -359,6 +440,7 @@ export const EditDynamicSecretKubernetesForm = ({
                         isError={Boolean(error?.message)}
                         errorText={error?.message}
                         className="w-full"
+                        tooltipText="Choose 'Static' to generate service account tokens for a predefined service account. Choose 'Dynamic' to create a temporary service account, assign it to a defined role/cluster-role, and generate the service account token. Only 'Dynamic' supports role assignment."
                       >
                         <Select
                           defaultValue={field.value}
@@ -366,12 +448,9 @@ export const EditDynamicSecretKubernetesForm = ({
                           className="w-full"
                           onValueChange={(e) => field.onChange(e)}
                         >
-                          {credentialTypes.map((credentialType) => (
-                            <SelectItem
-                              value={credentialType.value}
-                              key={`credential-type-${credentialType.value}`}
-                            >
-                              {credentialType.label}
+                          {credentialTypes.map((ct) => (
+                            <SelectItem value={ct.value} key={`credential-type-${ct.value}`}>
+                              {ct.label}
                             </SelectItem>
                           ))}
                         </Select>
@@ -379,21 +458,44 @@ export const EditDynamicSecretKubernetesForm = ({
                     )}
                   />
                   <div className="flex items-center space-x-2">
-                    <div className="flex-1">
-                      <Controller
-                        control={control}
-                        name="inputs.serviceAccountName"
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label="Service Account Name"
-                            isError={Boolean(error?.message)}
-                            errorText={error?.message}
-                          >
-                            <Input {...field} autoComplete="new-password" />
-                          </FormControl>
-                        )}
-                      />
-                    </div>
+                    {credentialType === KubernetesDynamicSecretCredentialType.Static && (
+                      <div className="flex-1">
+                        <Controller
+                          control={control}
+                          name="inputs.serviceAccountName"
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              label="Service Account Name"
+                              isError={Boolean(error?.message)}
+                              errorText={error?.message}
+                            >
+                              <Input {...field} autoComplete="new-password" />
+                            </FormControl>
+                          )}
+                        />
+                      </div>
+                    )}
+                    {credentialType === KubernetesDynamicSecretCredentialType.Dynamic && (
+                      <div className="flex-1">
+                        <Controller
+                          control={control}
+                          name="usernameTemplate"
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              label="Username Template"
+                              isError={Boolean(error?.message)}
+                              errorText={error?.message}
+                            >
+                              <Input
+                                {...field}
+                                value={field.value || undefined}
+                                className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              />
+                            </FormControl>
+                          )}
+                        />
+                      </div>
+                    )}
                     <div className="flex-1">
                       <Controller
                         control={control}
@@ -410,6 +512,59 @@ export const EditDynamicSecretKubernetesForm = ({
                       />
                     </div>
                   </div>
+                  {credentialType === KubernetesDynamicSecretCredentialType.Dynamic && (
+                    <div className="flex items-center space-x-2">
+                      <div className="flex-1">
+                        <Controller
+                          control={control}
+                          name="inputs.roleType"
+                          defaultValue={RoleType.ClusterRole}
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              label="Role Type"
+                              isError={Boolean(error?.message)}
+                              errorText={error?.message}
+                            >
+                              <Select
+                                defaultValue={field.value}
+                                {...field}
+                                className="w-full"
+                                onValueChange={(e) => field.onChange(e)}
+                              >
+                                <SelectItem
+                                  value={RoleType.ClusterRole}
+                                  key={`role-type-${RoleType.ClusterRole}`}
+                                >
+                                  Cluster Role
+                                </SelectItem>
+                                <SelectItem
+                                  value={RoleType.Role}
+                                  key={`role-type-${RoleType.Role}`}
+                                >
+                                  Role
+                                </SelectItem>
+                              </Select>
+                            </FormControl>
+                          )}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Controller
+                          control={control}
+                          name="inputs.role"
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              label="Role"
+                              isError={Boolean(error?.message)}
+                              errorText={error?.message}
+                            >
+                              <Input {...field} />
+                            </FormControl>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="mt-2 w-1/2">
