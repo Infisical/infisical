@@ -37,6 +37,11 @@ export enum DynamicSecretProviders {
   Vertica = "vertica"
 }
 
+export enum KubernetesDynamicSecretCredentialType {
+  Static = "static",
+  Dynamic = "dynamic"
+}
+
 export enum SqlProviders {
   Postgres = "postgres",
   MySql = "mysql2",
@@ -273,7 +278,7 @@ export type TDynamicSecretProvider =
             clusterToken?: string;
             ca?: string;
             serviceAccountName: string;
-            credentialType: "static";
+            credentialType: KubernetesDynamicSecretCredentialType.Static;
             namespace: string;
             gatewayId?: string;
             sslEnabled: boolean;
@@ -284,7 +289,7 @@ export type TDynamicSecretProvider =
             url: string;
             clusterToken?: string;
             ca?: string;
-            credentialType: "dynamic";
+            credentialType: KubernetesDynamicSecretCredentialType.Dynamic;
             namespace: string;
             gatewayId?: string;
             sslEnabled: boolean;

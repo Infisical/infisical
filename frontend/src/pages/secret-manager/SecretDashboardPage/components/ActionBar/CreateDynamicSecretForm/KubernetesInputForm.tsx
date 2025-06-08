@@ -29,14 +29,12 @@ import {
 import { OrgPermissionSubjects } from "@app/context/OrgPermissionContext";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
-import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+import {
+  DynamicSecretProviders,
+  KubernetesDynamicSecretCredentialType
+} from "@app/hooks/api/dynamicSecret/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
-
-enum CredentialType {
-  Dynamic = "dynamic",
-  Static = "static"
-}
 
 enum RoleType {
   ClusterRole = "cluster-role",
@@ -51,11 +49,11 @@ export enum AuthMethod {
 const credentialTypes = [
   {
     label: "Static",
-    value: CredentialType.Static
+    value: KubernetesDynamicSecretCredentialType.Static
   },
   {
     label: "Dynamic",
-    value: CredentialType.Dynamic
+    value: KubernetesDynamicSecretCredentialType.Dynamic
   }
 ] as const;
 
@@ -67,7 +65,7 @@ const formSchema = z
         clusterToken: z.string().trim().optional(),
         ca: z.string().optional(),
         sslEnabled: z.boolean().default(false),
-        credentialType: z.literal(CredentialType.Static),
+        credentialType: z.literal(KubernetesDynamicSecretCredentialType.Static),
         serviceAccountName: z.string().trim().min(1),
         namespace: z.string().trim().min(1),
         gatewayId: z.string().optional(),
@@ -79,7 +77,7 @@ const formSchema = z
         clusterToken: z.string().trim().optional(),
         ca: z.string().optional(),
         sslEnabled: z.boolean().default(false),
-        credentialType: z.literal(CredentialType.Dynamic),
+        credentialType: z.literal(KubernetesDynamicSecretCredentialType.Dynamic),
         namespace: z.string().trim().min(1),
         gatewayId: z.string().optional(),
         audiences: z.array(z.string().trim().min(1)),
@@ -161,7 +159,7 @@ export const KubernetesInputForm = ({
         sslEnabled: false,
         serviceAccountName: "",
         namespace: "",
-        credentialType: CredentialType.Static,
+        credentialType: KubernetesDynamicSecretCredentialType.Static,
         gatewayId: undefined,
         audiences: [],
         authMethod: AuthMethod.Api
@@ -464,7 +462,7 @@ export const KubernetesInputForm = ({
                   )}
                 />
                 <div className="flex items-center space-x-2">
-                  {credentialType === CredentialType.Static && (
+                  {credentialType === KubernetesDynamicSecretCredentialType.Static && (
                     <div className="flex-1">
                       <Controller
                         control={control}
@@ -481,7 +479,7 @@ export const KubernetesInputForm = ({
                       />
                     </div>
                   )}
-                  {credentialType === CredentialType.Dynamic && (
+                  {credentialType === KubernetesDynamicSecretCredentialType.Dynamic && (
                     <div className="flex-1">
                       <Controller
                         control={control}
@@ -519,7 +517,7 @@ export const KubernetesInputForm = ({
                     />
                   </div>
                 </div>
-                {credentialType === CredentialType.Dynamic && (
+                {credentialType === KubernetesDynamicSecretCredentialType.Dynamic && (
                   <div className="flex items-center space-x-2">
                     <div className="flex-1">
                       <Controller
