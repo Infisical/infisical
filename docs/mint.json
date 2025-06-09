@@ -449,6 +449,8 @@
     {
       "group": "Infrastructure Integrations",
       "pages": [
+        "integrations/platforms/ansible",
+        "integrations/platforms/apache-airflow",
         {
           "group": "Container orchestrators",
           "pages": [
@@ -467,7 +469,6 @@
             "integrations/platforms/ecs-with-agent"
           ]
         },
-        "integrations/platforms/infisical-agent",
         {
           "group": "Docker",
           "pages": [
@@ -477,10 +478,10 @@
             "integrations/platforms/docker-compose"
           ]
         },
-        "integrations/frameworks/terraform",
+        "integrations/platforms/infisical-agent",
+        "integrations/frameworks/packer",
         "integrations/frameworks/pulumi",
-        "integrations/platforms/ansible",
-        "integrations/platforms/apache-airflow"
+        "integrations/frameworks/terraform"
       ]
     },
     {
@@ -1050,8 +1051,8 @@
           "group": "Secret Scanning",
           "pages": [
             {
-              "group":  "Data Sources",
-              "pages":  [
+              "group": "Data Sources",
+              "pages": [
                 "api-reference/endpoints/secret-scanning/data-sources/list",
                 "api-reference/endpoints/secret-scanning/data-sources/options",
                 {
@@ -1072,15 +1073,15 @@
               ]
             },
             {
-              "group":  "Findings",
-              "pages":  [
+              "group": "Findings",
+              "pages": [
                 "api-reference/endpoints/secret-scanning/findings/list",
                 "api-reference/endpoints/secret-scanning/findings/update"
               ]
             },
             {
-              "group":  "Configuration",
-              "pages":  [
+              "group": "Configuration",
+              "pages": [
                 "api-reference/endpoints/secret-scanning/config/get-by-project-id",
                 "api-reference/endpoints/secret-scanning/config/update"
               ]
