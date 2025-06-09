@@ -26,7 +26,7 @@ jobs:
             exit 0
           fi
 
-          regex_usage_pattern='(^|[^A-Za-z0-9_"'`\.\/\\])(\/(?:\\.|[^\/\n\\])+\/[gimsuyv]*(?=\s*[\.\(;,)\]}:]|$)|new RegExp\()'
+          regex_usage_pattern='(^|[^A-Za-z0-9_"'"'"'`\.\/\\])(\/(?:\\.|[^\/\n\\])+\/[gimsuyv]*(?=\s*[\.\(;,)\]}:]|$)|new RegExp\()'
 
           # Find all added lines that contain regex patterns
           if grep -E "$regex_usage_pattern" added_lines.txt > potential_violations.txt 2>/dev/null; then
