@@ -23,8 +23,17 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         environment: z.string(),
         approvers: z
           .discriminatedUnion("type", [
-            z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
-            z.object({ type: z.literal(ApproverType.User), id: z.string().optional(), username: z.string().optional() })
+            z.object({
+              type: z.literal(ApproverType.Group),
+              id: z.string(),
+              sequence: z.number().int().default(1)
+            }),
+            z.object({
+              type: z.literal(ApproverType.User),
+              id: z.string().optional(),
+              username: z.string().optional(),
+              sequence: z.number().int().default(1)
+            })
           ])
           .array()
           .max(100, "Cannot have more than 100 approvers")
@@ -36,6 +45,14 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           ])
           .array()
           .max(100, "Cannot have more than 100 bypassers")
+          .optional(),
+        approvalsRequired: z
+          .record(
+            z.number().int(),
+            z.object({
+              numberOfApprovals: z.number().int()
+            })
+          )
           .optional(),
         approvals: z.number().min(1).default(1),
         enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
@@ -168,7 +185,15 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .optional(),
         approvals: z.number().min(1).optional(),
         enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-        allowedSelfApprovals: z.boolean().default(true)
+        allowedSelfApprovals: z.boolean().default(true),
+        approvalsRequired: z
+          .record(
+            z.number().int(),
+            z.object({
+              numberOfApprovals: z.number().int()
+            })
+          )
+          .optional()
       }),
       response: {
         200: z.object({

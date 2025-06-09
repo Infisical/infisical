@@ -13,7 +13,9 @@ export const AccessApprovalPoliciesApproversSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   approverUserId: z.string().uuid().nullable().optional(),
-  approverGroupId: z.string().uuid().nullable().optional()
+  approverGroupId: z.string().uuid().nullable().optional(),
+  sequence: z.number().default(0).nullable().optional(),
+  approvalsRequired: z.number().default(1).nullable().optional()
 });
 
 export type TAccessApprovalPoliciesApprovers = z.infer<typeof AccessApprovalPoliciesApproversSchema>;
