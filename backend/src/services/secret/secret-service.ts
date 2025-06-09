@@ -44,7 +44,8 @@ import {
   TGetSecretsRawByFolderMappingsDTO
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
-import { ActorType } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { ChangeType } from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -2521,6 +2522,36 @@ export const secretServiceFactory = ({
     });
   };
 
+  const getSecretVersionsV2ByIds = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    secretId,
+    secretVersions,
+    secretPath,
+    envId,
+    projectId
+  }: TGetSecretVersionsDTO & {
+    secretVersions: string[];
+    secretPath: string;
+    envId: string;
+    projectId: string;
+  }) => {
+    const secretVersionV2 = await secretV2BridgeService.getSecretVersionsByIds({
+      actorId,
+      actor,
+      actorOrgId,
+      actorAuthMethod,
+      secretId,
+      secretVersionNumbers: secretVersions,
+      secretPath,
+      envId,
+      projectId
+    });
+    return secretVersionV2;
+  };
+
   const attachTags = async ({
     secretName,
     tagSlugs,
@@ -3279,6 +3310,53 @@ export const secretServiceFactory = ({
     return secrets;
   };
 
+  const getChangeVersions = async (
+    change: {
+      secretVersion: string;
+      secretId?: string;
+      id?: string;
+      isUpdate?: boolean;
+      changeType?: string;
+    },
+    previousVersion: string,
+    actorId: string,
+    actor: ActorType,
+    actorOrgId: string,
+    actorAuthMethod: ActorAuthMethod,
+    envId: string,
+    projectId: string,
+    secretPath: string
+  ) => {
+    const currentVersion = change.secretVersion;
+    const secretId = change.secretId ? change.secretId : change.id;
+    if (!secretId) {
+      return;
+    }
+    const versions = await getSecretVersionsV2ByIds({
+      actorId,
+      actor,
+      actorOrgId,
+      actorAuthMethod,
+      secretId,
+      // if it's update add also the previous secretversionid
+      secretVersions:
+        change.isUpdate || change.changeType === ChangeType.UPDATE
+          ? [currentVersion, previousVersion]
+          : [currentVersion],
+      secretPath,
+      envId,
+      projectId
+    });
+    return versions?.map((v) => ({
+      secretKey: v.secretKey,
+      secretComment: v.secretComment,
+      skipMultilineEncoding: v.skipMultilineEncoding,
+      tags: v.tags?.map((tag) => tag.slug),
+      metadata: v.metadata,
+      secretValue: v.secretValue
+    }));
+  };
+
   return {
     attachTags,
     detachTags,
@@ -3309,6 +3387,8 @@ export const secretServiceFactory = ({
     getSecretsRawByFolderMappings,
     getSecretAccessList,
     getSecretByIdRaw,
-    getAccessibleSecrets
+    getAccessibleSecrets,
+    getSecretVersionsV2ByIds,
+    getChangeVersions
   };
 };
