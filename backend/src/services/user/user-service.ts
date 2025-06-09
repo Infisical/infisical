@@ -107,7 +107,8 @@ export const userServiceFactory = ({
     });
 
     await userDAL.updateById(user.id, {
-      isEmailVerified: true
+      isEmailVerified: true,
+      username: usersByusername.length === 1 && user.email ? user.email.toLowerCase() : undefined
     });
   };
 
