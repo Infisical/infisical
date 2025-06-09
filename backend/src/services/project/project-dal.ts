@@ -12,7 +12,7 @@ import {
   TProjectsUpdate
 } from "@app/db/schemas";
 import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
-import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 import { ActorType } from "../auth/auth-type";
 import { Filter, ProjectFilterType, SearchProjectSortBy } from "./project-types";
@@ -475,16 +475,6 @@ export const projectDALFactory = (db: TDbClient) => {
     return { docs, totalCount: Number(docs?.[0]?.count ?? 0) };
   };
 
-  const findProjectByEnvId = async (envId: string, tx?: Knex) => {
-    const project = await (tx || db.replicaNode())(TableName.Project)
-      .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
-      .where(buildFindFilter({ id: envId }, TableName.Environment))
-      .select(selectAllTableCols(TableName.Project))
-      .first();
-    return project;
-  };
-
   const countOfOrgProjects = async (orgId: string | null, tx?: Knex) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.Project)
@@ -514,7 +504,6 @@ export const projectDALFactory = (db: TDbClient) => {
     checkProjectUpgradeStatus,
     getProjectFromSplitId,
     searchProjects,
-    findProjectByEnvId,
     countOfOrgProjects
   };
 };

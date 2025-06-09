@@ -826,7 +826,8 @@
             "api-reference/endpoints/workspaces/delete-workspace",
             "api-reference/endpoints/workspaces/get-workspace",
             "api-reference/endpoints/workspaces/update-workspace",
-            "api-reference/endpoints/workspaces/secret-snapshots"
+            "api-reference/endpoints/workspaces/secret-snapshots",
+            "api-reference/endpoints/workspaces/rollback-snapshot"
           ]
         },
         {

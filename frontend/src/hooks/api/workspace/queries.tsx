@@ -282,8 +282,7 @@ export const useUpdateProject = () => {
       newProjectName,
       newProjectDescription,
       newSlug,
-      secretSharing,
-      showSnapshotsLegacy
+      secretSharing
     }) => {
       const { data } = await apiRequest.patch<{ workspace: Workspace }>(
         `/api/v1/workspace/${projectID}`,
@@ -291,8 +290,7 @@ export const useUpdateProject = () => {
           name: newProjectName,
           description: newProjectDescription,
           slug: newSlug,
-          secretSharing,
-          showSnapshotsLegacy
+          secretSharing
         }
       );
       return data.workspace;

@@ -80,24 +80,6 @@ import {
   TExternalKms,
   TExternalKmsInsert,
   TExternalKmsUpdate,
-  TFolderCheckpointResources,
-  TFolderCheckpointResourcesInsert,
-  TFolderCheckpointResourcesUpdate,
-  TFolderCheckpoints,
-  TFolderCheckpointsInsert,
-  TFolderCheckpointsUpdate,
-  TFolderCommitChanges,
-  TFolderCommitChangesInsert,
-  TFolderCommitChangesUpdate,
-  TFolderCommits,
-  TFolderCommitsInsert,
-  TFolderCommitsUpdate,
-  TFolderTreeCheckpointResources,
-  TFolderTreeCheckpointResourcesInsert,
-  TFolderTreeCheckpointResourcesUpdate,
-  TFolderTreeCheckpoints,
-  TFolderTreeCheckpointsInsert,
-  TFolderTreeCheckpointsUpdate,
   TGateways,
   TGatewaysInsert,
   TGatewaysUpdate,
@@ -1139,36 +1121,6 @@ declare module "knex/types/tables" {
       TGithubOrgSyncConfigs,
       TGithubOrgSyncConfigsInsert,
       TGithubOrgSyncConfigsUpdate
-    >;
-    [TableName.FolderCommit]: KnexOriginal.CompositeTableType<
-      TFolderCommits,
-      TFolderCommitsInsert,
-      TFolderCommitsUpdate
-    >;
-    [TableName.FolderCommitChanges]: KnexOriginal.CompositeTableType<
-      TFolderCommitChanges,
-      TFolderCommitChangesInsert,
-      TFolderCommitChangesUpdate
-    >;
-    [TableName.FolderCheckpoint]: KnexOriginal.CompositeTableType<
-      TFolderCheckpoints,
-      TFolderCheckpointsInsert,
-      TFolderCheckpointsUpdate
-    >;
-    [TableName.FolderCheckpointResources]: KnexOriginal.CompositeTableType<
-      TFolderCheckpointResources,
-      TFolderCheckpointResourcesInsert,
-      TFolderCheckpointResourcesUpdate
-    >;
-    [TableName.FolderTreeCheckpoint]: KnexOriginal.CompositeTableType<
-      TFolderTreeCheckpoints,
-      TFolderTreeCheckpointsInsert,
-      TFolderTreeCheckpointsUpdate
-    >;
-    [TableName.FolderTreeCheckpointResources]: KnexOriginal.CompositeTableType<
-      TFolderTreeCheckpointResources,
-      TFolderTreeCheckpointResourcesInsert,
-      TFolderTreeCheckpointResourcesUpdate
     >;
     [TableName.SecretScanningDataSource]: KnexOriginal.CompositeTableType<
       TSecretScanningDataSources,

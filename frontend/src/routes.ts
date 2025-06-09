@@ -63,16 +63,6 @@ const secretManagerRoutes = route("/secret-manager/$projectId", [
     route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
     route("/secret-rotation", "secret-manager/SecretRotationPage/route.tsx"),
     route("/settings", "secret-manager/SettingsPage/route.tsx"),
-    route("/commits/$environment/$folderId", [
-      index("secret-manager/CommitsPage/route.tsx"),
-      route("/$commitId", [
-        index("secret-manager/CommitDetailsPage/route.tsx"),
-        route(
-          "/restore",
-          "secret-manager/CommitDetailsPage/components/RollbackPreviewTab/route.tsx"
-        )
-      ])
-    ]),
     route("/integrations", [
       index("secret-manager/IntegrationsListPage/route.tsx"),
       route("/$integrationId", "secret-manager/IntegrationsDetailsByIDPage/route.tsx"),

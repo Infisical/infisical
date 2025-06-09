@@ -3,7 +3,6 @@ import { MutationOptions, useMutation, useQueryClient } from "@tanstack/react-qu
 import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
-import { commitKeys } from "../folderCommits/queries";
 import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
 import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import { secretKeys } from "./queries";
@@ -59,12 +58,6 @@ export const useCreateSecretV3 = ({
       });
       queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
@@ -125,12 +118,6 @@ export const useUpdateSecretV3 = ({
       queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
-      });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
@@ -177,12 +164,6 @@ export const useDeleteSecretV3 = ({
       queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
-      });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
@@ -219,12 +200,6 @@ export const useCreateSecretBatch = ({
       queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
-      });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
@@ -260,12 +235,6 @@ export const useUpdateSecretBatch = ({
       });
       queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
@@ -304,12 +273,6 @@ export const useDeleteSecretBatch = ({
       });
       queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
@@ -381,20 +344,6 @@ export const useMoveSecrets = ({
         queryKey: secretSnapshotKeys.count({
           environment: sourceEnvironment,
           workspaceId: projectId,
-          directory: sourceSecretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.count({
-          workspaceId: projectId,
-          environment: sourceEnvironment,
-          directory: sourceSecretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.history({
-          workspaceId: projectId,
-          environment: sourceEnvironment,
           directory: sourceSecretPath
         })
       });

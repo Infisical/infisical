@@ -75,18 +75,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/secret-manager/$projectId/secrets/$envSlug",
       "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug"
     ),
-    RollbackPreviewPage: setRoute(
-      "/secret-manager/$projectId/commits/$environment/$folderId/$commitId/restore",
-      "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore"
-    ),
-    CommitDetailsPage: setRoute(
-      "/secret-manager/$projectId/commits/$environment/$folderId/$commitId",
-      "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId"
-    ),
-    CommitsPage: setRoute(
-      "/secret-manager/$projectId/commits/$environment/$folderId",
-      "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId"
-    ),
     OverviewPage: setRoute(
       "/secret-manager/$projectId/overview",
       "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/overview"

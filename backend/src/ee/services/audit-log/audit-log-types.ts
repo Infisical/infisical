@@ -393,13 +393,6 @@ export enum EventType {
   PROJECT_ASSUME_PRIVILEGE_SESSION_START = "project-assume-privileges-session-start",
   PROJECT_ASSUME_PRIVILEGE_SESSION_END = "project-assume-privileges-session-end",
 
-  GET_PROJECT_PIT_COMMITS = "get-project-pit-commits",
-  GET_PROJECT_PIT_COMMIT_CHANGES = "get-project-pit-commit-changes",
-  GET_PROJECT_PIT_COMMIT_COUNT = "get-project-pit-commit-count",
-  PIT_ROLLBACK_COMMIT = "pit-rollback-commit",
-  PIT_REVERT_COMMIT = "pit-revert-commit",
-  PIT_GET_FOLDER_STATE = "pit-get-folder-state",
-  PIT_COMPARE_FOLDER_STATES = "pit-compare-folder-states",
   SECRET_SCANNING_DATA_SOURCE_LIST = "secret-scanning-data-source-list",
   SECRET_SCANNING_DATA_SOURCE_CREATE = "secret-scanning-data-source-create",
   SECRET_SCANNING_DATA_SOURCE_UPDATE = "secret-scanning-data-source-update",
@@ -2986,78 +2979,6 @@ interface MicrosoftTeamsWorkflowIntegrationUpdateEvent {
   };
 }
 
-interface GetProjectPitCommitsEvent {
-  type: EventType.GET_PROJECT_PIT_COMMITS;
-  metadata: {
-    commitCount: string;
-    environment: string;
-    path: string;
-    offset: string;
-    limit: string;
-    search?: string;
-    sort: string;
-  };
-}
-
-interface GetProjectPitCommitChangesEvent {
-  type: EventType.GET_PROJECT_PIT_COMMIT_CHANGES;
-  metadata: {
-    changesCount: string;
-    commitId: string;
-  };
-}
-
-interface GetProjectPitCommitCountEvent {
-  type: EventType.GET_PROJECT_PIT_COMMIT_COUNT;
-  metadata: {
-    environment: string;
-    path: string;
-    commitCount: string;
-  };
-}
-
-interface PitRollbackCommitEvent {
-  type: EventType.PIT_ROLLBACK_COMMIT;
-  metadata: {
-    targetCommitId: string;
-    folderId: string;
-    deepRollback: boolean;
-    message: string;
-    totalChanges: string;
-    environment: string;
-  };
-}
-
-interface PitRevertCommitEvent {
-  type: EventType.PIT_REVERT_COMMIT;
-  metadata: {
-    commitId: string;
-    revertCommitId?: string;
-    changesReverted?: string;
-  };
-}
-
-interface PitGetFolderStateEvent {
-  type: EventType.PIT_GET_FOLDER_STATE;
-  metadata: {
-    commitId: string;
-    folderId: string;
-    resourceCount: string;
-  };
-}
-
-interface PitCompareFolderStatesEvent {
-  type: EventType.PIT_COMPARE_FOLDER_STATES;
-  metadata: {
-    targetCommitId: string;
-    folderId: string;
-    deepRollback: boolean;
-    diffsCount: string;
-    environment: string;
-    folderPath: string;
-  };
-}
-
 interface SecretScanningDataSourceListEvent {
   type: EventType.SECRET_SCANNING_DATA_SOURCE_LIST;
   metadata: {
@@ -3476,13 +3397,6 @@ export type Event =
   | MicrosoftTeamsWorkflowIntegrationGetEvent
   | MicrosoftTeamsWorkflowIntegrationListEvent
   | MicrosoftTeamsWorkflowIntegrationUpdateEvent
-  | GetProjectPitCommitsEvent
-  | GetProjectPitCommitChangesEvent
-  | PitRollbackCommitEvent
-  | GetProjectPitCommitCountEvent
-  | PitRevertCommitEvent
-  | PitCompareFolderStatesEvent
-  | PitGetFolderStateEvent
   | SecretScanningDataSourceListEvent
   | SecretScanningDataSourceGetEvent
   | SecretScanningDataSourceCreateEvent
